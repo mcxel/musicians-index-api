@@ -42,7 +42,9 @@ export interface BattleContentArtifacts {
 export interface BattleBillboardCard {
   battleId: string;
   challengeId: string;
+  challengerId: string;
   challengerName: string;
+  targetId: string;
   targetName: string;
   formatLabel: string;
   status: "accepted" | "live" | "completed";
@@ -67,7 +69,9 @@ export class BattleBillboardLobbyWallEngine {
   publishAcceptedToWall(input: {
     challengeId: string;
     battleId: string;
+    challengerId: string;
     challengerName: string;
+    targetId: string;
     targetName: string;
     formatLabel: string;
     endsAt: number;
@@ -75,7 +79,9 @@ export class BattleBillboardLobbyWallEngine {
     const card: BattleBillboardCard = {
       battleId: input.battleId,
       challengeId: input.challengeId,
+      challengerId: input.challengerId,
       challengerName: input.challengerName,
+      targetId: input.targetId,
       targetName: input.targetName,
       formatLabel: input.formatLabel,
       status: "accepted",

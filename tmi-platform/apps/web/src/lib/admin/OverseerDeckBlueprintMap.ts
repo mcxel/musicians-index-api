@@ -127,7 +127,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
   },
   {
     id: "ops-center-tv-router",
-    blueprintLabel: "TV Screen Router (Boardroom Live)",
+    blueprintLabel: "TV Screen Router (Live Monitor Wall)",
     zone: "operations",
     codeTarget: "components/admin/overseer/workspace/widgets/MediaMatrixEngine.tsx",
     status: "ALIGN",

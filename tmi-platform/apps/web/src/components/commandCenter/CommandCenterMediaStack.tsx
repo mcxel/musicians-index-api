@@ -7,12 +7,88 @@
  */
 
 import { useMemo, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import AudienceScene from "@/components/live/AudienceScene";
 import CanonicalDualMonitorStack, {
   CanonicalMonitorFrame,
 } from "@/components/monitors/CanonicalDualMonitorStack";
 
-export type MediaGridMode = 2 | 4 | 8;
+export type MediaGridMode = 1 | 2 | 4 | 8 | 16;
+
+/**
+ * The 3 permanent TMI house sponsors — always present in every user's
+ * sponsor overlay trigger, per Marcel Dickens (2026-08-05). Pushing one
+ * overlays a branded animated banner on the monitor. Cross-platform
+ * promotion points (tagging this on Twitch/YouTube/etc.) are explicitly
+ * NOT implemented — there is no real way to verify TMI branding appeared
+ * in an external broadcast without integrating those platforms' APIs
+ * (same infra gap as the already-blocked Multi-Platform Simulcast
+ * request), so no points are awarded here rather than faking verification.
+ */
+export interface HouseSponsor {
+  id: string;
+  name: string;
+  tagline: string;
+  href?: string;
+  accent: string;
+}
+
+export const HOUSE_SPONSORS: HouseSponsor[] = [
+  { id: "tmi", name: "TMI", tagline: "The Musician's Index", accent: "#00FFFF" },
+  { id: "the-musicians-index", name: "The Musician's Index", tagline: "Magazine · Live · Rankings", accent: "#FF2DAA" },
+  { id: "themusiciansindex-com", name: "TheMusiciansIndex.com", tagline: "Join the platform", href: "https://themusiciansindex.com", accent: "#FFD700" },
+];
+
+interface ActiveSponsorOverlay {
+  sponsor: HouseSponsor;
+  pushedAt: number;
+}
+
+function SponsorOverlayBanner({ overlay }: { overlay: ActiveSponsorOverlay }) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={`${overlay.sponsor.id}-${overlay.pushedAt}`}
+        initial={{ y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -40, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        style={{
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          x: "-50%",
+          zIndex: 5,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 14px",
+          borderRadius: 999,
+          background: "rgba(5,5,16,0.85)",
+          border: `1px solid ${overlay.sponsor.accent}`,
+          boxShadow: `0 0 24px ${overlay.sponsor.accent}88`,
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <motion.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.6, repeat: Infinity }}
+          style={{ width: 7, height: 7, borderRadius: "50%", background: overlay.sponsor.accent, boxShadow: `0 0 8px ${overlay.sponsor.accent}` }}
+        />
+        <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.04em" }}>
+          {overlay.sponsor.name}
+        </span>
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{overlay.sponsor.tagline}</span>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// Ambient standby loop shown on panels with no live/uploaded source
+const ROSE_FALLBACK_URL =
+  process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
+  process.env.NEXT_PUBLIC_OBSERVATORY_ROSE_VIDEO_URL?.trim() ||
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
 export interface CommandCenterPlaylistCast {
   playlistId: string;
@@ -133,23 +209,21 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
   );
 }
 
-function MonitorMediaBody({ slot }: { slot: CommandCenterMediaSlot }) {
+function MonitorMediaBody({ slot, sponsorOverlay }: { slot: CommandCenterMediaSlot; sponsorOverlay?: ActiveSponsorOverlay | null }) {
+  const videoSrc = slot.videoUrl || ROSE_FALLBACK_URL;
   return (
     <div style={{ position: "relative", flex: 1, width: "100%", minHeight: 0, overflow: "hidden" }}>
+      {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
       {slot.kind === "playlist" && slot.playlistCast ? (
         <PlaylistCastBody cast={slot.playlistCast} />
-      ) : slot.kind === "audience" ? (
-        <div style={{ position: "absolute", inset: 0 }}>
-          <AudienceScene view="fan" />
-        </div>
-      ) : slot.videoUrl ? (
+      ) : videoSrc ? (
         <video
-          key={slot.videoUrl}
+          key={videoSrc}
           autoPlay
           loop
           muted
           playsInline
-          src={slot.videoUrl}
+          src={videoSrc}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
       ) : slot.imageUrl ? (
@@ -185,9 +259,13 @@ function MonitorMediaBody({ slot }: { slot: CommandCenterMediaSlot }) {
 function MonitorChrome({
   slot,
   onSwap,
+  onFullscreen,
+  sponsorOverlay,
 }: {
   slot: CommandCenterMediaSlot;
   onSwap?: () => void;
+  onFullscreen?: () => void;
+  sponsorOverlay?: ActiveSponsorOverlay | null;
 }) {
   return (
     <div
@@ -222,31 +300,56 @@ function MonitorChrome({
         >
           {slot.label}
         </span>
-        {onSwap ? (
-          <button
-            type="button"
-            onClick={onSwap}
-            title="Swap top and bottom monitors"
-            style={{
-              background: "rgba(255,215,0,0.15)",
-              border: "1px solid rgba(255,215,0,0.4)",
-              borderRadius: 4,
-              color: "#FFD700",
-              fontSize: 8,
-              fontWeight: 800,
-              padding: "2px 6px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-            }}
-          >
-            <span>⇼</span>
-            <span>SWAP</span>
-          </button>
-        ) : null}
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {onSwap ? (
+            <button
+              type="button"
+              onClick={onSwap}
+              title="Swap top and bottom monitors"
+              style={{
+                background: "rgba(255,215,0,0.15)",
+                border: "1px solid rgba(255,215,0,0.4)",
+                borderRadius: 4,
+                color: "#FFD700",
+                fontSize: 8,
+                fontWeight: 800,
+                padding: "2px 6px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <span>⇼</span>
+              <span>SWAP</span>
+            </button>
+          ) : null}
+          {onFullscreen ? (
+            <button
+              type="button"
+              onClick={onFullscreen}
+              title="Expand monitor full screen"
+              style={{
+                background: "rgba(0,255,255,0.15)",
+                border: "1px solid rgba(0,255,255,0.4)",
+                borderRadius: 4,
+                color: "#00FFFF",
+                fontSize: 8,
+                fontWeight: 800,
+                padding: "2px 6px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <span>⛶</span>
+              <span>FULLSCREEN</span>
+            </button>
+          ) : null}
+        </div>
       </div>
-      <MonitorMediaBody slot={slot} />
+      <MonitorMediaBody slot={slot} sponsorOverlay={sponsorOverlay} />
     </div>
   );
 }
@@ -261,6 +364,14 @@ export default function CommandCenterMediaStack({
 }: CommandCenterMediaStackProps) {
   const [internalMode, setInternalMode] = useState<MediaGridMode>(2);
   const [swapOrder, setSwapOrder] = useState(false);
+  const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
+  const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
+  const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
+
+  const pushSponsorLive = (sponsor: HouseSponsor) => {
+    setActiveSponsorOverlay({ sponsor, pushedAt: Date.now() });
+    setSponsorPanelOpen(false);
+  };
 
   const mode = controlledMode ?? internalMode;
   const setMode = (m: MediaGridMode) => {
@@ -288,6 +399,8 @@ export default function CommandCenterMediaStack({
     setSwapOrder((prev) => !prev);
   };
 
+  const fullscreenSlot = fullscreenSlotId ? filled.find((s) => s.id === fullscreenSlotId) ?? slots.find((s) => s.id === fullscreenSlotId) : null;
+
   const toolbar = (
     <div
       style={{
@@ -305,7 +418,7 @@ export default function CommandCenterMediaStack({
       <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)" }}>
         MEDIA GRID
       </span>
-      {([2, 4, 8] as MediaGridMode[]).map((m) => (
+      {([1, 2, 4, 8, 16] as MediaGridMode[]).map((m) => (
         <button
           key={m}
           type="button"
@@ -323,9 +436,107 @@ export default function CommandCenterMediaStack({
             fontFamily: "inherit",
           }}
         >
-          {m === 2 ? "DUAL" : m === 4 ? "QUAD" : "OCTO"}
+          {m === 1 ? "1 (SINGLE)" : m === 2 ? "2 (DUAL)" : m === 4 ? "4 (QUAD)" : m === 8 ? "8 (OCTO)" : "16 (MEGA)"}
         </button>
       ))}
+
+      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
+
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          onClick={() => setSponsorPanelOpen((v) => !v)}
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: activeSponsorOverlay ? "1px solid #FFD700" : "1px solid rgba(255,215,0,0.4)",
+            background: activeSponsorOverlay ? "rgba(255,215,0,0.18)" : "transparent",
+            color: "#FFD700",
+            fontFamily: "inherit",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>★</span>
+          <span>SPONSORS</span>
+        </button>
+
+        {sponsorPanelOpen ? (
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 8px)",
+              left: 0,
+              zIndex: 40,
+              width: 220,
+              background: "#0d1117",
+              border: "1px solid rgba(255,215,0,0.4)",
+              borderRadius: 10,
+              padding: 8,
+              boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
+              OFFICIAL TMI SPONSORS
+            </span>
+            {HOUSE_SPONSORS.map((sp) => (
+              <motion.button
+                key={sp.id}
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => pushSponsorLive(sp)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 2,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${sp.accent}55`,
+                  background: `${sp.accent}12`,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 900, color: sp.accent }}>{sp.name}</span>
+                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{sp.tagline}</span>
+              </motion.button>
+            ))}
+            {activeSponsorOverlay ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSponsorOverlay(null);
+                  setSponsorPanelOpen(false);
+                }}
+                style={{
+                  marginTop: 2,
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Stop overlay
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -341,15 +552,70 @@ export default function CommandCenterMediaStack({
         padding: 8,
       }}
     >
+      {/* Fullscreen Overlay Modal */}
+      {fullscreenSlot ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#000",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              padding: "10px 16px",
+              background: "rgba(10,10,25,0.9)",
+              borderBottom: "1px solid rgba(0,255,255,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+              FULLSCREEN MONITOR · {fullscreenSlot.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFullscreenSlotId(null)}
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #FFD700",
+                background: "rgba(255,215,0,0.2)",
+                color: "#FFD700",
+                cursor: "pointer",
+              }}
+            >
+              EXIT FULLSCREEN ✕
+            </button>
+          </div>
+          <div style={{ flex: 1, position: "relative" }}>
+            <MonitorMediaBody slot={fullscreenSlot} />
+          </div>
+        </div>
+      ) : null}
+
       {mode === 2 ? (
         <CanonicalDualMonitorStack
           variant={bezelVariant}
           seriesLabel={seriesLabel}
           toolbar={toolbar}
-          monitors={filled.slice(0, 2).map((slot) => ({
+          monitors={filled.slice(0, 2).map((slot, index) => ({
             id: slot.id,
             label: slot.label,
-            children: <MonitorChrome slot={slot} onSwap={handleSwap} />,
+            children: (
+              <MonitorChrome
+                slot={slot}
+                onSwap={handleSwap}
+                onFullscreen={() => setFullscreenSlotId(slot.id)}
+                sponsorOverlay={index === 0 ? activeSponsorOverlay : null}
+              />
+            ),
           }))}
         />
       ) : (
@@ -359,14 +625,19 @@ export default function CommandCenterMediaStack({
             style={{
               flex: "0 0 auto",
               display: "grid",
-              gridTemplateColumns: `repeat(${mode === 4 ? 2 : 4}, minmax(0, 1fr))`,
+              gridTemplateColumns: `repeat(${mode === 1 ? 1 : mode === 4 ? 2 : 4}, minmax(0, 1fr))`,
               gap: 8,
               alignContent: "start",
             }}
           >
             {filled.map((slot, index) => (
               <CanonicalMonitorFrame key={slot.id}>
-                <MonitorChrome slot={slot} onSwap={index < 2 ? handleSwap : undefined} />
+                <MonitorChrome
+                  slot={slot}
+                  onSwap={index < 2 ? handleSwap : undefined}
+                  onFullscreen={() => setFullscreenSlotId(slot.id)}
+                  sponsorOverlay={index === 0 ? activeSponsorOverlay : null}
+                />
               </CanonicalMonitorFrame>
             ))}
           </div>

@@ -56,6 +56,20 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
   const [open,          setOpen]          = useState(false);
   const [addOpen,       setAddOpen]       = useState(false);
   const [switching,     setSwitching]     = useState(false);
+  // Compact mode's dropdown is position:absolute anchored to the toggle
+  // button, inside a flex:1 header slot whose real screen position varies.
+  // On a narrow phone screen that overflows off the edge and becomes
+  // unreadable/untappable (reported 2026-08-04, Jay Paul Sanchez — couldn't
+  // see or reach the workspace switch on mobile). Below 640px we switch the
+  // dropdown to position:fixed with viewport-relative insets instead, so it
+  // can never overflow regardless of where the button sits.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     const personas    = getUserPersonas();
@@ -134,25 +148,26 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
             display:       'flex',
             alignItems:    'center',
             gap:           6,
-            padding:       '5px 10px',
+            padding:       isMobile ? '10px 14px' : '5px 10px',
+            minHeight:     isMobile ? 44 : undefined,
             background:    `${activeMeta.color}18`,
             border:        `1px solid ${activeMeta.color}44`,
             borderRadius:  8,
             cursor:        'pointer',
-            fontSize:      11,
+            fontSize:      isMobile ? 14 : 11,
             fontWeight:    700,
             color:         activeMeta.color,
             letterSpacing: '0.06em',
             whiteSpace:    'nowrap',
           }}
         >
-          <span style={{ fontSize: 13 }}>{activeMeta.icon}</span>
+          <span style={{ fontSize: isMobile ? 16 : 13 }}>{activeMeta.icon}</span>
           {activeMeta.label}
-          <span style={{ opacity: 0.5, fontSize: 9 }}>▾</span>
+          <span style={{ opacity: 0.5, fontSize: isMobile ? 11 : 9 }}>▾</span>
         </button>
 
         {open && (
-          <div style={dropdownStyle()}>
+          <div style={dropdownStyle(isMobile)}>
             <div style={dropdownHeaderStyle}>Workspace</div>
 
             {quickSwitchTargets.length > 0 && (
@@ -169,8 +184,9 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
                         background: isActive ? `${meta.color}22` : 'rgba(255,255,255,0.02)',
                         color: meta.color,
                         borderRadius: 999,
-                        padding: '3px 8px',
-                        fontSize: 9,
+                        padding: isMobile ? '8px 12px' : '3px 8px',
+                        minHeight: isMobile ? 36 : undefined,
+                        fontSize: isMobile ? 12 : 9,
                         fontWeight: 900,
                         letterSpacing: '0.08em',
                         cursor: 'pointer',
@@ -188,8 +204,8 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
               const meta   = PERSONA_META[pt];
               const isActive = pt === activePersona;
               return (
-                <button key={pt} onClick={() => handleSwitch(pt)} disabled={switching} style={menuItemStyle(isActive, meta.color)}>
-                  <span style={{ fontSize: 14 }}>{meta.icon}</span>
+                <button key={pt} onClick={() => handleSwitch(pt)} disabled={switching} style={menuItemStyle(isActive, meta.color, isMobile)}>
+                  <span style={{ fontSize: isMobile ? 16 : 14 }}>{meta.icon}</span>
                   <span style={{ flex: 1, textAlign: 'left' }}>{meta.label}</span>
                   {isActive && <span style={{ fontSize: 8, color: meta.color }}>●</span>}
                 </button>
@@ -202,14 +218,14 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', margin: '6px 0' }} />
                 <button
                   onClick={() => { setAddOpen(!addOpen); }}
-                  style={{ ...menuItemStyle(false, 'rgba(255,255,255,0.3)'), fontSize: 11 }}
+                  style={{ ...menuItemStyle(false, 'rgba(255,255,255,0.3)', isMobile), fontSize: isMobile ? 13 : 11 }}
                 >
                   <span>+</span> Add Workspace
                 </button>
                 {addOpen && addable.map((pt) => {
                   const meta = PERSONA_META[pt];
                   return (
-                    <button key={pt} onClick={() => handleAddPersona(pt)} style={{ ...menuItemStyle(false, meta.color), paddingLeft: 24 }}>
+                    <button key={pt} onClick={() => handleAddPersona(pt)} style={{ ...menuItemStyle(false, meta.color, isMobile), paddingLeft: 24 }}>
                       <span style={{ fontSize: 12 }}>{meta.icon}</span>
                       <span style={{ flex: 1, textAlign: 'left', fontSize: 11 }}>{meta.label}</span>
                     </button>
@@ -314,7 +330,25 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
 
 // ── Style Helpers ─────────────────────────────────────────────────────────────
 
-function dropdownStyle(): React.CSSProperties {
+function dropdownStyle(isMobile = false): React.CSSProperties {
+  if (isMobile) {
+    // Viewport-relative instead of button-relative — guaranteed on-screen
+    // no matter where the toggle button actually sits in the header.
+    return {
+      position:     'fixed',
+      top:          64,
+      left:         12,
+      right:        12,
+      background:   '#0d1117',
+      border:       '1px solid rgba(255,255,255,0.12)',
+      borderRadius: 12,
+      padding:      10,
+      zIndex:       9999,
+      maxHeight:    'calc(100vh - 88px)',
+      overflowY:    'auto',
+      boxShadow:    '0 8px 32px rgba(0,0,0,0.6)',
+    };
+  }
   return {
     position:     'absolute',
     top:          '100%',
@@ -340,19 +374,20 @@ const dropdownHeaderStyle: React.CSSProperties = {
   letterSpacing: '0.1em',
 };
 
-function menuItemStyle(active: boolean, color: string): React.CSSProperties {
+function menuItemStyle(active: boolean, color: string, isMobile = false): React.CSSProperties {
   return {
     display:     'flex',
     alignItems:  'center',
     gap:         10,
     width:       '100%',
-    padding:     '9px 12px',
+    padding:     isMobile ? '13px 14px' : '9px 12px',
+    minHeight:   isMobile ? 44 : undefined,
     background:  active ? `${color}14` : 'transparent',
     border:      'none',
     borderRadius: 7,
     cursor:      active ? 'default' : 'pointer',
     color:       active ? color : 'rgba(255,255,255,0.65)',
-    fontSize:    12,
+    fontSize:    isMobile ? 14 : 12,
     fontWeight:  active ? 700 : 500,
     textAlign:   'left',
     transition:  'background 0.15s',

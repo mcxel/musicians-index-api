@@ -3,7 +3,7 @@
  * Provides shared infrastructure: QueueManager, StageManager, JudgeManager,
  * AudienceManager, ScoringEngine, and EventBus.
  *
- * Runtimes (Battle, Cypher, Challenge, Concert) inherit this base and emit
+ * Runtimes (Battle, Cypher, Challenge, Concert, Playlist, Radio, Shuffle) inherit this base and emit
  * semantic events ONLY. Zero presentation or rendering logic lives here.
  */
 
@@ -16,7 +16,7 @@ export interface Competitor {
 
 export interface CompetitionStateSnapshot {
   competitionId: string;
-  type: "BATTLE" | "CYPHER" | "CHALLENGE" | "CONCERT";
+  type: "BATTLE" | "CYPHER" | "CHALLENGE" | "CONCERT" | "PLAYLIST" | "RADIO" | "SHUFFLE";
   status: "IDLE" | "IN_PROGRESS" | "JUDGING" | "COMPLETED";
   currentPerformerId?: string;
   winnerId?: string;

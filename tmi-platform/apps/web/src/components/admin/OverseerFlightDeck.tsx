@@ -19,7 +19,6 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { LiveCameraPreview } from "@/components/media/LiveCameraPreview";
 import OverlayHost from "@/components/shell/OverlayHost";
 import Canister from "@/components/admin/overseer/Canister";
 import ChainCommandPanel from "@/components/admin/overseer/ChainCommandPanel";
@@ -105,7 +104,6 @@ export default function OverseerFlightDeck({
 }: OverseerFlightDeckProps) {
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
   const [clock, setClock] = useState("");
-  const [cameraOverlayOpen, setCameraOverlayOpen] = useState(false);
   const [conciergeOpen, setConciergeOpen] = useState(false);
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
   const drawerManager = useDrawerManager();
@@ -161,15 +159,6 @@ export default function OverseerFlightDeck({
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!cameraOverlayOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCameraOverlayOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [cameraOverlayOpen]);
-
   const defaultWorkspace = useMemo<ShellWorkspaceDefinition>(
     () => ({
       title: "Marcel - Founder and CEO",
@@ -182,7 +171,7 @@ export default function OverseerFlightDeck({
       center: [
         {
           id: "live-feed-router",
-          title: "TV SCREEN ROUTER · BOARDROOM LIVE",
+          title: "TV SCREEN ROUTER · LIVE MONITOR WALL",
           accent: "#00FFFF",
           content: <MediaMatrixEngine />,
           flex: 1,
@@ -242,8 +231,6 @@ export default function OverseerFlightDeck({
     ? "1fr"
     : `${leftWidth}px minmax(0,1fr) ${rightWidth}px`;
 
-  const closeAdminCam = () => setCameraOverlayOpen(false);
-  const toggleAdminCam = () => setCameraOverlayOpen((prev) => !prev);
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
   };
@@ -802,40 +789,7 @@ export default function OverseerFlightDeck({
           >
             {leftCollapsed ? "◀" : "◁"}
           </button>
-          <button
-            type="button"
-            onClick={toggleAdminCam}
-            aria-pressed={cameraOverlayOpen}
-            title="Admin Camera (on demand)"
-            style={dockBtnStyle(cameraOverlayOpen)}
-          >
-            📷
-          </button>
         </div>
-
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%) rotate(45deg)",
-            width: 30,
-            height: 30,
-            background: cameraOverlayOpen
-              ? "radial-gradient(circle, #66ffaa, #008844)"
-              : "radial-gradient(circle, #e066ff, #8b008b)",
-            border: "3px solid #D4AF37",
-            boxShadow: cameraOverlayOpen
-              ? "0 0 15px #00FF88, inset 0 0 5px rgba(255,255,255,0.8)"
-              : "0 0 15px #e066ff, inset 0 0 5px rgba(255,255,255,0.8)",
-            cursor: "pointer",
-            zIndex: 10,
-          }}
-          onClick={toggleAdminCam}
-          title="Admin Camera Toggle"
-          role="button"
-          aria-label="Toggle Admin Camera"
-        />
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
@@ -885,7 +839,7 @@ export default function OverseerFlightDeck({
       <AdminConciergePanel
         open={conciergeOpen}
         onClose={() => setConciergeOpen(false)}
-        includeWorkspaces
+        includeWorkspaces={false}
         operatorLabel={operatorLabel}
         fullControl={fullControl}
         canAutoApplyFixes={canAutoApplyFixes}
@@ -939,56 +893,6 @@ export default function OverseerFlightDeck({
             );
           })}
 
-        {cameraOverlayOpen ? (
-          <div
-            data-overlay="admin-cam"
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1300,
-              background: "rgba(1, 3, 8, 0.45)",
-              pointerEvents: "auto",
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "flex-end",
-              padding: "0 12px 96px",
-            }}
-            onClick={closeAdminCam}
-          >
-            <div
-              style={{
-                width: "min(420px, calc(100vw - 32px))",
-                animation: "tmi-admin-cam-slide 120ms ease-out",
-                pointerEvents: "auto",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Canister
-                id="observatory-camera-overlay"
-                title="ADMIN CAMERA"
-                accent="#00FF88"
-                statusLabel="ON DEMAND"
-                style={{ minHeight: 250 }}
-                onCloseWindow={closeAdminCam}
-              >
-                <div style={{ aspectRatio: "16 / 9", width: "100%", minHeight: 220 }}>
-                  <LiveCameraPreview />
-                </div>
-              </Canister>
-            </div>
-            <style
-              // Same raw-text <style> hydration hazard as TMIGlobalNav/GamificationHUD.
-              dangerouslySetInnerHTML={{
-                __html: `
-              @keyframes tmi-admin-cam-slide {
-                from { transform: translateY(24px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-              }
-            `,
-              }}
-            />
-          </div>
-        ) : null}
       </OverlayHost>
     </div>
   );

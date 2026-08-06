@@ -78,6 +78,22 @@ export function clearHumanRankPoints(profileId?: string): void {
   else humanScoreOverlay.clear();
 }
 
+/**
+ * Delta-based sibling to setHumanRankPoints() for callers that award XP in
+ * increments (submissions, fan-loop completion, referrals, ...) rather than
+ * publishing an absolute total. No-ops for any profileId that isn't a real
+ * PERFORMER_REGISTRY entry (e.g. a fan's userId) — never fabricates a new
+ * ranked entry.
+ */
+export function addHumanRankPoints(profileId: string, delta: number): void {
+  if (delta === 0) return;
+  const isRankedPerformer = PERFORMER_REGISTRY.some((p) => p.id === profileId);
+  if (!isRankedPerformer) return;
+  const base = PERFORMER_REGISTRY.find((p) => p.id === profileId)?.xp ?? 0;
+  const current = humanScoreOverlay.get(profileId)?.points ?? base;
+  setHumanRankPoints(profileId, current + delta);
+}
+
 function botScoreReachedAt(createdAt: string): number {
   const parsed = Date.parse(createdAt);
   return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;

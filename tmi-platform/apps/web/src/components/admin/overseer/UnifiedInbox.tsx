@@ -41,33 +41,48 @@ export default function UnifiedInbox() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, fontFamily: "'Inter', sans-serif" }}>
-      {/* Messages List */}
+      {/* Messages List — real threads from /api/admin/inbox */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {[
-          { label: "Finance Inbox", sub: "Coffer Reports", unread: 6 },
-          { label: "Finalised Inbox", sub: "Approved splits", unread: 0 },
-          { label: "Jay Paul Smith", sub: "27M streams", unread: 0 },
-          { label: "Micah", sub: "13.0M tracks", unread: 0 },
-          { label: "Big Ace", sub: "1.2M logs", unread: 0 }
-        ].map((item, idx) => (
-          <div key={idx} style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "5px 8px",
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,215,0,0.15)",
-            borderRadius: 8,
-          }}>
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{item.label}</div>
-              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>{item.sub}</div>
-            </div>
-            {item.unread > 0 ? (
-              <span style={{ background: "#FF0088", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{item.unread}</span>
-            ) : null}
+        {state === "loading" ? (
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", padding: "6px 0", textAlign: "center" }}>
+            Loading inbox…
           </div>
-        ))}
+        ) : state === "error" ? (
+          <div style={{ fontSize: 9, color: "rgba(255,100,100,0.6)", padding: "6px 0", textAlign: "center" }}>
+            Unable to load inbox.
+          </div>
+        ) : threads.length === 0 ? (
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", padding: "6px 0", textAlign: "center" }}>
+            No conversations yet.
+          </div>
+        ) : (
+          threads.map((t) => (
+            <div key={t.conversationId} style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "5px 8px",
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,215,0,0.15)",
+              borderRadius: 8,
+            }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>
+                  {t.participantNames.join(", ") || t.latestSenderName}
+                </div>
+                <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>{formatAge(t.latestAt)}</div>
+              </div>
+              {t.unreadCount > 0 ? (
+                <span style={{ background: "#FF0088", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{t.unreadCount}</span>
+              ) : null}
+            </div>
+          ))
+        )}
+        {threads.length > 0 ? (
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "right" }}>
+            {unread} unread
+          </div>
+        ) : null}
       </div>
 
       {/* Buttons */}

@@ -7,7 +7,7 @@
  * No learning loop, no auto-repair, no prop tracking.
  */
 
-const GHOST_BOT_NAMES = ["Jay", "Nova", "Rico", "Luna", "Ace", "Kreach", "Zuri", "Dex"];
+const GHOST_BOT_NAMES = ["Jay", "Nova", "Rico", "Luna", "Ace", "Zuri", "Dex"];
 
 const ARRIVAL_LINES = [
   "just pulled up 👀",

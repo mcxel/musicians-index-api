@@ -1237,6 +1237,9 @@ export default function Home1CoverPage() {
           min-width: 0;
           width: 100%;
           align-self: start;
+          /* Transparent so no dark wrapper background peeks around the banner */
+          background: transparent;
+          line-height: 0;
         }
         .h1-hero-billboard-grid .h1-hero-title-col {
           grid-area: title;
@@ -1266,7 +1269,11 @@ export default function Home1CoverPage() {
           }
           .h1-hero-billboard-grid .h1-hero-flank-right { display: none; }
           .h1-hero-billboard-grid .h1-hero-flank-left {
+            /* Each individual banner fills its own cell tightly —
+               no fixed height or min-height that creates dead black space */
             max-width: 100%;
+            align-self: start;
+            line-height: 0;
           }
         }
 
@@ -1881,7 +1888,22 @@ export default function Home1CoverPage() {
                       </div>
                     </Link>
                   )) : (
-                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', textAlign: 'center', paddingTop: 12 }}>No data available yet</div>
+                    <>
+                      {getTopPerformers(3).map((p) => (
+                        <Link key={p.slug} href={p.profileRoute} style={{ textDecoration: 'none' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,45,170,0.2)', borderRadius: 5, padding: 5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid rgba(255,45,170,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#FF2DAA', background: 'rgba(255,45,170,0.12)', flexShrink: 0, fontWeight: 900 }}>
+                              {p.name.slice(0, 1).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.category}</div>
+                            </div>
+                            <span style={{ fontSize: 6, fontWeight: 700, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.5)', borderRadius: 3, padding: '1px 4px' }}>VIEW</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </>
                   )}
                   <Link href={activeDiscovery.route} style={{ textDecoration: 'none' }}>
                     <button style={{ width: '100%', background: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '5px', cursor: 'pointer', marginTop: 5, letterSpacing: '0.06em' }}>VIEW CATEGORY</button>
@@ -2301,7 +2323,19 @@ export default function Home1CoverPage() {
                       </div>
                     </Link>
                   )) : (
-                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', textAlign: 'center', paddingTop: 12 }}>No data available yet</div>
+                    <>
+                      {[{ name: 'Live Rooms', sub: 'Warming up…', href: '/live/lobby-wall' }, { name: 'Battles Tonight', sub: 'Queue open', href: '/battles' }, { name: 'Cypher Arena', sub: 'Joining soon', href: '/cypher/lobby-wall' }].map((item, i) => (
+                        <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ width: 4, height: 4, borderRadius: '50%', background: i % 2 === 0 ? '#FFD700' : '#00E5FF', boxShadow: i % 2 === 0 ? '0 0 5px #FFD700' : '0 0 5px #00E5FF', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </>
                   )}
                   <Link href={activeRightRail.route} style={{ textDecoration: 'none' }}>
                     <button style={{ width: '100%', marginTop: 7, padding: '5px', fontSize: 7, fontWeight: 800, border: '1px solid rgba(255,215,0,0.35)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>OPEN VIEW</button>

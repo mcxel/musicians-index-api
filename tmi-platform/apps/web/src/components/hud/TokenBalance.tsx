@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { emitPointsEarned } from "@/lib/rewards/PointFlightBus";
 
 interface Props {
   userId?: string;
@@ -13,6 +14,8 @@ interface Props {
 export default function TokenBalance({ userId, initialBalance = 0, accentColor = "#FFD700", compact = false, showEarn = false }: Props) {
   const [balance, setBalance] = useState(initialBalance);
   const [pulse, setPulse] = useState(false);
+  const lastKnownBalance = useRef(initialBalance);
+  const pillRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -21,10 +24,22 @@ export default function TokenBalance({ userId, initialBalance = 0, accentColor =
         const res = await fetch(`/api/tokens/balance?userId=${userId}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.balance !== balance) {
-            setBalance(data.balance ?? initialBalance);
+          const next = data.balance ?? initialBalance;
+          const prev = lastKnownBalance.current;
+          if (next !== prev) {
+            const delta = next - prev;
+            lastKnownBalance.current = next;
+            setBalance(next);
             setPulse(true);
             setTimeout(() => setPulse(false), 800);
+            if (delta > 0 && pillRef.current) {
+              const rect = pillRef.current.getBoundingClientRect();
+              emitPointsEarned({
+                amount: delta,
+                currency: "COIN",
+                originRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+              });
+            }
           }
         }
       } catch {}
@@ -37,14 +52,18 @@ export default function TokenBalance({ userId, initialBalance = 0, accentColor =
   if (compact) {
     return (
       <Link href="/rewards" style={{ textDecoration: "none" }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "4px 10px", borderRadius: 8,
-          background: pulse ? `${accentColor}20` : `${accentColor}10`,
-          border: `1px solid ${accentColor}33`,
-          transition: "background 0.3s",
-          cursor: "pointer",
-        }}>
+        <div
+          id="tmi-header-wallet-counter"
+          ref={pillRef}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "4px 10px", borderRadius: 8,
+            background: pulse ? `${accentColor}20` : `${accentColor}10`,
+            border: `1px solid ${accentColor}33`,
+            transition: "background 0.3s",
+            cursor: "pointer",
+          }}
+        >
           <span style={{ fontSize: 13 }}>🪙</span>
           <span style={{ fontSize: 11, fontWeight: 900, color: accentColor, letterSpacing: "0.04em" }}>
             {balance.toLocaleString()}

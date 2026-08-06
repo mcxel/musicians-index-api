@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import ChallengeYourSongCTA from "@/components/challenge/ChallengeYourSongCTA";
+import BattleOverlaySystem from "@/components/broadcast/BattleOverlaySystem";
 
 const CATEGORIES = [
   { id: "singers",     label: "Singers",     icon: "🎤", desc: "Vocal performances, R&B, Pop, Gospel" },
@@ -264,6 +265,17 @@ export default function ChallengesPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ── CHALLENGE BROADCAST OVERLAY SYSTEM ── */}
+        <section style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.22em", color: "#AA2DFF", marginBottom: 6, textTransform: "uppercase" }}>
+            CHALLENGE BROADCAST STAGE
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 16 }}>
+            Live challenge broadcast system — phase overlays, judging graphics, and overlay library.
+          </div>
+          <BattleOverlaySystem mode="challenge" showPhaseControls showOverlayLibrary />
         </section>
 
         {/* ── BOTTOM FULL CTA ── */}

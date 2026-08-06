@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DeckButton, DeckChip, MonitorViewport } from "@/components/admin/overseer/AdminDesignSystem";
 
 type FeedSource =
-  | "Boardroom Live"
   | "Cypher Live"
   | "Battle Ring"
   | "Venue Cam"
@@ -32,7 +31,6 @@ interface LiveSessionSummary {
 }
 
 const FEEDS: FeedSource[] = [
-  "Boardroom Live",
   "Cypher Live",
   "Battle Ring",
   "Venue Cam",
@@ -48,7 +46,7 @@ const ROSE_FALLBACK_URL =
   "";
 
 export default function LiveFeedRouter() {
-  const [active, setActive] = useState<FeedSource>("Boardroom Live");
+  const [active, setActive] = useState<FeedSource>("Cypher Live");
   const [snapshot, setSnapshot] = useState<FeedSnapshot | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [muted, setMuted] = useState(false);

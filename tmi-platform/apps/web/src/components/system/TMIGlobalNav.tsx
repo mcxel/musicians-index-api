@@ -65,11 +65,13 @@ export default function TMIGlobalNav() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
 
+  const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    setMounted(true);
     const refresh = () => setUnreadCount(NotificationEngine.getUnreadCount());
     refresh();
     const unsub = NotificationEngine.subscribe(refresh);
@@ -84,6 +86,7 @@ export default function TMIGlobalNav() {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     fetchSession();
 
     const refresh = () => fetchSession();
@@ -95,7 +98,7 @@ export default function TMIGlobalNav() {
       window.removeEventListener("tmi:endbroadcast", refresh);
       window.removeEventListener("tmi:session_change", refresh);
     };
-  }, [fetchSession]);
+  }, [fetchSession, mounted]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -120,6 +123,32 @@ export default function TMIGlobalNav() {
   const profileHref = isAuthenticated ? `${profileBase}/${userId}` : "/auth/signin";
   const canGoLive = isAuthenticated && LIVE_ROLES.has(role);
   const dashboardHref = isAuthenticated ? ROLE_DASHBOARD[role] ?? "/hub/fan" : "/home/1";
+
+  if (!mounted) {
+    return (
+      <nav
+        suppressHydrationWarning
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 99999,
+          display: "flex",
+          gap: 2,
+          alignItems: "center",
+          background: "rgba(5,3,16,0.96)",
+          backdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(0,255,255,0.16)",
+          boxShadow: "0 -4px 24px rgba(0,0,0,0.7)",
+          padding: "6px 10px",
+          overflowX: "auto",
+          flexWrap: "nowrap",
+        }}
+        aria-label="Global navigation"
+      />
+    );
+  }
 
   return (
     <nav

@@ -22,6 +22,7 @@ export {
   subscribeUniversalRanking,
   getOrbitalTopSlots,
   setHumanRankPoints,
+  addHumanRankPoints,
   clearHumanRankPoints,
 } from './UniversalRankingSnapshot';
 export type {

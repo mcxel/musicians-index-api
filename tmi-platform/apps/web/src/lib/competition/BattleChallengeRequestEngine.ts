@@ -124,7 +124,9 @@ export class BattleChallengeRequestEngine {
     battleBillboardLobbyWallEngine.publishAcceptedToWall({
       challengeId,
       battleId,
+      challengerId: request.challenger.userId,
       challengerName: request.challenger.displayName,
+      targetId: request.target.userId,
       targetName: request.target.displayName,
       formatLabel,
       endsAt: match.endsAt,

@@ -1,6 +1,7 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type UploadState = 'idle' | 'uploading' | 'saving' | 'done' | 'error';
 
@@ -9,8 +10,27 @@ const GENRE_OPTIONS = [
   'Soul', 'Afrobeat', 'Alternative', 'Gospel', 'Rock', 'Jazz',
 ];
 
+// Roles that are represented by real photos/video — NOT avatar bobbleheads.
+// Per Rule 26 Identity Policy: fans create avatars; performers are represented
+// by their real camera/photo identity. Redirect performer-type roles away.
+const PERFORMER_ROLES = new Set(['PERFORMER', 'BAND', 'ARTIST']);
+
 export default function AvatarSettingsPage() {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Gate: performers don't use the avatar page — send them to profile settings.
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
+      .then(r => r.json())
+      .then((d: { user?: { role?: string } }) => {
+        const role = d.user?.role ?? '';
+        if (PERFORMER_ROLES.has(role)) {
+          router.replace('/settings/profile');
+        }
+      })
+      .catch(() => {});
+  }, [router]);
   const [preview, setPreview]     = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [savedUrl, setSavedUrl]   = useState<string | null>(null);
@@ -73,6 +93,7 @@ export default function AvatarSettingsPage() {
       const profileRes = await fetch('/api/profile/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(profilePayload),
       });
       if (!profileRes.ok) {
@@ -82,6 +103,24 @@ export default function AvatarSettingsPage() {
 
       setSavedUrl(avatarUrl);
       setUploadState('done');
+
+      // Redirect to hub based on user role after short delay
+      try {
+        const sessRes = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
+        if (sessRes.ok) {
+          const sess = await sessRes.json() as { user?: { role?: string } };
+          const role = (sess.user?.role ?? '').toLowerCase();
+          const hubMap: Record<string, string> = {
+            performer: '/hub/performer', fan: '/hub/fan', admin: '/admin',
+            venue: '/hub/venue', sponsor: '/hub/sponsor', advertiser: '/hub/advertiser',
+            promoter: '/hub/promoter', band: '/hub/band',
+          };
+          const dest = hubMap[role] ?? '/hub/fan';
+          setTimeout(() => router.push(dest), 2000);
+        }
+      } catch {
+        // Non-fatal — user stays on success screen and can navigate manually
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setUploadState('error');
@@ -90,6 +129,20 @@ export default function AvatarSettingsPage() {
 
   const toggleGenre = (g: string) =>
     setSelectedGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g].slice(0, 3));
+
+  const handleSkip = async () => {
+    // Mark onboarding complete without uploading a photo.
+    // Fan can return via dashboard → Settings → Profile Photo anytime.
+    try {
+      await fetch('/api/profile/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ onboardingState: 'COMPLETE', onboardingStep: 'completed' }),
+      });
+    } catch { /* non-fatal */ }
+    router.push('/hub/fan');
+  };
 
   const isWorking = uploadState === 'uploading' || uploadState === 'saving';
 
@@ -127,13 +180,13 @@ export default function AvatarSettingsPage() {
             <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', border: '3px solid #00FF88', boxShadow: '0 0 30px rgba(0,255,136,0.3)' }}>
               <img src={savedUrl} alt="Your photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#00FF88', marginBottom: 8 }}>You&apos;re Live on the Orbit!</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#00FF88', marginBottom: 8 }}>Avatar Created — You&apos;re in the Audience!</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 24, lineHeight: 1.6 }}>
-              Your photo is now saved. It will appear on the homepage orbit wheel within the next refresh cycle (up to 60 seconds).
+              Your avatar is ready. Join any live venue to take your seat in the 3D audience and watch performances.
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/home/1" style={{ padding: '11px 24px', borderRadius: 10, background: '#AA2DFF', color: '#fff', fontWeight: 900, fontSize: 12, textDecoration: 'none' }}>SEE ORBIT →</Link>
-              <Link href="/leaderboard" style={{ padding: '11px 24px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontWeight: 800, fontSize: 12, textDecoration: 'none' }}>LEADERBOARD</Link>
+              <Link href="/hub/fan" style={{ padding: '11px 24px', borderRadius: 10, background: '#AA2DFF', color: '#fff', fontWeight: 900, fontSize: 12, textDecoration: 'none' }}>GO TO MY DASHBOARD →</Link>
+              <Link href="/live" style={{ padding: '11px 24px', borderRadius: 10, background: 'rgba(0,255,255,0.08)', border: '1px solid rgba(0,255,255,0.3)', color: '#00FFFF', fontWeight: 800, fontSize: 12, textDecoration: 'none' }}>JOIN A LIVE VENUE 🏟️</Link>
             </div>
           </div>
         ) : (
@@ -200,12 +253,18 @@ export default function AvatarSettingsPage() {
             <button
               onClick={handleUpload}
               disabled={isWorking || (!preview && !fileRef.current?.files?.length)}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, background: isWorking ? 'rgba(170,45,255,0.4)' : '#AA2DFF', color: '#fff', fontWeight: 900, fontSize: 13, letterSpacing: '0.1em', border: 'none', cursor: isWorking ? 'not-allowed' : 'pointer', transition: 'all .2s' }}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, background: isWorking ? 'rgba(170,45,255,0.4)' : '#AA2DFF', color: '#fff', fontWeight: 900, fontSize: 13, letterSpacing: '0.1em', border: 'none', cursor: isWorking ? 'not-allowed' : 'pointer', transition: 'all .2s', marginBottom: 10 }}
             >
-              {uploadState === 'uploading' ? '⏳ UPLOADING...' : uploadState === 'saving' ? '💾 SAVING TO PROFILE...' : '🚀 GO LIVE ON THE ORBIT'}
+              {uploadState === 'uploading' ? '⏳ UPLOADING...' : uploadState === 'saving' ? '💾 SAVING TO PROFILE...' : '🎭 CREATE MY AVATAR →'}
             </button>
 
-            <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Skip CTA — goes to dashboard, can return from Settings */}
+            <button onClick={handleSkip}
+              style={{ display: 'block', width: '100%', padding: '12px', borderRadius: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer', marginBottom: 14 }}>
+              SKIP FOR NOW — GO TO MY DASHBOARD &amp; CREATE AVATAR LATER
+            </button>
+
+            <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <Link href="/home/1" style={{ display: 'block', padding: '11px', borderRadius: 10, background: 'rgba(0,255,255,0.05)', border: '1px solid rgba(0,255,255,0.2)', color: '#00FFFF', fontSize: 11, fontWeight: 800, textDecoration: 'none', textAlign: 'center' }}>View Orbit</Link>
               <Link href="/leaderboard" style={{ display: 'block', padding: '11px', borderRadius: 10, background: 'rgba(255,45,170,0.05)', border: '1px solid rgba(255,45,170,0.2)', color: '#FF2DAA', fontSize: 11, fontWeight: 800, textDecoration: 'none', textAlign: 'center' }}>Leaderboard</Link>
             </div>

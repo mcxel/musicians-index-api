@@ -463,6 +463,8 @@ enum AuditLogAction {
   USER_ROLE_CHANGED
   OFFICIAL_LINK_ADDED
   OFFICIAL_LINK_REMOVED
+  ADMIN_ASSIGN_ROLES
+  ADMIN_GRANT_TIER
 
   // Beat Economy Actions
   BEAT_SUBMITTED
@@ -1316,8 +1318,88 @@ model Beat {
   vetos          BeatVeto[]
   createdAt      DateTime      @default(now())
 
+  // Living OS Beat Ecosystem Phase 1 (2026-08-04) — canonicalization,
+  // rights/royalty tracking, and certification/review pipeline. Nullable /
+  // defaulted throughout since this is an additive migration onto a Beat
+  // table that already has legacy rows without any of this data.
+  canonicalId                String?   @unique
+  audioAssetUrl              String?
+  audioFilename               String?
+  audioFileHash               String?
+  audioFileSizeBytes          Int?
+  genreJson                   String?
+  moodJson                    String?
+  energyLevel                  String?
+  eligiblePoolsJson           String?
+  competitionEligible         Boolean   @default(false)
+  licenseType                 String    @default("STANDARD")
+  batchIngestSession          String?
+  rightsDeclarationAccepted   Boolean   @default(false)
+  submittedAt                  DateTime?
+  certifiedAt                  DateTime?
+  approvedAt                   DateTime?
+  publishedAt                  DateTime?
+  durationSeconds              Int?
+  updatedAt                    DateTime  @default(now()) @updatedAt
+
+  royaltySplits         BeatRoyaltySplit[]
+  provenanceEvents      BeatProvenanceEvent[]
+  certificationResults  BeatCertificationResult[]
+  reviewRecords         BeatReviewRecord[]
+
   @@index([genre, status])
   @@index([status, createdAt])
+  @@index([audioFileHash])
+}
+
+model BeatRoyaltySplit {
+  id            String   @id @default(cuid())
+  beatId        String
+  beat          Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  recipientName String
+  accountId     String?
+  percentage    Float
+  role          String
+  createdAt     DateTime @default(now())
+
+  @@index([beatId])
+}
+
+model BeatProvenanceEvent {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  eventType   String
+  actorId     String
+  contextJson String
+  occurredAt  DateTime @default(now())
+
+  @@index([beatId])
+}
+
+model BeatCertificationResult {
+  id                   String   @id @default(cuid())
+  beatId               String
+  beat                 Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  passed               Boolean  @default(false)
+  loudnessMeasuredLufs Float?
+  failureReasonsJson   String   @default("[]")
+  createdAt            DateTime @default(now())
+
+  @@index([beatId])
+}
+
+model BeatReviewRecord {
+  id         String   @id @default(cuid())
+  beatId     String
+  beat       Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  reviewerId String
+  decision   String
+  reason     String
+  tagsJson   String   @default("[]")
+  createdAt  DateTime @default(now())
+
+  @@index([beatId])
 }
 
 model BeatLicense {
@@ -1594,6 +1676,12 @@ model UserProfile {
   username    String?  @unique
   bio         String?
   location    String?
+  // Structured location fields for ranking/discovery filters (rankingDbHelpers.ts,
+  // api/rankings/*) — distinct from the free-text `location` field above, which
+  // predates these and is left as-is for anything still reading it directly.
+  city        String?
+  state       String?
+  country     String?
   website     String?
   avatarUrl   String?
   bannerUrl   String?
@@ -3624,6 +3712,22 @@ model AvatarInventoryItemRecord {
   @@unique([userId, itemId])
   @@index([userId])
   @@map("avatar_inventory_items")
+}
+
+model BattleScorecard {
+  id        String   @id @default(cuid())
+  battleId  String   @map("battle_id")
+  judgeId   String   @map("judge_id")
+  scores    Json
+  totals    Json
+  winnerId  String?  @map("winner_id")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([battleId, judgeId])
+  @@index([battleId])
+  @@map("battle_scorecards")
 }
 
 model AvatarMemory {

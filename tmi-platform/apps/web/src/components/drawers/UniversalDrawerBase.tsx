@@ -75,8 +75,19 @@ export default function UniversalDrawerBase({
           ...style,
         }
       : {
-          flexShrink: 0,
+          // under_dashboard: normal flow, below the monitor grid — the
+          // grid has its own fixed minHeight (CommandCenterShell) so this
+          // drawer expanding never resizes it; the page/container grows and
+          // scrolls instead (2026-08-05 blueprint: "Reserved Bottom Drawer
+          // Dock" — monitors + MasterControlDock never move or get
+          // covered). This previously used position:absolute to overlay the
+          // monitors instead, which fixed the original squash bug but
+          // covered the stage — no longer needed now that the parent no
+          // longer height-caps/clips (verify that's still true before
+          // reverting this to position:absolute again).
+          position: "relative",
           width: "100%",
+          minHeight: 420,
           overflow: "hidden",
           background: theme.bgSurface,
           borderTop: `1px solid ${accent}55`,

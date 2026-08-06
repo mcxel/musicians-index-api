@@ -135,14 +135,16 @@ export default function RotatingHeroBanner({
         width: '100%',
         /* Desktop flank default matches Notepad ~400×360 (10/9). Mobile
            overrides to a shorter landscape frame so full-width phone layouts
-           don't invent a tall black portrait void around landscape art. */
+           don't invent a tall black portrait void around landscape art.
+           Background is transparent so any gap areas blend seamlessly with
+           the page background (#050510) instead of showing a harsh black box. */
         aspectRatio: '10 / 9',
         maxHeight: 'min(420px, 58vh)',
         borderRadius: 14,
         overflow: 'hidden',
-        border: '2px solid rgba(0,229,255,0.6)',
+        border: '2px solid rgba(0,229,255,0.5)',
         boxShadow: '0 0 28px rgba(0,229,255,0.35), 0 0 60px rgba(0,229,255,0.12), 0 0 12px rgba(170,45,255,0.25) inset',
-        background: 'linear-gradient(180deg, #070714 0%, #050510 55%, #070714 100%)',
+        background: 'transparent',
         alignSelf: 'start',
       }}
       onMouseEnter={() => setIsPaused(true)}
@@ -175,14 +177,16 @@ export default function RotatingHeroBanner({
         @media (max-width: 900px) {
           .h1-rotating-hero-banner {
             aspect-ratio: 16 / 10 !important;
-            max-height: min(340px, 46vh) !important;
+            max-height: min(340px, 48vh) !important;
           }
         }
         @media (max-width: 560px) {
           .h1-rotating-hero-banner {
+            /* aspect-ratio alone controls height — no maxHeight to avoid
+               letterbox dead zones on short viewports */
             aspect-ratio: 16 / 9 !important;
-            max-height: min(220px, 38vh) !important;
-            border-radius: 12px !important;
+            max-height: none !important;
+            border-radius: 10px !important;
           }
           .h1-banner-flank-left, .h1-banner-flank-right, .h1-banner-divider {
             display: none !important;
@@ -301,10 +305,12 @@ export default function RotatingHeroBanner({
             flex: '1',
             position: 'relative',
             overflow: 'hidden',
-            background: 'linear-gradient(180deg, #070714 0%, #050510 100%)',
+            background: 'transparent',
           }}
         >
-          {/* Theme fade underlay — never a stark empty black box if art doesn't fill */}
+          {/* Theme fade underlay — transparent-to-theme gradient so any
+               gap areas around the banner art blend into the page background
+               instead of showing a harsh opaque black box. */}
           <div
             aria-hidden="true"
             style={{
@@ -312,7 +318,7 @@ export default function RotatingHeroBanner({
               inset: 0,
               zIndex: 0,
               background:
-                'radial-gradient(ellipse 80% 70% at 50% 35%, rgba(0,229,255,0.08) 0%, transparent 55%), linear-gradient(180deg, #070714 0%, #050510 100%)',
+                'radial-gradient(ellipse 80% 70% at 50% 35%, rgba(0,229,255,0.06) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(5,5,16,0.7) 0%, rgba(5,5,16,0.4) 60%, transparent 100%)',
             }}
           />
 
@@ -363,7 +369,8 @@ export default function RotatingHeroBanner({
             />
           </div>
 
-          {/* Soft edge vignette into theme — no hard black letterbox */}
+          {/* Soft edge vignette — gentle fade at edges and bottom so the label
+               is readable but the banner art isn't buried in a black void */}
           <div
             aria-hidden="true"
             style={{
@@ -372,7 +379,7 @@ export default function RotatingHeroBanner({
               zIndex: 3,
               pointerEvents: 'none',
               background:
-                'linear-gradient(180deg, rgba(5,5,16,0.35) 0%, transparent 18%, transparent 72%, rgba(5,5,16,0.75) 100%), linear-gradient(90deg, rgba(5,5,16,0.45) 0%, transparent 12%, transparent 88%, rgba(5,5,16,0.45) 100%)',
+                'linear-gradient(180deg, rgba(5,5,16,0.25) 0%, transparent 15%, transparent 68%, rgba(5,5,16,0.65) 100%), linear-gradient(90deg, rgba(5,5,16,0.3) 0%, transparent 10%, transparent 90%, rgba(5,5,16,0.3) 100%)',
             }}
           />
 

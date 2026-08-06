@@ -206,11 +206,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <TMIWorkspaceSwitcher />
               <PWARegistration />
               <BetaModeBanner />
-              <BetaStatusChip />
-              <BotProvider>
-                {children}
-                <PlatformFooter />
-              </BotProvider>
+              {children}
+              <PlatformFooter />
               <PWAInstallPrompt />
               <NavigationRail />
               <TMIGlobalNav />

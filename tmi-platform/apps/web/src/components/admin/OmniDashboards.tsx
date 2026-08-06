@@ -390,11 +390,15 @@ export default function OmniDashboards() {
         )}
       </div>
 
-      <style>{`
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes float { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-80px);opacity:0} }
         .fade-in { animation: fadein 0.25s ease; }
         @keyframes fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-      `}</style>
+      `,
+        }}
+      />
     </div>
   );
 }

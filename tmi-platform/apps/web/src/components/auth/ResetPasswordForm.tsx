@@ -18,8 +18,14 @@ export default function ResetPasswordForm({ token, email }: Props) {
   const [message, setMessage] = useState("Set a new secure password to continue.");
   const [loading, setLoading] = useState(false);
 
+  const MIN_LENGTH = 10;
+  const meetsLength = newPassword.length >= MIN_LENGTH;
+  // Mismatch is intentionally NOT part of canSubmit — the server already
+  // returns a clear "Passwords do not match" error for that case (visible
+  // feedback). Only the silent, invisible length gate needs a client-side
+  // hint; don't turn a second condition into another silent dead end.
   const canSubmit = useMemo(
-    () => !loading && newPassword.length >= 10 && confirmPassword.length >= 10,
+    () => !loading && newPassword.length >= MIN_LENGTH && confirmPassword.length >= MIN_LENGTH,
     [loading, newPassword, confirmPassword]
   );
 
@@ -77,6 +83,9 @@ export default function ResetPasswordForm({ token, email }: Props) {
             outline: "none",
           }}
         />
+        <span style={{ fontSize: 11, color: meetsLength ? "#7de3a8" : "rgba(255,255,255,0.5)" }}>
+          {meetsLength ? "✓" : `${newPassword.length}/${MIN_LENGTH}`} — minimum {MIN_LENGTH} characters
+        </span>
       </label>
 
       <PasswordStrengthMeter password={newPassword} />
@@ -116,6 +125,12 @@ export default function ResetPasswordForm({ token, email }: Props) {
       >
         Update password
       </button>
+
+      {!canSubmit && !loading && (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: -6 }}>
+          Enter at least {MIN_LENGTH} characters in both fields to continue.
+        </div>
+      )}
 
       <RecoveryStatusCard title="Reset Status" status={status} message={message} />
     </form>

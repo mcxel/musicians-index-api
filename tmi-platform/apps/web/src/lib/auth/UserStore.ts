@@ -171,6 +171,7 @@ const HARDCODED_ADMINS = new Set([
   'berntmusic33@gmail.com',
   'rjking42@icloud.com',
   'jay@themusiciansindex.com',
+  'bjmtherapper1@gmail.com', // Jay Paul's real login email (confirmed 2026-08-04)
   'justin@themusiciansindex.com',
 ]);
 

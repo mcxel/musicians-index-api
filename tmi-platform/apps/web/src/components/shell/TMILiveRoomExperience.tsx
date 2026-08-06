@@ -1,3 +1,7 @@
+import { SoundSystemEngine } from '@/lib/sound/SoundSystemEngine';
+import { UnifiedRewardEngine } from '@/lib/rewards/UnifiedRewardEngine';
+import { RewardFlightOverlay } from '@/components/rewards/RewardFlightOverlay';
+import { SoundSettingsDrawer } from '@/components/settings/SoundSettingsDrawer';
 'use client';
 
 /**
@@ -274,6 +278,7 @@ export default function TMILiveRoomExperience({
   const [releaseAnnouncementItem, setReleaseAnnouncementItem] = useState<ReleaseAnnouncementItem | null>(null);
   const [releaseToast, setReleaseToast] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSoundSettings, setSoundSettings] = useState(false);
   const [leftRailVisible, setLeftRailVisible] = useState(true);
   const [rightRailVisible, setRightRailVisible] = useState(true);
   const [showPrompt, setShowPrompt] = useState(true);
@@ -1320,7 +1325,7 @@ export default function TMILiveRoomExperience({
                 <button onClick={() => setShowInventory(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>×</button>
               </div>
               <div style={{ padding: 10 }}>
-                {inventorySlot ?? <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: 20 }}>No items yet.</div>}
+                {inventorySlot ?? <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: 20 }}>ON STAGE MarcelD Diamond Artist</div>}
               </div>
             </GlassPanel>
           </motion.div>

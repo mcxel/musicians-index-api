@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const FOOTER_LINKS = {
   Platform: [
@@ -48,13 +49,34 @@ const FOOTER_LINKS = {
 
 export default function PlatformFooter() {
   const pathname = usePathname();
-  // WorkspaceShell preview routes own the entire viewport as a self-contained
-  // "broadcast OS" sandbox — the site's real footer chrome doesn't belong there.
-  if (pathname?.startsWith("/preview/")) return null;
-  // Admin command deck owns its own viewport the same way — the public
-  // marketing footer (Platform/Join/Legal/Company links) was pushing the
-  // Overseer Dock hundreds of pixels down the page, forcing scroll past it.
-  if (pathname?.startsWith("/admin")) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // ── Living OS authenticated routes — NO public footer inside the OS ────────
+  // The marketing footer (Platform/Join/Legal/Company links) belongs exclusively
+  // on pre-authentication landing/marketing pages. Inside the authenticated
+  // Living OS every vertical pixel is reserved for the live experience,
+  // Operating Centers, and the persistent control dock. Legal/company links
+  // live inside the Settings → About panel for authenticated users.
+  const AUTHENTICATED_PREFIXES = [
+    "/dashboard",
+    "/hub/",
+    "/fan/",
+    "/performer/",
+    "/live/",
+    "/admin",
+    "/preview/",
+    "/arena",
+    "/games",
+    "/overseer",
+  ] as const;
+
+  // Render null until mounted on client to guarantee 100% SSR/CSR initial UI parity
+  if (!mounted) return null;
+  if (pathname && AUTHENTICATED_PREFIXES.some((p) => pathname.startsWith(p))) return null;
 
   const year = new Date().getFullYear();
 
@@ -159,7 +181,7 @@ export default function PlatformFooter() {
             { label: "Contact",  href: "/contact" },
           ].map((l) => (
             <Link
-              key={l.href}
+              key={l.label}
               href={l.href}
               style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textDecoration: "none", fontWeight: 600, letterSpacing: "0.06em" }}
             >

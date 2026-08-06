@@ -43,7 +43,7 @@ function randomOtherIndex(current: number, length: number) {
   return next;
 }
 
-function useDesktopRailVisibility(minWidth = 2100) {
+function useDesktopRailVisibility(minWidth = 1900) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -164,6 +164,7 @@ function BannerWell({
           position: 'absolute',
           top: '50%',
           [side === 'left' ? 'left' : 'right']: '6%',
+          [side]: '6%',
           transform: 'translateY(-50%)',
           // Never larger than the frame it lives in — capped both by a
           // percentage of the available column and an absolute ceiling —
@@ -185,8 +186,7 @@ function BannerWell({
             fill
             sizes="20vw"
             style={{
-              objectFit: 'contain',
-              padding: 10,
+              objectFit: 'cover',
               position: 'absolute',
               inset: 0,
               opacity: frontSlot === i ? 1 : 0,

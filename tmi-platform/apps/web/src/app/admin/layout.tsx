@@ -11,7 +11,8 @@ const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
 
 type AuthStatus = "checking" | "authorized" | "denied";
 
-const ADMIN_SESSION_TIMEOUT_MS = 8000;
+const ADMIN_SESSION_TIMEOUT_MS = 2500;
+
 
 type OperatorPolicy = {
   key: "marcel" | "big-ace" | "justin" | "jay" | "admin";

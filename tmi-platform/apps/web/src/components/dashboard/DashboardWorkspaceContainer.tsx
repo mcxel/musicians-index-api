@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * DashboardWorkspaceContainer
@@ -44,7 +44,12 @@ function useLazyComponent<T>(
   useEffect(() => {
     if (!enabled || loaded.current) return;
     loaded.current = true;
-    loader().then((m) => setComp(() => m.default as T));
+    loader()
+      .then((m) => setComp(() => m.default as T))
+      .catch((err) => {
+        console.warn("[WorkspaceLoader] Chunk load deferred — retrying on next tick", err);
+        loaded.current = false;
+      });
   }, [enabled, loader]);
   return Comp;
 }

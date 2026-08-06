@@ -45,10 +45,10 @@ export const ADMIN_CONCIERGE_DESTINATIONS: ConciergeDestination[] = [
   {
     id: "certification",
     label: "Certification",
-    href: "/admin/certification",
+    href: "/admin/runtime-check",
     group: "Command Deck",
     accent: "#FFD700",
-    keywords: ["qa", "pass", "fail"],
+    keywords: ["qa", "pass", "fail", "certification"],
   },
   {
     id: "observatory",

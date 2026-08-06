@@ -61,11 +61,6 @@ function snapshot(source: string): FeedSnapshot {
           { id: "s3", label: "Rate limit bypass /api/vote", meta: "HIGH", ts: "8m" },
           { id: "s4", label: "Chat flood bot — Cypher Room 3", meta: "MEDIUM", ts: "12m" },
         ]};
-    case "Boardroom Live":
-      return { source, status: "LIVE", viewers: 342, updatedAt: t,
-        items: [
-          { id: "br1", label: "Weekly director sync — in progress", meta: "LIVE · 18m elapsed", ts: "0s" },
-        ]};
     case "Sponsor Feed":
       return { source, status: "IDLE", viewers: 0, updatedAt: t,
         items: [

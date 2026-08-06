@@ -1,3 +1,10 @@
+// LEGACY (Rule 21, 2026-07-31): no importers anywhere in the codebase as of
+// this audit — the live vote-declare path (PerformanceVotePanel) uses the
+// simpler lib/competition/BattleVoteClosureEngine (real callers, wired to
+// awardXP/UniversalRankingSnapshot). This file's fraud-detection logic
+// (calculateFraudScore, device/IP farm checks) is a real, unmatched
+// capability worth inheriting into the canonical path later — do not delete.
+//
 // BATTLE VOTE CLOSURE ENGINE — Vote Aggregation & Winner Determination
 // Purpose: Aggregate audience votes, determine winners, award prizes
 // Enforces vote fairness and fraud detection

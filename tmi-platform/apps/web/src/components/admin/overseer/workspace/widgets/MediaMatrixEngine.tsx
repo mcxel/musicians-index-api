@@ -11,7 +11,6 @@ import {
 } from "./MediaSourceRegistry";
 
 type LayoutMode = "single" | "dual" | "triple" | "quad" | "pip";
-type BoardroomMode = "boardroom" | "default";
 
 const LAYOUT_LABELS: Record<LayoutMode, string> = {
   single: "Single",
@@ -67,7 +66,6 @@ function getGridTemplate(mode: LayoutMode) {
 }
 
 function sourceTheme(source: MediaSourceDefinition) {
-  if (source.kind === "boardroom") return "radial-gradient(circle at 25% 25%, rgba(255,215,0,0.16), rgba(16,10,26,0.96) 58%)";
   if (source.kind === "camera") return "radial-gradient(circle at 25% 25%, rgba(0,255,255,0.16), rgba(16,10,26,0.96) 58%)";
   if (source.kind === "performer" || source.kind === "venue") return "radial-gradient(circle at 25% 25%, rgba(255,45,170,0.16), rgba(16,10,26,0.96) 58%)";
   if (source.kind === "security") return "radial-gradient(circle at 25% 25%, rgba(255,68,68,0.18), rgba(16,10,26,0.96) 58%)";
@@ -77,7 +75,6 @@ function sourceTheme(source: MediaSourceDefinition) {
 
 export default function MediaMatrixEngine() {
   const [layout, setLayout] = useState<LayoutMode>("quad");
-  const [mode, setMode] = useState<BoardroomMode>("default");
   const [selectedSourceId, setSelectedSourceId] = useState<string>(DEFAULT_MATRIX_ASSIGNMENTS[0]);
   const [swapAnchor, setSwapAnchor] = useState<number | null>(null);
   const [assignments, setAssignments] = useState<string[]>(DEFAULT_MATRIX_ASSIGNMENTS);
@@ -164,17 +161,9 @@ export default function MediaMatrixEngine() {
 
   const restoreDefaults = () => {
     setLayout("quad");
-    setMode("default");
     setSelectedSourceId(DEFAULT_MATRIX_ASSIGNMENTS[0]);
     setSwapAnchor(null);
     setAssignments(DEFAULT_MATRIX_ASSIGNMENTS);
-  };
-
-  const launchBoardroomMode = () => {
-    setMode("boardroom");
-    setLayout("single");
-    setSelectedSourceId("boardroom");
-    setAssignments(["boardroom", "bigace-camera", "venue", "security"]);
   };
 
   const cardStyle: CSSProperties = {
@@ -193,13 +182,12 @@ export default function MediaMatrixEngine() {
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
         <LauncherButton icon="▤" label="Layout" active={panelOpen === "layout"} onClick={() => setPanelOpen((p) => (p === "layout" ? null : "layout"))} />
         <LauncherButton icon="☰" label="Sources" active={panelOpen === "sources"} onClick={() => setPanelOpen((p) => (p === "sources" ? null : "sources"))} />
-        <LauncherButton icon="⛶" label="Board" active={mode === "boardroom"} onClick={launchBoardroomMode} />
         <LauncherButton icon="↺" label="Reset" active={false} onClick={restoreDefaults} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ flexShrink: 0, color: "rgba(0,255,255,0.85)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          {mode === "boardroom" ? "Boardroom window set" : `${viewportCount} active viewports`}
+          {`${viewportCount} active viewports`}
         </div>
 
         <div
@@ -463,8 +451,10 @@ function ViewportBody({ source, liveCount, livePreviewUrl }: { source: MediaSour
       <MediaRenderer source={source} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.7)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        <span>Mic • Camera • Snapshot • Record</span>
-        <span>{source.status}</span>
+        <span style={{ color: "rgba(255,255,255,0.45)" }}>{source.kind}</span>
+        <span style={{ color: source.status === "LIVE" ? "#00FF88" : "rgba(255,255,255,0.6)" }}>
+          {source.status}{source.status === "LIVE" && liveCount > 0 ? ` · ${liveCount} live` : ""}
+        </span>
       </div>
     </div>
   );
@@ -481,12 +471,12 @@ function MediaRenderer({ source, liveCount, livePreviewUrl }: { source: MediaSou
     );
   }
 
-  if (source.kind === "boardroom" || source.kind === "camera") {
+  if (source.kind === "camera") {
     return (
       <MonitorViewport
         source={source}
-        label={source.kind === "boardroom" ? "Boardroom cam" : "Executive camera"}
-        meta="Mic live · Camera active"
+        label={source.label}
+        meta={source.detail}
         liveCount={liveCount}
         livePreviewUrl={livePreviewUrl}
       />
@@ -496,7 +486,7 @@ function MediaRenderer({ source, liveCount, livePreviewUrl }: { source: MediaSou
   if (source.kind === "security") {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1.25fr 0.95fr", gap: 8, minHeight: 118 }}>
-        <MonitorViewport source={source} label="Sentinel cam" meta="Alert rotation · camera grid" liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
+        <MonitorViewport source={source} label={source.label} meta={source.detail} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
         <div style={{ borderRadius: 8, border: "1px solid rgba(255,68,68,0.18)", background: "linear-gradient(180deg, rgba(255,68,68,0.1), rgba(10,4,8,0.3))", padding: 10, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
           <MiniCard label="Alerts" value="3" accent="#FF8A8A" />
           <MiniCard label="Cameras" value="8" accent="#FF8A8A" />
@@ -518,13 +508,7 @@ function MonitorViewport({ source, label, meta, liveCount, livePreviewUrl }: { s
   return (
     <div style={{ minHeight: 118, borderRadius: 8, border: `1px solid ${source.accent}33`, overflow: "hidden", background: "#04060b", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", minHeight: 98 }}>
-        {source.id === "boardroom" ? (
-          <img
-            src="/images/boardroom_live.png"
-            alt="Boardroom Live"
-            style={{ width: "100%", height: "100%", minHeight: 98, objectFit: "cover", transition: "opacity 380ms ease" }}
-          />
-        ) : showVideo ? (
+        {showVideo ? (
           <video
             src={resolvedSrc}
             autoPlay

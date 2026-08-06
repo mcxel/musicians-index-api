@@ -74,14 +74,49 @@ export type VenueLayout =
   | "game_show"
   | "studio";
 
-/** EOS venue definition — bridges VenueAssetRegistry geometry. */
+export interface SpatialAnchor {
+  id: string;
+  type: "PERFORMER" | "AVATAR_SEAT" | "VIDEO_SURFACE" | "BILLBOARD" | "CAMERA";
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+  seatLabel?: string;
+  isOccupied?: boolean;
+}
+
+export interface SpatialVideoSurface {
+  id: string;
+  surfaceType: "SCREEN_MAIN" | "FLOATING_PANEL" | "AVATAR_SOCKET" | "BILLBOARD";
+  anchorId: string;
+  width: number;
+  height: number;
+  meshName?: string;
+}
+
+export interface LightingProfile {
+  ambientColor: string;
+  ambientIntensity: number;
+  directionalColor?: string;
+  directionalPosition?: [number, number, number];
+  fogColor?: string;
+  fogNear?: number;
+  fogFar?: number;
+}
+
+/** EOS venue definition — bridges VenueAssetRegistry geometry and 360 3D spatial engines. */
 export interface VenueDefinition {
   id: string;
   venueType: VenueType;
   displayName: string;
   layout: VenueLayout;
   assetIds: string[];
+  glbAssetUrl?: string;
+  spatialAnchors?: SpatialAnchor[];
+  videoSurfaces?: SpatialVideoSurface[];
+  lightingProfile?: LightingProfile;
+  enable360Camera?: boolean;
 }
+
 
 export interface WidgetDefinition {
   id: string;

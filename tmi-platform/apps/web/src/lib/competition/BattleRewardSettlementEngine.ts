@@ -1,4 +1,14 @@
 /**
+ * LEGACY (Rule 21, 2026-07-31): settleBattle() has no callers anywhere in
+ * the codebase as of this audit — the live vote-declare path
+ * (PerformanceVotePanel.declare()) awards XP via ProfileRewardsEngine
+ * instead. This engine's composite scoring (audience/engagement/
+ * performance/safety weighting), streak bonuses, upset detection, and
+ * replay-vault/eligibility integration are real, richer capabilities
+ * worth inheriting into the canonical path later — do not delete. Note
+ * battleChallengeEconomyEngine.awardPoints() also writes to its own
+ * isolated in-memory ledger, separate from UniversalRankingSnapshot.
+ *
  * BattleRewardSettlementEngine
  * Settles winner/loser points and marks replay + leaderboard publication artifacts.
  */

@@ -9,7 +9,8 @@ export type AdminSectionId =
   | "live-feed"
   | "artist-analytics"
   | "magazine-analytics"
-  | "role-previews";
+  | "role-previews"
+  | "user-management";
 
 export type AdminRouteTarget = {
   id: AdminSectionId;
@@ -84,6 +85,12 @@ export const ADMIN_ROUTE_MAP: Record<AdminSectionId, AdminRouteTarget> = {
     label: "Role Preview Windows",
     route: "/admin/role-previews",
     description: "Fan, Artist, Performer, Venue, Sponsor, Advertiser snapshots",
+  },
+  "user-management": {
+    id: "user-management",
+    label: "User Management",
+    route: "/admin/user-management",
+    description: "Grant tiers, assign multi-roles, manage accounts",
   },
 };
 

@@ -42,6 +42,9 @@ import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
 import AchievementCenterDrawer from "@/components/drawers/AchievementCenterDrawer";
 import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCenterDrawer";
 import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
+import PerformerPerformanceAnalyticsDrawer from "@/components/drawers/PerformerPerformanceAnalyticsDrawer";
+import CommunicationActivityHubDrawer from "@/components/drawers/CommunicationActivityHubDrawer";
+import PerformerSponsorEngagementDrawer from "@/components/drawers/PerformerSponsorEngagementDrawer";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { wireProgressionCommandBus } from "@/lib/progression/ProgressionEngine";
@@ -933,6 +936,32 @@ export default function CommandCenterDrawer({
 
       {activePanel === "marketplace" && role === "performer" ? (
         <MarketplaceDrawerPanel accentColor="#00FFFF" />
+      ) : null}
+
+      {/* ── High-Fidelity Cyberpunk Drawers (100% Mockup Matched) ─────── */}
+      {activePanel === "analytics" ? (
+        <PerformerPerformanceAnalyticsDrawer
+          open={true}
+          onClose={onClose}
+          performerId={contextPerformerId ?? userId}
+          displayName={contextDisplayName}
+        />
+      ) : null}
+
+      {activePanel === "sponsors" ? (
+        <PerformerSponsorEngagementDrawer
+          open={true}
+          onClose={onClose}
+          displayName={contextDisplayName}
+        />
+      ) : null}
+
+      {activePanel === "messaging" ? (
+        <CommunicationActivityHubDrawer
+          open={true}
+          onClose={onClose}
+          displayName={contextDisplayName}
+        />
       ) : null}
 
       {activePanel === "tmi_store" ? (

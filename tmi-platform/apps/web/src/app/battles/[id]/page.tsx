@@ -40,6 +40,8 @@ export default async function BattleArenaPage({ params }: Props) {
   const title = `${card.challengerName} vs ${card.targetName}`;
   const opponentA = card.challengerName;
   const opponentB = card.targetName;
+  const opponentAId = card.challengerId;
+  const opponentBId = card.targetId;
 
   const isLive    = card.status === "live";
   const isUpcoming = card.status === "accepted";
@@ -93,7 +95,7 @@ export default async function BattleArenaPage({ params }: Props) {
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 32 }}>
           {isLive && (
             <Link
-              href={`/live/rooms/${roomId}?from=lobby-wall&battleId=${encodeURIComponent(id)}&opponentA=${encodeURIComponent(opponentA)}&opponentB=${encodeURIComponent(opponentB)}&accentA=${encodeURIComponent(ACCENT)}`}
+              href={`/live/rooms/${roomId}?from=lobby-wall&battleId=${encodeURIComponent(id)}&opponentA=${encodeURIComponent(opponentA)}&opponentB=${encodeURIComponent(opponentB)}&opponentAId=${encodeURIComponent(opponentAId)}&opponentBId=${encodeURIComponent(opponentBId)}&accentA=${encodeURIComponent(ACCENT)}`}
               style={{ padding: "12px 32px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", borderRadius: 8, textDecoration: "none", boxShadow: "0 0 24px rgba(255,45,170,0.4)" }}>
               ▶ WATCH & VOTE LIVE
             </Link>

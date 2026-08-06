@@ -44,49 +44,87 @@ export async function readFanAnalytics(
 
   const base = emptyFanAnalytics(id);
 
-  const [votesCast, memoriesSaved, friendsAsRequester, friendsAsAddressee, userStats] =
-    await Promise.all([
-      safeCount(() => prisma.battleVote.count({ where: { voterId: id } })),
-      safeCount(() =>
-        prisma.memoryCollectible.count({
-          where: { ownerId: id, trashedAt: null },
-        }),
-      ),
-      safeCount(() =>
-        prisma.friendship.count({
-          where: { requesterId: id, status: "accepted" },
-        }),
-      ),
-      safeCount(() =>
-        prisma.friendship.count({
-          where: { addresseeId: id, status: "accepted" },
-        }),
-      ),
-      prisma.userStats
-        .findUnique({ where: { userId: id }, select: { xp: true } })
-        .catch(() => null),
-    ]);
+  const [
+    votesCast,
+    memoriesSaved,
+    friendsAsRequester,
+    friendsAsAddressee,
+    userStats,
+    ticketsOwned,
+    mediaPlayersOwned,
+    fanClubsJoined,
+    tipsAggregate,
+    tipsSentCount,
+    roomsJoined,
+  ] = await Promise.all([
+    safeCount(() => prisma.battleVote.count({ where: { voterId: id } })),
+    safeCount(() =>
+      prisma.memoryCollectible.count({
+        where: { ownerId: id, trashedAt: null },
+      }),
+    ),
+    safeCount(() =>
+      prisma.friendship.count({
+        where: { requesterId: id, status: "accepted" },
+      }),
+    ),
+    safeCount(() =>
+      prisma.friendship.count({
+        where: { addresseeId: id, status: "accepted" },
+      }),
+    ),
+    prisma.userStats
+      .findUnique({ where: { userId: id }, select: { xp: true } })
+      .catch(() => null),
+    safeCount(() => prisma.ticket.count({ where: { ownerUserId: id } })),
+    safeCount(() =>
+      prisma.mediaPlayerChassisOwnership.count({ where: { userId: id } }),
+    ),
+    safeCount(() =>
+      prisma.fanClubMembership.count({
+        where: { userId: id, status: "active" },
+      }),
+    ),
+    prisma.tip
+      .aggregate({ where: { fromUserId: id }, _sum: { amount: true } })
+      .catch(() => null),
+    safeCount(() => prisma.tip.count({ where: { fromUserId: id } })),
+    safeCount(() => prisma.roomMember.count({ where: { userId: id } })),
+  ]);
 
   const friendsCount = friendsAsRequester + friendsAsAddressee;
   const xp = userStats?.xp ?? 0;
+  const tipsCents = tipsAggregate?._sum?.amount ?? 0;
 
   const recentActivityLabels: string[] = [];
   if (votesCast > 0) recentActivityLabels.push("Votes cast");
   if (memoriesSaved > 0) recentActivityLabels.push("Memories saved");
+  if (ticketsOwned > 0) recentActivityLabels.push("Tickets owned");
+  if (tipsSentCount > 0) recentActivityLabels.push("Tips sent");
+  if (fanClubsJoined > 0) recentActivityLabels.push("Fan clubs joined");
 
   const anyReal =
-    votesCast > 0 || memoriesSaved > 0 || friendsCount > 0 || xp > 0;
+    votesCast > 0 ||
+    memoriesSaved > 0 ||
+    friendsCount > 0 ||
+    xp > 0 ||
+    ticketsOwned > 0 ||
+    tipsSentCount > 0 ||
+    mediaPlayersOwned > 0 ||
+    fanClubsJoined > 0;
 
   return {
     ...base,
     votesCast: metricFromCount(votesCast),
     memoriesSaved: metricFromCount(memoriesSaved),
     friendsCount: metricFromCount(friendsCount),
-    // tickets / tips / rooms / attendance — sources vary; stay honest empty until wired
+    ticketsOwned: metricFromCount(ticketsOwned),
+    tipsSentCents: metricFromCount(tipsCents),
+    tipsSentCount: metricFromCount(tipsSentCount),
+    roomsJoined: metricFromCount(roomsJoined),
+    mediaPlayersOwned: metricFromCount(mediaPlayersOwned),
+    fanClubsJoined: metricFromCount(fanClubsJoined),
     eventsAttended: metricFromCount(0),
-    roomsJoined: metricFromCount(0),
-    ticketsOwned: metricFromCount(0),
-    tipsSentCents: metricFromCount(0),
     xp: metricFromCount(xp),
     recentActivityLabels,
     status: anyReal ? "real" : "empty",

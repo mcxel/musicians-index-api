@@ -186,323 +186,329 @@ export default function MasterControlDock({
         onClose={() => setIsCameraOpen(false)}
       />
 
-      {/* ─── FLIGHT DECK OS SPLIT BOTTOM BROADCAST CONTROL BAR ───────────────────── */}
+      {/* ─── FLIGHT DECK OS BOTTOM CONTROL STACK — two seamless bars, no gapped cards ── */}
+      {/* Row A: session / room controls */}
       <div
         style={{
           position: 'fixed',
-          bottom: '56px',
+          bottom: '104px',
           left: '16px',
           right: '16px',
           zIndex: 9000,
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          gap: 16,
+          justifyContent: 'center',
           pointerEvents: 'none',
           fontFamily: "'Inter', sans-serif",
           color: '#fff',
         }}
       >
-        {/* 1. LEFT CARD: Now Playing + purple neon waves */}
         <div
           style={{
             pointerEvents: 'auto',
-            background: theme.bgGlass,
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${theme.primary}44`,
-            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px ${theme.drawerGlow}22`,
-            borderRadius: '16px',
-            padding: '10px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            minWidth: 280,
-          }}
-        >
-          <button
-            type="button"
-            onClick={openPlaylistStudio}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: `linear-gradient(135deg,${theme.primary},${theme.secondary})`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 16,
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: `0 0 12px ${theme.primary}66`,
-            }}
-            aria-label="Open Playlist Studio"
-          >
-            🎵
-          </button>
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', fontWeight: 800 }}>
-              NOW PLAYING
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {isPlayingAudio ? 'Playing from playlist' : 'No track — open playlist'}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <button type="button" onClick={() => setIsPlayingAudio(false)} style={transportBtn} aria-label="Previous">⏮</button>
-              <button
-                type="button"
-                onClick={() => {
-                  openPlaylistStudio();
-                  setIsPlayingAudio((p) => !p);
-                }}
-                style={{ ...transportBtn, color: theme.primary }}
-                aria-label={isPlayingAudio ? 'Pause' : 'Play'}
-              >
-                {isPlayingAudio ? '⏸' : '▶'}
-              </button>
-              <button
-                type="button"
-                onClick={openPlaylistStudio}
-                style={transportBtn}
-                aria-label="Next"
-              >
-                ⏭
-              </button>
-              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>
-                {isPlayingAudio ? 'Live EQ' : '—:— / —:—'}
-              </span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 22 }} aria-hidden>
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-              const h = isPlayingAudio
-                ? 4 + ((Math.sin(waveTick * 0.7 + i * 0.9) + 1) * 0.5) * 16
-                : 3;
-              return (
-                <span
-                  key={i}
-                  style={{
-                    width: 3,
-                    height: h,
-                    background: `linear-gradient(180deg, ${theme.primary}, #AA2DFF)`,
-                    borderRadius: 1,
-                    boxShadow: isPlayingAudio ? `0 0 6px ${theme.primary}` : 'none',
-                    transition: 'height 0.1s ease',
-                  }}
-                />
-              );
-            })}
-          </div>
-          {/* Audio chevron → Universal Workspace playlist-studio */}
-          <button
-            type="button"
-            aria-label="Open Playlist Studio"
-            title="Playlist Studio"
-            onClick={openPlaylistStudio}
-            style={{
-              border: '1px solid rgba(170,45,255,0.55)',
-              background: 'linear-gradient(135deg, rgba(255,45,170,0.25), rgba(170,45,255,0.28))',
-              color: '#e6cfff',
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 900,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
-          >
-            ▲
-          </button>
-        </div>
-
-        {/* 2. CENTER CARD: Unified Command Controls & Navigation */}
-        <div
-          style={{
-            pointerEvents: 'auto',
-            background: 'rgba(5, 5, 20, 0.9)',
+            background: 'rgba(5, 5, 20, 0.92)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(0, 255, 255, 0.3)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 255, 255, 0.1)',
             borderRadius: '18px',
-            padding: '10px 24px',
+            padding: '8px 20px',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            gap: 8,
+            gap: 10,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              onClick={onLeaveRoom}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: 'rgba(230, 48, 0, 0.15)',
-                border: '1px solid #E63000',
-                color: '#FF4D4D',
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              🚪 LEAVE
-            </button>
+          <button
+            onClick={onLeaveRoom}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: 'rgba(230, 48, 0, 0.15)',
+              border: '1px solid #E63000',
+              color: '#FF4D4D',
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            🚪 LEAVE
+          </button>
 
-            <button
-              onClick={handleMicClick}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: isMicActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255,255,255,0.05)',
-                border: isMicActive ? '1px solid #00FF88' : '1px solid rgba(255,255,255,0.18)',
-                color: isMicActive ? '#00FF88' : '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              🎙️ {isMicActive ? 'MIC ON' : 'MIC OFF'}
-            </button>
+          <button
+            onClick={handleMicClick}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: isMicActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255,255,255,0.05)',
+              border: isMicActive ? '1px solid #00FF88' : '1px solid rgba(255,255,255,0.18)',
+              color: isMicActive ? '#00FF88' : '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            🎙️ {isMicActive ? 'MIC ON' : 'MIC OFF'}
+          </button>
 
-            <button
-              onClick={handleCamClick}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: isCamActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255,255,255,0.05)',
-                border: isCamActive ? '1px solid #00FF88' : '1px solid rgba(255,255,255,0.18)',
-                color: isCamActive ? '#00FF88' : '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              📹 {isCamActive ? 'CAM ON' : 'CAM OFF'}
-            </button>
+          <button
+            onClick={handleCamClick}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: isCamActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255,255,255,0.05)',
+              border: isCamActive ? '1px solid #00FF88' : '1px solid rgba(255,255,255,0.18)',
+              color: isCamActive ? '#00FF88' : '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            📹 {isCamActive ? 'CAM ON' : 'CAM OFF'}
+          </button>
 
-            <button
-              onClick={() => setIsHandRaised(!isHandRaised)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: isHandRaised ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.05)',
-                border: isHandRaised ? '1px solid #FFD700' : '1px solid rgba(255,255,255,0.18)',
-                color: isHandRaised ? '#FFD700' : '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              ✋ HAND
-            </button>
+          <button
+            onClick={() => setIsHandRaised(!isHandRaised)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: isHandRaised ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.05)',
+              border: isHandRaised ? '1px solid #FFD700' : '1px solid rgba(255,255,255,0.18)',
+              color: isHandRaised ? '#FFD700' : '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            ✋ HAND
+          </button>
 
-            <button
-              onClick={openPrimaryQuickPanel}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                color: '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              {isPerformer ? '🗺️ CONCIERGE' : '😃 EMOTES'}
-            </button>
+          <button
+            onClick={openPrimaryQuickPanel}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            {isPerformer ? '🗺️ CONCIERGE' : '😃 EMOTES'}
+          </button>
 
-            <button
-              onClick={() => setIsCameraOpen(true)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                color: '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              📷 CAMERA
-            </button>
+          <button
+            onClick={() => setIsCameraOpen(true)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            📷 CAMERA
+          </button>
 
-            <button
-              onClick={() => {
-                const dockRole = isPerformer ? 'PERFORMER' : 'FAN';
-                launchDockStore.setRole(dockRole);
-                if (launchDockStore.isReady()) {
-                  void executeInstantGoLive({ role: dockRole }).then((r) => {
-                    if (r.ok && r.href) router.push(r.href);
-                    else launchDockStore.open();
-                  });
-                  return;
-                }
-                launchDockStore.open();
-              }}
-              style={{
-                padding: '6px 16px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg,#AA2DFF,#FF2DAA)',
-                border: '1px solid #FF2DAA',
-                color: '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                boxShadow: '0 0 15px rgba(170,45,255,0.5)',
-              }}
-            >
-              🔴 GO LIVE
-            </button>
+          <button
+            onClick={() => {
+              const dockRole = isPerformer ? 'PERFORMER' : 'FAN';
+              launchDockStore.setRole(dockRole);
+              if (launchDockStore.isReady()) {
+                void executeInstantGoLive({ role: dockRole }).then((r) => {
+                  if (r.ok && r.href) router.push(r.href);
+                  else launchDockStore.open();
+                });
+                return;
+              }
+              launchDockStore.open();
+            }}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg,#AA2DFF,#FF2DAA)',
+              border: '1px solid #FF2DAA',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 0 15px rgba(170,45,255,0.5)',
+            }}
+          >
+            🔴 GO LIVE
+          </button>
 
+          <button
+            onClick={onEnterStage}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg,#AA2DFF,#FF2DAA)',
+              border: '1px solid #FF2DAA',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 0 15px rgba(170,45,255,0.5)',
+            }}
+          >
+            ⭐ STAGE
+          </button>
+        </div>
+      </div>
+
+      {/* Row B: one continuous Now Playing + Nav + Tools bar (no gaps between sections) */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '16px',
+          left: '16px',
+          right: '16px',
+          zIndex: 9000,
+          display: 'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          fontFamily: "'Inter', sans-serif",
+          color: '#fff',
+        }}
+      >
+        <div
+          style={{
+            pointerEvents: 'auto',
+            background: 'rgba(5, 5, 20, 0.92)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(0, 255, 255, 0.25)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '8px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            maxWidth: 1400,
+          }}
+        >
+          {/* Now Playing segment */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              paddingRight: 16,
+              marginRight: 16,
+              borderRight: '1px solid rgba(255,255,255,0.12)',
+              minWidth: 240,
+              flexShrink: 0,
+            }}
+          >
             <button
-              onClick={onEnterStage}
+              type="button"
+              onClick={openPlaylistStudio}
               style={{
-                padding: '6px 16px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg,#AA2DFF,#FF2DAA)',
-                border: '1px solid #FF2DAA',
-                color: '#fff',
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                cursor: 'pointer',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: `linear-gradient(135deg,${theme.primary},${theme.secondary})`,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
-                boxShadow: '0 0 15px rgba(170,45,255,0.5)',
+                justifyContent: 'center',
+                fontSize: 14,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: `0 0 12px ${theme.primary}66`,
+                flexShrink: 0,
               }}
+              aria-label="Open Playlist Studio"
             >
-              ⭐ STAGE
+              🎵
             </button>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {isPlayingAudio ? 'Playing from playlist' : 'No track — open playlist'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <button type="button" onClick={() => setIsPlayingAudio(false)} style={transportBtn} aria-label="Previous">⏮</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openPlaylistStudio();
+                    setIsPlayingAudio((p) => !p);
+                  }}
+                  style={{ ...transportBtn, color: theme.primary }}
+                  aria-label={isPlayingAudio ? 'Pause' : 'Play'}
+                >
+                  {isPlayingAudio ? '⏸' : '▶'}
+                </button>
+                <button type="button" onClick={openPlaylistStudio} style={transportBtn} aria-label="Next">⏭</button>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>
+                  {isPlayingAudio ? 'Live EQ' : '—:— / —:—'}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 18 }} aria-hidden>
+              {[0, 1, 2, 3, 4, 5].map((i) => {
+                const h = isPlayingAudio
+                  ? 4 + ((Math.sin(waveTick * 0.7 + i * 0.9) + 1) * 0.5) * 13
+                  : 3;
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      width: 3,
+                      height: h,
+                      background: `linear-gradient(180deg, ${theme.primary}, #AA2DFF)`,
+                      borderRadius: 1,
+                      boxShadow: isPlayingAudio ? `0 0 6px ${theme.primary}` : 'none',
+                      transition: 'height 0.1s ease',
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 14, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-            {/* HOME + chevron — opens floating workspace (no reflow) */}
+          {/* Nav segment */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 18,
+              flex: 1,
+              minWidth: 0,
+              paddingRight: 16,
+              marginRight: 16,
+              borderRight: '1px solid rgba(255,255,255,0.12)',
+            }}
+          >
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
               <a
                 href="/"
@@ -581,6 +587,7 @@ export default function MasterControlDock({
                     position: 'relative',
                     padding: '2px 4px',
                     fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <span>{nav.icon}</span>
@@ -601,6 +608,7 @@ export default function MasterControlDock({
                     textDecoration: 'none',
                     position: 'relative',
                     padding: '2px 4px',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <span>{nav.icon}</span>
@@ -609,65 +617,52 @@ export default function MasterControlDock({
               ),
             )}
           </div>
-        </div>
 
-        {/* 3. RIGHT CARD: Tools + honest connection (Rule 20 — no fake ms/ping) */}
-        <div
-          style={{
-            pointerEvents: 'auto',
-            background: theme.bgGlass,
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${theme.primary}44`,
-            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px ${theme.drawerGlow}22`,
-            borderRadius: '16px',
-            padding: '10px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <button
-            type="button"
-            disabled
-            title="Screenshot — not wired yet"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed' }}
-          >
-            📷 Shot
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Record — not wired yet"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed' }}
-          >
-            ⏺ Rec
-          </button>
-          <button
-            type="button"
-            onClick={openShareStudio}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
-            aria-label="Open Share Studio"
-          >
-            ↗ Share
-          </button>
-          <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, padding: '2px 6px' }}>
-            AUTO
-          </span>
-          <div style={{ fontSize: 9, fontWeight: 900, color: online ? '#00FF88' : '#FF6666', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#00FF88' : '#FF6666', boxShadow: online ? '0 0 8px #00FF88' : 'none' }} />
-            {online ? 'ONLINE' : 'OFFLINE'}
+          {/* Tools + honest connection segment (Rule 20 — no fake ms/ping) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <button
+              type="button"
+              disabled
+              title="Screenshot — not wired yet"
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed', whiteSpace: 'nowrap' }}
+            >
+              📷 Shot
+            </button>
+            <button
+              type="button"
+              disabled
+              title="Record — not wired yet"
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed', whiteSpace: 'nowrap' }}
+            >
+              ⏺ Rec
+            </button>
+            <button
+              type="button"
+              onClick={openShareStudio}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              aria-label="Open Share Studio"
+            >
+              ↗ Share
+            </button>
+            <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>
+              AUTO
+            </span>
+            <div style={{ fontSize: 9, fontWeight: 900, color: online ? '#00FF88' : '#FF6666', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#00FF88' : '#FF6666', boxShadow: online ? '0 0 8px #00FF88' : 'none' }} />
+              {online ? 'ONLINE' : 'OFFLINE'}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenModule) onOpenModule('memory');
+                else setIsMemoryWallOpen(true);
+              }}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+              aria-label="Open Memory Wall"
+            >
+              🧠
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (onOpenModule) onOpenModule('memory');
-              else setIsMemoryWallOpen(true);
-            }}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
-            aria-label="Open Memory Wall"
-          >
-            🧠
-          </button>
         </div>
       </div>
     </>

@@ -50,7 +50,46 @@ export const SPLIT_PRESETS: Record<string, RevenueSplitConfig> = {
   booking: {
     platform: 1500, artist: 5000, performer: 0, venue: 2500, sponsor: 0, big_ace: 1000,
   },
+  /**
+   * Single track sale — Rule 19 track commerce.
+   * Store price: $1.29.  Artist receives: $0.99.  TMI margin: $0.30.
+   * Split is applied to the net-after-Stripe amount; at $1.29 the artist
+   * payout is guaranteed at $0.99 with platform absorbing the Stripe fee.
+   */
+  single: {
+    platform: 1550, artist: 7674, performer: 0, venue: 0, sponsor: 0, big_ace: 776,
+  },
+  /** Album / EP / Mixtape — priced per release, same revenue logic as single */
+  album: {
+    platform: 1500, artist: 7700, performer: 0, venue: 0, sponsor: 0, big_ace: 800,
+  },
+  /** Playlist Artifact (digital release — Rule 19) */
+  playlist_artifact: {
+    platform: 1500, artist: 7700, performer: 0, venue: 0, sponsor: 0, big_ace: 800,
+  },
 };
+
+/**
+ * Canonical track pricing — Rule 19 track commerce.
+ * Store prices (what fans pay) vs artist payout (what artists receive).
+ * All values in cents.
+ */
+export const TRACK_PRICING = {
+  /** Minimum single price fans pay in the store */
+  SINGLE_STORE_MIN_CENTS: 99,
+  /** Standard single store price (what shows in the UI) */
+  SINGLE_STORE_DEFAULT_CENTS: 129,
+  /** Artist payout per single sold (guaranteed floor) */
+  SINGLE_ARTIST_PAYOUT_CENTS: 99,
+  /** TMI gross margin on a standard $1.29 single before Stripe fees */
+  SINGLE_TMI_MARGIN_CENTS: 30,
+  /** Minimum album/EP price */
+  ALBUM_STORE_MIN_CENTS: 499,
+  /** Standard album store price */
+  ALBUM_STORE_DEFAULT_CENTS: 999,
+} as const;
+
+export type TrackProductType = "single" | "album" | "playlist_artifact";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

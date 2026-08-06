@@ -326,19 +326,34 @@ function SignupForm() {
                 }).join(", ")}.`} Bots assigned. Inventory loaded.
               </div>
 
-              {/* Photo upload CTA */}
+              {/* Photo upload CTA — routes differ by role */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
                 style={{ background: "linear-gradient(135deg, rgba(170,45,255,0.12), rgba(0,255,255,0.06))", border: "1.5px solid rgba(170,45,255,0.4)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left" }}
               >
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#AA2DFF", letterSpacing: "0.1em", marginBottom: 6 }}>📷 UPLOAD YOUR PHOTO — APPEAR ON THE ORBIT WHEEL</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 }}>
-                  Your face spins on the <strong style={{ color: "#fff" }}>homepage orbit</strong> that every visitor sees. Add your photo now to claim your spot visually.
-                </div>
-                <Link href="/settings"
-                  style={{ display: "inline-block", padding: "9px 20px", background: "#AA2DFF", color: "#fff", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", borderRadius: 8, textDecoration: "none" }}>
-                  📷 UPLOAD PHOTO NOW →
-                </Link>
+                {selectedRoles.includes("PERFORMER") ? (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.1em", marginBottom: 6 }}>📸 ADD YOUR PHOTO — APPEAR IN THE MAGAZINE</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 }}>
+                      Your real performer photo + bio places you in the <strong style={{ color: "#fff" }}>TMI Magazine</strong> next to your official artist ranking number. You can skip and do it later.
+                    </div>
+                    <Link href="/onboarding/performer"
+                      style={{ display: "inline-block", padding: "9px 20px", background: "#FF2DAA", color: "#fff", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", borderRadius: 8, textDecoration: "none" }}>
+                      📸 ADD PHOTO &amp; BIO →
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: "#AA2DFF", letterSpacing: "0.1em", marginBottom: 6 }}>🎭 CREATE YOUR AVATAR — APPEAR IN THE AUDIENCE</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 }}>
+                      Your avatar takes a seat in the <strong style={{ color: "#fff" }}>3D audience</strong> every time you watch a live performance. Upload your photo to build your ultra-realistic bobblehead.
+                    </div>
+                    <Link href="/settings/avatar"
+                      style={{ display: "inline-block", padding: "9px 20px", background: "#AA2DFF", color: "#fff", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", borderRadius: 8, textDecoration: "none" }}>
+                      🎭 CREATE MY AVATAR →
+                    </Link>
+                  </>
+                )}
               </motion.div>
 
               {/* Multi-role announcement */}

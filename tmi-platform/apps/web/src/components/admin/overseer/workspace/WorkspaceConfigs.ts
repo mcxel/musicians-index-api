@@ -17,7 +17,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     center: [
       {
         id: "live-feed-router",
-        title: "TV SCREEN ROUTER · BOARDROOM LIVE",
+        title: "TV SCREEN ROUTER · LIVE MONITOR WALL",
         widget: "media-matrix",
         accent: "#00FFFF",
         flex: 1,

@@ -40,8 +40,14 @@ export interface FanAnalyticsMetrics {
   memoriesSaved: AnalyticsMetricValue;
   ticketsOwned: AnalyticsMetricValue;
   tipsSentCents: AnalyticsMetricValue;
+  /** Number of individual tips sent (count, not dollar value) */
+  tipsSentCount: AnalyticsMetricValue;
   friendsCount: AnalyticsMetricValue;
   xp: AnalyticsMetricValue;
+  /** Media Player chassis owned (includes free starters) */
+  mediaPlayersOwned: AnalyticsMetricValue;
+  /** Fan clubs the user has joined */
+  fanClubsJoined: AnalyticsMetricValue;
   /** Honest empty list when no recent activity */
   recentActivityLabels: string[];
   status: AnalyticsSourceState;
@@ -77,8 +83,11 @@ export function emptyFanAnalytics(userId: string): FanAnalyticsMetrics {
     memoriesSaved: metric(0),
     ticketsOwned: metric(0),
     tipsSentCents: metric(0),
+    tipsSentCount: metric(0),
     friendsCount: metric(0),
     xp: metric(0),
+    mediaPlayersOwned: metric(0),
+    fanClubsJoined: metric(0),
     recentActivityLabels: [],
     status: "empty",
   };

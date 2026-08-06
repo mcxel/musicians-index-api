@@ -690,12 +690,16 @@ export default function MissionControlDashboard() {
         ))}
       </div>
 
-      <style>{`
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes mcPulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.35; }
         }
-      `}</style>
+      `,
+        }}
+      />
     </div>
   );
 }

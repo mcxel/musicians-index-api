@@ -1,4 +1,4 @@
-export type MediaSourceKind = "boardroom" | "camera" | "performer" | "venue" | "cypher" | "battle" | "security" | "sponsor" | "analytics" | "media";
+export type MediaSourceKind = "camera" | "performer" | "venue" | "cypher" | "battle" | "security" | "sponsor" | "analytics" | "media";
 
 export type MediaSourceDefinition = {
   id: string;
@@ -10,7 +10,6 @@ export type MediaSourceDefinition = {
 };
 
 export const MEDIA_SOURCE_REGISTRY: MediaSourceDefinition[] = [
-  { id: "boardroom", label: "Boardroom", kind: "boardroom", status: "LIVE", accent: "#FFD700", detail: "Board meeting camera and participant feed." },
   { id: "admin-camera", label: "Admin Camera", kind: "camera", status: "LIVE", accent: "#00FFFF", detail: "Executive camera input and mic monitoring." },
   { id: "bigace-camera", label: "Big Ace Camera", kind: "camera", status: "LIVE", accent: "#FF2DAA", detail: "AI executive participant view." },
   { id: "live-performer", label: "Live Performer", kind: "performer", status: "LIVE", accent: "#FFD700", detail: "Stage feed, venue lights, and live room source." },
@@ -23,7 +22,7 @@ export const MEDIA_SOURCE_REGISTRY: MediaSourceDefinition[] = [
   { id: "revenue", label: "Revenue", kind: "analytics", status: "LIVE", accent: "#FFD700", detail: "Stripe, sales, subscriptions, and trend data." },
 ];
 
-export const DEFAULT_MATRIX_ASSIGNMENTS = ["boardroom", "bigace-camera", "venue", "security"];
+export const DEFAULT_MATRIX_ASSIGNMENTS = ["admin-camera", "bigace-camera", "venue", "security"];
 
 export function getMediaSource(sourceId: string | undefined) {
   return MEDIA_SOURCE_REGISTRY.find((source) => source.id === sourceId) ?? MEDIA_SOURCE_REGISTRY[0];

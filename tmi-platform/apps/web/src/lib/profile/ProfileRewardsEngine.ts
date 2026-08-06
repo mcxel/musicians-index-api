@@ -1,7 +1,13 @@
+import { addHumanRankPoints } from '@/lib/rankings';
+
 export class ProfileRewardsEngine {
   static async awardExperience(userId: string, xp: number, reason: string) {
     // TODO: Wire to Prisma PointsWallet/PointsTransaction
     console.log(`[REWARDS_ENGINE] Awarded ${xp} XP to ${userId} for ${reason}`);
+    // Every real XP award (submissions, fan-loop completion, referrals, ...)
+    // now propagates into the live Orbital Wheel / Home 1 ranking snapshot —
+    // a no-op for non-performer userIds, see addHumanRankPoints().
+    addHumanRankPoints(userId, xp);
     return { success: true, xpAdded: xp };
   }
 

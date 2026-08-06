@@ -47,6 +47,8 @@ export default function AdminSubmissionPanel({
   const [key, setKey] = useState("");
   const [tags, setTags] = useState("admin-stash");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [audioFileName, setAudioFileName] = useState<string | null>(null);
   const [stashScope, setStashScope] = useState<"platform" | "personal">("platform");
   const [dest, setDest] = useState<(typeof DESTINATIONS)[number]["id"]>("battle");
   const [targetId, setTargetId] = useState("admin-open-queue");
@@ -78,6 +80,31 @@ export default function AdminSubmissionPanel({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const onAudioFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAudio(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("audio", file);
+      const res = await fetch("/api/beats/upload-audio", { method: "POST", body: fd });
+      const data = (await res.json()) as { success?: boolean; url?: string; error?: string; details?: string };
+      if (!res.ok || !data.success || !data.url) {
+        setError(data.details ?? data.error ?? "Audio upload failed.");
+        return;
+      }
+      setPreviewUrl(data.url);
+      setAudioFileName(file.name);
+    } catch {
+      setError("Network error while uploading audio.");
+    } finally {
+      setUploadingAudio(false);
+      e.target.value = "";
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,10 +223,33 @@ export default function AdminSubmissionPanel({
               style={{ ...fieldStyle, width: 72 }}
             />
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label
+              style={{
+                ...fieldStyle,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: uploadingAudio ? "wait" : "pointer",
+                fontWeight: 700,
+                color: accentColor,
+                flexShrink: 0,
+              }}
+            >
+              {uploadingAudio ? "UPLOADING…" : audioFileName ? `✓ ${audioFileName}` : "CHOOSE AUDIO FILE"}
+              <input
+                type="file"
+                accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/flac,audio/x-flac,.mp3,.wav,.aiff,.aif,.flac"
+                onChange={onAudioFileSelected}
+                disabled={uploadingAudio}
+                style={{ display: "none" }}
+              />
+            </label>
+          </div>
           <input
             value={previewUrl}
             onChange={(e) => setPreviewUrl(e.target.value)}
-            placeholder="Audio preview URL (required for admin-submit)"
+            placeholder="Audio preview URL (auto-filled after upload, or paste one manually)"
             style={fieldStyle}
             required
           />

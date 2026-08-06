@@ -127,7 +127,7 @@ export default function Footer({ className, "data-testid": testId }: FooterProps
             </p>
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
               {section.links.map(({ label, href }) => (
-                <li key={href}>
+                <li key={label}>
                   <Link
                     href={href}
                     style={{

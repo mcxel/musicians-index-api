@@ -10,11 +10,24 @@ import {
   type BattleVoteTally,
   type VoteOption,
 } from '@/lib/competition/BattleVoteClosureEngine';
+import { awardXP } from '@/lib/profile/ProfileRewardsEngine';
+import { getXpValue } from '@/lib/xp/XpActionRegistry';
+import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboardLobbyWallEngine';
 
 export interface PerformanceVotePanelProps {
   battleId: string;
   artistALabel: string;
   artistBLabel: string;
+  /**
+   * Real PERFORMER_REGISTRY ids for each side, when known. Optional because
+   * most current callers only have display-name strings (e.g. from a
+   * ?opponentA= query param) — when omitted, voting/winner-declaration still
+   * works exactly as before, it just can't award battle-win XP (there is no
+   * real performer to credit). Provide these to make a declared win actually
+   * move the winner's rank via ProfileRewardsEngine → UniversalRankingSnapshot.
+   */
+  artistAId?: string;
+  artistBId?: string;
   accentA?: string;
   accentB?: string;
   judgeMode?: boolean;
@@ -37,6 +50,8 @@ export default function PerformanceVotePanel({
   battleId,
   artistALabel,
   artistBLabel,
+  artistAId,
+  artistBId,
   accentA = '#00FFFF',
   accentB = '#FF2DAA',
   judgeMode = false,
@@ -80,7 +95,17 @@ export default function PerformanceVotePanel({
     if (closed) {
       setTally({ ...closed });
       setDeclared(true);
-      if (closed.winner) onWinnerDeclared?.(closed.winner, closed);
+      if (closed.winner) {
+        onWinnerDeclared?.(closed.winner, closed);
+        const winnerId = closed.winner === 'artist-a' ? artistAId : artistBId;
+        if (winnerId) {
+          void awardXP(winnerId, getXpValue('win_battle'), `Battle win: ${battleId}`);
+        }
+        // battleId here is the room/route battleId used by BattleBillboardCard
+        // (BattleChallengeRequestEngine.acceptRequest's battleId) — a no-op if
+        // this vote panel is used outside that flow (no matching card).
+        battleBillboardLobbyWallEngine.markCompleted(battleId);
+      }
     }
   };
 

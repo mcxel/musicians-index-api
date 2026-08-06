@@ -6,9 +6,13 @@ import Link from "next/link";
 import MemoryWall from "@/components/media/MemoryWall";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 import AvatarUploadPipeline from "@/components/profile/AvatarUploadPipeline";
+import FanStatsPanel from "@/components/fan/FanStatsPanel";
 
 const ACCENT = "#00FFFF";
 const BG = "#050510";
+
+const PROFILE_TABS = ["overview", "stats", "activity"] as const;
+type ProfileTab = typeof PROFILE_TABS[number];
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; image?: string | null; }
 
@@ -19,6 +23,7 @@ export default function FanProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
@@ -153,6 +158,38 @@ export default function FanProfilePage() {
           </div>
         )}
 
+        {/* Tab bar */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 24, borderBottom: `1px solid rgba(255,255,255,0.08)`, paddingBottom: 0 }}>
+          {PROFILE_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: "10px 20px",
+                background: "none",
+                border: "none",
+                borderBottom: activeTab === tab ? `2px solid ${ACCENT}` : "2px solid transparent",
+                color: activeTab === tab ? ACCENT : "rgba(255,255,255,0.4)",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+                letterSpacing: "0.1em",
+                transition: "color 150ms ease",
+              }}
+            >
+              {tab === "overview" ? "OVERVIEW" : tab === "stats" ? "MY STATS" : "ACTIVITY"}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "stats" && (
+          <div style={{ marginBottom: 24 }}>
+            <FanStatsPanel userId={user.id} />
+          </div>
+        )}
+
+        {activeTab !== "stats" && (
+        <>
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 24 }}>
           {stats.map((s) => (
@@ -201,6 +238,8 @@ export default function FanProfilePage() {
         </div>
         <MemoryWall accentColor={ACCENT} title="Fan Memory Wall" />
         <OmniPresenceEngine displayName="Fan" defaultTab="messages" />
+        </>
+        )}
       </div>
     </main>
   );

@@ -15,6 +15,7 @@ import { ADMIN_ROUTE_LIST, getAdminRouteById, type AdminSectionId } from "@/lib/
 import { emitBigAceEvent, emitSystemEvent, getSystemEventLog, subscribeSystemEvent } from "@/lib/systemEventBus";
 import AdminMotionLayer from "@/components/motion/AdminMotionLayer";
 import AdminMotionHUD from "@/components/admin/AdminMotionHUD";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 
 export default function AdminHubShell() {
   const router = useRouter();
@@ -130,7 +131,10 @@ export default function AdminHubShell() {
         >
           Big Ace Deck
         </button>
-        <span style={{ marginLeft: "auto", color: "#99f6e4", fontSize: 11 }}>event bus logs: {eventCount}</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <RoleSwitcherWidget accentColor="#FFD700" buttonLabel="SWITCH ROLE" />
+          <span style={{ color: "#99f6e4", fontSize: 11 }}>event bus logs: {eventCount}</span>
+        </div>
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "290px 1fr 320px", gap: 12, padding: 12, minHeight: 0 }}>

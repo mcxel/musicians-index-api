@@ -8,6 +8,9 @@ type ProfileBody = {
   bio?: string;
   website?: string;
   location?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   avatarUrl?: string;
   bannerUrl?: string;
   articleHeroImageUrl?: string;
@@ -100,6 +103,9 @@ export async function PUT(req: NextRequest) {
         bio:         body.bio,
         website:     body.website,
         location:    body.location,
+        city:        body.city,
+        state:       body.state,
+        country:     body.country,
         avatarUrl:   body.avatarUrl,
         bannerUrl:   body.bannerUrl,
         socialLinks: updatedLinks,
@@ -109,6 +115,9 @@ export async function PUT(req: NextRequest) {
         ...(body.bio         !== undefined && { bio:         body.bio         }),
         ...(body.website     !== undefined && { website:     body.website     }),
         ...(body.location    !== undefined && { location:    body.location    }),
+        ...(body.city        !== undefined && { city:        body.city        }),
+        ...(body.state       !== undefined && { state:       body.state       }),
+        ...(body.country     !== undefined && { country:     body.country     }),
         ...(body.avatarUrl   !== undefined && { avatarUrl:   body.avatarUrl   }),
         ...(body.bannerUrl   !== undefined && { bannerUrl:   body.bannerUrl   }),
         socialLinks: updatedLinks,

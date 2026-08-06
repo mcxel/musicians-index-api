@@ -40,7 +40,8 @@ export type AnalyticsDomain =
   | 'sponsor'      // sponsor actions, campaign metrics
   | 'contest'      // battle entries, votes, results
   | 'onboarding'   // role assignment, signup funnel steps
-  | 'bot';         // bot pulse, health, activity cycles
+  | 'bot'          // bot pulse, health, activity cycles
+  | 'drawer';      // Operating Center / drawer open · close · switch lifecycle (Living OS)
 
 export interface PersonaAnalyticsEvent {
   eventId:       string;

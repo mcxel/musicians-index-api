@@ -163,7 +163,14 @@ export default function GamificationHUD() {
         </div>
       )}
 
-      <style>{`
+      <style
+        // Same raw-text <style> hydration hazard as TMIGlobalNav (a text
+        // child of <style> is escaped by React SSR but not decoded by the
+        // browser's raw-text HTML parsing) - dangerouslySetInnerHTML avoids
+        // the text-child path entirely rather than relying on this block
+        // never containing a character SSR would escape.
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes tmi-toast-in {
           from { opacity: 0; transform: translateY(8px) scale(0.9); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -181,7 +188,9 @@ export default function GamificationHUD() {
           0%, 100% { border-top-color: rgba(255,213,0,0.18); }
           50%      { border-top-color: rgba(255,213,0,0.55); }
         }
-      `}</style>
+      `,
+        }}
+      />
     </>
   );
 }

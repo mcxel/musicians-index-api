@@ -36,6 +36,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
     }
 
+    const [followersCount, followingCount, playlistsCount] = await Promise.all([
+      prisma.follow.count({ where: { followingId: user.id } }),
+      prisma.follow.count({ where: { followerId: user.id } }),
+      prisma.playlist.count({ where: { creatorId: user.id } }),
+    ]);
+
     return NextResponse.json({
       ok: true,
       profile: {
@@ -49,6 +55,9 @@ export async function GET(req: NextRequest) {
         bannerUrl: user.userProfile?.bannerUrl ?? null,
         genres: user.artistProfile?.genres ?? [],
         stageName: user.artistProfile?.stageName ?? null,
+        followersCount,
+        followingCount,
+        playlistsCount,
       },
     });
   } catch (error) {

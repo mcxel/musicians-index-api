@@ -218,6 +218,49 @@ function PlaylistShareBubble({ msg }: { msg: ThreadMessage }) {
   );
 }
 
+function SharedMediaGrid({ messages }: { messages: ThreadMessage[] }) {
+  const shared = messages.filter((m) => m.type === "playlist" || Boolean(m.playlistId));
+  if (shared.length === 0) {
+    return (
+      <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: 11, lineHeight: 1.6 }}>
+        No shared playlists in this conversation yet.
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+      {shared.map((msg) => {
+        const href = msg.playlistId
+          ? `/hub/fan?drawer=playlist&playlistId=${encodeURIComponent(msg.playlistId)}`
+          : "/hub/fan?drawer=playlist";
+        return (
+          <a
+            key={msg.messageId}
+            href={href}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid rgba(170,45,255,0.25)",
+              background: "rgba(170,45,255,0.06)",
+              textDecoration: "none",
+              color: "#fff",
+            }}
+          >
+            <span style={{ fontSize: 16 }}>🎵</span>
+            <span style={{ fontSize: 10, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {msg.body || "Shared playlist"}
+            </span>
+            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{fmt(msg.createdAt)} · {msg.senderName}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function MessageBubble({ msg }: { msg: ThreadMessage }) {
   const isPlaylist = msg.type === "playlist" || Boolean(msg.playlistId);
   return (
@@ -267,6 +310,7 @@ export default function MessagingCanister({
 }: MessagingCanisterProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "media">("chat");
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [input, setInput] = useState("");
   const [loadingThreads, setLoadingThreads] = useState(true);
@@ -311,6 +355,10 @@ export default function MessagingCanister({
       setLoadingMessages(false);
     }
   }, []);
+
+  useEffect(() => {
+    setActiveTab("chat");
+  }, [activeThreadId]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -489,7 +537,7 @@ export default function MessagingCanister({
             >
               💬
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 800 }}>{activeName}</div>
               {activeRole && (
                 <div style={{ fontSize: 9, fontWeight: 700, color: roleColor(activeRole), letterSpacing: "0.1em" }}>
@@ -497,6 +545,31 @@ export default function MessagingCanister({
                 </div>
               )}
             </div>
+            {activeThreadId ? (
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                {(["chat", "media"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      letterSpacing: "0.06em",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      border: activeTab === tab ? "1px solid rgba(170,45,255,0.55)" : "1px solid rgba(255,255,255,0.12)",
+                      background: activeTab === tab ? "rgba(170,45,255,0.18)" : "transparent",
+                      color: activeTab === tab ? "#c98bff" : "rgba(255,255,255,0.45)",
+                    }}
+                  >
+                    {tab === "chat" ? "CHAT" : "SHARED MEDIA"}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -510,8 +583,15 @@ export default function MessagingCanister({
           </div>
         )}
 
+        {/* Media list */}
+        {activeThreadId && activeTab === "media" && (
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            <SharedMediaGrid messages={messages} />
+          </div>
+        )}
+
         {/* Message list */}
-        {(activeThreadId || recipientId) && (
+        {(activeThreadId || recipientId) && activeTab === "chat" && (
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
             {loadingMessages && messages.length === 0 && (
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: 16 }}>
@@ -532,7 +612,7 @@ export default function MessagingCanister({
         )}
 
         {/* Compose area */}
-        {(activeThreadId || recipientId) && (
+        {(activeThreadId || recipientId) && activeTab === "chat" && (
           <div style={{ padding: "10px 14px 12px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
             {error && (
               <div style={{ fontSize: 10, color: "#fca5a5", marginBottom: 6, padding: "4px 8px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>

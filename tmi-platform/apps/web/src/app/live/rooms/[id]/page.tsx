@@ -78,6 +78,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const battleId = typeof sp['battleId'] === 'string' ? sp['battleId'] : Array.isArray(sp['battleId']) ? sp['battleId'][0] : null;
   const opponentA = typeof sp['opponentA'] === 'string' ? sp['opponentA'] : Array.isArray(sp['opponentA']) ? sp['opponentA'][0] : null;
   const opponentB = typeof sp['opponentB'] === 'string' ? sp['opponentB'] : Array.isArray(sp['opponentB']) ? sp['opponentB'][0] : null;
+  const opponentAId = typeof sp['opponentAId'] === 'string' ? sp['opponentAId'] : Array.isArray(sp['opponentAId']) ? sp['opponentAId'][0] : undefined;
+  const opponentBId = typeof sp['opponentBId'] === 'string' ? sp['opponentBId'] : Array.isArray(sp['opponentBId']) ? sp['opponentBId'][0] : undefined;
   const battleAccentA = typeof sp['accentA'] === 'string' ? sp['accentA'] : Array.isArray(sp['accentA']) ? sp['accentA'][0] : undefined;
   const isBattleMode = Boolean(battleId && opponentA && opponentB);
   const modeParam = typeof sp['mode'] === 'string' ? sp['mode'] : Array.isArray(sp['mode']) ? sp['mode'][0] : '';
@@ -200,6 +202,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
               battleId={battleId!}
               artistALabel={opponentA}
               artistBLabel={opponentB}
+              artistAId={opponentAId}
+              artistBId={opponentBId}
               accentA={battleAccentA}
               autoOpenVoting
             />

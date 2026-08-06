@@ -17,7 +17,6 @@ interface ChainCommand {
 const COMMANDS: ChainCommand[] = [
   { id: "lock-platform",    label: "Lock Platform",        description: "Suspend all live rooms and public actions.", category: "platform", destructive: true },
   { id: "flush-sessions",   label: "Flush Sessions",       description: "Force re-auth across all active users.",     category: "platform", destructive: true },
-  { id: "open-boardroom",   label: "Open Boardroom",       description: "Activate the Boardroom Live feed.",          category: "platform", route: "/admin/big-ace" },
   { id: "trigger-payout",   label: "Trigger Artist Payout",description: "Run the pending artist revenue batch.",      category: "revenue" },
   { id: "sponsor-cycle",    label: "Advance Sponsor Cycle",description: "Rotate sponsor slot to next queued brand.",  category: "revenue" },
   { id: "ticket-lockdown",  label: "Ticket Lockdown",      description: "Halt all ticket issuance immediately.",      category: "safety", destructive: true },

@@ -46,6 +46,11 @@ import {
   ActivePerformerProvider,
   useActivePerformer,
 } from "@/lib/context/ActivePerformerContext";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
+import OperationsSidebar from "@/components/sidebar/OperationsSidebar";
+import CommandCenterTopNav from "./CommandCenterTopNav";
+import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
+import PointFlightEngine from "@/components/hud/PointFlightEngine";
 
 interface LiveApiSession {
   userId: string;
@@ -101,6 +106,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     () => drawerStateStore.getLastPanel(role)
   );
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  /** Split-button quick panel: left segment opens this lightweight popover,
+   *  right chevron opens the same module's full drawer via onOpenFull. */
+  const [quickPanel, setQuickPanel] = useState<{
+    label: string;
+    info?: string;
+    accent: string;
+    top: number;
+    left: number;
+    onOpenFull: () => void;
+  } | null>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [featured, setFeatured] = useState<{
@@ -257,8 +272,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       monitorA,
       {
         id: "mon-b",
-        label: "MONITOR B · AUDIENCE",
-        kind: "audience",
+        label: "MONITOR B · STAGE PREVIEW",
+        videoUrl: featured?.videoUrl ?? stageVideo ?? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        kind: "video",
       },
     ];
   }, [featured, playlistCast]);
@@ -324,6 +340,111 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     );
   };
 
+  /**
+   * Split rail button — same label, two click targets (2026-08-05, Marcel):
+   * left segment (~80%) opens a quick-panel popover; the unlabeled right
+   * chevron (~20%) opens the same module's full drawer. No renaming — it's
+   * the same button, just split into two actions.
+   */
+  const splitRailBtn = (opts: {
+    key: string;
+    label: string;
+    info?: string;
+    active?: boolean;
+    accent?: string;
+    onOpenFull: () => void;
+  }) => {
+    const active = Boolean(opts.active);
+    const accent = opts.accent ?? theme.primary;
+    return (
+      <div
+        key={opts.key}
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          width: "100%",
+          borderRadius: 8,
+          background: active ? `${accent}22` : "transparent",
+          border: active ? `1px solid ${accent}88` : "1px solid transparent",
+          boxShadow: active ? `0 0 12px ${accent}33` : "none",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            setQuickPanel({
+              label: opts.label,
+              info: opts.info,
+              accent,
+              top: rect.top,
+              left: rect.right + 8,
+              onOpenFull: opts.onOpenFull,
+            });
+          }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "9px 8px 9px 10px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "inherit",
+            color: active ? accent : "#fff",
+          }}
+        >
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {opts.label}
+          </span>
+          {opts.info ? (
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: 7,
+                fontWeight: 900,
+                color: active ? "#050510" : "rgba(255,255,255,0.4)",
+                background: active ? accent : "rgba(255,255,255,0.06)",
+                padding: "1px 5px",
+                borderRadius: 4,
+                marginLeft: 6,
+              }}
+            >
+              {active ? "OPEN" : opts.info}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          aria-label={`Open ${opts.label} drawer`}
+          title="Open full drawer"
+          onClick={(e) => {
+            e.stopPropagation();
+            setQuickPanel(null);
+            opts.onOpenFull();
+          }}
+          style={{
+            flexShrink: 0,
+            width: 20,
+            border: "none",
+            borderLeft: `1px solid ${active ? accent + "44" : "rgba(255,255,255,0.1)"}`,
+            background: "transparent",
+            color: active ? accent : "rgba(255,255,255,0.4)",
+            cursor: "pointer",
+            fontSize: 10,
+            fontWeight: 900,
+          }}
+        >
+          ›
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -335,7 +456,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* Top bar */}
+      <CommandCenterTopNav userId={userId} displayName={displayName} />
+
+      {/* Status bar */}
       <div
         style={{
           height: 44,
@@ -417,28 +540,26 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         >
           🎨 SHELL COLORS
         </button>
+        <RoleSwitcherWidget accentColor={theme.primary} />
       </div>
 
-      {/* Media + rails + drawer */}
+      {/* Media + rails + drawer dock */}
       <div
         style={{
+          position: "relative",
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          minHeight: 0,
-          height: "calc(100vh - 44px)",
-          maxHeight: "calc(100vh - 44px)",
-          overflow: "hidden",
-          paddingBottom: 100,
+          minHeight: "calc(100vh - 100px)",
+          overflowY: "auto",
+          paddingBottom: 170,
         }}
       >
         <div
           style={{
-            flex: 1,
-            minHeight: 0,
             display: "grid",
             gridTemplateColumns: "230px minmax(0, 1fr) 300px",
-            overflow: "hidden",
+            minHeight: 520,
           }}
         >
           {/* Left rail */}
@@ -458,13 +579,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             </div>
             {centers.map((center) => {
               const isActive = center.modules.some((m) => m === activePanel);
-              return railBtn({
+              return splitRailBtn({
                 key: center.id,
                 label: `${center.icon} ${center.label}`,
                 info: center.info,
                 accent: center.accent,
                 active: isActive,
-                onClick: () => {
+                onOpenFull: () => {
                   livingOsCommandBus.executeAction(center.actionId, { role });
                   togglePanel(center.primaryModule as CommandCenterPanelId);
                 },
@@ -487,13 +608,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 {drawerLaunchers.map((id) => {
                   const mod = getUniversalDrawerModule(id);
                   if (!mod) return null;
-                  return railBtn({
+                  return splitRailBtn({
                     key: `drawer-${id}`,
                     label: mod.label,
                     info: mod.info,
                     accent: mod.accent,
                     active: activePanel === id,
-                    onClick: () => togglePanel(id),
+                    onOpenFull: () => togglePanel(id),
                   });
                 })}
               </>
@@ -514,12 +635,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
             {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
 
-            <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{displayName}</div>
-              <div style={{ fontSize: 8, fontWeight: 800, color: theme.primary, letterSpacing: "0.08em", marginTop: 2 }}>
-                {role === "performer" ? "PERFORMER" : "FAN"} · THEME {theme.name.toUpperCase()}
-              </div>
-            </div>
+            <CommandCenterIdentityCard userId={userId} displayName={displayName} role={role === "performer" ? "performer" : "fan"} />
           </div>
 
           {/* Center media — prototype dual stacked 16:9 chrome bezel */}
@@ -545,18 +661,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               overflowY: "auto",
             }}
           >
-            <div style={{ flex: 1, minHeight: 160, background: "rgba(0,0,0,0.25)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 6, marginBottom: 8 }}>
-                {["CHAT", "ROOM", "PEOPLE"].map((t, i) => (
-                  <span key={t} style={{ fontSize: 10, fontWeight: 900, color: i === 0 ? theme.primary : "rgba(255,255,255,0.35)" }}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: 12 }}>
-                {featured ? "No messages yet — say something!" : "Join a live room to chat"}
-              </div>
-            </div>
+            <OperationsSidebar
+              role={role}
+              userId={userId}
+              displayName={displayName}
+              featuredPerformerName={featured?.name}
+            />
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
               <Link href="/live/lobby" style={{ display: "block", fontSize: 10, color: theme.secondary, textDecoration: "none", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
@@ -578,17 +688,24 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   SPONSORS · {PERFORMER_SPONSOR_ZONE}
                 </div>
                 <SponsorRail sponsors={getRailSponsors("dashboard-performer")} zone={PERFORMER_SPONSOR_ZONE} />
-                <Link
-                  href="/sponsors/advertise"
-                  style={{ display: "block", marginTop: 8, fontSize: 9, color: theme.tertiary, textDecoration: "none", fontWeight: 800 }}
-                >
-                  Sell a placement →
-                </Link>
               </div>
             )}
           </div>
         </div>
 
+        <MasterControlDock
+          role={role === "performer" ? "performer" : "fan"}
+          onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
+          onEnterStage={() => router.push(role === "performer" ? "/live/go" : "/live/go")}
+          onLobbyNav={
+            role === "fan"
+              ? () => openPanel("lobby")
+              : () => openPanel("media_locker")
+          }
+          onOpenModule={(mod) => openPanel(mod)}
+        />
+
+        {/* Layer 2 — Full Drawers: Mounts below Master Control Dock as vertical page extension */}
         <CommandCenterDrawer
           role={role}
           activePanel={activePanel}
@@ -601,19 +718,77 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         />
       </div>
 
-      <MasterControlDock
-        role={role === "performer" ? "performer" : "fan"}
-        onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
-        onEnterStage={() => router.push(role === "performer" ? "/live/go" : "/live/go")}
-        onLobbyNav={
-          role === "fan"
-            ? () => openPanel("lobby")
-            : () => openPanel("media_locker")
-        }
-        onOpenModule={(mod) => openPanel(mod)}
-      />
       {/* Layer 1 — Quick Panels (Living OS): instant overlays, never block live media */}
       <QuickPanelDock role={role} />
+
+      {/* Points-earned flight animation — fires on real backend balance increases only */}
+      <PointFlightEngine />
+
+      {/* Split-button quick panel popover (left segment of splitRailBtn) */}
+      {quickPanel ? (
+        <>
+          <div
+            onClick={() => setQuickPanel(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 499, background: "transparent" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: quickPanel.top,
+              left: quickPanel.left,
+              zIndex: 500,
+              width: 220,
+              background: "#0d1117",
+              border: `1px solid ${quickPanel.accent}55`,
+              borderRadius: 10,
+              padding: 12,
+              boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.06em", color: quickPanel.accent }}>
+                {quickPanel.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuickPanel(null)}
+                aria-label="Close quick panel"
+                style={{ border: "none", background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+            {quickPanel.info ? (
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{quickPanel.info}</span>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const openFull = quickPanel.onOpenFull;
+                setQuickPanel(null);
+                openFull();
+              }}
+              style={{
+                marginTop: 2,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: `1px solid ${quickPanel.accent}66`,
+                background: `${quickPanel.accent}18`,
+                color: quickPanel.accent,
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Open Full Drawer →
+            </button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

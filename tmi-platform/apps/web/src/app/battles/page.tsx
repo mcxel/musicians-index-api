@@ -5,6 +5,7 @@ import MonetizationRail from "@/components/monetization/MonetizationRail";
 import ArenaEventShell from "@/components/live/ArenaEventShell";
 import { battleBillboardLobbyWallEngine } from "@/lib/competition/BattleBillboardLobbyWallEngine";
 import prisma from "@/lib/prisma";
+import BattleOverlaySystem from "@/components/broadcast/BattleOverlaySystem";
 
 // Reads live Prisma data (Mini Battles) on every request - must never be
 // statically cached, or newly created Mini Battles won't appear.
@@ -179,6 +180,15 @@ export default async function BattlesPage() {
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* ── BROADCAST OVERLAY SYSTEM ── prototype Battle Overlays tab */}
+        <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1px solid rgba(255,45,170,0.12)" }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FF2DAA", fontWeight: 800, marginBottom: 6 }}>BROADCAST STAGE</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 16 }}>
+            Live battle presentation system — phase controls, overlays, and broadcast graphics.
+          </div>
+          <BattleOverlaySystem mode="battle" showPhaseControls showOverlayLibrary />
         </div>
 
         {/* Format reference — explicitly examples, never linked into a fake live room (Rule 20) */}
