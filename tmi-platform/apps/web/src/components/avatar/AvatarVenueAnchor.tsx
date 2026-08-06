@@ -10,10 +10,11 @@
 import { useState, useEffect } from "react";
 import { getHeroSeatOverlay } from "@/lib/avatar/HeroAudienceSpawner";
 import type { SeatAssignment } from "@/lib/avatar/HeroAudienceSpawner";
+import type { VenueIndex } from "@/components/live/AudienceScene";
 
 interface Props {
   venueSlug:  string;
-  venueIndex: 0 | 1 | 2 | 3 | 4;
+  venueIndex: VenueIndex;
   width?:     number;
   height?:    number;
 }
