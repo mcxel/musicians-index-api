@@ -115,7 +115,7 @@ export default function ReviewQueuePanel({
       const tags = tagsInput.trim()
         ? tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
         : [];
-      const res = await fetch(`/api/beats/${canonicalId}/review`, {
+      const res = await fetch(`/api/beats/canonical/${canonicalId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision, reason: reason.trim(), tagsJson: JSON.stringify(tags) }),
