@@ -45,6 +45,7 @@ export type WorkspaceWidgetKey =
   | "legal-doc-dmca"
   | "legal-doc-community"
   | "legal-contact"
+  | "legal-compliance-card"
   | "scam-defense-center"
   | "presentation-preview"
   | "observatory-intelligence"

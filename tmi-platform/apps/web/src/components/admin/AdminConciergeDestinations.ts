@@ -265,11 +265,20 @@ export const OVERSEER_WORKSPACE_DESTINATIONS: ConciergeDestination[] = [
     accent: "#00FF88",
   },
   {
+    id: "legal-command",
+    label: "Legal Command",
+    href: "/admin/legal",
+    group: "Ops Intelligence",
+    accent: "#FFD700",
+    keywords: ["legal", "compliance", "disclosure", "privacy", "records", "vault"],
+  },
+  {
     id: "ws-legal",
-    label: "Legal",
+    label: "Legal Docs Workspace",
     href: "/admin/overseer?workspace=legal",
     group: "Workspaces",
     accent: "#FFD700",
+    keywords: ["legal", "terms", "dmca", "policy"],
   },
 ];
 

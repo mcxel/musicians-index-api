@@ -35,6 +35,7 @@ export type DeskPanelId =
   | "commerce"
   | "submissions"
   | "alerts"
+  | "legal-compliance"
   | "system-health"
   | "stats"
   | "geography"
@@ -131,6 +132,7 @@ export const DESK_RAIL_ITEMS: {
   { id: "commerce", label: "Commerce", accent: "#FFD700" },
   { id: "submissions", label: "Submissions", accent: "#FF2DAA" },
   { id: "alerts", label: "Alerts", accent: "#FF4444" },
+  { id: "legal-compliance", label: "Legal & Compliance", accent: "#FFD700" },
   { id: "system-health", label: "System Health", accent: "#00FFFF" },
   { id: "stats", label: "Stats", accent: "#8CF9FF" },
   { id: "geography", label: "Geography", accent: "#8CF9FF" },

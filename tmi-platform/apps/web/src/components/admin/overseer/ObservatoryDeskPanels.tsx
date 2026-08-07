@@ -15,6 +15,7 @@ import PlatformCorePanel from "@/components/admin/PlatformCorePanel";
 import ObservatoryDeck from "@/components/admin/overseer/ObservatoryDeck";
 import ObservatoryIntelligencePanel from "@/components/admin/overseer/ObservatoryIntelligencePanel";
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
+import LegalComplianceCard from "@/components/admin/overseer/LegalComplianceCard";
 import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
 import HomeLiveLobbyWall from "@/components/discovery/HomeLiveLobbyWall";
 import ObservatoryChampionshipWidget from "@/components/championship/ObservatoryChampionshipWidget";
@@ -279,6 +280,12 @@ export function DeskPanelContent({
       return (
         <div style={{ height: "100%", overflow: "auto" }}>
           <ScamDefenseCenter />
+        </div>
+      );
+    case "legal-compliance":
+      return (
+        <div style={{ height: "100%", overflow: "auto" }}>
+          <LegalComplianceCard />
         </div>
       );
     case "system-health":
