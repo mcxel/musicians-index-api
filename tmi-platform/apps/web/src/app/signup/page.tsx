@@ -116,13 +116,23 @@ function SignupForm() {
         setStep("DETAILS");
         return;
       }
-      const userId = regData.userId ?? regData.user?.id ?? `stub_${Date.now()}`;
+      const userId = regData.userId ?? regData.user?.id;
+      if (!userId) {
+        setError("Registration succeeded but no user id was returned — please sign in and contact support.");
+        setStep("DETAILS");
+        return;
+      }
       const provRes = await fetch("/api/auth/provision", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId, roles: selectedRoles, vipToken: vipToken || undefined }),  // Pass roles array
       });
-      const prov = await provRes.json() as { steps?: Array<{ step: string }> };
+      const prov = await provRes.json() as { ok?: boolean; steps?: Array<{ step: string; status?: string }>; error?: string };
       setProvSteps((prov.steps ?? []).map((s) => s.step));
+      if (!provRes.ok || prov.ok === false) {
+        setError(prov.error ?? "Account created but workspace provisioning failed — please contact support.");
+        setStep("DETAILS");
+        return;
+      }
       localStorage.removeItem("tmi_invite_code"); // consumed — clear so next user starts fresh
       setStep("DONE");
     } catch {

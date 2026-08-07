@@ -1,24 +1,21 @@
-export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
-import { isRoomActivePhase1, PHASE_1_BOTS } from '@/lib/bots/Phase1LaunchConfig';
-import { activateDefaultBots, getHealthSummary } from '@/lib/bots/BotActivationEngine';
+export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from "next/server";
+import { isRoomActivePhase1, PHASE_1_BOTS } from "@/lib/bots/Phase1LaunchConfig";
+import { activateSoftLaunchBots } from "@/lib/bots/activateSoftLaunchBots";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { roomId?: string; fanId?: string };
+    const body = (await req.json()) as { roomId?: string; fanId?: string };
     const { roomId, fanId } = body;
+    const result = activateSoftLaunchBots();
 
-    // Always activate the full named bot roster on any POST to this endpoint.
-    // activateDefaultBots() is idempotent — safe to call multiple times.
-    const bots = activateDefaultBots();
-    const health = getHealthSummary();
-
-    // If a roomId is provided, also check Phase 1 room-specific config.
     if (!roomId) {
       return NextResponse.json({
         ok: true,
-        botsActivated: bots.length,
-        health,
+        botsActivated: result.namedBots.length,
+        dutyBotsActive: result.dutyBotsActive,
+        health: result.health,
+        phase1: result.phase1,
       });
     }
 
@@ -26,24 +23,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       roomId,
-      fanId: fanId ?? 'fan-guest',
+      fanId: fanId ?? "fan-guest",
       botsEnabled: active,
-      botsActivated: bots.length,
-      health,
+      botsActivated: result.namedBots.length,
+      dutyBotsActive: result.dutyBotsActive,
+      health: result.health,
       config: active ? PHASE_1_BOTS : null,
     });
   } catch {
-    return NextResponse.json({ ok: false, error: 'invalid request' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "invalid request" }, { status: 400 });
   }
 }
 
 export async function GET() {
-  const bots = activateDefaultBots();
-  const health = getHealthSummary();
+  const result = activateSoftLaunchBots();
   return NextResponse.json({
     ok: true,
-    botsActivated: bots.length,
-    health,
-    message: 'POST with { roomId, fanId } to activate bots and check room phase status',
+    botsActivated: result.namedBots.length,
+    dutyBotsActive: result.dutyBotsActive,
+    health: result.health,
+    phase1: result.phase1,
+    message: "POST with { roomId, fanId } to activate bots and check room phase status",
   });
 }

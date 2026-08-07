@@ -38,6 +38,7 @@ import {
   type MagazineBridgeSnapshot,
 } from "@/lib/performer/MagazinePerformerAnalyticsBridge";
 
+import SplitActionButton from "@/components/ui/SplitActionButton";
 const ROOM_ID = "performer-hub-live";
 
 interface PerformerHubDashboardProps {
@@ -172,16 +173,16 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
           <div style={{ fontSize: 22, fontWeight: 800, color: "#f0f0ff" }}>{displayName}</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Performer Control Room</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {!stream?.isLive ? (
-            <button onClick={handleGoLive} style={{ background: "#06b6d4", color: "#0f0f1a", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              Go Live
-            </button>
+            <SplitActionButton presetKey="go-live" onPrimaryClick={handleGoLive} />
           ) : (
             <button onClick={handleEndShow} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
               End Show
             </button>
           )}
+          <SplitActionButton presetKey="challenge" />
+          <SplitActionButton presetKey="mint-nft" />
         </div>
       </div>
 

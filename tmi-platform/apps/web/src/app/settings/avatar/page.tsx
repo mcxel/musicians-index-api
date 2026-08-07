@@ -13,19 +13,19 @@ const GENRE_OPTIONS = [
 // Roles that are represented by real photos/video — NOT avatar bobbleheads.
 // Per Rule 26 Identity Policy: fans create avatars; performers are represented
 // by their real camera/photo identity. Redirect performer-type roles away.
-const PERFORMER_ROLES = new Set(['PERFORMER', 'BAND', 'ARTIST']);
+const FAN_AVATAR_ROLES = new Set(['FAN', 'USER']);
 
 export default function AvatarSettingsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Gate: performers don't use the avatar page — send them to profile settings.
+  // Rule 26: avatar ownership is Fan-only.
   useEffect(() => {
     fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
       .then(r => r.json())
       .then((d: { user?: { role?: string } }) => {
-        const role = d.user?.role ?? '';
-        if (PERFORMER_ROLES.has(role)) {
+        const role = (d.user?.role ?? '').toUpperCase();
+        if (role && !FAN_AVATAR_ROLES.has(role)) {
           router.replace('/settings/profile');
         }
       })

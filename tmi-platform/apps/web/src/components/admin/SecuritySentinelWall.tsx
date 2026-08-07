@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useReducer, useState } from "react";
 
 type AttackVector = "auth" | "ticket" | "bot" | "payment" | "api";
 type ThreatLevel = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -18,25 +18,9 @@ interface SentinelEvent {
   resolved: boolean;
 }
 
-const SEED: SentinelEvent[] = [
-  { id: "s1",  vector: "auth",    level: "CRITICAL", title: "Credential Stuffing Attack",    detail: "4,200 login attempts in 8 min from 12 IPs. Pattern matches known breach list.",  ip: "185.220.x.x",  count: 4200, ts: "live",   resolved: false },
-  { id: "s2",  vector: "payment", level: "CRITICAL", title: "Card Testing Pattern",           detail: "Sequential card BIN testing on /checkout. 38 declined in 4 min.",               ip: "91.108.x.x",   count: 38,   ts: "2m ago", resolved: false },
-  { id: "s3",  vector: "ticket",  level: "HIGH",     title: "QR Re-use Detected",             detail: "Same QR hash validated 4×. Gate 3 and Gate 5 within 11 min.",                   userId: "u-3308",   count: 4,    ts: "4m ago", resolved: false },
-  { id: "s4",  vector: "api",     level: "HIGH",     title: "Rate-Limit Bypass",              detail: "Rotated User-Agent headers bypassing /api/vote rate limiter. 1,200 req/min.",   ip: "45.33.x.x",    count: 1200, ts: "7m ago", resolved: false },
-  { id: "s5",  vector: "bot",     level: "HIGH",     title: "Coordinated Bot Flood",          detail: "190 msg/min in Cypher Room 3 — non-human cadence. Auto-ban triggered.",                              count: 190,  ts: "9m ago", resolved: false },
-  { id: "s6",  vector: "auth",    level: "MEDIUM",   title: "Session Token Replay",           detail: "Expired JWT reused from different device fingerprint.",                          userId: "u-7712",   count: 3,    ts: "13m ago", resolved: false },
-  { id: "s7",  vector: "ticket",  level: "MEDIUM",   title: "Multi-device Purchase",          detail: "6 tickets, 1 device, 3 billing addresses in 8 min.",                            userId: "u-4421",   count: 6,    ts: "18m ago", resolved: false },
-  { id: "s8",  vector: "payment", level: "LOW",      title: "Chargeback Velocity",            detail: "3 chargebacks in 24h from same card prefix — flagged.",                         userId: "u-9901",   count: 3,    ts: "1h ago", resolved: true  },
-  { id: "s9",  vector: "auth",    level: "LOW",      title: "2FA Failure Spike",              detail: "12 failed 2FA in 30 min, no lockout reached.",                                  userId: "u-2247",   count: 12,   ts: "1h ago", resolved: true  },
-];
+const SEED: SentinelEvent[] = [];
 
-const AUTO_INJECT: Omit<SentinelEvent, "id" | "ts" | "resolved" | "count">[] = [
-  { vector: "api",     level: "HIGH",     title: "Endpoint Scan Detected",       detail: "Sequential probe of /api/* routes — 440 requests in 90s.",       ip: "5.188.x.x"    },
-  { vector: "auth",    level: "MEDIUM",   title: "Password Spray Pattern",       detail: "One password tested across 80 accounts in rotating cadence.",     ip: "194.165.x.x"  },
-  { vector: "bot",     level: "LOW",      title: "Spam Wave — Battle Feed",      detail: "Auto-filtered 200 spam entries from Battle Feed in 60s."                              },
-  { vector: "ticket",  level: "MEDIUM",   title: "Refund Loop Detected",         detail: "Buy → refund cycle repeated 5× in 20 min — abuse pattern.",       userId: "u-5504"   },
-  { vector: "payment", level: "HIGH",     title: "Stolen Card Alert",            detail: "Card linked to fraud report DB. Transaction blocked, user flagged.", ip: "77.88.x.x" },
-];
+const AUTO_INJECT: Omit<SentinelEvent, "id" | "ts" | "resolved" | "count">[] = [];
 
 const LEVEL_STYLE: Record<ThreatLevel, string> = {
   CRITICAL: "border-red-500/60 bg-red-500/10 text-red-300",
@@ -82,23 +66,6 @@ export default function SecuritySentinelWall() {
   const [filterVector, setFilterVector] = useState<AttackVector | "all">("all");
   const [showResolved, setShowResolved] = useState(false);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const template = AUTO_INJECT[Math.floor(Math.random() * AUTO_INJECT.length)];
-      if (!template) return;
-      dispatch({
-        type: "inject",
-        event: {
-          ...template,
-          id: `auto-${_nextId++}`,
-          count: Math.floor(Math.random() * 500) + 1,
-          ts: "just now",
-          resolved: false,
-        },
-      });
-    }, 22_000);
-    return () => clearInterval(id);
-  }, []);
 
   const active   = events.filter((e) => !e.resolved);
   const resolved = events.filter((e) => e.resolved);

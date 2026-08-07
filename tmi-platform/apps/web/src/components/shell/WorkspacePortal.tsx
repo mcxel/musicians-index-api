@@ -4,6 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import MagazineExperienceRuntime from "@/components/magazine/MagazineExperienceRuntime";
 import AvatarStudioExperience from "@/components/avatar/AvatarStudioExperience";
+import RoleGate from "@/components/auth/RoleGate";
 
 export interface WorkspacePortalProps {
   isOpen: boolean;
@@ -49,7 +50,16 @@ export default function WorkspacePortal({
         </div>
 
         {isAvatar ? (
-          <AvatarStudioExperience onClose={onClose} />
+          <RoleGate
+            allow={["FAN"]}
+            fallback={
+              <div className="flex-1 my-6 flex items-center justify-center text-white/60 text-xs font-mono text-center px-4">
+                Avatar Studio is Fan-only. Performers use real photo and live camera identity.
+              </div>
+            }
+          >
+            <AvatarStudioExperience onClose={onClose} />
+          </RoleGate>
         ) : isMagazine ? (
           <MagazineExperienceRuntime onClose={onClose} />
         ) : (

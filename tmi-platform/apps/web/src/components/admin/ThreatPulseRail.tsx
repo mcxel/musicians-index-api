@@ -30,17 +30,12 @@ const SEV_COLOR: Record<ThreatEvent["severity"], string> = {
   critical: "#FF4444",
 };
 
-const SEED_EVENTS: ThreatEvent[] = [
-  { id: "t1", type: "FRAUD",      message: "Multi-account ticket fraud",   ts: "2m",  severity: "critical" },
-  { id: "t2", type: "AUTH",       message: "Unusual rapid login pattern",  ts: "5m",  severity: "high"     },
-  { id: "t3", type: "RATE",       message: "Rate limit bypass — /api/vote",ts: "8m",  severity: "high"     },
-  { id: "t4", type: "CHAT",       message: "Bot-pattern flood in Room 3",  ts: "12m", severity: "medium"   },
-  { id: "t5", type: "MODERATION", message: "Hate speech flagged — Room 12",ts: "18m", severity: "medium"   },
-];
+/** Rule 20: no fabricated threat feed. Real events only when wired from security APIs. */
+const SEED_EVENTS: ThreatEvent[] = [];
 
 export default function ThreatPulseRail({
   threatLevel = "STABLE",
-  sentinelCount = 100,
+  sentinelCount = 0,
 }: {
   threatLevel?: ThreatLevel;
   sentinelCount?: number;

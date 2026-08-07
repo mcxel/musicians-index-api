@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { activateDefaultBots, getHealthSummary } from '@/lib/bots/BotActivationEngine';
+import { getHealthSummary } from '@/lib/bots/BotActivationEngine';
+import { activateSoftLaunchBots } from '@/lib/bots/activateSoftLaunchBots';
 import { getBotOrchestrator } from '@/lib/bots/TMIBotOrchestrator';
 
 const NAMED_AGENTS = [
@@ -18,7 +19,8 @@ const NAMED_AGENTS = [
 
 export async function GET() {
   // activateDefaultBots() is idempotent — ensures bots are live before reporting status
-  const allBots = activateDefaultBots();
+  const soft = activateSoftLaunchBots();
+  const allBots = soft.namedBots;
   const health = getHealthSummary();
 
   const orchestrator = getBotOrchestrator();
@@ -42,6 +44,7 @@ export async function GET() {
 
   return NextResponse.json({
     total: health.total,
+    dutyBotsActive: soft.dutyBotsActive,
     active: health.active,
     namedAgentCount: NAMED_AGENTS.length,
     orchestratorBotCount: orchStats.total,

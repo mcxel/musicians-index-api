@@ -28,13 +28,13 @@ export default function TipButton({ artistSlug, artistName, compact = false }: T
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ product: "TIP", artistSlug, amount: cents }),
       });
-      const data = await res.json() as { url?: string };
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setDone(true);
-        setTimeout(() => { setDone(false); setOpen(false); }, 2000);
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        console.error('[TipButton]', data.error ?? res.status);
+        setOpen(false);
+        return;
       }
+      window.location.href = data.url;
     } finally {
       setSending(false);
     }

@@ -69,6 +69,8 @@ function aggregateWebhookRevenue(): { streams: RevenueStreams; totalTodayCents: 
   const events = getRecentEvents(500);
   for (const event of events) {
     if (event.kind !== 'webhook_verified') continue;
+    // Rule 20 — never count admin simulation pulses as revenue
+    if (event.meta?.simulated === true) continue;
     const amount = Number(event.meta.amountCents ?? 0);
     if (!Number.isFinite(amount) || amount <= 0) continue;
 

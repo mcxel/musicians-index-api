@@ -121,32 +121,32 @@ type InstrumentFeature = {
 };
 
 const BEST_OF_TMI_LANES = [
-  { label: 'Best Singer', route: '/coming-soon/best-singer' },
-  { label: 'Best Rapper', route: '/coming-soon/best-rapper' },
-  { label: 'Best Guitarist', route: '/coming-soon/best-guitarist' },
-  { label: 'Best Drummer', route: '/coming-soon/best-drummer' },
-  { label: 'Best DJ', route: '/coming-soon/best-dj' },
-  { label: 'Best Comedian', route: '/coming-soon/best-comedian' },
-  { label: 'Best Dancer', route: '/coming-soon/best-dancer' },
-  { label: 'Best Actor', route: '/coming-soon/best-actor' },
-  { label: 'Best Band', route: '/coming-soon/best-band' },
-  { label: 'Best Choir', route: '/coming-soon/best-choir' },
-  { label: 'Best Marching Band', route: '/coming-soon/best-marching-band' },
-  { label: 'Best Streamer', route: '/coming-soon/best-streamer' },
-  { label: 'Best Writer', route: '/coming-soon/best-writer' },
-  { label: 'Best Blogger', route: '/coming-soon/best-blogger' },
-  { label: 'Best News Writer', route: '/coming-soon/best-news-writer' },
-  { label: 'Best Fan', route: '/coming-soon/best-fan' },
-  { label: 'Best Venue', route: '/coming-soon/best-venue' },
-  { label: 'Best Promoter', route: '/coming-soon/best-promoter' },
-  { label: 'Best Sponsor', route: '/coming-soon/best-sponsor' },
-  { label: 'Best Battle Performer', route: '/coming-soon/best-battle-performer' },
-  { label: 'Best Cypher Performer', route: '/coming-soon/best-cypher-performer' },
-  { label: 'Best Challenge Performer', route: '/coming-soon/best-challenge-performer' },
-  { label: 'Best New Artist', route: '/coming-soon/best-new-artist' },
-  { label: 'Best New Band', route: '/coming-soon/best-new-band' },
-  { label: 'Rising Star', route: '/coming-soon/rising-star' },
-  { label: 'Most Improved', route: '/coming-soon/most-improved' },
+  { label: 'Best Singer', route: '/rankings?category=singers' },
+  { label: 'Best Rapper', route: '/rankings?category=rappers' },
+  { label: 'Best Guitarist', route: '/rankings?category=guitarists' },
+  { label: 'Best Drummer', route: '/rankings?category=drummers' },
+  { label: 'Best DJ', route: '/rankings?category=djs' },
+  { label: 'Best Comedian', route: '/rankings?category=comedians' },
+  { label: 'Best Dancer', route: '/rankings?category=dancers' },
+  { label: 'Best Actor', route: '/rankings?category=actors' },
+  { label: 'Best Band', route: '/rankings?category=bands' },
+  { label: 'Best Choir', route: '/rankings?category=choirs' },
+  { label: 'Best Marching Band', route: '/rankings?category=marching-bands' },
+  { label: 'Best Streamer', route: '/live' },
+  { label: 'Best Writer', route: '/rankings?category=writers' },
+  { label: 'Best Blogger', route: '/rankings?category=writers' },
+  { label: 'Best News Writer', route: '/rankings?category=writers' },
+  { label: 'Best Fan', route: '/leaderboard' },
+  { label: 'Best Venue', route: '/rankings?category=venues' },
+  { label: 'Best Promoter', route: '/rankings?category=promoters' },
+  { label: 'Best Sponsor', route: '/sponsors' },
+  { label: 'Best Battle Performer', route: '/home/5' },
+  { label: 'Best Cypher Performer', route: '/home/5' },
+  { label: 'Best Challenge Performer', route: '/home/5' },
+  { label: 'Best New Artist', route: '/rankings?category=new-artists' },
+  { label: 'Best New Band', route: '/rankings?category=bands' },
+  { label: 'Rising Star', route: '/rankings?filter=rising' },
+  { label: 'Most Improved', route: '/rankings?filter=improved' },
 ] as const;
 
 const PLACEHOLDER_IMAGES = new Set(['/images/tmi-placeholder.jpg', '']);
@@ -546,10 +546,10 @@ const LEFT_SPOTLIGHT_RAIL = [
   { label: 'Top Choirs', match: /choir/i, route: '/rankings?category=choirs' },
   { label: 'Top Marching Bands', match: /marching/i, route: '/rankings?category=marching-bands' },
   { label: 'Top Dance Crews', match: /dance crew|dance crews|hip hop dance|break|popping|locking/i, route: '/rankings?category=dance-crews' },
-  { label: 'Top Streamers', match: /stream|broadcaster|commentator|interviewer|podcast/i, route: '/coming-soon/streamers' },
+  { label: 'Top Streamers', match: /stream|broadcaster|commentator|interviewer|podcast/i, route: '/live' },
   { label: 'Top Writers', match: /writer|blog|journalist|editor|critic|news/i, route: '/rankings?category=writers' },
   { label: 'Top Venues', match: /venue|arena|hall|club/i, route: '/venues' },
-  { label: 'Top Fans', match: /fan/i, route: '/coming-soon/fans' },
+  { label: 'Top Fans', match: /fan/i, route: '/leaderboard' },
 ] as const;
 
 const RIGHT_SPOTLIGHT_RAIL = [
@@ -558,8 +558,8 @@ const RIGHT_SPOTLIGHT_RAIL = [
   { label: 'Featured Venue', key: 'venue', route: '/venues' },
   { label: 'Diamond Members', key: 'diamond', route: '/rankings?tier=Diamond' },
   { label: 'Active Rooms', key: 'rooms', route: '/live/lobby' },
-  { label: 'Top Fans', key: 'fans', route: '/coming-soon/fans' },
-  { label: 'New Members', key: 'members', route: '/coming-soon/new-members' },
+  { label: 'Top Fans', key: 'fans', route: '/leaderboard' },
+  { label: 'New Members', key: 'members', route: '/rankings?filter=new' },
 ] as const;
 
 function matchesRailCategory(card: BillboardCard, matcher: RegExp): boolean {
@@ -855,6 +855,12 @@ export default function Home12Page() {
   // Subscribe to live session changes for real-time "LIVE NOW" rail
   useEffect(() => {
     setLiveSessions(getActiveSessions());
+    void fetch('/api/live/go', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { sessions?: LiveSession[] }) => {
+        if (Array.isArray(d.sessions)) setLiveSessions(d.sessions);
+      })
+      .catch(() => {});
     const unsubscribe = onSessionsChanged((sessions) => {
       setLiveSessions(sessions);
     });

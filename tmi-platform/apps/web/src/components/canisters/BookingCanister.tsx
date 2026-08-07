@@ -36,6 +36,7 @@ export function BookingCanister({
 }: BookingCanisterProps) {
   const [requests, setRequests] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
   const [offerAmount, setOfferAmount] = useState(2500);
@@ -43,15 +44,20 @@ export function BookingCanister({
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const res = await fetch("/api/booking/requests", { credentials: "include" });
       if (res.ok) {
         const data = (await res.json()) as { requests?: BookingRequest[] };
         const all = data.requests ?? [];
         setRequests(all.filter((r) => r.artistSlug === entityId || r.venueSlug === entityId).slice(0, 5));
+      } else {
+        setRequests([]);
+        setLoadError(res.status === 401 ? "Sign in to view booking requests." : "Unable to load booking requests.");
       }
     } catch {
-      // API fallback
+      setRequests([]);
+      setLoadError("Unable to load booking requests.");
     } finally {
       setLoading(false);
     }
@@ -217,28 +223,19 @@ export function BookingCanister({
           >
             {submitting ? "DISPATCHING..." : "DISPATCH BOOKING OFFER"}
           </button>
-          {msg ? <div style={{ fontSize: 9, color: "#00FF88", marginTop: 4 }}>{msg}</div> : null}
+          {msg ? <div style={{ fontSize: 9, color: msg.includes("error") || msg.includes("Could not") || msg.includes("Network") ? "#FF6B6B" : "#00FF88", marginTop: 4 }}>{msg}</div> : null}
         </div>
 
         {/* Center Column: Recent Booking Pipeline */}
         <div style={{ background: "rgba(10,5,25,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.12em" }}>ACTIVE BOOKING PIPELINE</div>
-          {requests.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={bookingCard("#00FF88")}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 900 }}>The Savage Arena × MarcellD</div>
-                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>Guaranteed Offer: $2,500 · Expected Split: 70/30</div>
-                </div>
-                <span style={{ fontSize: 8, fontWeight: 900, color: "#00FF88", background: "rgba(0,255,136,0.15)", padding: "2px 6px", borderRadius: 4 }}>APPROVED</span>
-              </div>
-              <div style={bookingCard("#FFD700")}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 900 }}>Monday Night Cypher Stage × MarcellD</div>
-                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>Guaranteed Offer: $1,800 · Expected Split: 80/20</div>
-                </div>
-                <span style={{ fontSize: 8, fontWeight: 900, color: "#FFD700", background: "rgba(255,215,0,0.15)", padding: "2px 6px", borderRadius: 4 }}>PENDING</span>
-              </div>
+          {loading ? (
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", padding: "12px 4px" }}>Loading bookings…</div>
+          ) : loadError ? (
+            <div style={{ fontSize: 10, color: "#FF6B6B", padding: "12px 4px" }}>{loadError} <button type="button" onClick={() => void load()} style={{ marginLeft: 8, fontSize: 9, color: "#00FFFF", background: "transparent", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 4, cursor: "pointer" }}>Retry</button></div>
+          ) : requests.length === 0 ? (
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", padding: "12px 4px", lineHeight: 1.5 }}>
+              No booking requests yet. Dispatch an offer or open the venue directory to start.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

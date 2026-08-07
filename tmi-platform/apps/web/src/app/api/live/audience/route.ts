@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAudienceSnapshot,
+  getVenueOccupancy,
   joinAudience,
   leaveAudience,
   listAllOccupancies,
@@ -18,7 +19,7 @@ import {
 import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
 import { participationEconomyEngine } from "@/lib/economy/ParticipationEconomyEngine";
 import { prisma } from "@/lib/prisma";
-import { getActiveSessions, updateViewerCount } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessions, updateViewerCount, endLiveSession, removeSessionNow, ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
 
 // Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),
@@ -116,9 +117,36 @@ export async function POST(req: NextRequest) {
       }
       case "leave": {
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+
+        // Capture role before marking inactive
+        const occupancyBeforeLeave = getVenueOccupancy(venueSlug);
+        const leavingMember = occupancyBeforeLeave.members.find((m) => m.userId === userId);
+        const leavingRole = leavingMember?.role ?? "fan";
+
         const afterLeave = leaveAudience(venueSlug, userId);
         syncViewerCountToBroadcastRegistry(venueSlug, afterLeave.present);
-        return NextResponse.json(afterLeave);
+
+        // Auto-close: performer leaving ends the session; or close when all real humans gone
+        const realHumansRemaining = afterLeave.members.filter(
+          (m) => m.active && m.role !== "bot"
+        ).length;
+        const performerLeft = leavingRole === "artist" || leavingRole === "host";
+        const roomEmpty = realHumansRemaining === 0;
+
+        if (performerLeft || roomEmpty) {
+          await ensureHydrated();
+          const activeSessions = getActiveSessions();
+          const matchedSession = activeSessions.find((s) => s.roomId === venueSlug);
+          if (matchedSession) {
+            endLiveSession(matchedSession.userId);
+            await removeSessionNow(matchedSession.userId).catch(() => {});
+          }
+        }
+
+        return NextResponse.json({
+          ...afterLeave,
+          sessionEnded: (performerLeft || roomEmpty),
+        });
       }
       case "message":
         if (!userId || !text) return NextResponse.json({ error: "userId and text required" }, { status: 400 });

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSmartRoom } from "@/lib/rooms/SmartRoomRouter";
 import type { FanSubscriptionTier } from "./FanTierSkinEngine";
+import SplitActionButton from "@/components/ui/SplitActionButton";
+
 
 type FanHubShellProps = {
   fanSlug: string;
@@ -211,7 +213,10 @@ export default function FanHubShell({
         <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 18, fontWeight: 900, color: C.red, textTransform: "uppercase", letterSpacing: "0.08em" }}>
           FAN DASHBOARD ☠
         </div>
-        <div style={{ display: "flex", gap: 5 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <SplitActionButton presetKey="messages" size="sm" />
+          <SplitActionButton presetKey="invite-fans" size="sm" />
+          <SplitActionButton presetKey="uploads" size="sm" />
           {tmiBtn("☠ TRIVIA", "/fan/trivia")}
           {tier !== "free" && tmiBtn("⭐ UPGRADED", undefined, undefined, "gold")}
         </div>

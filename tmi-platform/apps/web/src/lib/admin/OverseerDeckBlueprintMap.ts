@@ -59,6 +59,8 @@ export interface OverseerBlueprintSlot {
 
 export const OVERSEER_DECK_ROUTE = "/admin/overseer";
 export const OBSERVATORY_ROUTE = "/admin/observatory";
+/** Read path: getAnchorNetworkControlSnapshot() from lib/live/AnchorRoomNetwork */
+export const ANCHOR_NETWORK_CONTROLS_SOURCE = "lib/live/AnchorRoomNetwork.ts";
 
 export const OVERSEER_FLIGHT_DECK_CREDITS = [
   "Big Ace",

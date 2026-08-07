@@ -51,8 +51,8 @@ export default function LiveFeedRouter() {
   const [reconnecting, setReconnecting] = useState(false);
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [bitrateKbps, setBitrateKbps] = useState(1884);
-  const [audioLevel, setAudioLevel] = useState(62);
+  const [bitrateKbps, setBitrateKbps] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
   const [liveCount, setLiveCount] = useState(0);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -82,14 +82,8 @@ export default function LiveFeedRouter() {
     void poll(active);
     const id = setInterval(() => {
       void poll(active);
-      setAudioLevel((prev) => {
-        const next = prev + (Math.random() > 0.5 ? 8 : -7);
-        return Math.max(10, Math.min(100, next));
-      });
-      setBitrateKbps((prev) => {
-        const next = prev + (Math.random() > 0.5 ? 24 : -20);
-        return Math.max(900, Math.min(4200, next));
-      });
+      setAudioLevel(0);
+      setBitrateKbps(0);
     }, POLL_INTERVAL_MS);
 
     return () => {

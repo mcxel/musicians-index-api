@@ -30,7 +30,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const QUICK_ACTIONS = [
-  { label: "NEW ARTICLE",     icon: "✏️", href: "/editorial/write",       color: "#FF2DAA", desc: "Start a new piece" },
+  { label: "NEW DRAFT",       icon: "✏️", href: "/editorial/write",       color: "#FF2DAA", desc: "Start a draft (review before magazine)" },
   { label: "MY DRAFTS",       icon: "📝", href: "/editorial/drafts",       color: "#AA2DFF", desc: "View all drafts" },
   { label: "MY WORK WALL",    icon: "📌", href: "/hub/writer/works",       color: "#00FFFF", desc: "Portfolio + published articles" },
   { label: "PITCH ARTICLE",   icon: "🚀", href: "/hub/writer/pitches",     color: "#FFD700", desc: "Submit article idea to editors" },
@@ -134,7 +134,7 @@ export default function WriterHubPage() {
           <div>
             <div style={{ fontSize: 9, letterSpacing: "0.3em", color: ACCENT, fontWeight: 800, marginBottom: 6 }}>✏️ READY TO PUBLISH</div>
             <div style={{ fontSize: 22, fontWeight: 900 }}>Shape the Culture. Tell the Story.</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>Write, edit, and publish articles to the TMI Magazine reaching thousands of music fans.</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>Draft and pitch editorial work. Magazine Issue 1 is the live read surface — publish goes through editorial review when available.</div>
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
             <Link href="/editorial/write" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#AA2DFF)`, borderRadius: 9, color: "#fff", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>NEW ARTICLE</Link>

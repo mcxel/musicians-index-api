@@ -179,15 +179,23 @@ export default function LiveRoomPage({ params }: { params: { slug: string } }) {
   }, [chatInput, chatApiOn, slug]);
 
   const sendTip = useCallback(async () => {
-    setTipped(true);
-    setTimeout(() => setTipped(false), 2800);
-
-    await fetch("/api/tips", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ amount: tipAmt, roomSlug: slug, recipientId: room?.artistSlug }),
-    }).catch(() => {});
+    try {
+      const res = await fetch("/api/tips", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ amount: tipAmt, roomSlug: slug, recipientId: room?.artistSlug }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        console.error("[live tip]", data.error ?? res.status);
+        return;
+      }
+      setTipped(true);
+      window.location.href = data.url;
+    } catch (err) {
+      console.error("[live tip]", err);
+    }
   }, [tipAmt, slug, room?.artistSlug]);
 
   if (!room) {

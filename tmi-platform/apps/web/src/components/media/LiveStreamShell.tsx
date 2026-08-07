@@ -68,14 +68,23 @@ export default function LiveStreamShell({
 
   const sendTip = useCallback(async (amount: number) => {
     setShowTipPanel(false);
-    setTipSent(amount);
-    await fetch('/api/tips', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ recipientId: performerId ?? roomId, amount, roomId }),
-    }).catch(() => {});
-    setTimeout(() => setTipSent(null), 2500);
+    try {
+      const res = await fetch('/api/tips', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ recipientId: performerId ?? roomId, amount, roomId }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        console.error('[LiveStreamShell tip]', data.error ?? res.status);
+        return;
+      }
+      setTipSent(amount);
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('[LiveStreamShell tip]', err);
+    }
   }, [performerId, roomId]);
 
   const joinCamera = useCallback(async () => {

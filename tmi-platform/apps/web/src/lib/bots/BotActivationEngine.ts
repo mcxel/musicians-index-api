@@ -167,31 +167,21 @@ function _runPulse(): void {
     if (!bot.isActive) continue;
     const elapsed = now - bot.lastPulseMs;
     if (elapsed >= bot.intervalMs) {
-      const rand = Math.random();
-      let health: BotHealthStatus = "HEALTHY";
-      if (rand < 0.01)       health = "DEGRADED";
-      else if (rand < 0.015) health = "RESTARTING";
-
-      BOT_STORE.set(id, {
-        ...bot,
-        lastPulseMs: now,
-        health,
-        errorCount: health !== "HEALTHY" ? bot.errorCount + 1 : bot.errorCount,
-      });
-
-      // Emit telemetry on every pulse — tag carries bot identity
+      // Rule 20: no random DEGRADED/RESTARTING fabrication
+      const health: BotHealthStatus = bot.health === 'OFFLINE' ? 'OFFLINE' : 'HEALTHY';
+      BOT_STORE.set(id, { ...bot, lastPulseMs: now, health });
       emitEvent({
-        eventName:   "bot.pulse",
-        domain:      "bot",
-        userId:      `bot:${id}`,
-        activePersonaOverride: "admin",
+        eventName: 'bot.pulse',
+        domain: 'bot',
+        userId: 'bot:' + id,
+        activePersonaOverride: 'admin',
         meta: {
           telemetryTag: bot.telemetryTag,
           category: bot.category,
           health,
           intervalMs: bot.intervalMs,
-          errorCount: health !== "HEALTHY" ? bot.errorCount + 1 : bot.errorCount,
-          surface: bot.surface ?? "none",
+          errorCount: bot.errorCount,
+          surface: bot.surface ?? 'none',
         },
       });
     }

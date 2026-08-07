@@ -4,7 +4,6 @@ import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
 import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
-import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
 import { MEDIA_PLAYER_CHASSIS_REGISTRY } from '@/lib/artifacts/PlaylistArtifactEngine';
@@ -13,6 +12,10 @@ import {
   isStoreListedChassis,
 } from '@/lib/artifacts/MediaPlayerOwnershipService';
 import prisma from '@/lib/prisma';
+import {
+  resolveFanUserIdFromEmail,
+  resolveTipArtistUserId,
+} from '@/lib/tips/tipFulfillment';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -290,12 +293,17 @@ export async function POST(req: NextRequest) {
       if (!stripe) {
         return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
       }
-      const fanId = req.cookies.get('tmi_user_email')?.value ?? '';
-      const fanDisplayName = fanId ? fanId.split('@')[0] : 'Fan';
+      const fanEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+      const fanUserId = (await resolveFanUserIdFromEmail(fanEmail)) ?? 'guest';
+      const fanDisplayName = fanEmail ? fanEmail.split('@')[0] : 'Fan';
+      const artistUserId = await resolveTipArtistUserId(body.artistSlug);
+      if (!artistUserId) {
+        return NextResponse.json({
+          error: 'Artist account not found for tip recipient',
+          code: 'ARTIST_NOT_FOUND',
+        }, { status: 404 });
+      }
       const { origin } = req.nextUrl;
-      // Webhook fulfillment keys off metadata.type === 'tip' + metadata.artistId —
-      // resolve the slug to the registry's stable id so the tip actually lands.
-      const artistId = getPerformerBySlug(body.artistSlug)?.id ?? body.artistSlug;
       const tipSession = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -307,15 +315,17 @@ export async function POST(req: NextRequest) {
             product_data: { name: `Tip for @${body.artistSlug}` },
           },
         }],
-        success_url: `${origin}/payment-success?type=tip&artist=${encodeURIComponent(body.artistSlug)}`,
+        success_url: `${origin}/payment-success?type=tip&artist=${encodeURIComponent(body.artistSlug)}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/home/1`,
+        ...(fanEmail ? { customer_email: fanEmail } : {}),
         metadata: {
           type: 'tip',
-          artistId,
+          artistId: artistUserId,
           artistSlug: body.artistSlug,
           roomId: body.roomId ?? '',
-          fanId,
+          fanId: fanUserId,
           fanDisplayName,
+          fanName: fanDisplayName,
         },
       });
       if (!tipSession.url) throw new Error('No session URL from Stripe');

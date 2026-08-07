@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useReducer } from "react";
 
 type ThreatType = "moderation" | "ticket" | "bot" | "auth" | "fraud";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -15,23 +15,7 @@ interface ThreatAlert {
   cleared: boolean;
 }
 
-const SEED: ThreatAlert[] = [
-  { id: "t1", type: "fraud",      severity: "CRITICAL", message: "Multi-account ticket purchase — 6 tickets, 1 device",  userId: "u-4421", ts: "just now", cleared: false },
-  { id: "t2", type: "auth",       severity: "HIGH",     message: "Brute-force login pattern — 28 attempts in 90s",       userId: "u-7712", ts: "1m ago",   cleared: false },
-  { id: "t3", type: "ticket",     severity: "HIGH",     message: "Suspicious scan — same QR re-used at Gate 3",          userId: "u-3308", ts: "3m ago",   cleared: false },
-  { id: "t4", type: "bot",        severity: "MEDIUM",   message: "Bot flood in Cypher Room 3 — 190 messages/min",                          ts: "5m ago",   cleared: false },
-  { id: "t5", type: "moderation", severity: "MEDIUM",   message: "Hate speech incident — Room 7, user escalated",        userId: "u-5508", ts: "9m ago",   cleared: false },
-  { id: "t6", type: "auth",       severity: "LOW",      message: "Failed 2FA x5 — no lockout triggered yet",             userId: "u-2247", ts: "14m ago",  cleared: true  },
-  { id: "t7", type: "ticket",     severity: "LOW",      message: "Refund anomaly — rapid cancel + rebuy pattern",        userId: "u-9901", ts: "22m ago",  cleared: true  },
-];
-
-const AUTO_INJECT: Omit<ThreatAlert, "id" | "ts" | "cleared">[] = [
-  { type: "bot",        severity: "MEDIUM",   message: "Rate-limit bypass on /api/vote" },
-  { type: "auth",       severity: "HIGH",     message: "Token replay attempt — expired JWT reused" },
-  { type: "moderation", severity: "LOW",      message: "Spam wave in Battle feed — filtered" },
-  { type: "ticket",     severity: "MEDIUM",   message: "QR scan velocity anomaly — Gate 1" },
-  { type: "fraud",      severity: "CRITICAL", message: "Card testing pattern on checkout route" },
-];
+const SEED: ThreatAlert[] = [];
 
 const SEV_STYLE: Record<Severity, string> = {
   CRITICAL: "border-red-500/70 bg-red-500/10 text-red-300",
@@ -62,27 +46,9 @@ function alertReducer(state: ThreatAlert[], action: Action): ThreatAlert[] {
   return state;
 }
 
-let _nextId = 100;
-
 export default function ThreatWall() {
   const [alerts, dispatch] = useReducer(alertReducer, SEED);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const template = AUTO_INJECT[Math.floor(Math.random() * AUTO_INJECT.length)];
-      if (!template) return;
-      dispatch({
-        type: "inject",
-        alert: {
-          ...template,
-          id: `auto-${_nextId++}`,
-          ts: "just now",
-          cleared: false,
-        },
-      });
-    }, 18_000);
-    return () => clearInterval(id);
-  }, []);
 
   const active  = alerts.filter((a) => !a.cleared);
   const cleared = alerts.filter((a) => a.cleared);

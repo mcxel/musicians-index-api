@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import {
   equipAvatarItem,
@@ -7,16 +8,18 @@ import {
   validateUnlockConditions,
   type AvatarSlot,
 } from "@/lib/avatar/avatarPersistence";
+import { requireFanAvatarSession } from "@/lib/avatar/requireFanAvatarSession";
 
 type EquipBody = {
-  userId?: string;
   itemId?: string;
   slot?: AvatarSlot;
 };
 
 export async function POST(req: NextRequest) {
+  const auth = requireFanAvatarSession(req);
+  if ("error" in auth) return auth.error;
   const body = (await req.json().catch(() => ({}))) as EquipBody;
-  const userId = body.userId ?? "demo-user";
+  const userId = auth.user.id;
   const itemId = body.itemId;
   const slot = body.slot;
 

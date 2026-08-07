@@ -1,16 +1,14 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getAvatarPersistenceSnapshot } from "@/lib/avatar/avatarPersistence";
-
-function resolveUserId(req: NextRequest): string {
-  return req.nextUrl.searchParams.get("userId") ?? "demo-user";
-}
+import { requireFanAvatarSession } from "@/lib/avatar/requireFanAvatarSession";
 
 export async function GET(req: NextRequest) {
-  const userId = resolveUserId(req);
+  const auth = requireFanAvatarSession(req);
+  if ("error" in auth) return auth.error;
   return NextResponse.json({
     ok: true,
-    userId,
-    ...(await getAvatarPersistenceSnapshot(userId)),
+    userId: auth.user.id,
+    ...(await getAvatarPersistenceSnapshot(auth.user.id)),
   });
 }

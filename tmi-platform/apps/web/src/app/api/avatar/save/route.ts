@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAvatarPersistenceSnapshot,
@@ -6,9 +6,9 @@ import {
   saveAvatarProfile,
   type AvatarSlot,
 } from "@/lib/avatar/avatarPersistence";
+import { requireFanAvatarSession } from "@/lib/avatar/requireFanAvatarSession";
 
 type SaveBody = {
-  userId?: string;
   profile?: {
     displayName?: string;
     skinTone?: string;
@@ -19,8 +19,10 @@ type SaveBody = {
 };
 
 export async function POST(req: NextRequest) {
+  const auth = requireFanAvatarSession(req);
+  if ("error" in auth) return auth.error;
   const body = (await req.json().catch(() => ({}))) as SaveBody;
-  const userId = body.userId ?? "demo-user";
+  const userId = auth.user.id;
 
   if (body.profile) {
     saveAvatarProfile(userId, body.profile);

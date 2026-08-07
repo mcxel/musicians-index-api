@@ -828,13 +828,27 @@ export default function Home1CoverPage() {
   // like "🔴 LIVE 42 viewers Battle Thunder Dome" orbit badges.
   const [livePerformers, setLivePerformers] = useState<LiveSession[]>([]);
   useEffect(() => {
-    // Get initial state
     setLivePerformers(getActiveSessions());
-    // Subscribe to live session changes
     const unsubscribe = onSessionsChanged((sessions) => {
       setLivePerformers(sessions);
     });
-    return () => unsubscribe();
+    // Durable hydrate across serverless instances — poll GET /api/live/go
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const res = await fetch("/api/live/go", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { sessions?: LiveSession[] };
+        if (!cancelled && Array.isArray(data.sessions)) setLivePerformers(data.sessions);
+      } catch { /* keep local registry */ }
+    };
+    void sync();
+    const timer = window.setInterval(() => void sync(), 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      unsubscribe();
+    };
   }, []);
 
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.

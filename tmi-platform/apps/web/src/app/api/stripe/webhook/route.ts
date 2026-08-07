@@ -7,20 +7,30 @@ import { tierForPriceId } from '@/lib/stripe/tierMapping';
 import { syncInventory } from '@/lib/commerce/commerceEngine';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { waitUntil } from '@vercel/functions';
-import { createTicket } from '@/lib/tickets/ticketEngine';
-import type { TicketTier } from '@/lib/tickets/ticketCore';
+import { getStripe } from '@/lib/stripe/client';
+import { grantTipFromStripeSession } from '@/lib/tips/tipFulfillment';
+import { recordStripeEvent } from '@/lib/stripe/stripe-telemetry-store';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-02-25.clover' as const,
-});
+const stripe = getStripe();
 
-async function grantSubscriptionTier(customerEmail: string, priceId: string, customerId: string) {
+async function grantSubscriptionTier(
+  customerEmail: string,
+  priceId: string,
+  customerId: string,
+  opts?: { subscriptionId?: string; currentPeriodEnd?: Date | null },
+) {
   const tier = tierForPriceId(priceId);
   if (!tier || tier === 'FREE') return;
   updateUserTier(customerEmail, tier);
   await prisma.user.updateMany({
     where: { email: customerEmail },
-    data: { tier, stripeCustomerId: customerId },
+    data: {
+      tier,
+      stripeCustomerId: customerId,
+      stripePriceId: priceId,
+      ...(opts?.subscriptionId ? { stripeSubscriptionId: opts.subscriptionId } : {}),
+      ...(opts?.currentPeriodEnd ? { stripeCurrentPeriodEnd: opts.currentPeriodEnd } : {}),
+    },
   }).catch(() => {});
 }
 
@@ -78,6 +88,13 @@ async function markEventProcessed(eventId: string): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Stripe not configured', code: 'STRIPE_NOT_CONFIGURED' },
+      { status: 503 },
+    );
+  }
+
   const payload = await req.text();
   const sig = req.headers.get('stripe-signature');
 
@@ -204,24 +221,48 @@ export async function POST(req: NextRequest) {
       // ─── 3. LIVE TIP FULFILLMENT ──────────────────────────────────────
       if (metadata.type === 'tip') {
         const amount = session.amount_total || 0;
-        await prisma.tip.create({ data: { fromUserId: metadata.fanId || 'guest', toArtistId: metadata.artistId, roomId: metadata.roomId, amount: amount, artistShare: Math.floor(amount * 0.90), platformFee: Math.floor(amount * 0.10), status: 'COMPLETED', stripeId: session.id } });
-        await prisma.ledgerEntry.create({ data: { userId: metadata.artistId, type: 'CREDIT', amount: Math.floor(amount * 0.90), description: `Tip from fan`, relatedId: session.id } });
+        const artistUserId = metadata.artistId;
+        if (!artistUserId) {
+          throw new Error('Tip fulfillment missing metadata.artistId');
+        }
+        const artistExists = await prisma.user.findUnique({
+          where: { id: artistUserId },
+          select: { id: true, email: true },
+        });
+        if (!artistExists) {
+          throw new Error(`Tip artist user not found: ${artistUserId}`);
+        }
 
-        // Notify the artist they received a tip
-        if (metadata.artistId) {
-          const artist = await prisma.user.findUnique({ where: { id: metadata.artistId }, select: { email: true, displayName: true } }).catch(() => null);
-          if (artist?.email) {
-            waitUntil(sendEmail({
-              to: artist.email,
-              type: 'tip_received',
-              data: {
-                fanName: metadata.fanName ?? 'A fan',
-                amount: ((amount) / 100).toFixed(2),
-                roomName: metadata.roomName ?? 'your live room',
-                message: metadata.message ?? '',
-              },
-            }).catch(() => {}));
-          }
+        await grantTipFromStripeSession({
+          stripeSessionId: session.id,
+          fromUserId: metadata.fanId && metadata.fanId !== 'guest' ? metadata.fanId : 'guest',
+          toArtistUserId: artistUserId,
+          amountCents: amount,
+          roomId: metadata.roomId || null,
+        });
+
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'one_time',
+          amountCents: amount,
+          currency: session.currency || 'usd',
+          type: 'tip',
+          simulated: false,
+        });
+
+        if (artistExists.email) {
+          waitUntil(sendEmail({
+            to: artistExists.email,
+            type: 'tip_received',
+            data: {
+              fanName: metadata.fanName ?? metadata.fanDisplayName ?? 'A fan',
+              amount: (amount / 100).toFixed(2),
+              roomName: metadata.roomName ?? 'your live room',
+              message: metadata.message ?? '',
+            },
+          }).catch(() => {}));
         }
       }
 
@@ -348,7 +389,21 @@ export async function POST(req: NextRequest) {
         try {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           const priceId = sub.items.data[0]?.price?.id ?? '';
-          await grantSubscriptionTier(grantEmail, priceId, session.customer as string);
+          const periodEndTs = (sub as unknown as { current_period_end?: number }).current_period_end;
+          await grantSubscriptionTier(grantEmail, priceId, session.customer as string, {
+            subscriptionId: sub.id,
+            currentPeriodEnd: periodEndTs ? new Date(periodEndTs * 1000) : null,
+          });
+          recordStripeEvent('webhook_verified', {
+            fingerprint: session.id,
+            eventType: 'checkout.session.completed',
+            livemode: Boolean(session.livemode),
+            revenueStream: 'subscriptions',
+            amountCents: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            type: 'subscription',
+            simulated: false,
+          });
         } catch (subErr) {
           console.error('[Stripe Webhook] Subscription retrieval failed:', subErr);
           // Continue processing; subscription may not exist yet in test scenarios
@@ -363,7 +418,11 @@ export async function POST(req: NextRequest) {
       const email = 'deleted' in customer ? null : customer.email;
       if (email) {
         const priceId = sub.items.data[0]?.price?.id ?? '';
-        await grantSubscriptionTier(email, priceId, sub.customer as string);
+        const periodEndTs = (sub as unknown as { current_period_end?: number }).current_period_end;
+        await grantSubscriptionTier(email, priceId, sub.customer as string, {
+          subscriptionId: sub.id,
+          currentPeriodEnd: periodEndTs ? new Date(periodEndTs * 1000) : null,
+        });
       }
     }
 
@@ -412,7 +471,11 @@ export async function POST(req: NextRequest) {
       if (email && subscriptionId) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = sub.items.data[0]?.price?.id ?? '';
-        await grantSubscriptionTier(email, priceId, customerId);
+        const periodEndTsInv = (sub as unknown as { current_period_end?: number }).current_period_end;
+        await grantSubscriptionTier(email, priceId, customerId, {
+          subscriptionId: sub.id,
+          currentPeriodEnd: periodEndTsInv ? new Date(periodEndTsInv * 1000) : null,
+        });
       }
     }
 
