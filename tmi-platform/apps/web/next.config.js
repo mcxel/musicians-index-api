@@ -161,7 +161,12 @@ const nextConfig = {
       { source: '/account/promos', destination: '/promo/TMI', permanent: false },
 
       // ── Editorial / judge / support aliases ───────────────────────────────
-      { source: '/editorial/write', destination: '/submit', permanent: false },
+      // Writer Hub "NEW DRAFT" — real article submit, not /submit (tracks/beats).
+      { source: '/editorial/write', destination: '/writers/submit', permanent: false },
+      { source: '/editorial/drafts', destination: '/writers/dashboard', permanent: false },
+      { source: '/editorial/analytics', destination: '/editorial/performance', permanent: false },
+      { source: '/editorial/contributors', destination: '/writers', permanent: false },
+      { source: '/admin/certification', destination: '/admin/runtime-check', permanent: false },
       { source: '/judge', destination: '/battles', permanent: false },
       { source: '/messages/support', destination: '/support', permanent: false },
       { source: '/events/:id', destination: '/live/rooms/:id', permanent: false },

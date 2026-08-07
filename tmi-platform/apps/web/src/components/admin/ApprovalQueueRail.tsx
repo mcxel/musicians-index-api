@@ -1,75 +1,114 @@
 "use client";
 
 // Canon source: Adminisratation Hub.jpg — Approve Queue rail
-// Structure: pending approval items (bookings, artist applications, sponsor contracts)
-//            + APPROVE / DENY / SANCTION action buttons per item
-// Interactions: approve → green flash + remove; deny → red flash + remove; sanction → modal
+// Rule 20: real SubmissionEngine queue via /api/admin/approvals — no seed items.
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-type ApprovalCategory = "booking" | "artist" | "sponsor" | "advertiser" | "content" | "withdrawal";
-type ApprovalStatus = "pending" | "approved" | "denied" | "sanctioned";
+type ApprovalStatus = "pending" | "approved" | "rejected" | "live" | "expired";
 
 interface ApprovalItem {
   id: string;
-  category: ApprovalCategory;
-  title: string;
-  sub: string;
-  amount?: string;
-  urgency: "normal" | "high" | "critical";
-  ts: string;
+  type: string;
+  name: string;
+  artist: string;
+  genre: string;
+  submitted: string;
+  status: ApprovalStatus;
 }
 
-const CAT_COLOR: Record<ApprovalCategory, string> = {
-  booking:    "#00FFFF",
-  artist:     "#FF2DAA",
-  sponsor:    "#FFD700",
-  advertiser: "#AA2DFF",
-  content:    "#00FF88",
-  withdrawal: "#FF6B00",
+const STATUS_COLOR: Record<ApprovalStatus, string> = {
+  pending: "#FFD700",
+  approved: "#00FF88",
+  rejected: "#FF4444",
+  live: "#00FFFF",
+  expired: "rgba(255,255,255,0.35)",
 };
 
-const SEED_QUEUE: ApprovalItem[] = [
-  { id: "aq1", category: "booking",    title: "KOVA — Main Stage Booking",       sub: "Sat 8PM · 2,400 seats",   amount: "$12,500",  urgency: "high",   ts: "10m" },
-  { id: "aq2", category: "artist",     title: "Nova Flux — Artist Application",  sub: "Electronic · 4.2K followers",               urgency: "normal", ts: "25m" },
-  { id: "aq3", category: "sponsor",    title: "RetroLogo — Sponsor Contract",    sub: "FEATURED tier · 3 months", amount: "$8,000",   urgency: "high",   ts: "1h"  },
-  { id: "aq4", category: "withdrawal", title: "Drift Sound — Revenue Withdrawal",sub: "Monthly split",             amount: "$4,200",   urgency: "critical",ts: "1h" },
-  { id: "aq5", category: "content",    title: "Magazine Article — Week 14",      sub: "Awaiting editorial review",                  urgency: "normal", ts: "2h"  },
-  { id: "aq6", category: "advertiser", title: "BeatBox Ads — Campaign Launch",   sub: "Video Ads · $350 budget",  amount: "$350",     urgency: "normal", ts: "3h"  },
-];
+type LoadState = "loading" | "ready" | "error";
 
 export default function ApprovalQueueRail() {
-  const [queue, setQueue] = useState(SEED_QUEUE);
+  const [queue, setQueue] = useState<ApprovalItem[]>([]);
+  const [state, setState] = useState<LoadState>("loading");
   const [flash, setFlash] = useState<Record<string, "approved" | "denied">>({});
+  const [busy, setBusy] = useState<string | null>(null);
 
-  function act(id: string, action: "approve" | "deny") {
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/approvals", { credentials: "include", cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const data = (await r.json()) as { ok?: boolean; queue?: ApprovalItem[] };
+      setQueue(Array.isArray(data.queue) ? data.queue.filter((i) => i.status === "pending") : []);
+      setState("ready");
+    } catch {
+      setState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function act(id: string, action: "approve" | "reject") {
+    setBusy(id);
     setFlash((prev) => ({ ...prev, [id]: action === "approve" ? "approved" : "denied" }));
-    setTimeout(() => {
-      setQueue((q) => q.filter((item) => item.id !== id));
-      setFlash((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    }, 600);
+    try {
+      const r = await fetch("/api/admin/approvals", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action }),
+      });
+      if (!r.ok) throw new Error("fail");
+      setTimeout(() => {
+        setQueue((q) => q.filter((item) => item.id !== id));
+        setFlash((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }, 400);
+    } catch {
+      setFlash((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
-    <div
-      data-approval-queue-rail
-      style={{ display: "flex", flexDirection: "column", gap: 8 }}
-    >
-      {/* Header */}
+    <div data-approval-queue-rail style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.45)", letterSpacing: "0.2em" }}>
-          APPROVAL QUEUE · {queue.length}
+          APPROVAL QUEUE · {state === "ready" ? queue.length : "—"}
         </span>
         <Link href="/admin/approvals" style={{ fontSize: 7, color: "#00FFFF", textDecoration: "none", letterSpacing: "0.1em" }}>
           ALL →
         </Link>
       </div>
 
-      {/* Queue items */}
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {state === "loading" && (
+          <p style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center", padding: "16px 0", letterSpacing: "0.15em" }}>
+            LOADING QUEUE…
+          </p>
+        )}
+        {state === "error" && (
+          <p style={{ fontSize: 8, color: "rgba(255,100,100,0.7)", textAlign: "center", padding: "16px 0", letterSpacing: "0.1em" }}>
+            UNABLE TO LOAD QUEUE
+          </p>
+        )}
+        {state === "ready" && queue.length === 0 && (
+          <p style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center", padding: "16px 0", letterSpacing: "0.15em" }}>
+            QUEUE CLEAR — NO PENDING SUBMISSIONS
+          </p>
+        )}
         {queue.map((item) => {
-          const color = CAT_COLOR[item.category];
+          const color = STATUS_COLOR[item.status] ?? "#00FFFF";
           const flashState = flash[item.id];
           return (
             <div
@@ -77,23 +116,23 @@ export default function ApprovalQueueRail() {
               style={{
                 padding: "8px 10px",
                 borderRadius: 7,
-                background: flashState === "approved"
-                  ? "rgba(0,255,136,0.15)"
-                  : flashState === "denied"
-                  ? "rgba(255,68,68,0.15)"
-                  : `${color}06`,
+                background:
+                  flashState === "approved"
+                    ? "rgba(0,255,136,0.15)"
+                    : flashState === "denied"
+                      ? "rgba(255,68,68,0.15)"
+                      : `${color}06`,
                 border: `1px solid ${flashState ? (flashState === "approved" ? "#00FF88" : "#FF4444") : `${color}20`}`,
                 transition: "background 0.2s, border-color 0.2s",
               }}
             >
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
-                {/* Category tag */}
                 <span
                   style={{
                     fontSize: 6,
                     fontWeight: 900,
                     letterSpacing: "0.12em",
-                    color: color,
+                    color,
                     background: `${color}15`,
                     borderRadius: 3,
                     padding: "1px 5px",
@@ -101,40 +140,26 @@ export default function ApprovalQueueRail() {
                     textTransform: "uppercase",
                   }}
                 >
-                  {item.category}
+                  {item.type}
                 </span>
-
-                {/* Urgency */}
-                {item.urgency !== "normal" && (
-                  <span
-                    style={{
-                      fontSize: 6,
-                      fontWeight: 900,
-                      color: item.urgency === "critical" ? "#FF4444" : "#FFD700",
-                      letterSpacing: "0.1em",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {item.urgency.toUpperCase()}
-                  </span>
-                )}
-
                 <span style={{ flex: 1, fontSize: 7, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
-                  {item.ts} ago
+                  {item.submitted}
                 </span>
               </div>
 
               <p style={{ fontSize: 9, fontWeight: 800, color: "#fff", marginBottom: 2, letterSpacing: "0.04em" }}>
-                {item.title}
+                {item.name}
               </p>
               <p style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
-                {item.sub}{item.amount ? ` · ${item.amount}` : ""}
+                {item.artist}
+                {item.genre ? ` · ${item.genre}` : ""}
               </p>
 
-              {/* Actions */}
               <div style={{ display: "flex", gap: 5 }}>
                 <button
-                  onClick={() => act(item.id, "approve")}
+                  type="button"
+                  disabled={busy === item.id}
+                  onClick={() => void act(item.id, "approve")}
                   style={{
                     flex: 1,
                     padding: "4px 0",
@@ -145,14 +170,15 @@ export default function ApprovalQueueRail() {
                     fontSize: 7,
                     fontWeight: 900,
                     letterSpacing: "0.12em",
-                    cursor: "pointer",
-                    transition: "background 0.15s",
+                    cursor: busy === item.id ? "wait" : "pointer",
                   }}
                 >
                   APPROVE
                 </button>
                 <button
-                  onClick={() => act(item.id, "deny")}
+                  type="button"
+                  disabled={busy === item.id}
+                  onClick={() => void act(item.id, "reject")}
                   style={{
                     flex: 1,
                     padding: "4px 0",
@@ -163,37 +189,15 @@ export default function ApprovalQueueRail() {
                     fontSize: 7,
                     fontWeight: 900,
                     letterSpacing: "0.12em",
-                    cursor: "pointer",
-                    transition: "background 0.15s",
+                    cursor: busy === item.id ? "wait" : "pointer",
                   }}
                 >
                   DENY
-                </button>
-                <button
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: 5,
-                    background: "rgba(255,215,0,0.06)",
-                    border: "1px solid rgba(255,215,0,0.2)",
-                    color: "#FFD700",
-                    fontSize: 7,
-                    fontWeight: 900,
-                    letterSpacing: "0.1em",
-                    cursor: "pointer",
-                  }}
-                >
-                  ⚑
                 </button>
               </div>
             </div>
           );
         })}
-
-        {queue.length === 0 && (
-          <p style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center", padding: "16px 0", letterSpacing: "0.15em" }}>
-            QUEUE CLEAR
-          </p>
-        )}
       </div>
     </div>
   );

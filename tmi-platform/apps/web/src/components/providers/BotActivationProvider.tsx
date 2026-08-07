@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   SENTINEL_BOTS,
   getSurfaceBots,
@@ -60,9 +60,10 @@ function buildActiveBots(): ActiveBotRecord[] {
       records.push({
         bot,
         surface,
-        status: bot.role === "SENTINEL" ? "ACTIVE" : "ACTIVE",
-        lastHeartbeatMs: now - Math.floor(Math.random() * 4000),
-        taskCount: Math.floor(Math.random() * 12),
+        status: "ACTIVE",
+        // Rule 20: static activation snapshot — no fake heartbeat/task pulses.
+        lastHeartbeatMs: now,
+        taskCount: 0,
       });
     }
   }
@@ -73,27 +74,10 @@ function buildActiveBots(): ActiveBotRecord[] {
 export default function BotActivationProvider({ children }: { children: React.ReactNode }) {
   const [activeBots, setActiveBots] = useState<ActiveBotRecord[]>([]);
   const [isReady, setIsReady] = useState(false);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const bots = buildActiveBots();
-    setActiveBots(bots);
+    setActiveBots(buildActiveBots());
     setIsReady(true);
-
-    heartbeatRef.current = setInterval(() => {
-      setActiveBots((prev) =>
-        prev.map((r) => ({
-          ...r,
-          lastHeartbeatMs: Date.now(),
-          taskCount: Math.max(0, r.taskCount + Math.floor((Math.random() - 0.3) * 3)),
-          status: Math.random() > 0.97 ? "ALERT" : r.bot.role === "SENTINEL" ? "ACTIVE" : (Math.random() > 0.15 ? "ACTIVE" : "IDLE"),
-        }))
-      );
-    }, 8000);
-
-    return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-    };
   }, []);
 
   function getBotsForSurface(surface: SurfaceKey): ActiveBotRecord[] {

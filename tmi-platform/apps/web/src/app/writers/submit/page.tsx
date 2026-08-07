@@ -21,19 +21,34 @@ export default function WritersSubmitPage() {
     sponsorSlug: "",
   });
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setDone(true);
-    await fetch("/api/editorial/submit", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        ...form,
-        sourceUrls: form.sourceUrls.split("\n").map(u => u.trim()).filter(Boolean),
-      }),
-    }).catch(() => {});
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/editorial/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...form,
+          sourceUrls: form.sourceUrls.split("\n").map((u) => u.trim()).filter(Boolean),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "Submission failed. Try again.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Unable to reach the submission service. Retry shortly.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const input: React.CSSProperties = { width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" };
@@ -116,22 +131,28 @@ export default function WritersSubmitPage() {
             By submitting, you confirm all sources are accurate and the content is your original work or properly attributed. Submissions with low trust scores, flagged safety content, or invalid sources are automatically rejected.
           </div>
 
+          {error && (
+            <div style={{ background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.35)", borderRadius: 10, padding: "12px 14px", fontSize: 11, color: "#ff9b9b" }}>
+              {error}
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={!form.title || !form.category || form.body.trim().split(/\s+/).length < 50}
+            disabled={submitting || !form.title || !form.category || form.body.trim().split(/\s+/).length < 50}
             style={{
               padding: "14px 0",
               fontSize: 11,
               fontWeight: 800,
               letterSpacing: "0.15em",
-              color: (!form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "rgba(255,255,255,0.3)" : "#050510",
-              background: (!form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#FFD700,#FF9500)",
+              color: (submitting || !form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "rgba(255,255,255,0.3)" : "#050510",
+              background: (submitting || !form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#FFD700,#FF9500)",
               borderRadius: 10,
               border: "none",
-              cursor: (!form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "not-allowed" : "pointer",
+              cursor: (submitting || !form.title || !form.category || form.body.trim().split(/\s+/).length < 50) ? "not-allowed" : "pointer",
             }}
           >
-            SUBMIT TO REVIEW QUEUE
+            {submitting ? "SUBMITTING…" : "SUBMIT TO REVIEW QUEUE"}
           </button>
         </form>
       </div>

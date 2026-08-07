@@ -940,10 +940,10 @@ export default function Home1CoverPage() {
     { label: 'Top Choirs', categoryHint: 'Gospel', route: '/rankings?category=choirs', filter: (p: Performer) => /choir/i.test(`${p.name} ${p.genre}`) },
     { label: 'Top Marching Bands', categoryHint: 'Marching Band', route: '/rankings?category=marching-bands', filter: (p: Performer) => /marching/i.test(`${p.name} ${p.genre}`) },
     { label: 'Top Dance Crews', categoryHint: 'Hip Hop Dance', route: '/rankings?category=dance-crews', filter: (p: Performer) => /dance crew|dance crews|hip hop dance|break|popping|locking/i.test(`${p.name} ${p.genre}`) },
-    { label: 'Top Streamers', categoryHint: 'Creator', route: '/coming-soon/streamers', filter: (p: Performer) => /stream|broadcaster|commentator|interviewer|podcast/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Streamers', categoryHint: 'Creator', route: '/streams', filter: (p: Performer) => /stream|broadcaster|commentator|interviewer|podcast/i.test(`${p.name} ${p.genre}`) },
     { label: 'Top Writers', categoryHint: 'Writers', route: '/rankings?category=writers', filter: (p: Performer) => /writer|blog|journalist|editor|critic|news/i.test(`${p.name} ${p.genre}`) },
     { label: 'Top Venues', categoryHint: 'Venues', route: '/venues', filter: (p: Performer) => /venues/i.test(p.genre) },
-    { label: 'Top Fans', categoryHint: 'Fans', route: '/coming-soon/fans', filter: () => false },
+    { label: 'Top Fans', categoryHint: 'Fans', route: '/rankings', filter: () => false },
   ] as const;
   const activeDiscovery = genreDiscoveryRails[leftRailIndex % genreDiscoveryRails.length]!;
   const discoveryEntries = performers.filter(activeDiscovery.filter).slice(0, 3);
@@ -971,12 +971,12 @@ export default function Home1CoverPage() {
     },
     {
       label: 'Top Fans',
-      route: '/coming-soon/fans',
+      route: '/rankings',
       entries: getFeaturedFreePerformers(4).map((p) => ({ name: p.name, sub: 'Community supporter', href: `/performers/${p.slug}` })),
     },
     {
       label: 'New Members',
-      route: '/coming-soon/new-members',
+      route: '/rankings?rising=true',
       entries: topPerformers.slice(-4).map((p) => ({ name: p.name, sub: 'New in rotation', href: p.profileRoute })),
     },
   ] as const;

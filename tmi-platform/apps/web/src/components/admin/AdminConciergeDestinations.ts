@@ -43,6 +43,14 @@ export const ADMIN_CONCIERGE_DESTINATIONS: ConciergeDestination[] = [
     keywords: ["health", "certify"],
   },
   {
+    id: "bot-live-observer",
+    label: "Bot Live Observer",
+    href: "/admin/bots/observe",
+    group: "Ops Intelligence",
+    accent: "#FF2DAA",
+    keywords: ["bot", "pov", "observe", "soft-launch", "duty", "telemetry"],
+  },
+  {
     id: "certification",
     label: "Certification",
     href: "/admin/runtime-check",

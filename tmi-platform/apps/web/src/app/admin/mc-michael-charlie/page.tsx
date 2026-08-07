@@ -26,13 +26,8 @@ type Recommendation = {
   approved: boolean | null;
 };
 
-const SEED_RECOMMENDATIONS: Recommendation[] = [
-  { id: "r1", category: "Tickets",  issue: "VIP tier underpriced vs demand curve",             fix: "Raise VIP floor by $15 across 3 active venues",               impact: "+$9,200 projected monthly",  severity: "high",     approved: null },
-  { id: "r2", category: "Ads",      issue: "Billboard slot CPM 40% below market rate",          fix: "Reprice 4 billboard slots — apply 1.4× multiplier",           impact: "+$4,800 projected monthly",  severity: "high",     approved: null },
-  { id: "r3", category: "Merch",    issue: "3 SKUs showing <2% conversion over 30 days",        fix: "Bundle low-conv SKUs into fan club reward drops",              impact: "Recover $1,200 dead stock",  severity: "medium",   approved: null },
-  { id: "r4", category: "Sponsors", issue: "2 sponsor contracts expiring with no renewal offer",fix: "Auto-send renewal deck to Crown Stage + SoundBridge",         impact: "$18,000 at risk",            severity: "critical", approved: null },
-  { id: "r5", category: "Booking",  issue: "7 venue slots unfilled for next 14 days",           fix: "Open last-minute artist application window",                  impact: "+$6,400 potential revenue",  severity: "medium",   approved: null },
-];
+/** Rule 20: no fabricated optimizer recommendations / vanity dollar impacts. */
+const SEED_RECOMMENDATIONS: Recommendation[] = [];
 
 const BOT_STATUS = [
   { name: "CopyBot",      role: "Content writing",        status: "active" },
@@ -127,14 +122,14 @@ export default function MCMichaelCharlieHubPage() {
         </div>
       </div>
 
-      {/* Status strip */}
+      {/* Status strip — Rule 20: no vanity dollar recovery figures */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8, marginBottom: 14 }}>
         {[
           { label: "Pending Recs",    value: String(pending.length),  color: "#f59e0b" },
           { label: "Approved",        value: String(approved.length), color: "#22c55e" },
-          { label: "Revenue At Risk", value: "$18K",                  color: "#ef4444" },
-          { label: "Est. Recovery",   value: "+$39.6K",               color: "#fcd34d" },
-          { label: "Margin Health",   value: "71%",                   color: "#c4b5fd" },
+          { label: "Revenue At Risk", value: "—",                     color: "#ef4444" },
+          { label: "Est. Recovery",   value: "—",                     color: "#fcd34d" },
+          { label: "Margin Health",   value: "—",                     color: "#c4b5fd" },
         ].map(m => (
           <div key={m.label} style={{ border: `1px solid ${m.color}33`, borderRadius: 10, background: "rgba(255,255,255,0.03)", padding: "8px 10px" }}>
             <p style={{ margin: 0, fontSize: 9, color: m.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{m.label}</p>
@@ -243,7 +238,11 @@ export default function MCMichaelCharlieHubPage() {
               </span>
             </div>
             <div style={{ padding: 10, display: "grid", gap: 8 }}>
-              {recs.map(rec => {
+              {recs.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "16px 8px" }}>
+                  No optimizer recommendations yet. Real findings appear here when profit rails emit them.
+                </p>
+              ) : recs.map(rec => {
                 const sty = SEVERITY_STYLE[rec.severity];
                 return (
                   <div

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubmissionEngine";
+import { contributorAccountEngine } from "@/lib/editorial-economy/ContributorAccountEngine";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,8 +18,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "title, body, and category are required" }, { status: 400 });
     }
 
+    const contributorId = body.contributorId?.trim() || "writer-demo";
+    if (!contributorAccountEngine.get(contributorId)) {
+      contributorAccountEngine.create({
+        contributorId,
+        displayName: contributorId === "writer-demo" ? "Demo Writer" : contributorId,
+        level: "verified-contributor",
+      });
+    }
+
     const result = editorialSubmissionEngine.submit({
-      contributorId: body.contributorId ?? "writer-demo",
+      contributorId,
       title: body.title,
       body: body.body,
       category: body.category as Parameters<typeof editorialSubmissionEngine.submit>[0]["category"],

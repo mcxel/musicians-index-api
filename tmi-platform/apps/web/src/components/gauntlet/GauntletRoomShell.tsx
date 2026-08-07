@@ -41,6 +41,7 @@ import {
 import GauntletPresentationOverlay from "@/components/gauntlet/GauntletPresentationOverlay";
 import GauntletRoundHUD from "@/components/gauntlet/GauntletRoundHUD";
 import GauntletEliminationVotePanel from "@/components/gauntlet/GauntletEliminationVotePanel";
+import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
@@ -295,6 +296,17 @@ NEXT_PUBLIC_FEATURE_GAUNTLET_ENTRY_ENABLED=true`}</pre>
           aliveIds={run.aliveIds}
           voterId={voterId}
           onVoted={() => setTick((n) => n + 1)}
+        />
+      )}
+
+      {/* Rubric vote complements elimination — open during elim + final judging windows */}
+      {run && (run.phase === "AUDIENCE_ELIMINATION_VOTE" || run.phase === "FINAL" || voteOpen) && (
+        <FanRubricVotingPanel
+          roomId={roomId}
+          eventId={run.runId}
+          performerIds={run.aliveIds.slice(0, 8)}
+          voterId={voterId}
+          votingOpen={run.phase === "AUDIENCE_ELIMINATION_VOTE" || run.phase === "FINAL" || voteOpen}
         />
       )}
 

@@ -39,12 +39,13 @@ export default function WritersDashboardPage() {
   const pendingSubs = submissions.filter(s => s.status === "submitted");
   const rejectedSubs = submissions.filter(s => s.status === "rejected");
 
+  // Rule 20: no fabricated sponsor revenue — payout calc uses real zeros until ledger exists.
   const totalPayout = approvedSubs.reduce((sum, sub) => {
     const result = contributorPayoutEngine.calculate({
       contributorId: SEED_CONTRIBUTOR_ID,
       submissionId: sub.submissionId,
       approved: true,
-      sponsorRevenueUsd: sub.sponsorSlug ? 120 : 0,
+      sponsorRevenueUsd: 0,
     });
     return sum + result.amountUsd;
   }, 0);

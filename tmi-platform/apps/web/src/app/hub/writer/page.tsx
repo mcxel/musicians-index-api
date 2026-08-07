@@ -30,16 +30,16 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const QUICK_ACTIONS = [
-  { label: "NEW DRAFT",       icon: "✏️", href: "/editorial/write",       color: "#FF2DAA", desc: "Start a draft (review before magazine)" },
-  { label: "MY DRAFTS",       icon: "📝", href: "/editorial/drafts",       color: "#AA2DFF", desc: "View all drafts" },
+  { label: "NEW DRAFT",       icon: "✏️", href: "/writers/submit",         color: "#FF2DAA", desc: "Start a draft (review before magazine)" },
+  { label: "MY DRAFTS",       icon: "📝", href: "/writers/dashboard",      color: "#AA2DFF", desc: "View all drafts" },
   { label: "MY WORK WALL",    icon: "📌", href: "/hub/writer/works",       color: "#00FFFF", desc: "Portfolio + published articles" },
   { label: "PITCH ARTICLE",   icon: "🚀", href: "/hub/writer/pitches",     color: "#FFD700", desc: "Submit article idea to editors" },
   { label: "SUBMISSIONS",     icon: "📬", href: "/hub/writer/submissions", color: "#00FF88", desc: "Track pitch + submission status" },
   { label: "MAGAZINE",        icon: "📰", href: "/magazine",               color: "#00FFFF", desc: "Live magazine issue" },
   { label: "EDITORIAL DESK",  icon: "🗞️", href: "/editorial",             color: "#FFD700", desc: "Full editorial suite" },
   { label: "ARTICLE HEALTH",  icon: "🔍", href: "/admin/articles",        color: "#00FF88", desc: "Sync status check" },
-  { label: "CONTRIBUTORS",    icon: "👥", href: "/editorial/contributors", color: "#FF2DAA", desc: "Writer roster" },
-  { label: "ANALYTICS",       icon: "📊", href: "/editorial/analytics",    color: "#AA2DFF", desc: "Reads, shares, time-on-page" },
+  { label: "CONTRIBUTORS",    icon: "👥", href: "/writers",                color: "#FF2DAA", desc: "Writer roster" },
+  { label: "ANALYTICS",       icon: "📊", href: "/editorial/performance",  color: "#AA2DFF", desc: "Editorial performance surface" },
   { label: "SETTINGS",        icon: "⚙️", href: "/settings",              color: "#555",    desc: "Account preferences" },
 ];
 
@@ -137,7 +137,7 @@ export default function WriterHubPage() {
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>Draft and pitch editorial work. Magazine Issue 1 is the live read surface — publish goes through editorial review when available.</div>
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-            <Link href="/editorial/write" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#AA2DFF)`, borderRadius: 9, color: "#fff", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>NEW ARTICLE</Link>
+            <Link href="/writers/submit" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#AA2DFF)`, borderRadius: 9, color: "#fff", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>NEW ARTICLE</Link>
             <Link href="/magazine" style={{ padding: "13px 20px", background: "rgba(255,45,170,0.1)", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>VIEW MAGAZINE</Link>
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function WriterHubPage() {
               {loading ? (
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>Loading articles…</div>
               ) : visible.length > 0 ? visible.map((a) => (
-                <Link key={a.id} href={`/editorial/drafts/${a.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, textDecoration: "none" }}>
+                <Link key={a.id} href="/writers/dashboard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, textDecoration: "none" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>{a.title}</div>
                     <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{formatRelativeTime(a.updatedAt)}</div>
@@ -192,7 +192,7 @@ export default function WriterHubPage() {
                 </div>
               )}
             </div>
-            <Link href="/editorial/write" style={{ display: "block", marginTop: 12, textAlign: "center", padding: "10px", background: `${ACCENT}10`, border: `1px solid ${ACCENT}30`, borderRadius: 8, color: ACCENT, fontWeight: 800, fontSize: 11, textDecoration: "none", letterSpacing: "0.1em" }}>
+            <Link href="/writers/submit" style={{ display: "block", marginTop: 12, textAlign: "center", padding: "10px", background: `${ACCENT}10`, border: `1px solid ${ACCENT}30`, borderRadius: 8, color: ACCENT, fontWeight: 800, fontSize: 11, textDecoration: "none", letterSpacing: "0.1em" }}>
               + START NEW ARTICLE
             </Link>
           </div>
