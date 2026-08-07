@@ -9,7 +9,13 @@
  * title, thumbnail, previewUrl, category, streamHealth, stageState.
  */
 
-import { LiveRegistry, type LiveEntry } from "./LiveRegistry";
+import { LiveRegistry } from "./LiveRegistry";
+import {
+  loadPersistedLiveSessions,
+  persistLiveSession,
+  patchPersistedLiveSession,
+  removePersistedLiveSession,
+} from "./liveSessionPersistence";
 
 // ── Extended session record ───────────────────────────────────────────────────
 
@@ -93,6 +99,53 @@ export interface LivePingPayload {
 
 const sessions = new Map<string, LiveSession>();
 const handlers = new Set<(sessions: LiveSession[]) => void>();
+let hydratedFromDb = false;
+let hydratePromise: Promise<void> | null = null;
+
+function mirrorToLiveRegistry(session: LiveSession): void {
+  LiveRegistry.register({
+    userId: session.userId,
+    displayName: session.displayName,
+    genre: session.category,
+    role: "performer",
+    avatarUrl: session.avatarUrl ?? undefined,
+    viewerCount: session.viewerCount,
+    roomId: session.roomId,
+  });
+}
+
+/** Load durable sessions into the in-memory Map (idempotent per process). */
+export async function ensureHydrated(): Promise<void> {
+  if (hydratedFromDb) return;
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    try {
+      const durable = await loadPersistedLiveSessions();
+      for (const session of durable) {
+        if (!sessions.has(session.userId)) {
+          sessions.set(session.userId, session);
+          mirrorToLiveRegistry(session);
+        }
+      }
+    } catch (err) {
+      console.error("[GlobalLiveSessionRegistry] hydrate failed", err);
+    } finally {
+      hydratedFromDb = true;
+      hydratePromise = null;
+    }
+  })();
+  return hydratePromise;
+}
+
+export async function getActiveSessionsDurable(): Promise<LiveSession[]> {
+  await ensureHydrated();
+  return getActiveSessions();
+}
+
+export async function getAllSessionsDurable(): Promise<LiveSession[]> {
+  await ensureHydrated();
+  return getAllSessions();
+}
 
 const ACCENT_POOL = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", "#FF6B35", "#38bdf8", "#c084fc"];
 
@@ -183,6 +236,10 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     roomId:      payload.roomId,
   });
 
+  void persistLiveSession(session).catch((err) => {
+    console.error("[GlobalLiveSessionRegistry] persist failed", err);
+  });
+
   broadcast();
   return session;
 }
@@ -190,6 +247,9 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
 export function endLiveSession(userId: string): void {
   sessions.delete(userId);
   LiveRegistry.unregister(userId);
+  void removePersistedLiveSession(userId).catch((err) => {
+    console.error("[GlobalLiveSessionRegistry] remove persist failed", err);
+  });
   broadcast();
 }
 
@@ -243,6 +303,17 @@ export function pingSessionWithTelemetry(userId: string, payload: LivePingPayloa
   } else {
     s.streamHealth = 'excellent';
   }
+
+  void patchPersistedLiveSession(userId, {
+    lastPingAt: s.lastPingAt,
+    viewerCount: s.viewerCount,
+    stageState: s.stageState,
+    streamHealth: s.streamHealth,
+    bitrateKbps: s.bitrateKbps,
+    droppedFramesPct: s.droppedFramesPct,
+    rttMs: s.rttMs,
+    audioOk: s.audioOk,
+  }).catch(() => {});
 
   broadcast();
 }
@@ -385,4 +456,14 @@ export function getSeedSessions(): LiveSession[] {
 
 export function getAllSessions(): LiveSession[] {
   return [...getActiveSessions(), ...getSeedSessions()];
+}
+
+
+/** Awaitable persist for Go Live API — fails honestly if DB write fails. */
+export async function persistSessionNow(session: LiveSession): Promise<void> {
+  await persistLiveSession(session);
+}
+
+export async function removeSessionNow(userId: string): Promise<void> {
+  await removePersistedLiveSession(userId);
 }

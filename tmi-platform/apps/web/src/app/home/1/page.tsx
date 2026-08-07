@@ -6,7 +6,7 @@ import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
 import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
-import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 // Rule 12: No Empty Inventory — derive sponsor rail from registry, not hardcoded strings
 const RAIL_ZONES = [
@@ -41,8 +41,8 @@ async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
   }
 }
 
-function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): PerformerIdentity[] {
-  const liveSessions = getActiveSessions();
+async function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): Promise<PerformerIdentity[]> {
+  const liveSessions = await getActiveSessionsDurable();
   const liveUserIds = new Set(liveSessions.map(s => s.userId));
   return performers.map(p => ({
     ...p,
@@ -56,8 +56,8 @@ export default async function Home1Route() {
   // P0 Avatar Certification: Fetch performers with real avatar data from Prisma
   const performers = await fetchPerformersWithRealAvatars();
 
-  // A1: Merge real liveness from GlobalLiveSessionRegistry (not hardcoded PerformerRegistry.isLive)
-  const enrichedPerformers = enrichPerformersWithRealLiveness(performers);
+  // A1: Merge real liveness from durable GlobalLiveSessionRegistry (DB-backed)
+  const enrichedPerformers = await enrichPerformersWithRealLiveness(performers);
 
   // Rule 11: Content Freshness — LIVE → RECENT → POPULAR → ARCHIVE
   const liveFirstPerformers = sortPerformersByFreshness(enrichedPerformers);

@@ -9,15 +9,19 @@ import {
   registerLiveSession,
   endLiveSession,
   pingSessionWithTelemetry,
-  getAllSessions,
   getSession,
   getSessionsByCategory,
+  ensureHydrated,
+  getAllSessionsDurable,
+  persistSessionNow,
+  removeSessionNow,
   type GoLivePayload,
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
+import { ensureAnchorRoomsSeeded, getAnchorDiscoveryRecords, listAnchorLiveRoomRecords } from '@/lib/live/AnchorRoomNetwork';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +45,12 @@ export async function POST(req: NextRequest) {
 
   // Ping-only (heartbeat from broadcaster)
   if (body.action === 'ping') {
+    await ensureHydrated();
     pingSessionWithTelemetry(userId, body);
     return NextResponse.json({ ok: true });
   }
+
+  await ensureHydrated();
 
   const session = registerLiveSession({
     userId,
@@ -76,16 +83,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Persist live state to DB so serverless cold starts don't drop the session
-  await prisma.user.updateMany({
-    where: { OR: [{ id: userId }, { userRef: userId }] },
-    data: {
-      isLive:       true,
-      liveRoomId:   session.roomId,
-      liveGenre:    session.category,
-      liveStartedAt: new Date(),
-    },
-  }).catch(() => {});
+  // Durable persist (User.isLive + FeedItem LIVE_SESSION + RoomSession)
+  try {
+    await persistSessionNow(session);
+  } catch (err) {
+    endLiveSession(userId);
+    console.error('[api/live/go] persist failed', err);
+    return NextResponse.json(
+      { ok: false, error: 'Could not persist live session. Please try again.', code: 'PERSIST_FAIL' },
+      { status: 503 },
+    );
+  }
 
   // Auto-seed 20 bots into the room so performer never sees an empty venue
   seedRoomWithBots(session.roomId, 20);
@@ -107,6 +115,7 @@ export async function DELETE(req: NextRequest) {
   const userId = await sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  await ensureHydrated();
   // Look up the session before ending it so we can deactivate the correct roomId
   const session = getSession(userId);
   endLiveSession(userId);
@@ -116,18 +125,18 @@ export async function DELETE(req: NextRequest) {
     botCrowdFillEngine.deactivate(session.roomId);
   }
 
-  // Clear DB live state so the billboard stops showing this performer
-  await prisma.user.updateMany({
-    where: { OR: [{ id: userId }, { userRef: userId }] },
-    data: { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
-  }).catch(() => {});
+  await removeSessionNow(userId).catch((err) => {
+    console.error('[api/live/go] remove persist failed', err);
+  });
 
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
 export async function GET() {
   try {
-    const sessions = getAllSessions();
+    ensureAnchorRoomsSeeded();
+    const anchorRecords = getAnchorDiscoveryRecords();
+    const sessions = await getAllSessionsDurable();
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
     const live = sessions.map((s) => ({
       userId:      s.userId,
@@ -139,9 +148,15 @@ export async function GET() {
       avatarUrl:   s.avatarUrl ?? undefined,
       accentColor: s.accentColor,
     }));
-    return NextResponse.json({ sessions, live, count: sessions.length });
+    return NextResponse.json({
+      sessions,
+      live,
+      count: sessions.length,
+      anchors: listAnchorLiveRoomRecords(),
+      anchorDiscovery: anchorRecords,
+    });
   } catch (err) {
     console.error('[api/live/go] GET error:', err);
-    return NextResponse.json({ sessions: [], live: [], count: 0 });
+    return NextResponse.json({ sessions: [], live: [], count: 0, anchors: [], anchorDiscovery: [] });
   }
 }
