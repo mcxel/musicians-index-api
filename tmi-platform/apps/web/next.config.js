@@ -176,6 +176,9 @@ const nextConfig = {
 
       // ── Challenges ────────────────────────────────────────────────────────
       { source: '/challenges/submit', destination: '/challenges/create', permanent: false },
+
+      // ── Favicon ───────────────────────────────────────────────────────────
+      { source: '/favicon.ico', destination: '/icon.svg', permanent: false },
     ];
   },
 };

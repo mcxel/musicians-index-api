@@ -140,17 +140,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
+        {/*
+          AdSense: raw <script> in <head> with a matching preload so the
+          browser's CORS mode matches and no React auto-preload is injected.
+          AdSense does not support data-nscript, so next/script is not used.
+        */}
+        <link
+          rel="preload"
+          as="script"
+          href={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
+          crossOrigin="anonymous"
+        />
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="tmi-obsidian-cinematic overflow-x-hidden">
         {/* BidVertiser site verification rendered as real HTML comment in page source */}
         <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
-        {/* AdSense — afterInteractive avoids React auto-preload without crossOrigin */}
-        <Script
-          id="adsense-init"
-          strategy="afterInteractive"
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
-          crossOrigin="anonymous"
-        />
         {/* Media.net — Yahoo/Bing contextual ads */}
         {process.env.NEXT_PUBLIC_MEDIANET_CID && (
           <Script
