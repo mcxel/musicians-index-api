@@ -37,6 +37,7 @@ import {
 } from "./LegalAuditLedger";
 import { countActiveHolds, listActiveHolds, placeLegalHold } from "./LegalHoldEngine";
 import { countOpenPrivacyRequests } from "./PrivacyRequestEngine";
+import { countOpenCopyrightComplaints } from "./rights/CopyrightComplaintEngine";
 import type {
   CollapsedLegalSummary,
   DisclosureCaseStatus,
@@ -398,6 +399,7 @@ export function getCollapsedLegalSummary(): CollapsedLegalSummary {
     holdsActive: countActiveHolds(),
     privacyOpen: countOpenPrivacyRequests(),
     ledgerEvents: getLedgerEventCount(),
+    copyrightOpen: countOpenCopyrightComplaints(),
     sensitiveDetailsExposed: false,
   };
 }

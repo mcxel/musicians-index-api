@@ -2,7 +2,7 @@
 
 /**
  * LegalCommandCenter — admin workspace shell for Global Legal, Privacy & Records Command.
- * Five pillars. Rule 20 honest states. No fake case counts.
+ * Five disclosure pillars + Copyright & IP (RightsComplianceEngine). Rule 20 honest states.
  */
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
@@ -12,8 +12,9 @@ import LegalRequestGatewayPanel from "./pillars/LegalRequestGatewayPanel";
 import DisclosureCaseManagerPanel from "./pillars/DisclosureCaseManagerPanel";
 import PrivacyRightsCenterPanel from "./pillars/PrivacyRightsCenterPanel";
 import LegalAuditLedgerPanel from "./pillars/LegalAuditLedgerPanel";
+import CopyrightIpPanel from "./pillars/CopyrightIpPanel";
 
-type PillarId = "vault" | "gateway" | "cases" | "privacy" | "ledger";
+type PillarId = "vault" | "gateway" | "cases" | "privacy" | "ledger" | "copyright";
 
 type Summary = {
   openCases: number;
@@ -37,6 +38,7 @@ const PILLARS: { id: PillarId; label: string; accent: string }[] = [
   { id: "gateway", label: "Legal Request Gateway", accent: "#00FFFF" },
   { id: "cases", label: "Disclosure Case Manager", accent: "#FF2DAA" },
   { id: "privacy", label: "Privacy Rights Center", accent: "#00FF88" },
+  { id: "copyright", label: "Copyright & IP", accent: "#FF6B1A" },
   { id: "ledger", label: "Legal Audit Ledger", accent: "#AA2DFF" },
 ];
 
@@ -189,6 +191,7 @@ export default function LegalCommandCenter() {
           />
         ) : null}
         {pillar === "privacy" ? <PrivacyRightsCenterPanel /> : null}
+        {pillar === "copyright" ? <CopyrightIpPanel /> : null}
         {pillar === "ledger" ? (
           <LegalAuditLedgerPanel
             events={(snapshot?.recentLedger as never[]) ?? []}

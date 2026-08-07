@@ -101,3 +101,27 @@ export function attemptApproveDisclosure(_caseId: string, _actor: string): {
     error: "LegalComplianceAgent cannot approve disclosure.",
   };
 }
+
+/** Hard block — agent cannot approve uncleared external rebroadcast. */
+export function approveExternalRebroadcast(): never {
+  throw new Error(
+    "LegalComplianceAgent hard block: cannot auto-approve external rebroadcast of uncleared tracks.",
+  );
+}
+
+export function attemptApproveExternalRebroadcast(assetId: string): {
+  ok: false;
+  error: string;
+} {
+  appendLegalAuditEvent({
+    caseId: null,
+    type: "RIGHTS_DECISION",
+    actor: "LegalComplianceAgent",
+    detail: `Blocked agent rebroadcast approve for ${assetId}`,
+    meta: { assetId },
+  });
+  return {
+    ok: false,
+    error: "LegalComplianceAgent cannot auto-approve external rebroadcast.",
+  };
+}

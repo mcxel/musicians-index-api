@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import RightsIndicator from "@/components/legal/RightsIndicator";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -712,6 +713,7 @@ export default function BattleOverlaySystem({
   };
 
   const winner = winnerSide === "B" ? contestantB : contestantA;
+  const freestyleActive = phase === "perform";
 
   return (
     <div style={{ color: "#E8E8FF", fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -720,6 +722,16 @@ export default function BattleOverlaySystem({
       {showPhaseControls && (
         <PhaseControlBar phase={phase} onPhaseChange={setPhase} />
       )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <RightsIndicator
+          assetId="beat-001"
+          userRecordingOrBroadcasting
+          freestyleActive={freestyleActive}
+          surface={mode === "cypher" ? "CYPHER" : mode === "challenge" ? "CHALLENGE" : "BATTLE"}
+          compact
+        />
+      </div>
 
       {/* Main battle/phase display */}
       <div style={{

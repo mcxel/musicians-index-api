@@ -29,7 +29,7 @@ const FOOTER_LINKS = {
     // something to fabricate. Point at the real Legal Center index instead
     // of a 404 until those pages exist.
     { label: "Cookie Policy",      href: "/legal" },
-    { label: "DMCA / Copyright",   href: "/legal" },
+    { label: "DMCA / Copyright",   href: "/legal/copyright" },
     { label: "Creator Policy",     href: "/creator-policy" },
     { label: "Advertiser Policy",  href: "/advertiser-policy" },
     { label: "Refund Policy",      href: "/refund-policy" },

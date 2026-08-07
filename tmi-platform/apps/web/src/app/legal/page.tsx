@@ -3,6 +3,8 @@ import Link from 'next/link';
 const LEGAL_PAGES = [
   { href: '/legal/government-requests', label: 'Government & Legal Requests', color: '#FFD700', desc: 'Authenticated disclosure intake only — no database access. Human/counsel approval required before any release.' },
   { href: '/legal/privacy', label: 'Privacy Rights', color: '#00FF88', desc: 'Access, correction, export, opt-out, and deletion requests. Human review required.' },
+  { href: '/legal/copyright', label: 'Copyright Complaint', color: '#FF6B1A', desc: 'Copyright complaint / takedown intake. Audited process — not auto-removal. Not legal advice.' },
+  { href: '/dmca', label: 'DMCA Policy', color: '#AA2DFF', desc: 'DMCA copyright & takedown policy statement.' },
   { href: '/legal/disclaimer', label: 'Disclaimer', color: '#FFD700', desc: 'Age requirement and TMI\'s role as a promoter, not a music licensor.' },
   { href: '/legal/content-rights', label: 'Content Rights', color: '#00FFFF', desc: 'Ownership, licensing, and usage rights for uploaded content.' },
   { href: '/legal/contractor', label: 'Contractor Agreement', color: '#fcd34d', desc: 'Terms for contractors, producers, and independent artists.' },

@@ -14,6 +14,7 @@ type Summary = {
   holdsActive: number;
   privacyOpen: number;
   ledgerEvents: number;
+  copyrightOpen?: number;
   sensitiveDetailsExposed: false;
 };
 
@@ -76,11 +77,12 @@ export default function LegalComplianceCard() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
         <Stat label="Open" value={loading ? "…" : String(summary?.openCases ?? 0)} accent="#FF2DAA" />
         <Stat label="Awaiting" value={loading ? "…" : String(summary?.awaitingApproval ?? 0)} accent="#FFD700" />
         <Stat label="Holds" value={loading ? "…" : String(summary?.holdsActive ?? 0)} accent="#00FFFF" />
         <Stat label="Privacy" value={loading ? "…" : String(summary?.privacyOpen ?? 0)} accent="#00FF88" />
+        <Stat label="IP" value={loading ? "…" : String(summary?.copyrightOpen ?? 0)} accent="#FF6B1A" />
       </div>
 
       {error ? (

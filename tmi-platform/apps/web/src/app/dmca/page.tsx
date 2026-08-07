@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import GlobalTmiHeader from "@/components/shell/GlobalTmiHeader";
 
 export default function DmcaPage() {
@@ -9,6 +10,15 @@ export default function DmcaPage() {
         <h1 style={{ fontSize: 28, fontWeight: 900, color: "#FF2DAA", marginBottom: 16 }}>
           DMCA Copyright & Takedown Policy
         </h1>
+        <p style={{ fontSize: 13, marginBottom: 16 }}>
+          <Link href="/legal/copyright" style={{ color: "#FFD700", fontWeight: 700 }}>
+            Submit a copyright complaint online →
+          </Link>
+          {" · "}
+          <Link href="/admin/legal" style={{ color: "#00FFFF", fontWeight: 700 }}>
+            Legal Command (admin)
+          </Link>
+        </p>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
           The Musicians Index (TMI) respects the intellectual property rights of artists, producers, and copyright holders. In accordance with the Digital Millennium Copyright Act (DMCA), 17 U.S.C. § 512, TMI will respond expeditiously to notices of alleged copyright infringement.
         </p>

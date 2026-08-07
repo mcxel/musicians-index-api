@@ -64,7 +64,11 @@ export type LegalAuditEventType =
   | "EMERGENCY_PROTOCOL_ENTERED"
   | "AGENT_ADVISORY"
   | "SYNTHETIC_EXERCISE"
-  | "LEDGER_RECONSTRUCTED";
+  | "LEDGER_RECONSTRUCTED"
+  | "COPYRIGHT_COMPLAINT_RECEIVED"
+  | "COPYRIGHT_COMPLAINT_ADVANCED"
+  | "RIGHTS_DECISION"
+  | "CLAIM_DISPUTE_DRAFTED";
 
 export type ApprovalDecision = "PENDING" | "APPROVED" | "DENIED";
 
@@ -196,6 +200,8 @@ export type CollapsedLegalSummary = {
   holdsActive: number;
   privacyOpen: number;
   ledgerEvents: number;
+  /** Copyright complaints open — collapsed count only. */
+  copyrightOpen: number;
   /** Never expose case titles/subjects on Observatory. */
   sensitiveDetailsExposed: false;
 };

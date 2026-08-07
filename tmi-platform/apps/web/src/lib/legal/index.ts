@@ -64,6 +64,8 @@ export {
   attemptApproveDisclosure,
   approveDisclosure,
   discloseRecords,
+  approveExternalRebroadcast,
+  attemptApproveExternalRebroadcast,
 } from "./LegalComplianceAgent";
 export {
   listCorporateRecords,
@@ -92,3 +94,6 @@ export {
   type ComplianceAction,
   type ComplianceResult,
 } from "./complianceGuard";
+
+/** Copyright & Creator Recording Protection (under Legal — not a top-level product). */
+export * from "./rights";
