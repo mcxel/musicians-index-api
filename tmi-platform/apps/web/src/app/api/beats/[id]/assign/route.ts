@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { NextRequest } from "next/server";
 
-const VALID_TARGET_TYPES = ["battle", "cypher", "tournament", "challenge", "game-show", "monthly-idol"];
+const VALID_TARGET_TYPES = [
+  "battle",
+  "gauntlet",
+  "cypher",
+  "tournament",
+  "challenge",
+  "game-show",
+  "monthly-idol",
+];
 
 export async function POST(
   req: NextRequest,

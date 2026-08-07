@@ -24,6 +24,7 @@ export type BeatLockerGenre = (typeof BEAT_GENRES)[number];
 /** Competition destinations that already have assign/route support. */
 export type BeatCompetitionTarget =
   | "battle"
+  | "gauntlet"
   | "cypher"
   | "challenge"
   | "tournament"

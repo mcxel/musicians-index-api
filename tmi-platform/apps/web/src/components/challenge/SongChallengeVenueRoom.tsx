@@ -21,9 +21,9 @@ import SongChallengeOverlaySystem, {
   type SongChallengePhase,
   type SongChallengeSide,
 } from "@/components/challenge/SongChallengeOverlaySystem";
-import SongChallengeSongPicker, {
-  type PickerSong,
-} from "@/components/challenge/SongChallengeSongPicker";
+import ChallengeContentPicker, {
+  type ContentPickerItem,
+} from "@/components/challenge/ChallengeContentPicker";
 import { SONG_CHALLENGE_SKIN as SKIN } from "@/lib/challenge/SongChallengeSkin";
 import {
   getSongCrownChallengeCopy,
@@ -32,6 +32,9 @@ import {
 } from "@/lib/challenge/SongCrownRegistry";
 import { getCapacityForFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
 import { useLobbyPeerMediaSession } from "@/lib/lobby/useLobbyPeerMediaSession";
+
+/** Song Challenge subtype — ContentPickerItem filtered to songs. */
+type PickerSong = ContentPickerItem;
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), { ssr: false });
 
@@ -469,18 +472,26 @@ export default function SongChallengeVenueRoom({
         </div>
 
         {(role === "challenger-a" || (!sideA && sessionUser)) && (
-          <SongChallengeSongPicker
+          <ChallengeContentPicker
             side="A"
             maxSelect={3}
+            typeFilter={["songs"]}
             disabled={role !== "challenger-a"}
+            roomId={roomId}
+            castBy={sessionUser?.id}
+            popup
             onLocked={onLockedA}
           />
         )}
         {(role === "challenger-b" || (!sideB && sessionUser)) && (
-          <SongChallengeSongPicker
+          <ChallengeContentPicker
             side="B"
             maxSelect={3}
+            typeFilter={["songs"]}
             disabled={role !== "challenger-b"}
+            roomId={roomId}
+            castBy={sessionUser?.id}
+            popup
             onLocked={onLockedB}
           />
         )}

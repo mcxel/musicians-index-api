@@ -32,6 +32,7 @@ import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import { MemoryLedger } from "@/core/eos/memoryLedger";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
@@ -344,6 +345,18 @@ export default function ArenaEventShell({
           performerLabels={rubricLabels}
           voterId={rubricVoterId ?? guestVoterId}
           votingOpen={showRubric}
+        />
+      )}
+
+      {/* Live performance beat dock — battle + cypher only (challenges use Content Picker). */}
+      {(eventType === "battle" || eventType === "cypher") && (
+        <CompetitionBeatDock
+          roomId={roomId}
+          lane={eventType === "cypher" ? "cypher" : "battle"}
+          performerId={rubricVoterId ?? guestVoterId}
+          performerIds={rubricIds.slice(0, 2)}
+          dock="left"
+          canControl={mode === "performer" || Boolean(leftParticipant || rightParticipant)}
         />
       )}
     </div>

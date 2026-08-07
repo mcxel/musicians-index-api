@@ -42,6 +42,7 @@ import GauntletPresentationOverlay from "@/components/gauntlet/GauntletPresentat
 import GauntletRoundHUD from "@/components/gauntlet/GauntletRoundHUD";
 import GauntletEliminationVotePanel from "@/components/gauntlet/GauntletEliminationVotePanel";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
@@ -309,6 +310,16 @@ NEXT_PUBLIC_FEATURE_GAUNTLET_ENTRY_ENABLED=true`}</pre>
           votingOpen={run.phase === "AUDIENCE_ELIMINATION_VOTE" || run.phase === "FINAL" || voteOpen}
         />
       )}
+
+      {/* Beat Locker ↔ Gauntlet — live performance music (not Challenge Content Picker). */}
+      <CompetitionBeatDock
+        roomId={roomId}
+        lane="gauntlet"
+        performerId={voterId}
+        performerIds={run?.aliveIds?.slice(0, 2) ?? []}
+        dock="left"
+        canControl
+      />
 
       <div
         style={{
