@@ -151,5 +151,18 @@ export async function grantTipFromStripeSession(params: {
     },
   });
 
+  // Instant payout on cleared Stripe funds — honest pending if Connect incomplete
+  const { queueInstantPayout } = await import("@/lib/commerce/InstantPayoutEngine");
+  await queueInstantPayout({
+    userId: params.toArtistUserId,
+    source: "tip",
+    sourceTxId: params.stripeSessionId,
+    cleared: {
+      grossCollectedCents: params.amountCents,
+      platformFeeCents: platformFee,
+      artistShareCents: artistShare,
+    },
+  }).catch(() => null);
+
   return { tipId: tip.id, reused: false, artistShare, platformFee };
 }

@@ -15,7 +15,8 @@ export type BotClass =
   | "host-bot"
   | "dev-audit-bot"
   | "discovery-bot"
-  | "cypher-bot";
+  | "cypher-bot"
+  | "revenue-business-bot";
 
 export type BotDutyType =
   | "join-public-room"
@@ -34,7 +35,10 @@ export type BotDutyType =
   | "create-maintenance-ticket"
   | "support-developer-workflow"
   | "audit-report"
-  | "report-to-admin";
+  | "report-to-admin"
+  | "revenue-observe"
+  | "revenue-prospect"
+  | "revenue-maximize";
 
 export type BotStatus = "idle" | "active" | "paused" | "suspended" | "on-duty";
 
@@ -91,6 +95,13 @@ const BOT_DUTY_MAP: Record<BotClass, BotDutyType[]> = {
   "dev-audit-bot": ["audit-report", "support-developer-workflow", "report-to-admin"],
   "discovery-bot": ["find-article", "find-game", "find-concert", "find-lobby"],
   "cypher-bot": ["join-public-room", "host-event", "encourage-user"],
+  "revenue-business-bot": [
+    "revenue-observe",
+    "revenue-prospect",
+    "revenue-maximize",
+    "report-to-admin",
+    "audit-report",
+  ],
 };
 
 // Permanent bot registry — seeded at startup
@@ -193,6 +204,82 @@ export const PERMANENT_BOT_REGISTRY: BotDutyEntry[] = [
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
   },
+  {
+    botId: "revenue-business-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "TMI Revenue Businessman",
+    botLabel: "[BOT] RevenueBusiness",
+    duties: BOT_DUTY_MAP["revenue-business-bot"],
+    status: "on-duty",
+    currentTask: "revenue-observe",
+    safetyFlags: {
+      ...DEFAULT_SAFETY,
+      /** Never transfers real money — only proposes / reports; InstantPayout is separate. */
+      noRealMoneyTransfer: true,
+    },
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
+  {
+    botId: "ad-filler-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "Ad Filler Bot",
+    botLabel: "[BOT] AdFiller",
+    duties: ["revenue-prospect", "revenue-maximize", "report-to-admin"],
+    status: "on-duty",
+    currentTask: "revenue-prospect",
+    safetyFlags: DEFAULT_SAFETY,
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
+  {
+    botId: "sponsor-prospect-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "Sponsor Prospect Bot",
+    botLabel: "[BOT] SponsorProspect",
+    duties: ["revenue-prospect", "report-to-admin"],
+    status: "on-duty",
+    currentTask: "revenue-prospect",
+    safetyFlags: DEFAULT_SAFETY,
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
+  {
+    botId: "payout-watcher-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "Payout Watcher Bot",
+    botLabel: "[BOT] PayoutWatcher",
+    duties: ["revenue-observe", "report-to-admin"],
+    status: "on-duty",
+    currentTask: "revenue-observe",
+    safetyFlags: { ...DEFAULT_SAFETY, noRealMoneyTransfer: true },
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
+  {
+    botId: "stripe-health-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "Stripe Health Bot",
+    botLabel: "[BOT] StripeHealth",
+    duties: ["revenue-observe", "audit-report", "report-to-admin"],
+    status: "on-duty",
+    currentTask: "revenue-observe",
+    safetyFlags: DEFAULT_SAFETY,
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
+  {
+    botId: "opportunity-scout-bot-001",
+    botClass: "revenue-business-bot",
+    displayName: "Opportunity Scout Bot",
+    botLabel: "[BOT] OpportunityScout",
+    duties: ["revenue-maximize", "report-to-admin"],
+    status: "on-duty",
+    currentTask: "revenue-maximize",
+    safetyFlags: DEFAULT_SAFETY,
+    createdAt: Date.now(),
+    lastActiveAt: Date.now(),
+  },
 ];
 
 export function getBotById(botId: string): BotDutyEntry | undefined {
@@ -226,6 +313,9 @@ export function getDutyDescription(duty: BotDutyType): string {
     "support-developer-workflow": "Assists developer audit workflows",
     "audit-report": "Generates audit reports for oversight",
     "report-to-admin": "Reports issues to admin chain",
+    "revenue-observe": "Runs RevenueBusinessEngine observe/tick (learn signals)",
+    "revenue-prospect": "Prospects empty ad zones / sponsor leads (no fake brands)",
+    "revenue-maximize": "Maximizes monetization zones within Rule 22/23 policy",
   };
   return map[duty] ?? duty;
 }

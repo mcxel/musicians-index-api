@@ -13,12 +13,13 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import UniversalDrawerBase from "./UniversalDrawerBase";
-import { getRailSponsors, type RailSponsor } from "@/lib/commerce/SponsorRegistry";
+import { HOUSE_SPONSORS } from "@/lib/commerce/DualStreamSponsorshipEngine";
 
 interface PerformerSponsorEngagementDrawerProps {
   open: boolean;
   onClose: () => void;
   displayName?: string;
+  performerId?: string;
 }
 
 interface ApiVideo {
@@ -27,14 +28,30 @@ interface ApiVideo {
   thumbnailUrl?: string | null;
 }
 
+type HuntedSponsor = {
+  id: string;
+  name: string;
+  tagline: string;
+  liveEnabled: boolean;
+};
+
+type PayoutSnap = {
+  state: string;
+  message: string;
+  availableBalanceCents: number;
+  connectReady: boolean;
+};
+
 export default function PerformerSponsorEngagementDrawer({
   open,
   onClose,
   displayName,
+  performerId,
 }: PerformerSponsorEngagementDrawerProps) {
   const [videos, setVideos] = useState<ApiVideo[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
-  const sponsors: RailSponsor[] = getRailSponsors("dashboard-performer");
+  const [hunted, setHunted] = useState<HuntedSponsor[]>([]);
+  const [payout, setPayout] = useState<PayoutSnap | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +72,45 @@ export default function PerformerSponsorEngagementDrawer({
       cancelled = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !performerId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [spRes, payRes] = await Promise.all([
+          fetch(`/api/performer/sponsors/dual-stream?performerId=${encodeURIComponent(performerId)}`, {
+            cache: "no-store",
+          }),
+          fetch(`/api/artist/payout-status?userId=${encodeURIComponent(performerId)}`, { cache: "no-store" }),
+        ]);
+        if (!cancelled && spRes.ok) {
+          const sp = (await spRes.json()) as { hunted?: HuntedSponsor[] };
+          setHunted(sp.hunted ?? []);
+        }
+        if (!cancelled && payRes.ok) {
+          setPayout((await payRes.json()) as PayoutSnap);
+        }
+      } catch {
+        /* honest empty */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, performerId]);
+
+  async function toggleHunted(sponsorId: string, enabled: boolean) {
+    if (!performerId) return;
+    const res = await fetch("/api/performer/sponsors/dual-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ performerId, sponsorId, enabled }),
+    });
+    if (!res.ok) return;
+    const sp = (await res.json()) as { hunted?: HuntedSponsor[] };
+    setHunted(sp.hunted ?? []);
+  }
 
   return (
     <UniversalDrawerBase
@@ -109,27 +165,42 @@ export default function PerformerSponsorEngagementDrawer({
           {/* CENTER PANEL: SPONSOR CANISTER + LIVE PANEL */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={deckCard("#00FFFF")}>
-              <div style={cardHeader("#00FFFF")}>SPONSOR CANISTER</div>
+              <div style={cardHeader("#00FFFF")}>HOUSE SPONSORS (auto on go-live)</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                {sponsors.length === 0 ? (
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>
-                    No sponsor placements active on this slot yet.
+                {HOUSE_SPONSORS.map((sp) => (
+                  <div
+                    key={sp.id}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: 6, border: `1px solid ${sp.accent}44` }}
+                  >
+                    <span style={{ fontSize: 9, fontWeight: 900, color: sp.accent }}>{sp.name}</span>
+                    <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{sp.tagline}</span>
+                  </div>
+                ))}
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                  Hunted brands (toggle when approved):
+                </div>
+                {hunted.length === 0 ? (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>
+                    No approved hunter campaigns yet — empty until real PerformerSponsorRegistry relations exist.
                   </div>
                 ) : (
-                  sponsors.map((sp) => (
-                    <div
+                  hunted.map((sp) => (
+                    <button
                       key={sp.id}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(0,255,255,0.27)" }}
+                      type="button"
+                      onClick={() => void toggleHunted(sp.id, !sp.liveEnabled)}
+                      style={{
+                        ...btnSmall(sp.liveEnabled ? "#00FF88" : "#AA2DFF"),
+                        textAlign: "left",
+                        width: "100%",
+                      }}
                     >
-                      <span style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF" }}>{sp.name}</span>
-                      {sp.tagline ? (
-                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{sp.tagline}</span>
-                      ) : null}
-                    </div>
+                      {sp.liveEnabled ? "ON" : "OFF"} · {sp.name}
+                    </button>
                   ))
                 )}
                 <Link href="/sponsors/advertise" style={{ ...btnSmall("#FFD700"), textAlign: "center", marginTop: 4, textDecoration: "none" }}>
-                  Sell a placement →
+                  Advertise / sell a placement →
                 </Link>
               </div>
             </div>
@@ -144,14 +215,32 @@ export default function PerformerSponsorEngagementDrawer({
             </div>
           </div>
 
-          {/* FAR RIGHT PANEL: ENGAGEMENT — honest, not yet wired */}
-          <div style={deckCard("#FF2DAA")}>
-            <div style={cardHeader("#FF2DAA")}>AUDIENCE ENGAGEMENT</div>
-            <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 8, marginTop: 8, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, textAlign: "center" }}>
-              <span style={{ fontSize: 20, opacity: 0.35 }}>🎁</span>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-                Gift-to-crowd and promoter messaging are not wired to a real backend yet — this is planned direction (Rule 24), not a live feature.
-              </span>
+          {/* Earnings / payout — Rule 20 four-states */}
+          <div style={deckCard("#FFD700")}>
+            <div style={cardHeader("#FFD700")}>EARNINGS / PAYOUT</div>
+            <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 8, marginTop: 8, flex: 1, fontSize: 9, lineHeight: 1.5 }}>
+              {!performerId ? (
+                <span style={{ color: "rgba(255,255,255,0.4)" }}>Sign in as performer to load payout status.</span>
+              ) : !payout ? (
+                <span style={{ color: "rgba(255,255,255,0.4)" }}>Loading payout status…</span>
+              ) : payout.state === "error" ? (
+                <span style={{ color: "#FF4444" }}>{payout.message}</span>
+              ) : payout.state === "empty" ? (
+                <span style={{ color: "rgba(255,255,255,0.45)" }}>{payout.message}</span>
+              ) : (
+                <>
+                  <div style={{ color: "#FFD700", fontWeight: 800 }}>
+                    Available: ${(payout.availableBalanceCents / 100).toFixed(2)}
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{payout.message}</div>
+                  <div style={{ color: payout.connectReady ? "#00FF88" : "#FFD700", marginTop: 4 }}>
+                    Connect: {payout.connectReady ? "ready" : "onboarding incomplete"}
+                  </div>
+                </>
+              )}
+              <div style={{ color: "rgba(255,255,255,0.35)", marginTop: 8 }}>
+                Sponsor-funded crowd gifts: not live yet (Rule 24) — no fake drops.
+              </div>
             </div>
           </div>
         </div>

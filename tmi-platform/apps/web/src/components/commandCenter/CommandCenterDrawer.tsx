@@ -953,6 +953,7 @@ export default function CommandCenterDrawer({
           open={true}
           onClose={onClose}
           displayName={contextDisplayName}
+          performerId={contextPerformerId ?? userId}
         />
       ) : null}
 

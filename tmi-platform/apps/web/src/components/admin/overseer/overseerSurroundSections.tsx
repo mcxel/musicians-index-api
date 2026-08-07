@@ -20,10 +20,18 @@ import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import AccountLinker from "@/components/admin/overseer/AccountLinker";
 import ChainCommandPanel from "@/components/admin/overseer/ChainCommandPanel";
 import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
+import RevenueBusinessmanPanel from "@/components/admin/RevenueBusinessmanPanel";
+import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
 
 /** Extra sections every surround slot can rotate into (plus the panel's default). */
 export function buildSurroundSectionOptions(): OverseerSectionOption[] {
   return [
+    {
+      id: "bot-activity",
+      label: "Bot Activity / NPC Journal",
+      accent: "#FFD700",
+      render: () => <BotActivitySwitcherPanel compact />,
+    },
     {
       id: "live-roster",
       label: "Public-Live Picker",
@@ -123,6 +131,12 @@ export function buildSurroundSectionOptions(): OverseerSectionOption[] {
       label: "Money & Billing",
       accent: "#FFD700",
       render: () => <BigAceFinancePanel />,
+    },
+    {
+      id: "revenue-businessman",
+      label: "Revenue Businessman",
+      accent: "#FFD700",
+      render: () => <RevenueBusinessmanPanel />,
     },
     {
       id: "account-linker",

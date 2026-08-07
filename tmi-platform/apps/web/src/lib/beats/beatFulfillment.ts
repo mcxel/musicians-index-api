@@ -182,6 +182,21 @@ export async function grantBeatFromStripeSession(params: {
   // silence unused if tree-shaken — keep split for telemetry completeness
   void split;
 
+  // Instant payout on cleared Stripe beat sale — honest pending if Connect incomplete
+  if (beat.producerId) {
+    const { queueInstantPayout } = await import("@/lib/commerce/InstantPayoutEngine");
+    await queueInstantPayout({
+      userId: beat.producerId,
+      source: "beat_sale",
+      sourceTxId: params.stripeSessionId,
+      cleared: {
+        grossCollectedCents: params.amountCents,
+        platformFeeCents: platformCents,
+        artistShareCents: producerCents,
+      },
+    }).catch(() => null);
+  }
+
   return {
     licenseId: license.id,
     reused: false,

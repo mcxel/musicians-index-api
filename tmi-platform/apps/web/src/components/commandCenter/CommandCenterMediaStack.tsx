@@ -12,6 +12,10 @@ import AudienceScene from "@/components/live/AudienceScene";
 import CanonicalDualMonitorStack, {
   CanonicalMonitorFrame,
 } from "@/components/monitors/CanonicalDualMonitorStack";
+import {
+  HOUSE_SPONSORS,
+  type HouseSponsor,
+} from "@/lib/commerce/DualStreamSponsorshipEngine";
 
 export type MediaGridMode = 1 | 2 | 4 | 8 | 16;
 
@@ -25,19 +29,8 @@ export type MediaGridMode = 1 | 2 | 4 | 8 | 16;
  * (same infra gap as the already-blocked Multi-Platform Simulcast
  * request), so no points are awarded here rather than faking verification.
  */
-export interface HouseSponsor {
-  id: string;
-  name: string;
-  tagline: string;
-  href?: string;
-  accent: string;
-}
-
-export const HOUSE_SPONSORS: HouseSponsor[] = [
-  { id: "tmi", name: "TMI", tagline: "The Musician's Index", accent: "#00FFFF" },
-  { id: "the-musicians-index", name: "The Musician's Index", tagline: "Magazine · Live · Rankings", accent: "#FF2DAA" },
-  { id: "themusiciansindex-com", name: "TheMusiciansIndex.com", tagline: "Join the platform", href: "https://themusiciansindex.com", accent: "#FFD700" },
-];
+export type { HouseSponsor };
+export { HOUSE_SPONSORS };
 
 interface ActiveSponsorOverlay {
   sponsor: HouseSponsor;

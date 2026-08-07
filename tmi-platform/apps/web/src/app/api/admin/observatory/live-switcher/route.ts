@@ -97,12 +97,23 @@ export async function GET(req: NextRequest) {
     const roomId = duty.currentRoom ?? last?.roomId ?? null;
     const live = roomId ? sessionByRoom.get(roomId) : undefined;
     const botOps = ops.filter((o) => o.botId === duty.botId).slice(-8).reverse();
+    const isRevenueTeam = duty.botClass === "revenue-business-bot";
+    let revenueLines: string[] = [];
+    if (isRevenueTeam) {
+      try {
+        const { buildTeamActivityLines } = await import("@/lib/commerce/RevenueBusinessReports");
+        revenueLines = buildTeamActivityLines(duty.botId);
+      } catch {
+        revenueLines = ["Revenue reports: unavailable"];
+      }
+    }
     const activityLines = [
       `Duty status: ${duty.status}`,
       duty.currentTask ? `Current task: ${duty.currentTask}` : "Current task: none",
       roomId ? `Room: ${roomId}${live ? " · LIVE in registry" : " · not in live registry"}` : "Room: none bound",
       last ? `Last action (${formatAge(last.timestamp)}): ${last.detail}` : "Last action: none logged",
       dutyIds.has(duty.botId) ? "Soft-launch duty roster: yes" : "Soft-launch duty roster: no",
+      ...(isRevenueTeam ? ["Team: Revenue Businessman suite", ...revenueLines] : []),
       ...botOps.map((o) => `Op · ${formatAge(o.timestamp)}: ${o.detail}${o.roomId ? ` @ ${o.roomId}` : ""}`),
     ];
     subjects.push({

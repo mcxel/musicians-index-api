@@ -44,6 +44,7 @@ import { buildSurroundSectionOptions } from "@/components/admin/overseer/oversee
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
+import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
 
 export type ShellDockButton = {
   label: string;
@@ -112,15 +113,36 @@ export default function OverseerFlightDeck({
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
   const [clock, setClock] = useState("");
   const [conciergeOpen, setConciergeOpen] = useState(false);
+  const [botIntelOpen, setBotIntelOpen] = useState(false);
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
   const [centerView, setCenterView] = useState<OverseerCenterViewId>("media");
   const [flipKey, setFlipKey] = useState(0);
   const drawerManager = useDrawerManager();
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#bot-activity") setBotIntelOpen(true);
+    const onHash = () => {
+      if (window.location.hash === "#bot-activity") setBotIntelOpen(true);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   const selectCenterView = (view: OverseerCenterViewId) => {
     setCenterView(view);
     setFlipKey((k) => k + 1);
     if (view !== "media") setFullscreenPanel(null);
+  };
+
+  const openBotIntel = () => {
+    setBotIntelOpen(true);
+    try {
+      // Prefer left intelligence rail section switcher when present
+      window.localStorage.setItem("tmi.overseer.sectionSlot.v1:surround:bot-roster", "bot-activity");
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleOpsAction = (action: string) => {
@@ -130,7 +152,10 @@ export default function OverseerFlightDeck({
     };
     if (action === "alerts") scrollTo("sentinel-wall");
     if (action === "chain-pulse") scrollTo("chain-command");
-    if (action === "summon") scrollTo("bot-roster");
+    if (action === "summon") {
+      openBotIntel();
+      scrollTo("bot-roster");
+    }
     if (action === "start-meeting") selectCenterView("observatory");
   };
 
@@ -675,6 +700,26 @@ export default function OverseerFlightDeck({
           </span>
           <button
             type="button"
+            onClick={openBotIntel}
+            style={{
+              borderRadius: 8,
+              border: "1.5px solid #00FFFF",
+              background: "linear-gradient(180deg, #1a3a4a 0%, #0a1520 100%)",
+              color: "#9ef6ff",
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "5px 12px",
+              cursor: "pointer",
+              boxShadow: "0 0 12px rgba(0,255,255,0.2)",
+            }}
+            title="Bot Activity — All Bots / Who's Who / NPC Journal"
+          >
+            Bot Intel
+          </button>
+          <button
+            type="button"
             onClick={() => setConciergeOpen(true)}
             style={{
               borderRadius: 8,
@@ -989,6 +1034,80 @@ export default function OverseerFlightDeck({
         onSuggestFix={handleSuggestFix}
         submittingFix={submittingFix || localSubmittingFix}
       />
+
+      {botIntelOpen ? (
+        <div
+          role="dialog"
+          aria-label="Bot Activity Switcher"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1400,
+            background: "rgba(3,2,14,0.72)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            pointerEvents: "auto",
+          }}
+          onClick={() => setBotIntelOpen(false)}
+        >
+          <div
+            id="bot-activity"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(720px, 96vw)",
+              height: "min(640px, 88vh)",
+              borderRadius: 16,
+              border: "1.5px solid rgba(255,215,0,0.4)",
+              background: "linear-gradient(165deg, rgba(10,6,24,0.98), rgba(5,5,16,0.99))",
+              boxShadow: "0 0 40px rgba(0,255,255,0.15), 0 20px 60px rgba(0,0,0,0.65)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderBottom: "1px solid rgba(255,215,0,0.25)",
+                background: "rgba(0,0,0,0.45)",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700" }}>
+                  BOT ACTIVITY SWITCHER
+                </div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                  All Bots · Who&apos;s Who · NPC Journal (Revenue Businessman + team included)
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBotIntelOpen(false)}
+                style={{
+                  border: "1px solid rgba(255,45,170,0.5)",
+                  background: "rgba(255,45,170,0.12)",
+                  color: "#FF2DAA",
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 900,
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <BotActivitySwitcherPanel />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <OverlayHost zIndex={1000} pointerEvents="none">
         {activeWorkspace.leftRail

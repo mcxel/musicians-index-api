@@ -10,6 +10,12 @@ export const SOFT_LAUNCH_DUTY_BOT_IDS = [
   "route-watcher-001",
   "hype-bot-001",
   "dev-audit-bot-001",
+  "revenue-business-bot-001",
+  "ad-filler-bot-001",
+  "sponsor-prospect-bot-001",
+  "payout-watcher-bot-001",
+  "stripe-health-bot-001",
+  "opportunity-scout-bot-001",
 ] as const;
 
 let _softLaunchDutiesArmed = false;
