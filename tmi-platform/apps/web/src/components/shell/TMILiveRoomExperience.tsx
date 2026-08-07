@@ -30,6 +30,7 @@ import ReleaseAnnouncementOverlay, {
 } from './ReleaseAnnouncementOverlay';
 import { ExperienceOrchestrator } from '../../lib/experience/ExperienceOrchestrator';
 import { initializeExperienceBroadcastBridge } from '@/lib/broadcast/ExperienceBroadcastBridge';
+import { recordStageEvent } from '@/lib/live/stageTelemetryStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -411,6 +412,11 @@ export default function TMILiveRoomExperience({
       mode,
       itemKind: item.kind,
     });
+    recordStageEvent('announcement_started', roomId, {
+      mode,
+      itemId: item.id,
+      itemKind: item.kind,
+    });
   }
 
   function handleReleaseAction(action: 'listen' | 'view' | 'save' | 'share', item: ReleaseAnnouncementItem) {
@@ -431,6 +437,10 @@ export default function TMILiveRoomExperience({
           type: item.kind,
         });
       }
+      recordStageEvent('memory_captured', roomId, {
+        itemId: item.id,
+        itemKind: item.kind,
+      });
       setReleaseToast('Saved to your memory wall.');
       return;
     }
@@ -458,6 +468,9 @@ export default function TMILiveRoomExperience({
   function triggerEndShowFlow() {
     ExperienceOrchestrator.emit('CURTAIN_CLOSE', { roomId });
     ExperienceOrchestrator.emit('SHOW_ENDED', { roomId, duration: 0 });
+    recordStageEvent('show_ended', roomId, {
+      duration: 0,
+    });
   }
 
   function sendChat(e: React.FormEvent) {

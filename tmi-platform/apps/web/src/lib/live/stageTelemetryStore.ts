@@ -1,5 +1,11 @@
-import fs from 'node:fs';
-import path from 'node:path';
+/**
+ * Browser-safe stage telemetry store (in-memory).
+ *
+ * Must never import node:fs / node:path — this module is pulled into
+ * client components (e.g. TMILiveRoomExperience).
+ *
+ * Optional cross-instance writes go through /api/live/stage-telemetry.
+ */
 
 export type StageTelemetryKind =
   | 'showcase_started'
@@ -24,49 +30,20 @@ export interface StageTelemetryEvent {
 const MAX_EVENTS = 300;
 const events: StageTelemetryEvent[] = [];
 let counter = 0;
-let hydrated = false;
 
-const STORE_DIR = path.join(process.cwd(), '.tmi-data');
-const STORE_FILE = path.join(STORE_DIR, 'stage-telemetry.json');
-
-function ensureStoreDir(): void {
-  if (!fs.existsSync(STORE_DIR)) {
-    fs.mkdirSync(STORE_DIR, { recursive: true });
-  }
-}
-
-function hydrateFromDisk(): void {
-  if (hydrated) return;
-  hydrated = true;
-
+function postToServer(event: StageTelemetryEvent): void {
+  if (typeof window === 'undefined') return;
   try {
-    if (!fs.existsSync(STORE_FILE)) return;
-    const raw = fs.readFileSync(STORE_FILE, 'utf8');
-    if (!raw.trim()) return;
-
-    const parsed = JSON.parse(raw) as {
-      counter?: number;
-      events?: StageTelemetryEvent[];
-    };
-
-    if (Array.isArray(parsed.events)) {
-      events.splice(0, events.length, ...parsed.events.slice(-MAX_EVENTS));
-    }
-
-    if (typeof parsed.counter === 'number' && Number.isFinite(parsed.counter)) {
-      counter = parsed.counter;
-    }
-  } catch (error) {
-    console.error('[stage-telemetry-store] Failed to hydrate from disk:', error);
-  }
-}
-
-function persistToDisk(): void {
-  try {
-    ensureStoreDir();
-    fs.writeFileSync(STORE_FILE, JSON.stringify({ counter, events }, null, 2), 'utf8');
-  } catch (error) {
-    console.error('[stage-telemetry-store] Failed to persist telemetry:', error);
+    void fetch('/api/live/stage-telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+      keepalive: true,
+    }).catch(() => {
+      /* best-effort; local buffer already updated */
+    });
+  } catch {
+    /* ignore */
   }
 }
 
@@ -75,7 +52,6 @@ export function recordStageEvent(
   roomId: string,
   meta: Record<string, unknown> = {},
 ): void {
-  hydrateFromDisk();
   const event: StageTelemetryEvent = {
     id: `${Date.now()}-${++counter}`,
     kind,
@@ -87,11 +63,10 @@ export function recordStageEvent(
   if (events.length > MAX_EVENTS) {
     events.shift();
   }
-  persistToDisk();
+  postToServer(event);
 }
 
 export function getRecentStageEvents(limit = 50): StageTelemetryEvent[] {
-  hydrateFromDisk();
   return events.slice(-limit).reverse();
 }
 
@@ -101,7 +76,6 @@ export function getStageEventSummary(): {
   activeRooms: number;
   byKind: Record<string, number>;
 } {
-  hydrateFromDisk();
   const byKind: Record<string, number> = {};
   const activeRooms = new Set<string>();
 
@@ -116,4 +90,17 @@ export function getStageEventSummary(): {
     activeRooms: activeRooms.size,
     byKind,
   };
+}
+
+/** Server/API ingest into the same in-memory buffer (no disk I/O). */
+export function ingestStageEvent(event: StageTelemetryEvent): void {
+  events.push(event);
+  if (events.length > MAX_EVENTS) {
+    events.shift();
+  }
+  const match = /-(\d+)$/.exec(event.id);
+  if (match) {
+    const n = Number(match[1]);
+    if (Number.isFinite(n) && n > counter) counter = n;
+  }
 }
