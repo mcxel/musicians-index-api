@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import RightsIndicator from "@/components/legal/RightsIndicator";
+import QuickClaimButton from "@/components/legal/QuickClaimButton";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -723,7 +724,8 @@ export default function BattleOverlaySystem({
         <PhaseControlBar phase={phase} onPhaseChange={setPhase} />
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <QuickClaimButton assetId="beat-001" assetKind="BEAT" compact />
         <RightsIndicator
           assetId="beat-001"
           userRecordingOrBroadcasting

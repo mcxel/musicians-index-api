@@ -148,3 +148,130 @@ export type CopyrightComplaintRecord = {
   createdAt: string;
   notes: string;
 };
+
+/** Fast claim types for CLAIM MY WORK — never instant ownership transfer. */
+export type QuickClaimType =
+  | "CREATED"
+  | "OWN_MASTER"
+  | "COMPOSED"
+  | "PRODUCED_BEAT"
+  | "REPRESENT_RIGHTS_HOLDER"
+  | "HAVE_LICENSE"
+  | "UNAUTHORIZED_UPLOAD";
+
+export type QuickClaimOutcome = "VERIFIED" | "REVIEW" | "DISPUTED";
+
+export type QuickClaimRecord = {
+  claimId: string;
+  assetId: string;
+  assetKind: "SONG" | "VIDEO" | "BEAT" | "MEDIA";
+  claimantUserId: string;
+  claimType: QuickClaimType;
+  statement: string;
+  outcome: QuickClaimOutcome;
+  /** Hard rule: claim never instantly transfers ownership. */
+  ownershipTransferred: false;
+  /** Hard rule: claim never instantly deletes content. */
+  contentDeleted: false;
+  evidenceId: string | null;
+  fingerprintId: string | null;
+  conflictDetected: boolean;
+  createdAt: string;
+  updatedAt: string;
+  notes: string[];
+};
+
+export type RightsFingerprintRecord = {
+  fingerprintId: string;
+  assetId: string;
+  /** Non-secret perceptual/content fingerprint hash. */
+  fingerprintHash: string;
+  source: "UPLOAD" | "CLAIM" | "SEED" | "MATCH";
+  matchedAssetIds: string[];
+  createdAt: string;
+};
+
+/**
+ * ProtectedPlaybackGate classification for public rebroadcast of user-supplied A/V.
+ * "I own it" alone never clears UFC/NBC/TV/commercial third-party content.
+ */
+export type ProtectedPlaybackClass =
+  | "CLEARED"
+  | "TMI_OWNED"
+  | "CREATOR_VERIFIED"
+  | "LICENSE_VERIFIED"
+  | "CLAIM_PENDING"
+  | "DISPUTED"
+  | "UNKNOWN"
+  | "RESTRICTED"
+  | "TAKEDOWN";
+
+export type ProtectedPlaybackDecision = {
+  assetId: string;
+  classification: ProtectedPlaybackClass;
+  publicRebroadcastAllowed: boolean;
+  monetizeAllowed: boolean;
+  recordedDistributionAllowed: boolean;
+  reasons: string[];
+  requiresHumanReview: boolean;
+};
+
+export type DisputeCaseStatus =
+  | "OPEN"
+  | "EVIDENCE_GATHERING"
+  | "HUMAN_REVIEW"
+  | "RESOLVED_UPHOLD"
+  | "RESOLVED_REJECT"
+  | "CLOSED";
+
+export type DisputeCaseRecord = {
+  disputeId: string;
+  assetId: string;
+  claimId: string | null;
+  complaintId: string | null;
+  status: DisputeCaseStatus;
+  summary: string;
+  createdAt: string;
+  updatedAt: string;
+  humanReviewRequired: true;
+};
+
+export type TakedownCaseStatus =
+  | "INTAKE"
+  | "PRESERVATION"
+  | "NOTICE_SENT"
+  | "CONTENT_RESTRICTED"
+  | "COUNTER_WINDOW"
+  | "FINALIZED"
+  | "RESTORED";
+
+export type TakedownCaseRecord = {
+  takedownId: string;
+  assetId: string;
+  complaintId: string | null;
+  status: TakedownCaseStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** Restriction ≠ silent delete without process. */
+  contentHardDeleted: false;
+  notes: string;
+};
+
+export type CounterNoticeRecord = {
+  counterId: string;
+  takedownId: string;
+  assetId: string;
+  filerUserId: string;
+  statement: string;
+  status: "FILED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
+  createdAt: string;
+  humanReviewRequired: true;
+};
+
+export type RepeatInfringerStrike = {
+  userId: string;
+  strikeCount: number;
+  lastStrikeAt: string;
+  notes: string[];
+  policyAction: "WARN" | "RESTRICT" | "SUSPEND_CANDIDATE" | "NONE";
+};

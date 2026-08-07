@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import QuickClaimButton from '@/components/legal/QuickClaimButton';
 
 export type VideoResolution = 'AUTO' | '720p' | '1080p' | '1440p' | '4K' | '8K';
 
@@ -19,6 +20,9 @@ export interface ActionRailProps {
   onResolutionChange?: (res: VideoResolution) => void;
   onRecordToggle?: () => void;
   onLeave?: () => void;
+  /** When set, shows CLAIM MY WORK for this media asset. */
+  claimAssetId?: string;
+  claimAssetKind?: 'SONG' | 'VIDEO' | 'BEAT' | 'MEDIA';
   style?: React.CSSProperties;
   className?: string;
 }
@@ -38,6 +42,8 @@ export default function ActionRail({
   onResolutionChange,
   onRecordToggle,
   onLeave,
+  claimAssetId,
+  claimAssetKind = 'MEDIA',
   style,
   className
 }: ActionRailProps) {
@@ -106,6 +112,13 @@ export default function ActionRail({
         </button>
       )}
       {onFullscreen && <button onClick={onFullscreen} style={btnStyle(true)}>📺 FULLSCREEN</button>}
+
+      {claimAssetId ? (
+        <>
+          <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+          <QuickClaimButton assetId={claimAssetId} assetKind={claimAssetKind} compact />
+        </>
+      ) : null}
 
       {onLeave && (
         <>

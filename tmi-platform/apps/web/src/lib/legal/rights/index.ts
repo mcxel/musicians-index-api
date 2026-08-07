@@ -1,5 +1,17 @@
 /**
  * Copyright & Creator Recording Protection — under Legal Command.
+ *
+ * RightsComplianceEngine
+ * ├── MediaRightsRegistry
+ * ├── QuickClaim
+ * ├── RightsFingerprintRegistry
+ * ├── ProtectedPlaybackGate
+ * ├── DisputeCenter
+ * ├── TakedownWorkflow
+ * ├── CounterNoticeWorkflow
+ * ├── RightsEvidenceVault
+ * └── RepeatInfringerPolicy
+ * (+ CreatorSafeMode / FreestyleRightsController / Attribution / Notices)
  */
 
 export * from "./types";
@@ -47,6 +59,50 @@ export {
   listCopyrightComplaints,
   countOpenCopyrightComplaints,
 } from "./CopyrightComplaintEngine";
+export {
+  generateQuickClaimId,
+  isQuickClaimType,
+  listQuickClaimTypes,
+  submitQuickClaim,
+  getQuickClaim,
+  listQuickClaims,
+  countQuickClaimsByOutcome,
+} from "./QuickClaim";
+export {
+  computeRightsFingerprintHash,
+  registerFingerprint,
+  lookupFingerprints,
+  listFingerprints,
+} from "./RightsFingerprintRegistry";
+export {
+  classifyProtectedPlayback,
+  assertPublicRebroadcastAllowed,
+} from "./ProtectedPlaybackGate";
+export {
+  openDisputeFromClaim,
+  openDisputeFromComplaint,
+  advanceDispute,
+  listDisputes,
+  countOpenDisputes,
+} from "./DisputeCenter";
+export {
+  getTakedownPolicyStub,
+  startTakedown,
+  advanceTakedown,
+  listTakedowns,
+  countActiveTakedowns,
+} from "./TakedownWorkflow";
+export {
+  getCounterNoticePolicyStub,
+  fileCounterNotice,
+  listCounterNotices,
+} from "./CounterNoticeWorkflow";
+export {
+  recordInfringerStrike,
+  getInfringerStrike,
+  listInfringerStrikes,
+  getRepeatInfringerPolicyStub,
+} from "./RepeatInfringerPolicy";
 export {
   classifyRightsLight,
   canAutoApproveExternalRebroadcast,

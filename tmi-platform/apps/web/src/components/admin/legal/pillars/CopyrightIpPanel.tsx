@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import QuickClaimButton from "@/components/legal/QuickClaimButton";
 
 type Snapshot = {
   counts: { greenEligible: number; yellowDefault: number; redRestricted: number; total: number };
@@ -16,7 +17,25 @@ type Snapshot = {
     recordingAllowed: boolean;
   }>;
   openComplaints: number;
+  openDisputes?: number;
+  activeTakedowns?: number;
+  quickClaimOutcomes?: { VERIFIED: number; REVIEW: number; DISPUTED: number };
+  quickClaims?: Array<{
+    claimId: string;
+    assetId: string;
+    outcome: string;
+    claimType: string;
+    ownershipTransferred: false;
+    contentDeleted: false;
+  }>;
+  playbackSamples?: Array<{
+    assetId: string;
+    classification: string;
+    publicRebroadcastAllowed: boolean;
+    monetizeAllowed: boolean;
+  }>;
   complaints: Array<{ complaintId: string; status: string; claimantEmail: string; createdAt: string }>;
+  policyStubs?: { takedown: string; counterNotice: string; repeatInfringer: string };
 };
 
 export default function CopyrightIpPanel() {
@@ -45,19 +64,20 @@ export default function CopyrightIpPanel() {
           Copyright & Creator Recording Protection
         </div>
         <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
-          RightsComplianceEngine under Legal. TMI must know rights state before play, record, clip,
-          rebroadcast, or monetize. Experience mix ≠ Creator recording mix. &quot;No Copyright
-          Intended&quot; is never a license.
+          RightsComplianceEngine under Legal — QuickClaim, ProtectedPlaybackGate, Dispute/Takedown/
+          Counter-Notice, Repeat Infringer. Claims never instantly transfer ownership or delete content.
+          Unknown rights default Yellow/RESTRICTED for high-risk uses. Not legal advice.
         </p>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
         <Link href="/legal/copyright" style={linkBtn}>
           Copyright complaint intake →
         </Link>
         <Link href="/dmca" style={linkBtn}>
           DMCA policy →
         </Link>
+        <QuickClaimButton assetId="beat-001" assetKind="BEAT" isOriginalUploader compact={false} />
       </div>
 
       {status === "loading" ? <div style={empty}>Loading rights registry…</div> : null}
@@ -65,12 +85,48 @@ export default function CopyrightIpPanel() {
 
       {status === "ready" && snap ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
             <Stat label="Indexed" value={String(snap.counts.total)} accent="#00FFFF" />
-            <Stat label="Green eligible" value={String(snap.counts.greenEligible)} accent="#00FF88" />
-            <Stat label="Yellow default" value={String(snap.counts.yellowDefault)} accent="#FFD700" />
-            <Stat label="Red / open claims" value={`${snap.counts.redRestricted}/${snap.openComplaints}`} accent="#FF4444" />
+            <Stat label="Green" value={String(snap.counts.greenEligible)} accent="#00FF88" />
+            <Stat label="Yellow" value={String(snap.counts.yellowDefault)} accent="#FFD700" />
+            <Stat label="Disputes" value={String(snap.openDisputes ?? 0)} accent="#FF2DAA" />
+            <Stat
+              label="IP / TD"
+              value={`${snap.openComplaints}/${snap.activeTakedowns ?? 0}`}
+              accent="#FF4444"
+            />
           </div>
+
+          <Section title="QuickClaim outcomes (no ownership transfer)">
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+              VERIFIED {snap.quickClaimOutcomes?.VERIFIED ?? 0} · REVIEW{" "}
+              {snap.quickClaimOutcomes?.REVIEW ?? 0} · DISPUTED {snap.quickClaimOutcomes?.DISPUTED ?? 0}
+            </div>
+            {(snap.quickClaims ?? []).length === 0 ? (
+              <div style={empty}>No Quick Claims yet — use CLAIM MY WORK.</div>
+            ) : (
+              (snap.quickClaims ?? []).slice(0, 8).map((c) => (
+                <div key={c.claimId} style={row}>
+                  {c.claimId} · {c.claimType} · {c.outcome} · asset {c.assetId} · ownership:never ·
+                  delete:never
+                </div>
+              ))
+            )}
+          </Section>
+
+          <Section title="ProtectedPlaybackGate samples">
+            {(snap.playbackSamples ?? []).length === 0 ? (
+              <div style={empty}>No playback classifications yet.</div>
+            ) : (
+              (snap.playbackSamples ?? []).map((p) => (
+                <div key={p.assetId} style={row}>
+                  {p.assetId} · {p.classification} · rebroadcast:
+                  {p.publicRebroadcastAllowed ? "yes" : "no"} · monetize:
+                  {p.monetizeAllowed ? "yes" : "no"}
+                </div>
+              ))
+            )}
+          </Section>
 
           <Section title="FreestyleRightsController phases">
             {snap.freestylePhases.map((p) => (
@@ -81,29 +137,23 @@ export default function CopyrightIpPanel() {
             ))}
           </Section>
 
-          <Section title="MediaRightsRegistry (seed + declared — not a fake commercial catalog)">
-            {snap.assets.length === 0 ? (
-              <div style={empty}>No rights records indexed.</div>
-            ) : (
-              snap.assets.slice(0, 12).map((a) => (
-                <div key={a.assetId} style={row}>
-                  <span style={{ fontWeight: 800, color: "#fff" }}>{a.title ?? a.assetId}</span>
-                  <span style={{ color: "rgba(255,255,255,0.45)", marginLeft: 8 }}>
-                    {a.licenseSource} · {a.contentIdStatus} · evidence:{a.hasRightsEvidence ? "yes" : "no"} ·
-                    rec:{a.recordingAllowed ? "yes" : "no"}
-                  </span>
-                </div>
-              ))
-            )}
-          </Section>
-
-          <Section title="Notices">
-            {snap.notices.map((n) => (
-              <div key={n.id} style={{ ...row, flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                <strong style={{ color: "#FFD700" }}>{n.title}</strong>
-                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{n.body}</span>
+          <Section title="MediaRightsRegistry (seed — not a fake commercial catalog)">
+            {snap.assets.slice(0, 12).map((a) => (
+              <div key={a.assetId} style={row}>
+                <span style={{ fontWeight: 800, color: "#fff" }}>{a.title ?? a.assetId}</span>
+                <span style={{ color: "rgba(255,255,255,0.45)", marginLeft: 8 }}>
+                  {a.licenseSource} · {a.contentIdStatus} · evidence:{a.hasRightsEvidence ? "yes" : "no"}
+                </span>
               </div>
             ))}
+          </Section>
+
+          <Section title="Policy stubs (counsel-reviewed placeholders)">
+            <div style={{ ...row, flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+              <span>{snap.policyStubs?.takedown}</span>
+              <span>{snap.policyStubs?.counterNotice}</span>
+              <span>{snap.policyStubs?.repeatInfringer}</span>
+            </div>
           </Section>
 
           <Section title="Copyright complaints">
@@ -126,7 +176,15 @@ export default function CopyrightIpPanel() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", color: "#AA2DFF", textTransform: "uppercase" }}>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: "0.12em",
+          color: "#AA2DFF",
+          textTransform: "uppercase",
+        }}
+      >
         {title}
       </div>
       {children}
@@ -136,8 +194,23 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div style={{ border: `1px solid ${accent}44`, borderRadius: 10, padding: "10px 12px", background: `${accent}10` }}>
-      <div style={{ fontSize: 9, letterSpacing: "0.1em", color: accent, fontWeight: 800, textTransform: "uppercase" }}>
+    <div
+      style={{
+        border: `1px solid ${accent}44`,
+        borderRadius: 10,
+        padding: "10px 12px",
+        background: `${accent}10`,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.1em",
+          color: accent,
+          fontWeight: 800,
+          textTransform: "uppercase",
+        }}
+      >
         {label}
       </div>
       <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{value}</div>

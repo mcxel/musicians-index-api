@@ -4,15 +4,19 @@
  * Hierarchy:
  *   RightsComplianceEngine
  *   ├── MediaRightsRegistry
- *   ├── RecordingContextDetector
- *   ├── CreatorSafeMode
- *   ├── FreestyleRightsController
- *   ├── AttributionEngine
- *   ├── CopyrightNoticeEngine
+ *   ├── QuickClaim
+ *   ├── RightsFingerprintRegistry
+ *   ├── ProtectedPlaybackGate
+ *   ├── DisputeCenter
+ *   ├── TakedownWorkflow / CounterNoticeWorkflow
+ *   ├── RepeatInfringerPolicy
+ *   ├── RecordingContextDetector / CreatorSafeMode / FreestyleRightsController
+ *   ├── AttributionEngine / CopyrightNoticeEngine
  *   ├── RightsEvidenceVault
  *   └── ClaimDisputePackageBuilder
  *
  * Cannot auto-approve external rebroadcast of uncleared tracks.
+ * "I own it" alone never clears UFC/NBC/TV/commercial third-party content.
  */
 
 import { buildAttribution } from "./AttributionEngine";
@@ -39,6 +43,13 @@ import {
   countOpenCopyrightComplaints,
   listCopyrightComplaints,
 } from "./CopyrightComplaintEngine";
+import { countQuickClaimsByOutcome, listQuickClaims, listQuickClaimTypes } from "./QuickClaim";
+import { classifyProtectedPlayback } from "./ProtectedPlaybackGate";
+import { countOpenDisputes, listDisputes } from "./DisputeCenter";
+import { countActiveTakedowns, getTakedownPolicyStub, listTakedowns } from "./TakedownWorkflow";
+import { getCounterNoticePolicyStub, listCounterNotices } from "./CounterNoticeWorkflow";
+import { getRepeatInfringerPolicyStub, listInfringerStrikes } from "./RepeatInfringerPolicy";
+import { listFingerprints } from "./RightsFingerprintRegistry";
 import type {
   FreestyleRightsPhase,
   MediaSurface,
@@ -191,15 +202,32 @@ export function evaluateFreestylePhase(input: {
 
 export function getRightsComplianceSnapshot() {
   ensureMediaRightsSeeded();
+  const assets = listMediaRights(40);
   return {
     counts: countMediaRightsByLight(),
     notices: listCopyrightNotices(),
     freestylePhases: listFreestylePhasePlans(),
-    assets: listMediaRights(40),
+    assets,
     evidence: listRightsEvidence(20),
-    disputes: listClaimDisputePackages(20),
+    disputePackages: listClaimDisputePackages(20),
+    disputes: listDisputes(20),
+    openDisputes: countOpenDisputes(),
     complaints: listCopyrightComplaints(20),
     openComplaints: countOpenCopyrightComplaints(),
+    quickClaims: listQuickClaims(30),
+    quickClaimOutcomes: countQuickClaimsByOutcome(),
+    quickClaimTypes: listQuickClaimTypes(),
+    fingerprints: listFingerprints(20),
+    takedowns: listTakedowns(20),
+    activeTakedowns: countActiveTakedowns(),
+    counterNotices: listCounterNotices(20),
+    infringerStrikes: listInfringerStrikes(20),
+    policyStubs: {
+      takedown: getTakedownPolicyStub(),
+      counterNotice: getCounterNoticePolicyStub(),
+      repeatInfringer: getRepeatInfringerPolicyStub(),
+    },
+    playbackSamples: assets.slice(0, 8).map((a) => classifyProtectedPlayback(a.assetId)),
   };
 }
 
