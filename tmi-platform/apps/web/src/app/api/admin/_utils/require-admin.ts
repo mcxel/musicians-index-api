@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail } from "@/lib/auth/UserStore";
+import { getUserByEmail, resolveHardcodedTierRole } from "@/lib/auth/UserStore";
 
 const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
 
@@ -9,6 +9,14 @@ export function requireAdmin(request: NextRequest): NextResponse | null {
   if (!email) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
+
+  // Check hardcoded admin/staff list first — works on Vercel cold starts
+  // before the async DB → STORE hydration has completed.
+  const hardcoded = resolveHardcodedTierRole(email);
+  if (hardcoded && ADMIN_ROLES.has(hardcoded.role.toUpperCase())) {
+    return null;
+  }
+
   const user = getUserByEmail(email);
   if (!user) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
