@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import WinnerStaysChallengerHUD from "@/components/battles/WinnerStaysChallengerHUD";
 import ChallengeThisPerformanceButton from "@/components/battles/ChallengeThisPerformanceButton";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import {
   winnerStaysLifecycleEngine,
   type WinnerStaysSession,
@@ -154,6 +155,13 @@ export default function BattleRoomByIdPage() {
           votingOpen={rubricOpen}
         />
       )}
+
+      <CompetitionBeatDock
+        roomId={roomId}
+        lane="battle"
+        performerId={actor.userId}
+        performerIds={matchRoster.ids}
+      />
 
       <div style={{ padding: 16, maxWidth: 480 }}>
         <ChallengeThisPerformanceButton

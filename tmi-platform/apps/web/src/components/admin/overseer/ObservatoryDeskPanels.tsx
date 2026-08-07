@@ -8,6 +8,8 @@
 import Link from "next/link";
 
 import BotSummonDeck from "@/components/admin/BotSummonDeck";
+import OverseerSectionSwitcher from "@/components/admin/overseer/OverseerSectionSwitcher";
+import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import AdminRevenuePanel from "@/components/admin/AdminRevenuePanel";
 import AdminSubmissionPanel from "@/components/admin/AdminSubmissionPanel";
 import PresentationTelemetryPanel from "@/components/admin/PresentationTelemetryPanel";
@@ -202,8 +204,14 @@ export function DeskPanelContent({
       );
     case "bots":
       return (
-        <div style={{ height: "100%", overflow: "auto" }}>
-          <BotSummonDeck />
+        <div style={{ height: "100%", overflow: "hidden" }}>
+          <OverseerSectionSwitcher
+            slotId="desk:bots"
+            defaultLabel="Bot Roster & Summon"
+            defaultContent={<BotSummonDeck />}
+            sections={buildSurroundSectionOptions()}
+            compact
+          />
         </div>
       );
     case "rankings":

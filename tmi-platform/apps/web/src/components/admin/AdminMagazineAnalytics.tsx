@@ -31,7 +31,7 @@ export default function AdminMagazineAnalytics({ selectedId, onSelect }: AdminMa
         Musician Index & Magazine Analytics
       </div>
       <div style={{ marginTop: 5, fontSize: 10, color: "#bfdbfe" }}>
-        Profiles: 420 · Articles: 136 · Avg Read: 3m 12s · Conversion: 18.4%
+        Issue 1 inventory · views/CTR unavailable until analytics store connects
       </div>
     </button>
   );

@@ -85,36 +85,8 @@ export default function UnifiedInbox() {
         ) : null}
       </div>
 
-      {/* Buttons */}
-      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-        <button style={{
-          flex: 1,
-          padding: "6px 12px",
-          background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-          border: "1.5px solid #D4AF37",
-          borderRadius: 8,
-          color: "#ffe3a3",
-          fontWeight: 900,
-          fontSize: 9,
-          cursor: "pointer",
-          textTransform: "uppercase"
-        }}>
-          Summon
-        </button>
-        <button style={{
-          flex: 1,
-          padding: "6px 12px",
-          background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-          border: "1.5px solid #D4AF37",
-          borderRadius: 8,
-          color: "#ffe3a3",
-          fontWeight: 900,
-          fontSize: 9,
-          cursor: "pointer",
-          textTransform: "uppercase"
-        }}>
-          Invite
-        </button>
+      <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", marginTop: 4, textAlign: "center" }}>
+        Real threads only · summon/invite actions not wired in this panel
       </div>
     </div>
   );

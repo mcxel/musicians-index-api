@@ -34,6 +34,8 @@ import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
+import OverseerSectionSwitcher from "@/components/admin/overseer/OverseerSectionSwitcher";
+import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
@@ -164,8 +166,8 @@ export default function OverseerFlightDeck({
       title: "Marcel - Founder and CEO",
       leftRail: [
         { id: "chain-command", title: "CHAIN COMMAND", accent: "#AA2DFF", content: <ChainCommandPanel /> },
-        { title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
-        { title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: <BotSummonDeck />, flex: 1 },
+        { id: "money-billing", title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
+        { id: "bot-roster", title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: <BotSummonDeck />, flex: 1 },
         { id: "unified-inbox", title: "UNIFIED INBOX", accent: "#00FFFF", content: <UnifiedInbox /> },
       ],
       center: [
@@ -178,6 +180,7 @@ export default function OverseerFlightDeck({
           fullscreenKey: "tv",
         },
         {
+          id: "live-feed-explorer",
           title: "LIVE FEED EXPLORER",
           accent: "#00FFFF",
           content: <FeedExplorer />,
@@ -187,8 +190,8 @@ export default function OverseerFlightDeck({
       ],
       rightRail: [
         { id: "sentinel-wall", title: "SECURITY SENTINEL WALL", accent: "#FF4444", content: <SentinelWall /> },
-        { title: "ACCOUNT LINKER", accent: "#AA2DFF", content: <AccountLinker /> },
-        { title: "STRIPE WEBHOOK INTEGRITY", accent: "#00FFFF", content: <StripeObservatoryCard />, flex: 1 },
+        { id: "account-linker", title: "ACCOUNT LINKER", accent: "#AA2DFF", content: <AccountLinker /> },
+        { id: "stripe-observatory", title: "STRIPE WEBHOOK INTEGRITY", accent: "#00FFFF", content: <StripeObservatoryCard />, flex: 1 },
       ],
       bottom: [
         {
@@ -206,7 +209,7 @@ export default function OverseerFlightDeck({
           ),
           fullscreenKey: "revenue",
         },
-        { title: "MAGAZINE & INDEX ANALYTICS", accent: "#FF2DAA", content: <MagazineAnalytics /> },
+        { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", accent: "#FF2DAA", content: <MagazineAnalytics /> },
       ],
       dockButtons: [
         { label: "Go Back", href: "/admin" },
@@ -268,45 +271,65 @@ export default function OverseerFlightDeck({
     pointerEvents: "auto",
   });
 
+  const surroundSections = useMemo(() => buildSurroundSectionOptions(), []);
+
   const renderPanelCanister = (
     panel: ShellPanel,
     collapsed: boolean,
     floating: boolean,
     canisterStyle?: CSSProperties,
-  ) => (
-    <Canister
-      key={panel.id ?? panel.title}
-      id={panel.id}
-      title={panel.title}
-      accent={panel.accent ?? "#00FFFF"}
-      statusLabel={panel.statusLabel}
-      collapsed={collapsed}
-      floating={floating}
-      onToggleFullscreen={
-        panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined
-      }
-      onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
-      onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
-      style={{
-        ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
-        ...(panel.flex ? { flex: panel.flex } : {}),
-        ...(canisterStyle ?? {}),
-      }}
-    >
-      <div
-        onPointerDown={
-          panel.id && floating
-            ? (event) => drawerManager.beginDrag(panel.id as string, event)
-            : undefined
+    /** Side/intelligence slots rotate; center dual media monitors stay fixed. */
+    enableSectionSwitcher = false,
+  ) => {
+    const slotId = panel.id ?? panel.title;
+    const body =
+      enableSectionSwitcher ? (
+        <OverseerSectionSwitcher
+          slotId={`surround:${slotId}`}
+          defaultLabel={panel.title}
+          defaultContent={panel.content}
+          sections={surroundSections}
+          compact
+        />
+      ) : (
+        panel.content
+      );
+
+    return (
+      <Canister
+        key={slotId}
+        id={panel.id}
+        title={panel.title}
+        accent={panel.accent ?? "#00FFFF"}
+        statusLabel={panel.statusLabel}
+        collapsed={collapsed}
+        floating={floating}
+        onToggleFullscreen={
+          panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined
         }
-        onPointerMove={panel.id && floating ? drawerManager.moveDrag : undefined}
-        onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
-        style={{ height: "100%" }}
+        onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
+        onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
+        style={{
+          ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
+          ...(panel.flex ? { flex: panel.flex } : {}),
+          ...(canisterStyle ?? {}),
+        }}
       >
-        {panel.content}
-      </div>
-    </Canister>
-  );
+        <div
+          onPointerDown={
+            panel.id && floating
+              ? (event) => drawerManager.beginDrag(panel.id as string, event)
+              : undefined
+          }
+          onPointerMove={panel.id && floating ? drawerManager.moveDrag : undefined}
+          onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
+          style={{ height: "100%" }}
+        >
+          {body}
+        </div>
+      </Canister>
+    );
+  };
 
   const renderRail = (panels: ShellPanel[], rail: "left" | "center" | "right") => {
     const isLeft = rail === "left";
@@ -421,6 +444,8 @@ export default function OverseerFlightDeck({
             panel,
             isLeft ? leftCollapsed : isRight ? rightCollapsed : false,
             false,
+            undefined,
+            isSideRail,
           ),
         )}
       </div>
@@ -730,12 +755,18 @@ export default function OverseerFlightDeck({
           ? activeWorkspace.bottom
               .filter((panel) => !isFloatingPanel(panel))
               .map((panel) =>
-                renderPanelCanister(panel, false, false, {
-                  minHeight: 480,
-                  flex: "0 0 auto",
-                  height: "auto",
-                  overflow: "visible",
-                }),
+                renderPanelCanister(
+                  panel,
+                  false,
+                  false,
+                  {
+                    minHeight: 480,
+                    flex: "0 0 auto",
+                    height: "auto",
+                    overflow: "visible",
+                  },
+                  true,
+                ),
               )
           : null}
       </div>
