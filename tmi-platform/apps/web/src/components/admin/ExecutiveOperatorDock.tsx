@@ -171,15 +171,8 @@ export default function ExecutiveOperatorDock({
               >
                 Open Messages →
               </Link>
-              <Link
-                href={
-                  host.id === "big-ace"
-                    ? "/admin/overseer?workspace=bigace"
-                    : "/admin/overseer?workspace=michaelcharlie"
-                }
-                style={linkStyle(accentColor)}
-              >
-                Workspace →
+              <Link href="/admin/overseer" style={linkStyle(accentColor)}>
+                Overseer →
               </Link>
               <Link
                 href={host.id === "big-ace" ? "/admin/big-ace" : "/admin/mc-michael-charlie"}

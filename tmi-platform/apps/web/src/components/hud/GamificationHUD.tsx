@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useGamificationEngine } from '@/hooks/useGamificationEngine';
 
 interface Gain { xp: number; credits: number; id: number; tier: 'sm' | 'md' | 'rare' }
@@ -38,10 +39,12 @@ const TIER_STYLE: Record<Gain['tier'], React.CSSProperties> = {
 };
 
 export default function GamificationHUD() {
+  const pathname = usePathname() ?? '';
   const { totalXp, walletCredits, currentLevel, progress } = useGamificationEngine();
 
   const [toasts, setToasts] = useState<Gain[]>([]);
   const [levelUp, setLevelUp] = useState<LevelUpDetail | null>(null);
+  const onAdmin = pathname.startsWith('/admin');
 
   const prevXp = useRef(totalXp);
   const prevCredits = useRef(walletCredits);
@@ -84,6 +87,9 @@ export default function GamificationHUD() {
   const showStrip = progress.nextLevel && pct >= 75;
   const stripPulse = pct >= 85;
   const stripUrgent = pct >= 95;
+
+  // Unmount floaters on admin / Overseer — deck owns its chrome.
+  if (onAdmin) return null;
 
   return (
     <>

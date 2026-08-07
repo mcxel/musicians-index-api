@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLaunchDock } from "@/lib/dock/launchDockStore";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
@@ -34,11 +34,13 @@ const EXPERIENCE_OPTIONS = [
 
 export default function LaunchDock() {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const dock = useLaunchDock();
+  const onAdminRoute = pathname.startsWith("/admin");
 
   // Hydrate role from session once when opened
   useEffect(() => {
-    if (!dock.isOpen) return;
+    if (onAdminRoute || !dock.isOpen) return;
     let cancelled = false;
     fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
@@ -50,7 +52,7 @@ export default function LaunchDock() {
     return () => {
       cancelled = true;
     };
-  }, [dock.isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dock.isOpen, onAdminRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const preview = resolveLiveDestination({
     role: dock.role,
@@ -88,6 +90,11 @@ export default function LaunchDock() {
       return;
     }
   }, [dock, requestMedia, router]);
+
+  // Never mount GO LIVE floater on admin / Overseer — Admin Cam is OverlayHost only.
+  if (onAdminRoute) {
+    return null;
+  }
 
   // Collapsed pill
   if (dock.isOpen && dock.collapsed) {

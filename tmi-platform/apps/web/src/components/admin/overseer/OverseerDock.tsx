@@ -31,10 +31,10 @@ interface DockButton {
 
 const DOCK_BUTTONS: DockButton[] = [
   { id: "home",     label: "Quick Dock",   href: "/admin/overseer",                   tone: "amber" },
-  { id: "home",     label: "Legal Center", href: "/admin/overseer?workspace=legal",   tone: "amber" },
+  { id: "home",     label: "Legal Center", href: "/admin/legal",                      tone: "amber" },
   { id: "inbox",    label: "Contact Us",   href: "/contact",                          tone: "sky" },
   { id: "revenue",  label: "Tax / Billing", href: "/admin/revenue",                    tone: "yellow" },
-  { id: "alerts",   label: "Alerts",       href: "/platform-status",                   tone: "rose", count: 8 },
+  { id: "alerts",   label: "Alerts",       href: "/platform-status",                   tone: "rose" },
   { id: "chain",    label: "Chain Pulse",  href: "/admin/overseer#chain-command",      tone: "violet" },
   { id: "feeds",    label: "Start Meeting",href: "/admin/overseer#live-feed-router",   tone: "cyan" },
   { id: "security", label: "Summon Big Ace", href: "/admin/overseer#chain-command",    tone: "fuchsia" },

@@ -20,7 +20,7 @@ import {
 export type AdminConciergePanelProps = {
   open: boolean;
   onClose: () => void;
-  /** Include Overseer workspace role destinations */
+  /** Partner workspace pills — off by default (session membership only). */
   includeWorkspaces?: boolean;
   /** Operator label for Suggest Fix / Limited Controls chip */
   operatorLabel?: string;
@@ -33,7 +33,7 @@ export type AdminConciergePanelProps = {
 export default function AdminConciergePanel({
   open,
   onClose,
-  includeWorkspaces = true,
+  includeWorkspaces = false,
   operatorLabel = "Admin",
   fullControl = false,
   canAutoApplyFixes = false,

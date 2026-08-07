@@ -67,7 +67,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     dockButtons: [
       { label: "Go Back", href: "/admin" },
       { label: "Legal Command", href: "/admin/legal" },
-      { label: "Legal Docs", href: "/admin/overseer?workspace=legal" },
+      { label: "Legal Docs", href: "/admin/legal" },
       { label: "Presentation", href: "/admin/presentation-preview" },
       { label: "Platform Core", href: "/admin/platform-core" },
       { label: "Tax / Billing", href: "/admin/revenue" },
@@ -199,7 +199,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "legal-privacy", title: "PRIVACY", widget: "legal-doc-privacy", accent: "#00FFFF" },
     ],
     dockButtons: [
-      { label: "Overseer", href: "/admin/overseer?workspace=marcel" },
+      { label: "Overseer", href: "/admin/overseer" },
       { label: "Legal Command", href: "/admin/legal" },
       { label: "Legal Site", href: "/legal" },
       { label: "Gov Requests", href: "/legal/government-requests" },

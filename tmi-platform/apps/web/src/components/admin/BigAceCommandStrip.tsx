@@ -19,29 +19,25 @@ interface CommandAction {
 
 const QUICK_ACTIONS: CommandAction[] = [
   { id: "home",     label: "HQ",          href: "/admin",              accent: "#FFD700" },
-  { id: "revenue",  label: "REVENUE",     href: "/admin/revenue",      accent: "#00FF88", count: 0 },
+  { id: "revenue",  label: "REVENUE",     href: "/admin/revenue",      accent: "#00FF88" },
   { id: "feeds",    label: "LIVE FEEDS",  href: "/admin/live-feed",    accent: "#00FFFF" },
-  { id: "security", label: "SECURITY",    href: "/admin/security",     accent: "#FF4444", count: 3, urgent: true },
+  { id: "security", label: "SECURITY",    href: "/admin/security",     accent: "#FF4444" },
   { id: "bots",     label: "BOTS",        href: "/admin/bots",         accent: "#AA2DFF" },
   { id: "billing",  label: "BILLING",     href: "/admin/billing",      accent: "#FFD700" },
-  { id: "inbox",    label: "INBOX",       href: "/admin/inbox",        accent: "#FF2DAA", count: 7 },
+  { id: "inbox",    label: "INBOX",       href: "/admin/inbox",        accent: "#FF2DAA" },
 ];
 
+// Rule 20: no fabricated task/revenue pulse lines.
 const CHAIN_PULSE_ITEMS = [
-  "Big Ace · ACTIVE · 18 tasks",
-  "Marcel · ACTIVE · 12 tasks",
-  "Admin Chain · ACTIVE · 7 tasks",
-  "Bot Sentinel · 100 units deployed",
-  "Revenue stream · $44.1M platform total",
-  "Security · STABLE · 3 open alerts",
-  "Venue Chain · ACTIVE · 8 tasks",
-  "Builder Chain · ACTIVE · 6 tasks",
+  "Chain Pulse · awaiting live operator telemetry",
+  "Revenue · open /admin/revenue for Stripe-backed totals",
+  "Security · open /admin/security for real alerts",
 ];
 
 export default function BigAceCommandStrip() {
   const tickerRef = useRef<HTMLDivElement>(null);
-  const [taxLoss] = useState("$2.1M YTD");
-  const [alertCount] = useState(3);
+  const [taxLoss] = useState<string | null>(null);
+  const [alertCount] = useState<number | null>(null);
 
   // Auto-scroll ticker
   useEffect(() => {
@@ -144,46 +140,43 @@ export default function BigAceCommandStrip() {
         {/* Spacer */}
         <div style={{ flex: 1 }} />
 
-        {/* Tax Loss indicator */}
+        {/* Tax / alerts: honest empty until real ledger/alert APIs bind */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 5,
             padding: "3px 10px",
-            background: "rgba(255,68,68,0.08)",
-            border: "1px solid rgba(255,68,68,0.2)",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 6,
             flexShrink: 0,
           }}
         >
           <span style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em" }}>TAX LOSS</span>
-          <span style={{ fontSize: 9, fontWeight: 900, color: "#FF4444" }}>{taxLoss}</span>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.45)" }}>
+            {taxLoss ?? "—"}
+          </span>
         </div>
 
-        {/* Alert count */}
-        {alertCount > 0 && (
-          <Link
-            href="/admin/security"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "3px 10px",
-              background: "rgba(255,68,68,0.12)",
-              border: "1px solid rgba(255,68,68,0.4)",
-              borderRadius: 6,
-              textDecoration: "none",
-              flexShrink: 0,
-              boxShadow: "0 0 8px rgba(255,68,68,0.3)",
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF4444" }} />
-            <span style={{ fontSize: 7, fontWeight: 900, color: "#FF4444", letterSpacing: "0.12em" }}>
-              {alertCount} ALERTS
-            </span>
-          </Link>
-        )}
+        <Link
+          href="/admin/security"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "3px 10px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 6,
+            textDecoration: "none",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 7, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.12em" }}>
+            {alertCount == null ? "ALERTS —" : `${alertCount} ALERTS`}
+          </span>
+        </Link>
       </div>
 
       {/* Chain Pulse ticker */}

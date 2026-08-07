@@ -11,11 +11,7 @@ export const metadata = {
  * CanonOverseerShell is a re-export of OverseerFlightDeck (no oval top bar).
  * Admin Camera toggle removed (2026-08-04, Marcel) — was reported reappearing after
  * concurrent-edit regressions; no camera/mic overlay on this deck. No TMIVideoMonitor /
- * VoiceDirector floaters either.
- *
- * Suspense is required: WorkspaceManager uses useSearchParams() which must be
- * wrapped in a Suspense boundary in the Next.js App Router to avoid React
- * hydration errors #425, #418, #423.
+ * VoiceDirector floaters either. Workspace from session only — no ?workspace= auth.
  */
 export default function OverseerDeckPage() {
   return (

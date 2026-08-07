@@ -235,43 +235,12 @@ export const ADMIN_CONCIERGE_DESTINATIONS: ConciergeDestination[] = [
   },
 ];
 
-/** Overseer workspace role pills — formerly sticky under the quick switch. */
+/**
+ * Partner workspace pills removed (security slice).
+ * Workspace identity comes only from authenticated session + memberships.
+ * No ?workspace= destinations — those were untrusted URL auth.
+ */
 export const OVERSEER_WORKSPACE_DESTINATIONS: ConciergeDestination[] = [
-  {
-    id: "ws-marcel",
-    label: "Marcel",
-    href: "/admin/overseer?workspace=marcel",
-    group: "Workspaces",
-    accent: "#FFD700",
-  },
-  {
-    id: "ws-bigace",
-    label: "Big Ace",
-    href: "/admin/overseer?workspace=bigace",
-    group: "Workspaces",
-    accent: "#00FFFF",
-  },
-  {
-    id: "ws-jaypaul",
-    label: "Jay Paul",
-    href: "/admin/overseer?workspace=jaypaul",
-    group: "Workspaces",
-    accent: "#FF2DAA",
-  },
-  {
-    id: "ws-justin",
-    label: "Justin",
-    href: "/admin/overseer?workspace=justin",
-    group: "Workspaces",
-    accent: "#AA2DFF",
-  },
-  {
-    id: "ws-michaelcharlie",
-    label: "Michael Charlie",
-    href: "/admin/overseer?workspace=michaelcharlie",
-    group: "Workspaces",
-    accent: "#00FF88",
-  },
   {
     id: "legal-command",
     label: "Legal Command",
@@ -279,14 +248,6 @@ export const OVERSEER_WORKSPACE_DESTINATIONS: ConciergeDestination[] = [
     group: "Ops Intelligence",
     accent: "#FFD700",
     keywords: ["legal", "compliance", "disclosure", "privacy", "records", "vault"],
-  },
-  {
-    id: "ws-legal",
-    label: "Legal Docs Workspace",
-    href: "/admin/overseer?workspace=legal",
-    group: "Workspaces",
-    accent: "#FFD700",
-    keywords: ["legal", "terms", "dmca", "policy"],
   },
 ];
 

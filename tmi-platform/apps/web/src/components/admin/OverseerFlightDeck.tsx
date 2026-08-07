@@ -35,6 +35,11 @@ import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/Med
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
 import OverseerSectionSwitcher from "@/components/admin/overseer/OverseerSectionSwitcher";
+import OverseerQuickControlRow from "@/components/admin/overseer/OverseerQuickControlRow";
+import {
+  renderOverseerCenterView,
+  type OverseerCenterViewId,
+} from "@/components/admin/overseer/OverseerCommandViews";
 import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
@@ -108,7 +113,26 @@ export default function OverseerFlightDeck({
   const [clock, setClock] = useState("");
   const [conciergeOpen, setConciergeOpen] = useState(false);
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
+  const [centerView, setCenterView] = useState<OverseerCenterViewId>("media");
+  const [flipKey, setFlipKey] = useState(0);
   const drawerManager = useDrawerManager();
+
+  const selectCenterView = (view: OverseerCenterViewId) => {
+    setCenterView(view);
+    setFlipKey((k) => k + 1);
+    if (view !== "media") setFullscreenPanel(null);
+  };
+
+  const handleOpsAction = (action: string) => {
+    const scrollTo = (id: string) => {
+      const el = document.getElementById(id);
+      if (el instanceof HTMLElement) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+    if (action === "alerts") scrollTo("sentinel-wall");
+    if (action === "chain-pulse") scrollTo("chain-command");
+    if (action === "summon") scrollTo("bot-roster");
+    if (action === "start-meeting") selectCenterView("observatory");
+  };
 
   const handleSuggestFix = async () => {
     if (onSuggestFix) {
@@ -340,85 +364,159 @@ export default function OverseerFlightDeck({
 
     if (equalDualCenter) {
       const dual = visible.slice(0, 2);
+      const commandContent = renderOverseerCenterView(centerView);
+      const showCommand = centerView !== "media" && commandContent != null;
+
       return (
         <div
           data-col={rail}
           data-equal-dual-monitors="true"
+          data-center-view={centerView}
           style={{
             minWidth: 0,
             alignSelf: "stretch",
             height: "auto",
             overflowX: "hidden",
             paddingRight: 2,
+            perspective: 1400,
           }}
         >
-          <CanonicalDualMonitorStack
-            variant="gold"
-            seriesLabel="BERNTOUTGLOBAL OVERSEER DECK · GOLD SERIES · DUAL HD MONITORS"
-            monitors={dual.map((panel, index) => ({
-              id: panel.id ?? `center-${index}`,
-              label: `MONITOR ${index + 1} — ${panel.title}`,
-              children: (
+          <div
+            key={flipKey}
+            style={{
+              transformStyle: "preserve-3d",
+              animation: "overseer-center-flip 0.55s cubic-bezier(0.2, 0.8, 0.2, 1)",
+            }}
+          >
+            {showCommand ? (
+              <div
+                data-center-command-viewport
+                style={{
+                  minHeight: "min(70vh, 720px)",
+                  aspectRatio: "16 / 9",
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "2px solid #D4AF37",
+                  overflow: "hidden",
+                  background: "#020210",
+                  boxShadow: "0 0 24px rgba(0,255,255,0.12), inset 0 0 30px rgba(0,0,0,0.65)",
+                }}
+              >
                 <div
                   style={{
                     display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                    minHeight: 0,
-                    background: "#020210",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    padding: "6px 10px",
+                    borderBottom: "1px solid rgba(255,215,0,0.25)",
+                    background: "rgba(0,0,0,0.65)",
                   }}
                 >
-                  <div
+                  <span
                     style={{
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      padding: "4px 8px",
-                      borderBottom: "1px solid rgba(255,215,0,0.2)",
-                      background: "rgba(0,0,0,0.55)",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                      color: "#00FFFF",
+                      textTransform: "uppercase",
                     }}
                   >
-                    <span
+                    Command Viewport · {centerView.replace(/-/g, " ")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => selectCenterView("media")}
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      border: "1px solid rgba(255,215,0,0.45)",
+                      background: "rgba(255,215,0,0.12)",
+                      color: "#FFD700",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    MEDIA MATRIX
+                  </button>
+                </div>
+                <div style={{ height: "calc(100% - 32px)", minHeight: 0, overflow: "hidden" }}>
+                  {commandContent}
+                </div>
+              </div>
+            ) : (
+              <CanonicalDualMonitorStack
+                variant="gold"
+                seriesLabel="BERNTOUTGLOBAL OVERSEER DECK · GOLD SERIES · DUAL HD MONITORS"
+                monitors={dual.map((panel, index) => ({
+                  id: panel.id ?? `center-${index}`,
+                  label: `MONITOR ${index + 1} — ${panel.title}`,
+                  children: (
+                    <div
                       style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        letterSpacing: "0.12em",
-                        color: panel.accent ?? "#FFD700",
-                        textTransform: "uppercase",
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                        minHeight: 0,
+                        background: "#020210",
                       }}
                     >
-                      {panel.title}
-                    </span>
-                    {panel.fullscreenKey || panel.id ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleFullscreen(panel.fullscreenKey ?? panel.id ?? panel.title)
-                        }
+                      <div
                         style={{
-                          fontSize: 8,
-                          fontWeight: 800,
-                          letterSpacing: "0.08em",
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          border: "1px solid rgba(255,215,0,0.4)",
-                          background: "rgba(255,215,0,0.12)",
-                          color: "#FFD700",
-                          fontFamily: "inherit",
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          padding: "4px 8px",
+                          borderBottom: "1px solid rgba(255,215,0,0.2)",
+                          background: "rgba(0,0,0,0.55)",
                         }}
                       >
-                        FOCUS
-                      </button>
-                    ) : null}
-                  </div>
-                  <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{panel.content}</div>
-                </div>
-              ),
-            }))}
-          />
+                        <span
+                          style={{
+                            fontSize: 8,
+                            fontWeight: 900,
+                            letterSpacing: "0.12em",
+                            color: panel.accent ?? "#FFD700",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {panel.title}
+                        </span>
+                        {panel.fullscreenKey || panel.id ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleFullscreen(panel.fullscreenKey ?? panel.id ?? panel.title)
+                            }
+                            style={{
+                              fontSize: 8,
+                              fontWeight: 800,
+                              letterSpacing: "0.08em",
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              border: "1px solid rgba(255,215,0,0.4)",
+                              background: "rgba(255,215,0,0.12)",
+                              color: "#FFD700",
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            FOCUS
+                          </button>
+                        ) : null}
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{panel.content}</div>
+                    </div>
+                  ),
+                }))}
+              />
+            )}
+          </div>
         </div>
       );
     }
@@ -595,6 +693,20 @@ export default function OverseerFlightDeck({
           </button>
         </div>
       </header>
+
+      <style>{`
+        @keyframes overseer-center-flip {
+          0% { transform: rotateY(82deg) scale(0.96); opacity: 0.35; }
+          55% { transform: rotateY(-8deg) scale(1.01); opacity: 0.95; }
+          100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      <OverseerQuickControlRow
+        activeView={centerView}
+        onSelectView={selectCenterView}
+        onOpsAction={handleOpsAction}
+      />
 
       {activeWorkspace.ribbon ? (
         <Canister

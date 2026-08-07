@@ -51,7 +51,14 @@ export default function TMIWorkspaceSwitcher() {
     return () => window.removeEventListener("tmi:workspace-switch", handler);
   }, []);
 
-  if (!session?.authenticated || !session?.user) {
+  // Flight Deck / Observatory own chrome — no sticky Fan/Performer/Admin ribbon.
+  const isFlightDeck =
+    pathname === "/admin/overseer" ||
+    pathname.startsWith("/admin/overseer/") ||
+    pathname === "/admin/observatory" ||
+    pathname.startsWith("/admin/observatory/");
+
+  if (!session?.authenticated || !session?.user || isFlightDeck) {
     return null;
   }
 

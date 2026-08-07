@@ -121,7 +121,12 @@ export default function TMIGlobalNav() {
   const roleColor = ROLE_COLOR[role] ?? ROLE_COLOR.default!;
   const profileBase = ROLE_PROFILE[role] ?? "/profile";
   const profileHref = isAuthenticated ? `${profileBase}/${userId}` : "/auth/signin";
-  const canGoLive = isAuthenticated && LIVE_ROLES.has(role);
+  const isFlightDeck =
+    pathname === "/admin/overseer" ||
+    pathname.startsWith("/admin/overseer/") ||
+    pathname === "/admin/observatory" ||
+    pathname.startsWith("/admin/observatory/");
+  const canGoLive = isAuthenticated && LIVE_ROLES.has(role) && !pathname.startsWith("/admin");
   const dashboardHref = isAuthenticated ? ROLE_DASHBOARD[role] ?? "/hub/fan" : "/home/1";
 
   if (!mounted) {
@@ -148,6 +153,11 @@ export default function TMIGlobalNav() {
         aria-label="Global navigation"
       />
     );
+  }
+
+  // Overseer / Observatory own the dock — unmount global GO LIVE / nav floater bar.
+  if (isFlightDeck) {
+    return null;
   }
 
   return (

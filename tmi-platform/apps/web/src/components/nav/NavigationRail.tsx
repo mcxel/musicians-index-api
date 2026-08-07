@@ -39,6 +39,8 @@ const EXCLUDED_PREFIXES = [
   "/checkout",
   "/payment-success",
   "/payment-cancelled",
+  "/admin/overseer",
+  "/admin/observatory",
 ];
 
 // ── Menu items — all real routes ─────────────────────────────────────────────
