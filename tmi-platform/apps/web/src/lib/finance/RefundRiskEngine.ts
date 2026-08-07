@@ -16,6 +16,8 @@ export const HOLD_WINDOWS_MS: Record<TransactionType, number> = {
   sponsor:         7  * 24 * 60 * 60 * 1000, // 7 days
   advertiser:      7  * 24 * 60 * 60 * 1000, // 7 days
   artist_spotlight: 72 * 60 * 60 * 1000,   // 72 hours
+  merch:           72 * 60 * 60 * 1000,    // 72 hours
+  store:           72 * 60 * 60 * 1000,    // 72 hours
   refund:          0,
   payout:          0,
 };

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   let event: { type: string; data: { object: Record<string, unknown> }; id: string };
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET) as typeof event;
+    event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET) as unknown as typeof event;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[finance/webhook/stripe] Signature Error: ${msg}`);
