@@ -73,6 +73,8 @@ export interface LiveSession {
   accentColor:   string;
   startedAt:     number;
   lastPingAt:    number;
+  /** Set when host network-drops; cleared on reconnect; used for grace-period teardown. */
+  hostDisconnectedAt: number | null;
 
   // Telemetry
   bitrateKbps:      number;
@@ -212,8 +214,9 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     privacy:       payload.privacy ?? "PUBLIC",
     entryPriceUsd: payload.entryPriceUsd ?? null,
     accentColor:   payload.accentColor ?? pickAccent(payload.userId),
-    startedAt:     Date.now(),
-    lastPingAt:    Date.now(),
+    startedAt:          Date.now(),
+    lastPingAt:         Date.now(),
+    hostDisconnectedAt: null,
     bitrateKbps:      0,
     droppedFramesPct: 0,
     rttMs:            0,
@@ -245,6 +248,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
 }
 
 export function endLiveSession(userId: string): void {
+  if (!sessions.has(userId)) return; // idempotent
   sessions.delete(userId);
   LiveRegistry.unregister(userId);
   void removePersistedLiveSession(userId).catch((err) => {
@@ -257,8 +261,32 @@ export function pingSession(userId: string): void {
   const s = sessions.get(userId);
   if (s) {
     s.lastPingAt = Date.now();
+    s.hostDisconnectedAt = null; // reconnect clears the disconnect timestamp
     broadcast();
   }
+}
+
+/** Mark host as network-dropped (not intentional exit). Grace window starts now. */
+export function markHostDisconnected(userId: string): void {
+  const s = sessions.get(userId);
+  if (s && s.hostDisconnectedAt === null) {
+    s.hostDisconnectedAt = Date.now();
+    broadcast();
+  }
+}
+
+/** Expire sessions whose host disconnected more than gracePeriodMs ago. */
+export function expireDisconnectedSessions(gracePeriodMs = 30_000): string[] {
+  const expired: string[] = [];
+  const cutoff = Date.now() - gracePeriodMs;
+  for (const [userId, s] of sessions) {
+    if (s.hostDisconnectedAt !== null && s.hostDisconnectedAt < cutoff) {
+      endLiveSession(userId);
+      void removeSessionNow(userId).catch(() => {});
+      expired.push(userId);
+    }
+  }
+  return expired;
 }
 
 export function pingSessionWithTelemetry(userId: string, payload: LivePingPayload = {}): void {
@@ -441,9 +469,10 @@ export function getSeedSessions(): LiveSession[] {
       tipTotal:      0,
       privacy:       "PUBLIC",
       entryPriceUsd: null,
-      accentColor:   pickAccent(e.userId),
-      startedAt:     e.startedAt,
-      lastPingAt:    e.startedAt,
+      accentColor:        pickAccent(e.userId),
+      startedAt:          e.startedAt,
+      lastPingAt:         e.startedAt,
+      hostDisconnectedAt: null,
       bitrateKbps:      0,
       droppedFramesPct: 0,
       rttMs:            0,

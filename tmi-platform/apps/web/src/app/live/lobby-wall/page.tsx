@@ -120,6 +120,7 @@ export default function AllLiveLobbyWallPage() {
             audienceCountries: [],
             recentAudienceEntries: [],
             lastAudienceEntryAt: null,
+            hostDisconnectedAt: null,
           }));
         setRooms(projectSessionsToSurfaceCards(asSessions).map(surfaceToLobbyRoom));
       } catch {
