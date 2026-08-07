@@ -1,16 +1,20 @@
 /**
  * GauntletPresentationSystem — original TMI spectacle overlays (NOT CoD IP).
- * Scaffold: overlays/underlays, Pulse, jumbotron data, elimination/survive/champion graphics.
+ * Main + side stages are both visible (jumbotron / PiP), sequenced by run phase.
  */
 
 export type GauntletGraphicKind =
   | "ELIMINATION_BURST"
-  | "SURVIVOR_LOCK"
+  | "SURVIVOR_REST"
   | "CHAMPION_CROWN"
   | "ROUND_REDUCER"
+  | "FIELD_CONTRACT"
+  | "AUDIENCE_VOTE"
+  | "FINAL_DUEL"
   | "WHOS_ENTERING"
   | "PERFORMANCE_CLOCK"
-  | "PULSE_WAVE";
+  | "PULSE_WAVE"
+  | "SIDE_STAGE_WINDOW";
 
 export type GauntletJumbotronData = {
   headline: string;
@@ -19,12 +23,14 @@ export type GauntletJumbotronData = {
   aliveCount: number;
   clockSeconds: number;
   championName?: string;
+  sideStageLabel?: string | null;
+  voteOpen?: boolean;
 };
 
 export type GauntletPresentationFrame = {
   underlay: "void-grid" | "neon-horizon" | "festival-haze";
   overlay: GauntletGraphicKind | null;
-  pulseIntensity: number; // 0–1 from real room energy when available
+  pulseIntensity: number;
   jumbotron: GauntletJumbotronData;
   accent: string;
 };
@@ -32,10 +38,12 @@ export type GauntletPresentationFrame = {
 export function buildGauntletPresentationFrame(input: {
   phase: string;
   roundSize: number;
+  roundNumber?: number;
   aliveCount: number;
   clockSeconds: number;
   championName?: string;
-  /** Real energy 0–1 only — never fabricate crowd energy. */
+  sideStageLabel?: string | null;
+  voteOpen?: boolean;
   realPulse?: number;
 }): GauntletPresentationFrame {
   const pulse =
@@ -46,21 +54,52 @@ export function buildGauntletPresentationFrame(input: {
   let overlay: GauntletGraphicKind | null = "PERFORMANCE_CLOCK";
   let underlay: GauntletPresentationFrame["underlay"] = "neon-horizon";
   let headline = "TMI MUSICAL GAUNTLET";
-  let subline = "One life. Survive the round.";
+  let subline = "Main rounds · audience elimination · sequenced side battles";
+  const roundTag = input.roundNumber ? `R${input.roundNumber}` : `OF ${input.roundSize}`;
 
   switch (input.phase) {
-    case "ELIMINATION":
+    case "REGISTRATION":
+      overlay = "WHOS_ENTERING";
+      headline = "REGISTRATION";
+      subline = "Who's entering the main stage?";
+      break;
+    case "ROUND_ACTIVE":
+      overlay = "ROUND_REDUCER";
+      headline = `MAIN ROUND · OF ${input.roundSize}`;
+      subline = "Survivors perform · audience watches the main stage";
+      break;
+    case "AUDIENCE_ELIMINATION_VOTE":
+      overlay = "AUDIENCE_VOTE";
+      headline = "AUDIENCE ELIMINATION VOTE";
+      subline = input.voteOpen
+        ? "Voting open — pick who is eliminated (gifts never count)"
+        : "Voting closed — tallying real ballots only";
+      break;
+    case "ELIMINATION_RESULT":
       overlay = "ELIMINATION_BURST";
       underlay = "void-grid";
-      headline = "ELIMINATED";
-      subline = "Stay in the venue — watch the survivors.";
+      headline = "ELIMINATION RESULT";
+      subline = "That performer didn't win — queued for the side-battle window";
       break;
-    case "SURVIVOR_REVEAL":
-      overlay = "SURVIVOR_LOCK";
-      headline = "SURVIVORS LOCKED";
-      subline = `${input.aliveCount} remain · next cut ${input.roundSize}`;
+    case "SURVIVOR_REST":
+    case "SIDE_BATTLE_WINDOW":
+      overlay = "SIDE_STAGE_WINDOW";
+      underlay = "festival-haze";
+      headline = "SIDE BATTLE WINDOW";
+      subline = "Survivors rest · eliminated compete visibly (PiP / wall)";
       break;
-    case "CHAMPION_CEREMONY":
+    case "FIELD_CONTRACT":
+      overlay = "FIELD_CONTRACT";
+      headline = "FIELD CONTRACTS";
+      subline = `${input.aliveCount} survivors return rested · next main round`;
+      break;
+    case "FINAL":
+      overlay = "FINAL_DUEL";
+      underlay = "festival-haze";
+      headline = "FINAL";
+      subline = "Two remain on the main stage";
+      break;
+    case "CHAMPION":
       overlay = "CHAMPION_CROWN";
       underlay = "festival-haze";
       headline = "GAUNTLET CHAMPION";
@@ -70,11 +109,6 @@ export function buildGauntletPresentationFrame(input: {
       overlay = "WHOS_ENTERING";
       headline = "WHO'S ENTERING NEXT?";
       subline = "Continuous runs — room stays open.";
-      break;
-    case "ROUND_ACTIVE":
-      overlay = "ROUND_REDUCER";
-      headline = `ROUND OF ${input.roundSize}`;
-      subline = "Performance clock is live";
       break;
     default:
       overlay = "PULSE_WAVE";
@@ -88,10 +122,12 @@ export function buildGauntletPresentationFrame(input: {
     jumbotron: {
       headline,
       subline,
-      roundLabel: `R${input.roundSize}`,
+      roundLabel: roundTag,
       aliveCount: input.aliveCount,
       clockSeconds: input.clockSeconds,
       championName: input.championName,
+      sideStageLabel: input.sideStageLabel ?? null,
+      voteOpen: input.voteOpen,
     },
     accent: "#FFD700",
   };

@@ -37,6 +37,8 @@ export type GauntletParticipant = {
   displayName: string;
   role: GauntletParticipantRole;
   eliminated: boolean;
+  /** Eliminated leftovers may fight on the secondary side stage. */
+  sideBattleEligible: boolean;
   joinedAt: number;
 };
 
@@ -140,6 +142,7 @@ export function joinGauntletRoom(input: {
     displayName: input.displayName,
     role,
     eliminated: false,
+    sideBattleEligible: false,
     joinedAt: Date.now(),
   };
   map.set(input.userId, participant);
@@ -152,12 +155,21 @@ export function eliminateToSpectator(
   roomId: string,
   userId: string,
 ): GauntletParticipant | null {
+  return eliminateToSpectatorWithSideBattle(roomId, userId);
+}
+
+/** Eliminate → SPECTATOR + SIDE_BATTLE_ELIGIBLE (secondary stage only). */
+export function eliminateToSpectatorWithSideBattle(
+  roomId: string,
+  userId: string,
+): GauntletParticipant | null {
   const map = participants.get(roomId);
   if (!map) return null;
   const p = map.get(userId);
   if (!p) return null;
   p.eliminated = true;
   p.role = "SPECTATOR";
+  p.sideBattleEligible = true;
   recount(roomId);
   return p;
 }

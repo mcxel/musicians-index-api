@@ -2,7 +2,6 @@
 
 /**
  * Observatory Gauntlet Control — counts + pause/extend/advance with audit log.
- * Scaffold: real engine calls when room/run exist; honest empty when disabled.
  */
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
@@ -15,16 +14,19 @@ import {
   type GauntletRoomState,
 } from "@/lib/gauntlet/GauntletRoomRuntime";
 import {
+  advanceGauntletPhase,
   extendPerformanceClock,
   getGauntletRun,
   type GauntletRunState,
 } from "@/lib/gauntlet/GauntletRunRuntime";
+import { getSideStageSummary } from "@/lib/gauntlet/GauntletSideBattleEngine";
 import {
   getGauntletAuditLog,
   getGauntletControlCounts,
   logGauntletControl,
   type GauntletAuditEntry,
 } from "@/lib/gauntlet/GauntletControlAudit";
+
 const ACTOR = "observatory-ops";
 
 export default function GauntletControlPanel() {
@@ -32,12 +34,14 @@ export default function GauntletControlPanel() {
   const [run, setRun] = useState<GauntletRunState | null>(null);
   const [audit, setAudit] = useState<GauntletAuditEntry[]>([]);
   const [counts, setCounts] = useState({ pause: 0, extend: 0, advance: 0 });
+  const [sideLabel, setSideLabel] = useState<string>("");
 
   const refresh = useCallback(() => {
     if (!isEnabled("GAUNTLET_ENABLED")) {
       setRoom(null);
       setRun(null);
       setAudit([]);
+      setSideLabel("");
       return;
     }
     const r = ensureCanonicalGauntletRoom();
@@ -51,6 +55,12 @@ export default function GauntletControlPanel() {
     if (r) {
       setAudit(getGauntletAuditLog(r.roomId));
       setCounts(getGauntletControlCounts(r.roomId));
+      const side = getSideStageSummary(r.roomId);
+      setSideLabel(
+        side.windowOpen
+          ? `SIDE WINDOW LIVE · ${side.liveBattles} live / ${side.queuedBattles} queued`
+          : side.latestLabel ?? "Side stage idle (between-round only)",
+      );
     }
   }, []);
 
@@ -94,6 +104,7 @@ export default function GauntletControlPanel() {
           </div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
             Room {roomId} · {room?.paused ? "PAUSED" : "ACTIVE"}
+            {run ? ` · ${run.phase}` : ""}
           </div>
         </div>
         <Link
@@ -136,8 +147,9 @@ export default function GauntletControlPanel() {
       </div>
 
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
-        Ops counts — Pause/Resume: {counts.pause} · Extend: {counts.extend} · Advance: {counts.advance}
+        Ops — Pause/Resume: {counts.pause} · Extend: {counts.extend} · Advance: {counts.advance}
       </div>
+      <div style={{ fontSize: 11, color: "#FF2DAA" }}>{sideLabel}</div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
@@ -180,14 +192,15 @@ export default function GauntletControlPanel() {
           disabled={!run}
           onClick={() => {
             if (!run) return;
+            const before = run.phase;
+            advanceGauntletPhase(run.runId);
             logGauntletControl({
               roomId,
               runId: run.runId,
               action: "ADVANCE_PHASE",
               actorId: ACTOR,
-              detail: `from ${run.phase}`,
+              detail: `from ${before}`,
             });
-            // Advance is audited; phase machine advance is operator-intent scaffold.
             refresh();
           }}
           style={{ ...btnStyle, opacity: run ? 1 : 0.4 }}

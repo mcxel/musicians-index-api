@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * GauntletRoomShell — persistent Musical Gauntlet destination.
- * Uses UniversalVenueRenderer (Rule 21) + GauntletVenueManifest skins.
- * Run end ≠ room end.
+ * GauntletRoomShell — persistent destination.
+ * Sequenced: main round → audience elimination → survivor rest + visible side battles → next round.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,6 +19,8 @@ import {
   type GauntletRoomState,
 } from "@/lib/gauntlet/GauntletRoomRuntime";
 import {
+  advanceGauntletPhase,
+  beginRound,
   createGauntletRun,
   getGauntletRun,
   getPerformanceClockRemaining,
@@ -28,21 +29,34 @@ import {
 import { getGauntletVenueSkin, listGauntletVenueSkins } from "@/lib/gauntlet/GauntletVenueManifest";
 import { buildGauntletPresentationFrame } from "@/lib/gauntlet/GauntletPresentationSystem";
 import { getGauntletJudgingConfig } from "@/lib/gauntlet/GauntletJudgingConfig";
+import {
+  getSideStageSummary,
+  getVisibleSideBattles,
+} from "@/lib/gauntlet/GauntletSideBattleEngine";
+import { isEliminationVoteOpen } from "@/lib/gauntlet/GauntletAudienceEliminationVote";
+import {
+  captureGauntletBadge,
+  championBadgeTitle,
+} from "@/lib/gauntlet/GauntletMemoryHooks";
+import GauntletPresentationOverlay from "@/components/gauntlet/GauntletPresentationOverlay";
+import GauntletRoundHUD from "@/components/gauntlet/GauntletRoundHUD";
+import GauntletEliminationVotePanel from "@/components/gauntlet/GauntletEliminationVotePanel";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
   { ssr: false },
 );
 
-type Props = {
-  roomId: string;
-};
+type Props = { roomId: string };
 
 export default function GauntletRoomShell({ roomId }: Props) {
   const [room, setRoom] = useState<GauntletRoomState | null>(null);
   const [run, setRun] = useState<GauntletRunState | null>(null);
   const [clock, setClock] = useState(0);
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const [voterId] = useState(() => getGuestId());
 
   useEffect(() => {
     if (!isGauntletEnabled()) return;
@@ -60,7 +74,10 @@ export default function GauntletRoomShell({ roomId }: Props) {
 
   useEffect(() => {
     if (!run) return;
-    const id = setInterval(() => setClock(getPerformanceClockRemaining(run.runId)), 250);
+    const id = setInterval(() => {
+      setClock(getPerformanceClockRemaining(run.runId));
+      setTick((n) => n + 1);
+    }, 250);
     return () => clearInterval(id);
   }, [run]);
 
@@ -69,26 +86,36 @@ export default function GauntletRoomShell({ roomId }: Props) {
     [room],
   );
 
+  const side = useMemo(() => getSideStageSummary(roomId), [roomId, tick, run?.phase]);
+  const visibleSides = useMemo(() => getVisibleSideBattles(roomId), [roomId, tick, run?.phase]);
+  const voteOpen = run ? isEliminationVoteOpen(run.runId) : false;
+
   const frame = useMemo(() => {
     if (!run) {
       return buildGauntletPresentationFrame({
-        phase: "WHOS_ENTERING_NEXT",
+        phase: "REGISTRATION",
         roundSize: 32,
         aliveCount: room?.waitingCount ?? 0,
         clockSeconds: 0,
+        sideStageLabel: side.latestLabel,
         realPulse: 0,
       });
     }
     return buildGauntletPresentationFrame({
       phase: run.phase,
       roundSize: run.roundSize,
+      roundNumber: run.roundNumber,
       aliveCount: run.aliveIds.length,
       clockSeconds: clock,
+      championName: run.championId ?? undefined,
+      sideStageLabel: side.latestLabel,
+      voteOpen,
       realPulse: 0,
     });
-  }, [run, clock, room?.waitingCount]);
+  }, [run, clock, room?.waitingCount, side.latestLabel, voteOpen]);
 
   const judging = getGauntletJudgingConfig(roomId);
+  const showMainVenue = !run || run.mainStageFocus || run.phase === "FINAL" || run.phase === "CHAMPION";
 
   if (!isGauntletEnabled()) {
     return (
@@ -125,7 +152,7 @@ export default function GauntletRoomShell({ roomId }: Props) {
           </div>
           <h1 style={{ margin: "4px 0 0", fontSize: 22, color: "#fff" }}>TMI Musical Gauntlet</h1>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
-            {venue?.label ?? "Venue"} · Judging {judging.mode} · Gifts never silent votes
+            {venue?.label ?? "Venue"} · Judging {judging.mode} · Audience elimination · sequenced sides
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -149,37 +176,23 @@ export default function GauntletRoomShell({ roomId }: Props) {
         </div>
       </div>
 
-      {/* Jumbotron / presentation scaffold */}
-      <div
-        style={{
-          margin: 16,
-          borderRadius: 12,
-          border: "1px solid rgba(255,215,0,0.35)",
-          background: "linear-gradient(160deg, rgba(20,10,40,0.95), rgba(5,5,16,0.98))",
-          padding: 16,
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        <div style={{ fontSize: 10, color: "#FFD700", fontWeight: 900, letterSpacing: "0.14em" }}>
-          {frame.jumbotron.roundLabel} · {frame.overlay}
-        </div>
-        <div style={{ fontSize: 26, fontWeight: 900, marginTop: 6 }}>{frame.jumbotron.headline}</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
-          {frame.jumbotron.subline}
-        </div>
-        <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 12 }}>
-          <span>Alive: {frame.jumbotron.aliveCount}</span>
-          <span style={{ color: "#00FFFF", fontFamily: "monospace", fontWeight: 900 }}>
-            Clock {frame.jumbotron.clockSeconds}s
-          </span>
-          <span style={{ color: "rgba(255,255,255,0.4)" }}>
-            Pulse {Math.round(frame.pulseIntensity * 100)}% (real only)
-          </span>
-        </div>
+      <div style={{ margin: "12px 16px 0", position: "relative", zIndex: 3 }}>
+        <GauntletRoundHUD run={run} clockSeconds={clock} roomId={roomId} />
       </div>
 
-      <div style={{ position: "relative", minHeight: 360, zIndex: 1 }}>
+      <div style={{ margin: 16, position: "relative", zIndex: 2 }}>
+        <GauntletPresentationOverlay frame={frame} />
+      </div>
+
+      {/* Main stage venue — primary when performing; still visible during rest as dimmed shell */}
+      <div
+        style={{
+          position: "relative",
+          minHeight: 320,
+          zIndex: 1,
+          opacity: showMainVenue ? 1 : 0.55,
+        }}
+      >
         {venue && (
           <UniversalVenueRenderer
             roomId={roomId}
@@ -188,7 +201,83 @@ export default function GauntletRoomShell({ roomId }: Props) {
             instantEmptyStage
           />
         )}
+        {run?.survivorsResting && (
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              zIndex: 5,
+              padding: "6px 10px",
+              borderRadius: 8,
+              background: "rgba(5,5,16,0.85)",
+              border: "1px solid rgba(255,215,0,0.4)",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#FFD700",
+            }}
+          >
+            SURVIVORS RESTING · SIDE WINDOW LIVE
+          </div>
+        )}
       </div>
+
+      {/* Visible side-stage PiP / wall cards — everyone can see */}
+      <div
+        style={{
+          margin: "0 16px 12px",
+          padding: 12,
+          borderRadius: 10,
+          border: "1px solid rgba(255,45,170,0.35)",
+          background: "rgba(255,45,170,0.08)",
+          position: "relative",
+          zIndex: 2,
+        }}
+      >
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA" }}>
+          SIDE STAGE · {side.windowOpen ? "LIVE WINDOW (BETWEEN ROUNDS)" : "QUEUED (WAITS FOR NEXT SLOT)"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 4 }}>
+          Visible to everyone. Side battles never run during the main performance window.
+        </div>
+        {visibleSides.length === 0 ? (
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
+            No side battles queued yet.
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+            {visibleSides.slice(0, 6).map((b) => (
+              <div
+                key={b.sideBattleId}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${b.status === "LIVE" ? "rgba(255,45,170,0.6)" : "rgba(255,255,255,0.2)"}`,
+                  background: b.status === "LIVE" ? "rgba(255,45,170,0.18)" : "rgba(0,0,0,0.35)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#fff",
+                  minWidth: 140,
+                }}
+              >
+                <div style={{ color: b.status === "LIVE" ? "#FF2DAA" : "#FFD700", fontSize: 9 }}>
+                  {b.status}
+                </div>
+                {b.competitorAId.slice(0, 8)} vs {b.competitorBId?.slice(0, 8) ?? "…"}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {run?.phase === "AUDIENCE_ELIMINATION_VOTE" && (
+        <GauntletEliminationVotePanel
+          runId={run.runId}
+          aliveIds={run.aliveIds}
+          voterId={voterId}
+          onVoted={() => setTick((n) => n + 1)}
+        />
+      )}
 
       <div
         style={{
@@ -230,7 +319,8 @@ export default function GauntletRoomShell({ roomId }: Props) {
           onClick={() => {
             const waiting = listGauntletParticipants(roomId);
             const next = createGauntletRun(roomId, waiting);
-            setRun(next);
+            beginRound(next.runId);
+            setRun(getGauntletRun(next.runId));
             setRoom(getGauntletRoom(roomId));
           }}
           style={{
@@ -244,6 +334,38 @@ export default function GauntletRoomShell({ roomId }: Props) {
           }}
         >
           START RUN
+        </button>
+        <button
+          type="button"
+          disabled={!run}
+          onClick={() => {
+            if (!run) return;
+            const next = advanceGauntletPhase(run.runId);
+            if (next?.phase === "CHAMPION" && next.championId) {
+              void captureGauntletBadge({
+                userId: next.championId,
+                roomId,
+                runId: next.runId,
+                kind: "CHAMPION",
+                title: championBadgeTitle(),
+              });
+            }
+            setRun(next ? { ...next } : null);
+            setRoom(getGauntletRoom(roomId));
+            setTick((n) => n + 1);
+          }}
+          style={{
+            padding: "10px 16px",
+            borderRadius: 8,
+            border: "1px solid rgba(255,215,0,0.4)",
+            background: run ? "rgba(255,215,0,0.12)" : "rgba(255,255,255,0.06)",
+            color: "#FFD700",
+            fontWeight: 900,
+            cursor: run ? "pointer" : "not-allowed",
+            opacity: run ? 1 : 0.45,
+          }}
+        >
+          ADVANCE PHASE
         </button>
         {listGauntletVenueSkins().map((skin) => (
           <button
@@ -274,22 +396,9 @@ export default function GauntletRoomShell({ roomId }: Props) {
       )}
       {run && (
         <div style={{ padding: "0 16px 24px", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
-          Run {run.runId} · phase {run.phase} · bracket {run.roundSize}
-          {run.championId ? ` · champion ${run.championId}` : ""}
-          {" · "}
-          <button
-            type="button"
-            onClick={() => setRun(getGauntletRun(run.runId))}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#00FFFF",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            refresh
-          </button>
+          {run.phase} · round {run.roundNumber} · alive {run.aliveIds.length}
+          {run.lastEliminatedIds.length ? ` · eliminated ${run.lastEliminatedIds.map((id) => id.slice(0, 6)).join(",")}` : ""}
+          {run.survivorsResting ? " · survivors resting" : ""}
         </div>
       )}
     </main>
