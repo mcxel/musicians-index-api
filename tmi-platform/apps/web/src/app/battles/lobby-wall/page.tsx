@@ -16,7 +16,7 @@ type LiveApiEntry = {
 function toRoom(entry: LiveApiEntry): LobbyRoom {
   const resolvedRoomId = entry.roomId ?? `room-${entry.userId}`;
   return {
-    id: entry.userId,
+    id: resolvedRoomId,
     name: `${entry.displayName} — Battle`,
     performerName: entry.displayName,
     type: 'battle',

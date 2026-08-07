@@ -31,6 +31,7 @@ import {
   type SongCrownGenre,
 } from "@/lib/challenge/SongCrownRegistry";
 import { getCapacityForFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
+import { useLobbyPeerMediaSession } from "@/lib/lobby/useLobbyPeerMediaSession";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), { ssr: false });
 
@@ -59,6 +60,7 @@ export default function SongChallengeVenueRoom({
   const [crownMessage, setCrownMessage] = useState<string | null>(null);
   const [humanWatching, setHumanWatching] = useState(0);
   const [sessionUser, setSessionUser] = useState<{ id: string; name: string } | null>(null);
+  const isChallenger = role === "challenger-a" || role === "challenger-b";
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
@@ -74,7 +76,17 @@ export default function SongChallengeVenueRoom({
       .catch(() => {});
   }, []);
 
-  // Honest human audience count from live audience API — support agents excluded server-side.
+  // Same Daily social-lobby stack as Fan Lobby — receive remote challenger tile (no new media stack).
+  const peerMedia = useLobbyPeerMediaSession({
+    roomId,
+    userId: sessionUser?.id ?? "anon-song-challenge",
+    userName: sessionUser?.name ?? "Challenger",
+    cameraEnabled: isChallenger,
+    micEnabled: isChallenger,
+    enabled: Boolean(sessionUser) && isChallenger,
+  });
+
+  // Honest human audience count + challenger seat sync from audience API.
   useEffect(() => {
     let cancelled = false;
     async function poll() {
@@ -84,8 +96,44 @@ export default function SongChallengeVenueRoom({
           cache: "no-store",
         });
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { present?: number };
-        if (!cancelled) setHumanWatching(typeof data.present === "number" ? data.present : 0);
+        const data = (await res.json()) as {
+          present?: number;
+          activeMembers?: Array<{
+            userId: string;
+            displayName?: string;
+            seatId?: string | null;
+            active?: boolean;
+            role?: string;
+          }>;
+        };
+        if (cancelled) return;
+        setHumanWatching(typeof data.present === "number" ? data.present : 0);
+
+        const members = (data.activeMembers ?? []).filter((m) => m.active !== false);
+        const a = members.find((m) => m.seatId === "challenger-a");
+        const b = members.find((m) => m.seatId === "challenger-b");
+        if (a) {
+          setSideA((prev) =>
+            prev?.id === a.userId
+              ? prev
+              : {
+                  id: a.userId,
+                  displayName: a.displayName || "Challenger A",
+                  songTitle: prev?.id === a.userId ? prev.songTitle : null,
+                },
+          );
+        }
+        if (b) {
+          setSideB((prev) =>
+            prev?.id === b.userId
+              ? prev
+              : {
+                  id: b.userId,
+                  displayName: b.displayName || "Challenger B",
+                  songTitle: prev?.id === b.userId ? prev.songTitle : null,
+                },
+          );
+        }
       } catch {
         /* non-fatal */
       }
@@ -134,9 +182,49 @@ export default function SongChallengeVenueRoom({
         setRole("challenger-b");
       }
       setPhase((p) => (p === "recruiting" ? "loadout" : p));
+
+      // Multiplayer seat claim via canonical audience API (Rule 21 seat system).
+      void fetch("/api/live/audience", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          action: "join",
+          venueSlug: roomId,
+          member: {
+            userId: sessionUser.id,
+            displayName: sessionUser.name,
+            role: "artist",
+            seatId: seat === "A" ? "challenger-a" : "challenger-b",
+          },
+        }),
+      }).catch(() => {});
     },
-    [sessionUser, sideA, sideB],
+    [sessionUser, sideA, sideB, roomId],
   );
+
+  // Bind opposite challenger's Daily video track onto remoteStream (honest empty when absent).
+  const sideABound = useMemo(() => {
+    if (!sideA) return null;
+    if (role === "challenger-a") return sideA;
+    const tracks = peerMedia.snapshot.byUserId.get(sideA.id);
+    if (!tracks?.videoTrack) return sideA;
+    return {
+      ...sideA,
+      remoteStream: new MediaStream([tracks.videoTrack]),
+    };
+  }, [sideA, role, peerMedia.snapshot]);
+
+  const sideBBound = useMemo(() => {
+    if (!sideB) return null;
+    if (role === "challenger-b") return sideB;
+    const tracks = peerMedia.snapshot.byUserId.get(sideB.id);
+    if (!tracks?.videoTrack) return sideB;
+    return {
+      ...sideB,
+      remoteStream: new MediaStream([tracks.videoTrack]),
+    };
+  }, [sideB, role, peerMedia.snapshot]);
 
   function onLockedA(songs: PickerSong[]) {
     setLoadoutA(songs);
@@ -243,9 +331,10 @@ export default function SongChallengeVenueRoom({
       {/* Dual competitor WebRTC stage */}
       <SongChallengeDualVideoStage
         role={role}
-        sideA={sideA}
-        sideB={sideB}
+        sideA={sideABound}
+        sideB={sideBBound}
         activeSide={phase === "perform" ? "A" : null}
+        localStream={peerMedia.localPreviewStream}
       />
 
       {/* Overlays */}

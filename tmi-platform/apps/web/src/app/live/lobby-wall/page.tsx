@@ -55,6 +55,7 @@ function surfaceToLobbyRoom(card: LiveSurfaceCard): LobbyRoom {
     viewerCount: card.audienceCount,
     status,
     genre: card.runtimeType,
+    previewUrl: card.previewMediaUrl ?? null,
     // prizePool intentionally omitted — no honest prize publisher on this path
   };
 }

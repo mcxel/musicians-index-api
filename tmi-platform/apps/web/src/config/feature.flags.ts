@@ -48,6 +48,20 @@ export const FEATURE_FLAGS = {
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 
+/**
+ * Env override (dev / Marcel soft-test) without hard-enabling production defaults.
+ * Example for Gauntlet soft-test in apps/web/.env.local:
+ *   NEXT_PUBLIC_FEATURE_GAUNTLET_ENABLED=true
+ *   NEXT_PUBLIC_FEATURE_GAUNTLET_DISCOVERY_ENABLED=true
+ *   NEXT_PUBLIC_FEATURE_GAUNTLET_ENTRY_ENABLED=true
+ * Restart `pnpm dev` after changing. Defaults in FEATURE_FLAGS stay false for Gauntlet.
+ */
 export function isEnabled(flag: FeatureFlag): boolean {
+  if (typeof process !== "undefined" && process.env) {
+    const envKey = `NEXT_PUBLIC_FEATURE_${flag}`;
+    const raw = process.env[envKey];
+    if (raw === "1" || raw === "true" || raw === "TRUE") return true;
+    if (raw === "0" || raw === "false" || raw === "FALSE") return false;
+  }
   return FEATURE_FLAGS[flag] === true;
 }

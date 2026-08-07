@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AdRailSlot from '@/components/ads/AdRailSlot';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import LobbyPreviewWindow from '@/components/lobby/LobbyPreviewWindow';
 import {
   buildLobbyPreviewTile,
   setLobbyAudioFocus,
@@ -12,6 +13,7 @@ import {
   swipeLobbyPreviewFocus,
   type LobbyPreviewTileState,
 } from '@/lib/lobby/LobbyPreviewRuntime';
+import { useLobbyPreviewBind } from '@/lib/lobby/useLobbyPreviewBind';
 import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/DestinationResolver';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
@@ -41,6 +43,8 @@ export type LobbyRoom = {
   status: 'live' | 'starting' | 'ended';
   genre?: string;
   prizePool?: string;
+  /** Optional discovery low-res preview URL (HTML video) — not a frozen LIVE photo. */
+  previewUrl?: string | null;
 };
 
 type LiveLobbyWallGridProps = {
@@ -82,6 +86,11 @@ function LobbyCell({
   const bg = roomColor(colorIndex);
   const cellRef = useRef<HTMLDivElement | null>(null);
   const isLive = room.status === 'live' && preview.isLive;
+  const { mediaStream } = useLobbyPreviewBind(room.id, {
+    subscribed: preview.subscribed,
+    focused: preview.focused,
+    isLive,
+  });
 
   useEffect(() => {
     const el = cellRef.current;
@@ -147,40 +156,14 @@ function LobbyCell({
         />
       )}
 
-      {/* Preview surface: live motion OR honest ready animation — never fake humans / frozen LIVE photo */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: isLive
-          ? `linear-gradient(160deg, ${bg}44 0%, transparent 50%, rgba(0,0,0,0.4) 100%)`
-          : 'linear-gradient(160deg, rgba(0,255,255,0.08), transparent 55%, rgba(0,0,0,0.5))',
-      }}>
-        {isLive ? (
-          <motion.div
-            animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
-            style={{
-              position: 'absolute', inset: 0,
-              backgroundImage: `linear-gradient(120deg, transparent 30%, ${bg}33 50%, transparent 70%)`,
-              backgroundSize: '200% 200%',
-              opacity: preview.quality === 'off' ? 0.2 : 0.85,
-            }}
-          />
-        ) : (
-          <motion.div
-            animate={{ opacity: [0.25, 0.55, 0.25] }}
-            transition={{ duration: 2.2, repeat: Infinity }}
-            style={{
-              position: 'absolute', inset: 0,
-              background: 'radial-gradient(circle at 50% 45%, rgba(0,255,255,0.12), transparent 60%)',
-            }}
-          />
-        )}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)',
-          pointerEvents: 'none',
-        }} />
-      </div>
+      {/* Same-room preview bind (Daily receive-only / URL / composed motion) */}
+      <LobbyPreviewWindow
+        preview={preview}
+        accent={bg}
+        performerInitial={room.performerName}
+        mediaStream={mediaStream}
+        previewUrl={room.previewUrl}
+      />
 
       <div style={{
         position: 'absolute', inset: 0,
@@ -188,39 +171,6 @@ function LobbyCell({
         pointerEvents: 'none',
         zIndex: 4,
       }} />
-
-      {!isLive && (
-        <div style={{
-          position: 'absolute',
-          top: '42%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
-          color: 'rgba(255,255,255,0.45)',
-          zIndex: 2,
-          textAlign: 'center',
-        }}>
-          {preview.readyState === 'waiting' ? 'WAITING' : 'READY'}
-          <div style={{ fontSize: 9, marginTop: 4, fontWeight: 600 }}>{preview.camera.label}</div>
-        </div>
-      )}
-
-      {isLive && (
-        <div style={{
-          position: 'absolute',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -60%)',
-          width: 44, height: 44,
-          borderRadius: '50%',
-          background: `${bg}55`,
-          border: `2px solid ${bg}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, fontWeight: 900, color: '#fff',
-          textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-          zIndex: 2,
-        }}>
-          {room.performerName.charAt(0).toUpperCase()}
-        </div>
-      )}
 
       <div style={{
         position: 'absolute', top: 8, left: 8,
@@ -242,11 +192,16 @@ function LobbyCell({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 9, color: isLive ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
-            {isLive ? `👁 ${room.viewerCount.toLocaleString()}` : 'No live audience'}
+            {isLive
+              ? (room.viewerCount > 0 ? `👁 ${room.viewerCount.toLocaleString()}` : 'No audience yet')
+              : 'No live audience'}
           </span>
           <span style={{ fontSize: 9, color: preview.muted ? 'rgba(255,255,255,0.35)' : '#FFD700' }}>
             {preview.muted ? '🔇' : '🔊 FOCUS'}
           </span>
+          {mediaStream && (
+            <span style={{ fontSize: 9, color: '#00FFFF', fontWeight: 700 }}>PREVIEW LIVE</span>
+          )}
           {room.prizePool && <span style={{ fontSize: 9, color: '#FFD700' }}>🏆 {room.prizePool}</span>}
           {room.genre && <span style={{ fontSize: 9, color: `${bg}`, fontWeight: 700 }}>{room.genre}</span>}
         </div>

@@ -32,8 +32,12 @@ export type LobbyPreviewTileState = {
   quality: PreviewQuality;
   camera: PreviewDirectorCue;
   destination: ResolvedDestination;
-  /** Composed feed stub until real preview publisher binds — not a fake LIVE photo. */
-  feedMode: "webrtc-preview" | "composed-stub" | "ready-animation";
+  /**
+   * webrtc-preview = subscribed+visible live (client binds via LobbyPreviewBindRuntime).
+   * composed-motion = live but not bound / no publisher yet — motion only, never frozen LIVE photo.
+   * ready-animation = not live.
+   */
+  feedMode: "webrtc-preview" | "composed-motion" | "ready-animation";
 };
 
 export type LobbyPreviewWallState = {
@@ -112,8 +116,8 @@ export function buildLobbyPreviewTile(input: {
 
   let feedMode: LobbyPreviewTileState["feedMode"] = "ready-animation";
   if (isLive && camera.hasLiveSignal) {
-    // Prefer webrtc-preview when subscribed+visible; otherwise composed stub (no frozen LIVE photo).
-    feedMode = visible ? "webrtc-preview" : "composed-stub";
+    // Visible+subscribed tiles request webrtc bind; offscreen stays composed motion.
+    feedMode = visible ? "webrtc-preview" : "composed-motion";
   }
 
   return {

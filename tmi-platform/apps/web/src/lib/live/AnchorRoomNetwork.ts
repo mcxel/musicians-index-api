@@ -57,11 +57,21 @@ export function getAnchorNetworkControlSnapshot(): AnchorNetworkControlSnapshot 
   return {
     ...ANCHOR_NETWORK_CONTROLS,
     anchorCount: ANCHOR_ROOM_DEFS.length,
-    overflowWired: false,
+    overflowWired: true,
     overflowNote:
-      "Overflow spawn stubbed until honest human occupancy + queue signals exceed knobs via LivePresenceEngine (RoomPopulationEngine seed counts are never used).",
+      "Overflow spawns only when LivePresence human viewers/queue exceed capacity matrix knobs. Anchors never cool; only empty overflows cool. RoomPopulationEngine seeds never count.",
   };
 }
+
+/** Overflow rooms spawned from real human capacity — never fake fill. */
+type OverflowRecord = {
+  roomId: string;
+  parentAnchorId: string;
+  createdAtMs: number;
+};
+
+const overflowRegistry = new Map<string, OverflowRecord>();
+let overflowSeq = 0;
 
 // ── Families ─────────────────────────────────────────────────────────────────
 
@@ -512,22 +522,54 @@ function toPublishInput(def: AnchorRoomDef): PublishLiveRoomInput {
   };
 }
 
-/** Build discovery records for all 12 anchors (honest 0 humans when empty). */
+function listOverflowsForAnchor(anchorRoomId: string): OverflowRecord[] {
+  return [...overflowRegistry.values()].filter((o) => o.parentAnchorId === anchorRoomId);
+}
+
+function publishOverflowDiscovery(def: AnchorRoomDef, overflowRoomId: string): LiveDiscoveryRecord | null {
+  const occ = getAnchorOccupancy(overflowRoomId);
+  return publishLiveRoom({
+    roomId: overflowRoomId,
+    title: `${def.title} · Overflow`,
+    hostName: `Overflow of ${def.title} · 👤 ${occ.humanViewers} humans`,
+    hostUserId: PLATFORM_HOST_ID,
+    countryCode: "ZZ",
+    category: def.streamCategory,
+    visibility: "public",
+    humanViewerCount: occ.humanViewers,
+    accentColor: def.accentColor,
+    joinRoute: `/live/rooms/${encodeURIComponent(overflowRoomId)}?from=anchor-overflow&parent=${encodeURIComponent(def.roomId)}`,
+    joinGate: "none",
+    experienceId: `anchor-overflow:${def.family}`,
+    startedAt: overflowRegistry.get(overflowRoomId)?.createdAtMs ?? Date.now(),
+    listed: true,
+    statusLine: `OVERFLOW · parent ${def.roomId} · 👤 ${occ.humanViewers}`,
+    isAnchor: false,
+    anchorFamily: def.family,
+  });
+}
+
+/** Build discovery records for all anchors + active overflows (honest 0 humans when empty). */
 export function getAnchorDiscoveryRecords(): LiveDiscoveryRecord[] {
   ensureAnchorRoomsSeeded();
+  coolEmptyOverflowRooms();
   const out: LiveDiscoveryRecord[] = [];
   for (const def of ANCHOR_ROOM_DEFS) {
     const input = toPublishInput(def);
     const published = publishLiveRoom(input);
     if (published) out.push(published);
+    for (const ov of listOverflowsForAnchor(def.roomId)) {
+      const pub = publishOverflowDiscovery(def, ov.roomId);
+      if (pub) out.push(pub);
+    }
   }
   return out;
 }
 
 /**
- * Overflow spawn — NOT wired to fake RoomPopulationEngine seeds.
- * Returns null until real human occupancy/queue exceeds observatory knobs
- * AND a real shard allocator exists. Currently never mints rooms (Rule 20).
+ * Overflow spawn — real LivePresence + capacity matrix only (Rule 20).
+ * Anchors stay permanently; overflow rooms mint when humans hit thresholds.
+ * Returns an existing under-capacity overflow when possible.
  */
 export function maybeSpawnOverflowRoom(anchorRoomId: string): LiveRoom | null {
   if (!isAnchorRoomId(anchorRoomId)) return null;
@@ -537,17 +579,63 @@ export function maybeSpawnOverflowRoom(anchorRoomId: string): LiveRoom | null {
   const state = getAnchorRuntimeState(anchorRoomId);
   const queue = state?.humanQueueCount ?? 0;
   const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === anchorRoomId);
-  const cap = def ? getCapacityForFamily(def.family) : null;
-  const viewerThresh = cap?.humanViewersMax ?? ANCHOR_NETWORK_CONTROLS.overflowHumanThreshold;
-  const queueThresh = cap?.humanQueueMax ?? ANCHOR_NETWORK_CONTROLS.overflowQueueThreshold;
+  if (!def) return null;
+  const cap = getCapacityForFamily(def.family);
+  const viewerThresh = cap.humanViewersMax;
+  const queueThresh = cap.humanQueueMax;
   const overCapacity =
     occ.humanViewers >= viewerThresh ||
     queue >= queueThresh;
 
   if (!overCapacity) return null;
 
-  // Real signal present — still deferred: WebRTC scale-out / shard allocator not assembled.
-  return null;
+  // Reuse an overflow that still has capacity (honest occupancy).
+  for (const ov of listOverflowsForAnchor(anchorRoomId)) {
+    const ovOcc = getAnchorOccupancy(ov.roomId);
+    if (ovOcc.humanViewers < viewerThresh) {
+      return getLiveRoom(ov.roomId) ?? null;
+    }
+  }
+
+  overflowSeq += 1;
+  const overflowRoomId = `${anchorRoomId}-ov-${overflowSeq}`;
+  const room = ensureLiveRoom({
+    roomId: overflowRoomId,
+    roomType: def.liveRoomType,
+    title: `${def.title} — Overflow ${overflowSeq}`,
+    hostUserId: PLATFORM_HOST_ID,
+    description: `Overflow of permanent anchor ${def.roomId} — cools when empty; anchor stays`,
+    tags: ["overflow", "anchor-child", def.family],
+    forceLive: true,
+    configOverrides: {
+      maxCapacity: cap.humanViewersMax + cap.humanParticipantsMax,
+    },
+  });
+  overflowRegistry.set(overflowRoomId, {
+    roomId: overflowRoomId,
+    parentAnchorId: anchorRoomId,
+    createdAtMs: Date.now(),
+  });
+  publishOverflowDiscovery(def, overflowRoomId);
+  return room;
+}
+
+/** Only overflow rooms cool when empty — anchors never shut down. */
+export function coolEmptyOverflowRooms(): number {
+  let closed = 0;
+  for (const [id, ov] of [...overflowRegistry.entries()]) {
+    if (isAnchorRoomId(id)) continue;
+    const occ = getAnchorOccupancy(id);
+    if (occ.humanViewers === 0 && occ.humanParticipants === 0) {
+      const room = getLiveRoom(id);
+      if (room && room.status !== "closed") {
+        // leave room record; discovery unlist via registry delete
+      }
+      overflowRegistry.delete(id);
+      closed += 1;
+    }
+  }
+  return closed;
 }
 
 export function listOverflowCandidates(): Array<{
@@ -556,6 +644,7 @@ export function listOverflowCandidates(): Array<{
   humanQueueCount: number;
   wouldSpawn: boolean;
   reason: string;
+  activeOverflows: number;
 }> {
   return ANCHOR_ROOM_DEFS.map((def) => {
     const occ = getAnchorOccupancy(def.roomId);
@@ -564,16 +653,24 @@ export function listOverflowCandidates(): Array<{
     const would =
       occ.humanViewers >= cap.humanViewersMax ||
       queue >= cap.humanQueueMax;
+    const activeOverflows = listOverflowsForAnchor(def.roomId).length;
     return {
       anchorRoomId: def.roomId,
       humanViewers: occ.humanViewers,
       humanQueueCount: queue,
       wouldSpawn: would,
+      activeOverflows,
       reason: would
-        ? "Capacity threshold met — overflow allocator not yet wired (no fake room minted)"
+        ? activeOverflows > 0
+          ? `Over capacity — ${activeOverflows} overflow room(s) active`
+          : "Over capacity — next join/poll will mint overflow"
         : "Below overflow knobs — anchor only",
     };
   });
+}
+
+export function getActiveOverflowRooms(): OverflowRecord[] {
+  return [...overflowRegistry.values()];
 }
 
 

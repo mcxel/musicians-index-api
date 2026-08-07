@@ -26,6 +26,8 @@ interface Props {
   sideB: SongChallengeCompetitor | null;
   activeSide?: "A" | "B" | null;
   className?: string;
+  /** When provided (Daily/local preview), prefer over fresh getUserMedia. */
+  localStream?: MediaStream | null;
 }
 
 function RemoteOrEmptyTile({
@@ -121,19 +123,26 @@ function LocalCaptureTile({
   label,
   songTitle,
   isActive,
+  preferredStream = null,
 }: {
   accent: string;
   label: string;
   songTitle?: string | null;
   isActive?: boolean;
+  preferredStream?: MediaStream | null;
 }) {
-  const { stream, error, videoRef } = useStageWebRTC({ video: true, audio: true, hd: false });
+  const { stream, error, videoRef } = useStageWebRTC({
+    video: !preferredStream,
+    audio: !preferredStream,
+    hd: false,
+  });
+  const activeStream = preferredStream ?? stream;
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (videoRef.current && activeStream) {
+      videoRef.current.srcObject = activeStream;
     }
-  }, [stream, videoRef]);
+  }, [activeStream, videoRef]);
 
   return (
     <div
@@ -148,7 +157,7 @@ function LocalCaptureTile({
         background: "rgba(0,0,0,0.55)",
       }}
     >
-      {stream && !error ? (
+      {activeStream && (!error || preferredStream) ? (
         <video
           ref={videoRef}
           autoPlay
@@ -205,6 +214,7 @@ export default function SongChallengeDualVideoStage({
   sideB,
   activeSide = null,
   className,
+  localStream = null,
 }: Props) {
   const aLabel = sideA?.displayName?.trim() || "Challenger A";
   const bLabel = sideB?.displayName?.trim() || "Challenger B";
@@ -228,6 +238,7 @@ export default function SongChallengeDualVideoStage({
           label={aLabel}
           songTitle={sideA?.songTitle}
           isActive={activeSide === "A"}
+          preferredStream={localStream}
         />
       ) : (
         <RemoteOrEmptyTile
@@ -261,6 +272,7 @@ export default function SongChallengeDualVideoStage({
           label={bLabel}
           songTitle={sideB?.songTitle}
           isActive={activeSide === "B"}
+          preferredStream={localStream}
         />
       ) : (
         <RemoteOrEmptyTile

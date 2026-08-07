@@ -1,23 +1,67 @@
 'use client';
+
+/**
+ * Games Lobby Wall — real live sessions only (Rule 20).
+ * No hardcoded prize pools / fake viewer counts.
+ */
+
+import { useEffect, useState } from 'react';
 import GlobalTopNavRail from '@/components/home/GlobalTopNavRail';
 import LiveLobbyWallGrid, { type LobbyRoom } from '@/components/live/LiveLobbyWallGrid';
 
-const GAME_ROOMS: LobbyRoom[] = [
-  { id: 'g-dealer-feud', name: 'Dealer Feud 1000', performerName: 'Dealer Feud', type: 'game', href: '/live/rooms/dealer-feud-1000', viewerCount: 2400, status: 'live', prizePool: '$1,000' },
-  { id: 'g-monthly-idol', name: 'Monthly Idol', performerName: 'Monthly Idol', type: 'game', href: '/live/rooms/monthly-idol', viewerCount: 3100, status: 'live', prizePool: '$5,000' },
-  { id: 'g-circles-squares', name: 'Circles & Squares', performerName: 'C&S Show', type: 'game', href: '/live/rooms/circles-and-squares', viewerCount: 1800, status: 'live', prizePool: '$1,000' },
-  { id: 'g-monday-stage', name: "Monday Night Stage", performerName: 'Monday Stage', type: 'game', href: '/live/rooms/monday-night-stage', viewerCount: 4200, status: 'live', prizePool: '$3,500' },
-  { id: 'g-world-dance', name: 'World Dance Party', performerName: 'World Dance', type: 'game', href: '/live/rooms/world-dance-party', viewerCount: 5800, status: 'live', prizePool: '$4,000' },
-  { id: 'g-name-tune', name: 'Name That Tune', performerName: 'Name That Tune', type: 'game', href: '/live/rooms/name-that-tune', viewerCount: 2100, status: 'live', prizePool: '$2,000' },
-];
+type LiveApiEntry = {
+  userId: string;
+  displayName: string;
+  genre: string;
+  viewerCount: number;
+  roomId?: string;
+};
+
+function toRoom(entry: LiveApiEntry): LobbyRoom {
+  const resolvedRoomId = entry.roomId ?? `room-${entry.userId}`;
+  return {
+    id: resolvedRoomId,
+    name: `${entry.displayName} — Game`,
+    performerName: entry.displayName,
+    type: 'game',
+    href: `/live/rooms/${resolvedRoomId}`,
+    viewerCount: entry.viewerCount,
+    status: 'live',
+    genre: entry.genre,
+  };
+}
 
 export default function GamesLobbyWallPage() {
+  const [rooms, setRooms] = useState<LobbyRoom[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go?wall=game', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        const data = (await res.json()) as { live?: LiveApiEntry[] };
+        if (!cancelled) setRooms((data.live ?? []).map(toRoom));
+      } catch {
+        if (!cancelled) setRooms([]);
+      }
+    };
+    void load();
+    const id = setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
   return (
     <>
       <GlobalTopNavRail />
       <LiveLobbyWallGrid
-        rooms={GAME_ROOMS}
-        title="Games of the Week"
+        rooms={rooms}
+        title="Games Lobby Wall"
         accentColor="#FFD700"
         typeLabel="GAMES"
       />

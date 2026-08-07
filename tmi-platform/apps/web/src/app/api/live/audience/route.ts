@@ -97,6 +97,18 @@ export async function POST(req: NextRequest) {
         const occupancy = joinAudience(venueSlug, { ...member, seatId: assignedSeatId });
         syncViewerCountToBroadcastRegistry(venueSlug, occupancy.present);
 
+        // Anchor overflow: spawn only on real human capacity (LivePresence), never fake fill.
+        try {
+          const { maybeSpawnOverflowRoom, isAnchorRoomId } = await import(
+            "@/lib/live/AnchorRoomNetwork"
+          );
+          if (isAnchorRoomId(venueSlug)) {
+            maybeSpawnOverflowRoom(venueSlug);
+          }
+        } catch {
+          /* non-fatal */
+        }
+
         const authedUserId = await resolveAuthedUserId(req);
         if (authedUserId) {
           const role = (req.cookies.get('tmi_role')?.value ?? '').toLowerCase();
@@ -125,6 +137,13 @@ export async function POST(req: NextRequest) {
 
         const afterLeave = leaveAudience(venueSlug, userId);
         syncViewerCountToBroadcastRegistry(venueSlug, afterLeave.present);
+
+        try {
+          const { coolEmptyOverflowRooms } = await import("@/lib/live/AnchorRoomNetwork");
+          coolEmptyOverflowRooms();
+        } catch {
+          /* non-fatal */
+        }
 
         // Auto-close: performer leaving ends the session; or close when all real humans gone
         const realHumansRemaining = afterLeave.members.filter(

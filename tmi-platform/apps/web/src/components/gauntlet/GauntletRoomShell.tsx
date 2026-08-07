@@ -122,7 +122,26 @@ export default function GauntletRoomShell({ roomId }: Props) {
       <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: 28 }}>
         <h1 style={{ color: "#FFD700" }}>TMI Musical Gauntlet</h1>
         <p style={{ color: "rgba(255,255,255,0.65)" }}>
-          Gauntlet is feature-flagged off (GAUNTLET_ENABLED). Enable flags to open the persistent destination.
+          Gauntlet is feature-flagged off (defaults false). Soft-test enable via env — not a production hard-on.
+        </p>
+        <pre
+          style={{
+            marginTop: 16,
+            padding: 14,
+            borderRadius: 10,
+            background: "rgba(0,255,255,0.06)",
+            border: "1px solid rgba(0,255,255,0.25)",
+            color: "#00FFFF",
+            fontSize: 11,
+            lineHeight: 1.55,
+            overflow: "auto",
+          }}
+        >{`# apps/web/.env.local — then restart pnpm dev
+NEXT_PUBLIC_FEATURE_GAUNTLET_ENABLED=true
+NEXT_PUBLIC_FEATURE_GAUNTLET_DISCOVERY_ENABLED=true
+NEXT_PUBLIC_FEATURE_GAUNTLET_ENTRY_ENABLED=true`}</pre>
+        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 12 }}>
+          Clocks: 30s main turn · ≤60s final. Sequence: registration → round → audience elim → side battles → next.
         </p>
         <Link href="/battles/lobby-wall" style={{ color: "#00FFFF" }}>
           ← Battles Lobby Wall

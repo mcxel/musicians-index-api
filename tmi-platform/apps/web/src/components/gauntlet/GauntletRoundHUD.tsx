@@ -16,12 +16,56 @@ import {
   GAUNTLET_FINAL_TURN_SECONDS,
   GAUNTLET_TURN_SECONDS,
 } from "@/lib/gauntlet/GauntletClockConfig";
+import { GAUNTLET_ROUND_PHASE_ORDER } from "@/lib/gauntlet/GauntletRunRuntime";
 
 type Props = {
   run: GauntletRunState | null;
   clockSeconds: number;
   roomId: string;
 };
+
+function SequenceStrip({ activePhase }: { activePhase: string | null }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 4,
+        alignItems: "center",
+        padding: "6px 0 0",
+      }}
+      aria-label="Gauntlet round sequence"
+    >
+      <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginRight: 4 }}>
+        SEQUENCE
+      </span>
+      {GAUNTLET_ROUND_PHASE_ORDER.map((phase, i) => {
+        const active = activePhase === phase;
+        return (
+          <span key={phase} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            {i > 0 && (
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 9 }}>→</span>
+            )}
+            <span
+              style={{
+                fontSize: 8,
+                fontWeight: active ? 900 : 700,
+                letterSpacing: "0.06em",
+                padding: "2px 6px",
+                borderRadius: 4,
+                color: active ? "#050510" : "rgba(255,255,255,0.45)",
+                background: active ? "#FFD700" : "rgba(255,255,255,0.06)",
+                border: active ? "1px solid #FFD700" : "1px solid transparent",
+              }}
+            >
+              {phase.replace(/_/g, " ")}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function GauntletRoundHUD({ run, clockSeconds, roomId }: Props) {
   const side = getSideStageSummary(roomId);
@@ -31,17 +75,20 @@ export default function GauntletRoundHUD({ run, clockSeconds, roomId }: Props) {
 
   if (!run) {
     return (
-      <div style={barStyle}>
-        <span style={labelStyle}>MAIN STAGE</span>
-        <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>
-          Registration open · no active run
-        </span>
-        <SidePill
-          label={side.latestLabel ?? "Side stage idle"}
-          live={side.liveBattles}
-          queued={side.queuedBattles + side.queuedEligible}
-          windowOpen={side.windowOpen}
-        />
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={barStyle}>
+          <span style={labelStyle}>MAIN STAGE</span>
+          <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>
+            Registration open · no active run
+          </span>
+          <SidePill
+            label={side.latestLabel ?? "Side stage idle"}
+            live={side.liveBattles}
+            queued={side.queuedBattles + side.queuedEligible}
+            windowOpen={side.windowOpen}
+          />
+        </div>
+        <SequenceStrip activePhase="REGISTRATION" />
       </div>
     );
   }
@@ -114,6 +161,8 @@ export default function GauntletRoundHUD({ run, clockSeconds, roomId }: Props) {
           ))}
         </div>
       )}
+
+      <SequenceStrip activePhase={run.phase} />
     </div>
   );
 }
