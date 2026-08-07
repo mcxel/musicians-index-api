@@ -1,17 +1,20 @@
 "use client";
 
 /**
- * /legal/copyright — copyright complaint / takedown intake (scaffolding).
- * Wires to Legal Audit Ledger. Not legal advice. Does not auto-remove content.
+ * /legal/copyright — Quick Claim + copyright complaint / takedown intake.
+ * Wires to RightsComplianceEngine + Legal Audit Ledger.
+ * Not legal advice. Does not auto-remove content or transfer ownership.
  */
 
 import { useState, type CSSProperties, type FormEvent } from "react";
 import Link from "next/link";
+import QuickClaimButton from "@/components/legal/QuickClaimButton";
 
 export default function CopyrightComplaintPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [claimAssetId, setClaimAssetId] = useState("");
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -53,11 +56,54 @@ export default function CopyrightComplaintPage() {
         <div style={{ fontSize: 11, letterSpacing: "0.18em", color: "#FF6B1A", fontWeight: 900 }}>
           COPYRIGHT & IP · INTAKE
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 900, margin: "8px 0" }}>Copyright Complaint</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 900, margin: "8px 0" }}>Copyright &amp; Rights</h1>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.55, marginBottom: 24 }}>
-          Submit a copyright complaint for review. This intake creates an audited case and starts
-          claimant verification / preservation scaffolding. It does not grant automatic takedown
-          without process. &quot;No Copyright Intended&quot; is not a license. Not legal advice.
+          File a Quick Claim (CLAIM MY WORK) or a copyright complaint. Claims preserve evidence and
+          open VERIFIED / REVIEW / DISPUTED outcomes — they never instantly transfer ownership or
+          delete content. &quot;I own it&quot; alone never clears UFC/NBC/TV third-party. Not legal advice.
+        </p>
+
+        <section
+          style={{
+            marginBottom: 28,
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid rgba(255,107,26,0.35)",
+            background: "rgba(255,107,26,0.06)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.12em", color: "#FF6B1A" }}>
+            QUICK CLAIM · CLAIM MY WORK
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.45 }}>
+            Enter an asset id (song / video / beat / media). Filing issues a RIGHTS-CLAIM-######## id,
+            preserves evidence, and never seizes or deletes content.
+          </p>
+          <label style={labelStyle}>
+            Asset ID
+            <input
+              value={claimAssetId}
+              onChange={(e) => setClaimAssetId(e.target.value)}
+              placeholder="e.g. beat-001"
+              style={inputStyle}
+            />
+          </label>
+          {claimAssetId.trim() ? (
+            <QuickClaimButton assetId={claimAssetId.trim()} assetKind="MEDIA" />
+          ) : (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+              Enter an asset id to enable CLAIM MY WORK.
+            </div>
+          )}
+        </section>
+
+        <h2 style={{ fontSize: 18, fontWeight: 900, margin: "0 0 12px" }}>Copyright Complaint</h2>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 16 }}>
+          Formal complaint intake for review. Audited case + preservation scaffolding — not automatic
+          takedown without process.
         </p>
 
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
