@@ -17,7 +17,7 @@
  * top Admin Quick Switch oval bar). CanonOverseerShell re-exports this module.
  */
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import OverlayHost from "@/components/shell/OverlayHost";
 import Canister from "@/components/admin/overseer/Canister";
@@ -43,7 +43,7 @@ import {
 import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
-import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
+import CanonicalDualMonitorStack, { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
 
 export type ShellDockButton = {
@@ -117,7 +117,34 @@ export default function OverseerFlightDeck({
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
   const [centerView, setCenterView] = useState<OverseerCenterViewId>("media");
   const [flipKey, setFlipKey] = useState(0);
+  const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
+  const [isMerging, setIsMerging] = useState(false);
+  const mergeTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const drawerManager = useDrawerManager();
+
+  // cascade all monitors to split=1 with staggered animation
+  const mergeAllMonitors = useCallback(() => {
+    setIsMerging(true);
+    mergeTimers.current.forEach(clearTimeout);
+    mergeTimers.current = [
+      setTimeout(() => setMonitorSplits((s) => [s[0], 1]), 0),
+      setTimeout(() => setMonitorSplits((_s) => [1, 1]), 280),
+      setTimeout(() => setIsMerging(false), 600),
+    ];
+  }, []);
+
+  // cascade all monitors to a target split
+  const expandAllMonitors = useCallback((n: MonitorSplitMode) => {
+    mergeTimers.current.forEach(clearTimeout);
+    mergeTimers.current = [
+      setTimeout(() => setMonitorSplits((s) => [n, s[1]]), 0),
+      setTimeout(() => setMonitorSplits((_s) => [n, n]), 280),
+    ];
+  }, []);
+
+  useEffect(() => {
+    return () => { mergeTimers.current.forEach(clearTimeout); };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -216,7 +243,11 @@ export default function OverseerFlightDeck({
       leftRail: [
         { id: "chain-command", title: "CHAIN COMMAND", accent: "#AA2DFF", content: <ChainCommandPanel /> },
         { id: "money-billing", title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
-        { id: "bot-roster", title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: <BotSummonDeck />, flex: 1 },
+        { id: "bot-roster", title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: (
+            <div style={{ height: "100%", maxHeight: 380, overflowY: "auto", overflowX: "hidden" }}>
+              <BotSummonDeck />
+            </div>
+          ), fixedHeight: 400 },
         { id: "unified-inbox", title: "UNIFIED INBOX", accent: "#00FFFF", content: <UnifiedInbox /> },
       ],
       center: [
@@ -279,9 +310,6 @@ export default function OverseerFlightDeck({
   const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
-  const shellGridTemplate = fullscreenPanel
-    ? "1fr"
-    : `${leftWidth}px minmax(0,1fr) ${rightWidth}px`;
 
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
@@ -398,6 +426,7 @@ export default function OverseerFlightDeck({
           data-equal-dual-monitors="true"
           data-center-view={centerView}
           style={{
+            flex: 1,
             minWidth: 0,
             alignSelf: "stretch",
             height: "auto",
@@ -476,6 +505,8 @@ export default function OverseerFlightDeck({
               <CanonicalDualMonitorStack
                 variant="gold"
                 seriesLabel="BERNTOUTGLOBAL OVERSEER DECK · GOLD SERIES · DUAL HD MONITORS"
+                controlledSplits={monitorSplits}
+                onSplitsChange={setMonitorSplits}
                 monitors={dual.map((panel, index) => ({
                   id: panel.id ?? `center-${index}`,
                   label: `MONITOR ${index + 1} — ${panel.title}`,
@@ -557,7 +588,7 @@ export default function OverseerFlightDeck({
           alignSelf: "stretch",
           height: isSideRail ? "100%" : "auto",
           minHeight: isSideRail ? 0 : undefined,
-          overflowY: isSideRail ? "auto" : "visible",
+          overflowY: isSideRail && !leftCollapsed && !rightCollapsed ? "auto" : isSideRail ? "hidden" : "visible",
           overflowX: "hidden",
           paddingRight: 2,
         }}
@@ -745,6 +776,11 @@ export default function OverseerFlightDeck({
           55% { transform: rotateY(-8deg) scale(1.01); opacity: 0.95; }
           100% { transform: rotateY(0deg) scale(1); opacity: 1; }
         }
+        @keyframes overseer-merge-pulse {
+          0%   { box-shadow: 0 0 0 rgba(0,255,255,0); }
+          40%  { box-shadow: 0 0 20px rgba(0,255,255,0.7); }
+          100% { box-shadow: 0 0 0 rgba(0,255,255,0); }
+        }
       `}</style>
 
       <OverseerQuickControlRow
@@ -763,7 +799,90 @@ export default function OverseerFlightDeck({
         </Canister>
       ) : null}
 
-      {/* OPERATIONS DECK — dual stacked 16:9 define height */}
+      {/* MONITOR CONTROL STRIP — MERGE ALL / per-split presets */}
+      <div
+        data-row="monitor-controls"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 10px",
+          border: "1px solid rgba(255,215,0,0.22)",
+          borderRadius: 8,
+          background: "linear-gradient(180deg, rgba(30,15,10,0.92), rgba(10,5,8,0.96))",
+          flexWrap: "wrap",
+        }}
+      >
+        <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,215,0,0.6)", marginRight: 2 }}>
+          MONITORS
+        </span>
+        {/* MERGE ALL */}
+        <button
+          type="button"
+          onClick={mergeAllMonitors}
+          title="Merge all media players into one large monitor"
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: `1px solid ${isMerging ? "#00FFFF" : "rgba(0,255,255,0.5)"}`,
+            background: isMerging ? "rgba(0,255,255,0.25)" : "rgba(0,255,255,0.1)",
+            color: "#00FFFF",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            boxShadow: isMerging ? "0 0 12px rgba(0,255,255,0.4)" : "none",
+            animation: isMerging ? "overseer-merge-pulse 0.6s ease" : "none",
+          }}
+        >
+          {isMerging ? "⟳ MERGING…" : "⊡ MERGE ALL → 1"}
+        </button>
+        <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
+        {/* Quick split presets for both monitors */}
+        {([1, 2, 3, 4, 16] as MonitorSplitMode[]).map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => expandAllMonitors(n)}
+            title={`Set both monitors to ${n === 1 ? "single" : n === 16 ? "4×4 wall" : `${n}-pane`}`}
+            style={{
+              padding: "4px 9px",
+              borderRadius: 6,
+              border: `1px solid ${monitorSplits[0] === n && monitorSplits[1] === n ? "rgba(255,215,0,0.8)" : "rgba(255,215,0,0.25)"}`,
+              background: monitorSplits[0] === n && monitorSplits[1] === n ? "rgba(255,215,0,0.2)" : "rgba(0,0,0,0.4)",
+              color: monitorSplits[0] === n && monitorSplits[1] === n ? "#FFD700" : "rgba(255,255,255,0.55)",
+              fontSize: 10,
+              fontWeight: 900,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              minWidth: 28,
+            }}
+          >
+            {n}
+          </button>
+        ))}
+        <span aria-hidden style={{ flex: 1 }} />
+        {/* Rail toggles — quick access */}
+        <button
+          type="button"
+          onClick={() => drawerManager.toggleRail("left")}
+          title={leftCollapsed ? "Expand left rail" : "Collapse left rail"}
+          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(0,0,0,0.4)", color: "#FFD700", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          {leftCollapsed ? "◀▏" : "▏◀"}
+        </button>
+        <button
+          type="button"
+          onClick={() => drawerManager.toggleRail("right")}
+          title={rightCollapsed ? "Expand right rail" : "Collapse right rail"}
+          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(0,0,0,0.4)", color: "#FFD700", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          {rightCollapsed ? "▕▶" : "▶▕"}
+        </button>
+      </div>
+
+      {/* OPERATIONS DECK — flexbox so rail widths can transition smoothly */}
       <div
         data-deck="operations"
         style={{
@@ -773,9 +892,8 @@ export default function OverseerFlightDeck({
           flexShrink: 0,
           height: "auto",
           maxHeight: "none",
-          display: "grid",
-          gridTemplateColumns: shellGridTemplate,
-          gridTemplateRows: "auto",
+          display: "flex",
+          flexDirection: "row",
           alignItems: "stretch",
           gap: 8,
           border: "1px solid rgba(255,215,0,0.18)",
@@ -794,23 +912,69 @@ export default function OverseerFlightDeck({
               minHeight: "min(70vh, 720px)",
               aspectRatio: "16 / 9",
               width: "100%",
-              gridColumn: "1 / -1",
             }}
           >
             {fullscreenMatch?.content ?? null}
           </Canister>
         ) : (
           <>
-            {renderRail(activeWorkspace.leftRail, "left")}
+            {/* Left rail — smooth width transition */}
+            <div
+              style={{
+                flexShrink: 0,
+                width: leftWidth,
+                minWidth: 0,
+                overflow: "hidden",
+                transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "stretch",
+              }}
+            >
+              {renderRail(activeWorkspace.leftRail, "left")}
+            </div>
+            {/* Center monitors */}
             {renderRail(activeWorkspace.center, "center")}
-            {renderRail(activeWorkspace.rightRail, "right")}
+            {/* Right rail — smooth width transition */}
+            <div
+              style={{
+                flexShrink: 0,
+                width: rightWidth,
+                minWidth: 0,
+                overflow: "hidden",
+                transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "stretch",
+              }}
+            >
+              {renderRail(activeWorkspace.rightRail, "right")}
+            </div>
           </>
         )}
       </div>
 
       <LiveChannelTicker />
 
-      {/* LIVING OS CONTROL DESK — below ticker; does not alter dual 16:9 ops */}
+      {/* BRACER — divider between live feed and analytics */}
+      <div
+        data-row="ops-bracer"
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "0 8px",
+          height: 28,
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #B8860B 20%, #FFD700 50%, #B8860B 80%, transparent)", borderRadius: 1, boxShadow: "0 0 8px rgba(255,215,0,0.35)" }} />
+        <span style={{ flexShrink: 0, fontSize: 8, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,215,0,0.6)", textTransform: "uppercase", padding: "2px 10px", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 999, background: "rgba(0,0,0,0.45)", whiteSpace: "nowrap" }}>
+          ▼ ANALYTICS
+        </span>
+        <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #B8860B 20%, #FFD700 50%, #B8860B 80%, transparent)", borderRadius: 1, boxShadow: "0 0 8px rgba(255,215,0,0.35)" }} />
+      </div>
       <div
         data-deck="control-desk"
         id="living-os-control-desk"

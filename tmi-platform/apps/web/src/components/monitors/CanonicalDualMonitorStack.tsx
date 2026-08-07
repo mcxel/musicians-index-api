@@ -13,7 +13,7 @@
  * Shared by Observatory (gold) + Fan/Performer Command Center (chrome).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 // Ambient standby loop for panes/cells with no assigned source — same
@@ -80,17 +80,17 @@ function StandbyFill() {
 
 export type DualMonitorBezelVariant = "gold" | "chrome";
 
-/** 1 = single view, 2 = side-by-side, 4 = 2×2 quad, 8 = 4×2 octo */
-export type MonitorSplitMode = 1 | 2 | 4 | 8;
+/** 1 = single · 2 = side-by-side · 3 = triple · 4 = 2×2 quad · 16 = 4×4 wall */
+export type MonitorSplitMode = 1 | 2 | 3 | 4 | 16;
 
-const SPLIT_ICONS: Record<MonitorSplitMode, string> = { 1: "□", 2: "⬓", 4: "⊞", 8: "⊟⊟" };
+const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 16: "16" };
 
 export interface CanonicalMonitorPane {
   id: string;
   label?: string;
   /** Content when split = 1 (full frame) */
   children: ReactNode;
-  /** Up to 8 content panes shown when split > 1. Falls back to children-repeat if not provided. */
+  /** Up to 16 content panes shown when split > 1. Falls back to StandbyFill if not provided. */
   cells?: ReactNode[];
   /** Override default split mode for this monitor */
   defaultSplit?: MonitorSplitMode;
@@ -104,11 +104,11 @@ export interface CanonicalDualMonitorStackProps {
   style?: CSSProperties;
   /** Optional toolbar above the stack (grid mode, etc.) */
   toolbar?: ReactNode;
-  /**
-   * Show per-monitor split controls (□ ⬓ ⊞ ⊟⊟).
-   * Defaults true — matches the prototype's splitCtrl() behavior.
-   */
+  /** Show per-monitor split controls. Defaults true. */
   showSplitControls?: boolean;
+  /** External override — parent can drive both splits (MERGE ALL / EXPAND ALL). */
+  controlledSplits?: [MonitorSplitMode, MonitorSplitMode];
+  onSplitsChange?: (splits: [MonitorSplitMode, MonitorSplitMode]) => void;
 }
 
 // ─── Split control bar ────────────────────────────────────────────────────────
@@ -124,44 +124,44 @@ function MonitorSplitBar({
   onSplitChange: (s: MonitorSplitMode) => void;
   accent: string;
 }) {
+  const MODES: MonitorSplitMode[] = [1, 2, 3, 4, 16];
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 5,
+        gap: 4,
         marginBottom: 6,
         padding: "2px 0",
       }}
     >
-      <span style={{ fontSize: 9, color: "#7878AA", fontWeight: 700, letterSpacing: "0.5px", flex: 1 }}>
+      <span style={{ fontSize: 9, color: "#7878AA", fontWeight: 700, letterSpacing: "0.5px", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {label}
       </span>
-      {([1, 2, 4, 8] as MonitorSplitMode[]).map((n) => (
+      {MODES.map((n) => (
         <button
           key={n}
           type="button"
           onClick={() => onSplitChange(n)}
-          title={`${n === 1 ? "Single" : n === 2 ? "Dual" : n === 4 ? "Quad" : "Octo"} (${n}× split)`}
+          title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : "Wall 4×4"}`}
           style={{
-            padding: "3px 10px",
-            fontSize: 11,
-            fontWeight: 700,
+            padding: "3px 8px",
+            fontSize: 10,
+            fontWeight: 900,
             border: `1px solid ${split === n ? accent : "#1E1E45"}`,
             borderRadius: 4,
-            background: split === n ? accent : "#0D0D24",
+            background: split === n ? accent + "cc" : "#0D0D24",
             color: split === n ? "#fff" : "#7878AA",
             cursor: "pointer",
             fontFamily: "inherit",
             lineHeight: 1,
+            transition: "background 0.15s, border-color 0.15s, color 0.15s",
+            minWidth: 26,
           }}
         >
-          {SPLIT_ICONS[n]}
+          {SPLIT_LABELS[n]}
         </button>
       ))}
-      <span style={{ fontSize: 8, color: "#7878AA", marginLeft: 4, whiteSpace: "nowrap" }}>
-        {split}× split
-      </span>
     </div>
   );
 }
@@ -172,22 +172,24 @@ function MonitorCellGrid({
   split,
   children,
   cells,
+  animKey,
 }: {
   split: MonitorSplitMode;
   children: ReactNode;
   cells?: ReactNode[];
+  animKey?: number;
 }) {
   if (split === 1) return <>{children}</>;
 
-  const columns = split === 8 ? 4 : 2;
+  const columns = split === 16 ? 4 : split === 3 ? 3 : 2;
   const filled: ReactNode[] = [];
-
   for (let i = 0; i < split; i++) {
     filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
   }
 
   return (
     <div
+      key={animKey}
       style={{
         position: "absolute",
         inset: 0,
@@ -195,6 +197,7 @@ function MonitorCellGrid({
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
         gap: 1,
         background: "#0a0a1a",
+        animation: "monitor-cell-in 0.38s cubic-bezier(0.22,1,0.36,1)",
       }}
     >
       {filled.map((cell, i) => (
@@ -205,6 +208,7 @@ function MonitorCellGrid({
             overflow: "hidden",
             background: "#030318",
             border: "1px solid #1A1A3A",
+            animation: `monitor-cell-pop 0.32s cubic-bezier(0.22,1,0.36,1) ${i * 28}ms both`,
           }}
         >
           {cell}
@@ -331,20 +335,35 @@ export default function CanonicalDualMonitorStack({
   style,
   toolbar,
   showSplitControls = true,
+  controlledSplits,
+  onSplitsChange,
 }: CanonicalDualMonitorStackProps) {
   const bezel = BEZEL[variant];
   const accent = variant === "gold" ? "#FF6B1A" : "#00D4FF";
 
-  // Per-monitor split state: [mon1Split, mon2Split]
   const [splits, setSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([
-    monitors[0]?.defaultSplit ?? 1,
-    monitors[1]?.defaultSplit ?? 1,
+    controlledSplits?.[0] ?? monitors[0]?.defaultSplit ?? 1,
+    controlledSplits?.[1] ?? monitors[1]?.defaultSplit ?? 1,
   ]);
+  const [animKeys, setAnimKeys] = useState<[number, number]>([0, 0]);
+
+  // sync external controlledSplits into local state
+  useEffect(() => {
+    if (!controlledSplits) return;
+    setSplits(controlledSplits);
+    setAnimKeys((k) => [k[0] + 1, k[1] + 1]);
+  }, [controlledSplits?.[0], controlledSplits?.[1]]);
 
   const setSplit = (index: 0 | 1, mode: MonitorSplitMode) => {
     setSplits((prev) => {
       const next: [MonitorSplitMode, MonitorSplitMode] = [...prev] as [MonitorSplitMode, MonitorSplitMode];
       next[index] = mode;
+      onSplitsChange?.(next);
+      return next;
+    });
+    setAnimKeys((k) => {
+      const next: [number, number] = [...k] as [number, number];
+      next[index] = next[index] + 1;
       return next;
     });
   };
@@ -370,6 +389,17 @@ export default function CanonicalDualMonitorStack({
         ...style,
       }}
     >
+      <style>{`
+        @keyframes monitor-cell-in {
+          from { opacity: 0; transform: scale(0.94); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes monitor-cell-pop {
+          from { opacity: 0; transform: scale(0.8) translateY(6px); }
+          60%  { transform: scale(1.04) translateY(-2px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
       {toolbar}
       <div style={bezel.outer}>
         {seriesLabel ? <div style={bezel.label}>{seriesLabel}</div> : null}
@@ -420,7 +450,7 @@ export default function CanonicalDualMonitorStack({
                       overflow: "hidden",
                     }}
                   >
-                    <MonitorCellGrid split={split} cells={pane.cells}>
+                    <MonitorCellGrid split={split} cells={pane.cells} animKey={animKeys[index as 0 | 1]}>
                       {pane.children}
                     </MonitorCellGrid>
                   </div>
