@@ -56,6 +56,11 @@ export function processEventOutcome(
       integrity = Math.max(0, integrity - 2);
       disconnects += 1;
       break;
+    /** AI work presented as human in a normal challenge — see AiMusicChallengeIntegrity. */
+    case 'AI_WORK_AS_HUMAN':
+      integrity = Math.max(0, integrity - 20);
+      forfeits += 1;
+      break;
   }
 
   const badge = calculateReliabilityBadge(integrity);

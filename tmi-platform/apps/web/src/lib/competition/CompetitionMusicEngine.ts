@@ -325,3 +325,39 @@ export function getBeatsByGenreForCypher(genre: string): BeatRegistryEntry[] {
     genre,
   ));
 }
+
+/** Map PerformerStyleSlot / featured category → beat registry genre label. */
+export function styleSlotToBeatGenre(slot: string | null | undefined): string {
+  const map: Record<string, string> = {
+    hip_hop: "Hip-Hop",
+    rap: "Hip-Hop",
+    rnb: "R&B",
+    gospel: "Gospel",
+    pop: "Pop",
+    country: "Country",
+    rock: "Rock",
+    jazz: "Jazz",
+    latin: "Latin",
+    edm: "EDM",
+    dj: "EDM",
+    producer: "Hip-Hop",
+    band: "Rock",
+    drums: "Rock",
+    guitar: "Rock",
+    horns: "Jazz",
+    keys: "R&B",
+    instrumental: "Jazz",
+    spoken_word: "Hip-Hop",
+    dance: "EDM",
+    comedy: "Comedy",
+    open_genre: "Hip-Hop",
+    ai_music: "EDM",
+  };
+  if (!slot) return "Hip-Hop";
+  return map[slot] ?? slot.replace(/_/g, " ");
+}
+
+/** Cypher dock helper — beats for the idle/featured style slot. */
+export function getBeatsForCypherStyleSlot(slot: string | null | undefined): BeatRegistryEntry[] {
+  return getBeatsByGenreForCypher(styleSlotToBeatGenre(slot));
+}

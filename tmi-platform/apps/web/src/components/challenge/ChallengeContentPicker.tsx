@@ -8,6 +8,12 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  AI_MUSIC_CHALLENGE_BADGE,
+  isAiTaggedWork,
+  validateChallengeWorkDeclaration,
+} from "@/lib/challenge/AiMusicChallengeIntegrity";
+import { isAiMusicChallengeLane } from "@/lib/challenge/ChallengeDefinition";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -19,6 +25,8 @@ export type ContentPickerItem = {
   title: string;
   type: string;
   url?: string | null;
+  /** User-declared or locker-tagged AI-generated work. */
+  madeWithAi?: boolean;
 };
 
 type LoadState = "loading" | "ready" | "empty" | "error";
@@ -31,12 +39,18 @@ type Props = {
   disabled?: boolean;
   roomId?: string;
   castBy?: string | null;
+  /**
+   * Challenge lane id — ai_music accepts AI works; human lanes prefer human-declared works.
+   * AI vs human in a normal challenge is forbidden (see AiMusicChallengeIntegrity).
+   */
+  challengeLane?: string;
   /** Glass popup mode — non-blocking of venue. Default true. */
   popup?: boolean;
   open?: boolean;
   onClose?: () => void;
   onLocked?: (items: ContentPickerItem[]) => void;
   onCast?: (items: ContentPickerItem[]) => void;
+  onAiBlocked?: (message: string) => void;
 };
 
 export default function ChallengeContentPicker({
@@ -46,13 +60,16 @@ export default function ChallengeContentPicker({
   disabled = false,
   roomId,
   castBy,
+  challengeLane = "human_open",
   popup = true,
   open = true,
   onClose,
   onLocked,
   onCast,
+  onAiBlocked,
 }: Props) {
   const accent = side === "A" ? CYAN : FUCHSIA;
+  const aiLane = isAiMusicChallengeLane(challengeLane);
   const [items, setItems] = useState<ContentPickerItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [state, setState] = useState<LoadState>("loading");
@@ -60,6 +77,8 @@ export default function ChallengeContentPicker({
   const [castMsg, setCastMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  /** Declaration toggle — Made with AI (Suno / Udio / similar). */
+  const [madeWithAi, setMadeWithAi] = useState(aiLane);
 
   const load = useCallback(async () => {
     setState("loading");
@@ -72,16 +91,35 @@ export default function ChallengeContentPicker({
         return;
       }
       const data = (await res.json()) as {
-        items?: Array<{ id: string; title: string; type: string; url?: string }>;
+        items?: Array<{
+          id: string;
+          title: string;
+          type: string;
+          url?: string;
+          madeWithAi?: boolean;
+          tags?: string[];
+        }>;
       };
       let list = (data.items ?? []).map((i) => ({
         id: i.id,
         title: i.title || "Untitled",
         type: i.type || "work",
         url: i.url ?? null,
+        madeWithAi: isAiTaggedWork({
+          madeWithAi: i.madeWithAi,
+          type: i.type,
+          tags: i.tags,
+        }),
       }));
       if (typeFilter?.length) {
         list = list.filter((i) => typeFilter.includes(i.type));
+      }
+      if (aiLane) {
+        // AI lane: prefer AI-tagged; still show songs so users can declare Made with AI.
+        list = list.filter((i) => i.madeWithAi || i.type.startsWith("ai_") || i.type === "songs" || i.type === "beats");
+      } else if (challengeLane !== "human_open" && challengeLane !== "creative_mixed") {
+        // Human challenges prefer human-declared works (hide AI-tagged by default).
+        list = list.filter((i) => !i.madeWithAi);
       }
       setItems(list);
       setState(list.length === 0 ? "empty" : "ready");
@@ -89,7 +127,7 @@ export default function ChallengeContentPicker({
       setState("error");
       setErrorMsg("Unable to load Media Locker. Retry.");
     }
-  }, [typeFilter]);
+  }, [typeFilter, aiLane, challengeLane]);
 
   useEffect(() => {
     if (open) void load();
@@ -107,7 +145,12 @@ export default function ChallengeContentPicker({
   function lockedItems(): ContentPickerItem[] {
     return selected
       .map((id) => items.find((s) => s.id === id))
-      .filter((s): s is ContentPickerItem => !!s);
+      .filter((s): s is ContentPickerItem => !!s)
+      .map((item) => ({
+        ...item,
+        madeWithAi: madeWithAi || Boolean(item.madeWithAi),
+        type: madeWithAi && !item.type.startsWith("ai_") ? `ai_${item.type}` : item.type,
+      }));
   }
 
   async function castToVenue(locked: ContentPickerItem[]) {
@@ -124,6 +167,8 @@ export default function ChallengeContentPicker({
           action: "cast",
           side,
           castBy: castBy ?? "performer",
+          challengeLane,
+          madeWithAi,
           items: locked,
         }),
       });
@@ -146,6 +191,18 @@ export default function ChallengeContentPicker({
     setBusy(true);
     setCastMsg(null);
     const locked = lockedItems();
+    for (const work of locked) {
+      const gate = validateChallengeWorkDeclaration({
+        challengeLane,
+        declaration: { workId: work.id, madeWithAi: Boolean(work.madeWithAi) },
+      });
+      if (!gate.ok) {
+        setCastMsg(gate.message);
+        onAiBlocked?.(gate.message);
+        setBusy(false);
+        return;
+      }
+    }
     onLocked?.(locked);
     await castToVenue(locked);
     setBusy(false);
@@ -153,8 +210,9 @@ export default function ChallengeContentPicker({
 
   if (!open) return null;
 
-  const filterLabel =
-    typeFilter?.length === 1 && typeFilter[0] === "songs"
+  const filterLabel = aiLane
+    ? AI_MUSIC_CHALLENGE_BADGE
+    : typeFilter?.length === 1 && typeFilter[0] === "songs"
       ? "SONGS"
       : typeFilter?.length
         ? typeFilter.join(" · ").toUpperCase()
@@ -170,10 +228,11 @@ export default function ChallengeContentPicker({
       style={{
         ...capsule,
         pointerEvents: "auto",
-        borderColor: `${accent}55`,
+        borderColor: aiLane ? `${PURPLE}88` : `${accent}55`,
       }}
       data-challenge-content-picker
       data-side={side}
+      data-ai-lane={aiLane ? "true" : "false"}
     >
       <div aria-hidden style={sheen} />
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
@@ -188,11 +247,16 @@ export default function ChallengeContentPicker({
               WebkitTextFillColor: "transparent",
             }}
           >
-            CONTENT PICKER · SIDE {side}
+            {aiLane ? `${AI_MUSIC_CHALLENGE_BADGE} · SIDE ${side}` : `CONTENT PICKER · SIDE ${side}`}
           </div>
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 3, fontWeight: 600 }}>
             Completed work vs work · {filterLabel} · {selected.length}/{maxSelect}
           </div>
+          {aiLane && (
+            <div style={{ fontSize: 8, color: PURPLE, marginTop: 4, fontWeight: 800, letterSpacing: "0.08em" }}>
+              SUNO / UDIO / AI TOOLS ONLY LANE
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {popup && (
@@ -262,12 +326,39 @@ export default function ChallengeContentPicker({
                   </div>
                   <div style={{ fontSize: 9, color: on ? accent : "rgba(255,255,255,0.4)", marginTop: 2, fontWeight: 700, letterSpacing: "0.08em" }}>
                     {item.type.toUpperCase()}
+                    {item.madeWithAi ? " · AI" : ""}
                     {!item.url ? " · no media url" : ""}
                   </div>
                 </motion.button>
               );
             })}
           </div>
+          <label
+            style={{
+              marginTop: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 10,
+              fontWeight: 700,
+              color: madeWithAi ? PURPLE : "rgba(255,255,255,0.55)",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={madeWithAi}
+              disabled={disabled || aiLane}
+              onChange={(e) => setMadeWithAi(e.target.checked)}
+              style={{ accentColor: PURPLE }}
+            />
+            Made with AI (Suno / Udio / similar)
+            {!aiLane && (
+              <span style={{ fontSize: 8, color: FUCHSIA, fontWeight: 800 }}>
+                · forbidden in human challenges
+              </span>
+            )}
+          </label>
           <motion.button
             type="button"
             disabled={disabled || selected.length === 0 || busy}

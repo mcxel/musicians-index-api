@@ -2,11 +2,21 @@
  * GauntletRoomRuntime — persistent Musical Gauntlet destination.
  * Run end ≠ room end. Room class PERSISTENT_GAUNTLET.
  * Feature-gated: GAUNTLET_ENABLED / GAUNTLET_ENTRY_ENABLED.
+ * Idle featured-style rotation (lock when waiting queue > 0).
  */
 
 import { isEnabled } from "@/config/feature.flags";
 import type { GauntletVenueSkinId } from "@/lib/gauntlet/GauntletVenueManifest";
 import { getDefaultGauntletVenueSkin } from "@/lib/gauntlet/GauntletVenueManifest";
+import {
+  GAUNTLET_IDLE_ROTATION_POOL,
+  buildGauntletOpenCallCopy,
+  getGauntletDefinitionByStyle,
+} from "@/lib/gauntlet/GauntletDefinition";
+import {
+  nextStyleInPool,
+  type PerformerStyleSlot,
+} from "@/lib/competition/PerformerStyleSlots";
 
 export type GauntletRoomClass =
   | "PERSISTENT_GAUNTLET"
@@ -18,6 +28,8 @@ export type GauntletParticipantRole =
   | "WAITING_COMPETITOR"
   | "ACTIVE_COMPETITOR";
 
+const IDLE_ROTATE_MS = 15 * 60 * 1000;
+
 export type GauntletRoomState = {
   roomId: string;
   roomClass: GauntletRoomClass;
@@ -28,6 +40,10 @@ export type GauntletRoomState = {
   spectatorCount: number;
   waitingCount: number;
   activeCount: number;
+  /** Idle-rotating featured performer style (locked when queue forming). */
+  featuredStyle: PerformerStyleSlot;
+  categoryLocked: boolean;
+  lastRotatedAtMs: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -57,10 +73,21 @@ export function isGauntletEntryEnabled(): boolean {
   return isEnabled("GAUNTLET_ENABLED") && isEnabled("GAUNTLET_ENTRY_ENABLED");
 }
 
+function maybeRotateGauntletStyle(room: GauntletRoomState, now = Date.now()): void {
+  if (room.categoryLocked || room.waitingCount > 0 || room.currentRunId) return;
+  if (now - room.lastRotatedAtMs < IDLE_ROTATE_MS) return;
+  room.featuredStyle = nextStyleInPool(GAUNTLET_IDLE_ROTATION_POOL, room.featuredStyle);
+  room.lastRotatedAtMs = now;
+  room.updatedAt = now;
+}
+
 export function getOrCreateGauntletRoom(roomId: string): GauntletRoomState | null {
   if (!isGauntletEnabled()) return null;
   const existing = rooms.get(roomId);
-  if (existing) return existing;
+  if (existing) {
+    maybeRotateGauntletStyle(existing);
+    return existing;
+  }
   const now = Date.now();
   const room: GauntletRoomState = {
     roomId,
@@ -72,6 +99,9 @@ export function getOrCreateGauntletRoom(roomId: string): GauntletRoomState | nul
     spectatorCount: 0,
     waitingCount: 0,
     activeCount: 0,
+    featuredStyle: GAUNTLET_IDLE_ROTATION_POOL[0] ?? "open_genre",
+    categoryLocked: false,
+    lastRotatedAtMs: now,
     createdAt: now,
     updatedAt: now,
   };
@@ -81,7 +111,24 @@ export function getOrCreateGauntletRoom(roomId: string): GauntletRoomState | nul
 }
 
 export function getGauntletRoom(roomId: string): GauntletRoomState | null {
-  return rooms.get(roomId) ?? null;
+  const room = rooms.get(roomId) ?? null;
+  if (room) maybeRotateGauntletStyle(room);
+  return room;
+}
+
+/** Honest open-call status for wall cards. */
+export function getGauntletStatusLine(roomId: string): string {
+  const room = getGauntletRoom(roomId);
+  if (!room) return "Gauntlet unavailable";
+  const def = getGauntletDefinitionByStyle(room.featuredStyle);
+  return buildGauntletOpenCallCopy({
+    styleSlot: room.featuredStyle,
+    needsCompetitors: def?.needsCompetitors ?? 8,
+    openCallRole: def?.openCallRole,
+    waitingCount: room.waitingCount,
+    locked: room.categoryLocked || room.waitingCount > 0,
+    runLive: Boolean(room.currentRunId),
+  });
 }
 
 export function listGauntletRooms(): GauntletRoomState[] {
@@ -147,6 +194,13 @@ export function joinGauntletRoom(input: {
   };
   map.set(input.userId, participant);
   recount(input.roomId);
+  if (role === "WAITING_COMPETITOR") {
+    const roomAfter = rooms.get(input.roomId);
+    if (roomAfter) {
+      roomAfter.categoryLocked = true;
+      roomAfter.updatedAt = Date.now();
+    }
+  }
   return { ok: true, participant };
 }
 
@@ -203,6 +257,11 @@ function recount(roomId: string) {
   room.spectatorCount = spectatorCount;
   room.waitingCount = waitingCount;
   room.activeCount = activeCount;
+  if (waitingCount > 0 || room.currentRunId) {
+    room.categoryLocked = true;
+  } else if (!room.currentRunId && waitingCount === 0) {
+    room.categoryLocked = false;
+  }
   room.updatedAt = Date.now();
 }
 

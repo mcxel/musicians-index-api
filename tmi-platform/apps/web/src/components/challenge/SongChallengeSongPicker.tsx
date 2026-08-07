@@ -40,6 +40,7 @@ export default function SongChallengeSongPicker({
       side={side}
       maxSelect={maxSelect}
       typeFilter={["songs"]}
+      challengeLane="song_challenge"
       disabled={disabled}
       roomId={roomId}
       castBy={castBy}

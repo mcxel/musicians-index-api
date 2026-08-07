@@ -27,6 +27,25 @@ import {
   type AnchorRoomFamily,
   type AnchorRoomCapacity,
 } from "@/lib/live/AnchorRoomCapacityMatrix";
+import {
+  CYPHER_IDLE_ROTATION_POOL,
+  buildCypherOpenCallCopy,
+  getCypherDefinitionByStyle,
+} from "@/lib/cypher/CypherDefinition";
+import {
+  CHALLENGE_IDLE_ROTATION_POOL,
+  buildChallengeOpenCallCopy,
+  getAiMusicChallengeDefinition,
+} from "@/lib/challenge/ChallengeDefinition";
+import {
+  GAUNTLET_IDLE_ROTATION_POOL,
+  buildGauntletOpenCallCopy,
+  getGauntletDefinitionByStyle,
+} from "@/lib/gauntlet/GauntletDefinition";
+import {
+  PERFORMER_STYLE_LABEL,
+  type PerformerStyleSlot,
+} from "@/lib/competition/PerformerStyleSlots";
 
 export type { AnchorRoomFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
 
@@ -75,20 +94,8 @@ let overflowSeq = 0;
 
 // ── Families ─────────────────────────────────────────────────────────────────
 
-export type AnchorCategorySlot =
-  | "rap"
-  | "rnb"
-  | "rock"
-  | "country"
-  | "gospel"
-  | "edm"
-  | "comedy"
-  | "dance"
-  | "guitar"
-  | "producer"
-  | "open_genre"
-  | "spoken_word"
-  | "hip_hop";
+/** Aligns with PerformerStyleSlots — battles/cyphers/challenges/gauntlet. */
+export type AnchorCategorySlot = PerformerStyleSlot;
 
 export interface AnchorRoomDef {
   roomId: string;
@@ -132,7 +139,20 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     discoveryCategory: "battles",
     streamCategory: "battle",
     accentColor: "#FF2DAA",
-    rotationPool: ["rap", "guitar", "dance", "comedy", "rnb", "rock", "producer"],
+    rotationPool: [
+      "rap",
+      "guitar",
+      "dance",
+      "comedy",
+      "rnb",
+      "rock",
+      "producer",
+      "dj",
+      "band",
+      "drums",
+      "horns",
+      "keys",
+    ],
   },
   {
     roomId: "anchor-open-genre-battle",
@@ -142,18 +162,31 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     discoveryCategory: "battles",
     streamCategory: "battle",
     accentColor: "#FF6B35",
-    rotationPool: ["open_genre", "rap", "rnb", "country", "gospel", "edm", "comedy"],
+    rotationPool: [
+      "open_genre",
+      "rap",
+      "rnb",
+      "country",
+      "gospel",
+      "edm",
+      "comedy",
+      "pop",
+      "jazz",
+      "latin",
+      "band",
+    ],
   },
   {
     roomId: "anchor-freestyle-cypher",
-    title: "Freestyle Cypher",
+    title: "Multi-Style Cypher",
     family: "cypher",
     liveRoomType: "cypher",
     discoveryCategory: "cyphers",
     streamCategory: "cypher",
     accentColor: "#AA2DFF",
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
     openCallNeeds: 3,
-    openCallRole: "MCs",
+    openCallRole: "performers",
   },
   {
     roomId: "anchor-rotating-genre-cypher",
@@ -163,19 +196,21 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     discoveryCategory: "cyphers",
     streamCategory: "cypher",
     accentColor: "#c084fc",
-    rotationPool: ["hip_hop", "rnb", "open_genre", "spoken_word"],
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
     openCallNeeds: 4,
-    openCallRole: "voices",
+    openCallRole: "performers",
   },
   {
     roomId: "anchor-song-challenge-lab",
-    title: "Song Challenge Lab",
+    title: "Work Challenge Lab",
     family: "song_challenge",
     liveRoomType: "contest",
     discoveryCategory: "challenges",
     streamCategory: "challenge",
     accentColor: "#FFD700",
-    rotationPool: ["rap", "rnb", "rock", "country", "gospel", "edm", "open_genre"],
+    rotationPool: CHALLENGE_IDLE_ROTATION_POOL,
+    openCallNeeds: 2,
+    openCallRole: "works",
   },
   {
     roomId: "anchor-rotating-creative-challenge",
@@ -185,7 +220,33 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     discoveryCategory: "challenges",
     streamCategory: "challenge",
     accentColor: "#FFAB00",
-    rotationPool: ["comedy", "dance", "producer", "spoken_word", "open_genre"],
+    rotationPool: CHALLENGE_IDLE_ROTATION_POOL,
+    openCallNeeds: 2,
+    openCallRole: "works",
+  },
+  {
+    roomId: "anchor-ai-music-challenge",
+    title: "AI Music Challenge",
+    family: "creative_challenge",
+    liveRoomType: "contest",
+    discoveryCategory: "challenges",
+    streamCategory: "challenge",
+    accentColor: "#7C3AED",
+    rotationPool: ["ai_music"] as const,
+    openCallNeeds: 2,
+    openCallRole: "AI works",
+  },
+  {
+    roomId: "anchor-musical-gauntlet",
+    title: "TMI Musical Gauntlet",
+    family: "battle",
+    liveRoomType: "battle",
+    discoveryCategory: "battles",
+    streamCategory: "battle",
+    accentColor: "#FFD700",
+    rotationPool: GAUNTLET_IDLE_ROTATION_POOL,
+    openCallNeeds: 8,
+    openCallRole: "competitors",
   },
   {
     roomId: "anchor-playlist-listening-lounge",
@@ -225,21 +286,7 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
   },
 ];
 
-const CATEGORY_LABEL: Record<string, string> = {
-  rap: "Rap",
-  rnb: "R&B",
-  rock: "Rock",
-  country: "Country",
-  gospel: "Gospel",
-  edm: "EDM",
-  comedy: "Comedy",
-  dance: "Dance",
-  guitar: "Guitar",
-  producer: "Producer",
-  open_genre: "Open Genre",
-  spoken_word: "Spoken Word",
-  hip_hop: "Hip-Hop",
-};
+const CATEGORY_LABEL: Record<string, string> = { ...PERFORMER_STYLE_LABEL };
 
 // ── Runtime state (idle rotation + lock) ──────────────────────────────────────
 
@@ -359,32 +406,61 @@ export function buildAnchorStatusLine(
 
   switch (def.family) {
     case "battle": {
+      if (def.roomId.includes("gauntlet")) {
+        const gDef = getGauntletDefinitionByStyle(state.featuredCategory ?? "open_genre");
+        return `${buildGauntletOpenCallCopy({
+          styleSlot: state.featuredCategory,
+          needsCompetitors: def.openCallNeeds ?? gDef?.needsCompetitors ?? 8,
+          openCallRole: def.openCallRole ?? gDef?.openCallRole,
+          waitingCount: state.humanQueueCount,
+          locked: state.categoryLocked || state.humanQueueCount > 0,
+        })} · ${humans}`;
+      }
       if (state.categoryLocked || state.humanQueueCount > 0) {
         return `LOCKED: ${cat} · Performer vs performer · Queue ${state.humanQueueCount} · ${humans}`;
       }
       return `Featured: ${cat} · Performer vs performer · Open · ${humans}`;
     }
     case "song_challenge": {
-      if (state.categoryLocked || state.humanQueueCount > 0) {
-        return `LOCKED: ${cat} · Work vs work · Needs 2 songs · ${humans}`;
-      }
-      return `Challenge Your Song · ${cat} · Needs 2 songs · ${humans}`;
+      const songOnly = def.roomId.includes("song");
+      return `${buildChallengeOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsWorks: def.openCallNeeds ?? 2,
+        openCallRole: def.openCallRole ?? (songOnly ? "songs" : "works"),
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+        songOnly,
+      })} · ${humans}`;
     }
     case "creative_challenge": {
-      if (state.categoryLocked || state.humanQueueCount > 0) {
-        return `LOCKED: ${cat} · Creative matchup · ${humans}`;
+      const aiLane = def.roomId.includes("ai-music") || state.featuredCategory === "ai_music";
+      if (aiLane) {
+        const ai = getAiMusicChallengeDefinition();
+        return `${buildChallengeOpenCallCopy({
+          styleSlot: "ai_music",
+          needsWorks: ai.needsWorks,
+          openCallRole: ai.openCallRole,
+          locked: state.categoryLocked || state.humanQueueCount > 0,
+          aiLane: true,
+        })} · ${humans}`;
       }
-      return `Rotating: ${cat} · Open challenge · ${humans}`;
+      return `${buildChallengeOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsWorks: def.openCallNeeds ?? 2,
+        openCallRole: def.openCallRole ?? "works",
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+      })} · ${humans}`;
     }
     case "cypher": {
-      const need = def.openCallNeeds ?? 3;
-      const role = def.openCallRole ?? "MCs";
-      const joined = Math.min(humanParticipants, need);
-      const remaining = Math.max(0, need - joined);
-      if (remaining > 0) {
-        return `Needs ${remaining} ${role} · Open call · ${humans}`;
-      }
-      return `Roster full · Cypher live · ${humans}`;
+      const styleDef = getCypherDefinitionByStyle(state.featuredCategory ?? "open_genre");
+      const need = def.openCallNeeds ?? styleDef?.needsPerformers ?? 3;
+      const role = def.openCallRole ?? styleDef?.openCallRole ?? "performers";
+      return `${buildCypherOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsPerformers: need,
+        openCallRole: role,
+        humanJoined: humanParticipants,
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+      })} · ${humans}`;
     }
     case "playlist_lounge": {
       if (state.nowPlayingLabel) {

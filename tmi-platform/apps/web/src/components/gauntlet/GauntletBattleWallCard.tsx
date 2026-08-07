@@ -3,14 +3,18 @@
 /**
  * GauntletBattleWallCard — battle subtype tile on the existing Battles Lobby Wall.
  * Feature-gated: GAUNTLET_DISCOVERY_ENABLED. Never shows fake LIVE audience.
+ * Honest style + Needs X competitors copy (multi-genre, not hip-hop-only).
  */
 
 import Link from "next/link";
 import {
   ensureCanonicalGauntletRoom,
+  getGauntletStatusLine,
   isGauntletDiscoveryEnabled,
   type GauntletRoomState,
 } from "@/lib/gauntlet/GauntletRoomRuntime";
+import { getGauntletDefinitionByStyle } from "@/lib/gauntlet/GauntletDefinition";
+import { styleLabel } from "@/lib/competition/PerformerStyleSlots";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 
 type Props = {
@@ -30,6 +34,9 @@ export default function GauntletBattleWallCard({ room: roomProp }: Props) {
   });
 
   const hasLiveRun = Boolean(room.currentRunId);
+  const format = getGauntletDefinitionByStyle(room.featuredStyle);
+  const statusLine = getGauntletStatusLine(room.roomId);
+  const style = styleLabel(room.featuredStyle);
 
   return (
     <Link
@@ -63,11 +70,29 @@ export default function GauntletBattleWallCard({ room: roomProp }: Props) {
       >
         GAUNTLET
       </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 8,
+          fontSize: 8,
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          color: room.categoryLocked ? "#FFAB00" : "#00FFFF",
+          background: "rgba(5,5,16,0.65)",
+          padding: "2px 6px",
+          borderRadius: 3,
+          border: "1px solid rgba(255,255,255,0.15)",
+        }}
+      >
+        {style.toUpperCase()}
+        {room.categoryLocked ? " · LOCKED" : ""}
+      </div>
       {hasLiveRun ? (
         <div
           style={{
             position: "absolute",
-            top: 8,
+            top: 28,
             right: 8,
             fontSize: 9,
             fontWeight: 900,
@@ -81,7 +106,7 @@ export default function GauntletBattleWallCard({ room: roomProp }: Props) {
         <div
           style={{
             position: "absolute",
-            top: 8,
+            top: 28,
             right: 8,
             fontSize: 9,
             fontWeight: 800,
@@ -116,9 +141,11 @@ export default function GauntletBattleWallCard({ room: roomProp }: Props) {
           background: "linear-gradient(transparent, rgba(0,0,0,0.9))",
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>TMI Musical Gauntlet</div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>
-          Persistent destination · one life · outdoor skins
+        <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>
+          {format?.emoji ?? "⚔️"} TMI Musical Gauntlet
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
+          {statusLine}
         </div>
         <div style={{ fontSize: 10, color: "#FFD700", marginTop: 4, fontWeight: 700 }}>
           Spec {room.spectatorCount} · Wait {room.waitingCount}

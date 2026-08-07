@@ -183,6 +183,38 @@ export function getPerformerRubricStats(performerId: string): PerformerRubricSta
   return performerLedger.get(performerId) ?? null;
 }
 
+/**
+ * Apply honesty penalty to a performer's ledger averages (AI cheat in human challenge).
+ * Deducts points from originality / technical_skill / who_won — never invents ballots.
+ */
+export function applyRubricPointPenalty(
+  performerId: string,
+  penalty: number,
+  reason = "integrity-penalty",
+): PerformerRubricStats {
+  const prev = performerLedger.get(performerId) ?? {
+    performerId,
+    ballotCount: 0,
+    averages: {},
+    whoWonCount: 0,
+    xpHint: 0,
+  };
+  const deduct = Math.max(0, penalty);
+  const averages = { ...prev.averages };
+  for (const key of ["originality", "technical_skill", "who_won", "delivery"] as const) {
+    const cur = averages[key] ?? 0;
+    averages[key] = Math.max(0, Math.round((cur - deduct) * 10) / 10);
+  }
+  const next: PerformerRubricStats = {
+    ...prev,
+    averages,
+    xpHint: Math.max(0, (prev.xpHint ?? 0) - deduct * 10),
+  };
+  performerLedger.set(performerId, next);
+  void reason;
+  return next;
+}
+
 function statsForWindow(w: WindowState, performerId: string): PerformerRubricStats {
   const ballots = [...w.ballots.values()].filter((b) => b.performerId === performerId);
   const averages: Record<string, number> = {};

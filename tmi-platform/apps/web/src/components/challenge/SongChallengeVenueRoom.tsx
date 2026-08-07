@@ -476,6 +476,7 @@ export default function SongChallengeVenueRoom({
             side="A"
             maxSelect={3}
             typeFilter={["songs"]}
+            challengeLane="song_challenge"
             disabled={role !== "challenger-a"}
             roomId={roomId}
             castBy={sessionUser?.id}
@@ -488,6 +489,7 @@ export default function SongChallengeVenueRoom({
             side="B"
             maxSelect={3}
             typeFilter={["songs"]}
+            challengeLane="song_challenge"
             disabled={role !== "challenger-b"}
             roomId={roomId}
             castBy={sessionUser?.id}
