@@ -56,11 +56,15 @@ export type BeatSubmitPayload = {
   bpm: number;
   key?: string;
   tags?: string;
+  /** On-air credit — stored as producerName */
+  broadcastTag?: string;
   producerName?: string;
   previewUrl?: string;
   basicPrice?: number;
   premiumPrice?: number;
   exclusivePrice?: number | null;
+  /** Marketplace path — price required when true */
+  listForSale?: boolean;
   /** platform-only catalog vs personal producer stash */
   stashScope?: "platform" | "personal";
 };
@@ -98,7 +102,9 @@ export async function submitBeat(
   payload: BeatSubmitPayload,
   opts?: { admin?: boolean; file?: File | null },
 ): Promise<{ ok: boolean; beat?: BeatLockerRecord; error?: string }> {
-  const endpoint = opts?.admin ? "/api/beats/admin-submit" : "/api/beats/submit";
+  // Admin → admin-submit; performers → compact locker-submit (not Living OS /api/beats/submit)
+  const endpoint = opts?.admin ? "/api/beats/admin-submit" : "/api/beats/locker-submit";
+  const onAirTag = (payload.broadcastTag ?? payload.producerName ?? "").trim();
 
   try {
     if (opts?.file && !opts.admin) {
@@ -108,9 +114,13 @@ export async function submitBeat(
       fd.set("bpm", String(payload.bpm));
       if (payload.key) fd.set("key", payload.key);
       if (payload.tags) fd.set("tags", payload.tags);
-      if (payload.producerName) fd.set("producerName", payload.producerName);
+      if (onAirTag) {
+        fd.set("broadcastTag", onAirTag);
+        fd.set("producerName", onAirTag);
+      }
       if (payload.previewUrl) fd.set("previewUrl", payload.previewUrl);
       if (payload.basicPrice != null) fd.set("basicPrice", String(payload.basicPrice));
+      if (payload.listForSale) fd.set("listForSale", "true");
       if (payload.premiumPrice != null) fd.set("premiumPrice", String(payload.premiumPrice));
       if (payload.exclusivePrice != null) fd.set("exclusivePrice", String(payload.exclusivePrice));
       if (payload.stashScope) fd.set("stashScope", payload.stashScope);
@@ -134,9 +144,11 @@ export async function submitBeat(
             .map((t) => t.trim())
             .filter(Boolean)
         : payload.tags,
-      producerName: payload.producerName,
+      broadcastTag: onAirTag || undefined,
+      producerName: onAirTag || payload.producerName,
       previewUrl: payload.previewUrl,
       basicPrice: payload.basicPrice,
+      listForSale: payload.listForSale,
       premiumPrice: payload.premiumPrice,
       exclusivePrice: payload.exclusivePrice,
       stashScope: payload.stashScope,

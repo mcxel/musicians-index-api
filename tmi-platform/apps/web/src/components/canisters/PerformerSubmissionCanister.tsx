@@ -44,6 +44,7 @@ export default function PerformerSubmissionCanister({
   accentColor = "#FFD700",
 }: PerformerSubmissionCanisterProps) {
   const [title, setTitle] = useState("");
+  const [broadcastTag, setBroadcastTag] = useState(displayName);
   const [genre, setGenre] = useState<string>("Hip-Hop");
   const [bpm, setBpm] = useState(120);
   const [key, setKey] = useState("");
@@ -52,7 +53,7 @@ export default function PerformerSubmissionCanister({
   const [file, setFile] = useState<File | null>(null);
   const [targetType, setTargetType] = useState<BeatCompetitionTarget>("battle");
   const [targetId, setTargetId] = useState("open-queue");
-  const [listForSale, setListForSale] = useState(false);
+  const [listForSale, setListForSale] = useState(true);
   const [basicPrice, setBasicPrice] = useState(DEFAULT_LICENSE_PRICES.non_exclusive);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +95,17 @@ export default function PerformerSubmissionCanister({
       return;
     }
     if (!title.trim()) {
-      setError("Title is required.");
+      setError("Beat name is required.");
+      setBusy(false);
+      return;
+    }
+    if (!broadcastTag.trim()) {
+      setError("Broadcast tag is required — exactly what shows on air.");
+      setBusy(false);
+      return;
+    }
+    if (listForSale && (!Number.isFinite(basicPrice) || basicPrice < 99)) {
+      setError("Marketplace path requires your price (min $0.99).");
       setBusy(false);
       return;
     }
@@ -111,9 +122,11 @@ export default function PerformerSubmissionCanister({
         bpm,
         key: key || undefined,
         tags,
-        producerName: displayName,
+        broadcastTag: broadcastTag.trim(),
+        producerName: broadcastTag.trim(),
         previewUrl: previewUrl.trim() || undefined,
         basicPrice: listForSale ? basicPrice : DEFAULT_LICENSE_PRICES.non_exclusive,
+        listForSale,
         stashScope: "personal",
       },
       { file },
@@ -167,7 +180,14 @@ export default function PerformerSubmissionCanister({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Beat title"
+            placeholder="Beat name"
+            style={fieldStyle}
+            required
+          />
+          <input
+            value={broadcastTag}
+            onChange={(e) => setBroadcastTag(e.target.value)}
+            placeholder="Broadcast tag / seller display name (on air)"
             style={fieldStyle}
             required
           />
@@ -240,7 +260,7 @@ export default function PerformerSubmissionCanister({
               checked={listForSale}
               onChange={(e) => setListForSale(e.target.checked)}
             />
-            Prepare marketplace listing (BeatStore inventory — no fake auction)
+            List for marketplace (your price required — fee via SPLIT_PRESETS.beat)
           </label>
           {listForSale ? (
             <input
@@ -249,7 +269,9 @@ export default function PerformerSubmissionCanister({
               value={basicPrice}
               onChange={(e) => setBasicPrice(Number(e.target.value) || 2999)}
               style={fieldStyle}
-              title="Non-exclusive price cents"
+              title="Your price in cents"
+              required
+              placeholder="Price (cents)"
             />
           ) : null}
 

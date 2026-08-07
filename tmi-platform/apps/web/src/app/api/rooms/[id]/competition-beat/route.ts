@@ -13,9 +13,29 @@ import {
   type CompetitionBeatStyle,
   type AttachedBeatRef,
 } from "@/lib/competition/CompetitionBeatRoomEngine";
-import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
+import { claimBeatSlot, isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+/** Hydrate in-memory exclusive flag from durable BeatLicense / tags (Rule 19). */
+async function exclusiveSoldDurable(beatId: string): Promise<boolean> {
+  if (isBeatExclusivelySold(beatId)) return true;
+  try {
+    const beat = await prisma.beat.findUnique({
+      where: { id: beatId },
+      select: { tags: true, licenses: { where: { type: { in: ["exclusive", "EXCLUSIVE"] } }, take: 1 } },
+    });
+    if (!beat) return false;
+    if (beat.tags?.includes("exclusively-sold") || beat.licenses.length > 0) {
+      claimBeatSlot(beatId, "db-exclusive", "exclusive");
+      return true;
+    }
+  } catch {
+    /* DB unavailable — fall through to memory */
+  }
+  return false;
+}
 
 const LANES = new Set<CompetitionBeatLane>(["battle", "gauntlet", "cypher"]);
 
@@ -92,11 +112,18 @@ export async function POST(
     if (!beat || typeof beat !== "object") {
       return NextResponse.json({ ok: false, error: "beat required" }, { status: 400 });
     }
+    const beatId = String(beat.beatId ?? "");
+    if (beatId && (await exclusiveSoldDurable(beatId))) {
+      return NextResponse.json(
+        { ok: false, error: "Beat sold exclusively — removed from competition vault." },
+        { status: 409 },
+      );
+    }
     const result = attachCompetitionBeat({
       roomId,
       lane,
       beat: {
-        beatId: String(beat.beatId ?? ""),
+        beatId,
         title: String(beat.title ?? ""),
         genre: beat.genre ? String(beat.genre) : undefined,
         bpm: typeof beat.bpm === "number" ? beat.bpm : undefined,

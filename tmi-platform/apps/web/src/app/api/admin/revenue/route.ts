@@ -50,6 +50,8 @@ function makeEmptyStreams(): RevenueStreams {
     subscriptions: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
     founding_packs: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
     sponsors: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
+    beats: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
+    tips: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
     one_time: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
     payments: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },
     charges: { todayCents: 0, monthCents: 0, countToday: 0, countMonth: 0 },

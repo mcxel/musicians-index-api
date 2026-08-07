@@ -204,18 +204,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // ─── 2. BEAT LICENSE FULFILLMENT ──────────────────────────────────
+      // ─── 2. BEAT LICENSE FULFILLMENT (SPLIT_PRESETS.beat) ─────────────
       if (metadata.type === 'beat') {
-        await prisma.beatLicense.create({
-          data: { beatId: metadata.beatId, buyerId: metadata.buyerId, type: metadata.licenseType, price: session.amount_total || 0, stripeId: session.id }
-        });
-        
-        const beat = await prisma.beat.findUnique({ where: { id: metadata.beatId } });
-        if (beat) {
-          await prisma.ledgerEntry.create({
-            data: { userId: beat.producerId, type: 'CREDIT', amount: Math.floor((session.amount_total || 0) * 0.85), description: `Beat License Sold: ${beat.title}`, relatedId: session.id }
-          });
+        if (!metadata.beatId || !metadata.licenseType) {
+          throw new Error('Beat fulfillment missing beatId or licenseType');
         }
+        const { grantBeatFromStripeSession } = await import('@/lib/beats/beatFulfillment');
+        await grantBeatFromStripeSession({
+          stripeSessionId: session.id,
+          beatId: metadata.beatId,
+          buyerId: metadata.buyerId || 'guest',
+          licenseType: metadata.licenseType,
+          amountCents: session.amount_total || 0,
+          auctionId: metadata.auctionId || null,
+        });
       }
 
       // ─── 3. LIVE TIP FULFILLMENT ──────────────────────────────────────
@@ -245,7 +247,7 @@ export async function POST(req: NextRequest) {
           fingerprint: session.id,
           eventType: 'checkout.session.completed',
           livemode: Boolean(session.livemode),
-          revenueStream: 'one_time',
+          revenueStream: 'tips',
           amountCents: amount,
           currency: session.currency || 'usd',
           type: 'tip',

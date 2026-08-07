@@ -354,7 +354,12 @@ export const REVENUE_SPLITS = {
   TIP:              { platform: 0.10, creator: 0.90 },
   BOOKING:          { platform: 0.15, venue: 0.85 },
   TICKET:           { platform: 0.10, artist: 0.90 },
-  BEAT_LICENSE:     { platform: 0.25, producer: 0.75 },
+  /**
+   * Aligned with RevenueSplitEngine SPLIT_PRESETS.beat (BeatStoreCommerceEngine):
+   * platform 20% + big_ace 10% = 30% TMI-side; producer/artist 70%.
+   * Prefer calculateRevenueSplitByPreset("beat") at settlement time.
+   */
+  BEAT_LICENSE:     { platform: 0.30, producer: 0.70 },
   NFT:              { platform: 0.10, artist: 0.90 },
   SPONSOR:          { platform: 1.00 },
   ADVERTISER:       { platform: 1.00 },

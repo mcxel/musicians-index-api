@@ -14,6 +14,7 @@ import {
   type CompetitionBeatLane,
   type CompetitionBeatRoomState,
 } from "@/lib/competition/CompetitionBeatRoomEngine";
+import CompetitionBeatBroadcastTag from "@/components/competition/CompetitionBeatBroadcastTag";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -157,6 +158,18 @@ export default function CompetitionBeatDock({
         ...edge,
       }}
     >
+      <CompetitionBeatBroadcastTag
+        attached={state?.attached ?? null}
+        style={state?.style ?? "acapella"}
+        show={Boolean(state?.attached && state?.style === "attached")}
+        roomId={roomId}
+        lane={lane}
+        listPriceCents={
+          state?.attached
+            ? locker.find((b) => b.id === state.attached?.beatId)?.basicPrice
+            : undefined
+        }
+      />
       <AnimatePresence mode="wait">
         {collapsed ? (
           <motion.button

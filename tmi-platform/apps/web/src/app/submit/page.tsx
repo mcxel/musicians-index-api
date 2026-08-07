@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SubmissionType } from '@/lib/submissions/SubmissionEngine';
+import BeatLockerCompactSubmit from '@/components/beats/BeatLockerCompactSubmit';
 
 interface LaneTile {
   id: SubmissionType;
@@ -82,16 +83,20 @@ function SubmitForm({ lane, onClose }: { lane: LaneTile; onClose: () => void }) 
         <div style={{ fontSize: 32, marginBottom: 8 }}>{lane.emoji}</div>
         <h2 style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 26, color: lane.accent, letterSpacing: '0.04em', marginBottom: 4 }}>{lane.formTitle}</h2>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 24 }}>{lane.sub}</p>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div><label style={lbl}>Title *</label><input style={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="Name of your track / entry" maxLength={80} required /></div>
-          <div><label style={lbl}>{lane.urlLabel} *</label><input style={inp} value={url} onChange={e => setUrl(e.target.value)} placeholder={lane.urlPlaceholder} type="url" required /></div>
-          <div><label style={lbl}>Genre</label><input style={inp} value={genre} onChange={e => setGenre(e.target.value)} placeholder="Hip-Hop, R&B, Pop…" maxLength={40} /></div>
-          <div><label style={lbl}>Description (optional)</label><textarea style={{ ...inp, resize: 'vertical', minHeight: 72 } as React.CSSProperties} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Tell us about this entry…" maxLength={400} /></div>
-          {error && <p style={{ color: '#FF4444', fontSize: 13, margin: 0 }}>{error}</p>}
-          <button type="submit" disabled={loading} style={{ background: lane.accent, color: '#000', border: 'none', padding: '12px 0', fontWeight: 900, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Submitting…' : '🚀 Submit Now'}
-          </button>
-        </form>
+        {lane.id === 'beat' ? (
+          <BeatLockerCompactSubmit accentColor={lane.accent} onClose={onClose} />
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div><label style={lbl}>Title *</label><input style={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="Name of your track / entry" maxLength={80} required /></div>
+            <div><label style={lbl}>{lane.urlLabel} *</label><input style={inp} value={url} onChange={e => setUrl(e.target.value)} placeholder={lane.urlPlaceholder} type="url" required /></div>
+            <div><label style={lbl}>Genre</label><input style={inp} value={genre} onChange={e => setGenre(e.target.value)} placeholder="Hip-Hop, R&B, Pop…" maxLength={40} /></div>
+            <div><label style={lbl}>Description (optional)</label><textarea style={{ ...inp, resize: 'vertical', minHeight: 72 } as React.CSSProperties} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Tell us about this entry…" maxLength={400} /></div>
+            {error && <p style={{ color: '#FF4444', fontSize: 13, margin: 0 }}>{error}</p>}
+            <button type="submit" disabled={loading} style={{ background: lane.accent, color: '#000', border: 'none', padding: '12px 0', fontWeight: 900, fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Submitting…' : '🚀 Submit Now'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
