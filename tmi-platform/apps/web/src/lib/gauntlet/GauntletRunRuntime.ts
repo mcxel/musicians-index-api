@@ -31,6 +31,12 @@ import {
   openEliminationVoteWindow,
   resolveEliminatedCompetitor,
 } from "@/lib/gauntlet/GauntletAudienceEliminationVote";
+import {
+  DEFAULT_ELIMINATION_VOTE_SECONDS,
+  DEFAULT_PERF_CLOCK_SECONDS,
+  DEFAULT_SIDE_BATTLE_WINDOW_SECONDS,
+  resolveGauntletTurnSeconds,
+} from "@/lib/gauntlet/GauntletClockConfig";
 
 export type GauntletRunPhase =
   | "REGISTRATION"
@@ -71,9 +77,17 @@ export type GauntletRunState = {
 };
 
 const ROUND_SEQUENCE: GauntletRoundSize[] = [32, 16, 8, 4, 2, 1];
-const DEFAULT_PERF_CLOCK = 45;
-const DEFAULT_VOTE_SECONDS = 25;
-const DEFAULT_SIDE_WINDOW_SECONDS = 40;
+const DEFAULT_PERF_CLOCK = DEFAULT_PERF_CLOCK_SECONDS;
+const DEFAULT_VOTE_SECONDS = DEFAULT_ELIMINATION_VOTE_SECONDS;
+const DEFAULT_SIDE_WINDOW_SECONDS = DEFAULT_SIDE_BATTLE_WINDOW_SECONDS;
+
+export {
+  DEFAULT_PERF_CLOCK_SECONDS,
+  GAUNTLET_TURN_SECONDS,
+  GAUNTLET_FINAL_TURN_SECONDS,
+  GAUNTLET_FINAL_TURN_MAX_SECONDS,
+  resolveGauntletTurnSeconds,
+} from "@/lib/gauntlet/GauntletClockConfig";
 
 const runs = new Map<string, GauntletRunState>();
 
@@ -133,7 +147,7 @@ export function getGauntletRun(runId: string): GauntletRunState | null {
 /** REGISTRATION / FIELD_CONTRACT → ROUND_ACTIVE or FINAL. */
 export function beginRound(
   runId: string,
-  seconds = DEFAULT_PERF_CLOCK,
+  seconds?: number,
 ): GauntletRunState | null {
   const run = runs.get(runId);
   if (!run) return null;
@@ -146,9 +160,14 @@ export function beginRound(
     run.updatedAt = Date.now();
     return run;
   }
+  const isFinal = run.aliveIds.length === 2;
+  const turnSeconds = resolveGauntletTurnSeconds({
+    isFinal,
+    overrideSeconds: seconds,
+  });
   run.roundNumber += 1;
-  run.performanceClockSeconds = seconds;
-  run.performanceClockEndsAt = Date.now() + seconds * 1000;
+  run.performanceClockSeconds = turnSeconds;
+  run.performanceClockEndsAt = Date.now() + turnSeconds * 1000;
   run.voteWindowEndsAt = 0;
   run.restWindowEndsAt = 0;
   run.sideWindowEndsAt = 0;
@@ -156,7 +175,7 @@ export function beginRound(
   run.mainStageFocus = true;
   run.survivorsResting = false;
   run.sideStageVisible = true;
-  run.phase = run.aliveIds.length === 2 ? "FINAL" : "ROUND_ACTIVE";
+  run.phase = isFinal ? "FINAL" : "ROUND_ACTIVE";
   run.roundSize = nextBracketSize(run.aliveIds.length);
   run.updatedAt = Date.now();
   return run;
@@ -164,7 +183,7 @@ export function beginRound(
 
 export function startPerformanceClock(
   runId: string,
-  seconds = DEFAULT_PERF_CLOCK,
+  seconds?: number,
 ): GauntletRunState | null {
   const run = runs.get(runId);
   if (!run) return null;
@@ -172,8 +191,12 @@ export function startPerformanceClock(
     return beginRound(runId, seconds);
   }
   if (run.phase === "ROUND_ACTIVE" || run.phase === "FINAL") {
-    run.performanceClockSeconds = seconds;
-    run.performanceClockEndsAt = Date.now() + seconds * 1000;
+    const turnSeconds = resolveGauntletTurnSeconds({
+      isFinal: run.phase === "FINAL",
+      overrideSeconds: seconds,
+    });
+    run.performanceClockSeconds = turnSeconds;
+    run.performanceClockEndsAt = Date.now() + turnSeconds * 1000;
     run.updatedAt = Date.now();
     return run;
   }

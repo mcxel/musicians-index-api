@@ -12,6 +12,10 @@ import {
   getEliminationTallies,
   isEliminationVoteOpen,
 } from "@/lib/gauntlet/GauntletAudienceEliminationVote";
+import {
+  GAUNTLET_FINAL_TURN_SECONDS,
+  GAUNTLET_TURN_SECONDS,
+} from "@/lib/gauntlet/GauntletClockConfig";
 
 type Props = {
   run: GauntletRunState | null;
@@ -78,6 +82,12 @@ export default function GauntletRoundHUD({ run, clockSeconds, roomId }: Props) {
             accent="#00FFFF"
           />
           <Stat label="BRACKET" value={`OF ${run.roundSize}`} />
+          {run.phase === "ROUND_ACTIVE" && (
+            <Stat label="TURN" value={`${GAUNTLET_TURN_SECONDS}s`} accent="#FFD700" />
+          )}
+          {run.phase === "FINAL" && (
+            <Stat label="FINAL TURN" value={`${GAUNTLET_FINAL_TURN_SECONDS}s`} accent="#FFD700" />
+          )}
         </div>
         <SidePill
           label={side.latestLabel ?? "No side battles yet"}

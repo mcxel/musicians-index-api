@@ -66,7 +66,7 @@ export function buildGauntletPresentationFrame(input: {
     case "ROUND_ACTIVE":
       overlay = "ROUND_REDUCER";
       headline = `MAIN ROUND · OF ${input.roundSize}`;
-      subline = "Survivors perform · audience watches the main stage";
+      subline = "Survivors perform · 30s per turn · audience watches the main stage";
       break;
     case "AUDIENCE_ELIMINATION_VOTE":
       overlay = "AUDIENCE_VOTE";
@@ -97,7 +97,7 @@ export function buildGauntletPresentationFrame(input: {
       overlay = "FINAL_DUEL";
       underlay = "festival-haze";
       headline = "FINAL";
-      subline = "Two remain on the main stage";
+      subline = "Two remain · 60s championship turns (max)";
       break;
     case "CHAMPION":
       overlay = "CHAMPION_CROWN";
