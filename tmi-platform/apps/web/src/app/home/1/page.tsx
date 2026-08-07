@@ -22,6 +22,9 @@ function buildSponsorEntry(zone: string) {
   if (slot.type === 'platform' && slot.platformPromo) {
     return { id: zone, name: slot.platformPromo.headline, tagline: slot.platformPromo.ctaLabel };
   }
+  if (slot.type === 'adnetwork') {
+    return { id: zone, name: 'AD NETWORK', tagline: 'Google AdSense inventory' };
+  }
   return { id: zone, name: 'ADVERTISE ON TMI', tagline: 'Reach live audiences · from $25' };
 }
 

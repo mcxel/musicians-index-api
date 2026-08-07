@@ -409,18 +409,21 @@ export const STRIPE_PRODUCTS = {
   },
 } as const;
 
-// Platform revenue split percentages
-// Creator-commerce paths (TIP/BEAT/NFT/MEET_GREET/etc.): FREE-tier defaults below.
-// Prefer calculateRevenueSplitByPreset / creatorCommerceSplitConfig(sellerTier) at settlement
-// — ladder FREE 20% → DIAMOND 8%, Big Ace 0.
+// Platform revenue split percentages (fraction 0–1) — FREE-tier defaults for
+// creator-commerce paths. Canonical settlement uses RevenueSplitEngine:
+//   creatorCommerceSplitConfig(sellerTier) → FREE 20% … DIAMOND 8%, big_ace 0
+// Ticket (Rule 17): Venue/Promoter inventory only — no artist ticket share.
+// Prefer calculateRevenueSplitByPreset / creatorCommerceSplitConfig at settlement.
 export const REVENUE_SPLITS = {
-  SUBSCRIPTION:     { platform: 0.20, creator: 0.80 },
+  SUBSCRIPTION:     { platform: 0.75, creator: 0, big_ace: 0.25 },
   TIP:              { platform: 0.20, creator: 0.80 },
-  BOOKING:          { platform: 0.15, venue: 0.85 },
-  TICKET:           { platform: 0.10, artist: 0.90 },
+  BOOKING:          { platform: 0.15, artist: 0.50, venue: 0.25, big_ace: 0.10 },
+  /** Rule 17 — no artist inventory share; venue (promoter) receives seller cut */
+  TICKET:           { platform: 0.10, venue: 0.90, artist: 0 },
   BEAT_LICENSE:     { platform: 0.20, producer: 0.80 },
   NFT:              { platform: 0.20, artist: 0.80 },
   MERCH:            { platform: 0.20, creator: 0.80 },
+  STORE:            { platform: 0.20, creator: 0.80 },
   SPONSOR:          { platform: 1.00 },
   ADVERTISER:       { platform: 1.00 },
   ARTIST_SPOTLIGHT: { platform: 1.00 },

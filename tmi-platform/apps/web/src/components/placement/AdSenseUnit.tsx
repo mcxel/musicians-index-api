@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getAdSensePublisherId } from "@/lib/ads/adConfig";
 
 interface AdSenseUnitProps {
   slot?: string;
@@ -9,8 +10,6 @@ interface AdSenseUnitProps {
   className?: string;
 }
 
-const PUB_ID = "ca-pub-4088577529436039";
-
 export default function AdSenseUnit({
   slot = "auto",
   format = "auto",
@@ -18,6 +17,7 @@ export default function AdSenseUnit({
   className,
 }: AdSenseUnitProps) {
   const pushed = useRef(false);
+  const pubId = getAdSensePublisherId();
 
   useEffect(() => {
     if (pushed.current) return;
@@ -34,7 +34,7 @@ export default function AdSenseUnit({
     <ins
       className={`adsbygoogle${className ? ` ${className}` : ""}`}
       style={{ display: "block", overflow: "hidden", ...style }}
-      data-ad-client={PUB_ID}
+      data-ad-client={pubId}
       {...(slot !== "auto" ? { "data-ad-slot": slot } : {})}
       data-ad-format={format}
       data-full-width-responsive="true"

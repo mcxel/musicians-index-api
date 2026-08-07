@@ -71,6 +71,17 @@ export async function queueInstantPayout(params: {
   sourceTxId: string;
   cleared: ClearedFundsInput;
 }): Promise<InstantPayoutResult> {
+  // Rule 17 — ticket inventory/settlement belongs to Venue/Promoter only.
+  // Never route ticket proceeds into a performer InstantPayout transfer.
+  if (params.source === "ticket") {
+    return {
+      status: "blocked",
+      amountCents: 0,
+      connectReady: false,
+      reason: "rule17_ticket_not_artist_payout",
+    };
+  }
+
   const maxCents = maxArtistPayoutForClearedTx(params.cleared);
   const guard = assertNetPositiveSettle(params.cleared, maxCents);
   if (!guard.allowed || maxCents <= 0) {

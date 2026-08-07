@@ -15,6 +15,7 @@ import Link from "next/link";
 import AutomationInspectorPanel from "@/components/commerce/AutomationInspectorPanel";
 import CommerceConnectorPanel from "@/components/commerce/CommerceConnectorPanel";
 import DistributorConnectorPanel from "@/components/commerce/DistributorConnectorPanel";
+import StripeConnectPanel from "@/components/commerce/StripeConnectPanel";
 import CreatorOwnershipPortfolio from "@/components/commerce/CreatorOwnershipPortfolio";
 import ListenOwnTrackCard from "@/components/commerce/ListenOwnTrackCard";
 import ReleaseManagerPanel from "@/components/commerce/ReleaseManagerPanel";
@@ -394,15 +395,18 @@ export default function CreatorCommerceCenterDrawer({
       ) : null}
 
       {section === "payouts" ? (
-        emptyBlock(
-          "PAYOUTS",
-          "No payout ledger yet. Stripe Connect / artist payouts will surface here when connected.",
-          ac,
-        )
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <StripeConnectPanel accentColor={ac} />
+          <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.32)", lineHeight: 1.4 }}>
+            Cleared tip/sale funds transfer only after Stripe confirms and Connect is onboarded.
+            Incomplete Connect → honest PENDING_CONNECT (funds remain in wallet).
+          </p>
+        </div>
       ) : null}
 
       {section === "settings" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <StripeConnectPanel accentColor={ac} />
           <CommerceConnectorPanel performerId={performerId} accentColor={ac} />
           <DistributorConnectorPanel performerId={performerId} accentColor="#00FFFF" />
           <AutomationInspectorPanel performerId={performerId} accentColor="#AA2DFF" />

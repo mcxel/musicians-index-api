@@ -183,6 +183,8 @@ export async function POST(req: NextRequest) {
       skinId?: string;
       customColors?: Record<string, string>;
       chassisId?: string;
+      /** Explicit checkout mode — when omitted, inferred from recurring line items. */
+      mode?: 'subscription' | 'payment';
     };
     const { items, successUrl, cancelUrl } = body;
 
@@ -375,24 +377,50 @@ export async function POST(req: NextRequest) {
 
     // Direct Stripe SDK fallback
     const isRealId = (id: string) => /^price_[A-Za-z0-9]{16,}$/.test(id);
-    type LineItem = { price: string; quantity: number } | {
-      quantity: number;
-      price_data: { currency: 'usd'; unit_amount: number; product_data: { name: string } };
-    };
+    type LineItem =
+      | { price: string; quantity: number }
+      | {
+          quantity: number;
+          price_data: {
+            currency: 'usd';
+            unit_amount: number;
+            product_data: { name: string };
+            recurring?: { interval: 'month' | 'year' };
+          };
+        };
     const lineItems: LineItem[] = [];
+    let hasRecurring = false;
+
     for (const i of items) {
+      const catalog = PRODUCT_BY_PRICE_ID[i.priceId];
+      const interval = catalog?.interval;
+      const isRecurring =
+        Boolean(interval && interval !== 'one_time') ||
+        Boolean(
+          SUBSCRIPTION_TIERS.some(
+            (t) =>
+              t.tier1PriceId === i.priceId ||
+              (process.env[`STRIPE_PRICE_${t.key}_TIER_1`] ?? '') === i.priceId,
+          ),
+        );
+      if (isRecurring) hasRecurring = true;
+
       if (isRealId(i.priceId)) {
         lineItems.push({ price: i.priceId, quantity: i.quantity ?? 1 });
+      } else if (catalog) {
+        const recurringInterval =
+          interval === 'year' ? ('year' as const) : interval && interval !== 'one_time' ? ('month' as const) : undefined;
+        lineItems.push({
+          quantity: i.quantity ?? 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: catalog.price,
+            product_data: { name: catalog.name },
+            ...(recurringInterval ? { recurring: { interval: recurringInterval } } : {}),
+          },
+        });
       } else {
-        const fallback = PRODUCT_BY_PRICE_ID[i.priceId];
-        if (fallback && (!fallback.interval || fallback.interval === 'one_time')) {
-          lineItems.push({
-            quantity: i.quantity ?? 1,
-            price_data: { currency: 'usd', unit_amount: fallback.price, product_data: { name: fallback.name } },
-          });
-        } else {
-          console.warn('[stripe/checkout] Skipping unresolved priceId:', i.priceId);
-        }
+        console.warn('[stripe/checkout] Skipping unresolved priceId:', i.priceId);
       }
     }
 
@@ -400,14 +428,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid products — set STRIPE_PRICE_* env vars in Vercel for subscription products' }, { status: 400 });
     }
 
+    // Subscription when caller asks or when any line item is recurring — never force payment-only.
+    const checkoutMode: 'subscription' | 'payment' =
+      body.mode === 'subscription' || body.mode === 'payment'
+        ? body.mode
+        : hasRecurring
+          ? 'subscription'
+          : 'payment';
+
+    if (checkoutMode === 'subscription' && !hasRecurring && body.mode === 'subscription') {
+      // Explicit subscription mode with one-time placeholders — attach monthly recurring to price_data
+      for (const li of lineItems) {
+        if ('price_data' in li && !li.price_data.recurring) {
+          li.price_data.recurring = { interval: 'month' };
+        }
+      }
+    }
+
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: checkoutMode,
       payment_method_types: ['card'],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       line_items: lineItems as any,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
+      ...(userEmail ? { customer_email: userEmail } : {}),
     });
 
     if (!session.url) throw new Error('No session URL from Stripe');

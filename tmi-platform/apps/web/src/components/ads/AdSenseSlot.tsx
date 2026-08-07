@@ -1,36 +1,49 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  AD_CONSENT_STORAGE_KEY,
+  ADSENSE_SLOT_ENV,
+  getAdSensePublisherId,
+  type AdConsentValue,
+} from '@/lib/ads/adConfig';
 
-// ── Ad slot IDs ─────────────────────────────────────────────────────────────
-// To activate: go to your Google AdSense account → Ads → By ad unit → Create
-// new display ad unit. Copy the data-ad-slot value here for each placement.
-//
-// Until real slot IDs are added, AdSense will auto-detect and fill the slots
-// once the page traffic reaches the threshold for auto-ads.
+// Re-export slot map — values come from NEXT_PUBLIC_ADSENSE_SLOT_* (empty until ENV set)
 export const AD_SLOTS = {
-  // Homepage
-  homepageBanner:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_BANNER          ?? '',
-  homepageMid:             process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_MID             ?? '',
-  dashboardSidebar:        process.env.NEXT_PUBLIC_ADSENSE_SLOT_DASHBOARD_SIDEBAR        ?? '',
-  liveLobbyBanner:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_LIVE_LOBBY_BANNER        ?? '',
-  // Articles / Magazine
-  articleInline:           process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_INLINE           ?? '',
-  magazineLeaderboard:     process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_LEADERBOARD     ?? '',
-  magazineInline:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_INLINE          ?? '',
-  magazineArticleEnd:      process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_ARTICLE_END     ?? '',
-  // Games / Shows
-  gameShowBanner:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAME_SHOW_BANNER         ?? '',
-  gameShowInterstitial:    process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAME_SHOW_INTERSTITIAL   ?? '',
-  showSidebar:             process.env.NEXT_PUBLIC_ADSENSE_SLOT_SHOW_SIDEBAR             ?? '',
-  // Rooms
-  roomLeaderboard:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_LEADERBOARD         ?? '',
-  roomBetweenSegments:     process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BETWEEN_SEGMENTS    ?? '',
-  // Fallback
-  sponsorFallback:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_SPONSOR_FALLBACK         ?? '',
+  homepageBanner: ADSENSE_SLOT_ENV.homepageBanner,
+  homepageMid: ADSENSE_SLOT_ENV.homepageMid,
+  dashboardSidebar: ADSENSE_SLOT_ENV.dashboardSidebar,
+  liveLobbyBanner: ADSENSE_SLOT_ENV.liveLobbyBanner,
+  articleInline: ADSENSE_SLOT_ENV.articleInline,
+  magazineLeaderboard: ADSENSE_SLOT_ENV.magazineLeaderboard,
+  magazineInline: ADSENSE_SLOT_ENV.magazineInline,
+  magazineArticleEnd: ADSENSE_SLOT_ENV.magazineArticleEnd,
+  gameShowBanner: ADSENSE_SLOT_ENV.gameShowBanner,
+  gameShowInterstitial: ADSENSE_SLOT_ENV.gameShowInterstitial,
+  showSidebar: ADSENSE_SLOT_ENV.showSidebar,
+  roomLeaderboard: ADSENSE_SLOT_ENV.roomLeaderboard,
+  roomBetweenSegments: ADSENSE_SLOT_ENV.roomBetweenSegments,
+  sponsorFallback: ADSENSE_SLOT_ENV.sponsorFallback,
+  dashboardBanner: ADSENSE_SLOT_ENV.dashboardBanner,
+  dashboardMid: ADSENSE_SLOT_ENV.dashboardMid,
+  arenaBanner: ADSENSE_SLOT_ENV.arenaBanner,
+  arenaInterstitial: ADSENSE_SLOT_ENV.arenaInterstitial,
+  battleBanner: ADSENSE_SLOT_ENV.battleBanner,
+  battleInterstitial: ADSENSE_SLOT_ENV.battleInterstitial,
+  cypherBanner: ADSENSE_SLOT_ENV.cypherBanner,
+  concertBanner: ADSENSE_SLOT_ENV.concertBanner,
+  concertSidebar: ADSENSE_SLOT_ENV.concertSidebar,
 };
 
-const PUBLISHER_ID = 'ca-pub-4088577529436039';
+function readConsent(): AdConsentValue | null {
+  try {
+    const v = localStorage.getItem(AD_CONSENT_STORAGE_KEY);
+    if (v === 'accepted' || v === 'declined') return v;
+  } catch {
+    /* private mode */
+  }
+  return null;
+}
 
 interface Props {
   slot: string;
@@ -42,16 +55,47 @@ interface Props {
 export default function AdSenseSlot({ slot, format = 'auto', style, label }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
+  const [consent, setConsent] = useState<AdConsentValue | null>(null);
+  const publisherId = getAdSensePublisherId();
 
   useEffect(() => {
-    if (pushed.current) return;
+    setConsent(readConsent());
+    const onConsent = () => setConsent(readConsent());
+    window.addEventListener('tmi:ad-consent', onConsent);
+    return () => window.removeEventListener('tmi:ad-consent', onConsent);
+  }, []);
+
+  useEffect(() => {
+    if (consent !== 'accepted' || !slot || pushed.current) return;
     pushed.current = true;
     try {
       type AdsByGoogle = { push: (v: Record<string, unknown>) => void };
       const adsbygoogle = (window as Window & { adsbygoogle?: AdsByGoogle }).adsbygoogle;
       if (adsbygoogle) adsbygoogle.push({});
-    } catch { /* AdSense script not ready yet */ }
-  }, []);
+    } catch {
+      /* AdSense script not ready yet */
+    }
+  }, [consent, slot]);
+
+  if (!slot) {
+    return (
+      <div style={{ position: 'relative', overflow: 'hidden', minHeight: 40, ...style }}>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: 8 }}>
+          Ad unit pending — set NEXT_PUBLIC_ADSENSE_SLOT_* in ENV
+        </div>
+      </div>
+    );
+  }
+
+  if (consent !== 'accepted') {
+    return (
+      <div style={{ position: 'relative', overflow: 'hidden', minHeight: 40, ...style }}>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: 8 }}>
+          {consent === 'declined' ? 'Ads hidden' : 'Awaiting ad consent'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', ...style }}>
@@ -60,30 +104,16 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
           {label}
         </div>
       )}
-      {/*
-        Rendered via dangerouslySetInnerHTML rather than JSX so React treats this
-        subtree as opaque. adsbygoogle.push() makes Google's script inject an
-        iframe/wrapper inside the <ins> tag directly, outside React's virtual DOM.
-        If React manages the <ins> as a normal child, unmounting it on route
-        navigation diffs against a DOM structure it no longer recognizes and
-        throws "NotFoundError: removeChild/insertBefore ... not a child of this
-        node". Isolating it this way means React only ever manages this wrapper
-        div, never the AdSense-mutated internals.
-      */}
       <div
         ref={containerRef}
         dangerouslySetInnerHTML={{
-          __html: `<ins class="adsbygoogle" style="display:block" data-ad-client="${PUBLISHER_ID}" data-ad-slot="${slot || ''}" data-ad-format="${format}" data-full-width-responsive="true"></ins>`,
+          __html: `<ins class="adsbygoogle" style="display:block" data-ad-client="${publisherId}" data-ad-slot="${slot}" data-ad-format="${format}" data-full-width-responsive="true"></ins>`,
         }}
       />
     </div>
   );
 }
 
-/**
- * SponsorOrAd — shows paid sponsor content if available, otherwise falls back
- * to an AdSense unit. Drop this wherever a sponsor/advertiser slot lives.
- */
 interface SponsorOrAdProps {
   sponsorContent?: React.ReactNode;
   adSlot?: string;

@@ -111,8 +111,9 @@ export const SPLIT_PRESETS: Record<string, RevenueSplitConfig> = {
   },
   /** Creator commerce — seller tier fee; FREE default 20/80; Big Ace 0 */
   tip: { ...FREE_CREATOR },
+  /** Rule 17 — ticket inventory is Venue/Promoter only; artist share = 0 */
   ticket: {
-    platform: 2000, artist: 3000, performer: 0, venue: 4000, sponsor: 0, big_ace: 1000,
+    platform: 1000, artist: 0, performer: 0, venue: 9000, sponsor: 0, big_ace: 0,
   },
   /** Creator commerce — seller (producer) tier fee; FREE default 20/80; Big Ace 0 */
   beat: { ...FREE_CREATOR },

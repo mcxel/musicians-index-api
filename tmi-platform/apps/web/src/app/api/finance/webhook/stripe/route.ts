@@ -1,37 +1,46 @@
-// api/finance/webhook/stripe/route.ts — Stripe webhook → RevenueLedger + HoldEngine
-
+/**
+ * POST /api/finance/webhook/stripe
+ *
+ * Finance-ledger side effects only (RevenueLedger / holds / reserves).
+ * Canonical fulfillment webhook (tiers, tips, tickets, ownership):
+ *   POST /api/stripe/webhook  ← configure this URL in Stripe Dashboard
+ *
+ * Signature required — no trust-parse of unverified JSON.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { recordTransaction, settleTransaction, failTransaction, refundTransaction } from "@/lib/finance/revenueLedger";
 import { createHold } from "@/lib/finance/RefundRiskEngine";
 import { allocateToReserve } from "@/lib/finance/ReserveEngine";
 import { dispatchNotification } from "@/lib/finance/PayoutNotificationEngine";
-import { REVENUE_SPLITS } from "@/lib/stripe/products";
+import { getStripe } from "@/lib/stripe/client";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? "";
 
 export async function POST(req: NextRequest) {
-  const rawBody = await req.text();
-  const sig = req.headers.get("stripe-signature") ?? "";
-
-  // Verify webhook signature
+  const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  }
   if (!WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
   }
 
-  // In production with Stripe SDK:
-  // const event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
-  // For now, parse raw body and trust the sig header
-  let event: { type: string; data: { object: Record<string, unknown> } };
-  try {
-    event = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const rawBody = await req.text();
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) {
+    return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
   }
 
-  if (!sig && process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  let event: { type: string; data: { object: Record<string, unknown> }; id: string };
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET) as typeof event;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[finance/webhook/stripe] Signature Error: ${msg}`);
+    return NextResponse.json({ error: `Webhook Error: ${msg}` }, { status: 400 });
   }
 
   const obj = event.data.object as Record<string, unknown>;
@@ -50,10 +59,9 @@ export async function POST(req: NextRequest) {
         createHold(entry.id, type, entry.creatorCut, recipientId);
       }
 
-      // Reserve allocation: infrastructure gets 10% of platform cut
       if (entry.platformCut > 0) {
         allocateToReserve("infrastructure", Math.round(entry.platformCut * 0.10), entry.id);
-        allocateToReserve("refund_buffer",  Math.round(entry.platformCut * 0.07), entry.id);
+        allocateToReserve("refund_buffer", Math.round(entry.platformCut * 0.07), entry.id);
       }
 
       dispatchNotification({
@@ -74,15 +82,12 @@ export async function POST(req: NextRequest) {
     }
 
     case "payment_intent.payment_failed": {
-      const piId = obj.id as string;
-      // Mark any pending entries with this PI as failed
-      failTransaction(piId);
+      failTransaction(obj.id as string);
       break;
     }
 
     case "charge.refunded": {
-      const piId = (obj.payment_intent as string) ?? "";
-      refundTransaction(piId);
+      refundTransaction((obj.payment_intent as string) ?? "");
       break;
     }
 
@@ -107,7 +112,10 @@ export async function POST(req: NextRequest) {
       });
       break;
     }
+
+    default:
+      break;
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true, financeLedger: true });
 }

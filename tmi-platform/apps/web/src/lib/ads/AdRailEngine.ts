@@ -1,3 +1,5 @@
+import { getAdSensePublisherId, getAdSenseSlotId } from '@/lib/ads/adConfig';
+
 export type AdRailSlotId =
   | 'home1-lower-lobby-rail'
   | 'home1-discovery-sidebar'
@@ -29,7 +31,7 @@ export type AdRailSelection =
   | { type: 'advertiser'; slotId: AdRailSlotId; payload: AdvertiserPlacement }
   | { type: 'adsense'; slotId: AdRailSlotId; payload: { client: string; slot: string; format: 'auto' | 'rectangle' | 'horizontal' } };
 
-const ADSENSE_CLIENT = 'ca-pub-4088577529436039';
+const ADSENSE_CLIENT = getAdSensePublisherId();
 
 const SPONSOR_INVENTORY: Partial<Record<AdRailSlotId, SponsorPlacement>> = {
   'billboard-rail-fallback': {
@@ -61,13 +63,14 @@ const ADVERTISER_INVENTORY: Partial<Record<AdRailSlotId, AdvertiserPlacement>> =
   },
 };
 
+/** Slot IDs from ENV only — empty until NEXT_PUBLIC_ADSENSE_SLOT_* is set (no fake IDs). */
 const ADSENSE_SLOT_MAP: Record<AdRailSlotId, { slot: string; format: 'auto' | 'rectangle' | 'horizontal' }> = {
-  'home1-lower-lobby-rail':   { slot: '4100011001', format: 'horizontal' },
-  'home1-discovery-sidebar':  { slot: '4100011002', format: 'rectangle'  },
-  'magazine-article-rail':    { slot: '4100011003', format: 'rectangle'  },
-  'magazine-footer-block':    { slot: '4100011004', format: 'horizontal' },
-  'billboard-rail-fallback':  { slot: '4100011005', format: 'horizontal' },
-  'lobby-wall-featured':      { slot: '4100011006', format: 'rectangle'  },
+  'home1-lower-lobby-rail':   { slot: getAdSenseSlotId('homepageBanner') || getAdSenseSlotId('homepageMid'), format: 'horizontal' },
+  'home1-discovery-sidebar':  { slot: getAdSenseSlotId('dashboardSidebar') || getAdSenseSlotId('sidebar'), format: 'rectangle'  },
+  'magazine-article-rail':    { slot: getAdSenseSlotId('magazineInline') || getAdSenseSlotId('articleInline'), format: 'rectangle'  },
+  'magazine-footer-block':    { slot: getAdSenseSlotId('magazineLeaderboard') || getAdSenseSlotId('footer-banner'), format: 'horizontal' },
+  'billboard-rail-fallback':  { slot: getAdSenseSlotId('sponsorFallback') || getAdSenseSlotId('homepageBanner'), format: 'horizontal' },
+  'lobby-wall-featured':      { slot: getAdSenseSlotId('liveLobbyBanner') || getAdSenseSlotId('homepageMid'), format: 'rectangle'  },
 };
 
 export function resolveAdRailSlot(params: {

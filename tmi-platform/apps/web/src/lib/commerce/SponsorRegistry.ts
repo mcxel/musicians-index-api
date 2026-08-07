@@ -1,3 +1,5 @@
+import { zoneHasAdSenseInventory } from '@/lib/ads/adConfig';
+
 export interface SponsorSlot {
   id: string;
   zone: string;
@@ -55,6 +57,8 @@ export interface AdSlotDescriptor {
   type: AdSlotType;
   sponsor?: ActiveSponsorDisplay;
   platformPromo?: { headline: string; body: string; ctaLabel: string; ctaHref: string; accentColor: string };
+  /** Set when type === 'adnetwork' — slot key hint for AdSenseSlot */
+  adSlotKey?: string;
 }
 
 const PLATFORM_PROMOS: AdSlotDescriptor['platformPromo'][] = [
@@ -67,21 +71,34 @@ const PLATFORM_PROMOS: AdSlotDescriptor['platformPromo'][] = [
 
 let _promoRotation = 0;
 
+/**
+ * Rule 12 chain — Paid → Platform → AdNetwork → Advertise CTA.
+ *
+ * When AdSense slot IDs are configured (ENV), platform promo must not permanently
+ * shadow tier 3: rotate platform vs adnetwork so AdSense inventory can serve.
+ * When no slot IDs are set, platform promo fills (honest — AdSense not ready).
+ */
 export function getAdSlotForZone(zone: string): AdSlotDescriptor {
   // Tier 1: paid sponsor
   const paid = ACTIVE_SPONSOR_ZONES[zone];
   if (paid) return { type: 'paid', sponsor: paid };
 
-  // Tier 2: platform promo (rotate through promos to keep content fresh)
-  const promo = PLATFORM_PROMOS[_promoRotation % PLATFORM_PROMOS.length];
-  _promoRotation++;
-  if (promo) return { type: 'platform', platformPromo: promo };
+  const adsenseReady = zoneHasAdSenseInventory(zone);
 
-  // Tier 3: ad network — caller responsible for rendering AdSense/programmatic
-  // (return type signals caller should render ad unit)
-  if (zone.startsWith('home-') || zone.startsWith('magazine-')) {
-    return { type: 'adnetwork' };
+  // Tier 2 / 3: when AdSense slots configured, rotate so AdNetwork is reachable
+  if (adsenseReady) {
+    const pickNetwork = (_promoRotation++ % 2) === 0;
+    if (pickNetwork) {
+      return { type: 'adnetwork', adSlotKey: 'sponsorFallback' };
+    }
+    const promo = PLATFORM_PROMOS[_promoRotation % PLATFORM_PROMOS.length];
+    if (promo) return { type: 'platform', platformPromo: promo };
+    return { type: 'adnetwork', adSlotKey: 'sponsorFallback' };
   }
+
+  // No AdSense inventory yet — platform promo (tier 2)
+  const promo = PLATFORM_PROMOS[_promoRotation++ % PLATFORM_PROMOS.length];
+  if (promo) return { type: 'platform', platformPromo: promo };
 
   // Tier 4: advertise here CTA
   return { type: 'advertise-cta' };

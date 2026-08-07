@@ -10,6 +10,17 @@ import { waitUntil } from '@vercel/functions';
 import { getStripe } from '@/lib/stripe/client';
 import { grantTipFromStripeSession } from '@/lib/tips/tipFulfillment';
 import { recordStripeEvent } from '@/lib/stripe/stripe-telemetry-store';
+import {
+  isStripeEventProcessed,
+  markStripeEventProcessed,
+} from '@/lib/stripe/webhookIdempotency';
+
+/**
+ * Canonical Stripe webhook — configure this URL in Stripe Dashboard:
+ *   https://themusiciansindex.com/api/stripe/webhook
+ * Legacy paths /api/webhooks/stripe and /api/finance/webhook/stripe require
+ * signature verification but do not own fulfillment (see those route comments).
+ */
 
 const stripe = getStripe();
 
@@ -44,49 +55,6 @@ async function revokeSubscriptionTier(customerEmail: string) {
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-/**
- * Idempotency check: ensure webhook is processed exactly once
- * Uses a simple in-memory cache (ephemeral) + database record (durable)
- */
-const processedEventIds = new Set<string>();
-
-/**
- * eventId     = Stripe event ID (evt_xxx) — used for fast in-memory dedup
- * paymentKey  = the actual payment identifier stored in Order.providerPaymentId
- *               (e.g. payment_intent pi_xxx for checkout events, or subscription
- *               id sub_xxx for invoice events).  Used for durable DB dedup across
- *               server restarts. Pass undefined for idempotent-by-nature events
- *               (subscription updates) that don't create an Order record.
- */
-async function isEventProcessed(eventId: string, paymentKey?: string): Promise<boolean> {
-  // Check in-memory cache first (fast path for rapid retries within same instance)
-  if (processedEventIds.has(eventId)) {
-    console.log(`[Stripe Webhook] Event ${eventId} already processed (cache)`);
-    return true;
-  }
-
-  // Durable DB check: find an Order that was already written for this payment.
-  // The event.id (evt_xxx) is NOT stored in Orders; the payment_intent (pi_xxx)
-  // IS stored as providerPaymentId — use that key for the cross-restart check.
-  if (paymentKey) {
-    const existingOrder = await prisma.order.findFirst({
-      where: { providerPaymentId: paymentKey }
-    }).catch(() => null);
-
-    if (existingOrder) {
-      console.log(`[Stripe Webhook] Event ${eventId} already processed (db, key=${paymentKey})`);
-      processedEventIds.add(eventId);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-async function markEventProcessed(eventId: string): Promise<void> {
-  processedEventIds.add(eventId);
-}
-
 export async function POST(req: NextRequest) {
   if (!stripe) {
     return NextResponse.json(
@@ -108,19 +76,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // ── Idempotency check ────────────────────────────────────────────────────────
-  // For checkout.session.completed: use payment_intent as the durable DB key
-  // since that is what is stored in Order.providerPaymentId.
-  // For all other events: subscription/invoice mutations are inherently
-  // idempotent (same UPDATE result), so in-memory dedup is sufficient.
-  let idempotencyKey: string | undefined;
-  if (event.type === 'checkout.session.completed') {
-    const cs = event.data.object as Stripe.Checkout.Session;
-    idempotencyKey = (cs.payment_intent as string | null) ?? cs.id;
-  }
-
-  if (await isEventProcessed(event.id, idempotencyKey)) {
-    // Already processed — return success without re-processing
+  // Durable idempotency on Stripe event.id (survives cold starts / multi-instance)
+  if (await isStripeEventProcessed(event.id)) {
     return NextResponse.json({ received: true, cached: true });
   }
 
@@ -418,41 +375,57 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // ─── 4. NFT FULFILLMENT ────────────────────────────────────────────
-      // No NFT ownership/minting model exists yet (Prisma has no Nft table) —
-      // record a real, persistent Order so the paid transaction isn't lost,
-      // rather than the previous behavior of silently dropping it entirely.
+      // ─── 4. NFT — HONEST STUB (Rule 20) ─────────────────────────────────
+      // No on-chain mint / Nft ownership table yet. Record payment as
+      // PAID_PENDING_FULFILLMENT — never invent token ownership or claim minted.
       if (metadata.type === 'nft') {
         await prisma.order.create({
           data: {
             provider: 'STRIPE',
-            providerPaymentId: session.payment_intent as string,
+            providerPaymentId: (session.payment_intent as string) || session.id,
             amountCents: session.amount_total || 0,
             currency: session.currency || 'usd',
-            status: 'PAID',
+            status: 'PAID_PENDING_FULFILLMENT',
+            buyerUserId: metadata.buyerId || null,
           },
         }).catch(() => {});
+        console.warn(
+          `[Stripe Webhook] NFT checkout ${session.id} recorded as PAID_PENDING_FULFILLMENT — mint/ownership not implemented.`,
+        );
       }
 
       // ─── 5. STORE/MERCH FULFILLMENT ─────────────────────────────────────
+      // Inventory sync only when items metadata is present. Physical/digital
+      // ownership beyond inventory decrement is not claimed here.
       if (metadata.type === 'store') {
+        let inventorySynced = false;
+        try {
+          const purchasedItems = JSON.parse(metadata.items || '[]') as { itemId: string; qty: number }[];
+          if (purchasedItems.length > 0) {
+            for (const item of purchasedItems) {
+              syncInventory(item.itemId, item.qty);
+            }
+            inventorySynced = true;
+          }
+        } catch {
+          inventorySynced = false;
+        }
+
         await prisma.order.create({
           data: {
             provider: 'STRIPE',
-            providerPaymentId: session.payment_intent as string,
+            providerPaymentId: (session.payment_intent as string) || session.id,
             amountCents: session.amount_total || 0,
             currency: session.currency || 'usd',
-            status: 'PAID',
+            status: inventorySynced ? 'PAID' : 'PAID_PENDING_FULFILLMENT',
+            buyerUserId: metadata.buyerId || null,
           },
         }).catch(() => {});
 
-        try {
-          const purchasedItems = JSON.parse(metadata.items || '[]') as { itemId: string; qty: number }[];
-          for (const item of purchasedItems) {
-            syncInventory(item.itemId, item.qty);
-          }
-        } catch {
-          // malformed metadata — payment is still recorded above, just skip inventory sync
+        if (!inventorySynced) {
+          console.warn(
+            `[Stripe Webhook] Store checkout ${session.id} paid but item ownership/fulfillment metadata missing — not claiming delivery.`,
+          );
         }
       }
 
@@ -608,8 +581,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Mark event as processed (idempotency) ────────────────────────────────────
-    await markEventProcessed(event.id);
+    // account.updated — sync Connect onboarded flag for InstantPayout
+    if (event.type === 'account.updated') {
+      const account = event.data.object as Stripe.Account;
+      const ready = Boolean(account.charges_enabled && account.payouts_enabled);
+      await prisma.wallet.updateMany({
+        where: { stripeAccountId: account.id },
+        data: { stripeOnboarded: ready },
+      }).catch(() => {});
+    }
+
+    await markStripeEventProcessed(event.id, event.type);
 
     return NextResponse.json({ received: true });
   } catch (err) {

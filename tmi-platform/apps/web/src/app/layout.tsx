@@ -33,6 +33,7 @@ import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
 import LaunchDock from "@/components/dock/LaunchDock";
 import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
 import BeatPurchaseInterestPrompt from "@/components/beats/BeatPurchaseInterestPrompt";
+import AdConsentBanner from "@/components/ads/AdConsentBanner";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -141,21 +142,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
         {/*
-          AdSense: raw <script> in <head> with a matching preload so the
-          browser's CORS mode matches and no React auto-preload is injected.
-          AdSense does not support data-nscript, so next/script is not used.
+          AdSense script loads only after AdConsentBanner accept (CMP stub).
+          ads.txt + meta google-adsense-account remain for verification.
+          Pub id: ca-pub-4088577529436039 (or NEXT_PUBLIC_ADSENSE_CLIENT_ID).
         */}
-        <link
-          rel="preload"
-          as="script"
-          href={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
-          crossOrigin="anonymous"
-        />
-        <script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
-          crossOrigin="anonymous"
-        />
       </head>
       <body className="tmi-obsidian-cinematic overflow-x-hidden">
         {/* BidVertiser site verification rendered as real HTML comment in page source */}
@@ -214,6 +204,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MonitorRuntimeProvider>
             <HudRuntimeProvider>
             <WatchSessionProvider>
+              <AdConsentBanner />
               <TMIWorkspaceSwitcher />
               <PWARegistration />
               <BetaModeBanner />
