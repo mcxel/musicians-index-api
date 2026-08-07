@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TrustSafetyCaseView } from "@/lib/trustSafety/types";
 import { MODERATOR_AUTHORITY_LABELS } from "@/lib/trustSafety/types";
@@ -32,13 +32,23 @@ export default function ScamDefenseCenter() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<TrustSafetyCaseView | null>(null);
   const [acting, setActing] = useState(false);
+  const forbiddenRef = useRef(false);
 
-  const load = useCallback(() => {
+  const load = useCallback((opts?: { force?: boolean }) => {
+    if (forbiddenRef.current && !opts?.force) return;
     setLoading(true);
     fetch("/api/trust-safety/cases", { credentials: "include", cache: "no-store" })
       .then(async (r) => {
+        if (r.status === 403) {
+          forbiddenRef.current = true;
+          setSummary(null);
+          setCases([]);
+          setError("Admin/staff session required. Trust & Safety queue not loaded.");
+          return;
+        }
         const data = (await r.json()) as CasesResponse;
-        if (!r.ok) throw new Error(data.error ?? (r.status === 403 ? "Admin/staff session required" : `HTTP ${r.status}`));
+        if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+        forbiddenRef.current = false;
         setSummary(data.summary ?? { open: 0, reviewing: 0, restricted: 0, evidencePackages: 0 });
         setCases(data.cases ?? []);
         setError(null);
@@ -64,7 +74,7 @@ export default function ScamDefenseCenter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      load();
+      load({ force: true });
       setSelected(null);
     } finally {
       setActing(false);
@@ -100,7 +110,7 @@ export default function ScamDefenseCenter() {
         </div>
         <button
           type="button"
-          onClick={load}
+          onClick={() => load({ force: true })}
           style={{
             fontSize: 10,
             fontWeight: 800,

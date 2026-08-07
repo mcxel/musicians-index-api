@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DeckChip } from "@/components/admin/overseer/AdminDesignSystem";
 import type { ChainCommandOperator } from "@/app/api/admin/chain-command/route";
 
-type LoadState = "loading" | "ready" | "error";
+type LoadState = "loading" | "ready" | "forbidden" | "error";
 
 const presenceColor: Record<ChainCommandOperator["presence"], string> = {
   ONLINE: "#00ff88",
@@ -32,11 +32,15 @@ export default function ChainCommandPanel() {
     let cancelled = false;
     fetch("/api/admin/chain-command", { credentials: "include", cache: "no-store" })
       .then((res) => {
+        if (res.status === 403) {
+          if (!cancelled) setState("forbidden");
+          return null;
+        }
         if (!res.ok) throw new Error(String(res.status));
         return res.json() as Promise<{ operators: ChainCommandOperator[]; presenceNote: string }>;
       })
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || !data) return;
         setOperators(data.operators ?? []);
         setPresenceNote(data.presenceNote ?? null);
         setState("ready");
@@ -72,6 +76,12 @@ export default function ChainCommandPanel() {
 
       {state === "loading" ? (
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", padding: 8 }}>Loading operators…</div>
+      ) : null}
+
+      {state === "forbidden" ? (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", padding: 8 }}>
+          Admin/staff session required. Chain command not loaded.
+        </div>
       ) : null}
 
       {state === "error" ? (

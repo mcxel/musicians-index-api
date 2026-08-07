@@ -7,23 +7,10 @@ import { getQueueSummary, listOpenTrustSafetyCases } from "@/lib/trustSafety";
 /**
  * GET /api/trust-safety/cases
  * Staff/admin only — open queue for ScamDefenseCenter.
- * Accepts ADMIN cookie (tmi_role=admin|ADMIN) or STAFF via same requireAdmin
- * extension below.
+ * Uses requireAdmin (session + email + ADMIN|STAFF) — no cookie-alone fail-open.
  */
-function requireStaffOrAdmin(req: NextRequest): NextResponse | null {
-  const denied = requireAdmin(req);
-  if (!denied) return null;
-
-  const role = (req.cookies.get("tmi_role")?.value ?? "").toLowerCase();
-  const cookieHeader = req.headers.get("cookie") || "";
-  if (role === "staff" || cookieHeader.includes("tmi_role=staff") || cookieHeader.includes("tmi_role=STAFF")) {
-    return null;
-  }
-  return denied;
-}
-
 export async function GET(req: NextRequest) {
-  const denied = requireStaffOrAdmin(req);
+  const denied = requireAdmin(req);
   if (denied) return denied;
 
   try {

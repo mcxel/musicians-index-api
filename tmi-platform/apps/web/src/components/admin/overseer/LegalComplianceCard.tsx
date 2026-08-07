@@ -28,8 +28,13 @@ export default function LegalComplianceCard() {
     setLoading(true);
     fetch("/api/admin/legal/summary", { credentials: "include", cache: "no-store" })
       .then(async (r) => {
+        if (r.status === 403) {
+          setSummary(null);
+          setError("Admin/staff session required. Legal counts not loaded.");
+          return;
+        }
         const data = await r.json();
-        if (!r.ok) throw new Error(data.error ?? (r.status === 403 ? "Admin/staff required" : `HTTP ${r.status}`));
+        if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
         setSummary(data.summary ?? null);
         setError(null);
       })

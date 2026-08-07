@@ -5,7 +5,7 @@
  * Rule 20: real telemetry only; never fake a camera feed.
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import LobbyPreviewWindow from "@/components/lobby/LobbyPreviewWindow";
 import { buildLobbyPreviewTile } from "@/lib/lobby/LobbyPreviewRuntime";
@@ -105,9 +105,17 @@ export default function BotObservationGrid() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "duty" | "live-room">("all");
 
+  const forbiddenRef = useRef(false);
+
   const load = useCallback(async () => {
+    if (forbiddenRef.current) return;
     try {
       const r = await fetch("/api/admin/bots/observe", { credentials: "include", cache: "no-store" });
+      if (r.status === 403) {
+        forbiddenRef.current = true;
+        setState("error");
+        return;
+      }
       if (!r.ok) throw new Error(String(r.status));
       const data = (await r.json()) as ObservePayload;
       const list = Array.isArray(data.bots) ? data.bots : [];
@@ -124,7 +132,9 @@ export default function BotObservationGrid() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 8_000);
+    const id = setInterval(() => {
+      if (!forbiddenRef.current) void load();
+    }, 8_000);
     return () => clearInterval(id);
   }, [load]);
 

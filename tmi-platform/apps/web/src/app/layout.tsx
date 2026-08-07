@@ -140,8 +140,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
+      </head>
+      <body className="tmi-obsidian-cinematic overflow-x-hidden">
+        {/* BidVertiser site verification rendered as real HTML comment in page source */}
+        <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
+        {/* AdSense — afterInteractive avoids React auto-preload without crossOrigin */}
         <Script
-          id="google-adsense"
+          id="adsense-init"
           strategy="afterInteractive"
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
           crossOrigin="anonymous"
@@ -187,10 +192,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </>
         )}
-      </head>
-      <body className="tmi-obsidian-cinematic overflow-x-hidden">
-        {/* BidVertiser site verification rendered as real HTML comment in page source */}
-        <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}

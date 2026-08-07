@@ -253,12 +253,20 @@ export default function BotActivitySwitcherPanel({ compact = false }: { compact?
   const [selected, setSelected] = useState<LiveSwitcherSubject | null>(null);
   const [botsOnly, setBotsOnly] = useState(true);
 
+  const forbiddenRef = useRef(false);
+
   const loadFeed = useCallback(async () => {
+    if (forbiddenRef.current) return;
     try {
       const r = await fetch("/api/admin/observatory/live-switcher", {
         credentials: "include",
         cache: "no-store",
       });
+      if (r.status === 403) {
+        forbiddenRef.current = true;
+        setLoad("error");
+        return;
+      }
       if (!r.ok) throw new Error(String(r.status));
       const data = (await r.json()) as { subjects?: LiveSwitcherSubject[] };
       const list = Array.isArray(data.subjects) ? data.subjects : [];
@@ -273,7 +281,9 @@ export default function BotActivitySwitcherPanel({ compact = false }: { compact?
 
   useEffect(() => {
     void loadFeed();
-    const id = setInterval(() => void loadFeed(), 12_000);
+    const id = setInterval(() => {
+      if (!forbiddenRef.current) void loadFeed();
+    }, 12_000);
     return () => clearInterval(id);
   }, [loadFeed]);
 

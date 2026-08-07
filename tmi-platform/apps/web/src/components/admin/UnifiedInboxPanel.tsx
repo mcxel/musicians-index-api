@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { InboxThreadSummary } from "@/app/api/admin/inbox/route";
 
@@ -31,9 +31,17 @@ export default function UnifiedInboxPanel() {
       .catch(() => {});
   }, []);
 
+  const forbiddenRef = useRef(false);
+
   const loadThreads = useCallback(async () => {
+    if (forbiddenRef.current) return;
     try {
       const r = await fetch("/api/admin/inbox", { credentials: "include", cache: "no-store" });
+      if (r.status === 403) {
+        forbiddenRef.current = true;
+        setState("error");
+        return;
+      }
       if (!r.ok) throw new Error(String(r.status));
       const data = (await r.json()) as { threads?: InboxThreadSummary[] };
       setThreads(Array.isArray(data.threads) ? data.threads : []);
@@ -45,7 +53,9 @@ export default function UnifiedInboxPanel() {
 
   useEffect(() => {
     void loadThreads();
-    const id = setInterval(() => void loadThreads(), 30_000);
+    const id = setInterval(() => {
+      if (!forbiddenRef.current) void loadThreads();
+    }, 30_000);
     return () => clearInterval(id);
   }, [loadThreads]);
 

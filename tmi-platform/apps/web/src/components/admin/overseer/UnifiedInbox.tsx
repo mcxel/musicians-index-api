@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { InboxThreadSummary } from "@/app/api/admin/inbox/route";
 
-type LoadState = "loading" | "ready" | "error";
+type LoadState = "loading" | "ready" | "forbidden" | "error";
 
 function formatAge(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -23,11 +23,15 @@ export default function UnifiedInbox() {
     let cancelled = false;
     fetch("/api/admin/inbox", { credentials: "include", cache: "no-store" })
       .then((res) => {
+        if (res.status === 403) {
+          if (!cancelled) setState("forbidden");
+          return null;
+        }
         if (!res.ok) throw new Error(String(res.status));
         return res.json() as Promise<{ threads: InboxThreadSummary[] }>;
       })
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || !data) return;
         setThreads(data.threads ?? []);
         setState("ready");
       })
@@ -46,6 +50,10 @@ export default function UnifiedInbox() {
         {state === "loading" ? (
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", padding: "6px 0", textAlign: "center" }}>
             Loading inbox…
+          </div>
+        ) : state === "forbidden" ? (
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", padding: "6px 0", textAlign: "center" }}>
+            Admin/staff session required. Inbox not loaded.
           </div>
         ) : state === "error" ? (
           <div style={{ fontSize: 9, color: "rgba(255,100,100,0.6)", padding: "6px 0", textAlign: "center" }}>

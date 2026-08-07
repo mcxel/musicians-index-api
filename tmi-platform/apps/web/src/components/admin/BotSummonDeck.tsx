@@ -40,6 +40,7 @@ export default function BotSummonDeck() {
           <Link
             key={bot.id}
             href={bot.profileRoute}
+            prefetch={false}
             style={{
               display: "flex",
               alignItems: "center",
