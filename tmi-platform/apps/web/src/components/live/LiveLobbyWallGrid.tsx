@@ -1,9 +1,18 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AdRailSlot from '@/components/ads/AdRailSlot';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import {
+  buildLobbyPreviewTile,
+  setLobbyAudioFocus,
+  subscribePreviewVisibility,
+  unsubscribePreview,
+  swipeLobbyPreviewFocus,
+  type LobbyPreviewTileState,
+} from '@/lib/lobby/LobbyPreviewRuntime';
+import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/DestinationResolver';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
 
@@ -26,7 +35,7 @@ export type LobbyRoom = {
   id: string;
   name: string;
   performerName: string;
-  type: 'battle' | 'cypher' | 'mini-cypher' | 'challenge' | 'game' | 'live';
+  type: 'battle' | 'cypher' | 'mini-cypher' | 'challenge' | 'game' | 'live' | 'gauntlet' | 'lounge' | 'dance' | 'concert';
   href: string;
   viewerCount: number;
   status: 'live' | 'starting' | 'ended';
@@ -41,41 +50,90 @@ type LiveLobbyWallGridProps = {
   typeLabel?: string;
 };
 
-// ─── Single Brady-Bunch cell ──────────────────────────────────────────────────
+function toWallKind(type: LobbyRoom['type']): LobbyWallKind {
+  if (type === 'mini-cypher') return 'cypher';
+  if (type === 'gauntlet') return 'gauntlet';
+  if (type === 'lounge') return 'lounge';
+  if (type === 'dance') return 'dance';
+  if (type === 'concert') return 'concert';
+  if (type === 'battle' || type === 'cypher' || type === 'challenge' || type === 'game' || type === 'live') {
+    return type;
+  }
+  return 'live';
+}
 
-function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; colorIndex: number; onJoin: (room: LobbyRoom) => void; onPrewarm: (room: LobbyRoom) => void }) {
+// ─── Single Brady-Bunch cell — Continuous Live Lobby Wall Standard ───────────
+
+function LobbyCell({
+  room,
+  colorIndex,
+  preview,
+  onJoin,
+  onPrewarm,
+  onFocusAudio,
+}: {
+  room: LobbyRoom;
+  colorIndex: number;
+  preview: LobbyPreviewTileState;
+  onJoin: (room: LobbyRoom) => void;
+  onPrewarm: (room: LobbyRoom) => void;
+  onFocusAudio: (roomId: string) => void;
+}) {
   const bg = roomColor(colorIndex);
-  const [pulse, setPulse] = useState(false);
+  const cellRef = useRef<HTMLDivElement | null>(null);
+  const isLive = room.status === 'live' && preview.isLive;
 
   useEffect(() => {
-    const t = setInterval(() => setPulse((p) => !p), 1800 + colorIndex * 130);
-    return () => clearInterval(t);
-  }, [colorIndex]);
+    const el = cellRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      subscribePreviewVisibility(room.id, true);
+      return () => unsubscribePreview(room.id);
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        subscribePreviewVisibility(room.id, Boolean(entry?.isIntersecting));
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      unsubscribePreview(room.id);
+    };
+  }, [room.id]);
 
   return (
     <motion.div
+      ref={cellRef}
       initial={{ opacity: 0, scale: 0.88 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.35, delay: colorIndex * 0.04 }}
       whileHover={{ scale: 1.04, zIndex: 10 }}
       onClick={() => onJoin(room)}
-      onMouseEnter={() => onPrewarm(room)}
-      onTouchStart={() => onPrewarm(room)}
+      onMouseEnter={() => {
+        onPrewarm(room);
+        onFocusAudio(room.id);
+      }}
+      onTouchStart={() => {
+        onPrewarm(room);
+        onFocusAudio(room.id);
+      }}
       style={{
         position: 'relative',
         borderRadius: 12,
         aspectRatio: '4/3',
-        background: `radial-gradient(circle at 35% 35%, ${bg}cc, ${bg}55 60%, #050510)`,
-        border: `1px solid rgba(255,255,255,0.1)`,
-        boxShadow: pulse && room.status === 'live'
+        background: isLive
+          ? `radial-gradient(circle at 35% 35%, ${bg}cc, ${bg}55 60%, #050510)`
+          : `radial-gradient(circle at 50% 40%, rgba(255,255,255,0.08), #050510 70%)`,
+        border: preview.focused ? `1px solid ${bg}` : `1px solid rgba(255,255,255,0.1)`,
+        boxShadow: isLive
           ? `0 4px 35px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.15)`
           : `0 2px 12px rgba(0,0,0,0.4)`,
         cursor: 'pointer',
         overflow: 'hidden',
       }}
     >
-      {/* Live status dot */}
-      {room.status === 'live' && (
+      {isLive && (
         <motion.div
           animate={{ opacity: [1, 0.3, 1] }}
           transition={{ duration: 1.4, repeat: Infinity }}
@@ -89,12 +147,34 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
         />
       )}
 
-      {/* WebRTC-style video placeholder — colored gradient with scanline overlay */}
+      {/* Preview surface: live motion OR honest ready animation — never fake humans / frozen LIVE photo */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: `linear-gradient(160deg, ${bg}44 0%, transparent 50%, rgba(0,0,0,0.4) 100%)`,
+        background: isLive
+          ? `linear-gradient(160deg, ${bg}44 0%, transparent 50%, rgba(0,0,0,0.4) 100%)`
+          : 'linear-gradient(160deg, rgba(0,255,255,0.08), transparent 55%, rgba(0,0,0,0.5))',
       }}>
-        {/* Scanlines */}
+        {isLive ? (
+          <motion.div
+            animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
+            style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(120deg, transparent 30%, ${bg}33 50%, transparent 70%)`,
+              backgroundSize: '200% 200%',
+              opacity: preview.quality === 'off' ? 0.2 : 0.85,
+            }}
+          />
+        ) : (
+          <motion.div
+            animate={{ opacity: [0.25, 0.55, 0.25] }}
+            transition={{ duration: 2.2, repeat: Infinity }}
+            style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(circle at 50% 45%, rgba(0,255,255,0.12), transparent 60%)',
+            }}
+          />
+        )}
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)',
@@ -102,7 +182,6 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
         }} />
       </div>
 
-      {/* Glass reflection */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.2) 100%)',
@@ -110,24 +189,39 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
         zIndex: 4,
       }} />
 
-      {/* Performer initials avatar */}
-      <div style={{
-        position: 'absolute',
-        top: '50%', left: '50%',
-        transform: 'translate(-50%, -60%)',
-        width: 44, height: 44,
-        borderRadius: '50%',
-        background: `${bg}55`,
-        border: `2px solid ${bg}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 16, fontWeight: 900, color: '#fff',
-        textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-        zIndex: 2,
-      }}>
-        {room.performerName.charAt(0).toUpperCase()}
-      </div>
+      {!isLive && (
+        <div style={{
+          position: 'absolute',
+          top: '42%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
+          color: 'rgba(255,255,255,0.45)',
+          zIndex: 2,
+          textAlign: 'center',
+        }}>
+          {preview.readyState === 'waiting' ? 'WAITING' : 'READY'}
+          <div style={{ fontSize: 9, marginTop: 4, fontWeight: 600 }}>{preview.camera.label}</div>
+        </div>
+      )}
 
-      {/* Type badge */}
+      {isLive && (
+        <div style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -60%)',
+          width: 44, height: 44,
+          borderRadius: '50%',
+          background: `${bg}55`,
+          border: `2px solid ${bg}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, fontWeight: 900, color: '#fff',
+          textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+          zIndex: 2,
+        }}>
+          {room.performerName.charAt(0).toUpperCase()}
+        </div>
+      )}
+
       <div style={{
         position: 'absolute', top: 8, left: 8,
         fontSize: 8, fontWeight: 800, letterSpacing: '0.15em',
@@ -137,7 +231,6 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
         {room.type.toUpperCase()}
       </div>
 
-      {/* Bottom info */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
@@ -147,8 +240,13 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
         <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginBottom: 2 }}>
           {room.performerName}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 9, color: '#00FF88' }}>👁 {room.viewerCount.toLocaleString()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 9, color: isLive ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
+            {isLive ? `👁 ${room.viewerCount.toLocaleString()}` : 'No live audience'}
+          </span>
+          <span style={{ fontSize: 9, color: preview.muted ? 'rgba(255,255,255,0.35)' : '#FFD700' }}>
+            {preview.muted ? '🔇' : '🔊 FOCUS'}
+          </span>
           {room.prizePool && <span style={{ fontSize: 9, color: '#FFD700' }}>🏆 {room.prizePool}</span>}
           {room.genre && <span style={{ fontSize: 9, color: `${bg}`, fontWeight: 700 }}>{room.genre}</span>}
         </div>
@@ -162,28 +260,25 @@ function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; c
 export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF', typeLabel = 'LIVE' }: LiveLobbyWallGridProps) {
   const router = useRouter();
   const [colorOffset, setColorOffset] = useState(0);
-  // Rule 15: All entries go through LobbyEntryFlow — never directly to the room URL
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
   const liveRooms = rooms.filter((r) => r.status !== 'ended');
 
-  // Rotate color assignments every 30 seconds so rooms periodically change shade
   useEffect(() => {
     const t = setInterval(() => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length), 30000);
     return () => clearInterval(t);
   }, []);
 
-  // Convert LobbyRoom → UniversalRoom and open the 5-step LobbyEntryFlow overlay.
-  // Previously this called router.push() directly, bypassing seat assignment (Rule 15).
   const joinRoom = useCallback((room: LobbyRoom) => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('tmi_handoff_started_at', String(Date.now()));
       sessionStorage.setItem('tmi_handoff_room_id', room.id);
     }
-    // Prefer real room id over parsing href (href may include ?from= query)
-    const roomRoute =
-      room.href.startsWith('/live/rooms/')
-        ? room.href
-        : `/live/rooms/${encodeURIComponent(room.id)}?from=live-lobby-wall`;
+    const dest = resolveLobbyDestination({
+      roomId: room.id,
+      kind: toWallKind(room.type),
+      href: room.href,
+    });
     setActiveFlowRoom({
       id:          room.id,
       title:       room.name,
@@ -194,18 +289,26 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
       status:      room.status === 'live' ? 'live' : room.status === 'starting' ? 'starting-soon' : 'upcoming',
       access:      'free',
       accentColor: roomColor(0),
-      // prizeLabel only when a real prizePool string is supplied — never invent one
       prizeLabel:  room.prizePool,
-      roomRoute,
+      roomRoute:   dest.href,
       venueIndex:  0,
     });
   }, []);
 
   const prewarmRoom = useCallback((room: LobbyRoom) => {
-    router.prefetch(room.href);
-    // Warm audience session path so seat assignment and presence cache are primed.
+    const dest = resolveLobbyDestination({
+      roomId: room.id,
+      kind: toWallKind(room.type),
+      href: room.href,
+    });
+    router.prefetch(dest.href);
     void fetch(`/api/live/audience?venue=${encodeURIComponent(room.id)}`, { cache: 'no-store' }).catch(() => {});
   }, [router]);
+
+  const onFocusAudio = useCallback((roomId: string) => {
+    setLobbyAudioFocus(roomId);
+    setFocusTick((n) => n + 1);
+  }, []);
 
   const joinRandom = useCallback(() => {
     if (liveRooms.length === 0) return;
@@ -213,23 +316,41 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
     if (pick) joinRoom(pick);
   }, [liveRooms, joinRoom]);
 
+  const onSwipe = useCallback((direction: 'next' | 'prev') => {
+    const ids = liveRooms.map((r) => r.id);
+    swipeLobbyPreviewFocus(ids, direction);
+    setFocusTick((n) => n + 1);
+  }, [liveRooms]);
+
   return (
     <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
-      {/* Rule 15: LobbyEntryFlow overlay — seat assignment before entering any room */}
       {activeFlowRoom && (
         <LobbyEntryFlow room={activeFlowRoom} onClose={() => setActiveFlowRoom(null)} />
       )}
-      {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'linear-gradient(180deg, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.8) 100%)', backdropFilter: 'blur(20px)', borderBottom: `1px solid rgba(255,255,255,0.1)`, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.35em', color: accentColor, fontWeight: 800 }}>{typeLabel} · LOBBY WALL</div>
           <h1 style={{ margin: 0, fontSize: 20, color: '#fff' }}>{title}</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, color: '#00FF88' }}>
             <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>●</motion.span>
-            {' '}{liveRooms.length} LIVE
+            {' '}{liveRooms.filter((r) => r.status === 'live').length} LIVE
           </span>
+          <button
+            type="button"
+            onClick={() => onSwipe('prev')}
+            style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+          >
+            ← FOCUS
+          </button>
+          <button
+            type="button"
+            onClick={() => onSwipe('next')}
+            style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+          >
+            FOCUS →
+          </button>
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={joinRandom}
@@ -254,8 +375,19 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
         </div>
       </div>
 
-      {/* Grid */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 20px' }}>
+      <div
+        style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 20px' }}
+        onTouchStart={(e) => {
+          const t = e.changedTouches[0];
+          if (t) (e.currentTarget as HTMLDivElement).dataset.swipeX = String(t.clientX);
+        }}
+        onTouchEnd={(e) => {
+          const start = Number((e.currentTarget as HTMLDivElement).dataset.swipeX ?? 0);
+          const end = e.changedTouches[0]?.clientX ?? start;
+          const dx = end - start;
+          if (Math.abs(dx) > 48) onSwipe(dx < 0 ? 'next' : 'prev');
+        }}
+      >
         <div style={{ marginBottom: 24, width: '100%' }}>
           <AdRailSlot
             slotId="lobby-wall-featured"
@@ -275,15 +407,29 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
             gap: 12,
           }}>
             <AnimatePresence>
-              {liveRooms.map((room, idx) => (
-                <LobbyCell
-                  key={room.id}
-                  room={room}
-                  colorIndex={(idx + colorOffset) % CRAYON_PALETTE.length}
-                  onJoin={joinRoom}
-                  onPrewarm={prewarmRoom}
-                />
-              ))}
+              {liveRooms.map((room, idx) => {
+                const preview = buildLobbyPreviewTile({
+                  roomId: room.id,
+                  kind: toWallKind(room.type),
+                  href: room.href,
+                  isLive: room.status === 'live',
+                  hasActivePerformer: room.status === 'live',
+                  isGauntlet: room.type === 'gauntlet',
+                });
+                // focusTick forces re-read of audio focus after swipe/hover
+                void focusTick;
+                return (
+                  <LobbyCell
+                    key={room.id}
+                    room={room}
+                    colorIndex={(idx + colorOffset) % CRAYON_PALETTE.length}
+                    preview={preview}
+                    onJoin={joinRoom}
+                    onPrewarm={prewarmRoom}
+                    onFocusAudio={onFocusAudio}
+                  />
+                );
+              })}
             </AnimatePresence>
           </div>
         )}

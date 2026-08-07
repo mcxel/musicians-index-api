@@ -14,6 +14,7 @@
  */
 
 import { BattleFormatType } from "@/lib/competition/BattleFormatRulesEngine";
+import { winnerStaysLifecycleEngine } from "@/lib/competition/WinnerStaysLifecycleEngine";
 
 export const UNIVERSAL_BATTLE_WINDOW_SECONDS = 18 * 60;
 
@@ -24,7 +25,9 @@ export type BattleLifecycleStatus =
   | "live"
   | "completed"
   | "rewarded"
-  | "archived";
+  | "archived"
+  /** Winner-stays holds the room open; not a hard close. */
+  | "challenger-call";
 
 export interface BattleMatchLifecycle {
   battleId: string;
@@ -54,6 +57,7 @@ export class BattleMatchLifecycleEngine {
       leaderboardLocked: false,
     };
     this.matches.set(battleId, match);
+    winnerStaysLifecycleEngine.startMatch(battleId, `battle-${battleId}`);
     return match;
   }
 
@@ -77,7 +81,9 @@ export class BattleMatchLifecycleEngine {
       countdown: "open",
       open: "live",
       live: "completed",
-      completed: "rewarded",
+      // Do not archive merely because scheduled matchup ended — hold for challenger call.
+      completed: "challenger-call",
+      "challenger-call": "rewarded",
       rewarded: "archived",
       archived: "archived",
     };
@@ -89,12 +95,14 @@ export class BattleMatchLifecycleEngine {
     return match;
   }
 
-  markCompleted(battleId: string, winnerId: string): BattleMatchLifecycle | null {
+  markCompleted(battleId: string, winnerId: string, winnerName = "Champion"): BattleMatchLifecycle | null {
     const match = this.matches.get(battleId);
     if (!match) return null;
-    match.status = "completed";
+    match.status = "challenger-call";
     match.winnerId = winnerId;
     match.leaderboardLocked = true;
+    // Winner stays on stage; room stays open for CHALLENGER_CALL window.
+    winnerStaysLifecycleEngine.enterResultPending(battleId, winnerId, winnerName);
     return match;
   }
 

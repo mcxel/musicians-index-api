@@ -16,6 +16,11 @@ export const FEATURE_FLAGS = {
   CONTEST_ADAPTIVE_TRANSITIONS: false,  // Set true after analytics baseline established
   CONTEST_REPLAY_CLIPS: false,          // Set true when clip storage is wired
 
+  // TMI Musical Gauntlet (persistent battle subtype — feature-gated)
+  GAUNTLET_ENABLED: false,
+  GAUNTLET_DISCOVERY_ENABLED: false,
+  GAUNTLET_ENTRY_ENABLED: false,
+
   // Sponsor
   SPONSOR_ROI_ANALYTICS: true,
   SPONSOR_LEADERBOARD: true,

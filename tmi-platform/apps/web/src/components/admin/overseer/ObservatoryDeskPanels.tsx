@@ -20,6 +20,7 @@ import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
 import HomeLiveLobbyWall from "@/components/discovery/HomeLiveLobbyWall";
 import ObservatoryChampionshipWidget from "@/components/championship/ObservatoryChampionshipWidget";
 import LivingRankingsPanel from "@/components/championship/LivingRankingsPanel";
+import GauntletControlPanel from "@/components/admin/overseer/GauntletControlPanel";
 import type { DeskPanelId, DeskPeriod } from "@/lib/admin/ObservatoryDeskState";
 
 export function HonestEmpty({
@@ -363,6 +364,12 @@ export function DeskPanelContent({
           href="/admin/contests"
           hrefLabel="Open Contests →"
         />
+      );
+    case "gauntlet":
+      return (
+        <div style={{ height: "100%", overflow: "auto", padding: 8 }}>
+          <GauntletControlPanel />
+        </div>
       );
     default:
       return <HonestEmpty title="Panel unavailable" detail="Unknown desk panel." />;

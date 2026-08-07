@@ -7,6 +7,7 @@
  */
 
 import { BaseCompetitionRuntime, Competitor } from "@/lib/competition/CompetitionRuntime";
+import { winnerStaysLifecycleEngine } from "@/lib/competition/WinnerStaysLifecycleEngine";
 
 export class BattleRuntimeEngine extends BaseCompetitionRuntime {
   private currentRound: number = 1;
@@ -21,6 +22,7 @@ export class BattleRuntimeEngine extends BaseCompetitionRuntime {
       this.participants = participants;
     }
     this.status = "IN_PROGRESS";
+    winnerStaysLifecycleEngine.startMatch(this.competitionId, `battle-${this.competitionId}`);
     this.emitSemanticEvent("BattleStarted", {
       participants: this.participants,
     });
@@ -68,6 +70,8 @@ export class BattleRuntimeEngine extends BaseCompetitionRuntime {
       score,
       roundNumber: this.currentRound,
     });
+    // Ordinary battles: winner stays → RESULT_PENDING → CHALLENGER_CALL (room stays open).
+    winnerStaysLifecycleEngine.enterResultPending(this.competitionId, winnerId, winnerName);
   }
 
   public startPrizeReveal(prize?: string) {

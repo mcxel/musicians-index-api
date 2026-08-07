@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import GlobalTopNavRail from '@/components/home/GlobalTopNavRail';
 import LiveLobbyWallGrid, { type LobbyRoom } from '@/components/live/LiveLobbyWallGrid';
+import GauntletBattleWallCard from '@/components/gauntlet/GauntletBattleWallCard';
+import { isGauntletDiscoveryEnabled, ensureCanonicalGauntletRoom } from '@/lib/gauntlet/GauntletRoomRuntime';
 
 type LiveApiEntry = {
   userId: string;
@@ -18,7 +20,7 @@ function toRoom(entry: LiveApiEntry): LobbyRoom {
     name: `${entry.displayName} — Battle`,
     performerName: entry.displayName,
     type: 'battle',
-    href: `/live/rooms/${resolvedRoomId}`,
+    href: `/rooms/battle/${resolvedRoomId}`,
     viewerCount: entry.viewerCount,
     status: 'live',
     genre: entry.genre,
@@ -27,6 +29,11 @@ function toRoom(entry: LiveApiEntry): LobbyRoom {
 
 export default function BattlesLobbyWallPage() {
   const [rooms, setRooms] = useState<LobbyRoom[]>([]);
+  const showGauntlet = isGauntletDiscoveryEnabled();
+
+  useEffect(() => {
+    if (showGauntlet) ensureCanonicalGauntletRoom();
+  }, [showGauntlet]);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +57,16 @@ export default function BattlesLobbyWallPage() {
   return (
     <>
       <GlobalTopNavRail />
+      {showGauntlet && (
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 20px 0', background: '#050510' }}>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', color: '#FFD700', marginBottom: 10 }}>
+            BATTLE SUBTYPE · MUSICAL GAUNTLET
+          </div>
+          <div style={{ maxWidth: 280 }}>
+            <GauntletBattleWallCard />
+          </div>
+        </div>
+      )}
       <LiveLobbyWallGrid
         rooms={rooms}
         title="Battle Billboard Wall"

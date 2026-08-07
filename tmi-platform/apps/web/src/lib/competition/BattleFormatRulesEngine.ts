@@ -20,7 +20,8 @@ export type BattleFormatType =
   | "dance-off"
   | "dirty-dozens"
   | "mini-dozens"
-  | "open-performer-challenge";
+  | "open-performer-challenge"
+  | "musical-gauntlet";
 
 export interface BattleFormatRule {
   format: BattleFormatType;
@@ -47,6 +48,7 @@ const FORMAT_RULES: Record<BattleFormatType, BattleFormatRule> = {
   "dirty-dozens": { format: "dirty-dozens", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Dirty Dozens" },
   "mini-dozens": { format: "mini-dozens", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Mini Dozens" },
   "open-performer-challenge": { format: "open-performer-challenge", minTeamSize: 1, maxTeamSize: 20, defaultTeamSize: 4, category: "showcase", label: "Open Circle" },
+  "musical-gauntlet": { format: "musical-gauntlet", minTeamSize: 2, maxTeamSize: 32, defaultTeamSize: 16, category: "contest", label: "Musical Gauntlet" },
 };
 
 export class BattleFormatRulesEngine {
