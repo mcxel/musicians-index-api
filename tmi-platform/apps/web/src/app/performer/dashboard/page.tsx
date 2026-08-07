@@ -17,6 +17,7 @@ const BOT_BAR = [
 
 const QUICK_ACTIONS = [
   { href: '/performer/studio',    icon: '⬆',  label: 'UPLOAD',      color: '#00FFFF' },
+  { href: '/store/points',         icon: '⭐',  label: 'BUY POINTS',  color: '#FFD700' },
   { href: '/venues',               icon: '📅',  label: 'SET UP SHOW', color: '#FF2DAA' },
   { href: '/sponsors',             icon: '💼',  label: 'GET SPONSOR', color: '#FFD700' },
   { href: '/cypher',              icon: '⚡',  label: 'JOIN CYPHER', color: '#AA2DFF' },

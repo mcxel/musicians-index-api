@@ -369,7 +369,13 @@ export default function FanHubShell({
                 </div>
                 <div style={{ fontSize: 13, marginBottom: 5 }}>⭐⭐⭐⭐⭐</div>
                 <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 700, color: C.gold, marginBottom: 5 }}>{points.toLocaleString()}</div>
-                <button type="button" style={{ width: "100%", padding: 4, background: "transparent", border: `1px solid ${C.red}`, borderRadius: 4, color: C.amber, fontFamily: "'Exo 2', sans-serif", fontSize: 8, fontWeight: 700, cursor: "pointer", letterSpacing: "0.05em" }}>UPGRADE</button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/store/points")}
+                  style={{ width: "100%", padding: 4, background: "transparent", border: `1px solid ${C.red}`, borderRadius: 4, color: C.amber, fontFamily: "'Exo 2', sans-serif", fontSize: 8, fontWeight: 700, cursor: "pointer", letterSpacing: "0.05em" }}
+                >
+                  BUY POINTS
+                </button>
               </div>
             )}
 

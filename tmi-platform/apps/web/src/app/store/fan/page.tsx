@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { FAN_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
+import BuyPointsSection from '@/components/store/BuyPointsSection';
 
 const BADGE_COLORS: Record<string, string> = {
   HOT: '#FF2DAA', NEW: '#00FF88', LIMITED: '#FFD700', LAUNCH: '#AA2DFF',
@@ -18,6 +19,8 @@ export default function FanStorePage() {
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', maxWidth: 560, lineHeight: 1.7, marginBottom: 36 }}>
           Tips, fan clubs, season passes, VIP memberships. Be part of something real.
         </p>
+
+        <BuyPointsSection role="FAN" accent="#00FFFF" showSpendCatalog />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {FAN_ITEMS.map((item, i) => (

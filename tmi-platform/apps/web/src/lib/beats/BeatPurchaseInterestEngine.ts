@@ -5,7 +5,7 @@
  */
 
 import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
-import { SPLIT_PRESETS } from "@/lib/commerce/RevenueSplitEngine";
+import { describeCreatorCommerceFee } from "@/lib/commerce/RevenueSplitEngine";
 
 export type BeatInterestRecord = {
   userId: string;
@@ -45,10 +45,9 @@ const features = new Map<string, BeatFeatureInterest>();
 const auctions = new Map<string, BeatAuctionState>();
 const AUCTION_WINDOW_MS = 15 * 60_000;
 
-/** Client-safe label — same preset BeatStoreCommerceEngine uses. */
-export function getBeatFeeLabel(): string {
-  const cfg = SPLIT_PRESETS.beat;
-  return `RevenueSplitEngine SPLIT_PRESETS.beat — platform ${cfg.platform / 100}% · producer ${cfg.artist / 100}% · big_ace ${cfg.big_ace / 100}%`;
+/** Client-safe label — seller-tier ladder (FREE default); Big Ace 0. */
+export function getBeatFeeLabel(sellerTier?: string | null): string {
+  return describeCreatorCommerceFee(sellerTier);
 }
 
 export function markBeatFeatured(input: {

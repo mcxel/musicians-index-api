@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CREATOR_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
+import BuyPointsSection from '@/components/store/BuyPointsSection';
 
 const BADGE_COLORS: Record<string, string> = {
   HOT: '#FF2DAA', NEW: '#00FF88', LIMITED: '#FFD700', LAUNCH: '#AA2DFF',
@@ -19,16 +20,17 @@ export default function CreatorStorePage() {
           Boosts, beats, spotlights, venues, shoutouts, NFTs — everything a performer needs to level up and earn more.
         </p>
 
-        {/* Revenue split callout */}
-        <div style={{ background: 'rgba(255,45,170,0.08)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 10, padding: '14px 18px', marginBottom: 36, display: 'inline-block' }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#FF2DAA', fontWeight: 800, marginBottom: 4 }}>CREATOR REVENUE SPLIT</div>
+        {/* Revenue split callout — seller tier ladder; Big Ace 0 */}
+        <div style={{ background: 'rgba(255,45,170,0.08)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 10, padding: '14px 18px', marginBottom: 24, display: 'inline-block' }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#FF2DAA', fontWeight: 800, marginBottom: 4 }}>CREATOR PLATFORM FEE (BY TIER)</div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
-            Shoutouts &amp; Meet &amp; Greets → <strong style={{ color: '#FF2DAA' }}>80% to you</strong><br />
-            Beat Licenses → <strong style={{ color: '#FF2DAA' }}>75% to you</strong><br />
-            Fan Club → <strong style={{ color: '#FF2DAA' }}>85% to you</strong><br />
-            Tips → <strong style={{ color: '#FF2DAA' }}>90% to you</strong>
+            FREE <strong style={{ color: '#FF2DAA' }}>20%</strong> · PRO <strong style={{ color: '#FF2DAA' }}>18%</strong> · RUBY <strong style={{ color: '#FF2DAA' }}>16%</strong> · SILVER <strong style={{ color: '#FF2DAA' }}>14%</strong><br />
+            GOLD <strong style={{ color: '#FF2DAA' }}>12%</strong> · PLATINUM <strong style={{ color: '#FF2DAA' }}>10%</strong> · DIAMOND <strong style={{ color: '#FF2DAA' }}>8%</strong><br />
+            You keep the rest on tips, beats, merch, NFT, shoutouts. Big Ace = 0.
           </div>
         </div>
+
+        <BuyPointsSection role="PERFORMER" accent="#FF2DAA" showSpendCatalog />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {CREATOR_ITEMS.map((item, i) => (

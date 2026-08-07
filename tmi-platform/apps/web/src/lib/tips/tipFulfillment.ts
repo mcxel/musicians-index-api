@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { REVENUE_SPLITS } from "@/lib/stripe/products";
+import {
+  calculateCreatorCommerceSplit,
+  describeCreatorCommerceFee,
+  normalizeCommerceTier,
+} from "@/lib/commerce/RevenueSplitEngine";
+import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
 
 /**
  * Resolve a tip recipient slug/id to a real Prisma User.id.
@@ -39,10 +44,21 @@ export async function resolveFanUserIdFromEmail(email: string | undefined | null
   return user?.id ?? null;
 }
 
-export function tipSplitCents(amountCents: number): { artistShare: number; platformFee: number } {
-  const artistShare = Math.floor(amountCents * REVENUE_SPLITS.TIP.creator);
+/** Creator-commerce tip split — seller tier ladder; Big Ace = 0. */
+export function tipSplitCents(
+  amountCents: number,
+  sellerTier?: string | null,
+): { artistShare: number; platformFee: number; tier: string; feeLabel: string } {
+  const tier = normalizeCommerceTier(sellerTier);
+  const split = calculateCreatorCommerceSplit(amountCents, 0, tier);
+  const artistShare = split.splits.artist.cents;
   const platformFee = amountCents - artistShare;
-  return { artistShare, platformFee };
+  return {
+    artistShare,
+    platformFee,
+    tier,
+    feeLabel: describeCreatorCommerceFee(tier),
+  };
 }
 
 /**
@@ -55,14 +71,22 @@ export async function grantTipFromStripeSession(params: {
   toArtistUserId: string;
   amountCents: number;
   roomId?: string | null;
-}): Promise<{ tipId: string; reused: boolean }> {
+}): Promise<{ tipId: string; reused: boolean; platformFee: number; artistShare: number }> {
   const existing = await prisma.tip.findFirst({
     where: { stripeId: params.stripeSessionId },
-    select: { id: true },
+    select: { id: true, artistShare: true, platformFee: true },
   });
-  if (existing) return { tipId: existing.id, reused: true };
+  if (existing) {
+    return {
+      tipId: existing.id,
+      reused: true,
+      artistShare: existing.artistShare,
+      platformFee: existing.platformFee,
+    };
+  }
 
-  const { artistShare, platformFee } = tipSplitCents(params.amountCents);
+  const sellerTier = await resolveSellerCommerceTier(params.toArtistUserId);
+  const { artistShare, platformFee } = tipSplitCents(params.amountCents, sellerTier);
 
   const tip = await prisma.tip.create({
     data: {
@@ -82,7 +106,7 @@ export async function grantTipFromStripeSession(params: {
       userId: params.toArtistUserId,
       type: "CREDIT",
       amount: artistShare,
-      description: "Tip from fan",
+      description: `Tip from fan · ${describeCreatorCommerceFee(sellerTier)}`,
       relatedId: params.stripeSessionId,
     },
   });
@@ -123,9 +147,9 @@ export async function grantTipFromStripeSession(params: {
       status: "COMPLETED",
       stripeId: params.stripeSessionId,
       referenceId: tip.id,
-      note: "Live tip",
+      note: `Live tip · seller tier ${sellerTier}`,
     },
   });
 
-  return { tipId: tip.id, reused: false };
+  return { tipId: tip.id, reused: false, artistShare, platformFee };
 }

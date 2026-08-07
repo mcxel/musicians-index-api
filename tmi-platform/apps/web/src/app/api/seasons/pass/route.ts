@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
+import { prisma } from '@/lib/prisma';
+import { seasonPassBonusPoints } from '@/lib/points/PointPackCatalog';
 
 const SEASON_PASSES: Record<string, { label: string; amountCents: number }> = {
   fan:    { label: 'Fan Season Pass — Season 1',    amountCents: 999  },
@@ -27,11 +29,17 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe();
   if (!stripe) {
     return NextResponse.json(
-      { redirect: `/passes?notice=stripe-pending` },
+      { error: 'Payments not configured', code: 'STRIPE_NOT_CONFIGURED', redirect: `/passes?notice=stripe-pending` },
+      { status: 503 },
     );
   }
 
+  const buyer = userEmail
+    ? await prisma.user.findFirst({ where: { email: userEmail.toLowerCase() }, select: { id: true } })
+    : null;
+
   const { origin } = req.nextUrl;
+  const bonusPoints = seasonPassBonusPoints(passType);
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -43,7 +51,10 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'usd',
             unit_amount: pass.amountCents,
-            product_data: { name: pass.label },
+            product_data: {
+              name: pass.label,
+              description: `Includes +${bonusPoints} bonus TMI points on purchase`,
+            },
           },
         },
       ],
@@ -56,11 +67,13 @@ export async function POST(req: NextRequest) {
         passType,
         seasonId,
         userEmail,
+        buyerId: buyer?.id ?? '',
+        bonusPoints: String(bonusPoints),
       },
     });
 
     if (!session.url) throw new Error('No session URL');
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, bonusPoints });
   } catch (err) {
     console.error('[seasons/pass]', err);
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
@@ -80,6 +93,7 @@ export async function GET() {
       id,
       label: p.label,
       price: `$${(p.amountCents / 100).toFixed(2)}`,
+      bonusPoints: seasonPassBonusPoints(id),
     })),
   });
 }

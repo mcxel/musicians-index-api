@@ -35,6 +35,7 @@ export default function StorePage() {
               🏛️ ENTER 3D FLEX STORE SHOWROOM
             </Link>
             {[
+              { label: '⭐ Buy Points', href: '/store/points', accent: '#FFD700' },
               { label: '🎤 Creator Store', href: '/store/creator', accent: '#FF2DAA' },
               { label: '🎧 Fan Store', href: '/store/fan', accent: '#00FFFF' },
               { label: '🏟️ Venues', href: '/store/venues', accent: '#AA2DFF' },

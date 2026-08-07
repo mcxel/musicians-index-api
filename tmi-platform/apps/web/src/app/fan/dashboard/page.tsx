@@ -125,7 +125,27 @@ export default function FanDashboardPage() {
                 FAN COMMAND CENTER
               </h1>
             </div>
-            <OpenAvatarLobbyButton />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => router.push("/store/points")}
+                style={{
+                  background: "rgba(255,215,0,0.12)",
+                  border: "1px solid rgba(255,215,0,0.45)",
+                  borderRadius: 10,
+                  padding: "10px 16px",
+                  color: "#FFD700",
+                  fontWeight: 900,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                ⭐ Buy Points
+              </button>
+              <OpenAvatarLobbyButton />
+            </div>
           </header>
 
           <style>{`

@@ -346,25 +346,85 @@ export const STRIPE_PRODUCTS = {
     price: 299,
     interval: "one_time" as const,
   },
+
+  // ── Point packs (locked SKUs — Wallet.fanCredits on webhook) ───────────────
+  // Prefer price_data fallback when placeholder price IDs are not live yet.
+  POINT_PACK_099: {
+    productId: "prod_point_pack",
+    priceId: process.env.STRIPE_PRICE_POINTS_099 ?? "price_points_099",
+    name: "TMI Points — Micro Starter (100 pts)",
+    price: 99,
+    interval: "one_time" as const,
+  },
+  POINT_PACK_199: {
+    productId: "prod_point_pack",
+    priceId: process.env.STRIPE_PRICE_POINTS_199 ?? "price_points_199",
+    name: "TMI Points — Micro Plus (200 pts)",
+    price: 199,
+    interval: "one_time" as const,
+  },
+  POINT_PACK_499: {
+    productId: "prod_point_pack",
+    priceId: process.env.STRIPE_PRICE_POINTS_499 ?? "price_points_499",
+    name: "TMI Points — Small Pack (575 pts)",
+    price: 499,
+    interval: "one_time" as const,
+  },
+  POINT_PACK_999: {
+    productId: "prod_point_pack",
+    priceId: process.env.STRIPE_PRICE_POINTS_999 ?? "price_points_999",
+    name: "TMI Points — Mid Pack (1250 pts)",
+    price: 999,
+    interval: "one_time" as const,
+  },
+  POINT_PACK_1999: {
+    productId: "prod_point_pack",
+    priceId: process.env.STRIPE_PRICE_POINTS_1999 ?? "price_points_1999",
+    name: "TMI Points — Large Pack (2800 pts)",
+    price: 1999,
+    interval: "one_time" as const,
+  },
+
+  // ── Season passes (bonus points granted on webhook) ───────────────────────
+  SEASON_PASS_FAN: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_FAN ?? "price_season_pass_fan",
+    name: "Fan Season Pass — Season 1",
+    price: 999,
+    interval: "one_time" as const,
+  },
+  SEASON_PASS_ARTIST: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_ARTIST ?? "price_season_pass_artist",
+    name: "Artist Season Pass — Season 1",
+    price: 1999,
+    interval: "one_time" as const,
+  },
+  SEASON_PASS_BUNDLE: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_BUNDLE ?? "price_season_pass_bundle",
+    name: "Full Bundle — Season 1",
+    price: 2499,
+    interval: "one_time" as const,
+  },
 } as const;
 
 // Platform revenue split percentages
+// Creator-commerce paths (TIP/BEAT/NFT/MEET_GREET/etc.): FREE-tier defaults below.
+// Prefer calculateRevenueSplitByPreset / creatorCommerceSplitConfig(sellerTier) at settlement
+// — ladder FREE 20% → DIAMOND 8%, Big Ace 0.
 export const REVENUE_SPLITS = {
   SUBSCRIPTION:     { platform: 0.20, creator: 0.80 },
-  TIP:              { platform: 0.10, creator: 0.90 },
+  TIP:              { platform: 0.20, creator: 0.80 },
   BOOKING:          { platform: 0.15, venue: 0.85 },
   TICKET:           { platform: 0.10, artist: 0.90 },
-  /**
-   * Aligned with RevenueSplitEngine SPLIT_PRESETS.beat (BeatStoreCommerceEngine):
-   * platform 20% + big_ace 10% = 30% TMI-side; producer/artist 70%.
-   * Prefer calculateRevenueSplitByPreset("beat") at settlement time.
-   */
-  BEAT_LICENSE:     { platform: 0.30, producer: 0.70 },
-  NFT:              { platform: 0.10, artist: 0.90 },
+  BEAT_LICENSE:     { platform: 0.20, producer: 0.80 },
+  NFT:              { platform: 0.20, artist: 0.80 },
+  MERCH:            { platform: 0.20, creator: 0.80 },
   SPONSOR:          { platform: 1.00 },
   ADVERTISER:       { platform: 1.00 },
   ARTIST_SPOTLIGHT: { platform: 1.00 },
-  FAN_CLUB:         { platform: 0.15, artist: 0.85 },
+  FAN_CLUB:         { platform: 0.20, artist: 0.80 },
   MEET_GREET:       { platform: 0.20, artist: 0.80 },
   SHOUTOUT:         { platform: 0.20, artist: 0.80 },
   QUICK_VIDEO_CHAT: { platform: 0.20, artist: 0.80 },

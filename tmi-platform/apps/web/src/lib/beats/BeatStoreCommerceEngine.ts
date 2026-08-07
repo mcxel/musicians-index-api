@@ -95,7 +95,8 @@ export function purchaseBeat(
     beatId, producerId: beat.producerId, licenseType,
   });
 
-  const split = calculateRevenueSplitByPreset("beat", receipt.totalCents, taxCents);
+  // FREE default at register-time; Stripe fulfillment resolves producer tier live.
+  const split = calculateRevenueSplitByPreset("beat", receipt.totalCents, taxCents, "FREE");
   const downloadToken = `dl-${beatId}-${userId}-${Date.now()}`;
 
   const order: BeatPurchaseOrder = {

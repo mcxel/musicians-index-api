@@ -7,8 +7,9 @@
  *   3. Creator Asset Vault    — single-source master media library
  *
  * Rules:
- *   - ARTIST_ALWAYS_RECEIVES_FULL_PRICE: TMI absorbs discount, never passes cost to artist
- *   - TMI_ABSORBS_POINTS_DISCOUNT: points-funded purchases subsidised from platform fee
+ *   - ARTIST_ALWAYS_RECEIVES_FULL_PRICE: settlement on list price P; points discount never cuts artist share
+ *   - TMI_ABSORBS_POINTS_DISCOUNT: discount funded by burning prepaid points liability (packs already paid);
+ *     platform fee still taken on full P; cash charge = P − discount (see PointDiscountEngine)
  *   - YOPHO_IS_NOT_COMMERCE: YoPho is identity/art, never a commerce vehicle
  *   - COMMERCE_CONNECTOR_IS_SOURCE_OF_TRUTH: external store (Shopify etc.) owns product/price/inventory
  *   - DISTRIBUTOR_BRIDGE_IS_METADATA_ONLY: CD Baby etc. import release metadata, never sell on TMI

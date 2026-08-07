@@ -4,7 +4,9 @@ import { getStripe } from "@/lib/stripe/client";
 import {
   resolveFanUserIdFromEmail,
   resolveTipArtistUserId,
+  tipSplitCents,
 } from "@/lib/tips/tipFulfillment";
+import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
 
 /**
  * POST /api/tips
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
   const fanDisplayName = fanEmail ? fanEmail.split("@")[0] : "Fan";
   const roomId = body.roomId || body.roomSlug || "";
   const { origin } = req.nextUrl;
+  const sellerTier = await resolveSellerCommerceTier(artistUserId);
+  const { artistShare, platformFee, feeLabel } = tipSplitCents(amountCents, sellerTier);
 
   try {
     const tipSession = await stripe.checkout.sessions.create({
@@ -78,7 +82,10 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "usd",
             unit_amount: amountCents,
-            product_data: { name: `Tip for @${artistKey}` },
+            product_data: {
+              name: `Tip for @${artistKey}`,
+              description: feeLabel,
+            },
           },
         },
       ],
@@ -95,6 +102,10 @@ export async function POST(req: NextRequest) {
         fanId: fanUserId,
         fanDisplayName,
         fanName: fanDisplayName,
+        sellerTier,
+        artistShareCents: String(artistShare),
+        platformFeeCents: String(platformFee),
+        feePreset: "tip",
       },
     });
 

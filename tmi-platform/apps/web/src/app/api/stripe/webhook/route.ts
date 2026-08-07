@@ -210,13 +210,111 @@ export async function POST(req: NextRequest) {
           throw new Error('Beat fulfillment missing beatId or licenseType');
         }
         const { grantBeatFromStripeSession } = await import('@/lib/beats/beatFulfillment');
+        // Settle on full list price P when points discount was applied (cash may be lower).
+        const settlementCents = metadata.productPriceCents
+          ? Number(metadata.productPriceCents)
+          : (session.amount_total || 0);
         await grantBeatFromStripeSession({
           stripeSessionId: session.id,
           beatId: metadata.beatId,
           buyerId: metadata.buyerId || 'guest',
           licenseType: metadata.licenseType,
-          amountCents: session.amount_total || 0,
+          amountCents: Number.isFinite(settlementCents) ? settlementCents : (session.amount_total || 0),
           auctionId: metadata.auctionId || null,
+        });
+      }
+
+      // ─── 2B. POINT PACK FULFILLMENT ──────────────────────────────────
+      if (metadata.type === 'points_pack' && metadata.packSku && metadata.buyerId) {
+        const { grantPointPackFromStripeSession } = await import('@/lib/points/pointsFulfillment');
+        const grant = await grantPointPackFromStripeSession({
+          stripeSessionId: session.id,
+          userId: metadata.buyerId,
+          packSku: metadata.packSku,
+          amountCents: session.amount_total || 0,
+        });
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'points',
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          type: 'points_pack',
+          simulated: false,
+        });
+        void grant;
+      }
+
+      // ─── 2C. SEASON PASS + BONUS POINTS ───────────────────────────────
+      if (metadata.type === 'season_pass') {
+        const passType = metadata.passType || 'fan';
+        const email = metadata.userEmail || session.customer_email || '';
+        const buyer =
+          metadata.buyerId
+            ? await prisma.user.findUnique({ where: { id: metadata.buyerId }, select: { id: true } })
+            : email
+              ? await prisma.user.findFirst({ where: { email: email.toLowerCase() }, select: { id: true } })
+              : null;
+        if (buyer) {
+          const passName =
+            passType === 'artist'
+              ? 'Artist Season Pass — Season 1'
+              : passType === 'bundle'
+                ? 'Full Bundle — Season 1'
+                : 'Fan Season Pass — Season 1';
+          const amountCents = session.amount_total || 0;
+          let seasonPass = await prisma.seasonPass.findFirst({
+            where: { name: passName, isActive: true },
+          });
+          if (!seasonPass) {
+            const now = new Date();
+            const end = new Date(now);
+            end.setFullYear(end.getFullYear() + 1);
+            seasonPass = await prisma.seasonPass.create({
+              data: {
+                name: passName,
+                description: `Season 1 ${passType} pass`,
+                price: amountCents,
+                tier: passType === 'bundle' ? 'GOLD' : passType === 'artist' ? 'PRO' : 'FREE',
+                startDate: now,
+                endDate: end,
+                isActive: true,
+              },
+            });
+          }
+          await prisma.seasonPassOwnership.upsert({
+            where: {
+              userId_seasonPassId: { userId: buyer.id, seasonPassId: seasonPass.id },
+            },
+            create: {
+              userId: buyer.id,
+              seasonPassId: seasonPass.id,
+              isActive: true,
+              stripePaymentId: session.id,
+            },
+            update: {
+              isActive: true,
+              stripePaymentId: session.id,
+            },
+          });
+
+          const { grantSeasonPassBonusFromStripeSession } = await import('@/lib/points/pointsFulfillment');
+          await grantSeasonPassBonusFromStripeSession({
+            stripeSessionId: session.id,
+            userId: buyer.id,
+            passType,
+          });
+        }
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'season_pass',
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          type: 'season_pass',
+          simulated: false,
         });
       }
 

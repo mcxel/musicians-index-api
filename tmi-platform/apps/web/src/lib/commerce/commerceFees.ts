@@ -1,22 +1,22 @@
 /**
- * TMI Creator Economy — platform fee constants.
+ * TMI Creator Economy — fee notes.
  *
- * Philosophy: TMI does NOT replace streaming. It adds artist-controlled direct
- * commerce beside discovery/live. Artist is merchant of record and sets price;
- * TMI takes a transparent service fee on the commerce connector path.
+ * Creator commerce (beats, tips, NFT primary, merch/store, shoutouts, etc.):
+ * Use RevenueSplitEngine creatorCommerceSplitConfig(sellerTier).
+ * Ladder: FREE 20% · PRO 18% · RUBY 16% · SILVER 14% · GOLD 12% · PLATINUM 10% · DIAMOND 8%.
+ * Seller keeps the rest. Big Ace = 0 on creator commerce.
  *
- * Flow: Discovery → Engagement → Commerce (TMI) → Fulfillment (external store) → Analytics.
- *
- * Distinct from other platform cuts (do not conflate):
- * - Tips via Stripe webhook: ~10% artistShare split
- * - Artist settle route: 15% PLATFORM_FEE_RATE
- * - Beat marketplace / RevenueSplitEngine presets: 15–25% depending on product
- * - Tickets: Venue/Promoter authority (Rule 17) — not this fee
- *
- * Commerce Connector service fee (external storefront deep-link / referral):
- * 500 bps = 5%. Aligns with "lowest platform fee — 5%" venue messaging and
- * the Phase-1 pitch vs $0.003 streaming — artist keeps pricing sovereignty.
+ * Distinct from:
+ * - Tickets: Venue/Promoter authority (Rule 17)
+ * - Subscriptions / ads / sponsor placements: non-creator presets
+ * - Commerce Connector service fee (external storefront deep-link): 5% below
  */
+
+import {
+  CREATOR_COMMERCE_PLATFORM_FEE_BPS,
+  normalizeCommerceTier,
+  type CommerceMembershipTier,
+} from "@/lib/commerce/RevenueSplitEngine";
 
 /** Basis points: 500 = 5.00% TMI commerce service fee on connector path. */
 export const TMI_COMMERCE_SERVICE_FEE_BPS = 500;
@@ -35,3 +35,14 @@ export function computeCommerceServiceFeeCents(grossCents: number): number {
   if (grossCents <= 0) return 0;
   return Math.floor((grossCents * TMI_COMMERCE_SERVICE_FEE_BPS) / 10_000);
 }
+
+export function creatorPlatformFeePercent(tier?: string | null): number {
+  const t = normalizeCommerceTier(tier);
+  return CREATOR_COMMERCE_PLATFORM_FEE_BPS[t] / 100;
+}
+
+export function creatorPlatformFeeBps(tier?: string | null): number {
+  return CREATOR_COMMERCE_PLATFORM_FEE_BPS[normalizeCommerceTier(tier)];
+}
+
+export type { CommerceMembershipTier };

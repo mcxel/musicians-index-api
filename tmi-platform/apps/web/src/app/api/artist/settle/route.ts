@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  calculateCreatorCommerceSplit,
+  describeCreatorCommerceFee,
+  normalizeCommerceTier,
+} from "@/lib/commerce/RevenueSplitEngine";
+import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
 
 interface LedgerEntry {
   id: string;
@@ -7,14 +13,13 @@ interface LedgerEntry {
   grossUSD: number;
   platformFeeUSD: number;
   netUSD: number;
-  source: "tips" | "tickets" | "sponsorship" | "beat_sale" | "nft_mint";
+  sellerTier: string;
+  source: "tips" | "tickets" | "sponsorship" | "beat_sale" | "nft_mint" | "merch";
   settledAt: string;
   status: "settled" | "pending" | "failed";
 }
 
 const ledger: LedgerEntry[] = [];
-
-const PLATFORM_FEE_RATE = 0.15;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,7 +35,8 @@ export async function POST(request: Request) {
       performerId: string;
       sessionId?: string;
       grossUSD: number;
-      source: "tips" | "tickets" | "sponsorship" | "beat_sale" | "nft_mint";
+      source: "tips" | "tickets" | "sponsorship" | "beat_sale" | "nft_mint" | "merch";
+      sellerTier?: string;
     };
 
     const { performerId, grossUSD, source } = body;
@@ -41,8 +47,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "grossUSD must be positive" }, { status: 422 });
     }
 
-    const platformFeeUSD = Math.round(grossUSD * PLATFORM_FEE_RATE * 100) / 100;
-    const netUSD = Math.round((grossUSD - platformFeeUSD) * 100) / 100;
+    // Tickets / sponsorship keep non-creator paths; creator sources use tier ladder.
+    const creatorSources = new Set(["tips", "beat_sale", "nft_mint", "merch"]);
+    let platformFeeUSD: number;
+    let netUSD: number;
+    let sellerTier = "N/A";
+
+    if (creatorSources.has(source)) {
+      const tier = body.sellerTier
+        ? normalizeCommerceTier(body.sellerTier)
+        : await resolveSellerCommerceTier(performerId);
+      sellerTier = tier;
+      const cents = Math.round(grossUSD * 100);
+      const split = calculateCreatorCommerceSplit(cents, 0, tier);
+      platformFeeUSD = Math.round((split.splits.platform.cents / 100) * 100) / 100;
+      netUSD = Math.round((split.splits.artist.cents / 100) * 100) / 100;
+    } else {
+      // Non-creator (tickets/sponsorship) — keep prior 15% settle stub
+      platformFeeUSD = Math.round(grossUSD * 0.15 * 100) / 100;
+      netUSD = Math.round((grossUSD - platformFeeUSD) * 100) / 100;
+    }
 
     const entry: LedgerEntry = {
       id: `settle_${Date.now()}`,
@@ -51,6 +75,7 @@ export async function POST(request: Request) {
       grossUSD,
       platformFeeUSD,
       netUSD,
+      sellerTier,
       source,
       settledAt: new Date().toISOString(),
       status: "settled",
@@ -61,7 +86,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       settlement: entry,
-      message: `$${netUSD.toFixed(2)} settled to performer (${PLATFORM_FEE_RATE * 100}% platform fee applied)`,
+      message: creatorSources.has(source)
+        ? `$${netUSD.toFixed(2)} settled · ${describeCreatorCommerceFee(sellerTier)}`
+        : `$${netUSD.toFixed(2)} settled to performer (15% platform fee applied)`,
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
