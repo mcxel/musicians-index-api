@@ -3,21 +3,33 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import WinnerStaysChallengerHUD from "@/components/battles/WinnerStaysChallengerHUD";
 import ChallengeThisPerformanceButton from "@/components/battles/ChallengeThisPerformanceButton";
-import { winnerStaysLifecycleEngine } from "@/lib/competition/WinnerStaysLifecycleEngine";
+import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import {
+  winnerStaysLifecycleEngine,
+  type WinnerStaysSession,
+} from "@/lib/competition/WinnerStaysLifecycleEngine";
 import { battleChallengeEconomyEngine } from "@/lib/competition/BattleChallengeEconomyEngine";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
   { ssr: false },
 );
 
+const CHALLENGER_SLOT = {
+  userId: "challenger-fan",
+  displayName: "Challenger",
+};
+
 export default function BattleRoomByIdPage() {
   const params = useParams();
   const roomId = typeof params?.roomId === "string" ? params.roomId : "battle-open";
   const battleId = roomId.startsWith("battle-") ? roomId.replace(/^battle-/, "") : roomId;
+  const [session, setSession] = useState<WinnerStaysSession | null>(null);
+  const [voterId] = useState(() => getGuestId());
 
   const actor = useMemo(
     () => ({
@@ -30,13 +42,28 @@ export default function BattleRoomByIdPage() {
     [],
   );
 
+  const matchRoster = useMemo(() => {
+    const championId = session?.championId?.trim() || actor.userId;
+    const challengerId = session?.challengerId?.trim() || CHALLENGER_SLOT.userId;
+    const ids = [championId, challengerId].filter((id, i, arr) => arr.indexOf(id) === i);
+    const labels: Record<string, string> = {
+      [championId]: session?.championName?.trim() || actor.displayName,
+      [challengerId]: session?.challengerName?.trim() || CHALLENGER_SLOT.displayName,
+    };
+    return { ids, labels };
+  }, [session, actor.userId, actor.displayName]);
+
+  const rubricOpen =
+    session?.phase === "RESULT_PENDING" || session?.phase === "CHALLENGER_CALL";
+
   useEffect(() => {
     if (!winnerStaysLifecycleEngine.getSession(battleId)) {
-      winnerStaysLifecycleEngine.startMatch(battleId, roomId);
+      winnerStaysLifecycleEngine.startMatch(battleId, roomId, actor.userId, actor.displayName);
     }
     // Seed earned points so CHALLENGE eligibility is real for the demo actor.
     battleChallengeEconomyEngine.seedUser(actor.userId, 100);
-  }, [actor.userId, battleId, roomId]);
+    return winnerStaysLifecycleEngine.subscribe(battleId, (s) => setSession({ ...s }));
+  }, [actor.userId, actor.displayName, battleId, roomId]);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", position: "relative" }}>
@@ -116,6 +143,17 @@ export default function BattleRoomByIdPage() {
         <UniversalVenueRenderer roomId={roomId} mode="audience" venueIndex={0} instantEmptyStage />
         <WinnerStaysChallengerHUD battleId={battleId} actor={actor} />
       </div>
+
+      {rubricOpen && (
+        <FanRubricVotingPanel
+          roomId={roomId}
+          eventId={`${battleId}-${session?.phase ?? "result"}`}
+          performerIds={matchRoster.ids}
+          performerLabels={matchRoster.labels}
+          voterId={voterId}
+          votingOpen={rubricOpen}
+        />
+      )}
 
       <div style={{ padding: 16, maxWidth: 480 }}>
         <ChallengeThisPerformanceButton

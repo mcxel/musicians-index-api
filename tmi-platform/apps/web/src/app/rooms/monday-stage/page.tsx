@@ -302,7 +302,30 @@ export default function MondayStagePage() {
           </div>
 
           {/* ── MAIN GRID ── */}
-          <ArenaEventShell roomId="monday-stage" eventType="monday-stage" mode="audience" />
+          <ArenaEventShell
+            roomId="monday-stage"
+            eventType="monday-stage"
+            mode="audience"
+            liveState={stageState === "LIVE" ? "live" : stageState === "CURTAIN_CLOSED" ? "soon" : "live"}
+            watcherCount={viewers}
+            leftParticipant={
+              currentArtist
+                ? { id: currentArtist.id, displayName: currentArtist.artist }
+                : null
+            }
+            rightParticipant={
+              calledArtist && calledArtist.id !== currentArtist?.id
+                ? { id: calledArtist.id, displayName: calledArtist.artist }
+                : lineup[queueIndex + 1]
+                  ? {
+                      id: lineup[queueIndex + 1].id,
+                      displayName: lineup[queueIndex + 1].artist,
+                    }
+                  : null
+            }
+            rubricVotingOpen={stageState === "LIVE" && Boolean(currentArtist)}
+            rubricEventId={currentArtist ? `monday-${currentArtist.id}` : "monday-stage"}
+          />
           <div style={{ padding: '24px 32px 0', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24 }}>
 
             {/* LEFT — Stage + Controls */}

@@ -20,6 +20,8 @@ import TitleLineageTimeline from "./TitleLineageTimeline";
 import LivingRankingsPanel from "./LivingRankingsPanel";
 import HallOfFameSection from "./HallOfFameSection";
 import ChampionshipBroadcastOverlay from "./ChampionshipBroadcastOverlay";
+import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 type SectionId =
   | "crowns"
@@ -63,6 +65,7 @@ export default function ChampionshipCenterDrawer({
   const [section, setSection] = useState<SectionId>("crowns");
   const [lineageTitleId, setLineageTitleId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [rubricVoterId] = useState(() => getGuestId());
 
   const titles = useMemo(() => listChampionshipTitles(), [tick]);
   const crowns = useMemo(() => listTitlesByAssetType("CROWN"), [tick]);
@@ -299,6 +302,33 @@ export default function ChampionshipCenterDrawer({
               })}
             </div>
           ))}
+
+      {/* Belt / crown challenge rubric — opens when a real holder + challenger pair exists */}
+      {(section === "belts" || section === "challenges") &&
+        (() => {
+          const challenge = openChallenges[0];
+          const title = challenge
+            ? titles.find((t) => t.id === challenge.titleId)
+            : activeBelts[0] ?? activeCrowns[0];
+          const holderId = title?.currentHolderId;
+          const challengerId = challenge?.challengerId;
+          if (!holderId || !challengerId || holderId === challengerId) return null;
+          const holder = getPerformerById(holderId);
+          const challenger = getPerformerById(challengerId);
+          return (
+            <FanRubricVotingPanel
+              roomId={`championship-${title?.id ?? "belt"}`}
+              eventId={challenge?.id ?? `defense-${title?.id}`}
+              performerIds={[holderId, challengerId]}
+              performerLabels={{
+                [holderId]: holder?.name ?? "Champion",
+                [challengerId]: challenger?.name ?? "Challenger",
+              }}
+              voterId={rubricVoterId}
+              votingOpen
+            />
+          );
+        })()}
 
       {section === "vacant" &&
         (vacant.length === 0

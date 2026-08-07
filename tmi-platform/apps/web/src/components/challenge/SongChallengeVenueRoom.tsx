@@ -369,6 +369,8 @@ export default function SongChallengeVenueRoom({
           roundLabel="SONG VS SONG"
           instantEmptyStage
           suppressPresentation
+          rubricVotingOpen={phase === "vote" || phase === "winner"}
+          rubricEventId={`${roomId}-${phase === "winner" ? "result" : "vote"}`}
         />
       </div>
 

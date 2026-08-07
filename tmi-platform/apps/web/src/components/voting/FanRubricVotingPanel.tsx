@@ -1,11 +1,13 @@
 "use client";
 
 /**
- * Fan Real-Time Rubric Voting Panel — pops when window open, dismisses when closed.
- * Complements Gauntlet elimination vote; gifts never count.
+ * Fan Real-Time Rubric Voting — docked edge capsule (canister-style).
+ * Pops when the voting window opens; collapse/dismiss never leaves the watch view.
+ * Complements elimination / crowd votes; gifts never count.
  */
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { DEFAULT_RUBRIC_CRITERIA } from "@/lib/voting/FanRubricVotingEngine";
 
 type Tallies = {
@@ -29,6 +31,8 @@ type Props = {
   votingOpen: boolean;
   performerLabels?: Record<string, string>;
   onDismiss?: () => void;
+  /** Dock side — default right so stage stays clear. */
+  dock?: "right" | "left";
 };
 
 export default function FanRubricVotingPanel({
@@ -39,13 +43,15 @@ export default function FanRubricVotingPanel({
   votingOpen,
   performerLabels = {},
   onDismiss,
+  dock = "right",
 }: Props) {
   const [tallies, setTallies] = useState<Tallies | null>(null);
   const [selected, setSelected] = useState<string | null>(performerIds[0] ?? null);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  /** Collapsed by user — room stays live; edge tab can re-expand. */
+  const [collapsed, setCollapsed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -65,7 +71,7 @@ export default function FanRubricVotingPanel({
 
   useEffect(() => {
     if (!votingOpen) {
-      setDismissed(false);
+      setCollapsed(false);
       void fetch(`/api/rooms/${encodeURIComponent(roomId)}/rubric-vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +81,7 @@ export default function FanRubricVotingPanel({
     }
 
     const ids = performerKey.split("|").filter(Boolean);
+    setSelected((prev) => (prev && ids.includes(prev) ? prev : ids[0] ?? null));
     void fetch(`/api/rooms/${encodeURIComponent(roomId)}/rubric-vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,10 +96,11 @@ export default function FanRubricVotingPanel({
     return () => clearInterval(id);
   }, [votingOpen, roomId, eventId, performerKey, refresh]);
 
-  if (!votingOpen || dismissed) return null;
+  if (!votingOpen || performerIds.length === 0) return null;
 
   const criteria = tallies?.criteria?.length ? tallies.criteria : DEFAULT_RUBRIC_CRITERIA;
   const open = tallies?.open ?? votingOpen;
+  const edge = dock === "right" ? { right: 0 } : { left: 0 };
 
   async function submit() {
     if (!voterId || !selected) {
@@ -132,141 +140,249 @@ export default function FanRubricVotingPanel({
   }
 
   return (
-    <div style={shell} data-fan-rubric-voting-panel>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.18em", color: "#FFD700" }}>
-            FAN RUBRIC VOTE {open ? "· OPEN" : "· CLOSED"}
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-            Gifts ≠ votes · Real tallies only · Complements elimination vote
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setDismissed(true);
-            onDismiss?.();
-          }}
-          style={dismissBtn}
-        >
-          DISMISS
-        </button>
-      </div>
+    <div
+      data-fan-rubric-voting-panel
+      style={{
+        position: "fixed",
+        top: "18%",
+        bottom: "12%",
+        zIndex: 46,
+        pointerEvents: "none",
+        ...edge,
+      }}
+    >
+      <AnimatePresence mode="wait">
+        {collapsed ? (
+          <motion.button
+            key="rubric-tab"
+            type="button"
+            initial={{ opacity: 0, x: dock === "right" ? 40 : -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: dock === "right" ? 40 : -40 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            onClick={() => setCollapsed(false)}
+            style={{
+              ...edgeTab,
+              pointerEvents: "auto",
+              [dock === "right" ? "borderTopLeftRadius" : "borderTopRightRadius"]: 10,
+              [dock === "right" ? "borderBottomLeftRadius" : "borderBottomRightRadius"]: 10,
+              [dock === "right" ? "borderRight" : "borderLeft"]: "none",
+            }}
+            aria-label="Expand fan rubric vote"
+          >
+            <span style={{ writingMode: "vertical-rl", transform: dock === "right" ? "rotate(180deg)" : undefined }}>
+              FAN RUBRIC · {open ? "OPEN" : "CLOSED"}
+            </span>
+          </motion.button>
+        ) : (
+          <motion.aside
+            key="rubric-dock"
+            initial={{ opacity: 0, x: dock === "right" ? 80 : -80, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: dock === "right" ? 80 : -80, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26 }}
+            style={{
+              ...capsule,
+              pointerEvents: "auto",
+              [dock === "right" ? "marginRight" : "marginLeft"]: 10,
+              [dock === "right" ? "borderTopRightRadius" : "borderTopLeftRadius"]: 4,
+              [dock === "right" ? "borderBottomRightRadius" : "borderBottomLeftRadius"]: 4,
+            }}
+          >
+            <div style={headerRow}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.18em", color: "#FFD700" }}>
+                  FAN RUBRIC VOTE {open ? "· OPEN" : "· CLOSED"}
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", marginTop: 2 }}>
+                  Gifts ≠ votes · Watch & score in place
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(true)}
+                  style={iconBtn}
+                  aria-label="Collapse rubric panel"
+                >
+                  COLLAPSE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCollapsed(true);
+                    onDismiss?.();
+                  }}
+                  style={iconBtn}
+                  aria-label="Dismiss rubric panel"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        {performerIds.map((id) => {
-          const row = tallies?.byPerformer.find((p) => p.performerId === id);
-          const active = selected === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSelected(id)}
-              style={{
-                ...chip,
-                borderColor: active ? "#FF2DAA" : "rgba(255,255,255,0.15)",
-                background: active ? "rgba(255,45,170,0.18)" : "rgba(0,0,0,0.35)",
-                color: active ? "#FF2DAA" : "#fff",
-              }}
-            >
-              {performerLabels[id] ?? id.slice(0, 10)}
-              <span style={{ opacity: 0.7, marginLeft: 6 }}>
-                {row?.ballotCount ?? 0} · won {row?.whoWonCount ?? 0}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-        {criteria
-          .filter((c) => c.id !== "who_won")
-          .map((c) => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 120, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{c.label}</span>
-              <div style={{ display: "flex", gap: 4 }}>
-                {[1, 2, 3, 4, 5].map((n) => (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, flexShrink: 0 }}>
+              {performerIds.map((id) => {
+                const row = tallies?.byPerformer.find((p) => p.performerId === id);
+                const active = selected === id;
+                return (
                   <button
-                    key={n}
+                    key={id}
                     type="button"
-                    disabled={!open}
-                    onClick={() => setScores((s) => ({ ...s, [c.id]: n }))}
+                    onClick={() => setSelected(id)}
                     style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      border: `1px solid ${(scores[c.id] ?? 0) >= n ? "#00FFFF" : "rgba(255,255,255,0.15)"}`,
-                      background: (scores[c.id] ?? 0) >= n ? "rgba(0,255,255,0.2)" : "transparent",
-                      color: "#fff",
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: open ? "pointer" : "not-allowed",
+                      ...chip,
+                      borderColor: active ? "#FF2DAA" : "rgba(255,255,255,0.15)",
+                      background: active ? "rgba(255,45,170,0.18)" : "rgba(0,0,0,0.35)",
+                      color: active ? "#FF2DAA" : "#fff",
                     }}
                   >
-                    {n}
+                    {(performerLabels[id] ?? id).slice(0, 14)}
+                    <span style={{ opacity: 0.65, marginLeft: 5, fontSize: 9 }}>
+                      {row?.ballotCount ?? 0}
+                    </span>
                   </button>
-                ))}
-              </div>
-              {selected && (
-                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-                  avg {tallies?.byPerformer.find((p) => p.performerId === selected)?.averages[c.id] ?? "—"}
-                </span>
-              )}
+                );
+              })}
             </div>
-          ))}
-      </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <button type="button" disabled={!open || busy || !selected} onClick={() => void submit()} style={submitBtn}>
-          {busy ? "SUBMITTING…" : "CAST RUBRIC BALLOT"}
-        </button>
-        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-          {tallies?.totalBallots ?? 0} ballots this window
-        </span>
-      </div>
-      {msg && <p style={{ margin: "10px 0 0", fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{msg}</p>}
+            <div style={{ fontSize: 9, color: "rgba(255,215,0,0.7)", marginBottom: 8, fontWeight: 700 }}>
+              Who won → select performer chip above
+            </div>
+            <div style={criteriaScroll}>
+              {criteria
+                .filter((c) => c.id !== "who_won")
+                .map((c) => (
+                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span
+                      style={{
+                        width: 108,
+                        flexShrink: 0,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "rgba(255,255,255,0.7)",
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                    <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          disabled={!open}
+                          onClick={() => setScores((s) => ({ ...s, [c.id]: n }))}
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 6,
+                            border: `1px solid ${(scores[c.id] ?? 0) >= n ? "#00FFFF" : "rgba(255,255,255,0.15)"}`,
+                            background: (scores[c.id] ?? 0) >= n ? "rgba(0,255,255,0.2)" : "transparent",
+                            color: "#fff",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: open ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    {selected && (
+                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginLeft: "auto" }}>
+                        avg {tallies?.byPerformer.find((p) => p.performerId === selected)?.averages[c.id] ?? "—"}
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10, flexShrink: 0 }}>
+              <button type="button" disabled={!open || busy || !selected} onClick={() => void submit()} style={submitBtn}>
+                {busy ? "SUBMITTING…" : "CAST BALLOT"}
+              </button>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+                {tallies?.totalBallots ?? 0} ballots
+              </span>
+            </div>
+            {msg && <p style={{ margin: "8px 0 0", fontSize: 10, color: "rgba(255,255,255,0.55)" }}>{msg}</p>}
+          </motion.aside>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-const shell: CSSProperties = {
-  margin: "0 16px 12px",
-  padding: 14,
-  borderRadius: 12,
-  border: "1px solid rgba(255,215,0,0.35)",
-  background: "linear-gradient(135deg, rgba(40,30,5,0.85), rgba(5,5,16,0.95))",
-  boxShadow: "0 0 24px rgba(255,215,0,0.08)",
+const capsule: CSSProperties = {
+  width: "min(320px, calc(100vw - 24px))",
+  maxHeight: "100%",
+  display: "flex",
+  flexDirection: "column",
+  padding: 12,
+  borderRadius: 14,
+  border: "1px solid rgba(255,215,0,0.4)",
+  background: "linear-gradient(160deg, rgba(28,22,8,0.94), rgba(5,5,16,0.97))",
+  boxShadow: "0 12px 40px rgba(0,0,0,0.55), 0 0 28px rgba(255,215,0,0.1)",
+  backdropFilter: "blur(12px)",
 };
 
-const dismissBtn: CSSProperties = {
+const headerRow: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 8,
+  marginBottom: 10,
+  flexShrink: 0,
+};
+
+const criteriaScroll: CSSProperties = {
+  overflowY: "auto",
+  flex: 1,
+  minHeight: 0,
+  paddingRight: 4,
+  marginRight: -4,
+};
+
+const edgeTab: CSSProperties = {
+  border: "1px solid rgba(255,215,0,0.45)",
+  background: "linear-gradient(180deg, rgba(40,30,5,0.95), rgba(5,5,16,0.98))",
+  color: "#FFD700",
+  fontSize: 9,
+  fontWeight: 900,
+  letterSpacing: "0.14em",
+  padding: "14px 8px",
+  cursor: "pointer",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+};
+
+const iconBtn: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.2)",
   background: "transparent",
   color: "rgba(255,255,255,0.55)",
-  fontSize: 9,
+  fontSize: 8,
   fontWeight: 800,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.1em",
   borderRadius: 6,
-  padding: "5px 10px",
+  padding: "4px 8px",
   cursor: "pointer",
 };
 
 const chip: CSSProperties = {
-  padding: "7px 10px",
+  padding: "6px 8px",
   borderRadius: 8,
   border: "1px solid",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const submitBtn: CSSProperties = {
-  padding: "10px 16px",
+  padding: "9px 14px",
   borderRadius: 8,
   border: "1px solid rgba(255,215,0,0.5)",
   background: "linear-gradient(90deg,#FFD700,#FF9500)",
   color: "#050510",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 900,
   letterSpacing: "0.08em",
   cursor: "pointer",

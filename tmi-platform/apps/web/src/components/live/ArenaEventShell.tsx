@@ -20,7 +20,7 @@
  */
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
@@ -31,6 +31,8 @@ import type {
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import { MemoryLedger } from "@/core/eos/memoryLedger";
+import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -140,6 +142,15 @@ interface ArenaEventShellProps {
    * No progressive bot stadium fill; watching count stays honest (Rule 20).
    */
   readonly instantEmptyStage?: boolean;
+  /**
+   * Fan rubric dock — open when voting window is live (RESULT / vote phase / etc.).
+   * Defaults: open on RESULTS when left+right participants exist.
+   */
+  readonly rubricVotingOpen?: boolean;
+  readonly rubricPerformerIds?: string[];
+  readonly rubricPerformerLabels?: Record<string, string>;
+  readonly rubricEventId?: string;
+  readonly rubricVoterId?: string | null;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -153,6 +164,16 @@ const LIVE_STATE_LABEL: Record<ArenaLiveState, string> = {
   live: "LIVE",
   ended: "ENDED",
 };
+
+/** Event types that host fan rubric voting via this shared shell. */
+const RUBRIC_EVENT_TYPES = new Set<ArenaEventType>([
+  "battle",
+  "cypher",
+  "challenge",
+  "song-challenge",
+  "monday-stage",
+  "deal-or-feud",
+]);
 
 export default function ArenaEventShell({
   roomId,
@@ -168,11 +189,17 @@ export default function ArenaEventShell({
   winnerParticipantId = null,
   suppressPresentation = false,
   instantEmptyStage = false,
+  rubricVotingOpen,
+  rubricPerformerIds,
+  rubricPerformerLabels,
+  rubricEventId,
+  rubricVoterId,
 }: ArenaEventShellProps) {
   const venueIndex = VENUE_MAP[eventType] ?? 0;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
   const venueSlug = VENUE_SLUG_MAP[eventType];
   const showHeroes = liveState === "live";
+  const [guestVoterId] = useState(() => (typeof window !== "undefined" ? getGuestId() : null));
 
   // Hooks must run unconditionally - default to BATTLE's theme set when this
   // isn't a competition format, but its colors only get used below when
@@ -185,6 +212,27 @@ export default function ArenaEventShell({
 
   const venueType = arenaEventTypeToVenueType(eventType);
   const isLive = liveState === "live";
+
+  const rubricIds = useMemo(() => {
+    if (rubricPerformerIds && rubricPerformerIds.length > 0) return rubricPerformerIds;
+    const derived = [leftParticipant?.id, rightParticipant?.id].filter(
+      (id): id is string => Boolean(id?.trim()),
+    );
+    return derived;
+  }, [rubricPerformerIds, leftParticipant?.id, rightParticipant?.id]);
+
+  const rubricLabels = useMemo(() => {
+    if (rubricPerformerLabels) return rubricPerformerLabels;
+    const labels: Record<string, string> = {};
+    if (leftParticipant?.id) labels[leftParticipant.id] = leftParticipant.displayName;
+    if (rightParticipant?.id) labels[rightParticipant.id] = rightParticipant.displayName;
+    return labels;
+  }, [rubricPerformerLabels, leftParticipant, rightParticipant]);
+
+  const showRubric =
+    RUBRIC_EVENT_TYPES.has(eventType) &&
+    rubricIds.length > 0 &&
+    (rubricVotingOpen ?? liveState === "ended");
 
   // ── Phase 7: Memory Ledger hooks ─────────────────────────────────────────
   // Emit WINNER_DECLARED when a winner surfaces. actorId is the winning
@@ -285,6 +333,19 @@ export default function ArenaEventShell({
           />
         )}
       </div>
+
+      {/* Fan rubric dock — shared wire for battle / challenge / monday-stage /
+          deal-or-feud / song-challenge / cypher when a roster + window exist. */}
+      {showRubric && (
+        <FanRubricVotingPanel
+          roomId={roomId}
+          eventId={rubricEventId ?? roomId}
+          performerIds={rubricIds}
+          performerLabels={rubricLabels}
+          voterId={rubricVoterId ?? guestVoterId}
+          votingOpen={showRubric}
+        />
+      )}
     </div>
     </RoomEnvironmentLayer>
   );

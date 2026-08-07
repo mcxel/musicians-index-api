@@ -2,6 +2,12 @@
  * FanRubricVotingEngine — real-time fan rubric votes for battles / gauntlet / challenges.
  * Distinct from Gauntlet audience elimination. Gifts never count as votes.
  * Rule 20: real ballots only; tallies start at zero.
+ *
+ * Persistence (2026-08-07): in-memory Maps only for now.
+ * Prisma `BattleVote` / `ContestVote` are single-pick models (contestant index /
+ * entryId) — they do not fit multi-criterion rubric scores + performer improvement
+ * ledger. Leave in-memory until a dedicated RubricBallot / PerformerRubricStats
+ * model ships; do not force-fit into BattleVote.
  */
 
 import { getXpValue } from "@/lib/xp/XpActionRegistry";
@@ -13,6 +19,10 @@ export type RubricCriterion =
   | "delivery"
   | "stage_presence"
   | "showmanship"
+  | "musicality"
+  | "energy"
+  | "crowd_connection"
+  | "technical_skill"
   | string;
 
 export const DEFAULT_RUBRIC_CRITERIA: Array<{ id: RubricCriterion; label: string }> = [
@@ -22,6 +32,10 @@ export const DEFAULT_RUBRIC_CRITERIA: Array<{ id: RubricCriterion; label: string
   { id: "delivery", label: "Delivery" },
   { id: "stage_presence", label: "Stage presence" },
   { id: "showmanship", label: "Showmanship" },
+  { id: "musicality", label: "Musicality" },
+  { id: "energy", label: "Energy" },
+  { id: "crowd_connection", label: "Crowd connection" },
+  { id: "technical_skill", label: "Technical skill" },
 ];
 
 export type RubricVoteBallot = {

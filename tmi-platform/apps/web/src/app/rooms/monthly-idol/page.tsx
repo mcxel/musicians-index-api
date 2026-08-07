@@ -121,7 +121,31 @@ export default function MonthlyIdolPage() {
             </div>
           </div>
 
-          <ArenaEventShell roomId="monthly-idol" eventType="challenge" mode="audience" />
+          <ArenaEventShell
+            roomId="monthly-idol"
+            eventType="challenge"
+            mode="audience"
+            liveState={phase === "CROWNED" || phase === "FINALE" ? "ended" : "live"}
+            watcherCount={watching}
+            leftParticipant={
+              CONTESTANTS[0]
+                ? { id: `idol-${CONTESTANTS[0].id}`, displayName: CONTESTANTS[0].name }
+                : null
+            }
+            rightParticipant={
+              CONTESTANTS[1]
+                ? { id: `idol-${CONTESTANTS[1].id}`, displayName: CONTESTANTS[1].name }
+                : null
+            }
+            rubricVotingOpen={
+              CONTESTANTS.length >= 2 &&
+              (phase === "ROUND 1" ||
+                phase === "QUARTERFINALS" ||
+                phase === "SEMIFINALS" ||
+                phase === "FINALE")
+            }
+            rubricEventId={`monthly-idol-${phase}`}
+          />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, padding: "24px 32px" }}>
 
             {/* Contestant grid */}

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { WidgetDefinition } from "@/core/eos/types";
 import PerformanceVotePanel from "@/components/arena/PerformanceVotePanel";
+import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionScoreboard from "@/components/competition/presentation/CompetitionScoreboard";
 import CompetitionCrowdMeter from "@/components/competition/presentation/CompetitionCrowdMeter";
 import CompetitionTimer from "@/components/competition/presentation/CompetitionTimer";
@@ -18,6 +20,7 @@ import CypherBeatPlayer from "@/components/eos/widgets/CypherBeatPlayer";
 import CypherStatusHUD from "@/components/eos/widgets/CypherStatusHUD";
 import CypherRoundTimer from "@/components/eos/widgets/CypherRoundTimer";
 import type { CompetitionFormat } from "@/lib/competition/ThemeRegistry";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 export interface ExperienceWidgetLayerProps {
   widgets: WidgetDefinition[];
@@ -39,6 +42,35 @@ function competitionFormatFromCategory(category: string): CompetitionFormat {
   return "BATTLE";
 }
 
+/** Crowd vote + fan rubric dock — EOS battle/challenge/monday manifests. */
+function EosVotingStack({ roomId }: { roomId: string }) {
+  const [voterId] = useState(() => getGuestId());
+  const sideA = `side-a-${roomId}`;
+  const sideB = `side-b-${roomId}`;
+  return (
+    <>
+      <PerformanceVotePanel
+        battleId={roomId}
+        artistALabel="Challenger"
+        artistBLabel="Defender"
+        artistAId={sideA}
+        artistBId={sideB}
+        accentA="#00FFFF"
+        accentB="#FF2DAA"
+        autoOpenVoting
+      />
+      <FanRubricVotingPanel
+        roomId={roomId}
+        eventId={`${roomId}-eos-vote`}
+        performerIds={[sideA, sideB]}
+        performerLabels={{ [sideA]: "Challenger", [sideB]: "Defender" }}
+        voterId={voterId}
+        votingOpen
+      />
+    </>
+  );
+}
+
 function groupWidgetsByLayer(widgets: WidgetDefinition[]) {
   return widgets.reduce<Record<WidgetDefinition["layer"], WidgetDefinition[]>>(
     (acc, widget) => {
@@ -58,16 +90,7 @@ function renderWidget(
 ) {
   switch (widget.id) {
     case "voting_panel":
-      return (
-        <PerformanceVotePanel
-          battleId={roomId}
-          artistALabel="Challenger"
-          artistBLabel="Defender"
-          accentA="#00FFFF"
-          accentB="#FF2DAA"
-          autoOpenVoting
-        />
-      );
+      return <EosVotingStack roomId={roomId} />;
     case "leaderboard":
       return (
         <CompetitionScoreboard

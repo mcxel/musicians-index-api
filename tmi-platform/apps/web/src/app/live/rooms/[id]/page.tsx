@@ -183,6 +183,16 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             eventType="battle"
             mode={performerSlug ? "performer" : "audience"}
             liveState="live"
+            leftParticipant={{
+              id: opponentAId ?? `side-a-${battleId}`,
+              displayName: opponentA,
+            }}
+            rightParticipant={{
+              id: opponentBId ?? `side-b-${battleId}`,
+              displayName: opponentB,
+            }}
+            rubricVotingOpen
+            rubricEventId={battleId ?? id}
           />
         ) : (
           /* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —

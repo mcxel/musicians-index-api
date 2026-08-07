@@ -136,7 +136,24 @@ export default function DirtyDozensRoomPage() {
             </div>
           </div>
 
-          <ArenaEventShell roomId="dirty-dozens" eventType="battle" mode="audience" />
+          <ArenaEventShell
+            roomId="dirty-dozens"
+            eventType="battle"
+            mode="audience"
+            liveState={phase === "result" || phase === "champion" || phase === "ended" ? "ended" : isLive ? "live" : "soon"}
+            leftParticipant={
+              battlerA
+                ? { id: matchup!.battlerAId, displayName: battlerA.displayName }
+                : null
+            }
+            rightParticipant={
+              battlerB
+                ? { id: matchup!.battlerBId, displayName: battlerB.displayName }
+                : null
+            }
+            rubricVotingOpen={phase === "voting" || phase === "result"}
+            rubricEventId={matchup ? `${DEMO_SHOW_ID}-${matchup.battlerAId}-${matchup.battlerBId}` : DEMO_SHOW_ID}
+          />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20, padding: "24px 32px" }}>
 
             {/* Main battle area */}

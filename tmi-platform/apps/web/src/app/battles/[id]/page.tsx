@@ -49,7 +49,15 @@ export default async function BattleArenaPage({ params }: Props) {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      <ArenaEventShell eventType="battle" roomId={roomId} />
+      <ArenaEventShell
+        eventType="battle"
+        roomId={roomId}
+        liveState={isLive ? "live" : hasEnded ? "ended" : "soon"}
+        leftParticipant={{ id: opponentAId, displayName: opponentA }}
+        rightParticipant={{ id: opponentBId, displayName: opponentB }}
+        rubricVotingOpen={isLive || hasEnded}
+        rubricEventId={id}
+      />
 
       {/* Back + breadcrumb */}
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "16px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
