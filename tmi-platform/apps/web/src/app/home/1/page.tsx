@@ -6,7 +6,8 @@ import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
 import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
-import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
+import type { LiveSession } from '@/lib/broadcast/globalLiveSessionStore';
 
 // Rule 12: No Empty Inventory — derive sponsor rail from registry, not hardcoded strings
 const RAIL_ZONES = [
@@ -46,7 +47,7 @@ async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
 
 async function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): Promise<PerformerIdentity[]> {
   const liveSessions = await getActiveSessionsDurable();
-  const liveUserIds = new Set(liveSessions.map(s => s.userId));
+  const liveUserIds = new Set(liveSessions.map((s: LiveSession) => s.userId));
   return performers.map(p => ({
     ...p,
     isLive: liveUserIds.has(p.id),
