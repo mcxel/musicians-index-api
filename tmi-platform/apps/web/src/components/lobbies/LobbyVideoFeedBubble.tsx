@@ -45,8 +45,8 @@ export const LobbyVideoFeedBubble = ({
   targetAgeClass?: SafetyAgeClass;
 }) => {
   const visibility = LobbyVideoPresenceEngine.getVisibility(state);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const speaking = typeof isSpeaking === 'boolean' ? isSpeaking : useVoiceActivity(userId);
+  const voiceFromMic = useVoiceActivity(userId);
+  const speaking = typeof isSpeaking === "boolean" ? isSpeaking : voiceFromMic;
 
   const decision = enforceAdultTeenContactBlock({
     source: 'lobby:video-feed',

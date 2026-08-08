@@ -54,6 +54,8 @@ import OperationsSidebar from "@/components/sidebar/OperationsSidebar";
 import CommandCenterTopNav from "./CommandCenterTopNav";
 import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
+import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
+import UniversalWorkspaceHost from "@/components/workspace/universal/UniversalWorkspaceHost";
 
 interface LiveApiSession {
   userId: string;
@@ -862,6 +864,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           </div>
         </>
       ) : null}
+
+      {/* One workspace overlay stack per hub shell (not per dock — avoids duplicate hosts on /dashboard). */}
+      <FloatingWorkspacePanel />
+      <UniversalWorkspaceHost userId={userId} />
     </div>
   );
 }

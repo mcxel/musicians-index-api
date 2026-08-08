@@ -67,8 +67,11 @@ function getSnapshot(): Record<string, WorkspaceInstanceState> {
   return cachedSnap;
 }
 
+/** Stable SSR snapshot — must not allocate a new object per call (React useSyncExternalStore). */
+const SERVER_SNAPSHOT: Record<string, WorkspaceInstanceState> = {};
+
 function getServerSnapshot(): Record<string, WorkspaceInstanceState> {
-  return {};
+  return SERVER_SNAPSHOT;
 }
 
 function subscribe(listener: Listener): () => void {

@@ -8,8 +8,6 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
-import UniversalWorkspaceHost from "@/components/workspace/universal/UniversalWorkspaceHost";
 import MemoryWallPanelOverlay from "@/components/panels/MemoryWallPanelOverlay";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
@@ -169,8 +167,6 @@ export default function PersistentMediaInteractionDock({
 
   return (
     <>
-      <FloatingWorkspacePanel />
-      <UniversalWorkspaceHost />
       <MemoryWallPanelOverlay
         isOpen={isMemoryWallOpen}
         onClose={() => setIsMemoryWallOpen(false)}
