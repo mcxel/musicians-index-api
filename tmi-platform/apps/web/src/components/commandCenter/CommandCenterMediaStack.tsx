@@ -6,7 +6,7 @@
  * Non-destructive monitor swapping preserves WebRTC video streams without flickering.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import {
@@ -393,6 +393,192 @@ function padSlots(list: CommandCenterMediaSlot[], count: number, prefix: string)
   return out.slice(0, count);
 }
 
+// ─── Screen share cell — renders a MediaStream inside any monitor cell ────────
+
+function ScreenShareVideo({
+  stream,
+  onStop,
+  label,
+}: {
+  stream: MediaStream;
+  onStop: () => void;
+  label: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = stream;
+  }, [stream]);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "#000", display: "flex", flexDirection: "column" }}>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ flex: 1, minHeight: 0, width: "100%", objectFit: "contain", background: "#000" }}
+      />
+      {/* HUD overlay — label + stop */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "4px 8px",
+          background: "linear-gradient(180deg,rgba(0,0,0,0.75),transparent)",
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 5, pointerEvents: "none" }}>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#00FF88",
+              boxShadow: "0 0 8px #00FF88",
+              display: "inline-block",
+              animation: "scrSharePulse 1.2s ease-in-out infinite",
+            }}
+          />
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#00FF88" }}>
+            SCREEN SHARE · {label}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onStop}
+          style={{
+            pointerEvents: "all",
+            background: "rgba(255,68,68,0.85)",
+            border: "none",
+            borderRadius: 4,
+            color: "#fff",
+            fontSize: 8,
+            fontWeight: 900,
+            padding: "2px 6px",
+            cursor: "pointer",
+          }}
+        >
+          ✕ STOP
+        </button>
+      </div>
+      <style>{`
+        @keyframes scrSharePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Slot picker — schematic mini grid for choosing which cell gets the share ─
+
+/** monitor=0 is Monitor A (top), monitor=1 is Monitor B (bottom). cellIndex = 0…7 */
+interface ShareSlot { monitor: 0 | 1; cellIndex: number }
+
+function SlotPickerPanel({
+  onPick,
+  activeSlot,
+  onClose,
+}: {
+  onPick: (slot: ShareSlot) => void;
+  activeSlot: ShareSlot | null;
+  onClose: () => void;
+}) {
+  const monitors: Array<{ label: string; mon: 0 | 1 }> = [
+    { label: "MONITOR A", mon: 0 },
+    { label: "MONITOR B", mon: 1 },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+      transition={{ duration: 0.18 }}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 6px)",
+        left: 0,
+        zIndex: 60,
+        width: 280,
+        background: "#0a0a1e",
+        border: "1px solid rgba(0,255,136,0.5)",
+        borderRadius: 10,
+        padding: 12,
+        boxShadow: "0 16px 48px rgba(0,0,0,0.75), 0 0 24px rgba(0,255,136,0.15)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00FF88" }}>
+          ⬡ ROUTE SCREEN SHARE TO SLOT
+        </span>
+        <button type="button" onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 12, lineHeight: 1 }}>✕</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {monitors.map(({ label, mon }) => (
+          <div key={mon}>
+            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginBottom: 5 }}>
+              {label}
+            </div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {/* Full-monitor slot */}
+              <SlotButton
+                label="FULL"
+                active={activeSlot?.monitor === mon && activeSlot.cellIndex === -1}
+                accent="#00FF88"
+                onClick={() => onPick({ monitor: mon, cellIndex: -1 })}
+              />
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((ci) => (
+                <SlotButton
+                  key={ci}
+                  label={`${ci + 1}`}
+                  active={activeSlot?.monitor === mon && activeSlot.cellIndex === ci}
+                  accent="#00FFFF"
+                  onClick={() => onPick({ monitor: mon, cellIndex: ci })}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 8, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
+        "FULL" routes to the whole monitor. Cell numbers match the split grid positions.
+        Your camera feed stays on its own slot — the share never blocks it.
+      </div>
+    </motion.div>
+  );
+}
+
+function SlotButton({ label, active, accent, onClick }: { label: string; active: boolean; accent: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "4px 8px",
+        borderRadius: 5,
+        border: `1px solid ${active ? accent : "rgba(255,255,255,0.15)"}`,
+        background: active ? `${accent}22` : "rgba(255,255,255,0.04)",
+        color: active ? accent : "rgba(255,255,255,0.5)",
+        fontSize: 9,
+        fontWeight: 800,
+        cursor: "pointer",
+        transition: "all 0.12s",
+        minWidth: 28,
+        textAlign: "center",
+        outline: active ? `1px solid ${accent}55` : "none",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function CommandCenterMediaStack({
   slots,
   footer,
@@ -404,6 +590,41 @@ export default function CommandCenterMediaStack({
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
 
+  // ── Screen share state ────────────────────────────────────────────────────
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [shareSlot, setShareSlot] = useState<ShareSlot | null>(null);
+  const [slotPickerOpen, setSlotPickerOpen] = useState(false);
+
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        setScreenStream(null);
+        setShareSlot(null);
+        setSlotPickerOpen(false);
+      });
+      setScreenStream(stream);
+      // default: route to Monitor B full
+      setShareSlot({ monitor: 1, cellIndex: -1 });
+      setSlotPickerOpen(true);
+    } catch {
+      // user cancelled
+    }
+  }, []);
+
+  const stopScreenShare = useCallback(() => {
+    screenStream?.getTracks().forEach((t) => t.stop());
+    setScreenStream(null);
+    setShareSlot(null);
+    setSlotPickerOpen(false);
+  }, [screenStream]);
+
+  const pickShareSlot = useCallback((slot: ShareSlot) => {
+    setShareSlot(slot);
+    setSlotPickerOpen(false);
+  }, []);
+
+  // ── Sponsor logic ─────────────────────────────────────────────────────────
   const pushSponsorLive = (sponsor: HouseSponsor) => {
     setActiveSponsorOverlay({ sponsor, pushedAt: Date.now() });
     setSponsorPanelOpen(false);
@@ -558,6 +779,64 @@ export default function CommandCenterMediaStack({
           </div>
         ) : null}
       </div>
+
+      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
+
+      {/* SHARE SCREEN — routes stream into any monitor slot without blocking camera feed */}
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          onClick={screenStream ? () => setSlotPickerOpen((v) => !v) : startScreenShare}
+          title={screenStream ? "Change which slot shows your screen share" : "Share your screen to a monitor slot"}
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 9px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: screenStream ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
+            background: screenStream ? "rgba(0,255,136,0.15)" : "transparent",
+            color: "#00FF88",
+            fontFamily: "inherit",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>{screenStream ? "⬡" : "⬡"}</span>
+          <span>{screenStream ? "SHARING…" : "SHARE SCREEN"}</span>
+        </button>
+        {screenStream && (
+          <button
+            type="button"
+            onClick={stopScreenShare}
+            title="Stop screen share"
+            style={{
+              marginLeft: 3,
+              fontSize: 7,
+              fontWeight: 900,
+              padding: "3px 6px",
+              borderRadius: 5,
+              border: "1px solid rgba(255,68,68,0.5)",
+              background: "rgba(255,68,68,0.12)",
+              color: "#FF6B6B",
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        )}
+        <AnimatePresence>
+          {slotPickerOpen && screenStream && (
+            <SlotPickerPanel
+              activeSlot={shareSlot}
+              onPick={pickShareSlot}
+              onClose={() => setSlotPickerOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 
@@ -628,40 +907,54 @@ export default function CommandCenterMediaStack({
           {
             id: topSlots[0]!.id,
             label: "MONITOR A",
-            children: (
-              <MonitorChrome
-                slot={topSlots[0]!}
-                onSwap={handleSwap}
-                onFullscreen={() => setFullscreenSlotId(topSlots[0]!.id)}
-                sponsorOverlay={activeSponsorOverlay}
-              />
+            children:
+              screenStream && shareSlot?.monitor === 0 && shareSlot.cellIndex === -1 ? (
+                <ScreenShareVideo stream={screenStream} onStop={stopScreenShare} label="MON A" />
+              ) : (
+                <MonitorChrome
+                  slot={topSlots[0]!}
+                  onSwap={handleSwap}
+                  onFullscreen={() => setFullscreenSlotId(topSlots[0]!.id)}
+                  sponsorOverlay={activeSponsorOverlay}
+                />
+              ),
+            cells: topSlots.map((slot, ci) =>
+              screenStream && shareSlot?.monitor === 0 && shareSlot.cellIndex === ci ? (
+                <ScreenShareVideo key={slot.id} stream={screenStream} onStop={stopScreenShare} label={`A${ci + 1}`} />
+              ) : (
+                <MonitorChrome
+                  key={slot.id}
+                  slot={slot}
+                  onFullscreen={() => setFullscreenSlotId(slot.id)}
+                  sponsorOverlay={activeSponsorOverlay}
+                />
+              ),
             ),
-            cells: topSlots.map((slot) => (
-              <MonitorChrome
-                key={slot.id}
-                slot={slot}
-                onFullscreen={() => setFullscreenSlotId(slot.id)}
-                sponsorOverlay={activeSponsorOverlay}
-              />
-            )),
           },
           {
             id: bottomSlots[0]!.id,
             label: "MONITOR B",
-            children: (
-              <MonitorChrome
-                slot={bottomSlots[0]!}
-                onSwap={handleSwap}
-                onFullscreen={() => setFullscreenSlotId(bottomSlots[0]!.id)}
-              />
+            children:
+              screenStream && shareSlot?.monitor === 1 && shareSlot.cellIndex === -1 ? (
+                <ScreenShareVideo stream={screenStream} onStop={stopScreenShare} label="MON B" />
+              ) : (
+                <MonitorChrome
+                  slot={bottomSlots[0]!}
+                  onSwap={handleSwap}
+                  onFullscreen={() => setFullscreenSlotId(bottomSlots[0]!.id)}
+                />
+              ),
+            cells: bottomSlots.map((slot, ci) =>
+              screenStream && shareSlot?.monitor === 1 && shareSlot.cellIndex === ci ? (
+                <ScreenShareVideo key={slot.id} stream={screenStream} onStop={stopScreenShare} label={`B${ci + 1}`} />
+              ) : (
+                <MonitorChrome
+                  key={slot.id}
+                  slot={slot}
+                  onFullscreen={() => setFullscreenSlotId(slot.id)}
+                />
+              ),
             ),
-            cells: bottomSlots.map((slot) => (
-              <MonitorChrome
-                key={slot.id}
-                slot={slot}
-                onFullscreen={() => setFullscreenSlotId(slot.id)}
-              />
-            )),
           },
         ]}
       />
