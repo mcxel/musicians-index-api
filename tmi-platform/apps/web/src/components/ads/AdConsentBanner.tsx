@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   AD_CONSENT_STORAGE_KEY,
   getAdSensePublisherId,
@@ -36,15 +37,20 @@ function loadAdSenseScript(): void {
 
 export default function AdConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+  // Admin operational surfaces have no ad inventory and the fixed bottom
+  // banner (zIndex 99999) sits on top of the Living OS Control Desk there.
+  const isAdminRoute = pathname?.startsWith('/admin');
 
   useEffect(() => {
+    if (isAdminRoute) return;
     const existing = readConsent();
     if (existing === 'accepted') {
       loadAdSenseScript();
       return;
     }
     if (existing === null) setVisible(true);
-  }, []);
+  }, [isAdminRoute]);
 
   const choose = (value: AdConsentValue) => {
     try {
@@ -57,7 +63,7 @@ export default function AdConsentBanner() {
     setVisible(false);
   };
 
-  if (!visible) return null;
+  if (!visible || isAdminRoute) return null;
 
   return (
     <div

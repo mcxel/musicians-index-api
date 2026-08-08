@@ -47,6 +47,7 @@ import CanonicalDualMonitorStack, { type MonitorSplitMode } from "@/components/m
 import { MonitorScreenShareVideo } from "@/components/monitors/MonitorScreenSharePrimitives";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 
 export type ShellDockButton = {
   label: string;
@@ -62,6 +63,8 @@ export type ShellPanel = {
   fixedHeight?: number;
   flex?: number;
   fullscreenKey?: string;
+  /** Matched against DRAWER_OPENED CommandBus payloads to jump/fullscreen this panel. */
+  requiredPermission?: string;
 };
 
 export type ShellWorkspaceDefinition = {
@@ -328,6 +331,10 @@ export default function OverseerFlightDeck({
   const leftCollapsed = drawerManager.isRailCollapsed("left");
   const rightCollapsed = drawerManager.isRailCollapsed("right");
   const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
+  const leftRailScrollRef = useRef<HTMLDivElement>(null);
+  const scrollLeftRail = (direction: "up" | "down") => {
+    leftRailScrollRef.current?.scrollBy({ top: direction === "up" ? -180 : 180, behavior: "smooth" });
+  };
   const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
@@ -345,6 +352,25 @@ export default function OverseerFlightDeck({
     ],
     [activeWorkspace],
   );
+
+  // Authority badges (ribbon) dispatch DRAWER_OPENED with the clicked permission —
+  // jump to (fullscreen if possible, else scroll into view) the first panel gated
+  // by that permission in the CURRENT role's workspace.
+  useEffect(() => {
+    return livingOsCommandBus.on("DRAWER_OPENED", (command) => {
+      const requiredPermission = command.payload?.requiredPermission;
+      if (typeof requiredPermission !== "string") return;
+      const match = allPanels.find((panel) => panel.requiredPermission === requiredPermission);
+      if (!match) return;
+      if (match.fullscreenKey) {
+        setFullscreenPanel(match.fullscreenKey);
+        return;
+      }
+      if (match.id) {
+        document.getElementById(match.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, [allPanels]);
 
   const fullscreenMatch = allPanels.find((panel) => panel.fullscreenKey === fullscreenPanel);
 
@@ -615,6 +641,7 @@ export default function OverseerFlightDeck({
     return (
       <div
         data-col={rail}
+        ref={isLeft ? leftRailScrollRef : undefined}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -1050,9 +1077,32 @@ export default function OverseerFlightDeck({
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "stretch",
+                minHeight: 0,
               }}
             >
-              {renderRail(activeWorkspace.leftRail, "left")}
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                {renderRail(activeWorkspace.leftRail, "left")}
+              </div>
+              {!leftCollapsed && activeWorkspace.leftRail.length > 1 ? (
+                <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 6, paddingTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => scrollLeftRail("up")}
+                    aria-label="Scroll left rail up"
+                    style={{ ...dockBtnStyle(false), width: 26, height: 20, borderRadius: 6, fontSize: 10 }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollLeftRail("down")}
+                    aria-label="Scroll left rail down"
+                    style={{ ...dockBtnStyle(false), width: 26, height: 20, borderRadius: 6, fontSize: 10 }}
+                  >
+                    ▼
+                  </button>
+                </div>
+              ) : null}
             </div>
             {/* Center monitors */}
             {renderRail(activeWorkspace.center, "center")}

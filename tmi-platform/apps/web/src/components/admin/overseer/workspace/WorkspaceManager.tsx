@@ -10,6 +10,7 @@ import { WORKSPACE_CONFIGS } from "./WorkspaceConfigs";
 import { filterWorkspaceByPermissions, listPermissions } from "./WorkspacePermissions";
 import type { WorkspacePanelConfig, WorkspaceRole } from "./WorkspaceSchema";
 import { getWorkspaceWidgetComponent } from "./WorkspaceWidgetRegistry";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 
 const toShellPanels = (panels: WorkspacePanelConfig[]): ShellPanel[] =>
   panels.map((panel) => {
@@ -23,6 +24,7 @@ const toShellPanels = (panels: WorkspacePanelConfig[]): ShellPanel[] =>
       fixedHeight: panel.fixedHeight,
       flex: panel.flex,
       fullscreenKey: panel.fullscreenKey,
+      requiredPermission: panel.requiredPermission,
       content: <Widget />,
     };
   });
@@ -76,8 +78,17 @@ export default function WorkspaceManager() {
     const roleBadges = (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
         {listPermissions(resolvedRole).map((permission) => (
-          <span
+          <button
             key={permission}
+            type="button"
+            onClick={() =>
+              livingOsCommandBus.dispatch({
+                type: "DRAWER_OPENED",
+                category: "navigation",
+                role: "admin",
+                payload: { requiredPermission: permission },
+              })
+            }
             style={{
               border: "1px solid rgba(0,255,255,0.3)",
               borderRadius: 999,
@@ -89,10 +100,12 @@ export default function WorkspaceManager() {
               letterSpacing: "0.05em",
               background: "rgba(0,255,255,0.07)",
               whiteSpace: "nowrap",
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             {permission}
-          </span>
+          </button>
         ))}
       </div>
     );
