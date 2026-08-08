@@ -30,8 +30,8 @@ import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import {
-  clampQuickPanelPosition,
   digitalQuickPanelFrameStyle,
+  resolveHubQuickPanelPosition,
   type ViewportAnchor,
 } from "@/lib/ui/digitalQuickPanelChrome";
 
@@ -375,7 +375,12 @@ function PanelPopup({
   const panelWidth = isLiveWall ? 420 : 320;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   const panelMaxH = isLiveWall ? Math.min(vh * 0.7, 520) : Math.min(vh * 0.55, 420);
-  const { top, left } = clampQuickPanelPosition(anchor, panelWidth, panelMaxH);
+  const { top, left } = resolveHubQuickPanelPosition(
+    panel.id,
+    panelWidth,
+    panelMaxH,
+    anchor,
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 8, scale: 0.97 }}
@@ -439,13 +444,17 @@ export default function QuickPanelDock({ role = "fan", style, panels }: QuickPan
   const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
 
   const openPanelAt = (id: PanelId, event: MouseEvent<HTMLButtonElement>) => {
+    if (activePanel === id) {
+      setActivePanel(null);
+      return;
+    }
     const rect = event.currentTarget.getBoundingClientRect();
     setPanelAnchor({
       x: rect.left + rect.width / 2,
       y: event.clientY,
       rect,
     });
-    setActivePanel((prev) => (prev === id ? null : id));
+    setActivePanel(id);
   };
 
   const visiblePanels = panels ? PANELS.filter((p) => panels.includes(p.id)) : PANELS;

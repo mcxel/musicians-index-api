@@ -6,15 +6,15 @@
  * Role-gated drawer payloads (Rule 26). Shell colors via ThemeEngine (device persist).
  */
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MasterControlDock from "@/components/shell/MasterControlDock";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
 import {
-  clampQuickPanelPosition,
   digitalQuickPanelFrameStyle,
+  resolveHubQuickPanelPosition,
 } from "@/lib/ui/digitalQuickPanelChrome";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
@@ -121,7 +121,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   /** Split-button quick panel: left segment opens this lightweight popover,
    *  right chevron opens the same module's full drawer via onOpenFull. */
+  const mediaStageRef = useRef<HTMLDivElement>(null);
   const [quickPanel, setQuickPanel] = useState<{
+    key: string;
     label: string;
     info?: string;
     accent: string;
@@ -361,6 +363,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
    */
   const splitRailBtn = (opts: {
     key: string;
+    panelKey: string;
     label: string;
     info?: string;
     active?: boolean;
@@ -386,15 +389,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         <button
           type="button"
           onClick={(e) => {
+            if (quickPanel?.key === opts.panelKey) {
+              setQuickPanel(null);
+              return;
+            }
             const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-            const POPOVER_WIDTH = 240;
-            const POPOVER_HEIGHT = 220;
-            const { top, left } = clampQuickPanelPosition(
-              { x: rect.left + rect.width / 2, y: e.clientY, rect },
+            const POPOVER_WIDTH = 300;
+            const POPOVER_HEIGHT = 360;
+            const anchor = { x: rect.left + rect.width / 2, y: e.clientY, rect };
+            const { top, left } = resolveHubQuickPanelPosition(
+              opts.panelKey,
               POPOVER_WIDTH,
               POPOVER_HEIGHT,
+              anchor,
             );
             setQuickPanel({
+              key: opts.panelKey,
               label: opts.label,
               info: opts.info,
               accent,
@@ -603,6 +613,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               const isActive = center.modules.some((m) => m === activePanel);
               return splitRailBtn({
                 key: center.id,
+                panelKey: center.primaryModule,
                 label: `${center.icon} ${center.label}`,
                 info: center.info,
                 accent: center.accent,
@@ -632,6 +643,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   if (!mod) return null;
                   return splitRailBtn({
                     key: `drawer-${id}`,
+                    panelKey: id,
                     label: mod.label,
                     info: mod.info,
                     accent: mod.accent,
@@ -660,16 +672,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
           </div>
 
-          {/* Center media — prototype dual stacked 16:9 chrome bezel */}
-          <CommandCenterMediaStack
-            slots={mediaSlots}
-            bezelVariant="chrome"
-            seriesLabel={
-              role === "performer"
-                ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-            }
-          />
+          {/* Center media — blueprint anchor for eye-level quick panels (Inventory left / Memory right) */}
+          <div ref={mediaStageRef} data-hub-monitor-stage style={{ minWidth: 0, minHeight: 0 }}>
+            <CommandCenterMediaStack
+              slots={mediaSlots}
+              bezelVariant="chrome"
+              seriesLabel={
+                role === "performer"
+                  ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                  : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+              }
+            />
+          </div>
 
           {/* Right rail */}
           <div
@@ -775,8 +789,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               top: quickPanel.top,
               left: quickPanel.left,
               zIndex: 500,
-              width: 240,
+              width: 300,
               maxWidth: "calc(100vw - 24px)",
+              maxHeight: "min(360px, calc(100vh - 24px))",
               padding: 12,
               display: "flex",
               flexDirection: "column",

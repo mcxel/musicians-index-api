@@ -46,3 +46,99 @@ export function clampQuickPanelPosition(
   );
   return { top, left };
 }
+
+/** Fan/Performer hub blueprint: panels flank dual monitors at eye level (Profiles/tmi fan and performer blue print Ui with drawers.png). */
+export type HubPanelFlank = "left" | "right" | "near-click";
+
+const HUB_LEFT_FLANK_KEYS = new Set([
+  "inventory",
+  "lobby",
+  "playlist",
+  "yopho",
+  "media_locker",
+  "beat_lab",
+  "bio_magazine",
+  "quick_queue",
+]);
+
+const HUB_RIGHT_FLANK_KEYS = new Set([
+  "memory",
+  "memory_wall",
+  "messages",
+  "alerts",
+  "friends",
+  "live_wall",
+]);
+
+export function hubPanelFlankForKey(panelKey: string): HubPanelFlank {
+  const k = panelKey.toLowerCase();
+  if (HUB_LEFT_FLANK_KEYS.has(k)) return "left";
+  if (HUB_RIGHT_FLANK_KEYS.has(k)) return "right";
+  return "near-click";
+}
+
+export function readHubMonitorStageRect(): DOMRect | null {
+  if (typeof document === "undefined") return null;
+  const el = document.querySelector("[data-hub-monitor-stage]");
+  if (!(el instanceof HTMLElement)) return null;
+  return el.getBoundingClientRect();
+}
+
+export function hubBlueprintPanelPosition(
+  stageRect: DOMRect,
+  flank: HubPanelFlank,
+  panelWidth: number,
+  panelHeight: number,
+  clickAnchor?: ViewportAnchor,
+): { top: number; left: number } {
+  if (typeof window === "undefined") {
+    return { top: 12, left: 12 };
+  }
+  const pad = 12;
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const top = Math.min(
+    Math.max(pad, stageRect.top + stageRect.height / 2 - panelHeight / 2),
+    vh - panelHeight - pad,
+  );
+  if (flank === "left") {
+    const left = Math.min(
+      Math.max(pad, stageRect.left + 10),
+      stageRect.right - panelWidth - 16,
+    );
+    return { top, left };
+  }
+  if (flank === "right") {
+    const left = Math.max(
+      pad,
+      Math.min(stageRect.right - panelWidth - 10, vw - panelWidth - pad),
+    );
+    return { top, left };
+  }
+  return clampQuickPanelPosition(
+    clickAnchor ?? {
+      x: stageRect.left + stageRect.width / 2,
+      y: stageRect.top + stageRect.height / 2,
+    },
+    panelWidth,
+    panelHeight,
+  );
+}
+
+/** Blueprint placement when monitor stage is in DOM; otherwise fall back to click anchor. */
+export function resolveHubQuickPanelPosition(
+  panelKey: string,
+  panelWidth: number,
+  panelHeight: number,
+  clickAnchor: ViewportAnchor,
+): { top: number; left: number } {
+  const stage = readHubMonitorStageRect();
+  const flank = hubPanelFlankForKey(panelKey);
+  if (stage && flank !== "near-click") {
+    return hubBlueprintPanelPosition(stage, flank, panelWidth, panelHeight, clickAnchor);
+  }
+  if (stage && flank === "near-click") {
+    return hubBlueprintPanelPosition(stage, "near-click", panelWidth, panelHeight, clickAnchor);
+  }
+  return clampQuickPanelPosition(clickAnchor, panelWidth, panelHeight);
+}
