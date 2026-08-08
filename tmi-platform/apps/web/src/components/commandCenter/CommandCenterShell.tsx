@@ -56,6 +56,7 @@ import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
 import UniversalWorkspaceHost from "@/components/workspace/universal/UniversalWorkspaceHost";
+import GlobalErrorBoundary from "@/components/system/GlobalErrorBoundary";
 
 interface LiveApiSession {
   userId: string;
@@ -685,16 +686,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             data-hub-monitor-stage
             style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
           >
-            <CommandCenterMediaStack
-              slots={mediaSlots}
-              bezelVariant="chrome"
-              naturalHeight
-              seriesLabel={
-                role === "performer"
-                  ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                  : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-              }
-            />
+            <GlobalErrorBoundary context="Command Center Monitors">
+              <CommandCenterMediaStack
+                slots={mediaSlots}
+                bezelVariant="chrome"
+                naturalHeight
+                seriesLabel={
+                  role === "performer"
+                    ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                    : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                }
+              />
+            </GlobalErrorBoundary>
             <CommandCenterSessionControlStrip
               role={role === "performer" ? "performer" : "fan"}
               onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
@@ -782,16 +785,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         </div>
 
         {/* Layer 2 — Full Drawers: below persistent dock + separator (playlist expands here) */}
-        <CommandCenterDrawer
-          role={role}
-          activePanel={activePanel}
-          appearanceOpen={appearanceOpen}
-          userId={userId}
-          displayName={resolvedDisplayName}
-          onClose={closeDrawer}
-          onSelectPanel={openPanel}
-          initialPlaylistId={deepLinkPlaylistId}
-        />
+        <GlobalErrorBoundary context="Command Center Drawer">
+          <CommandCenterDrawer
+            role={role}
+            activePanel={activePanel}
+            appearanceOpen={appearanceOpen}
+            userId={userId}
+            displayName={resolvedDisplayName}
+            onClose={closeDrawer}
+            onSelectPanel={openPanel}
+            initialPlaylistId={deepLinkPlaylistId}
+          />
+        </GlobalErrorBoundary>
       </div>
 
       {/* Layer 1 — Quick Panels (Living OS): instant overlays, never block live media */}

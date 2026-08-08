@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, Html } from '@react-three/drei';
+import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import * as THREE from 'three';
 import {
   AvatarSocketAttachment,
@@ -322,15 +323,17 @@ export function AvatarViewer({
 }: AvatarRigProps & { size?: number; enableOrbit?: boolean }) {
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
-      <Canvas
+      <SafeReactThreeCanvas
+        faultContext="Avatar Viewer"
+        fallbackLabel="Avatar 3D unavailable"
         shadows
         camera={{ position: [0, isSeated ? 0.15 : 0.3, 2.5], fov: 42 }}
         gl={{ powerPreference: 'high-performance', antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
-          <Environment preset="city" />
-          <ambientLight intensity={0.4} />
+          <ambientLight intensity={0.55} />
+          <hemisphereLight intensity={0.35} groundColor="#12002b" color="#88ccff" />
           <spotLight position={[5, 5, 5]} intensity={1.5} color="#fff" />
           
           <AvatarRig
@@ -358,7 +361,7 @@ export function AvatarViewer({
             />
           )}
         </Suspense>
-      </Canvas>
+      </SafeReactThreeCanvas>
     </div>
   );
 }
@@ -367,14 +370,16 @@ export default function AvatarLobbyCanvas({ activeCount = 5 }: { activeCount?: n
   const positions = POSITIONS.slice(0, Math.min(activeCount, POSITIONS.length));
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.65 }}>
-      <Canvas
+      <SafeReactThreeCanvas
+        faultContext="Avatar Lobby"
+        fallbackLabel="Lobby 3D unavailable"
         shadows
         camera={{ position: [0, 3.2, 9.5], fov: 42 }}
         gl={{ powerPreference: 'high-performance', antialias: true, alpha: true }}
       >
         <Suspense fallback={null}>
-          <Environment preset="city" />
-          <ambientLight intensity={0.25} />
+          <ambientLight intensity={0.35} />
+          <hemisphereLight intensity={0.4} groundColor="#0a0018" color="#66eeff" />
           
           {/* Animated spot stage beams */}
           <MovingLights />
@@ -408,7 +413,7 @@ export default function AvatarLobbyCanvas({ activeCount = 5 }: { activeCount?: n
             maxPolarAngle={Math.PI / 2.1}
           />
         </Suspense>
-      </Canvas>
+      </SafeReactThreeCanvas>
     </div>
   );
 }

@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTmiSession } from "@/hooks/SessionContext";
 import FanHQShell from "@/components/fan/FanHQShell";
+import GlobalErrorBoundary from "@/components/system/GlobalErrorBoundary";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -250,7 +251,9 @@ export default function DashboardWorkspaceContainer() {
         style={{ display: active === "fan" ? "block" : "none" }}
         aria-hidden={active !== "fan"}
       >
-        <FanHQShell fanId={userId} fanDisplayName={userName} />
+        <GlobalErrorBoundary context="Fan Command Center">
+          <FanHQShell fanId={userId} fanDisplayName={userName} />
+        </GlobalErrorBoundary>
       </div>
 
       {/* ── Performer Workspace (lazy-mounted on first visit, kept alive) ── */}
@@ -260,11 +263,13 @@ export default function DashboardWorkspaceContainer() {
           style={{ display: active === "performer" ? "block" : "none" }}
           aria-hidden={active !== "performer"}
         >
-          <PerformerWorkspacePanel
-            shouldLoad={active === "performer" || performerLoaded}
-            performerId={userId}
-            displayName={userName}
-          />
+          <GlobalErrorBoundary context="Performer Command Center">
+            <PerformerWorkspacePanel
+              shouldLoad={active === "performer" || performerLoaded}
+              performerId={userId}
+              displayName={userName}
+            />
+          </GlobalErrorBoundary>
         </div>
       )}
 
@@ -275,7 +280,9 @@ export default function DashboardWorkspaceContainer() {
           style={{ display: active === "admin" ? "block" : "none" }}
           aria-hidden={active !== "admin"}
         >
-          <AdminWorkspacePanel shouldLoad={active === "admin" || adminLoaded} />
+          <GlobalErrorBoundary context="Administration Workspace">
+            <AdminWorkspacePanel shouldLoad={active === "admin" || adminLoaded} />
+          </GlobalErrorBoundary>
         </div>
       )}
     </div>

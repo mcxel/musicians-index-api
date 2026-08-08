@@ -29,20 +29,41 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
 
   useEffect(() => {
     let mounted = true;
+    let delayMs = 30_000;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    function poll() {
-      fetch("/api/admin/revenue", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: RevenueApiResponse | null) => {
-          if (mounted && d) setRev(d);
-        })
-        .catch(() => undefined)
-        .finally(() => { if (mounted) setLoading(false); });
+    const schedule = (ms: number) => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void poll();
+      }, ms);
+    };
+
+    async function poll() {
+      try {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 12_000);
+        const res = await fetch("/api/admin/revenue", { cache: "no-store", signal: controller.signal });
+        window.clearTimeout(timeout);
+        if (!res.ok) throw new Error(`revenue ${res.status}`);
+        const d = (await res.json()) as RevenueApiResponse;
+        if (mounted) {
+          setRev(d);
+          delayMs = 30_000;
+        }
+      } catch {
+        delayMs = Math.min(delayMs * 2, 120_000);
+      } finally {
+        if (mounted) setLoading(false);
+        if (mounted) schedule(delayMs);
+      }
     }
 
-    poll();
-    const t = setInterval(poll, 30_000);
-    return () => { mounted = false; clearInterval(t); };
+    void poll();
+    return () => {
+      mounted = false;
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
 
   const today = loading ? "…" : (rev?.totals?.today ?? "$0");

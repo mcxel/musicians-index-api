@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
+import IdleMonitorFallbackRuntime from "@/components/admin/overseer/IdleMonitorFallbackRuntime";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
@@ -250,11 +251,19 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
 
 function MonitorMediaBody({ slot, sponsorOverlay }: { slot: CommandCenterMediaSlot; sponsorOverlay?: ActiveSponsorOverlay | null }) {
   const videoSrc = slot.videoUrl || ROSE_FALLBACK_URL;
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  useEffect(() => {
+    setVideoFailed(false);
+  }, [videoSrc]);
+
   return (
     <div style={{ position: "relative", flex: 1, width: "100%", minHeight: 0, overflow: "hidden" }}>
       {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
       {slot.kind === "playlist" && slot.playlistCast ? (
         <PlaylistCastBody cast={slot.playlistCast} />
+      ) : videoFailed || !videoSrc ? (
+        <IdleMonitorFallbackRuntime monitorId={slot.id} seedIndex={slot.id.length} />
       ) : videoSrc ? (
         <video
           key={videoSrc}
@@ -263,6 +272,7 @@ function MonitorMediaBody({ slot, sponsorOverlay }: { slot: CommandCenterMediaSl
           muted
           playsInline
           src={videoSrc}
+          onError={() => setVideoFailed(true)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
       ) : slot.imageUrl ? (

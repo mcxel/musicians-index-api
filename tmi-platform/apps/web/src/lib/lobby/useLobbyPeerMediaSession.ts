@@ -89,6 +89,11 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
   });
   const [localPreviewStream, setLocalPreviewStream] = useState<MediaStream | null>(null);
   const [dailyJoined, setDailyJoined] = useState(false);
+  const lobbyMediaBlockedRef = useRef(false);
+
+  useEffect(() => {
+    lobbyMediaBlockedRef.current = false;
+  }, [roomId, userId]);
 
   const refreshSnapshot = useCallback((reason?: string | null) => {
     setSnapshot(buildSnapshot(callRef.current, reason ?? null));
@@ -144,6 +149,7 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
 
     (async () => {
       try {
+        if (lobbyMediaBlockedRef.current) return;
         const res = await fetch("/api/rooms/lobby-media", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -168,6 +174,7 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
         if (!res.ok || !data.available || !data.roomUrl) {
           const reason =
             data.reason ?? data.error ?? "Peer video unavailable — local camera only.";
+          lobbyMediaBlockedRef.current = true;
           setDailyJoined(false);
           callRef.current = null;
           setSnapshot({

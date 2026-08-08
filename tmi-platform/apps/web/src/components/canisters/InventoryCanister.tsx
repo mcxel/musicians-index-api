@@ -86,7 +86,30 @@ export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: Inventor
   }, []);
 
   useEffect(() => {
-    void refresh();
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const sessionRes = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+        if (cancelled) return;
+        if (!sessionRes.ok) {
+          setStatus("auth");
+          return;
+        }
+        const session = (await sessionRes.json()) as { authenticated?: boolean };
+        if (!session.authenticated) {
+          setStatus("auth");
+          return;
+        }
+        await refresh();
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const toggleEquip = async (row: Row) => {
