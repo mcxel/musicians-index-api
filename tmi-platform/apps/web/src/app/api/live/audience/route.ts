@@ -19,7 +19,8 @@ import {
 import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
 import { participationEconomyEngine } from "@/lib/economy/ParticipationEconomyEngine";
 import { prisma } from "@/lib/prisma";
-import { getActiveSessions, updateViewerCount, endLiveSession, removeSessionNow, ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessions, updateViewerCount, endLiveSession } from "@/lib/broadcast/globalLiveSessionStore";
+import { removeSessionNow, ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
 
 // Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),

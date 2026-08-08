@@ -12,7 +12,7 @@ import {
   getVenueBySlug,
   type VenueIdentity,
 } from "@/lib/venues/VenueRegistry";
-import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessions } from "@/lib/broadcast/globalLiveSessionStore";
 
 export interface VenueGeoPoint {
   venueId: string;

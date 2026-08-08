@@ -7,7 +7,7 @@
  * or projectLiveSessionToSurfaceCard (lib/discovery/LiveSurfaceCard.ts).
  */
 
-import type { LiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import type { LiveSession } from "@/lib/broadcast/globalLiveSessionStore";
 import { DiscoveryBus } from "./DiscoveryBus";
 import {
   mapStreamCategoryToDiscovery,

@@ -59,7 +59,7 @@ import type {
   WorldSessionAddedPayload,
 } from '@/lib/runtime/RuntimeEventTypes';
 
-import type { StreamCategory, StageState as RegistryStageState } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import type { StreamCategory, StageState as RegistryStageState } from '@/lib/broadcast/globalLiveSessionStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

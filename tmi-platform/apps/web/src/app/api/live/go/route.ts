@@ -8,16 +8,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   registerLiveSession,
   endLiveSession,
-  pingSessionWithTelemetry,
   getSession,
   getSessionsByCategory,
+  type GoLivePayload,
+  type LivePingPayload,
+} from '@/lib/broadcast/globalLiveSessionStore';
+import {
   ensureHydrated,
   getAllSessionsDurable,
   persistSessionNow,
   removeSessionNow,
-  type GoLivePayload,
-  type LivePingPayload,
-} from '@/lib/broadcast/GlobalLiveSessionRegistry';
+  pingSessionWithTelemetryPersisted,
+} from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
 import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
   // Ping-only (heartbeat from broadcaster)
   if (body.action === 'ping') {
     await ensureHydrated();
-    pingSessionWithTelemetry(userId, body);
+    pingSessionWithTelemetryPersisted(userId, body);
     return NextResponse.json({ ok: true });
   }
 

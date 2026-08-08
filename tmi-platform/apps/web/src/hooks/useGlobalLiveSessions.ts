@@ -6,7 +6,7 @@ import {
   onSessionsChanged,
   type LiveSession,
   type StreamCategory,
-} from '@/lib/broadcast/GlobalLiveSessionRegistry';
+} from '@/lib/broadcast/globalLiveSessionStore';
 
 /**
  * Real-time subscription to live sessions from GlobalLiveSessionRegistry.

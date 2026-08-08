@@ -21,9 +21,9 @@ import {
 import {
   getActiveSessions,
   endLiveSession,
-  removeSessionNow,
   type LiveSession,
-} from "@/lib/broadcast/GlobalLiveSessionRegistry";
+} from "@/lib/broadcast/globalLiveSessionStore";
+import { removeSessionNow } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 
 // ── Overflow room tracking ────────────────────────────────────────────────────
 

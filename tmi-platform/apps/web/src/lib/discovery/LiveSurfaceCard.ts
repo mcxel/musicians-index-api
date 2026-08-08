@@ -8,7 +8,7 @@
  * Optional fields stay undefined unless a real publisher supplies them.
  */
 
-import type { LiveSession, StageState, StreamCategory, StreamHealth } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import type { LiveSession, StageState, StreamCategory, StreamHealth } from "@/lib/broadcast/globalLiveSessionStore";
 import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 

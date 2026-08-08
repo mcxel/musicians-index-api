@@ -6,7 +6,7 @@
  * and the booking engine all read from here.
  */
 
-import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import { getActiveSessions } from '@/lib/broadcast/globalLiveSessionStore';
 
 export type VenueTier = 'RUBY' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 export type VenueCategory = 'Club' | 'Arena' | 'Stadium' | 'Studio' | 'Lounge' | 'Outdoor' | 'Theater' | 'Virtual';

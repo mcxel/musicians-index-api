@@ -4,7 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import type { LiveSession, StreamCategory, StreamHealth, StageState } from "./GlobalLiveSessionRegistry";
+import type { LiveSession, StreamCategory, StreamHealth, StageState } from "./globalLiveSessionStore";
 
 export const LIVE_FEED_TYPE = "LIVE_SESSION";
 const FAR_FUTURE = new Date("2099-01-01T00:00:00.000Z");

@@ -7,7 +7,7 @@
  * so this governor handles the audience registry cleanup as a separate pass.
  */
 
-import { getActiveSessions, endLiveSession } from "./GlobalLiveSessionRegistry";
+import { getActiveSessions, endLiveSession } from "./globalLiveSessionStore";
 import { LiveRegistry } from "./LiveRegistry";
 
 export interface CleanupReport {

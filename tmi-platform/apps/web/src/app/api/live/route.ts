@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import type { LiveFeedItem } from "@/components/billboard/TMIBillboardLiveWall";
-import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 import { prisma } from "@/lib/prisma";
 
 /**

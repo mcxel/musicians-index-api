@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/app/api/admin/_utils/require-admin";
-import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 
 type FeedSnapshot = {
   source: string;

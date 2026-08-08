@@ -2,11 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  ensureHydrated,
   getActiveSessions,
   endLiveSession,
-  removeSessionNow,
-} from '@/lib/broadcast/GlobalLiveSessionRegistry';
+} from '@/lib/broadcast/globalLiveSessionStore';
+import { ensureHydrated, removeSessionNow } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
 
 interface EndBody {
   streamId: string;
