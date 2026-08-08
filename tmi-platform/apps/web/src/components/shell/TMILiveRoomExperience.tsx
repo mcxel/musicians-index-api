@@ -31,6 +31,7 @@ import ReleaseAnnouncementOverlay, {
 import { ExperienceOrchestrator } from '../../lib/experience/ExperienceOrchestrator';
 import { initializeExperienceBroadcastBridge } from '@/lib/broadcast/ExperienceBroadcastBridge';
 import { recordStageEvent } from '@/lib/live/stageTelemetryStore';
+import PersistentGauntletPanel from '@/components/gauntlet/PersistentGauntletPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1283,13 +1284,19 @@ export default function TMILiveRoomExperience({
         )}
 
         {rightTab === 'room' && (
-          <div style={{ padding: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8 }}>Room Info</div>
+          <div style={{ padding: 10 }} className="flex flex-col gap-3">
+            <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Room Info</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
               <div>Genre: {genre}</div>
               <div>Quality: {quality} Ultra HD</div>
               <div>Viewers: {viewerCount.toLocaleString()}</div>
             </div>
+            <PersistentGauntletPanel
+              roomId={roomId || "cypher-room"}
+              currentUserId="fan-local"
+              currentDisplayName="Authenticated Fan"
+              className="mt-2"
+            />
           </div>
         )}
 
