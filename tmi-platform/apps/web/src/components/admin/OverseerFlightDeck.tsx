@@ -44,6 +44,8 @@ import { buildSurroundSectionOptions } from "@/components/admin/overseer/oversee
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import CanonicalDualMonitorStack, { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
+import { MonitorScreenShareVideo } from "@/components/monitors/MonitorScreenSharePrimitives";
+import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
 
 export type ShellDockButton = {
@@ -102,49 +104,7 @@ function gemStyle(active = false): CSSProperties {
   };
 }
 
-// ─── Screen share cell for Overseer monitor injection ─────────────────────────
-function OverseerShareCell({
-  stream,
-  onStop,
-  label,
-}: {
-  stream: MediaStream;
-  onStop: () => void;
-  label: string;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = stream;
-  }, [stream]);
-
-  return (
-    <div style={{ position: "absolute", inset: 0, background: "#000", display: "flex", flexDirection: "column" }}>
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <video ref={videoRef} autoPlay playsInline muted style={{ flex: 1, minHeight: 0, width: "100%", objectFit: "contain" }} />
-      <div
-        style={{
-          position: "absolute",
-          top: 0, left: 0, right: 0,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "4px 8px",
-          background: "linear-gradient(180deg,rgba(0,0,0,0.75),transparent)",
-        }}
-      >
-        <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#00FF88" }}>
-          ⬡ {label}
-        </span>
-        <button
-          type="button"
-          onClick={onStop}
-          style={{ background: "rgba(255,68,68,0.8)", border: "none", borderRadius: 4, color: "#fff", fontSize: 8, fontWeight: 900, padding: "2px 6px", cursor: "pointer" }}
-        >
-          ✕
-        </button>
-      </div>
-      <style>{`@keyframes osSharePulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
-    </div>
-  );
-}
+// ─── Screen share cell — shared primitive (Observatory monitor injection) ───
 
 export default function OverseerFlightDeck({
   workspace,
@@ -163,9 +123,15 @@ export default function OverseerFlightDeck({
   const [flipKey, setFlipKey] = useState(0);
   const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
   const [isMerging, setIsMerging] = useState(false);
-  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const [shareSlot, setShareSlot] = useState<{ monitor: 0 | 1; cellIndex: number } | null>(null);
-  const [slotPickerOpen, setSlotPickerOpen] = useState(false);
+  const {
+    screenStream,
+    shareSlot,
+    slotPickerOpen,
+    setSlotPickerOpen,
+    startScreenShare,
+    stopScreenShare,
+    pickShareSlot,
+  } = useMonitorScreenShare();
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const mergeTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const drawerManager = useDrawerManager();
@@ -177,30 +143,7 @@ export default function OverseerFlightDeck({
     }
   }, [screenStream]);
 
-  const startScreenShare = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
-        setScreenStream(null);
-        setShareSlot(null);
-        setSlotPickerOpen(false);
-      });
-      setScreenStream(stream);
-      setShareSlot({ monitor: 1, cellIndex: -1 });
-      setSlotPickerOpen(true);
-    } catch {
-      // user cancelled or permission denied — no-op
-    }
-  }, []);
-
-  const stopScreenShare = useCallback(() => {
-    screenStream?.getTracks().forEach((t) => t.stop());
-    setScreenStream(null);
-    setShareSlot(null);
-    setSlotPickerOpen(false);
-  }, [screenStream]);
-
-  // cascade all monitors to split=1 with staggered animation
+  // merge timers below — screen share via useMonitorScreenShare
   const mergeAllMonitors = useCallback(() => {
     setIsMerging(true);
     mergeTimers.current.forEach(clearTimeout);
@@ -650,14 +593,14 @@ export default function OverseerFlightDeck({
                   // build per-cell array so split-grid cells can host the screen share
                   const cells = Array.from({ length: 8 }, (_, ci) =>
                     screenStream && shareSlot?.monitor === mon && shareSlot.cellIndex === ci ? (
-                      <OverseerShareCell key={`share-${mon}-${ci}`} stream={screenStream} onStop={stopScreenShare} label={`M${mon + 1} · ${ci + 1}`} />
+                      <MonitorScreenShareVideo key={`share-${mon}-${ci}`} stream={screenStream} onStop={stopScreenShare} label={`M${mon + 1} · ${ci + 1}`} />
                     ) : null,
                   );
                   return {
                     id: panel.id ?? `center-${index}`,
                     label: `MONITOR ${index + 1} — ${panel.title}`,
                     children: isShareFull ? (
-                      <OverseerShareCell stream={screenStream!} onStop={stopScreenShare} label={`MONITOR ${index + 1} · FULL`} />
+                      <MonitorScreenShareVideo stream={screenStream!} onStop={stopScreenShare} label={`MONITOR ${index + 1} · FULL`} />
                     ) : panelBody,
                     cells,
                   };
@@ -1018,7 +961,7 @@ export default function OverseerFlightDeck({
                         <button
                           key={ci}
                           type="button"
-                          onClick={() => { setShareSlot({ monitor: mon, cellIndex: ci }); setSlotPickerOpen(false); }}
+                          onClick={() => pickShareSlot({ monitor: mon, cellIndex: ci })}
                           style={{
                             padding: "3px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer",
                             border: `1px solid ${active ? "#00FF88" : "rgba(255,215,0,0.2)"}`,

@@ -80,10 +80,10 @@ function StandbyFill() {
 
 export type DualMonitorBezelVariant = "gold" | "chrome";
 
-/** Per-monitor splits only: 1 / 2 / 3 / 4 / 8. Dual max = 8+8=16 (no shared mega 1→16). */
-export type MonitorSplitMode = 1 | 2 | 3 | 4 | 8;
+/** Per-monitor splits. Gold/admin goes to 16; chrome/fan caps at 8 via availableModes. */
+export type MonitorSplitMode = 1 | 2 | 3 | 4 | 8 | 16;
 
-const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 8: "8" };
+const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 8: "8", 16: "16" };
 
 export interface CanonicalMonitorPane {
   id: string;
@@ -109,6 +109,8 @@ export interface CanonicalDualMonitorStackProps {
   /** External override — parent can drive both splits (MERGE ALL / EXPAND ALL). */
   controlledSplits?: [MonitorSplitMode, MonitorSplitMode];
   onSplitsChange?: (splits: [MonitorSplitMode, MonitorSplitMode]) => void;
+  /** Restrict which split modes are offered. Defaults to all modes for the variant. */
+  availableModes?: MonitorSplitMode[];
 }
 
 // ─── Split control bar ────────────────────────────────────────────────────────
@@ -118,13 +120,15 @@ function MonitorSplitBar({
   split,
   onSplitChange,
   accent,
+  availableModes,
 }: {
   label: string;
   split: MonitorSplitMode;
   onSplitChange: (s: MonitorSplitMode) => void;
   accent: string;
+  availableModes?: MonitorSplitMode[];
 }) {
-  const MODES: MonitorSplitMode[] = [1, 2, 3, 4, 8];
+  const MODES: MonitorSplitMode[] = availableModes ?? [1, 2, 3, 4, 8];
   return (
     <div
       style={{
@@ -143,7 +147,7 @@ function MonitorSplitBar({
           key={n}
           type="button"
           onClick={() => onSplitChange(n)}
-          title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : "Octo 4×2"}`}
+          title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : n === 8 ? "Octo 4×2" : "Grid 4×4"}`}
           style={{
             padding: "3px 8px",
             fontSize: 10,
@@ -181,7 +185,7 @@ function MonitorCellGrid({
 }) {
   if (split === 1) return <>{children}</>;
 
-  const columns = split === 8 ? 4 : split === 3 ? 3 : 2;
+  const columns = split === 16 ? 4 : split === 8 ? 4 : split === 3 ? 3 : 2;
   const filled: ReactNode[] = [];
   for (let i = 0; i < split; i++) {
     filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
@@ -337,9 +341,13 @@ export default function CanonicalDualMonitorStack({
   showSplitControls = true,
   controlledSplits,
   onSplitsChange,
+  availableModes,
 }: CanonicalDualMonitorStackProps) {
   const bezel = BEZEL[variant];
   const accent = variant === "gold" ? "#FF6B1A" : "#00D4FF";
+  // chrome caps at 8; gold can go to 16 unless caller restricts further
+  const effectiveModes: MonitorSplitMode[] =
+    availableModes ?? (variant === "chrome" ? [1, 2, 3, 4, 8] : [1, 2, 3, 4, 8, 16]);
 
   const [splits, setSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([
     controlledSplits?.[0] ?? monitors[0]?.defaultSplit ?? 1,
@@ -401,31 +409,26 @@ export default function CanonicalDualMonitorStack({
         }
       `}</style>
       {toolbar}
-      <div style={bezel.outer}>
-        {seriesLabel ? <div style={bezel.label}>{seriesLabel}</div> : null}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            width: "100%",
-          }}
-        >
+      {variant === "chrome" ? (
+        /* Chrome: each monitor lives in its own bezel so the two 8-cell groups look physically separate */
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+          {seriesLabel ? (
+            <div style={{ ...bezel.label, textAlign: "left", padding: "0 2px 4px" }}>{seriesLabel}</div>
+          ) : null}
           {panes.map((pane, index) => {
             const split = splits[index as 0 | 1];
             const monLabel = pane.label ?? `MONITOR ${index + 1}`;
             return (
-              <div key={pane.id} data-canonical-monitor style={{ width: "100%" }}>
-                {/* Per-monitor split control bar */}
+              <div key={pane.id} style={{ ...bezel.outer }}>
                 {showSplitControls && (
                   <MonitorSplitBar
                     label={monLabel}
                     split={split}
                     onSplitChange={(s) => setSplit(index as 0 | 1, s)}
                     accent={accent}
+                    availableModes={effectiveModes}
                   />
                 )}
-                {/* 16:9 glass */}
                 <div
                   data-monitor-frame="16x9"
                   style={{
@@ -440,16 +443,7 @@ export default function CanonicalDualMonitorStack({
                     minHeight: 0,
                   }}
                 >
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      minHeight: 0,
-                      overflow: "hidden",
-                    }}
-                  >
+                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                     <MonitorCellGrid split={split} cells={pane.cells} animKey={animKeys[index as 0 | 1]}>
                       {pane.children}
                     </MonitorCellGrid>
@@ -459,7 +453,51 @@ export default function CanonicalDualMonitorStack({
             );
           })}
         </div>
-      </div>
+      ) : (
+        /* Gold: unified single bezel for the whole Overseer unit */
+        <div style={bezel.outer}>
+          {seriesLabel ? <div style={bezel.label}>{seriesLabel}</div> : null}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+            {panes.map((pane, index) => {
+              const split = splits[index as 0 | 1];
+              const monLabel = pane.label ?? `MONITOR ${index + 1}`;
+              return (
+                <div key={pane.id} data-canonical-monitor style={{ width: "100%" }}>
+                  {showSplitControls && (
+                    <MonitorSplitBar
+                      label={monLabel}
+                      split={split}
+                      onSplitChange={(s) => setSplit(index as 0 | 1, s)}
+                      accent={accent}
+                      availableModes={effectiveModes}
+                    />
+                  )}
+                  <div
+                    data-monitor-frame="16x9"
+                    style={{
+                      background: "#020210",
+                      border: "1px solid #1A1A3A",
+                      borderRadius: 4,
+                      overflow: "hidden",
+                      position: "relative",
+                      aspectRatio: "16 / 9",
+                      width: "100%",
+                      flex: "0 0 auto",
+                      minHeight: 0,
+                    }}
+                  >
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                      <MonitorCellGrid split={split} cells={pane.cells} animKey={animKeys[index as 0 | 1]}>
+                        {pane.children}
+                      </MonitorCellGrid>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
