@@ -8,6 +8,7 @@ import type { UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 import type { LiveSurfaceCard } from "./LiveSurfaceCard";
 import { projectDiscoveryRecordToSurfaceCard } from "./LiveSurfaceCard";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 export type InstantJoinRole =
   | "FAN"
@@ -64,11 +65,13 @@ export function discoveryRecordToUniversalRoom(
         ? "vip"
         : "free";
 
+  const hostLabel = sanitizeWallHostLabel(record.hostName, { hostUserId: record.hostUserId });
+
   return {
     id: record.roomId,
     title: record.title,
-    subtitle: record.hostName,
-    hostName: record.hostName,
+    subtitle: hostLabel,
+    hostName: hostLabel,
     genre: record.category,
     viewers: record.humanViewerCount,
     status,

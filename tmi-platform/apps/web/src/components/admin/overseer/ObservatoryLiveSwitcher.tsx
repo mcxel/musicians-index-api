@@ -77,6 +77,7 @@ function SubjectPov({ subject }: { subject: LiveSwitcherSubject }) {
       </div>
       <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(0,255,255,0.25)", minHeight: 160, flex: 1 }}>
         <LobbyPreviewWindow
+          roomId={subject.currentRoom}
           preview={preview}
           accent="#00FFFF"
           performerInitial={subject.name.slice(0, 1).toUpperCase()}

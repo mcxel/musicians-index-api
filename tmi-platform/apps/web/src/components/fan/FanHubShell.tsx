@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSmartRoom } from "@/lib/rooms/SmartRoomRouter";
 import type { FanSubscriptionTier } from "./FanTierSkinEngine";
 import SplitActionButton from "@/components/ui/SplitActionButton";
+import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
 
 
 type FanHubShellProps = {
@@ -225,7 +226,7 @@ export default function FanHubShell({
       <div style={{ padding: "0 8px" }}>
 
         {/* TOP ROW: Main content + Right col */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 170px", gap: 7, marginBottom: 7 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 7, marginBottom: 7 }}>
           <div>
             {/* Artist Spotlight */}
             {panel(

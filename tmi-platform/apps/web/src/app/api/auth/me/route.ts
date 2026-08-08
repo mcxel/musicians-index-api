@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
 
 function isPrivilegedRole(role: string): boolean {
@@ -29,6 +30,7 @@ function redactEmailForRole(email: string, role: string): string {
 /**
  * GET /api/auth/me
  * Self-only identity endpoint with email redaction for non-admin users.
+ * Display name uses the same resolver as /api/auth/session — never raw email local-part leaks.
  */
 export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('tmi_session_id')?.value;
@@ -44,15 +46,35 @@ export async function GET(req: NextRequest) {
 
   const email = redactEmailForRole(rawEmail, role);
   let id = sessionId;
+  let dbDisplayName: string | null = null;
+
   if (rawEmail) {
     try {
-      const dbUser = await prisma.user.findUnique({ where: { email: rawEmail }, select: { id: true } });
+      const dbUser = await prisma.user.findUnique({
+        where: { email: rawEmail },
+        select: {
+          id: true,
+          displayName: true,
+          name: true,
+          userProfile: { select: { displayName: true } },
+        },
+      });
       if (dbUser?.id) id = dbUser.id;
+      dbDisplayName =
+        dbUser?.displayName ??
+        dbUser?.userProfile?.displayName ??
+        dbUser?.name ??
+        null;
     } catch {
       // Keep session fallback identity when DB is unavailable.
     }
   }
-  const name = email ? email.split('@')[0] : `user-${id.substring(0, 8)}`;
+
+  const name = resolveSessionDisplayName({
+    email: rawEmail,
+    dbDisplayName,
+    userId: id,
+  });
 
   return NextResponse.json(
     {

@@ -33,6 +33,7 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type LobbyGenre =
@@ -415,6 +416,7 @@ export default function TMIBillboardLiveWall({
   const [genre,        setGenre]        = useState<LobbyGenre>(currentGenre);
   const [selectedFeed, setSelectedFeed] = useState<LiveFeedItem | null>(null);
   const [sortedFeeds,  setSortedFeeds]  = useState<LiveFeedItem[]>([]);
+  const router = useRouter();
 
   /* Filter + sort feeds */
   useEffect(() => {
@@ -445,7 +447,11 @@ export default function TMIBillboardLiveWall({
 
   function handleEnterConfirmed() {
     if (!selectedFeed) return;
-    onEnterLobby?.(selectedFeed);
+    if (onEnterLobby) {
+      onEnterLobby(selectedFeed);
+    } else {
+      router.push(`/live/rooms/${selectedFeed.roomId}`);
+    }
     setSelectedFeed(null);
   }
 

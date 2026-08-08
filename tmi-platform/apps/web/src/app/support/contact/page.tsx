@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { TMI_SUPPORT_EMAIL, TMI_SUPPORT_MAILTO } from "@/lib/support/PublicSupportContact";
 
 const CATEGORIES = [
   { id: "billing",   label: "Billing & Payments",   color: "#00FF88" },
@@ -87,8 +88,15 @@ export default function SupportContactPage() {
           <h1 style={{ fontSize: "clamp(22px,4vw,36px)", fontWeight: 900, margin: "0 0 10px" }}>
             Get in Touch
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: 0, lineHeight: 1.7 }}>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: "0 0 8px", lineHeight: 1.7 }}>
             Fill out the form and our team will get back to you within 24 hours.
+          </p>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", margin: 0 }}>
+            Or email{" "}
+            <a href={TMI_SUPPORT_MAILTO} style={{ color: "#00FFFF", fontWeight: 700, textDecoration: "none" }}>
+              {TMI_SUPPORT_EMAIL}
+            </a>{" "}
+            directly (App Store / Play Store support contact).
           </p>
         </div>
 

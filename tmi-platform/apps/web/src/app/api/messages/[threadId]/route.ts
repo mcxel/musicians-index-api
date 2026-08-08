@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail } from "@/lib/auth/UserStore";
 import {
   getConversationForUser,
   sendMessage,
@@ -10,15 +9,10 @@ import {
   encodeShareMeta,
   decodeShareMeta,
 } from "@/lib/messaging/prismaMessageStore";
-
-function getUserFromRequest(req: NextRequest) {
-  const email = req.cookies.get("tmi_user_email")?.value ?? "";
-  if (!email) return null;
-  return getUserByEmail(email);
-}
+import { resolveMessagingUser } from "@/lib/messaging/resolveMessagingUser";
 
 export async function GET(req: NextRequest, { params }: { params: { threadId: string } }) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -34,6 +28,15 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
       participants,
       messages: thread.messages.map((m) => {
         const meta = decodeShareMeta(m.mediaUrl);
+        let callId: string | undefined;
+        if (m.messageType === "video_invite" && m.mediaUrl) {
+          try {
+            const parsed = JSON.parse(m.mediaUrl) as { callId?: string };
+            callId = parsed.callId;
+          } catch {
+            callId = undefined;
+          }
+        }
         return {
           messageId: m.id,
           senderId: m.senderId,
@@ -47,6 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
           shareSlug: meta.shareSlug,
           shareId: meta.shareId,
           cardId: meta.cardId,
+          callId,
           createdAt: m.createdAt.toISOString(),
           editedAt: m.editedAt?.toISOString(),
           isOwn: m.senderId === user.id,
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
 }
 
 export async function POST(req: NextRequest, { params }: { params: { threadId: string } }) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -77,11 +81,13 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
       cardId?: string;
       mediaUrl?: string;
       valueUsdCents?: number;
+      callId?: string;
     };
     if (!body.body?.trim()) return NextResponse.json({ error: "Message body required" }, { status: 400 });
 
     const allowedTypes = new Set([
       "text", "image", "audio", "tip", "gift", "system", "playlist", "yopho", "profile", "yopho_card",
+      "video_invite", "link",
     ]);
     const msgType = body.type && allowedTypes.has(body.type) ? body.type : "text";
 
@@ -94,14 +100,18 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     if (msgType === "yopho_card" && !body.cardId?.trim() && !body.shareId?.trim()) {
       return NextResponse.json({ error: "cardId required for interactive YoPho card shares" }, { status: 400 });
     }
+    if (msgType === "video_invite" && !body.callId?.trim()) {
+      return NextResponse.json({ error: "callId required for video invites" }, { status: 400 });
+    }
+    if ((msgType === "image" || msgType === "link") && !body.mediaUrl?.trim() && !/^https?:\/\//i.test(body.body)) {
+      // image prefers mediaUrl; link may be the body URL itself
+    }
 
-    const message = await sendMessage({
-      conversationId: params.threadId,
-      senderId: user.id,
-      senderName: user.displayName,
-      body: body.body.trim(),
-      messageType: msgType,
-      mediaUrl: encodeShareMeta(
+    let mediaUrl: string | undefined;
+    if (msgType === "video_invite") {
+      mediaUrl = JSON.stringify({ callId: body.callId, mediaUrl: body.mediaUrl });
+    } else {
+      mediaUrl = encodeShareMeta(
         {
           playlistId: body.playlistId?.trim(),
           trackId: body.trackId?.trim(),
@@ -110,7 +120,16 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
           cardId: body.cardId?.trim() || body.shareId?.trim(),
         },
         body.mediaUrl,
-      ),
+      );
+    }
+
+    const message = await sendMessage({
+      conversationId: params.threadId,
+      senderId: user.id,
+      senderName: user.displayName,
+      body: body.body.trim(),
+      messageType: msgType,
+      mediaUrl,
       valueUsdCents: body.valueUsdCents,
     });
 
@@ -124,6 +143,8 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
       shareSlug: meta.shareSlug,
       shareId: meta.shareId,
       cardId: meta.cardId,
+      callId: body.callId,
+      mediaUrl: meta.mediaUrl ?? body.mediaUrl,
       createdAt: message.createdAt.toISOString(),
     });
   } catch (err) {
@@ -133,7 +154,7 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { threadId: string } }) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: { messageId?: string };

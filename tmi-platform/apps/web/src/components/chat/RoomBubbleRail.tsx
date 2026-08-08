@@ -9,12 +9,14 @@ type RoomBubbleRailProps = {
   bubbles: FloatingBubble[];
   maxVisible?: number;
   enableDensityCulling?: boolean;
+  variant?: "default" | "comic";
 };
 
 export function RoomBubbleRail({
   bubbles,
   maxVisible = 16,
   enableDensityCulling = true,
+  variant = "default",
 }: RoomBubbleRailProps) {
   const [renderKey, setRenderKey] = useState(0);
 
@@ -56,7 +58,7 @@ export function RoomBubbleRail({
       }}
     >
       {visibleBubbles.map((bubble) => (
-        <RoomChatBubble key={bubble.id} bubble={bubble} isVisible={true} />
+        <RoomChatBubble key={bubble.id} bubble={bubble} isVisible={true} variant={variant} />
       ))}
 
       {/* Debug info (in development) */}

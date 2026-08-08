@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import AwrRenderHealthPanel from "@/components/admin/overseer/AwrRenderHealthPanel";
 import ShowPackageDirector, {
   type ActiveShowPackageSnapshot,
 } from "@/lib/presentation/ShowPackageDirector";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/presentation/directors";
 import { listFrameworkManifests } from "@/lib/platform/FrameworkRegistry";
 import { listCapabilityMatrix } from "@/lib/platform/PlatformCapabilityMatrix";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 type LiveSessionRow = {
   roomId?: string;
@@ -189,6 +191,8 @@ export default function ObservatoryIntelligencePanel() {
         </div>
       </section>
 
+      <AwrRenderHealthPanel />
+
       {/* Platform Core health */}
       <section
         style={{
@@ -276,7 +280,10 @@ export default function ObservatoryIntelligencePanel() {
               >
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {session.title || session.displayName || session.roomId || "Live Room"}
+                    {session.title ||
+                      sanitizeWallHostLabel(session.displayName, { hostUserId: session.roomId }) ||
+                      session.roomId ||
+                      "Live Room"}
                   </div>
                   <div style={{ color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
                     {(session.category ?? "live").toUpperCase()}

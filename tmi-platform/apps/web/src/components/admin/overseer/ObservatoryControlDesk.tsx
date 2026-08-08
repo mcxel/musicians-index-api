@@ -521,6 +521,23 @@ export default function ObservatoryControlDesk() {
 
           <span style={{ width: 1, height: 16, background: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
 
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <button type="button" style={toolbarBtn(activeLayoutId === "single-monitor", "#00FFFF")} onClick={() => loadLayout("single-monitor")}>
+              🖥️ 1-Mon
+            </button>
+            <button type="button" style={toolbarBtn(activeLayoutId === "dual-monitor", "#00FFFF")} onClick={() => loadLayout("dual-monitor")}>
+              🖥️🖥️ 2-Mon
+            </button>
+            <button type="button" style={toolbarBtn(activeLayoutId === "quad-monitor", "#00FFFF")} onClick={() => loadLayout("quad-monitor")}>
+              🔲 4-Mon
+            </button>
+            <button type="button" style={toolbarBtn(activeLayoutId === "16-tile-matrix", "#FF2DAA")} onClick={() => loadLayout("16-tile-matrix")}>
+              🔢 16-Tile Matrix
+            </button>
+          </div>
+
+          <span style={{ width: 1, height: 16, background: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
+
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9 }}>
             <span style={{ color: "rgba(255,255,255,0.45)", fontWeight: 800, letterSpacing: "0.08em" }}>
               LAYOUT

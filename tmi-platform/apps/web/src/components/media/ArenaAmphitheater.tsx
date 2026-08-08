@@ -1,3 +1,4 @@
+import { resolveAvatarLOD } from "@/lib/avatar/AvatarLODEngine";
 "use client";
 
 export type ArenaGeometryMode =
@@ -160,6 +161,11 @@ export default function ArenaAmphitheater({
       {/* Seat dots */}
       {seats.map((seat, i) => {
         const isOccupied = i < occupied;
+        const lod = resolveAvatarLOD({
+          userId: `fan-${i}`,
+          displayName: `Fan ${i + 1}`,
+          distanceMeters: (1 - seat.opacity) * 80,
+        });
         return (
           <div
             key={i}

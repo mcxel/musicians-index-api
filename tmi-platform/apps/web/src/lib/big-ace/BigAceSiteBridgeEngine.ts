@@ -31,6 +31,17 @@ export class BigAceSiteBridgeEngine {
     return `Assigned to ${site}: ${task}`;
   }
 
+  /** Business comms directives run through the authority-envelope command bus (not raw mailbox access). */
+  static async runBusinessCommsDirective(
+    operatorId: string,
+    directive: import("@/lib/big-ace/BigAceBusinessCommunicationsBridge").BigAceBusinessDirective,
+  ) {
+    const { executeBigAceBusinessDirective } = await import(
+      "@/lib/big-ace/BigAceBusinessCommunicationsBridge"
+    );
+    return executeBigAceBusinessDirective(operatorId, directive);
+  }
+
   static returnToCommandHub(): string {
     return "/admin/big-ace";
   }

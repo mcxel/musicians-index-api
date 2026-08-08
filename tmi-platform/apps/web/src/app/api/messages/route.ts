@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail } from "@/lib/auth/UserStore";
 import {
   listConversationsForUser,
   getOrCreateConversation,
@@ -8,15 +7,13 @@ import {
   resolveParticipants,
   unreadCountForUser,
 } from "@/lib/messaging/prismaMessageStore";
-
-function getUserFromRequest(req: NextRequest) {
-  const email = req.cookies.get("tmi_user_email")?.value ?? "";
-  if (!email) return null;
-  return getUserByEmail(email);
-}
+import {
+  resolveMessagingUser,
+  resolveRecipientId,
+} from "@/lib/messaging/resolveMessagingUser";
 
 export async function GET(req: NextRequest) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -56,7 +53,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: {
@@ -65,6 +62,9 @@ export async function POST(req: NextRequest) {
     recipientRole?: string;
     body?: string;
     kind?: string;
+    type?: string;
+    mediaUrl?: string;
+    callId?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -76,10 +76,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "recipientId and body required" }, { status: 400 });
   }
 
+  const recipient = await resolveRecipientId(body.recipientId);
+  if (!recipient) {
+    return NextResponse.json(
+      { error: "Recipient not found. Use a real user id, email, or display name." },
+      { status: 404 },
+    );
+  }
+
+  if (recipient.id === user.id) {
+    return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
+  }
+
   try {
+    const allowedTypes = new Set([
+      "text", "image", "audio", "tip", "gift", "system", "playlist", "yopho", "profile", "yopho_card",
+      "video_invite", "link",
+    ]);
+    const msgType = body.type && allowedTypes.has(body.type) ? body.type : "text";
+
+    const mediaPayload =
+      msgType === "video_invite" && body.callId
+        ? JSON.stringify({ callId: body.callId, mediaUrl: body.mediaUrl })
+        : body.mediaUrl;
+
     const convo = await getOrCreateConversation({
       userId: user.id,
-      recipientId: body.recipientId,
+      recipientId: recipient.id,
       kind: body.kind ?? "fan-fan",
     });
     const message = await sendMessage({
@@ -87,11 +110,21 @@ export async function POST(req: NextRequest) {
       senderId: user.id,
       senderName: user.displayName,
       body: body.body.trim(),
-      messageType: "text",
+      messageType: msgType,
+      mediaUrl: mediaPayload,
     });
     return NextResponse.json({
       threadId: convo.id,
-      message: { messageId: message.id, body: message.body, createdAt: message.createdAt.toISOString() },
+      message: {
+        messageId: message.id,
+        body: message.body,
+        type: message.messageType,
+        createdAt: message.createdAt.toISOString(),
+      },
+      recipient: {
+        userId: recipient.id,
+        displayName: recipient.displayName,
+      },
     });
   } catch (err) {
     console.error("[api/messages POST]", err);

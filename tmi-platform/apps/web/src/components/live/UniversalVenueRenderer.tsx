@@ -51,6 +51,10 @@ import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 import { AttentionDebugOverlay } from '@/components/live/AttentionDebugOverlay';
+import { RoomBubbleRail } from '@/components/chat/RoomBubbleRail';
+import { useVenueSpeechBubbles, audienceMessageToRoomChat } from '@/components/messaging/useVenueSpeechBubbles';
+import VenueInRoomMessagingPanel from '@/components/messaging/VenueInRoomMessagingPanel';
+import { RoomBubbleChatEngine } from '@/lib/chat/RoomBubbleChatEngine';
 
 const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
 import {
@@ -387,9 +391,47 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   const audience = useMemo(() => snapshot?.activeMembers ?? [], [snapshot?.activeMembers]);
   const captureAudience = useMemo(() => audience.filter((m) => m.captureEnabled), [audience]);
   const messages = useMemo(() => snapshot?.messages ?? [], [snapshot?.messages]);
+  const seatByUser = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const m of audience) map[m.userId] = m.seatId;
+    return map;
+  }, [audience]);
+  const { bubbles: speechBubbles } = useVenueSpeechBubbles(messages, seatByUser);
+  const whisperEngineRef = useRef<RoomBubbleChatEngine | null>(null);
+  const [whisperBubbles, setWhisperBubbles] = useState<ReturnType<RoomBubbleChatEngine['getActiveBubbles']>>([]);
   const mutedUserIds = snapshot?.moderation?.mutedUserIds ?? [];
   const activeSlowModeSeconds = Math.round((snapshot?.moderation?.slowModeMs ?? 0) / 1000);
   useEffect(() => setSlowModeSeconds(activeSlowModeSeconds), [activeSlowModeSeconds]);
+
+  useEffect(() => {
+    if (!whisperEngineRef.current) whisperEngineRef.current = new RoomBubbleChatEngine(8);
+    const onIncoming = (event: Event) => {
+      const detail = (event as CustomEvent<{ fromName?: string; preview?: string; fromAvatarUrl?: string }>).detail;
+      if (!detail?.preview) return;
+      const engine = whisperEngineRef.current!;
+      const now = Date.now();
+      const msg = audienceMessageToRoomChat({
+        id: `whisper-${now}`,
+        userId: 'dm',
+        displayName: detail.fromName ?? 'Friend',
+        text: detail.preview,
+        createdAt: now,
+        avatarUrl: detail.fromAvatarUrl,
+      });
+      engine.createBubble(msg, { x: 0.72, y: 0.38 }, 5200, now);
+      setWhisperBubbles(engine.getActiveBubbles(now));
+    };
+    window.addEventListener('tmi:incoming-dm', onIncoming);
+    const tick = window.setInterval(() => {
+      const engine = whisperEngineRef.current;
+      if (!engine) return;
+      setWhisperBubbles(engine.getActiveBubbles(Date.now()));
+    }, 150);
+    return () => {
+      window.removeEventListener('tmi:incoming-dm', onIncoming);
+      window.clearInterval(tick);
+    };
+  }, []);
 
   function updateSlowMode() {
     void fetch('/api/live/audience', {
@@ -493,6 +535,8 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             hideControls
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
           />
+          {/* Comic speech bubbles over the crowd */}
+          <RoomBubbleRail bubbles={[...speechBubbles, ...whisperBubbles]} variant="comic" maxVisible={14} />
           {audience.length > 0 && (
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 6, display: 'flex', gap: 5, justifyContent: 'center', flexWrap: 'wrap', padding: '0 8px', pointerEvents: 'none' }}>
               {audience.slice(0, 16).map((m) => {
@@ -605,6 +649,12 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           </div>
         </>
       )}
+
+      <VenueInRoomMessagingPanel
+        members={audience.map((m) => ({ userId: m.userId, displayName: m.displayName }))}
+        selfUserId={userId}
+        roomLabel={roomId}
+      />
 
       <div style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ padding: '8px 10px', fontSize: 10, color: '#AA2DFF', fontWeight: 800, letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between' }}>

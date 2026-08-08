@@ -13,7 +13,8 @@
  * states when the user has no playlists or a selected playlist is empty.
  */
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { sanitizePublicDisplayLabel } from "@/lib/auth/resolveSessionIdentity";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
 import {
   fetchShareThreadOptions,
@@ -61,6 +62,7 @@ export function PlaylistCanister({
   entityId,
   entityName,
   accentColor = "#FF5500",
+  isOwner = false,
   role = "fan",
   initialPlaylistId = null,
 }: PlaylistCanisterProps) {
@@ -76,6 +78,67 @@ export function PlaylistCanister({
   const [threads, setThreads] = useState<MessageThreadOption[]>([]);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
+
+  const publicOwnerName = useMemo(() => {
+    const base = ownerLabel ?? entityName;
+    return sanitizePublicDisplayLabel(base, { email: sessionEmail, userId: entityId });
+  }, [ownerLabel, entityName, sessionEmail, entityId]);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const sessionRes = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+        if (!sessionRes.ok || cancelled) return;
+        const sessionData = (await sessionRes.json()) as {
+          user?: { id?: string; name?: string; email?: string };
+        };
+        const email = sessionData.user?.email ?? null;
+        if (!cancelled) setSessionEmail(email);
+
+        let profileName: string | null = sessionData.user?.name?.trim() ?? null;
+        const profileRes = await fetch("/api/user/profile", { credentials: "include", cache: "no-store" });
+        if (profileRes.ok) {
+          const profileData = (await profileRes.json()) as {
+            profile?: { displayName?: string | null };
+          };
+          profileName = profileData.profile?.displayName?.trim() ?? profileName;
+        }
+        if (!cancelled && profileName) setOwnerLabel(profileName);
+      } catch {
+        /* keep prop fallback */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner]);
+
+  const editDisplayName = async () => {
+    const next = window.prompt("Your display name on playlists and casts:", publicOwnerName);
+    if (!next?.trim() || next.trim() === publicOwnerName) return;
+    setSavingDisplayName(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ displayName: next.trim() }),
+      });
+      if (res.ok) {
+        setOwnerLabel(next.trim());
+        window.dispatchEvent(
+          new CustomEvent("tmi:display-name-updated", { detail: { name: next.trim() } }),
+        );
+      }
+    } finally {
+      setSavingDisplayName(false);
+    }
+  };
 
   const activeTrack = tracks[currentTrackIndex] ?? null;
 
@@ -178,7 +241,7 @@ export function PlaylistCanister({
       playlistId: selectedId,
       trackId: activeTrack.id,
       title: activeTrack.title,
-      artist: entityName,
+      artist: publicOwnerName,
       targetMonitorId: "mon-a",
     });
   };
@@ -229,7 +292,7 @@ export function PlaylistCanister({
               {activeTrack ? (
                 <>
                   {activeTrack.title}
-                  {entityName ? <span style={{ color: "#00FFFF", fontSize: 11 }}> · {entityName}</span> : null}
+                  {publicOwnerName ? <span style={{ color: "#00FFFF", fontSize: 11 }}> · {publicOwnerName}</span> : null}
                 </>
               ) : (
                 <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 700 }}>No track selected</span>
@@ -245,9 +308,29 @@ export function PlaylistCanister({
           <button type="button" onClick={castSelected} disabled={!activeTrack} style={actionBtn("#FFD700")}>
             📺 CAST TO MONITOR
           </button>
-          {entityName ? (
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
-              Owner: <strong style={{ color: "#00FF88" }}>{entityName}</strong>
+          {publicOwnerName ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
+              Owner: <strong style={{ color: "#00FF88" }}>{publicOwnerName}</strong>
+              {isOwner ? (
+                <button
+                  type="button"
+                  disabled={savingDisplayName}
+                  onClick={() => void editDisplayName()}
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: "0.06em",
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    border: "1px solid rgba(0,255,255,0.35)",
+                    background: "transparent",
+                    color: "#00FFFF",
+                    cursor: savingDisplayName ? "wait" : "pointer",
+                  }}
+                >
+                  {savingDisplayName ? "…" : "EDIT NAME"}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -320,7 +403,7 @@ export function PlaylistCanister({
                     <div style={{ fontSize: 13, fontWeight: 900, color: "#fff", textShadow: "0 0 10px #000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
                       {activeTrack.title}
                     </div>
-                    {entityName ? <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, marginTop: 2 }}>{entityName}</div> : null}
+                    {publicOwnerName ? <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, marginTop: 2 }}>{publicOwnerName}</div> : null}
                   </>
                 ) : (
                   <span style={{ fontSize: 24, opacity: 0.5 }}>🎵</span>
@@ -331,7 +414,7 @@ export function PlaylistCanister({
 
           <div style={{ width: "100%", textAlign: "center", marginTop: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 900, color: "#fff" }}>{activeTrack?.title ?? "—"}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{entityName ?? ""}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{publicOwnerName ?? ""}</div>
 
             <div style={{ display: "flex", gap: 3, height: 24, alignItems: "center", justifyContent: "center", margin: "12px 0 6px" }}>
               {Array.from({ length: 24 }).map((_, i) => (

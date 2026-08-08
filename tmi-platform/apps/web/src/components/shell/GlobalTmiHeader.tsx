@@ -131,7 +131,11 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
                     color: "#fff",
                   }}
                 >
-                  {sessionUser.displayName?.[0]?.toUpperCase() || "U"}
+                  {sessionUser.avatarUrl ? (
+                    <img src={sessionUser.avatarUrl} alt={sessionUser.displayName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    (sessionUser.displayName?.trim()?.[0] || "?").toUpperCase()
+                  )}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {sessionUser.displayName}

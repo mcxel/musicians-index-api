@@ -36,6 +36,7 @@ export interface Message {
   senderId: string;
   senderName: string;
   senderRole: string;
+  senderAvatarUrl?: string;
   messageType: MessageType;
   text?: string;
   mediaId?: string;

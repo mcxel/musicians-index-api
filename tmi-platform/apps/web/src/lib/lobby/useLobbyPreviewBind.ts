@@ -10,9 +10,13 @@ import {
   bindLobbyPreviewRoom,
   getLobbyPreviewBindState,
   subscribeLobbyPreviewBind,
+  applyLobbyPreviewReceiveQuality,
   type LobbyPreviewBindState,
 } from "@/lib/lobby/LobbyPreviewBindRuntime";
 import { getLobbyAudioFocus } from "@/lib/lobby/LobbyPreviewRuntime";
+import { getWebRTCSubscriptionGovernor } from "@/lib/adaptiveWorldRuntime/WebRTCSubscriptionGovernor";
+import { LIVE_LOBBY_WALL_CONTRACT_ID } from "@/lib/adaptiveWorldRuntime/qualityContracts/LIVE_LOBBY_WALL";
+import type { PreviewQuality } from "@/lib/lobby/LobbyPreviewRuntime";
 
 export type LobbyPreviewBindResult = {
   mediaStream: MediaStream | null;
@@ -28,9 +32,11 @@ export function useLobbyPreviewBind(
     subscribed: boolean;
     focused: boolean;
     isLive: boolean;
+    quality?: PreviewQuality;
   },
 ): LobbyPreviewBindResult {
   const [bind, setBind] = useState<LobbyPreviewBindState>(() => getLobbyPreviewBindState());
+  const ownsBind = bind.roomId === roomId;
 
   useEffect(() => subscribeLobbyPreviewBind(setBind), []);
 
@@ -39,7 +45,14 @@ export function useLobbyPreviewBind(
     if (!opts.isLive || !opts.subscribed) return;
     const focus = getLobbyAudioFocus();
     const shouldOwn = opts.focused || focus === roomId;
-    if (!shouldOwn) return;
+    const policy = getWebRTCSubscriptionGovernor().resolveTile({
+      roomId,
+      visible: opts.subscribed,
+      focused: shouldOwn,
+      isLive: opts.isLive,
+      contract: LIVE_LOBBY_WALL_CONTRACT_ID,
+    });
+    if (!shouldOwn || !policy.allowDailyBind) return;
 
     void bindLobbyPreviewRoom(roomId);
     return () => {
@@ -50,7 +63,11 @@ export function useLobbyPreviewBind(
     };
   }, [roomId, opts.isLive, opts.subscribed, opts.focused]);
 
-  const ownsBind = bind.roomId === roomId;
+  useEffect(() => {
+    if (!ownsBind || !opts.quality) return;
+    void applyLobbyPreviewReceiveQuality(opts.quality);
+  }, [ownsBind, opts.quality, roomId]);
+
   return {
     mediaStream: ownsBind ? bind.mediaStream : null,
     bindStatus: ownsBind ? bind.status : "idle",

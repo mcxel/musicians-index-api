@@ -99,7 +99,17 @@ export function MessageBubble({ message }: { message: Message }) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
+    <div style={{ display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start', marginBottom: 10, gap: 8, alignItems: 'flex-end' }}>
+      {!isOwn && message.senderAvatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={message.senderAvatarUrl}
+          alt=""
+          width={28}
+          height={28}
+          style={{ borderRadius: '50%', objectFit: 'cover', border: '1px solid #2b2b52' }}
+        />
+      ) : null}
       <div style={bubbleStyle}>
         {!isOwn ? (
           <div style={{ fontSize: 10, color: '#9aa0c2', marginBottom: 6 }}>

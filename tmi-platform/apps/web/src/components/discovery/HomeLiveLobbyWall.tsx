@@ -23,6 +23,10 @@ import {
   projectDiscoveryRecordToSurfaceCard,
 } from "@/lib/discovery/LiveSurfaceCard";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
+import {
+  LIVE_LOBBY_WALL_CONTRACT_ID,
+  useAdaptiveWorldRuntime,
+} from "@/lib/adaptiveWorldRuntime";
 
 const RIM_KEYFRAMES = `
 @keyframes tmiLobbyRimSpin {
@@ -74,6 +78,7 @@ export default function HomeLiveLobbyWall({
   const copy = HOMEPAGE_SURFACE_COPY[surface];
   const label = title ?? copy.title;
   const { open: openOverlay } = useLiveDiscoveryOverlay();
+  useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [joinRoom, setJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);

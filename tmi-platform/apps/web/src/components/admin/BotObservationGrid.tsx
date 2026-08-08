@@ -82,6 +82,7 @@ function BotPovPreview({ bot }: { bot: BotObserveRow }) {
       </div>
       <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(0,255,255,0.25)", minHeight: 220 }}>
         <LobbyPreviewWindow
+          roomId={bot.currentRoom}
           preview={preview}
           accent="#00FFFF"
           performerInitial={bot.name.slice(0, 1).toUpperCase()}

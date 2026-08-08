@@ -23,6 +23,7 @@ import HomeLiveLobbyWall from "@/components/discovery/HomeLiveLobbyWall";
 import ObservatoryChampionshipWidget from "@/components/championship/ObservatoryChampionshipWidget";
 import LivingRankingsPanel from "@/components/championship/LivingRankingsPanel";
 import GauntletControlPanel from "@/components/admin/overseer/GauntletControlPanel";
+import BigAceBusinessActivityPanel from "@/components/admin/BigAceBusinessActivityPanel";
 import type { DeskPanelId, DeskPeriod } from "@/lib/admin/ObservatoryDeskState";
 
 export function HonestEmpty({
@@ -357,12 +358,15 @@ export function DeskPanelContent({
       );
     case "sponsors":
       return (
-        <HonestEmpty
-          title="Sponsors"
-          detail="Sponsor placements use SponsorRegistry on marketplace surfaces. No Observatory sponsor telemetry panel yet."
-          href="/admin/sponsors"
-          hrefLabel="Open Sponsors →"
-        />
+        <div style={{ height: "100%", overflow: "auto", display: "flex", flexDirection: "column", gap: 10, padding: 8 }}>
+          <BigAceBusinessActivityPanel />
+          <HonestEmpty
+            title="Sponsor placements"
+            detail="Paid zones use SponsorRegistry on marketplace surfaces. Proposals from business comms appear in Revenue Business proposals when ingested."
+            href="/admin/sponsors"
+            hrefLabel="Open Sponsors →"
+          />
+        </div>
       );
     case "prizes":
       return (

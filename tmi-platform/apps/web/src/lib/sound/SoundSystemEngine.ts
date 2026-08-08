@@ -34,9 +34,19 @@ class SoundSystemEngineClass {
 
   public play(category: SoundCategory, overrideTheme?: SoundThemeId): void {
     const store = useSoundSettingsStore.getState();
-    const { masterVolume, clickVolume, notificationVolume, messageVolume, liveEventVolume, purchaseVolume, achievementVolume, activeTheme } = store;
+    const {
+      masterVolume,
+      clickVolume,
+      notificationVolume,
+      messageVolume,
+      liveEventVolume,
+      purchaseVolume,
+      achievementVolume,
+      activeTheme,
+      soundEnabled,
+    } = store;
 
-    if (masterVolume <= 0) return;
+    if (!soundEnabled || masterVolume <= 0) return;
 
     let categoryMult = 1.0;
     if (category.startsWith('click')) categoryMult = clickVolume / 100;
@@ -53,7 +63,7 @@ class SoundSystemEngineClass {
     if (!ctx) return;
 
     const themeId = overrideTheme || activeTheme;
-    const theme = SOUND_THEMES[themeId] || SOUND_THEMES.studio;
+    const theme = (SOUND_THEMES as any)[themeId] || SOUND_THEMES.studio;
 
     try {
       const osc = ctx.createOscillator();

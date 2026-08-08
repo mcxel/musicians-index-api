@@ -13,6 +13,7 @@ import {
   type DiscoveryEmptyState,
 } from "@/lib/discovery/UnifiedDiscoveryEngine";
 import { type LiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 interface DiscoveryTileProps {
   session: LiveSession;
@@ -162,7 +163,7 @@ function DiscoveryTile({ session, accent, theme = "expanded" }: DiscoveryTilePro
                 whiteSpace: "nowrap",
               }}
             >
-              {session.displayName}
+              {sanitizeWallHostLabel(session.displayName, { hostUserId: session.userId })}
             </div>
             <div
               style={{

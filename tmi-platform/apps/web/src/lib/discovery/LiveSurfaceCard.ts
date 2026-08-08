@@ -10,6 +10,7 @@
 
 import type { LiveSession, StageState, StreamCategory, StreamHealth } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 // ── State / runtime enums (validated — never blind `as`) ─────────────────────
 
@@ -270,7 +271,9 @@ export function projectLiveSessionToSurfaceCard(
     runtimeType: mapCategoryToRuntimeType(session.category),
     roomId,
     title: (session.title || `${session.displayName || "Live"} — Live`).trim(),
-    subtitle: (session.displayName || "Host").trim(),
+    subtitle: sanitizeWallHostLabel(session.displayName || "Host", {
+      hostUserId: hostAccountId,
+    }),
     hostAccountId,
     performerIds: hostAccountId ? [hostAccountId] : [],
     state,
@@ -313,7 +316,9 @@ export function projectDiscoveryRecordToSurfaceCard(
     runtimeType: mapCategoryToRuntimeType(record.category),
     roomId,
     title: (record.title || "Live").trim(),
-    subtitle: (record.statusLine || record.hostName || "Host").trim(),
+    subtitle: sanitizeWallHostLabel(record.statusLine || record.hostName || "Host", {
+      hostUserId: hostAccountId,
+    }),
     hostAccountId,
     performerIds: hostAccountId ? [hostAccountId] : [],
     state,

@@ -7,6 +7,7 @@ import AdminCommandRail from "@/components/admin/AdminCommandRail";
 import AdminSentinelRail from "@/components/admin/AdminSentinelRail";
 import ProfitCommandCenter from "@/components/admin/profit/ProfitCommandCenter";
 import EmergencyCorrectionPanel from "@/components/admin/profit/EmergencyCorrectionPanel";
+import BigAceBusinessActivityPanel from "@/components/admin/BigAceBusinessActivityPanel";
 
 const controls = [
   "Approve Corrections",
@@ -141,6 +142,7 @@ export default function BigAceAdminPage() {
           </section>
 
           <ProfitCommandCenter title="Cross-Business Profit Command" />
+          <BigAceBusinessActivityPanel />
           <EmergencyCorrectionPanel />
         </div>
       </div>

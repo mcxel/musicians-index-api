@@ -28,6 +28,7 @@ import {
 } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 export interface GlobalLiveDiscoveryOverlayProps {
   /** Optional session user id for private/friends entitlement */
@@ -125,7 +126,7 @@ export default function GlobalLiveDiscoveryOverlay({
         room: {
           id: room.id,
           title: room.name,
-          hostName: room.performerName,
+          hostName: sanitizeWallHostLabel(room.performerName, { hostUserId: room.hostUserId }),
           genre: room.genre,
           viewers: room.viewerCount,
           seatsOpen: undefined,

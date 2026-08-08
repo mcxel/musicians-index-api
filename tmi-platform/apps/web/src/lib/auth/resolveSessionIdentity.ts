@@ -84,5 +84,62 @@ export function resolveSessionDisplayName(opts: {
   return "Member";
 }
 
-/** Roles every HARDCODED_ADMIN / governance operator should be able to switch into. */
+/** Never show raw email / foreign email handles on semi-public surfaces (playlists, casts, etc.). */
+export function sanitizePublicDisplayLabel(
+  label: string | null | undefined,
+  opts?: { email?: string | null; userId?: string | null }
+): string {
+  const raw = (label ?? "").trim();
+  if (!raw) {
+    return resolveSessionDisplayName({
+      email: opts?.email,
+      userId: opts?.userId,
+    });
+  }
+  if (raw.includes("@")) {
+    return resolveSessionDisplayName({
+      email: raw,
+      userId: opts?.userId,
+    });
+  }
+  return resolveSessionDisplayName({
+    email: opts?.email,
+    dbDisplayName: raw,
+    userId: opts?.userId,
+  });
+}
+
+/**
+ * Roles every HARDCODED_ADMIN / governance operator should be able to switch into.
+ * Canonical triad: ADMIN + FAN + PERFORMER (ARTIST kept as alias hub for legacy cookies).
+ */
 export const GOVERNANCE_SWITCHABLE_ROLES = ["ADMIN", "FAN", "PERFORMER", "ARTIST"] as const;
+
+/** Preferred order for role switcher tiles (triad first). */
+export const GOVERNANCE_ROLE_DISPLAY_ORDER = ["ADMIN", "FAN", "PERFORMER", "ARTIST"] as const;
+
+export function getCanonicalInitials(displayName: string | null | undefined): string {
+  const name = (displayName ?? "").trim();
+  if (!name) return "?";
+  const firstChar = Array.from(name)[0];
+  return firstChar ? firstChar.toUpperCase() : "?";
+}
+
+export function resolveAccountIdentity(session: {
+  userId?: string | null;
+  email?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}) {
+  const name = resolveSessionDisplayName({
+    email: session.email,
+    dbDisplayName: session.displayName,
+    userId: session.userId,
+  });
+  return {
+    userId: session.userId ?? "guest",
+    displayName: name,
+    avatarUrl: session.avatarUrl ?? null,
+    initials: getCanonicalInitials(name),
+  };
+}

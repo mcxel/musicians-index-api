@@ -1,21 +1,18 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail } from "@/lib/auth/UserStore";
 import {
   listConversationsForUser,
   getOrCreateConversation,
   resolveParticipants,
   unreadCountForUser,
 } from "@/lib/messaging/prismaMessageStore";
-
-function getUserFromRequest(req: NextRequest) {
-  const email = req.cookies.get("tmi_user_email")?.value ?? "";
-  if (!email) return null;
-  return getUserByEmail(email);
-}
+import {
+  resolveMessagingUser,
+  resolveRecipientId,
+} from "@/lib/messaging/resolveMessagingUser";
 
 export async function GET(req: NextRequest) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
@@ -49,7 +46,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   let body: { recipientId?: string; recipientName?: string; kind?: string } = {};
@@ -63,10 +60,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "recipientId required" }, { status: 400 });
   }
 
+  const recipient = await resolveRecipientId(body.recipientId);
+  if (!recipient) {
+    return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+  }
+
   try {
     const convo = await getOrCreateConversation({
       userId: user.id,
-      recipientId: body.recipientId,
+      recipientId: recipient.id,
       kind: body.kind ?? "fan-fan",
     });
     return NextResponse.json({ ok: true, threadId: convo.id, conversation: { id: convo.id } });

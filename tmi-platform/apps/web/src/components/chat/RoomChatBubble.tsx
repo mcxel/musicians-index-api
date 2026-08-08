@@ -6,6 +6,8 @@ import type { FloatingBubble } from "@/lib/chat/RoomBubbleChatEngine";
 type RoomChatBubbleProps = {
   bubble: FloatingBubble;
   isVisible: boolean;
+  /** Comic-book speech bubble styling for 360° venue overlays */
+  variant?: "default" | "comic";
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -28,7 +30,7 @@ const ROLE_LABELS: Record<string, string> = {
   moderator: "MOD",
 };
 
-export function RoomChatBubble({ bubble, isVisible }: RoomChatBubbleProps) {
+export function RoomChatBubble({ bubble, isVisible, variant = "default" }: RoomChatBubbleProps) {
   const color = useMemo(() => ROLE_COLORS[bubble.message.role] ?? "#ffffff", [bubble.message.role]);
   const label = useMemo(() => ROLE_LABELS[bubble.message.role] ?? bubble.message.role.toUpperCase(), [
     bubble.message.role,
@@ -55,19 +57,38 @@ export function RoomChatBubble({ bubble, isVisible }: RoomChatBubbleProps) {
     >
       <div
         style={{
-          borderRadius: 12,
-          padding: "8px 12px",
+          borderRadius: variant === "comic" ? 16 : 12,
+          padding: variant === "comic" ? "10px 14px" : "8px 12px",
           maxWidth: 240,
-          border: `2px solid ${color}`,
-          background: "rgba(0,0,0,0.82)",
-          color: "#ffffff",
-          boxShadow: `0 0 20px ${color}66`,
-          backdropFilter: "blur(4px)",
+          border: variant === "comic" ? `3px solid ${color}` : `2px solid ${color}`,
+          background: variant === "comic" ? "rgba(255,255,255,0.96)" : "rgba(0,0,0,0.82)",
+          color: variant === "comic" ? "#0a0614" : "#ffffff",
+          boxShadow:
+            variant === "comic"
+              ? `4px 4px 0 rgba(0,0,0,0.85), 0 0 18px ${color}55`
+              : `0 0 20px ${color}66`,
+          backdropFilter: variant === "comic" ? undefined : "blur(4px)",
           fontSize: 12,
           lineHeight: 1.4,
-          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontFamily: variant === "comic" ? "'Arial Black', Impact, sans-serif" : "system-ui, -apple-system, sans-serif",
+          position: "relative",
         }}
       >
+        {variant === "comic" ? (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              bottom: -10,
+              left: "22%",
+              width: 0,
+              height: 0,
+              borderLeft: "8px solid transparent",
+              borderRight: "8px solid transparent",
+              borderTop: `12px solid ${color}`,
+            }}
+          />
+        ) : null}
         {/* Role Label */}
         <div
           style={{

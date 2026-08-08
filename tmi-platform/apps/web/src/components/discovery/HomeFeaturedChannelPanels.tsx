@@ -15,11 +15,17 @@ import {
   HOMEPAGE_SURFACE_COPY,
   pickFeaturedChannelSlots,
 } from "@/lib/discovery/homepageDiscoveryFilters";
+import {
+  getGovernedIdleFallbackPolicy,
+  LIVE_LOBBY_WALL_CONTRACT_ID,
+  useAdaptiveWorldRuntime,
+} from "@/lib/adaptiveWorldRuntime";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import {
   isoCountryToFlag,
   type LiveDiscoveryRecord,
 } from "@/lib/discovery/LiveDiscoveryRecord";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 const RIM_KEYFRAMES = `
 @keyframes tmiLobbyRimSpin {
@@ -28,7 +34,7 @@ const RIM_KEYFRAMES = `
 }
 `;
 
-const ROTATE_MS = 25000;
+const ROTATE_MS_DEFAULT = 25000;
 const CHANNEL_ACCENTS = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF"] as const;
 
 function ensureRimKeyframes() {
@@ -249,7 +255,7 @@ function FeaturedChannelPanel({
               whiteSpace: "nowrap",
             }}
           >
-            {record.hostName}
+            {sanitizeWallHostLabel(record.hostName, { hostUserId: record.hostUserId })}
           </div>
           <div
             style={{
@@ -287,6 +293,7 @@ export default function HomeFeaturedChannelPanels({
   const [role, setRole] = useState("FAN");
   const interactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copy = HOMEPAGE_SURFACE_COPY.home1_featured;
+  useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
 
   useEffect(() => {
     ensureRimKeyframes();
@@ -312,9 +319,13 @@ export default function HomeFeaturedChannelPanels({
     if (interacting || focusedId) return;
     const pool = filterForHomepageSurface(records, "home1_featured");
     if (pool.length <= slotCount) return;
+    const rotateMs = Math.max(
+      getGovernedIdleFallbackPolicy().rotationIntervalMs,
+      ROTATE_MS_DEFAULT,
+    );
     const id = window.setInterval(() => {
       setRotationOffset((o) => o + 1);
-    }, ROTATE_MS);
+    }, rotateMs);
     return () => window.clearInterval(id);
   }, [interacting, focusedId, records, slotCount]);
 

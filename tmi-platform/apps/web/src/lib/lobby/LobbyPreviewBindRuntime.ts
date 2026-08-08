@@ -9,6 +9,7 @@
  */
 
 import type { DailyCall } from "@daily-co/daily-js";
+import type { PreviewQuality } from "@/lib/lobby/LobbyPreviewRuntime";
 
 export type LobbyPreviewBindState = {
   roomId: string | null;
@@ -202,4 +203,26 @@ export function subscribeLobbyPreviewBind(listener: Listener): () => void {
   return () => {
     listeners.delete(listener);
   };
+}
+
+/**
+ * Best-effort receive quality sync after focus promote/demote.
+ * Daily wall preview is receive-only; without publisher simulcast this is often a no-op.
+ */
+export async function applyLobbyPreviewReceiveQuality(quality: PreviewQuality): Promise<void> {
+  const c = call;
+  if (!c || quality === "off" || quality === "thumb") return;
+  const upd = (c as DailyCall & {
+    updateReceiveSettings?: (settings: {
+      video?: { maxQuality?: "low" | "medium" | "high" };
+    }) => Promise<void>;
+  }).updateReceiveSettings;
+  if (typeof upd !== "function") return;
+  try {
+    await upd({
+      video: { maxQuality: quality === "medium" ? "high" : "low" },
+    });
+  } catch {
+    /* Daily / room may not expose simulcast layers — composed-motion fallback remains honest */
+  }
 }

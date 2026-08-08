@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { EmailProviderEngine } from "@/lib/email/EmailProviderEngine";
+import { sendHostingerMail } from "@/lib/businessCommunications/HostingerMailAdapter";
+import { TMI_SUPPORT_EMAIL } from "@/lib/support/PublicSupportContact";
 import { checkRateLimit, validateSignupEmail } from "@/lib/security/TMISecurityEngine";
 
 function sanitizeInput(value: string): string {
@@ -51,6 +53,16 @@ export async function POST(request: Request) {
     const ctxHtml = sessionContext
       ? `<details style="margin-top:16px;font-size:11px;color:#888"><summary>Session Context</summary><pre style="background:#111;padding:8px;border-radius:4px;overflow:auto">${JSON.stringify(sessionContext, null, 2)}</pre></details>`
       : '';
+
+    // Internal ticket to support inbox (Hostinger SMTP when configured)
+    await sendHostingerMail({
+      to: TMI_SUPPORT_EMAIL,
+      fromIdentity: "support",
+      replyTo: cleanEmail,
+      subject: `Support Ticket ${ticketId} — ${cleanCategory}`,
+      html: `<p><strong>Ticket:</strong> ${ticketId}</p><p><strong>Category:</strong> ${cleanCategory}</p><p><strong>Urgency:</strong> ${urgency ?? "normal"}</p><p><strong>From:</strong> ${cleanEmail}</p><p>${cleanDescription.slice(0, 3500)}</p>`,
+      text: `Ticket ${ticketId} (${cleanCategory}) from ${cleanEmail}: ${cleanDescription.slice(0, 500)}`,
+    }).catch(() => null);
 
     // Send confirmation to user
     await EmailProviderEngine.sendAsync({

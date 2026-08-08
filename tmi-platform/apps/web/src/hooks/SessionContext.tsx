@@ -91,8 +91,14 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
     }
 
     hydrateScopedIdentity();
+
+    const onDisplayNameUpdated = () => {
+      void hydrateScopedIdentity();
+    };
+    window.addEventListener("tmi:display-name-updated", onDisplayNameUpdated);
     return () => {
       active = false;
+      window.removeEventListener("tmi:display-name-updated", onDisplayNameUpdated);
     };
   }, []);
 

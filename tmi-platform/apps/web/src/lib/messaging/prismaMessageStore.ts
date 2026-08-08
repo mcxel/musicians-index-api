@@ -146,6 +146,7 @@ export function decodeShareMeta(raw: string | null | undefined): ShareMeta & { m
 }
 
 export async function resolveParticipants(ids: string[]) {
+  const { resolveSessionDisplayName } = await import("@/lib/auth/resolveSessionIdentity");
   const users = await prisma.user.findMany({
     where: { id: { in: ids } },
     select: { id: true, displayName: true, email: true, role: true, image: true },
@@ -156,7 +157,11 @@ export async function resolveParticipants(ids: string[]) {
     const role = (u?.role ?? "FAN").toString().toLowerCase();
     return {
       userId: id,
-      displayName: u?.displayName ?? u?.email?.split("@")[0] ?? id,
+      displayName: resolveSessionDisplayName({
+        email: u?.email,
+        dbDisplayName: u?.displayName,
+        userId: id,
+      }),
       avatarUrl: u?.image ?? "",
       role: role === "performer" || role === "artist" ? "artist" : role === "sponsor" ? "sponsor" : role === "admin" || role === "staff" ? "admin" : "fan",
     };

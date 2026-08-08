@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { resolveLobbyDestination, type LobbyWallKind } from "@/lib/lobby/DestinationResolver";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 interface LiveRoomTile {
   userId: string;
@@ -39,6 +41,18 @@ const CATEGORY_EMOJI: Record<string, string> = {
   game: "🎮",
   session: "🎸",
 };
+
+function categoryToKind(category: string): LobbyWallKind {
+  const c = category.toLowerCase();
+  if (c === "battle") return "battle";
+  if (c === "cypher") return "cypher";
+  if (c === "challenge") return "challenge";
+  if (c === "game") return "game";
+  if (c === "concert") return "concert";
+  if (c === "dance") return "dance";
+  if (c === "lounge") return "lounge";
+  return "live";
+}
 
 export function LiveLobbyWallCanister({
   accentColor = "#FF2DAA",
@@ -161,7 +175,13 @@ export function LiveLobbyWallCanister({
             {rooms.map((room) => {
               const roomAccent = room.accentColor ?? accentColor;
               const emoji = CATEGORY_EMOJI[room.category] ?? "🎵";
-              const entryRoute = `/live/rooms/${room.roomId}?from=live-lobby-wall`;
+              const hostLabel = sanitizeWallHostLabel(room.displayName, {
+                hostUserId: room.userId,
+              });
+              const entryRoute = resolveLobbyDestination({
+                roomId: room.roomId,
+                kind: categoryToKind(room.category),
+              }).href;
               return (
                 <Link key={room.roomId} href={entryRoute} style={{ textDecoration: "none" }}>
                   <div style={{
@@ -210,7 +230,7 @@ export function LiveLobbyWallCanister({
                         {room.title}
                       </div>
                       <div style={{ fontSize: 9, color: roomAccent, fontWeight: 700, letterSpacing: "0.06em" }}>
-                        {emoji} {room.category.toUpperCase()} · {room.displayName}
+                        {emoji} {room.category.toUpperCase()} · {hostLabel}
                       </div>
                     </div>
                   </div>

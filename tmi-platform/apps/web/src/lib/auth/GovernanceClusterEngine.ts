@@ -73,10 +73,10 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
         {
           personaId:      'marcel-artist',
           personaType:    'artist',
-          role:           'ARTIST',
+          role:           'PERFORMER',
           displayName:    'Bernt Music',
           username:       'berntmusic',
-          dashboardRoute: '/hub/artist',
+          dashboardRoute: '/hub/performer',
           color:          '#00FFFF',
         },
         {
@@ -114,10 +114,10 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
         {
           personaId:      'justin-artist',
           personaType:    'artist',
-          role:           'ARTIST',
+          role:           'PERFORMER',
           displayName:    'Justin King',
           username:       'justinking',
-          dashboardRoute: '/hub/artist',
+          dashboardRoute: '/hub/performer',
           color:          '#00FFFF',
         },
         {
@@ -155,10 +155,10 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
         {
           personaId:      'jaypaul-artist',
           personaType:    'artist',
-          role:           'ARTIST',
+          role:           'PERFORMER',
           displayName:    'Jay Paul Sanchez',
           username:       'jaypaulsanchez',
-          dashboardRoute: '/hub/artist',
+          dashboardRoute: '/hub/performer',
           color:          '#00FFFF',
         },
         {

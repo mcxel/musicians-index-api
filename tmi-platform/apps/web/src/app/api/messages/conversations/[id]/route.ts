@@ -1,20 +1,14 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail } from "@/lib/auth/UserStore";
 import {
   getConversationForUser,
   sendMessage,
   markConversationRead,
 } from "@/lib/messaging/prismaMessageStore";
-
-function getUserFromRequest(req: NextRequest) {
-  const email = req.cookies.get("tmi_user_email")?.value ?? "";
-  if (!email) return null;
-  return getUserByEmail(email);
-}
+import { resolveMessagingUser } from "@/lib/messaging/resolveMessagingUser";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
@@ -24,7 +18,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const messages = convo.messages.map((m) => ({
       id: m.id,
       from: m.senderName,
+      senderId: m.senderId,
       text: m.body,
+      type: m.messageType,
+      mediaUrl: m.mediaUrl,
       mine: m.senderId === user.id,
       ts: m.createdAt.getTime(),
     }));
@@ -36,14 +33,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const user = getUserFromRequest(req);
+  const user = await resolveMessagingUser(req);
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  let body: { text?: string } = {};
+  let body: { text?: string; body?: string; type?: string; mediaUrl?: string } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
     /* empty */
+  }
+
+  const text = (body.text ?? body.body ?? "").trim();
+  if (!text) {
+    return NextResponse.json({ error: "text required" }, { status: 400 });
   }
 
   try {
@@ -53,13 +55,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       conversationId: params.id,
       senderId: user.id,
       senderName: user.displayName,
-      body: (body.text ?? "").trim() || "(empty)",
-      messageType: "text",
+      body: text,
+      messageType: body.type ?? "text",
+      mediaUrl: body.mediaUrl,
     });
     const msg = {
       id: created.id,
       from: "You",
+      senderId: user.id,
       text: created.body,
+      type: created.messageType,
       mine: true,
       ts: created.createdAt.getTime(),
     };

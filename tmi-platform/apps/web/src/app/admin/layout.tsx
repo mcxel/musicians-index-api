@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
+import ObservatoryVideoCallPanel from "@/components/admin/ObservatoryVideoCallPanel";
 
 // Roles that may access /admin/* — checked against live session before any child renders.
 // Matches the real Prisma Role enum (STAFF/ADMIN only — no OWNER/SUPERADMIN role exists).
@@ -288,7 +289,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 700 }}>
                 {sessionName ?? operatorPolicy.label}
               </span>
-              <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN ↔ FAN" />
+              <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN · FAN · PERFORMER" />
               <PersonaSwitcher currentRole={sessionRole} userId={sessionUserId} compact showAdd={false} />
             </div>
           </div>
@@ -296,6 +297,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ) : null}
 
       {children}
+      {/* Observatory ↔ Observatory video chat — mounts for all admin hubs including Flight Deck */}
+      {status === "authorized" ? <ObservatoryVideoCallPanel /> : null}
 
       <AdminConciergePanel
         open={conciergeOpen}

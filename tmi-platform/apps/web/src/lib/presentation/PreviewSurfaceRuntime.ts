@@ -22,6 +22,8 @@ export type PreviewSurfaceItemType =
   | "sponsor"
   | "live_stream";
 
+import { getGovernedIdleFallbackPolicy } from "@/lib/adaptiveWorldRuntime/IdleFallbackGovernor";
+
 export interface PreviewSurfaceItem {
   id: string;
   type: PreviewSurfaceItemType;
@@ -135,6 +137,16 @@ export const CANONICAL_PREVIEW_ROTATION: PreviewSurfaceItem[] = [
   },
 ];
 
+function governedRotationPool(): PreviewSurfaceItem[] {
+  const policy = getGovernedIdleFallbackPolicy();
+  if (policy.allowMonitorVideoRotation) {
+    return CANONICAL_PREVIEW_ROTATION;
+  }
+  return CANONICAL_PREVIEW_ROTATION.map((item) =>
+    item.mediaUrl ? { ...item, mediaUrl: undefined } : item,
+  );
+}
+
 export class PreviewSurfaceRuntime {
   private static instance: PreviewSurfaceRuntime | null = null;
   private currentIndex: number = 0;
@@ -170,7 +182,8 @@ export class PreviewSurfaceRuntime {
     if (this.isLiveActive && this.liveStreamItem) {
       return this.liveStreamItem;
     }
-    return CANONICAL_PREVIEW_ROTATION[this.currentIndex] ?? CANONICAL_PREVIEW_ROTATION[0];
+    const pool = governedRotationPool();
+    return pool[this.currentIndex % pool.length] ?? pool[0]!;
   }
 
   public setLiveActive(active: boolean, liveStreamInfo?: Partial<PreviewSurfaceItem>): void {
@@ -198,17 +211,20 @@ export class PreviewSurfaceRuntime {
 
   public nextItem(): void {
     if (this.isLiveActive) return;
-    this.currentIndex = (this.currentIndex + 1) % CANONICAL_PREVIEW_ROTATION.length;
+    const pool = governedRotationPool();
+    if (pool.length === 0) return;
+    this.currentIndex = (this.currentIndex + 1) % pool.length;
     this.notify();
   }
 
   private startRotation(): void {
     this.stopRotation();
     if (typeof window === "undefined") return;
-    const current = this.getCurrentItem();
+    const policy = getGovernedIdleFallbackPolicy();
+    const intervalMs = Math.max(policy.rotationIntervalMs, 4000);
     this.timerId = window.setInterval(() => {
       this.nextItem();
-    }, current.durationMs);
+    }, intervalMs);
   }
 
   private stopRotation(): void {

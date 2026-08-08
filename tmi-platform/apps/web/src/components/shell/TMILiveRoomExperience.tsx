@@ -499,21 +499,21 @@ export default function TMILiveRoomExperience({
 
   const slot2: MonitorConfig = {
     defaultFeed: 'audience',
-    availableFeeds: ['audience', 'billboard', 'battle-feed', 'cypher-feed', 'sponsor'],
+    availableFeeds: ['audience', 'billboard', 'battle-feed', 'cypher-feed', 'screen-share', 'sponsor'],
     accentColor: '#FF2DAA',
     children: audienceSlot,
   };
 
   const slot3: MonitorConfig = {
     defaultFeed: 'self-camera',
-    availableFeeds: ['self-camera', 'memory-wall', 'sponsor', 'empty'],
+    availableFeeds: ['self-camera', 'memory-wall', 'screen-share', 'sponsor', 'empty'],
     accentColor: '#AA2DFF',
     children: memoryWallSlot,
   };
 
   const slot4: MonitorConfig = {
     defaultFeed: 'billboard',
-    availableFeeds: ['billboard', 'now-available', 'memory-wall', 'playlist', 'sponsor', 'empty'],
+    availableFeeds: ['billboard', 'now-available', 'memory-wall', 'playlist', 'screen-share', 'sponsor', 'empty'],
     accentColor: '#FFD700',
     children: lobbyWallSlot,
   };

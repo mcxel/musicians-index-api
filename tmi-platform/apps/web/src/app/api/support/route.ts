@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/email/TmiEmailService';
+import { sendHostingerMail } from "@/lib/businessCommunications/HostingerMailAdapter";
+import { TMI_SUPPORT_EMAIL } from "@/lib/support/PublicSupportContact";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
   const safeSubject = escapeHtml(subject.trim().slice(0, 200));
   const safeMessage = escapeHtml(message.trim().slice(0, 2000));
 
-  const supportTo = process.env.TEAM_EMAIL ?? 'support@themusiciansindex.com';
+  const supportTo = TMI_SUPPORT_EMAIL;
 
   const html = `
     <div style="font-family:Arial,sans-serif;background:#0A0A0F;color:#E0E0E0;padding:24px;border-radius:8px;">
@@ -97,11 +98,12 @@ export async function POST(req: NextRequest) {
     </div>
   `;
 
-  const result = await sendEmail({
-    to:      supportTo,
+  const result = await sendHostingerMail({
+    to: supportTo,
     subject: `[TMI Support] ${safeSubject} — from ${safeName}`,
     html,
     replyTo: email.trim(),
+    fromIdentity: "support",
   });
 
   if (!result.ok) {
@@ -109,5 +111,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Failed to send support email. Please try again.' }, { status: 502 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, messageId: result.messageId });
 }

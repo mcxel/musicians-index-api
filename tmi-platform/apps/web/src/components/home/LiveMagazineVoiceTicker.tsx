@@ -101,11 +101,11 @@ export default function LiveMagazineVoiceTicker({ pageId, intervalMs = 5000, acc
             transition={{ duration: 0.28, ease: "easeOut" }}
             style={textStyle}
           >
-            {bank[idx]}
+            {bank[idx] ?? bank[0] ?? "MAGAZINE • ISSUE 1 — SPECIAL EDITION"}
           </motion.div>
         </AnimatePresence>
       ) : (
-        <div style={textStyle}>{bank[idx]}</div>
+        <div style={textStyle}>{bank[idx] ?? bank[0] ?? "MAGAZINE • ISSUE 1 — SPECIAL EDITION"}</div>
       )}
     </div>
   );

@@ -109,9 +109,9 @@ export default function AdminTopBar({
         )}
       </div>
 
-      {/* Controls — RoleSwitcher = admin ↔ fan (and artist) for Justin / Jay Paul / Marcel */}
+      {/* Controls — RoleSwitcher = ADMIN / FAN / PERFORMER triad for Justin / Jay Paul / Marcel */}
       <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-        <RoleSwitcherWidget accentColor="#FFD700" buttonLabel="ADMIN ↔ FAN" />
+        <RoleSwitcherWidget accentColor="#FFD700" buttonLabel="ADMIN · FAN · PERFORMER" />
         <span style={{ fontSize: 10, color: "#64748b", letterSpacing: "0.06em" }}>
           HUB: {hubId.toUpperCase()}
         </span>

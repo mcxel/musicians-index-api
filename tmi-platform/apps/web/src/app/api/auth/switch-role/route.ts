@@ -48,9 +48,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const targetRole = body.role?.toUpperCase();
+  let targetRole = body.role?.toUpperCase();
   if (!targetRole) {
     return NextResponse.json({ error: "role required" }, { status: 400 });
+  }
+  // Normalize fan aliases so triad switch always lands on FAN hub
+  if (targetRole === "MEMBER" || targetRole === "USER") targetRole = "FAN";
+  if (targetRole === "ARTIST") {
+    // Artist persona maps to performer hub for governance triad
+    // (ARTIST remains allowed; hub is /hub/performer)
   }
 
   const userId = auth.user.id;
@@ -75,9 +81,8 @@ export async function POST(req: NextRequest) {
     ),
   );
 
-  // Governance / ADMIN operators may switch ADMIN ↔ FAN (and artist/performer)
-  // even when UserRole rows were never seeded — this is what mounts the
-  // admin↔fan switch on Justin / Jay Paul Sanchez pages.
+  // Governance / ADMIN operators may switch ADMIN ↔ FAN ↔ PERFORMER
+  // even when UserRole rows were never seeded — triad switch for Justin / Jay Paul.
   const primary = (user.role as string).toUpperCase();
   if (
     primary === "ADMIN" ||

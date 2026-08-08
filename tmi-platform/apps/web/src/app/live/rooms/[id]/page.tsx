@@ -38,6 +38,7 @@ import RoleGate from "@/components/auth/RoleGate";
 import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
 import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 import InstantGoLiveStage from "@/components/live/InstantGoLiveStage";
+import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -204,6 +205,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             fanIdOverride={fanSlug ?? sessionId ?? undefined}
           />
         )}
+
+        <LiveRoomMonitorShareSection roomId={id} isPerformerSession={Boolean(performerSlug)} />
 
         {/* Battle Vote Panel (rendered below venue when in battle mode) */}
         {isBattleMode && opponentA && opponentB && (

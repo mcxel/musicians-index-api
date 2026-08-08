@@ -39,6 +39,7 @@ const ROLE_DEFS: RoleDef[] = [
   { id: "BAND",       label: "BAND HUB",       icon: "🎸", color: "#AA2DFF", hubUrl: "/hub/performer" },
   { id: "FAN",        label: "FAN HUB",        icon: "🎵", color: "#00FFFF", hubUrl: "/hub/fan" },
   { id: "USER",       label: "FAN HUB",        icon: "🎵", color: "#00FFFF", hubUrl: "/hub/fan" },
+  { id: "MEMBER",     label: "FAN HUB",        icon: "🎵", color: "#00FFFF", hubUrl: "/hub/fan" },
   { id: "VENUE",      label: "VENUE HUB",      icon: "🏟️", color: "#00D4FF", hubUrl: "/hub/venue" },
   { id: "PROMOTER",   label: "PROMOTER HUB",   icon: "📣", color: "#FF6B35", hubUrl: "/hub/promoter" },
   { id: "SPONSOR",    label: "SPONSOR HUB",    icon: "🤝", color: "#C0C0C0", hubUrl: "/hub/sponsor" },

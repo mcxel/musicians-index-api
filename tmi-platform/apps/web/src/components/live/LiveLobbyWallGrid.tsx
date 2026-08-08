@@ -15,6 +15,12 @@ import {
 } from '@/lib/lobby/LobbyPreviewRuntime';
 import { useLobbyPreviewBind } from '@/lib/lobby/useLobbyPreviewBind';
 import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/DestinationResolver';
+import { sanitizeWallHostLabel } from '@/lib/lobby/wallPublicIdentity';
+import {
+  LIVE_LOBBY_WALL_CONTRACT_ID,
+  useAdaptiveWorldRuntime,
+  getGovernedIdleFallbackPolicy,
+} from '@/lib/adaptiveWorldRuntime';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
 
@@ -45,6 +51,7 @@ export type LobbyRoom = {
   prizePool?: string;
   /** Optional discovery low-res preview URL (HTML video) — not a frozen LIVE photo. */
   previewUrl?: string | null;
+  hostUserId?: string;
 };
 
 type LiveLobbyWallGridProps = {
@@ -96,10 +103,14 @@ function LobbyCell({
   const bg = roomColor(colorIndex);
   const cellRef = useRef<HTMLDivElement | null>(null);
   const isLive = room.status === 'live' && preview.isLive;
+  const hostLabel = sanitizeWallHostLabel(room.performerName, {
+    hostUserId: room.hostUserId,
+  });
   const { mediaStream } = useLobbyPreviewBind(room.id, {
     subscribed: preview.subscribed,
     focused: preview.focused,
     isLive,
+    quality: preview.quality,
   });
 
   useEffect(() => {
@@ -168,9 +179,10 @@ function LobbyCell({
 
       {/* Same-room preview bind (Daily receive-only / URL / composed motion) */}
       <LobbyPreviewWindow
+        roomId={room.id}
         preview={preview}
         accent={bg}
-        performerInitial={room.performerName}
+        performerInitial={hostLabel}
         mediaStream={mediaStream}
         previewUrl={room.previewUrl}
       />
@@ -198,7 +210,7 @@ function LobbyCell({
         zIndex: 3,
       }}>
         <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginBottom: 2 }}>
-          {room.performerName}
+          {hostLabel}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 9, color: isLive ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
@@ -232,6 +244,7 @@ export default function LiveLobbyWallGrid({
   onRoomFocus,
 }: LiveLobbyWallGridProps) {
   const router = useRouter();
+  useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
   const [colorOffset, setColorOffset] = useState(0);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
   const [focusTick, setFocusTick] = useState(0);
@@ -241,8 +254,21 @@ export default function LiveLobbyWallGrid({
   const quick = variant === 'quick';
 
   useEffect(() => {
-    const t = setInterval(() => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length), 30000);
-    return () => clearInterval(t);
+    let timer = window.setInterval(
+      () => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length),
+      getGovernedIdleFallbackPolicy().rotationIntervalMs,
+    );
+    const resync = window.setInterval(() => {
+      window.clearInterval(timer);
+      timer = window.setInterval(
+        () => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length),
+        getGovernedIdleFallbackPolicy().rotationIntervalMs,
+      );
+    }, 15000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearInterval(resync);
+    };
   }, []);
 
   const enterRoom = useCallback((room: LobbyRoom) => {
@@ -263,7 +289,7 @@ export default function LiveLobbyWallGrid({
     setActiveFlowRoom({
       id:          room.id,
       title:       room.name,
-      hostName:    room.performerName,
+      hostName:    sanitizeWallHostLabel(room.performerName, { hostUserId: room.hostUserId }),
       genre:       room.genre,
       viewers:     room.viewerCount,
       seatsOpen:   undefined,

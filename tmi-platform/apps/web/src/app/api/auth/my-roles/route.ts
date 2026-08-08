@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import { isGovernanceMember } from "@/lib/auth/GovernanceClusterEngine";
-import { GOVERNANCE_SWITCHABLE_ROLES } from "@/lib/auth/resolveSessionIdentity";
+import {
+  GOVERNANCE_ROLE_DISPLAY_ORDER,
+  GOVERNANCE_SWITCHABLE_ROLES,
+} from "@/lib/auth/resolveSessionIdentity";
 
 /**
  * GET /api/auth/my-roles
@@ -11,9 +14,9 @@ import { GOVERNANCE_SWITCHABLE_ROLES } from "@/lib/auth/resolveSessionIdentity";
  * Returns the list of roles assigned to the current session user,
  * so the RoleSwitcherWidget can show only what the user actually holds.
  *
- * Governance / hardcoded admins always get ADMIN ↔ FAN (and artist/performer)
+ * Governance / hardcoded admins always get ADMIN + FAN + PERFORMER
  * switch targets even if UserRole rows were never provisioned — otherwise
- * Justin / Jay Paul Sanchez pages have no admin↔fan switch.
+ * Justin / Jay Paul Sanchez pages have no triad switcher.
  *
  * Response: { roles: string[]; primaryRole: string; activeRole: string | null }
  */
@@ -61,10 +64,23 @@ function synthesizeAdminSwitchRoles(
   existing: string[],
 ): string[] {
   const roles = new Set(existing.map((r) => r.toUpperCase()));
+  // Legacy MEMBER / USER → FAN for switcher tiles
+  if (roles.has("MEMBER") || roles.has("USER")) roles.add("FAN");
   const primary = primaryRole.toUpperCase();
   const isAdmin = primary === "ADMIN" || primary === "STAFF" || roles.has("ADMIN") || roles.has("STAFF");
   if (isAdmin || isGovernanceMember(email)) {
     for (const r of GOVERNANCE_SWITCHABLE_ROLES) roles.add(r);
   }
-  return Array.from(roles);
+  // Prefer triad order; hide redundant MEMBER/USER when FAN is present
+  roles.delete("MEMBER");
+  roles.delete("USER");
+  // If PERFORMER present, ARTIST is optional alias — keep both so hubs remain reachable
+  const ordered: string[] = [];
+  for (const r of GOVERNANCE_ROLE_DISPLAY_ORDER) {
+    if (roles.has(r)) ordered.push(r);
+  }
+  for (const r of roles) {
+    if (!ordered.includes(r)) ordered.push(r);
+  }
+  return ordered;
 }

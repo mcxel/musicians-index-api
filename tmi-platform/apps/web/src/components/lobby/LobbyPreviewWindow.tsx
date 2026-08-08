@@ -6,11 +6,16 @@
  * ready animation. Never presents a frozen photo as LIVE. Audio muted unless focused.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { LobbyPreviewTileState } from "@/lib/lobby/LobbyPreviewRuntime";
+import {
+  releaseLobbyPreviewUrl,
+  tryClaimLobbyPreviewUrl,
+} from "@/lib/lobby/LobbyPreviewUrlBudget";
 
 type Props = {
+  roomId?: string;
   preview: LobbyPreviewTileState;
   accent: string;
   performerInitial?: string;
@@ -21,6 +26,7 @@ type Props = {
 };
 
 export default function LobbyPreviewWindow({
+  roomId = "",
   preview,
   accent,
   performerInitial = "?",
@@ -31,7 +37,16 @@ export default function LobbyPreviewWindow({
   const urlVideoRef = useRef<HTMLVideoElement | null>(null);
   const isLive = preview.isLive && preview.camera.hasLiveSignal;
   const hasStream = Boolean(mediaStream && mediaStream.getVideoTracks().length > 0);
+  const [urlAllowed, setUrlAllowed] = useState(false);
+
+  useEffect(() => {
+    const ok = tryClaimLobbyPreviewUrl(roomId, preview.focused);
+    setUrlAllowed(ok);
+    return () => releaseLobbyPreviewUrl(roomId);
+  }, [roomId, preview.focused]);
+
   const hasUrl =
+    urlAllowed &&
     Boolean(previewUrl) &&
     (previewUrl!.startsWith("http") || previewUrl!.startsWith("/") || previewUrl!.startsWith("blob:"));
 

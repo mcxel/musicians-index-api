@@ -16,6 +16,8 @@ import {
   type LobbyWallKind,
   type ResolvedDestination,
 } from "@/lib/lobby/DestinationResolver";
+import { getWebRTCSubscriptionGovernor } from "@/lib/adaptiveWorldRuntime/WebRTCSubscriptionGovernor";
+import { LIVE_LOBBY_WALL_CONTRACT_ID } from "@/lib/adaptiveWorldRuntime/qualityContracts/LIVE_LOBBY_WALL";
 
 export type PreviewQuality = "off" | "thumb" | "low" | "medium";
 
@@ -80,12 +82,6 @@ export function getLobbyAudioFocus(): string | null {
   return audioFocusRoomId;
 }
 
-function resolveQuality(visible: boolean, focused: boolean, isLive: boolean): PreviewQuality {
-  if (!visible || !isLive) return visible ? "thumb" : "off";
-  if (focused) return "medium";
-  return "low";
-}
-
 export function buildLobbyPreviewTile(input: {
   roomId: string;
   kind: LobbyWallKind;
@@ -114,10 +110,28 @@ export function buildLobbyPreviewTile(input: {
     roomClass: input.roomClass,
   });
 
+  const webrtcPolicy =
+    typeof window !== "undefined"
+      ? getWebRTCSubscriptionGovernor().resolveTile({
+          roomId: input.roomId,
+          visible,
+          focused,
+          isLive,
+          contract: LIVE_LOBBY_WALL_CONTRACT_ID,
+        })
+      : {
+          subscribed: visible && isLive,
+          quality: (visible && isLive ? (focused ? "medium" : "low") : visible ? "thumb" : "off") as PreviewQuality,
+          allowDailyBind: visible && isLive && focused,
+          contractId: LIVE_LOBBY_WALL_CONTRACT_ID,
+        };
+
   let feedMode: LobbyPreviewTileState["feedMode"] = "ready-animation";
   if (isLive && camera.hasLiveSignal) {
-    // Visible+subscribed tiles request webrtc bind; offscreen stays composed motion.
-    feedMode = visible ? "webrtc-preview" : "composed-motion";
+    feedMode =
+      webrtcPolicy.subscribed && webrtcPolicy.quality !== "off"
+        ? "webrtc-preview"
+        : "composed-motion";
   }
 
   return {
@@ -128,8 +142,8 @@ export function buildLobbyPreviewTile(input: {
     readyState: isLive ? "live" : presence.occupancy > 0 ? "waiting" : "empty",
     muted: !focused || audioFocusRoomId !== input.roomId,
     focused,
-    subscribed: visible && isLive,
-    quality: resolveQuality(visible, focused, isLive),
+    subscribed: webrtcPolicy.subscribed,
+    quality: webrtcPolicy.quality,
     camera,
     destination,
     feedMode,

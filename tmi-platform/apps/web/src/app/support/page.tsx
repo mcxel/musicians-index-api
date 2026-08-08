@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { TMI_SUPPORT_EMAIL, TMI_SUPPORT_MAILTO } from "@/lib/support/PublicSupportContact";
 
 const CATEGORIES = [
   { id: "billing",   label: "Billing & Payments", icon: "💳", color: "#00FF88" },
@@ -115,13 +116,18 @@ export default function SupportPage() {
           <div style={{ fontSize: 9, fontWeight: 800, color: "#00FFFF", letterSpacing: "0.35em", marginBottom: 10 }}>SUPPORT CENTER</div>
           <h1 style={{ fontSize: "clamp(22px,4vw,38px)", fontWeight: 900, margin: "0 0 10px" }}>How can we help?</h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", maxWidth: 500, margin: 0, lineHeight: 1.7 }}>
-            Submit a ticket, browse the FAQ, or jump into live chat. We&apos;re here.
+            Submit a ticket, browse the FAQ, or email us at{" "}
+            <a href={TMI_SUPPORT_MAILTO} style={{ color: "#00FFFF", fontWeight: 700, textDecoration: "none" }}>
+              {TMI_SUPPORT_EMAIL}
+            </a>
+            .
           </p>
         </div>
 
         {/* Quick links */}
         <div style={{ display: "flex", gap: 10, marginBottom: 40, flexWrap: "wrap" }}>
           {[
+            { href: "/support/contact", label: "Email Support",   color: "#00FF88" },
             { href: "/billing",             label: "Billing Issues",   color: "#00FF88" },
             { href: "/support/account-recovery", label: "Account Recovery", color: "#00FFFF" },
             { href: "/messages/support",    label: "Live Chat",        color: "#FF2DAA" },

@@ -3,6 +3,7 @@
  */
 
 import type { LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
+import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 import {
   LIVE_DISCOVERY_CATEGORY_LABELS,
   type LiveDiscoveryCategory,
@@ -25,7 +26,8 @@ export function discoveryToLobbyRoom(r: LiveDiscoveryRecord): LobbyRoom {
   return {
     id: r.roomId,
     name: r.title,
-    performerName: r.hostName,
+    performerName: sanitizeWallHostLabel(r.hostName, { hostUserId: r.hostUserId }),
+    hostUserId: r.hostUserId,
     type: categoryToLobbyType(primary),
     href: r.joinRoute,
     viewerCount: Math.max(0, r.humanViewerCount),

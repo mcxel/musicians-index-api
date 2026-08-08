@@ -85,6 +85,19 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
 function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
   const router = useRouter();
   const theme = useTheme();
+  const [liveDisplayName, setLiveDisplayName] = useState(displayName);
+  useEffect(() => {
+    setLiveDisplayName(displayName);
+  }, [displayName]);
+  useEffect(() => {
+    const onUpdated = (e: Event) => {
+      const name = (e as CustomEvent<{ name?: string }>).detail?.name?.trim();
+      if (name) setLiveDisplayName(name);
+    };
+    window.addEventListener("tmi:display-name-updated", onUpdated);
+    return () => window.removeEventListener("tmi:display-name-updated", onUpdated);
+  }, []);
+  const resolvedDisplayName = liveDisplayName;
   const { activePerformer, setActivePerformer } = useActivePerformer();
   const centers = centersForRole(role);
   const ocPrimaryIds = useMemo(
@@ -461,7 +474,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      <CommandCenterTopNav userId={userId} displayName={displayName} />
+      <CommandCenterTopNav userId={userId} displayName={resolvedDisplayName} />
 
       {/* Status bar */}
       <div
@@ -642,7 +655,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
             {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
 
-            <CommandCenterIdentityCard userId={userId} displayName={displayName} role={role === "performer" ? "performer" : "fan"} />
+            <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
           </div>
 
           {/* Center media — prototype dual stacked 16:9 chrome bezel */}
@@ -671,7 +684,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <OperationsSidebar
               role={role}
               userId={userId}
-              displayName={displayName}
+              displayName={resolvedDisplayName}
               featuredPerformerName={featured?.name}
             />
             <div>
@@ -734,7 +747,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           activePanel={activePanel}
           appearanceOpen={appearanceOpen}
           userId={userId}
-          displayName={displayName}
+          displayName={resolvedDisplayName}
           onClose={closeDrawer}
           onSelectPanel={openPanel}
           initialPlaylistId={deepLinkPlaylistId}
