@@ -20,6 +20,7 @@ import {
   PERSONA_META,
   CAPABILITY_MATRIX,
   getUserPersonas,
+  setUserPersonas as persistUserPersonas,
   addPersona,
   switchPersonaLocal,
   getActivePersonaFromCookie,
@@ -76,9 +77,20 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
     const fromCookie  = getActivePersonaFromCookie();
     const fromRole    = currentRole ? getDefaultPersonaForRole(currentRole) : 'fan';
     const active      = fromCookie ?? fromRole;
+    const isAdmin     = ADMIN_ROLES.has((currentRole ?? '').toUpperCase());
 
-    setUserPersonas(personas.length > 0 ? personas : [fromRole]);
-    setActivePersona(personas.includes(active) ? active : fromRole);
+    // Admins (Marcel / Justin / Jay Paul) always get admin + fan workspaces so
+    // the switch never disappears when localStorage only had one persona.
+    let next = personas.length > 0 ? [...personas] : [fromRole];
+    if (isAdmin) {
+      for (const p of ['admin', 'fan', 'performer'] as PersonaType[]) {
+        if (!next.includes(p)) next.push(p);
+      }
+      // Persist so ADMIN ↔ FAN survives refresh on Justin / Jay Paul hubs.
+      persistUserPersonas(next);
+    }
+    setUserPersonas(next);
+    setActivePersona(next.includes(active) ? active : fromRole);
   }, [currentRole]);
 
   useEffect(() => {

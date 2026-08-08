@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
+import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
 
 const SESSION_DB_LOOKUP_TIMEOUT_MS = 1200;
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
   let avatarUrl: string | null = null;
   let dbOnboardingState = 'NO_ROLE_SELECTED';
   let dbOnboardingStep = '2';
+  let dbDisplayName: string | null = null;
 
   if (rawEmail) {
     try {
@@ -75,6 +77,8 @@ export async function GET(req: NextRequest) {
           where: { email: rawEmail },
           select: {
             id: true,
+            displayName: true,
+            name: true,
             isLive: true,
             liveRoomId: true,
             onboardingState: true,
@@ -82,6 +86,7 @@ export async function GET(req: NextRequest) {
               select: {
                 avatarUrl: true,
                 socialLinks: true,
+                displayName: true,
               }
             }
           },
@@ -96,6 +101,11 @@ export async function GET(req: NextRequest) {
         dbOnboardingState = dbUser.onboardingState ?? 'NO_ROLE_SELECTED';
         const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
         dbOnboardingStep = links.onboarding_step ?? '2';
+        dbDisplayName =
+          dbUser.displayName ??
+          dbUser.userProfile?.displayName ??
+          dbUser.name ??
+          null;
       }
     } catch {
       // Keep session fallback identity if DB is temporarily unavailable.
@@ -122,13 +132,22 @@ export async function GET(req: NextRequest) {
   }
 
   const scopedEmail = redactEmailForRole(rawEmail, role);
-  const displayName = scopedEmail ? scopedEmail.split('@')[0] : `user-${canonicalUserId.substring(0, 8)}`;
+  // Real human name for THIS session user only — never Marcel's email handle
+  // (berntmusic33 / "music331") on Justin / Jay Paul / BJM surfaces.
+  const displayName = resolveSessionDisplayName({
+    email: rawEmail,
+    dbDisplayName,
+    userId: canonicalUserId,
+  });
 
   const response = NextResponse.json({
     authenticated: true,
     csrfToken,
     user: {
       id: canonicalUserId,
+      // Email only on the authenticated owner's session — never invent/leak
+      // Marcel's address onto other accounts (scopedEmail already redacts
+      // internal addresses for non-admin roles).
       email: scopedEmail,
       name: displayName,
       role,

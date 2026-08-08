@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 
 // Roles that may access /admin/* — checked against live session before any child renders.
@@ -26,14 +27,21 @@ function resolveOperatorPolicy(identity: string): OperatorPolicy {
   if (v.includes("big ace") || v.includes("big-ace") || v.includes("bigace")) {
     return { key: "big-ace", label: "Big Ace", fullControl: true, canAutoApplyFixes: true };
   }
-  if (v.includes("marcel")) {
+  if (v.includes("marcel") || v.includes("berntmusic33")) {
     return { key: "marcel", label: "Marcel", fullControl: true, canAutoApplyFixes: true };
   }
-  if (v.includes("justin")) {
+  if (v.includes("justin") || v.includes("rjking")) {
     return { key: "justin", label: "Justin", fullControl: false, canAutoApplyFixes: false };
   }
-  if (v.includes("jay") || v.includes("jaypaul")) {
-    return { key: "jay", label: "Jay", fullControl: false, canAutoApplyFixes: false };
+  // Jay Paul Sanchez / BJM — match name OR real login emails (never treat as Marcel)
+  if (
+    v.includes("jay") ||
+    v.includes("jaypaul") ||
+    v.includes("sanchez") ||
+    v.includes("bjmtherapper") ||
+    v.includes("bjmbeat")
+  ) {
+    return { key: "jay", label: "Jay Paul Sanchez", fullControl: false, canAutoApplyFixes: false };
   }
   return { key: "admin", label: "Admin", fullControl: false, canAutoApplyFixes: false };
 }
@@ -276,7 +284,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {operatorPolicy.label}: {operatorPolicy.fullControl ? "Full Control" : "Limited Controls"}
             </div>
-            <div style={{ marginLeft: "auto" }}>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 700 }}>
+                {sessionName ?? operatorPolicy.label}
+              </span>
+              <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN ↔ FAN" />
               <PersonaSwitcher currentRole={sessionRole} userId={sessionUserId} compact showAdd={false} />
             </div>
           </div>

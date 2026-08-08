@@ -25,7 +25,7 @@ export default function ArtistHubPage() {
       .then((d: { user?: { id?: string; name?: string; email?: string } }) => {
         if (d?.user) {
           setArtistSlug(d.user.id ?? 'me');
-          setDisplayName(d.user.name ?? d.user.email?.split('@')[0] ?? 'artist');
+          setDisplayName(d.user.name?.trim() || 'artist');
         }
       })
       .catch(() => {});

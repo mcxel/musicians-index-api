@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 
 type AdminTopBarProps = {
   hubId: string;
@@ -108,8 +109,9 @@ export default function AdminTopBar({
         )}
       </div>
 
-      {/* Controls */}
+      {/* Controls — RoleSwitcher = admin ↔ fan (and artist) for Justin / Jay Paul / Marcel */}
       <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+        <RoleSwitcherWidget accentColor="#FFD700" buttonLabel="ADMIN ↔ FAN" />
         <span style={{ fontSize: 10, color: "#64748b", letterSpacing: "0.06em" }}>
           HUB: {hubId.toUpperCase()}
         </span>

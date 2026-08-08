@@ -32,6 +32,8 @@ export interface GovernanceMember {
   memberId:     string;         // 'marcel' | 'justin' | 'jaypaul'
   name:         string;
   adminEmail:   string;         // Primary ADMIN account email
+  /** Additional login emails that resolve to this member (aliases). */
+  emailAliases?: string[];
   personas:     GovernancePersona[];
   artistSlug:   string;         // For /artists/[slug] routing
   tier:         'diamond';
@@ -91,7 +93,12 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
     {
       memberId:   'justin',
       name:       'Justin King',
-      adminEmail: process.env.JUSTIN_EMAIL ?? '[JUSTIN_EMAIL_ENV_VAR_REQUIRED]',
+      adminEmail: process.env.JUSTIN_EMAIL ?? 'rjking42@icloud.com',
+      emailAliases: [
+        'justin@themusiciansindex.com',
+        'rjking42@icloud.com',
+        'rjking@icloud.com',
+      ],
       artistSlug: 'justinking',
       tier:       'diamond',
       personas: [
@@ -101,7 +108,7 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
           role:           'ADMIN',
           displayName:    'Justin King — Admin',
           username:       'justin',
-          dashboardRoute: '/admin/observatory',
+          dashboardRoute: '/admin/justin',
           color:          '#ff6b1a',
         },
         {
@@ -127,7 +134,12 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
     {
       memberId:   'jaypaul',
       name:       'Jay Paul Sanchez',
-      adminEmail: process.env.JPAUL_EMAIL ?? '[JPAUL_EMAIL_ENV_VAR_REQUIRED]',
+      adminEmail: process.env.JPAUL_EMAIL ?? 'bjmtherapper1@gmail.com',
+      emailAliases: [
+        'bjmtherapper1@gmail.com',
+        'jay@themusiciansindex.com',
+        'bjmbeat@berntoutglobal.com',
+      ],
       artistSlug: 'jaypaulsanchez',
       tier:       'diamond',
       personas: [
@@ -137,7 +149,7 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
           role:           'ADMIN',
           displayName:    'Jay Paul — Admin',
           username:       'jaypaul',
-          dashboardRoute: '/admin/observatory',
+          dashboardRoute: '/admin/jay-paul',
           color:          '#ff6b1a',
         },
         {
@@ -206,9 +218,14 @@ export const TMI_GOVERNANCE_CLUSTER: GovernanceCluster = {
 // ── Resolution Helpers ───────────────────────────────────────────────────────
 
 export function getMemberByEmail(email: string): GovernanceMember | null {
-  return TMI_GOVERNANCE_CLUSTER.members.find(
-    (m) => m.adminEmail.toLowerCase() === email.toLowerCase()
-  ) ?? null;
+  const e = email.trim().toLowerCase();
+  if (!e) return null;
+  return (
+    TMI_GOVERNANCE_CLUSTER.members.find((m) => {
+      if (m.adminEmail.toLowerCase() === e) return true;
+      return (m.emailAliases ?? []).some((a) => a.toLowerCase() === e);
+    }) ?? null
+  );
 }
 
 export function getMemberById(memberId: string): GovernanceMember | null {

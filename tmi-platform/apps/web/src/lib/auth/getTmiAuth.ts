@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 
 export interface TmiAuthSession {
   user: {
@@ -28,10 +29,19 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
   const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
 
   let id = sessionId;
+  let dbDisplayName: string | null = null;
   if (rawEmail) {
     try {
-      const dbUser = await prisma.user.findUnique({ where: { email: rawEmail }, select: { id: true } });
+      const dbUser = await prisma.user.findUnique({
+        where: { email: rawEmail },
+        select: {
+          id: true,
+          displayName: true,
+          userProfile: { select: { displayName: true } },
+        },
+      });
       if (dbUser?.id) id = dbUser.id;
+      dbDisplayName = dbUser?.displayName ?? dbUser?.userProfile?.displayName ?? null;
     } catch {
       // Keep full session fallback identity when DB is unavailable.
     }
@@ -40,7 +50,11 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
   return {
     user: {
       id,
-      name: rawEmail ? rawEmail.split('@')[0] : `user-${id.substring(0, 8)}`,
+      name: resolveSessionDisplayName({
+        email: rawEmail,
+        dbDisplayName,
+        userId: id,
+      }),
       email: rawEmail,
       role,
       tier,

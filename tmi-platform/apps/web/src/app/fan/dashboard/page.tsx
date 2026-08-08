@@ -106,11 +106,13 @@ export default function FanDashboardPage() {
 
   if (!user) return null;
 
-  const displayName    = user.name ?? user.email.split("@")[0] ?? "Fan";
+  const displayName    = user.name ?? "Fan";
   const fanSlug        = user.id;
   const tier           = toFanTier(user.tier);
   const startingPoints = user.fanPoints ?? 0;
-  const tagline        = `${user.email} · ${tier === "free" ? "Free Tier" : tier} · Welcome back`;
+  // Never put raw email (esp. Marcel's berntmusic33) in the fan tagline —
+  // session.name is already the resolved human identity for this user only.
+  const tagline        = `${displayName} · ${tier === "free" ? "Free Tier" : tier} · Welcome back`;
 
   return (
     <RoomContainer roomId="fan-dash" title="Fan Hub" accentColor="#00FF88" bpm={120}>

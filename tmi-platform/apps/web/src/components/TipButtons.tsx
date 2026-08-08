@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
-const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE ?? "berntmusic33";
+// Platform tip sink — only used when no recipient-specific handle is provided.
+// Do NOT hardcode Marcel's personal handle as a visible default on other
+// performers' pages (BJM / Justin leak: "music331" / berntmusic33).
+const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE?.trim() || "";
 
 export type UserTier = "FREE" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
 
@@ -73,7 +76,16 @@ export function TipButtons({ userTier = "FREE", userId, recipientId, disabled }:
     window.dispatchEvent(new CustomEvent("tmi:tip", { detail: { amount: finalAmount, method: "paypal" } }));
 
     setSent(true);
-    window.open(`https://www.paypal.com/paypalme/${PAYPAL_HANDLE}/${finalAmount}`, "_blank");
+    if (PAYPAL_HANDLE) {
+      window.open(`https://www.paypal.com/paypalme/${PAYPAL_HANDLE}/${finalAmount}`, "_blank");
+    } else {
+      // Honest path when no platform PayPal is configured — never invent Marcel's handle.
+      window.dispatchEvent(
+        new CustomEvent("tmi:tip-needs-checkout", {
+          detail: { amount: finalAmount, userId, recipientId },
+        }),
+      );
+    }
     setTimeout(() => setSent(false), 3000);
   }
 

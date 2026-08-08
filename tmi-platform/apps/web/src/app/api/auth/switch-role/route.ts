@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
+import { getMemberByEmail, isGovernanceMember } from "@/lib/auth/GovernanceClusterEngine";
+import { GOVERNANCE_SWITCHABLE_ROLES } from "@/lib/auth/resolveSessionIdentity";
 
 const ROLE_TO_HUB: Record<string, string> = {
   ADMIN: "/admin",
@@ -15,6 +16,15 @@ const ROLE_TO_HUB: Record<string, string> = {
   SPONSOR: "/hub/sponsor",
   ADVERTISER: "/hub/advertiser",
 };
+
+/** Per-member admin hub so Justin/Jay Paul land on their own page, not a shared deck. */
+function adminHubForEmail(email: string): string {
+  const member = getMemberByEmail(email);
+  if (member?.memberId === "justin") return "/admin/justin";
+  if (member?.memberId === "jaypaul") return "/admin/jay-paul";
+  if (member?.memberId === "marcel") return "/admin/marcel";
+  return "/admin";
+}
 
 /**
  * POST /api/auth/switch-role
@@ -59,12 +69,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const allowedRoles = new Set([
-    user.role as string,
-    ...user.userRoles.map((r) => r.role as string),
-  ]);
+  const allowedRoles = new Set(
+    [user.role as string, ...user.userRoles.map((r) => r.role as string)].map((r) =>
+      r.toUpperCase(),
+    ),
+  );
 
-  // Special case: ADMIN can always switch to any role they hold
+  // Governance / ADMIN operators may switch ADMIN ↔ FAN (and artist/performer)
+  // even when UserRole rows were never seeded — this is what mounts the
+  // admin↔fan switch on Justin / Jay Paul Sanchez pages.
+  const primary = (user.role as string).toUpperCase();
+  if (
+    primary === "ADMIN" ||
+    primary === "STAFF" ||
+    allowedRoles.has("ADMIN") ||
+    allowedRoles.has("STAFF") ||
+    isGovernanceMember(auth.user.email)
+  ) {
+    for (const r of GOVERNANCE_SWITCHABLE_ROLES) allowedRoles.add(r);
+  }
+
   if (!allowedRoles.has(targetRole)) {
     return NextResponse.json(
       { error: `Role ${targetRole} not assigned to your account` },
@@ -78,7 +102,10 @@ export async function POST(req: NextRequest) {
     data: { activeRole: targetRole as any },
   });
 
-  const hubUrl = ROLE_TO_HUB[targetRole] ?? "/home/1";
+  const hubUrl =
+    targetRole === "ADMIN"
+      ? adminHubForEmail(auth.user.email)
+      : (ROLE_TO_HUB[targetRole] ?? "/home/1");
 
   // Update tmi_role cookie so getTmiAuth() reflects the switch immediately
   const isProd = process.env.NODE_ENV === "production";

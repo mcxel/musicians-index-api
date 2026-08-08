@@ -56,7 +56,7 @@ export default function PerformerHubPage() {
   return (
     <PerformerCommandCenter
       performerId={user.id}
-      displayName={user.name ?? user.email?.split("@")[0] ?? "Performer"}
+      displayName={user.name?.trim() || "Performer"}
     />
   );
 }

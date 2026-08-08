@@ -46,7 +46,7 @@ export default function FanHubPage() {
   return (
     <FanHQShell
       fanId={user.id}
-      fanDisplayName={user.name ?? user.email?.split("@")[0] ?? "Fan"}
+      fanDisplayName={user.name?.trim() || "Fan"}
     />
   );
 }
