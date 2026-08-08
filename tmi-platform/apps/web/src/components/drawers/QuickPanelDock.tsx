@@ -19,7 +19,7 @@
  * Rule: Live Wall is discovery — panel only, never a full workspace drawer.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import type { CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
@@ -29,6 +29,11 @@ import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWa
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
+import {
+  clampQuickPanelPosition,
+  digitalQuickPanelFrameStyle,
+  type ViewportAnchor,
+} from "@/lib/ui/digitalQuickPanelChrome";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -356,40 +361,45 @@ function QuickQueuePanel() {
 function PanelPopup({
   panel,
   role,
+  anchor,
   onClose,
   onOpenLiveWall,
 }: {
   panel: PanelDef;
   role: UserRole;
+  anchor: ViewportAnchor;
   onClose: () => void;
   onOpenLiveWall: () => void;
 }) {
   const isLiveWall = panel.id === "live_wall";
+  const panelWidth = isLiveWall ? 420 : 320;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const panelMaxH = isLiveWall ? Math.min(vh * 0.7, 520) : Math.min(vh * 0.55, 420);
+  const { top, left } = clampQuickPanelPosition(anchor, panelWidth, panelMaxH);
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      initial={{ opacity: 0, y: 8, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 16, scale: 0.96 }}
+      exit={{ opacity: 0, y: 6, scale: 0.97 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       style={{
         position: "fixed",
-        bottom: 64,
-        right: 16,
-        width: isLiveWall ? 420 : 320,
-        maxHeight: isLiveWall ? "70vh" : "60vh",
+        top,
+        left,
+        width: panelWidth,
+        maxWidth: "calc(100vw - 24px)",
+        maxHeight: panelMaxH,
         overflowY: "auto",
         WebkitOverflowScrolling: "touch" as CSSProperties["WebkitOverflowScrolling"],
-        background: "#09091E",
-        border: `1px solid ${panel.accent}55`,
-        borderRadius: 12,
-        boxShadow: `0 8px 40px rgba(0,0,0,0.7), 0 0 24px ${panel.accent}22`,
+        borderRadius: 4,
+        ...digitalQuickPanelFrameStyle(panel.accent),
         zIndex: 200,
       }}
       role="dialog"
       aria-label={`${panel.label} panel`}
     >
       {/* Panel header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: `1px solid ${panel.accent}33`, position: "sticky", top: 0, background: "#09091E", zIndex: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: `1px solid ${panel.accent}44`, position: "sticky", top: 0, background: "rgba(2,8,22,0.92)", zIndex: 1 }}>
         <span style={{ fontSize: 16 }}>{panel.icon}</span>
         <span style={{ fontSize: 10, fontWeight: 900, color: panel.accent, letterSpacing: "0.1em", textTransform: "uppercase", flex: 1 }}>{panel.label}</span>
         <button
@@ -425,10 +435,16 @@ export interface QuickPanelDockProps {
 
 export default function QuickPanelDock({ role = "fan", style, panels }: QuickPanelDockProps) {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const [panelAnchor, setPanelAnchor] = useState<ViewportAnchor>({ x: 0, y: 0 });
   const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
 
-  const toggle = (id: PanelId) => {
-    // LIVE quick button → Brady-Bunch quick menu panel (not fake /live index)
+  const openPanelAt = (id: PanelId, event: MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setPanelAnchor({
+      x: rect.left + rect.width / 2,
+      y: event.clientY,
+      rect,
+    });
     setActivePanel((prev) => (prev === id ? null : id));
   };
 
@@ -443,6 +459,7 @@ export default function QuickPanelDock({ role = "fan", style, panels }: QuickPan
             key={activePanelDef.id}
             panel={activePanelDef}
             role={role}
+            anchor={panelAnchor}
             onClose={() => setActivePanel(null)}
             onOpenLiveWall={openLiveLobbyWalls}
           />
@@ -483,7 +500,7 @@ export default function QuickPanelDock({ role = "fan", style, panels }: QuickPan
             <button
               key={p.id}
               type="button"
-              onClick={() => toggle(p.id)}
+              onClick={(e) => openPanelAt(p.id, e)}
               aria-pressed={isActive}
               style={{
                 display: "flex",

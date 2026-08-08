@@ -89,6 +89,9 @@ type OverseerFlightDeckProps = {
 const DECK_GAP = 16;
 const RAIL_EXPANDED = 268;
 const RAIL_COLLAPSED = 74;
+/** First-paint cap before ResizeObserver measures monitors — breaks rail/monitor circular stretch. */
+const OPS_STAGE_HEIGHT_FALLBACK = "min(calc(100vh - 280px), 820px)";
+const BOT_SCROLL_STEP = 48;
 
 function gemStyle(active = false): CSSProperties {
   return {
@@ -267,11 +270,12 @@ export default function OverseerFlightDeck({
       leftRail: [
         { id: "chain-command", title: "CHAIN COMMAND", accent: "#AA2DFF", content: <ChainCommandPanel /> },
         { id: "money-billing", title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
-        { id: "bot-roster", title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: (
-            <div style={{ height: "100%", maxHeight: 380, overflowY: "auto", overflowX: "hidden" }}>
-              <BotSummonDeck />
-            </div>
-          ), fixedHeight: 400 },
+        {
+          id: "bot-roster",
+          title: "BOT ROSTER & SUMMON",
+          accent: "#FF2DAA",
+          content: <BotSummonDeck />,
+        },
         { id: "unified-inbox", title: "UNIFIED INBOX", accent: "#00FFFF", content: <UnifiedInbox /> },
       ],
       center: [
@@ -332,31 +336,25 @@ export default function OverseerFlightDeck({
   const rightCollapsed = drawerManager.isRailCollapsed("right");
   const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
   const leftRailScrollRef = useRef<HTMLDivElement>(null);
+  const botRosterScrollRef = useRef<HTMLDivElement>(null);
+  const botScrollHoldRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [leftRailScrollMax, setLeftRailScrollMax] = useState(0);
   const [leftRailScrollValue, setLeftRailScrollValue] = useState(0);
+  const [botRosterScrollMax, setBotRosterScrollMax] = useState(0);
+  const [botRosterScrollValue, setBotRosterScrollValue] = useState(0);
   const recomputeLeftRailScrollMax = useCallback(() => {
     const el = leftRailScrollRef.current;
     if (!el) return;
     setLeftRailScrollMax(Math.max(0, el.scrollHeight - el.clientHeight));
   }, []);
-  useEffect(() => {
-    const el = leftRailScrollRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(recomputeLeftRailScrollMax);
-    observer.observe(el);
-    recomputeLeftRailScrollMax();
-    return () => observer.disconnect();
-  }, [recomputeLeftRailScrollMax]);
-  const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
-  const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+  const recomputeBotRosterScrollMax = useCallback(() => {
+    const el = botRosterScrollRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollHeight - el.clientHeight);
+    setBotRosterScrollMax(max);
+    setBotRosterScrollValue(el.scrollTop);
+  }, []);
 
-  // The Operations Deck row is height:auto (sizes to its tallest child), so a
-  // rail with height:100% has nothing definite to resolve against and grows
-  // unbounded instead — which then makes the RAIL the tallest child, stretching
-  // the monitor column to match it (align-items:stretch). Measuring the center
-  // (monitor) column's real rendered height and applying it as an explicit cap
-  // on the side rails breaks that circularity: monitors keep their natural
-  // size, rails scroll internally instead of ever exceeding it.
   const centerColRef = useRef<HTMLDivElement>(null);
   const [centerColHeight, setCenterColHeight] = useState<number | null>(null);
   useEffect(() => {
@@ -369,6 +367,54 @@ export default function OverseerFlightDeck({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  const stageCapCss =
+    centerColHeight != null ? `${centerColHeight}px` : OPS_STAGE_HEIGHT_FALLBACK;
+
+  useEffect(() => {
+    const el = leftRailScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recomputeLeftRailScrollMax);
+    observer.observe(el);
+    recomputeLeftRailScrollMax();
+    return () => observer.disconnect();
+  }, [recomputeLeftRailScrollMax, centerColHeight, leftCollapsed]);
+  useEffect(() => {
+    const el = botRosterScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recomputeBotRosterScrollMax);
+    observer.observe(el);
+    recomputeBotRosterScrollMax();
+    return () => observer.disconnect();
+  }, [recomputeBotRosterScrollMax, centerColHeight, leftCollapsed]);
+  useEffect(() => {
+    return () => {
+      if (botScrollHoldRef.current) clearInterval(botScrollHoldRef.current);
+    };
+  }, []);
+  const nudgeBotRosterScroll = useCallback((delta: number) => {
+    const el = botRosterScrollRef.current;
+    if (!el) return;
+    el.scrollTop = Math.min(Math.max(0, el.scrollTop + delta), el.scrollHeight - el.clientHeight);
+    setBotRosterScrollValue(el.scrollTop);
+  }, []);
+  const startBotScrollHold = useCallback(
+    (delta: number) => {
+      nudgeBotRosterScroll(delta);
+      if (botScrollHoldRef.current) clearInterval(botScrollHoldRef.current);
+      botScrollHoldRef.current = setInterval(() => nudgeBotRosterScroll(delta), 80);
+    },
+    [nudgeBotRosterScroll],
+  );
+  const stopBotScrollHold = useCallback(() => {
+    if (botScrollHoldRef.current) {
+      clearInterval(botScrollHoldRef.current);
+      botScrollHoldRef.current = null;
+    }
+  }, []);
+  const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+  const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+
   const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
 
   const toggleFullscreen = (panelId: string) => {
@@ -451,6 +497,74 @@ export default function OverseerFlightDeck({
         panel.content
       );
 
+    const botAtTop = botRosterScrollValue <= 0;
+    const botAtBottom = botRosterScrollMax <= 0 || botRosterScrollValue >= botRosterScrollMax - 1;
+    const chevronBtnStyle = (disabled: boolean): CSSProperties => ({
+      flexShrink: 0,
+      height: 22,
+      border: "1px solid rgba(255,215,0,0.35)",
+      background: disabled ? "rgba(255,255,255,0.04)" : "rgba(0,255,255,0.12)",
+      color: disabled ? "rgba(255,255,255,0.25)" : "#00FFFF",
+      fontSize: 10,
+      fontWeight: 900,
+      cursor: disabled ? "default" : "pointer",
+      fontFamily: "inherit",
+      borderRadius: 4,
+      lineHeight: 1,
+    });
+
+    const panelBody =
+      panel.id === "bot-roster" && !collapsed ? (
+        <div
+          data-bot-roster-viewport
+          style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, flex: 1 }}
+        >
+          <button
+            type="button"
+            aria-label="Scroll bot roster up"
+            disabled={botAtTop}
+            onClick={() => nudgeBotRosterScroll(-BOT_SCROLL_STEP)}
+            onPointerDown={() => !botAtTop && startBotScrollHold(-BOT_SCROLL_STEP)}
+            onPointerUp={stopBotScrollHold}
+            onPointerLeave={stopBotScrollHold}
+            style={chevronBtnStyle(botAtTop)}
+          >
+            ▲
+          </button>
+          <div
+            ref={botRosterScrollRef}
+            onScroll={(e) => {
+              const t = e.currentTarget.scrollTop;
+              setBotRosterScrollValue(t);
+              recomputeBotRosterScrollMax();
+            }}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              overflowX: "hidden",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {body}
+          </div>
+          <button
+            type="button"
+            aria-label="Scroll bot roster down"
+            disabled={botAtBottom}
+            onClick={() => nudgeBotRosterScroll(BOT_SCROLL_STEP)}
+            onPointerDown={() => !botAtBottom && startBotScrollHold(BOT_SCROLL_STEP)}
+            onPointerUp={stopBotScrollHold}
+            onPointerLeave={stopBotScrollHold}
+            style={chevronBtnStyle(botAtBottom)}
+          >
+            ▼
+          </button>
+        </div>
+      ) : (
+        body
+      );
+
     return (
       <Canister
         key={slotId}
@@ -466,6 +580,9 @@ export default function OverseerFlightDeck({
         onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
         onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
         style={{
+          ...(panel.id === "bot-roster"
+            ? { flex: "1 1 0", minHeight: 96, height: "100%", overflow: "hidden" }
+            : { flex: "0 0 auto" }),
           ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
           ...(panel.flex ? { flex: panel.flex } : {}),
           ...(canisterStyle ?? {}),
@@ -479,9 +596,9 @@ export default function OverseerFlightDeck({
           }
           onPointerMove={panel.id && floating ? drawerManager.moveDrag : undefined}
           onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
-          style={{ height: "100%" }}
+          style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}
         >
-          {body}
+          {panelBody}
         </div>
       </Canister>
     );
@@ -680,9 +797,10 @@ export default function OverseerFlightDeck({
           flexDirection: "column",
           gap: 6,
           minWidth: 0,
-          alignSelf: "stretch",
+          flex: 1,
+          minHeight: 0,
           height: isSideRail ? "100%" : "auto",
-          minHeight: isSideRail ? 0 : undefined,
+          maxHeight: isSideRail ? "100%" : "none",
           overflowY: isSideRail && !leftCollapsed && !rightCollapsed ? "auto" : isSideRail ? "hidden" : "visible",
           overflowX: "hidden",
           paddingRight: 2,
@@ -1063,9 +1181,14 @@ export default function OverseerFlightDeck({
         </button>
       </div>
 
-      {/* OPERATIONS DECK — flexbox so rail widths can transition smoothly */}
+      {/* OPERATIONS DECK — row height = center monitor natural height (align-items:flex-start).
+          Side rails share data-stage-cap height with centerColRef so gold bottom line aligns.
+          Verify in DevTools: compare getBoundingClientRect().bottom on
+          [data-monitor-stage-boundary] vs [data-rail-boundary="left"]. */}
       <div
         data-deck="operations"
+        data-stage-cap={stageCapCss}
+        data-center-col-height={centerColHeight ?? "pending"}
         style={{
           position: "relative",
           zIndex: 1,
@@ -1075,7 +1198,7 @@ export default function OverseerFlightDeck({
           maxHeight: "none",
           display: "flex",
           flexDirection: "row",
-          alignItems: "stretch",
+          alignItems: "flex-start",
           gap: 8,
           border: "1px solid rgba(255,215,0,0.18)",
           borderRadius: 10,
@@ -1099,8 +1222,8 @@ export default function OverseerFlightDeck({
           </Canister>
         ) : (
           <>
-            {/* Left rail — smooth width transition, hard-capped to the monitor column's real height */}
             <div
+              data-rail-boundary="left"
               style={{
                 flexShrink: 0,
                 width: leftWidth,
@@ -1109,16 +1232,47 @@ export default function OverseerFlightDeck({
                 transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
-                alignSelf: "stretch",
+                alignSelf: "flex-start",
                 minHeight: 0,
-                maxHeight: centerColHeight ? `${centerColHeight}px` : undefined,
+                height: stageCapCss,
+                maxHeight: stageCapCss,
               }}
             >
-              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row" }}>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%" }}>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", height: "100%" }}>
                   {renderRail(activeWorkspace.leftRail, "left")}
                 </div>
-                {!leftCollapsed && leftRailScrollMax > 0 ? (
+                {!leftCollapsed && botRosterScrollMax > 0 ? (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min={0}
+                      max={botRosterScrollMax}
+                      value={botRosterScrollValue}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setBotRosterScrollValue(v);
+                        if (botRosterScrollRef.current) botRosterScrollRef.current.scrollTop = v;
+                      }}
+                      aria-label="Scroll bot roster"
+                      style={{
+                        width: Math.max(80, Math.min(botRosterScrollMax + 60, 420)),
+                        height: 20,
+                        transform: "rotate(-90deg)",
+                        accentColor: "#FFD700",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+                ) : !leftCollapsed && leftRailScrollMax > 0 ? (
                   <div
                     style={{
                       flexShrink: 0,
@@ -1138,7 +1292,7 @@ export default function OverseerFlightDeck({
                         setLeftRailScrollValue(v);
                         if (leftRailScrollRef.current) leftRailScrollRef.current.scrollTop = v;
                       }}
-                      aria-label="Scroll left rail bot list"
+                      aria-label="Scroll left rail"
                       style={{
                         width: Math.max(80, Math.min(leftRailScrollMax + 60, 420)),
                         height: 20,
@@ -1151,12 +1305,16 @@ export default function OverseerFlightDeck({
                 ) : null}
               </div>
             </div>
-            {/* Center monitors — ref measures real rendered height so the side rails can be hard-capped to it */}
-            <div ref={centerColRef} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            {/* Center monitors — ref measures natural height; flex-start prevents stretch feedback loop. */}
+            <div
+              ref={centerColRef}
+              data-monitor-stage-boundary
+              style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignSelf: "flex-start" }}
+            >
               {renderRail(activeWorkspace.center, "center")}
             </div>
-            {/* Right rail — smooth width transition, hard-capped to the monitor column's real height */}
             <div
+              data-rail-boundary="right"
               style={{
                 flexShrink: 0,
                 width: rightWidth,
@@ -1165,11 +1323,15 @@ export default function OverseerFlightDeck({
                 transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
-                alignSelf: "stretch",
-                maxHeight: centerColHeight ? `${centerColHeight}px` : undefined,
+                alignSelf: "flex-start",
+                minHeight: 0,
+                height: stageCapCss,
+                maxHeight: stageCapCss,
               }}
             >
-              {renderRail(activeWorkspace.rightRail, "right")}
+              <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+                {renderRail(activeWorkspace.rightRail, "right")}
+              </div>
             </div>
           </>
         )}

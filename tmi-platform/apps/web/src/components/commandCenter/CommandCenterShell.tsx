@@ -12,6 +12,10 @@ import { useRouter } from "next/navigation";
 import MasterControlDock from "@/components/shell/MasterControlDock";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
+import {
+  clampQuickPanelPosition,
+  digitalQuickPanelFrameStyle,
+} from "@/lib/ui/digitalQuickPanelChrome";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
   type CommandCenterPlaylistCast,
@@ -383,21 +387,19 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           type="button"
           onClick={(e) => {
             const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-            // Popover is ~220px wide — on narrow/mobile viewports, `rect.right + 8`
-            // pushes it off-screen for most rail buttons (reported 2026-08-05:
-            // only the buttons whose 20% chevron happened to get tapped directly
-            // "worked" — the 80% main-area quick panel was rendering off-screen).
-            // Clamp both axes to the viewport instead of assuming space exists.
-            const POPOVER_WIDTH = 220;
-            const POPOVER_MAX_HEIGHT = 260;
-            const left = Math.min(rect.right + 8, window.innerWidth - POPOVER_WIDTH - 12);
-            const top = Math.min(rect.top, window.innerHeight - POPOVER_MAX_HEIGHT - 12);
+            const POPOVER_WIDTH = 240;
+            const POPOVER_HEIGHT = 220;
+            const { top, left } = clampQuickPanelPosition(
+              { x: rect.left + rect.width / 2, y: e.clientY, rect },
+              POPOVER_WIDTH,
+              POPOVER_HEIGHT,
+            );
             setQuickPanel({
               label: opts.label,
               info: opts.info,
               accent,
-              top: Math.max(12, top),
-              left: Math.max(12, left),
+              top,
+              left,
               onOpenFull: opts.onOpenFull,
             });
           }}
@@ -773,16 +775,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               top: quickPanel.top,
               left: quickPanel.left,
               zIndex: 500,
-              width: 220,
+              width: 240,
               maxWidth: "calc(100vw - 24px)",
-              background: "#0d1117",
-              border: `1px solid ${quickPanel.accent}55`,
-              borderRadius: 10,
               padding: 12,
-              boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
               display: "flex",
               flexDirection: "column",
               gap: 8,
+              ...digitalQuickPanelFrameStyle(quickPanel.accent),
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
