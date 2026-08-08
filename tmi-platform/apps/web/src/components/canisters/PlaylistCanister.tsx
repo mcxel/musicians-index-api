@@ -13,9 +13,14 @@
  * states when the user has no playlists or a selected playlist is empty.
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { sanitizePublicDisplayLabel } from "@/lib/auth/resolveSessionIdentity";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
+import {
+  subscribePlaybackCommands,
+  syncNowPlaying,
+} from "@/lib/playlists/commandCenterPlaybackBus";
+import { resolvePlaylistLibraryHeader } from "@/lib/playlists/playlistLibraryDisplayName";
 import {
   fetchShareThreadOptions,
   sharePlaylistToThread,
@@ -81,6 +86,21 @@ export function PlaylistCanister({
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [savingDisplayName, setSavingDisplayName] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const selectedPlaylist = useMemo(
+    () => playlists.find((p) => p.id === selectedId) ?? null,
+    [playlists, selectedId],
+  );
+
+  const libraryHeader = useMemo(
+    () =>
+      resolvePlaylistLibraryHeader({
+        activePlaylistName: selectedPlaylist?.name,
+        role,
+      }),
+    [selectedPlaylist?.name, role],
+  );
 
   const publicOwnerName = useMemo(() => {
     const base = ownerLabel ?? entityName;
@@ -141,6 +161,75 @@ export function PlaylistCanister({
   };
 
   const activeTrack = tracks[currentTrackIndex] ?? null;
+
+  useEffect(() => {
+    return subscribePlaybackCommands((command) => {
+      if (command === "toggle") setIsPlaying((p) => !p);
+      else if (command === "play") setIsPlaying(true);
+      else if (command === "pause") setIsPlaying(false);
+      else if (command === "prev") setCurrentTrackIndex((prev) => Math.max(0, prev - 1));
+      else if (command === "next") {
+        setCurrentTrackIndex((prev) => Math.min(Math.max(tracks.length - 1, 0), prev + 1));
+      }
+    });
+  }, [tracks.length]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (!activeTrack) {
+      syncNowPlaying({
+        playlistId: selectedId,
+        title: "",
+        artist: libraryHeader,
+        isPlaying: false,
+      });
+      return;
+    }
+    syncNowPlaying({
+      playlistId: selectedId,
+      trackId: activeTrack.id,
+      title: activeTrack.title,
+      artist: libraryHeader,
+      coverUrl: activeTrack.coverUrl,
+      audioUrl: activeTrack.audioUrl,
+      isPlaying,
+    });
+    castPlaylistToMonitor({
+      playlistId: selectedId,
+      trackId: activeTrack.id,
+      title: activeTrack.title,
+      artist: libraryHeader,
+      coverUrl: activeTrack.coverUrl,
+      audioUrl: activeTrack.audioUrl,
+      targetMonitorId: "mon-a",
+    });
+  }, [selectedId, activeTrack, isPlaying, libraryHeader]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el || !selectedId || !activeTrack) return;
+    const publishProgress = () => {
+      if (!el.duration || !Number.isFinite(el.duration)) return;
+      syncNowPlaying({
+        playlistId: selectedId,
+        trackId: activeTrack.id,
+        title: activeTrack.title,
+        artist: libraryHeader,
+        coverUrl: activeTrack.coverUrl,
+        audioUrl: activeTrack.audioUrl,
+        isPlaying: !el.paused,
+        progress: el.currentTime / el.duration,
+      });
+    };
+    el.addEventListener("timeupdate", publishProgress);
+    el.addEventListener("play", publishProgress);
+    el.addEventListener("pause", publishProgress);
+    return () => {
+      el.removeEventListener("timeupdate", publishProgress);
+      el.removeEventListener("play", publishProgress);
+      el.removeEventListener("pause", publishProgress);
+    };
+  }, [selectedId, activeTrack, libraryHeader]);
 
   // ── Load real playlists ────────────────────────────────────────────────
   const loadPlaylists = useCallback(async () => {
@@ -241,7 +330,7 @@ export function PlaylistCanister({
       playlistId: selectedId,
       trackId: activeTrack.id,
       title: activeTrack.title,
-      artist: publicOwnerName,
+      artist: libraryHeader,
       targetMonitorId: "mon-a",
     });
   };
@@ -292,7 +381,7 @@ export function PlaylistCanister({
               {activeTrack ? (
                 <>
                   {activeTrack.title}
-                  {publicOwnerName ? <span style={{ color: "#00FFFF", fontSize: 11 }}> · {publicOwnerName}</span> : null}
+                  <span style={{ color: "#00FFFF", fontSize: 11 }}> · {libraryHeader}</span>
                 </>
               ) : (
                 <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 700 }}>No track selected</span>
@@ -308,10 +397,12 @@ export function PlaylistCanister({
           <button type="button" onClick={castSelected} disabled={!activeTrack} style={actionBtn("#FFD700")}>
             📺 CAST TO MONITOR
           </button>
-          {publicOwnerName ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
-              Owner: <strong style={{ color: "#00FF88" }}>{publicOwnerName}</strong>
-              {isOwner ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
+            Library: <strong style={{ color: "#00FF88" }}>{libraryHeader}</strong>
+            {isOwner && publicOwnerName ? (
+              <>
+                <span style={{ opacity: 0.35 }}>·</span>
+                <span style={{ fontSize: 9 }}>Curator: {publicOwnerName}</span>
                 <button
                   type="button"
                   disabled={savingDisplayName}
@@ -330,9 +421,9 @@ export function PlaylistCanister({
                 >
                   {savingDisplayName ? "…" : "EDIT NAME"}
                 </button>
-              ) : null}
-            </div>
-          ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -403,7 +494,7 @@ export function PlaylistCanister({
                     <div style={{ fontSize: 13, fontWeight: 900, color: "#fff", textShadow: "0 0 10px #000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
                       {activeTrack.title}
                     </div>
-                    {publicOwnerName ? <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, marginTop: 2 }}>{publicOwnerName}</div> : null}
+                    <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, marginTop: 2 }}>{libraryHeader}</div>
                   </>
                 ) : (
                   <span style={{ fontSize: 24, opacity: 0.5 }}>🎵</span>
@@ -414,7 +505,7 @@ export function PlaylistCanister({
 
           <div style={{ width: "100%", textAlign: "center", marginTop: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 900, color: "#fff" }}>{activeTrack?.title ?? "—"}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{publicOwnerName ?? ""}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{libraryHeader}</div>
 
             <div style={{ display: "flex", gap: 3, height: 24, alignItems: "center", justifyContent: "center", margin: "12px 0 6px" }}>
               {Array.from({ length: 24 }).map((_, i) => (
@@ -462,7 +553,14 @@ export function PlaylistCanister({
             </button>
           </div>
           {activeTrack?.audioUrl ? (
-            <audio key={activeTrack.audioUrl} src={activeTrack.audioUrl} controls={false} autoPlay={isPlaying} style={{ display: "none" }} />
+            <audio
+              ref={audioRef}
+              key={activeTrack.audioUrl}
+              src={activeTrack.audioUrl}
+              controls={false}
+              autoPlay={isPlaying}
+              style={{ display: "none" }}
+            />
           ) : null}
         </div>
 
@@ -605,7 +703,10 @@ export function PlaylistCanister({
                   return (
                     <div
                       key={t.id}
-                      onClick={() => setCurrentTrackIndex(idx)}
+                      onClick={() => {
+                setCurrentTrackIndex(idx);
+                setIsPlaying(true);
+              }}
                       style={{
                         display: "flex",
                         alignItems: "center",

@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import MasterControlDock from "@/components/shell/MasterControlDock";
+import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
+import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
 import {
@@ -584,7 +585,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           flexDirection: "column",
           minHeight: "calc(100vh - 100px)",
           overflowY: "auto",
-          paddingBottom: activePanel || appearanceOpen ? 0 : 170,
+          paddingBottom: 0,
         }}
       >
         <div
@@ -672,8 +673,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
           </div>
 
-          {/* Center media — blueprint anchor for eye-level quick panels (Inventory left / Memory right) */}
-          <div ref={mediaStageRef} data-hub-monitor-stage style={{ minWidth: 0, minHeight: 0 }}>
+          {/* Center media — monitors + persistent dock (blueprint anchor) */}
+          <div
+            ref={mediaStageRef}
+            data-hub-monitor-stage
+            style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
+          >
             <CommandCenterMediaStack
               slots={mediaSlots}
               bezelVariant="chrome"
@@ -682,6 +687,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
                   : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
               }
+            />
+            <CommandCenterSessionControlStrip
+              role={role === "performer" ? "performer" : "fan"}
+              onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
+              onEnterStage={() => router.push("/live/go")}
+            />
+            <PersistentMediaInteractionDock
+              role={role === "performer" ? "performer" : "fan"}
+              userId={userId}
+              roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
+              onLobbyNav={
+                role === "fan"
+                  ? () => openPanel("lobby")
+                  : () => openPanel("media_locker")
+              }
+              onOpenModule={(mod) => openPanel(mod)}
             />
           </div>
 
@@ -745,19 +766,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           </div>
         </div>
 
-        <MasterControlDock
-          role={role === "performer" ? "performer" : "fan"}
-          onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
-          onEnterStage={() => router.push(role === "performer" ? "/live/go" : "/live/go")}
-          onLobbyNav={
-            role === "fan"
-              ? () => openPanel("lobby")
-              : () => openPanel("media_locker")
-          }
-          onOpenModule={(mod) => openPanel(mod)}
-        />
-
-        {/* Layer 2 — Full Drawers: Mounts below Master Control Dock as vertical page extension */}
+        {/* Layer 2 — Full Drawers: below persistent dock + separator (playlist expands here) */}
         <CommandCenterDrawer
           role={role}
           activePanel={activePanel}
