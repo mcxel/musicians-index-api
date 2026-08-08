@@ -332,11 +332,43 @@ export default function OverseerFlightDeck({
   const rightCollapsed = drawerManager.isRailCollapsed("right");
   const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
   const leftRailScrollRef = useRef<HTMLDivElement>(null);
-  const scrollLeftRail = (direction: "up" | "down") => {
-    leftRailScrollRef.current?.scrollBy({ top: direction === "up" ? -180 : 180, behavior: "smooth" });
-  };
+  const [leftRailScrollMax, setLeftRailScrollMax] = useState(0);
+  const [leftRailScrollValue, setLeftRailScrollValue] = useState(0);
+  const recomputeLeftRailScrollMax = useCallback(() => {
+    const el = leftRailScrollRef.current;
+    if (!el) return;
+    setLeftRailScrollMax(Math.max(0, el.scrollHeight - el.clientHeight));
+  }, []);
+  useEffect(() => {
+    const el = leftRailScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recomputeLeftRailScrollMax);
+    observer.observe(el);
+    recomputeLeftRailScrollMax();
+    return () => observer.disconnect();
+  }, [recomputeLeftRailScrollMax]);
   const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+
+  // The Operations Deck row is height:auto (sizes to its tallest child), so a
+  // rail with height:100% has nothing definite to resolve against and grows
+  // unbounded instead — which then makes the RAIL the tallest child, stretching
+  // the monitor column to match it (align-items:stretch). Measuring the center
+  // (monitor) column's real rendered height and applying it as an explicit cap
+  // on the side rails breaks that circularity: monitors keep their natural
+  // size, rails scroll internally instead of ever exceeding it.
+  const centerColRef = useRef<HTMLDivElement>(null);
+  const [centerColHeight, setCenterColHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = centerColRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height;
+      if (height) setCenterColHeight(Math.round(height));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
 
   const toggleFullscreen = (panelId: string) => {
@@ -642,6 +674,7 @@ export default function OverseerFlightDeck({
       <div
         data-col={rail}
         ref={isLeft ? leftRailScrollRef : undefined}
+        onScroll={isLeft ? (e) => setLeftRailScrollValue(e.currentTarget.scrollTop) : undefined}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -1066,7 +1099,7 @@ export default function OverseerFlightDeck({
           </Canister>
         ) : (
           <>
-            {/* Left rail — smooth width transition */}
+            {/* Left rail — smooth width transition, hard-capped to the monitor column's real height */}
             <div
               style={{
                 flexShrink: 0,
@@ -1078,35 +1111,51 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "stretch",
                 minHeight: 0,
+                maxHeight: centerColHeight ? `${centerColHeight}px` : undefined,
               }}
             >
-              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                {renderRail(activeWorkspace.leftRail, "left")}
-              </div>
-              {!leftCollapsed && activeWorkspace.leftRail.length > 1 ? (
-                <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 6, paddingTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => scrollLeftRail("up")}
-                    aria-label="Scroll left rail up"
-                    style={{ ...dockBtnStyle(false), width: 26, height: 20, borderRadius: 6, fontSize: 10 }}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollLeftRail("down")}
-                    aria-label="Scroll left rail down"
-                    style={{ ...dockBtnStyle(false), width: 26, height: 20, borderRadius: 6, fontSize: 10 }}
-                  >
-                    ▼
-                  </button>
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row" }}>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  {renderRail(activeWorkspace.leftRail, "left")}
                 </div>
-              ) : null}
+                {!leftCollapsed && leftRailScrollMax > 0 ? (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min={0}
+                      max={leftRailScrollMax}
+                      value={leftRailScrollValue}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setLeftRailScrollValue(v);
+                        if (leftRailScrollRef.current) leftRailScrollRef.current.scrollTop = v;
+                      }}
+                      aria-label="Scroll left rail bot list"
+                      style={{
+                        width: Math.max(80, Math.min(leftRailScrollMax + 60, 420)),
+                        height: 20,
+                        transform: "rotate(-90deg)",
+                        accentColor: "#FFD700",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
-            {/* Center monitors */}
-            {renderRail(activeWorkspace.center, "center")}
-            {/* Right rail — smooth width transition */}
+            {/* Center monitors — ref measures real rendered height so the side rails can be hard-capped to it */}
+            <div ref={centerColRef} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              {renderRail(activeWorkspace.center, "center")}
+            </div>
+            {/* Right rail — smooth width transition, hard-capped to the monitor column's real height */}
             <div
               style={{
                 flexShrink: 0,
@@ -1117,6 +1166,7 @@ export default function OverseerFlightDeck({
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "stretch",
+                maxHeight: centerColHeight ? `${centerColHeight}px` : undefined,
               }}
             >
               {renderRail(activeWorkspace.rightRail, "right")}
