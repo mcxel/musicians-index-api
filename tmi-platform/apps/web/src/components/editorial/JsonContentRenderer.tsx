@@ -27,8 +27,10 @@ const renderNode = (node: JsonContentNode, index: number): ReactNode => {
       return renderChildren(node.content);
 
     case 'heading': {
-      const Tag = `h${node.attrs?.level || 1}` as keyof JSX.IntrinsicElements;
-      return <Tag key={index}>{renderChildren(node.content)}</Tag>;
+      const level = node.attrs?.level;
+      const clampedLevel = level && level >= 1 && level <= 6 ? level : 1;
+      const Tag = `h${clampedLevel}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+      return <Tag key={`h-${index}`}>{renderChildren(node.content)}</Tag>;
     }
 
     case 'paragraph':

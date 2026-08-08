@@ -19,6 +19,10 @@ export type DeskPeriod =
   | "90d"
   | "ytd"
   | "lifetime"
+  | "single-monitor"
+  | "dual-monitor"
+  | "quad-monitor"
+  | "16-tile-matrix"
   | "custom";
 
 export type DeskPanelId =
@@ -74,6 +78,10 @@ export type DeskNamedLayoutId =
   | "bot-ops"
   | "presentation"
   | "revenue"
+  | "single-monitor"
+  | "dual-monitor"
+  | "quad-monitor"
+  | "16-tile-matrix"
   | "custom";
 
 export type DeskNamedLayout = {
@@ -174,7 +182,7 @@ export function newTileId(): string {
   return `tile-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-export const NAMED_LAYOUT_PRESETS: DeskNamedLayout[] = [
+export const NAMED_LAYOUT_PRESETS = [
   {
     id: "default",
     name: "Default (Focus)",
@@ -250,7 +258,58 @@ export const NAMED_LAYOUT_PRESETS: DeskNamedLayout[] = [
       tile("rev-health", "system-health", 6, 5, 6, 3),
     ],
   },
-];
+  {
+    id: "single-monitor",
+    name: "1-Monitor Fullscreen",
+    mode: "layout",
+    focusPanel: "overview",
+    maximizedTileId: null,
+    tiles: [
+      tile("m1-main", "overview", 0, 0, 12, 8, { pinned: true }),
+    ],
+  },
+  {
+    id: "dual-monitor",
+    name: "2-Monitor Split Screen",
+    mode: "layout",
+    focusPanel: "overview",
+    maximizedTileId: null,
+    tiles: [
+      tile("m2-left", "overview", 0, 0, 6, 8, { pinned: true }),
+      tile("m2-right", "rooms", 6, 0, 6, 8, { pinned: true }),
+    ],
+  },
+  {
+    id: "quad-monitor",
+    name: "4-Monitor Quad Grid",
+    mode: "layout",
+    focusPanel: "overview",
+    maximizedTileId: null,
+    tiles: [
+      tile("m4-tl", "overview", 0, 0, 6, 4, { pinned: true }),
+      tile("m4-tr", "rooms", 6, 0, 6, 4, { pinned: true }),
+      tile("m4-bl", "revenue", 0, 4, 6, 4, { pinned: true }),
+      tile("m4-br", "bots", 6, 4, 6, 4, { pinned: true }),
+    ],
+  },
+  {
+    id: "16-tile-matrix",
+    name: "16-Tile Matrix Overview",
+    mode: "layout",
+    focusPanel: "overview",
+    maximizedTileId: null,
+    tiles: [
+      tile("m16-1", "overview", 0, 0, 3, 2), tile("m16-2", "rooms", 3, 0, 3, 2),
+      tile("m16-3", "revenue", 6, 0, 3, 2), tile("m16-4", "bots", 9, 0, 3, 2),
+      tile("m16-5", "audience", 0, 2, 3, 2), tile("m16-6", "rankings", 3, 2, 3, 2),
+      tile("m16-7", "presentation", 6, 2, 3, 2), tile("m16-8", "webrtc", 9, 2, 3, 2),
+      tile("m16-9", "commerce", 0, 4, 3, 2), tile("m16-10", "submissions", 3, 4, 3, 2),
+      tile("m16-11", "alerts", 6, 4, 3, 2), tile("m16-12", "system-health", 9, 4, 3, 2),
+      tile("m16-13", "stats", 0, 6, 3, 2), tile("m16-14", "geography", 3, 6, 3, 2),
+      tile("m16-15", "engagement", 6, 6, 3, 2), tile("m16-16", "growth", 9, 6, 3, 2),
+    ],
+  }
+] satisfies DeskNamedLayout[];
 
 export const DEFAULT_DESK_STATE: ObservatoryDeskState = {
   panel: "overview",
