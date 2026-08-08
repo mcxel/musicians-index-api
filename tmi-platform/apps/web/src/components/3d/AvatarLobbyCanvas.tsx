@@ -1,11 +1,13 @@
 "use client";
 
-"use client";
-
-import { Suspense, useRef } from 'react';
+import { Suspense, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, Html } from '@react-three/drei';
 import * as THREE from 'three';
+import {
+  AvatarSocketAttachment,
+  type SocketAttachmentDef,
+} from '@/components/3d/AvatarSocketAttachment';
 
 function Seat({ position }: { position: [number, number, number] }) {
   return (
@@ -151,31 +153,58 @@ const POSITIONS: [number, number, number][] = [
   [-4.8, 0, 0.8], [4.8, 0, 0.8], [-2.2, 0, 2.6], [2.2, 0, 2.6],
 ];
 
+export type AvatarRigProps = {
+  active?: boolean;
+  color?: string;
+  visorColor?: string;
+  crown?: boolean;
+  isPlaying?: boolean;
+  /** Synced to FanLobbyVenue seat anchors — sit lean vs stand idle. */
+  isSeated?: boolean;
+  /** Optional portrait plate on head — 3D Avatar Runtime v0, not a finished mesh. */
+  portraitUrl?: string;
+  /** Socket plane/sprite props from FanCosmeticCatalog / LobbyPropRegistry. */
+  attachments?: SocketAttachmentDef[];
+  hairColor?: string;
+  /** Outfit/costume body tint (v0 — no GLB mesh). */
+  outfitTint?: string;
+  /** Active hand prop id — drives flame/sparkler animation intensity. */
+  activePropId?: string;
+};
+
 export function AvatarRig({
   active = true,
   color,
   visorColor,
   crown = false,
   isPlaying = false,
-}: {
-  active?: boolean;
-  color?: string;
-  visorColor?: string;
-  crown?: boolean;
-  isPlaying?: boolean;
-}) {
+  isSeated = false,
+  portraitUrl,
+  attachments = [],
+  hairColor,
+  outfitTint,
+  activePropId,
+}: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
   const crownRef = useRef<THREE.Mesh>(null);
+  const bodyColor = outfitTint ?? color ?? (active ? '#00FFFF' : '#AA2DFF');
+  const headColor = hairColor ?? color ?? bodyColor;
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
     if (groupRef.current) {
-      const tempo = isPlaying ? 3.5 : 1.8;
-      const amplitude = isPlaying ? 0.12 : 0.035;
-      groupRef.current.position.y = Math.sin(elapsed * tempo) * amplitude;
-      
-      if (isPlaying) {
+      const baseY = isSeated ? -0.55 : -0.4;
+      const tempo = isPlaying && !isSeated ? 3.5 : 1.8;
+      const amplitude = isPlaying && !isSeated ? 0.12 : isSeated ? 0.015 : 0.035;
+      groupRef.current.position.y = baseY + Math.sin(elapsed * tempo) * amplitude;
+
+      if (isSeated) {
+        // Sit pose: lean into chair, slight sway — synced to seat anchors
+        groupRef.current.rotation.x = 0.42;
+        groupRef.current.rotation.y = Math.sin(elapsed * 0.35) * 0.04;
+        groupRef.current.rotation.z = 0;
+      } else if (isPlaying) {
         groupRef.current.rotation.y = Math.sin(elapsed * 2) * 0.12;
         groupRef.current.rotation.z = Math.sin(elapsed * 4) * 0.08;
         groupRef.current.rotation.x = Math.sin(elapsed * 3) * 0.05;
@@ -193,35 +222,64 @@ export function AvatarRig({
     }
     if (crownRef.current) {
       crownRef.current.rotation.y = elapsed * 0.6;
-      crownRef.current.position.y = 1.35 + Math.sin(elapsed * 1.5) * 0.06;
+      crownRef.current.position.y = 1.15 + Math.sin(elapsed * 1.5) * 0.06;
     }
   });
 
+  const showCrown = crown || attachments.some((a) => a.id === 'crown');
+  const filteredAttachments = useMemo(
+    () => attachments.filter((a) => a.id !== 'crown' || !showCrown),
+    [attachments, showCrown],
+  );
+
   return (
-    <group ref={groupRef} position={[0, -0.4, 0]}>
-      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
-        <capsuleGeometry args={[0.3, 0.6, 12, 24]} />
+    <group ref={groupRef} position={[0, isSeated ? -0.55 : -0.4, 0]}>
+      {/* Body capsule — Primitive3D / 3D_MESH v0 */}
+      <mesh position={[0, isSeated ? 0.32 : 0.45, 0]} castShadow receiveShadow>
+        <capsuleGeometry args={[0.3, isSeated ? 0.4 : 0.6, 12, 24]} />
         <meshStandardMaterial
-          color={color ?? (active ? '#00FFFF' : '#AA2DFF')}
+          color={bodyColor}
           roughness={0.15}
           metalness={0.85}
-          emissive={color ?? (active ? '#00FFFF' : '#4a106a')}
+          emissive={bodyColor}
           emissiveIntensity={active ? 0.4 : 0.15}
         />
       </mesh>
 
-      <mesh ref={visorRef} position={[0, 0.72, 0.22]} rotation={[0.15, 0, 0]} castShadow>
-        <boxGeometry args={[0.42, 0.1, 0.12]} />
-        <meshStandardMaterial
-          color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-          roughness={0.05}
-          metalness={0.95}
-          emissive={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-          emissiveIntensity={0.9}
-        />
+      {/* Head sphere + optional portrait plate */}
+      <mesh position={[0, 1.05, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[0.28, 24, 24]} />
+        <meshStandardMaterial color={headColor} roughness={0.35} metalness={0.4} />
       </mesh>
+      {portraitUrl ? (
+        <Html position={[0, 1.05, 0.29]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={portraitUrl}
+            alt=""
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: '2px solid rgba(0,255,255,0.5)',
+            }}
+          />
+        </Html>
+      ) : (
+        <mesh ref={visorRef} position={[0, 0.98, 0.22]} rotation={[0.15, 0, 0]} castShadow>
+          <boxGeometry args={[0.36, 0.08, 0.1]} />
+          <meshStandardMaterial
+            color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
+            roughness={0.05}
+            metalness={0.95}
+            emissive={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
+            emissiveIntensity={0.9}
+          />
+        </mesh>
+      )}
 
-      {crown && (
+      {showCrown && (
         <mesh ref={crownRef} position={[0, 1.35, 0]} castShadow>
           <torusGeometry args={[0.22, 0.04, 8, 16]} />
           <meshStandardMaterial
@@ -233,6 +291,16 @@ export function AvatarRig({
           />
         </mesh>
       )}
+
+      {filteredAttachments.map((att) => (
+        <AvatarSocketAttachment
+          key={`${att.id}-${att.socketId}`}
+          attachment={{
+            ...att,
+            active: !activePropId || att.id === activePropId || att.socketId !== 'socket_primary_hand',
+          }}
+        />
+      ))}
     </group>
   );
 }
@@ -243,20 +311,20 @@ export function AvatarViewer({
   visorColor,
   crown = false,
   isPlaying = false,
+  isSeated = false,
   size = 72,
-}: {
-  active?: boolean;
-  color?: string;
-  visorColor?: string;
-  crown?: boolean;
-  isPlaying?: boolean;
-  size?: number;
-}) {
+  portraitUrl,
+  attachments,
+  hairColor,
+  outfitTint,
+  activePropId,
+  enableOrbit = true,
+}: AvatarRigProps & { size?: number; enableOrbit?: boolean }) {
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
       <Canvas
         shadows
-        camera={{ position: [0, 0.3, 2.5], fov: 42 }}
+        camera={{ position: [0, isSeated ? 0.15 : 0.3, 2.5], fov: 42 }}
         gl={{ powerPreference: 'high-performance', antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
@@ -271,16 +339,24 @@ export function AvatarViewer({
             visorColor={visorColor}
             crown={crown}
             isPlaying={isPlaying}
+            isSeated={isSeated}
+            portraitUrl={portraitUrl}
+            attachments={attachments}
+            hairColor={hairColor}
+            outfitTint={outfitTint}
+            activePropId={activePropId}
           />
 
-          <OrbitControls
-            enableZoom={true}
-            enablePan={false}
-            enableDamping={true}
-            dampingFactor={0.05}
-            minPolarAngle={Math.PI / 3}
-            maxPolarAngle={Math.PI / 1.8}
-          />
+          {enableOrbit && (
+            <OrbitControls
+              enableZoom={true}
+              enablePan={false}
+              enableDamping={true}
+              dampingFactor={0.05}
+              minPolarAngle={Math.PI / 3}
+              maxPolarAngle={Math.PI / 1.8}
+            />
+          )}
         </Suspense>
       </Canvas>
     </div>

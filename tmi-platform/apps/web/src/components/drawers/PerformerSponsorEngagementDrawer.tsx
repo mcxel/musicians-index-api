@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import UniversalDrawerBase from "./UniversalDrawerBase";
+import { DRAWER_OPEN_HEIGHT } from "@/lib/drawers/DrawerAnimationProfile";
 import { HOUSE_SPONSORS } from "@/lib/commerce/DualStreamSponsorshipEngine";
 
 interface PerformerSponsorEngagementDrawerProps {
@@ -121,7 +122,7 @@ export default function PerformerSponsorEngagementDrawer({
       onClose={onClose}
       accentColor="#00FFFF"
       mode="overlay"
-      overlayHeight="min(92vh, 880px)"
+      overlayHeight={DRAWER_OPEN_HEIGHT}
     >
       <div
         style={{

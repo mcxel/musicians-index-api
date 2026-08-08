@@ -9,10 +9,11 @@ import AvatarHairSelector from "@/components/avatar/AvatarHairSelector";
 import AvatarLightingSelector from "@/components/avatar/AvatarLightingSelector";
 import AvatarNFTGenerator from "@/components/avatar/AvatarNFTGenerator";
 import AvatarOutfitRail from "@/components/avatar/AvatarOutfitRail";
-import AvatarPreviewStage from "@/components/avatar/AvatarPreviewStage";
+import AvatarForgePreview3D from "@/components/avatar/AvatarForgePreview3D";
 import AvatarPropRail from "@/components/avatar/AvatarPropRail";
 import AvatarSaveRail from "@/components/avatar/AvatarSaveRail";
 import AvatarSkinSelector from "@/components/avatar/AvatarSkinSelector";
+import RoleGate from "@/components/auth/RoleGate";
 import { buildAvatarNFTDraft, mintAvatarNFT, type AvatarMintResult } from "@/lib/avatar/avatarNFTEngine";
 import {
   equipItem,
@@ -20,6 +21,7 @@ import {
   syncInventoryToProfile,
   type AvatarInventoryItem,
 } from "@/lib/avatar/avatarInventoryEngine";
+import { FAN_COSMETIC_CATALOG } from "@/lib/avatars/FanCosmeticCatalog";
 
 // 12 globally inclusive skin tones — light → olive → tan → brown → dark brown → deep
 const skinOptions = [
@@ -219,15 +221,29 @@ export default function AvatarForgeShell() {
     setMintResult(result);
   };
 
+  const equippedCosmeticIds = inventory
+    .filter((item) => item.equipped && item.owned !== false)
+    .map((item) => item.itemId)
+    .filter((id) => FAN_COSMETIC_CATALOG.some((c) => c.id === id));
+
   return (
+    <RoleGate
+      allow={["FAN", "ADMIN"]}
+      fallback={
+        <main style={{ minHeight: "40vh", padding: 32, color: "#ccc" }}>
+          <p style={{ fontWeight: 800, color: "#FF2DAA" }}>Fan-only avatar ownership</p>
+          <p style={{ fontSize: 13 }}>Avatar Forge is available to Fan accounts (Rule 26).</p>
+        </main>
+      }
+    >
     <main style={{ minHeight: "100vh", background: "linear-gradient(165deg, #08040f, #1a1030 42%, #07050f)", padding: 20 }}>
       <header style={{ maxWidth: 1300, margin: "0 auto 16px", color: "#f3e9ff" }}>
-        <div style={{ fontSize: 11, letterSpacing: 2, color: "#9f7dd6" }}>Avatar Creation Center</div>
+        <div style={{ fontSize: 11, letterSpacing: 2, color: "#00FFFF99" }}>3D Avatar Runtime v0 — evolving</div>
         <h1 style={{ margin: "4px 0 0", fontSize: 30 }}>Avatar Forge</h1>
       </header>
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, maxWidth: 1300, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: 12 }}>
-          <AvatarPreviewStage
+          <AvatarForgePreview3D
             profileName={profileName}
             skin={skin}
             hair={hair}
@@ -240,6 +256,7 @@ export default function AvatarForgeShell() {
             accessories={selectedAccessories}
             bodyHeight={bodyHeight}
             bodyMass={bodyMass}
+            equippedCosmeticIds={equippedCosmeticIds}
           />
           <AvatarActionRail pose={pose} onPoseChange={(p) => { setPose(p); playChime(880); }} onRandomize={handleRandomize} onReset={handleReset} />
           <AvatarSaveRail profileName={profileName} onNameChange={setProfileName} onSave={handleSave} savedAt={savedAt} />
@@ -299,5 +316,6 @@ export default function AvatarForgeShell() {
         </aside>
       </div>
     </main>
+    </RoleGate>
   );
 }

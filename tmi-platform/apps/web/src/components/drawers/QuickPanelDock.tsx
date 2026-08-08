@@ -19,9 +19,16 @@
  * Rule: Live Wall is discovery — panel only, never a full workspace drawer.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
+import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
+import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
+import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
+import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
+import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
+import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +46,7 @@ interface PanelDef {
 const PANELS: PanelDef[] = [
   { id: "lobby",       icon: "🏠", label: "LOBBY",    accent: "#9B59FF" },
   { id: "live_wall",   icon: "📺", label: "LIVE",     accent: "#FF4444" },
-  { id: "alerts",      icon: "🔔", label: "ALERTS",   accent: "#FFD700", badge: 4 },
+  { id: "alerts",      icon: "🔔", label: "ALERTS",   accent: "#FFD700" },
   { id: "friends",     icon: "👥", label: "FRIENDS",  accent: "#00FF88" },
   { id: "quick_queue", icon: "⚡", label: "QUEUE",    accent: "#FF6B1A" },
 ];
@@ -87,68 +94,99 @@ function LobbyPanel({ role }: { role: UserRole }) {
   );
 }
 
-interface LiveRoomSummary {
-  userId: string;
-  displayName: string;
-  roomId: string;
-  viewerCount: number;
-}
+/** LIVE quick menu — Brady-Bunch video tiles (same language as full wall). Tap = instant join. */
+function LiveWallPanel({
+  onOpenFullWall,
+  onClose,
+}: {
+  onOpenFullWall: () => void;
+  onClose: () => void;
+}) {
+  const records = useDiscoveryBus(null);
+  const rooms = useMemo(() => records.map(discoveryToLobbyRoom), [records]);
+  const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
 
-function LiveWallPanel() {
-  const [rooms, setRooms] = useState<LiveRoomSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/live/go", { cache: "no-store" });
-        if (!res.ok || cancelled) return;
-        const data = await res.json() as { sessions?: LiveRoomSummary[] };
-        setRooms(data.sessions ?? []);
-      } catch {
-        if (!cancelled) setRooms([]);
-      } finally {
-        if (!cancelled) setLoading(false);
+  const handleRoomJoin = useCallback(
+    (room: LobbyRoom) => {
+      const record = records.find((r) => r.roomId === room.id || r.id === room.id);
+      if (record) {
+        setJoinDecision(resolveInstantJoin(record));
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      const dest = resolveLobbyDestination({
+        roomId: room.id,
+        kind:
+          room.type === "battle" ||
+          room.type === "cypher" ||
+          room.type === "challenge" ||
+          room.type === "game" ||
+          room.type === "live" ||
+          room.type === "dance" ||
+          room.type === "concert" ||
+          room.type === "lounge"
+            ? room.type
+            : "live",
+        href: room.href,
+      });
+      setJoinDecision({
+        instant: true,
+        gateReason: "none",
+        href: dest.href,
+        room: {
+          id: room.id,
+          title: room.name,
+          hostName: room.performerName,
+          genre: room.genre,
+          viewers: room.viewerCount,
+          status: room.status === "live" ? "live" : "starting-soon",
+          access: "free",
+          accentColor: "#FF4444",
+          roomRoute: dest.href,
+          venueIndex: 0,
+        },
+      });
+    },
+    [records],
+  );
 
   return (
-    <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+    <div style={{ padding: "8px 10px 12px", display: "flex", flexDirection: "column", gap: 8, maxHeight: "55vh" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#FF4444", animation: "pulse 1s infinite" }} />
-        <span style={{ fontSize: 9, fontWeight: 900, color: "#FF4444", letterSpacing: "0.12em", textTransform: "uppercase" }}>LIVE NOW</span>
-        <span style={{ marginLeft: "auto", fontSize: 9, color: "#7878AA" }}>{rooms.length} rooms</span>
+        <span style={{ fontSize: 9, fontWeight: 900, color: "#FF4444", letterSpacing: "0.12em", textTransform: "uppercase", flex: 1 }}>
+          LIVE QUICK WALL
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            onOpenFullWall();
+          }}
+          style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+        >
+          <Btn color="#FF4444" outline>FULL WALL</Btn>
+        </button>
       </div>
-      {loading ? (
-        <div style={{ fontSize: 8, color: "#7878AA", padding: "8px 0", textAlign: "center" }}>Loading…</div>
-      ) : rooms.length === 0 ? (
-        <div style={{ fontSize: 8, color: "#7878AA", padding: "8px 0", textAlign: "center" }}>No one is live right now.</div>
-      ) : (
-        rooms.map((r) => (
-          <div key={r.roomId} style={{ background: "#0A0A1A", border: "1px solid rgba(255,68,68,0.2)", borderRadius: 6, padding: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 4, background: "rgba(255,68,68,0.13)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
-              🎤
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 8, fontWeight: 800, color: "#E8E8FF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.displayName}</div>
-              <div style={{ fontSize: 7, color: "#FF6B6B" }}>● {r.viewerCount.toLocaleString()} watching</div>
-            </div>
-            <a href={`/live/rooms/${r.roomId}`} style={{ textDecoration: "none" }}>
-              <Btn color="#FF4444">Join</Btn>
-            </a>
-          </div>
-        ))
+      <div style={{ flex: 1, minHeight: 180, overflowY: "auto" }}>
+        <LiveLobbyWallGrid
+          rooms={rooms}
+          title="Tap tile → instant join"
+          accentColor="#FF4444"
+          typeLabel="LIVE"
+          variant="quick"
+          onRoomJoin={handleRoomJoin}
+        />
+      </div>
+      {joinDecision && (
+        <LobbyEntryFlow
+          room={joinDecision.room}
+          instant
+          onClose={() => {
+            setJoinDecision(null);
+            onClose();
+          }}
+        />
       )}
-      <div style={{ marginTop: 2 }}>
-        <a href="/live/lobby" style={{ textDecoration: "none" }}>
-          <Btn color="#FF4444" outline>Browse All Live Rooms →</Btn>
-        </a>
-      </div>
     </div>
   );
 }
@@ -315,7 +353,18 @@ function QuickQueuePanel() {
 
 // ─── Panel popup shell ────────────────────────────────────────────────────────
 
-function PanelPopup({ panel, role, onClose }: { panel: PanelDef; role: UserRole; onClose: () => void }) {
+function PanelPopup({
+  panel,
+  role,
+  onClose,
+  onOpenLiveWall,
+}: {
+  panel: PanelDef;
+  role: UserRole;
+  onClose: () => void;
+  onOpenLiveWall: () => void;
+}) {
+  const isLiveWall = panel.id === "live_wall";
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -326,8 +375,8 @@ function PanelPopup({ panel, role, onClose }: { panel: PanelDef; role: UserRole;
         position: "fixed",
         bottom: 64,
         right: 16,
-        width: 320,
-        maxHeight: "60vh",
+        width: isLiveWall ? 420 : 320,
+        maxHeight: isLiveWall ? "70vh" : "60vh",
         overflowY: "auto",
         WebkitOverflowScrolling: "touch" as CSSProperties["WebkitOverflowScrolling"],
         background: "#09091E",
@@ -355,7 +404,9 @@ function PanelPopup({ panel, role, onClose }: { panel: PanelDef; role: UserRole;
 
       {/* Panel content */}
       {panel.id === "lobby" && <LobbyPanel role={role} />}
-      {panel.id === "live_wall" && <LiveWallPanel />}
+      {panel.id === "live_wall" && (
+        <LiveWallPanel onOpenFullWall={onOpenLiveWall} onClose={onClose} />
+      )}
       {panel.id === "alerts" && <AlertsPanel />}
       {panel.id === "friends" && <FriendsPanel />}
       {panel.id === "quick_queue" && <QuickQueuePanel />}
@@ -374,8 +425,12 @@ export interface QuickPanelDockProps {
 
 export default function QuickPanelDock({ role = "fan", style, panels }: QuickPanelDockProps) {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
 
-  const toggle = (id: PanelId) => setActivePanel((prev) => (prev === id ? null : id));
+  const toggle = (id: PanelId) => {
+    // LIVE quick button → Brady-Bunch quick menu panel (not fake /live index)
+    setActivePanel((prev) => (prev === id ? null : id));
+  };
 
   const visiblePanels = panels ? PANELS.filter((p) => panels.includes(p.id)) : PANELS;
   const activePanelDef = visiblePanels.find((p) => p.id === activePanel) ?? null;
@@ -389,6 +444,7 @@ export default function QuickPanelDock({ role = "fan", style, panels }: QuickPan
             panel={activePanelDef}
             role={role}
             onClose={() => setActivePanel(null)}
+            onOpenLiveWall={openLiveLobbyWalls}
           />
         )}
       </AnimatePresence>

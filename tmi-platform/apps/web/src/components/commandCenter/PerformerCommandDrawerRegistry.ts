@@ -6,7 +6,7 @@
  * PERFORMER drawer payloads (Rule 26 — NO avatar ownership / Fan Lobby / Avatar Studio):
  *   - Media Locker, Bio & Magazine, Beat Lab, Performer YoPho, Bookings, Stage Tools
  *   - Playlists, Memory Wall, Store
- *   - Sponsors via zone `dashboard-performer-sponsors` (Rule 12)
+ *   - Sponsor management chrome intentionally omitted (Rule 26)
  *
  * Instant Go Live: left-rail GO LIVE → /live/go + dock Launch Dock.
  *
@@ -32,7 +32,6 @@ export const PERFORMER_DRAWER_LAUNCHERS = [
   "playlist",
   "memory",
   "store",
-  "sponsors",
   "messaging",
   "live_destinations",
   "submissions",
@@ -40,4 +39,5 @@ export const PERFORMER_DRAWER_LAUNCHERS = [
   "notifications",
 ] as const;
 
+/** Legacy zone id — kept for ad-slot fallbacks; not mounted in Performer hub chrome. */
 export const PERFORMER_SPONSOR_ZONE = "dashboard-performer-sponsors";

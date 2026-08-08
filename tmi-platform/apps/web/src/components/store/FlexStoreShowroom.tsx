@@ -6,12 +6,13 @@ import Link from 'next/link';
 import {
   FLEX_STORE_CATALOG,
   FlexStoreItem,
-  FlexItemType,
   getOwnedEntitlementIds,
   isItemOwned,
   purchaseFlexItem,
   formatFlexPrice,
 } from '@/lib/store/FlexStoreLedger';
+import { getFanCosmetic } from '@/lib/avatars/FanCosmeticCatalog';
+import RoleGate from '@/components/auth/RoleGate';
 
 const AvatarLobbyCanvas = dynamic(() => import('@/components/3d/AvatarLobbyCanvas'), { ssr: false });
 
@@ -20,22 +21,77 @@ interface FlexStoreShowroomProps {
   initialTrackId?: string;
 }
 
+const AVATAR_WING_TYPES = new Set(['APPAREL', 'HAIR', 'ACCESSORY', 'EMOTE']);
+
 export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrackId }: FlexStoreShowroomProps) {
   const [activeWing, setActiveWing] = useState<'apparel' | 'emotes' | 'yopho' | 'beats' | 'passes' | 'locker'>(initialWing);
   const [selectedItem, setSelectedItem] = useState<FlexStoreItem>(FLEX_STORE_CATALOG[0]!);
   const [ownedIds, setOwnedIds] = useState<string[]>([]);
   const [purchaseMsg, setPurchaseMsg] = useState<string | null>(null);
   const [activeEmoteAnimation, setActiveEmoteAnimation] = useState<string | null>(null);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     setOwnedIds(getOwnedEntitlementIds());
+    fetch('/api/avatar/inventory', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { AvatarInventory?: { items?: { itemId: string; owned?: boolean }[] } } | null) => {
+        const apiOwned = (data?.AvatarInventory?.items ?? [])
+          .filter((i) => i.owned !== false)
+          .map((i) => i.itemId);
+        if (apiOwned.length) {
+          setOwnedIds((prev) => [...new Set([...prev, ...apiOwned])]);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  const handleBuy = (item: FlexStoreItem) => {
+  const handleBuy = async (item: FlexStoreItem) => {
+    if (buying) return;
+    // Avatar cosmetics with FanCosmeticCatalog SKU → real entitlement via /api/avatar/unlock
+    const cosmetic = getFanCosmetic(item.id);
+    if (cosmetic && AVATAR_WING_TYPES.has(item.itemType)) {
+      setBuying(true);
+      try {
+        const res = await fetch('/api/avatar/unlock', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemId: item.id,
+            payment: cosmetic.pointsCost === 0 ? 'grant_free' : 'points',
+            equip: true,
+          }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string; message?: string };
+        if (res.ok && data.ok) {
+          setOwnedIds((prev) => [...new Set([...prev, item.id])]);
+          setPurchaseMsg(`Unlocked ${item.name} (real entitlement · 3D Avatar Runtime v0)`);
+        } else if (res.status === 401 || res.status === 403) {
+          setPurchaseMsg('Sign in as Fan to unlock avatar cosmetics.');
+        } else if (res.status === 402) {
+          setPurchaseMsg(`Need points — visit /store/points (not a fake localStorage purchase).`);
+        } else {
+          setPurchaseMsg(data.error ?? 'Unlock failed');
+        }
+      } catch {
+        setPurchaseMsg('Unlock failed — try again');
+      } finally {
+        setBuying(false);
+        setTimeout(() => setPurchaseMsg(null), 4000);
+      }
+      return;
+    }
+
+    // Non-avatar Flex items: honest local preview unlock (not paid ownership)
     const res = purchaseFlexItem(item.id);
-    setPurchaseMsg(res.message);
+    setPurchaseMsg(
+      res.ok
+        ? `${res.message} (local preview unlock — not Stripe-paid ownership)`
+        : res.message,
+    );
     setOwnedIds(getOwnedEntitlementIds());
-    setTimeout(() => setPurchaseMsg(null), 3000);
+    setTimeout(() => setPurchaseMsg(null), 4000);
   };
 
   const handlePreviewEmote = (item: FlexStoreItem) => {
@@ -69,6 +125,15 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
   const collectionCompletionPercent = Math.round((ownedCount / totalCatalogCount) * 100);
 
   return (
+    <RoleGate
+      allow={['FAN', 'ADMIN', 'PERFORMER', 'USER']}
+      fallback={
+        <div style={{ padding: 32, color: '#ccc' }}>
+          <p style={{ fontWeight: 800 }}>Sign in to browse Flex Store.</p>
+          <Link href="/login" style={{ color: '#00E5FF' }}>Log in</Link>
+        </div>
+      }
+    >
     <div
       style={{
         position: 'relative',
@@ -98,10 +163,10 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
           <span style={{ fontSize: 28 }}>🏛️</span>
           <div>
             <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', letterSpacing: '0.1em' }}>
-              TMI 3D PHOTOREALISTIC FLEX STORE
+              TMI FLEX STORE · 3D Avatar Runtime v0
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-              Photorealistic Avatar Apparel · Animated Emotes · YoPho Upgrades · Beats & NFTs · Micro-Pricing ($0.99 - $4.99)
+              3D Avatar Runtime v0 (evolving) · Avatar Apparel · Emotes · YoPho · Beats & NFTs · Micro-Pricing ($0.99 - $4.99)
             </div>
           </div>
         </div>
@@ -146,7 +211,7 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
 
       {/* ── Main Stage: 3D Showroom Stage (Left) & Wings Catalog (Right) ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left Column: Photorealistic 3D Inspection Canvas */}
+        {/* Left Column: 3D Avatar Runtime v0 inspection canvas */}
         <div
           style={{
             flex: 1.3,
@@ -222,7 +287,7 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
                 </button>
               )}
 
-              {isItemOwned(selectedItem.id) ? (
+              {ownedIds.includes(selectedItem.id) || isItemOwned(selectedItem.id) ? (
                 <button
                   style={{
                     background: '#00FF88',
@@ -300,7 +365,7 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
           <div style={{ flex: 1, padding: 20, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
             {filteredItems.map((item) => {
               const isSelected = selectedItem.id === item.id;
-              const owned = isItemOwned(item.id);
+              const owned = ownedIds.includes(item.id) || isItemOwned(item.id);
 
               return (
                 <div
@@ -357,5 +422,6 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
         </div>
       </div>
     </div>
+    </RoleGate>
   );
 }

@@ -22,6 +22,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type AdSlotType =
@@ -186,18 +187,53 @@ export function TMIAdBanner({
     );
   }
 
-  // Room overlay / live stream sponsor bug
+  // Room overlay — large broadcast ad bumper (spin + scale entrance)
   if (slotType === "room_overlay") {
     return (
-      <div
-        className="absolute bottom-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full pointer-events-none"
-        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", border: `1px solid ${currentAd.accentColor}40` }}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.35, rotate: -200, y: 40 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 16, mass: 0.9 }}
+        onClick={handleClick}
+        className="absolute left-3 right-3 bottom-3 z-20 flex items-center gap-3 px-4 py-3 cursor-pointer"
+        style={{
+          background: `linear-gradient(105deg, rgba(0,0,0,0.88) 0%, ${currentAd.accentColor}40 55%, rgba(0,0,0,0.85) 100%)`,
+          backdropFilter: "blur(10px)",
+          border: `2px solid ${currentAd.accentColor}`,
+          borderRadius: 14,
+          boxShadow: `0 12px 36px rgba(0,0,0,0.6), 0 0 28px ${currentAd.accentColor}55`,
+          transformOrigin: "center bottom",
+        }}
       >
-        {currentAd.sponsorLogoUrl && (
-          <img src={currentAd.sponsorLogoUrl} alt="" className="h-4 w-auto object-contain" />
+        {currentAd.sponsorLogoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={currentAd.sponsorLogoUrl} alt="" className="h-10 w-auto object-contain flex-shrink-0" />
+        ) : (
+          <motion.div
+            animate={{ rotate: [0, 8, -6, 0], scale: [1, 1.05, 1] }}
+            transition={{ duration: 2.2, repeat: Infinity }}
+            className="h-10 w-10 rounded-lg flex items-center justify-center text-lg font-black flex-shrink-0"
+            style={{ background: `${currentAd.accentColor}33`, border: `1px solid ${currentAd.accentColor}`, color: currentAd.accentColor }}
+          >
+            ★
+          </motion.div>
         )}
-        <span className="text-[8px] font-black text-white/70">Sponsored by {currentAd.sponsorName}</span>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[8px] font-black tracking-[0.2em] uppercase" style={{ color: currentAd.accentColor }}>
+            Sponsored by
+          </p>
+          <p className="text-sm font-black text-white leading-tight">{currentAd.sponsorName}</p>
+          {currentAd.headline && (
+            <p className="text-[10px] text-white/65 mt-0.5 truncate">{currentAd.headline}</p>
+          )}
+        </div>
+        <span
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg text-black flex-shrink-0"
+          style={{ background: currentAd.accentColor }}
+        >
+          {currentAd.ctaText || "AD"}
+        </span>
+      </motion.div>
     );
   }
 

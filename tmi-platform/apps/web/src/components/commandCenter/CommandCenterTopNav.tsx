@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
 import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
 import { useTheme } from "@/lib/design/ThemeEngine";
+import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
 
 interface CommandCenterTopNavProps {
   userId: string;
@@ -22,7 +23,7 @@ interface CommandCenterTopNavProps {
 const NAV_LINKS = [
   { label: "HOME", href: "/" },
   { label: "DISCOVER", href: "/explore" },
-  { label: "LIVE NOW", href: "/live" },
+  { label: "LIVE NOW", href: null as string | null, liveWall: true },
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
   { label: "ARENA", href: "/arena" },
@@ -46,6 +47,7 @@ function mapSessionTier(raw: string | null | undefined): TierLevel {
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
+  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [tier, setTier] = useState<TierLevel>("free");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -140,22 +142,44 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
 
       {/* Primary nav */}
       <nav style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-        {NAV_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: "0.06em",
-              color: "rgba(255,255,255,0.75)",
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {link.label}
-          </Link>
-        ))}
+        {NAV_LINKS.map((link) =>
+          link.href === null || ("liveWall" in link && link.liveWall) ? (
+            <button
+              key={link.label}
+              type="button"
+              onClick={() => openLiveLobbyWalls()}
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: "0.06em",
+                color: "rgba(255,255,255,0.75)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                padding: 0,
+                fontFamily: "inherit",
+              }}
+            >
+              {link.label}
+            </button>
+          ) : (
+            <Link
+              key={link.href}
+              href={link.href}
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: "0.06em",
+                color: "rgba(255,255,255,0.75)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {link.label}
+            </Link>
+          ),
+        )}
       </nav>
 
       {/* Search */}

@@ -3,8 +3,8 @@
 import Link from "next/link";
 
 const JUMPS = [
-  { id: "j-1", label: "Battle", href: "/battles" },
-  { id: "j-2", label: "Cypher", href: "/cypher" },
+  { id: "j-1", label: "Battle", href: "/battles/lobby-wall" },
+  { id: "j-2", label: "Cypher", href: "/cypher/lobby-wall" },
   { id: "j-3", label: "Live", href: "/live" },
   { id: "j-4", label: "Store", href: "/marketplace" },
   { id: "j-5", label: "Rewards", href: "/rewards" },

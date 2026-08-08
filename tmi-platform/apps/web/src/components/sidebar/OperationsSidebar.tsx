@@ -5,17 +5,18 @@
  * 5-Tab Right Operations Sidebar (CHAT | ROOM | PEOPLE | COMMUNITY | SUPPORT).
  *
  * Features:
- *   - CHAT: Room-level live chat with emoji reactions & sound notifications
- *   - ROOM: Active venue room metadata, current beat, & audience statistics
- *   - PEOPLE: Online participants, performers, moderators, and active avatars
- *   - COMMUNITY: Platform-wide community feed with user posts, reactions, & mentions
- *   - SUPPORT: Automated Observatory diagnostic reporting tool (captures route, viewport, browser, session, JS errors)
+ *   - CHAT: Always-on community MessagingCanister (no live-room gate)
+ *   - ROOM: Active venue room metadata
+ *   - PEOPLE: Session identity (honest — full roster not wired)
+ *   - COMMUNITY: Honest empty until platform feed exists
+ *   - SUPPORT: Observatory diagnostic reporting
  */
 
 import { useState } from "react";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { supportDiagnosticsEngine } from "@/lib/support/SupportDiagnosticsEngine";
 import { tmiSoundRegistry } from "@/lib/audio/TmiSoundRegistry";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
 
 export type OperationsTab = "CHAT" | "ROOM" | "PEOPLE" | "COMMUNITY" | "SUPPORT";
 
@@ -117,14 +118,15 @@ export default function OperationsSidebar({
 
       {/* Tab Content Panels */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", minHeight: 120 }}>
-        {/* CHAT TAB */}
+        {/* CHAT TAB — community messaging always on (no live-room gate) */}
         {activeTab === "CHAT" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: 12 }}>
-              {featuredPerformerName
-                ? `Live Room Chat: ${featuredPerformerName}`
-                : "Join a live room to send chat reactions"}
-            </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+            {featuredPerformerName ? (
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 700, padding: "0 2px" }}>
+                Room context: {featuredPerformerName}
+              </div>
+            ) : null}
+            <MessagingCanister height={320} compact />
             <div style={{ fontSize: 9, color: theme.secondary, textAlign: "center", fontWeight: 800 }}>
               🟢 Community Moderation Active
             </div>
@@ -150,12 +152,14 @@ export default function OperationsSidebar({
           </div>
         )}
 
-        {/* COMMUNITY TAB */}
+        {/* COMMUNITY TAB — Rule 20 honest empty (no fake feed claims) */}
         {activeTab === "COMMUNITY" && (
           <div style={{ fontSize: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>TMI PLATFORM COMMUNITY FEED</div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", padding: "12px 0", textAlign: "center" }}>
+            <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>COMMUNITY</div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", padding: "12px 0", textAlign: "center", lineHeight: 1.5 }}>
               No platform-wide community feed is wired yet.
+              <br />
+              Use CHAT to message the community anytime.
             </div>
           </div>
         )}

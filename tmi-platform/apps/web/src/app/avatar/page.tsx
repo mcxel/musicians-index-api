@@ -7,7 +7,7 @@ import FooterHUD from '@/components/hud/FooterHUD';
 import SectionTitle from '@/components/ui/SectionTitle';
 
 const AVATAR_MODULES = [
-  { href: '/avatar/create', emoji: '🧬', label: 'CREATE', sub: 'Build your bobblehead', accent: '#FF2DAA' },
+  { href: '/avatar/create', emoji: '🧬', label: 'CREATE', sub: '3D Avatar Runtime v0 — evolving', accent: '#FF2DAA' },
   { href: '/avatar/scan', emoji: '📷', label: 'FACE SCAN', sub: 'Scan your face for a likeness', accent: '#00FFFF' },
   { href: '/avatar/build', emoji: '🛠️', label: 'FORGE', sub: 'Build from scratch', accent: '#AA2DFF' },
   { href: '/avatar/customize', emoji: '✏️', label: 'CUSTOMIZE', sub: 'Fine-tune your look', accent: '#00FFFF' },
@@ -25,9 +25,9 @@ export default function AvatarHubPage() {
           {/* Hero */}
           <div style={{ background: 'linear-gradient(160deg, #1a0528 0%, #050510 60%)', padding: '64px 32px 48px', borderBottom: '1px solid #AA2DFF33' }}>
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <div style={{ fontSize: 11, letterSpacing: 4, color: '#AA2DFF', textTransform: 'uppercase', marginBottom: 12 }}>AVATAR SYSTEM</div>
+              <div style={{ fontSize: 11, letterSpacing: 4, color: '#AA2DFF', textTransform: 'uppercase', marginBottom: 12 }}>3D AVATAR RUNTIME v0 — EVOLVING</div>
               <h1 style={{ fontSize: 52, fontWeight: 900, color: '#fff', margin: '0 0 12px', lineHeight: 1.1 }}>AVATAR CENTER</h1>
-              <p style={{ color: '#aaa', fontSize: 16, maxWidth: 520 }}>Create your animated bobblehead, outfit it with props and clothing, and show up on stage your way.</p>
+              <p style={{ color: '#aaa', fontSize: 16, maxWidth: 520 }}>Create your fan avatar (capsule + socket props), outfit it with cosmetics, and show up in lobbies. Not a finished photoreal pipeline.</p>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                 <Link href="/avatar/create" style={{ background: '#AA2DFF', color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: 2, padding: '12px 28px', borderRadius: 8, textDecoration: 'none' }}>CREATE AVATAR →</Link>
                 <Link href="/avatar/shop" style={{ background: 'transparent', color: '#AA2DFF', fontWeight: 800, fontSize: 13, letterSpacing: 2, padding: '12px 28px', borderRadius: 8, border: '1px solid #AA2DFF', textDecoration: 'none' }}>SHOP</Link>

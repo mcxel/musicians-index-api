@@ -11,9 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MasterControlDock from "@/components/shell/MasterControlDock";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
-import SponsorRail from "@/components/sponsors/SponsorRail";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
-import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
   type CommandCenterPlaylistCast,
@@ -28,10 +26,8 @@ import {
   type CommandCenterRole,
 } from "./commandCenterRegistry";
 import { FAN_AD_ZONE, FAN_DRAWER_LAUNCHERS } from "./FanCommandDrawerRegistry";
-import {
-  PERFORMER_DRAWER_LAUNCHERS,
-  PERFORMER_SPONSOR_ZONE,
-} from "./PerformerCommandDrawerRegistry";
+import { PERFORMER_DRAWER_LAUNCHERS } from "./PerformerCommandDrawerRegistry";
+import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import {
@@ -552,7 +548,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         <RoleSwitcherWidget accentColor={theme.primary} />
       </div>
 
-      {/* Media + rails + drawer dock */}
+      {/* Media + rails + drawer dock.
+          Dock clearance (170) only when drawer closed — when open, drop that
+          dead band so the sheet bottom edge sits lower (closer to dock). */}
       <div
         style={{
           position: "relative",
@@ -561,7 +559,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           flexDirection: "column",
           minHeight: "calc(100vh - 100px)",
           overflowY: "auto",
-          paddingBottom: 170,
+          paddingBottom: activePanel || appearanceOpen ? 0 : 170,
         }}
       >
         <div
@@ -678,12 +676,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             />
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
-              <Link href="/live/lobby" style={{ display: "block", fontSize: 10, color: theme.secondary, textDecoration: "none", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+              <button
+                type="button"
+                onClick={() => liveDiscoveryOverlayStore.open()}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  fontSize: 10,
+                  color: theme.secondary,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.02)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
                 Open Live Lobby Wall →
-              </Link>
+              </button>
             </div>
 
-            {/* Rule 12: Fan ads vs Performer sponsors — never empty */}
+            {/* Rule 12 ads for fans; Rule 26 — no sponsor-management chrome on performer hub */}
             {role === "fan" ? (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
@@ -694,9 +708,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             ) : (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
-                  SPONSORS · {PERFORMER_SPONSOR_ZONE}
+                  PLATFORM
                 </div>
-                <SponsorRail sponsors={getRailSponsors("dashboard-performer")} zone={PERFORMER_SPONSOR_ZONE} />
+                <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
               </div>
             )}
           </div>

@@ -59,7 +59,7 @@ export const FLEX_STORE_CATALOG: FlexStoreItem[] = [
   {
     id: 'cyber-jacket-neon',
     name: 'Cyberpunk Neon Leather Jacket',
-    description: 'Ultra-realistic glowing LED leather jacket for your 3D avatar',
+    description: 'Neon LED leather jacket for 3D Avatar Runtime v0 (capsule preview)',
     itemType: 'APPAREL',
     collectionTier: 'FEATURED',
     priceCents: 299,
@@ -74,7 +74,7 @@ export const FLEX_STORE_CATALOG: FlexStoreItem[] = [
   {
     id: 'holographic-sneakers-gold',
     name: 'Gold Holographic Kicks',
-    description: 'PBR metallic gold sneakers with ground spark trail particles',
+    description: 'Gold sneakers with spark trail accent — v0 plane/primitive preview',
     itemType: 'APPAREL',
     collectionTier: 'EVERYDAY',
     priceCents: 99,
@@ -133,7 +133,7 @@ export const FLEX_STORE_CATALOG: FlexStoreItem[] = [
   {
     id: 'emote-flaming-stage',
     name: 'Rising Stage Flames',
-    description: 'Summons hyper-realistic pyro fire pillars around your performer stage',
+    description: 'Summons pyro fire pillar FX around your performer stage',
     itemType: 'EMOTE',
     collectionTier: 'FEATURED',
     priceCents: 199,
@@ -166,7 +166,7 @@ export const FLEX_STORE_CATALOG: FlexStoreItem[] = [
   {
     id: 'yopho-album-master-skin',
     name: 'Vintage 90s Album Cover YoPho Skin',
-    description: 'Photorealistic vinyl press framing, airbrush lighting & double-exposure canvas',
+    description: 'Vinyl press framing, airbrush lighting & double-exposure YoPho canvas',
     itemType: 'YOPHO_TEMPLATE',
     collectionTier: 'FEATURED',
     priceCents: 99,

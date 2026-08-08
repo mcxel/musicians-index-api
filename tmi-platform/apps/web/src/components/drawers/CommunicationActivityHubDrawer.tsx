@@ -15,6 +15,7 @@
 
 import { useState, type CSSProperties } from "react";
 import UniversalDrawerBase from "./UniversalDrawerBase";
+import { DRAWER_OPEN_HEIGHT } from "@/lib/drawers/DrawerAnimationProfile";
 
 interface CommunicationActivityHubDrawerProps {
   open: boolean;
@@ -40,7 +41,7 @@ export default function CommunicationActivityHubDrawer({
       onClose={onClose}
       accentColor="#00FFFF"
       mode="overlay"
-      overlayHeight="min(92vh, 880px)"
+      overlayHeight={DRAWER_OPEN_HEIGHT}
     >
       <div
         style={{

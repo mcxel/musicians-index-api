@@ -244,14 +244,16 @@ export default function TMIGlobalNav() {
       {/* Core nav items */}
       {NAV_ITEMS.map(({ icon, label, href }) => {
         const targetHref = label === "Home" ? dashboardHref : href;
+        const opensLiveWall = label === "Lobby" || label === "Live Now";
         const active =
-          pathname === targetHref || (targetHref !== "/" && pathname.startsWith(targetHref + "/"));
+          !opensLiveWall &&
+          (pathname === targetHref || (targetHref !== "/" && pathname.startsWith(targetHref + "/")));
         return (
           <button
             key={label}
-            title={label === "Lobby" ? "Live Lobby Walls" : label}
+            title={opensLiveWall ? "Live Lobby Walls video wall" : label}
             onClick={() => {
-              if (label === "Lobby") {
+              if (opensLiveWall) {
                 liveDiscoveryOverlayStore.open();
                 return;
               }

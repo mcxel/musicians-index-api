@@ -4,8 +4,11 @@ import Link from "next/link";
 
 const NAV_ITEMS = [
   { label: "Magazine", href: "/magazine" },
-  { label: "Live", href: "/live" },
-  { label: "Games", href: "/games" },
+  { label: "Live", href: "/live/lobby-wall" },
+  { label: "Games", href: "/games/lobby-wall" },
+  { label: "Battles", href: "/battles/lobby-wall" },
+  { label: "Cypher", href: "/cypher/lobby-wall" },
+  { label: "Challenges", href: "/challenges/lobby-wall" },
   { label: "Marketplace", href: "/marketplace" },
   { label: "News", href: "/news" },
   { label: "About", href: "/about" },

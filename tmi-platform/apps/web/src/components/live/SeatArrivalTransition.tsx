@@ -116,6 +116,15 @@ const CSS = `
   35%  { opacity: 0.22; }
   100% { opacity: 0; }
 }
+@keyframes starSlowDown {
+  0%   { opacity: 0.95; transform: translate(-50%, -50%) scale(1.15) translateZ(0); }
+  100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.55) translateZ(0); }
+}
+@keyframes bigStarPop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.15); }
+  45%  { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+  100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+}
 
 /* ── Magazine fly variants ── */
 @keyframes magFlySlash {
@@ -170,10 +179,23 @@ function ReducedFallback({ phase }: { phase: ArrivalPhase }) {
   );
 }
 
+export interface SeatArrivalTransitionProps {
+  /** When false, render nothing (LobbyEntryFlow controlled mount). Default true for page mounts. */
+  active?: boolean;
+  /** Called when stars clear and seated reveal is ready. */
+  onComplete?: () => void;
+  /** Optional destination label under TMI mark during warp. */
+  destinationLabel?: string;
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function SeatArrivalTransition() {
-  const { phase, isActive } = useSeatArrivalTransition();
+export default function SeatArrivalTransition({
+  active = true,
+  onComplete,
+  destinationLabel,
+}: SeatArrivalTransitionProps) {
+  const { phase, isActive } = useSeatArrivalTransition({ enabled: active, onComplete });
   const stars   = useMemo(buildStars,   []);
   const streaks = useMemo(buildStreaks, []);
 
@@ -185,6 +207,8 @@ export default function SeatArrivalTransition() {
   const isFlying  = phase === "flying";
   const isPausing = phase === "pausing";
   const isSeated  = phase === "seated";
+
+  if (!active) return null;
 
   // Warp entry log — start on mount, track each phase transition
   useEffect(() => {
@@ -244,9 +268,29 @@ export default function SeatArrivalTransition() {
         >
           <style>{CSS}</style>
 
-          {/* ── Void pause — deep black, no stars ── */}
+          {/* ── Slowing down in the stars (not a black cut) ── */}
           {isPausing && (
-            <div style={{ position: "absolute", inset: 0, background: "#000" }} />
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, #0a0520 0%, #020208 70%, #000 100%)" }}>
+              {stars.slice(0, 28).map((s, i) => {
+                const rad = (s.angle * Math.PI) / 180;
+                const cx  = 50 + Math.cos(rad) * (s.dist * 0.7);
+                const cy  = 50 + Math.sin(rad) * (s.dist * 0.7);
+                return (
+                  <div
+                    key={`slow-${i}`}
+                    style={{
+                      position: "absolute",
+                      left: `${cx}%`, top: `${cy}%`,
+                      width: s.size + 1, height: s.size + 1,
+                      borderRadius: "50%",
+                      background: i % 4 === 0 ? "#FFD700" : "#fff",
+                      boxShadow: "0 0 6px rgba(255,255,255,0.55)",
+                      animation: `starSlowDown ${0.45 + (i % 5) * 0.05}s ease-out forwards`,
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
 
           {/* ── Arrival flash — fires at start of landing ── */}
@@ -263,7 +307,7 @@ export default function SeatArrivalTransition() {
             />
           )}
 
-          {/* ── Stars ── */}
+          {/* ── Hyperspace stars (travel) ── */}
           {isFlying && stars.map((s, i) => {
             const rad = (s.angle * Math.PI) / 180;
             const cx  = 50 + Math.cos(rad) * s.dist;
@@ -284,7 +328,7 @@ export default function SeatArrivalTransition() {
             );
           })}
 
-          {/* ── Streaks ── */}
+          {/* ── Hyperspace streaks ── */}
           {isFlying && streaks.map((sk, i) => (
             <div
               key={i}
@@ -307,6 +351,24 @@ export default function SeatArrivalTransition() {
             />
           ))}
 
+          {/* ── Big stars on arrival ── */}
+          {isLanding && [0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={`big-${i}`}
+              style={{
+                position: "absolute",
+                left: `${28 + i * 11}%`,
+                top: `${32 + (i % 3) * 12}%`,
+                width: 10 + (i % 3) * 4,
+                height: 10 + (i % 3) * 4,
+                borderRadius: "50%",
+                background: i % 2 === 0 ? "#FFD700" : "#00FFFF",
+                boxShadow: i % 2 === 0 ? "0 0 24px #FFD700" : "0 0 24px #00FFFF",
+                animation: `bigStarPop ${0.7 + i * 0.08}s ease-out forwards`,
+              }}
+            />
+          ))}
+
           {/* ── Magazine fly brand moment ── */}
           {showMagFly && <MagazineFly variant={magVariant} />}
 
@@ -320,7 +382,7 @@ export default function SeatArrivalTransition() {
           }}>
             <div style={{
               fontSize: 13, fontWeight: 900, letterSpacing: "0.4em",
-              color: isLanding ? "#FFD700" : "rgba(0,255,255,0.7)",
+              color: isLanding ? "#FFD700" : isPausing ? "#AA2DFF" : "rgba(0,255,255,0.7)",
               textTransform: "uppercase",
               textShadow: isLanding
                 ? "0 0 20px #FFD700, 0 0 40px rgba(255,215,0,0.5)"
@@ -329,6 +391,21 @@ export default function SeatArrivalTransition() {
             }}>
               TMI
             </div>
+            <div style={{
+              fontSize: 9, fontWeight: 800, letterSpacing: "0.16em",
+              color: "rgba(255,255,255,0.55)",
+              textTransform: "uppercase",
+            }}>
+              {isFlying ? "HYPERSPACE" : isPausing ? "SLOWING DOWN…" : isLanding ? "ARRIVING" : ""}
+            </div>
+            {destinationLabel ? (
+              <div style={{
+                fontSize: 12, fontWeight: 900, color: "#fff", marginTop: 2,
+                textShadow: "0 0 14px rgba(0,255,255,0.55)",
+              }}>
+                {destinationLabel}
+              </div>
+            ) : null}
             <div style={{
               width: 4, height: 4, borderRadius: "50%",
               background: isLanding ? "#FFD700" : "#00FFFF",

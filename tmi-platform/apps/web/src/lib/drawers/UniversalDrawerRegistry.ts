@@ -158,7 +158,8 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     info: "Placements",
     accent: "#FFD700",
     animation: "fold",
-    roles: ["fan", "performer"],
+    // Rule 26: sponsor management chrome is not a Performer hub surface
+    roles: ["fan"],
     mediaBindPoint: "none",
   },
   {
@@ -474,7 +475,6 @@ export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "booking",
   "stage_tools",
   "store",
-  "sponsors",
   "analytics",
   "notifications",
 ];

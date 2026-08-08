@@ -80,10 +80,10 @@ function StandbyFill() {
 
 export type DualMonitorBezelVariant = "gold" | "chrome";
 
-/** 1 = single · 2 = side-by-side · 3 = triple · 4 = 2×2 quad · 16 = 4×4 wall */
-export type MonitorSplitMode = 1 | 2 | 3 | 4 | 16;
+/** Per-monitor splits only: 1 / 2 / 3 / 4 / 8. Dual max = 8+8=16 (no shared mega 1→16). */
+export type MonitorSplitMode = 1 | 2 | 3 | 4 | 8;
 
-const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 16: "16" };
+const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 8: "8" };
 
 export interface CanonicalMonitorPane {
   id: string;
@@ -124,7 +124,7 @@ function MonitorSplitBar({
   onSplitChange: (s: MonitorSplitMode) => void;
   accent: string;
 }) {
-  const MODES: MonitorSplitMode[] = [1, 2, 3, 4, 16];
+  const MODES: MonitorSplitMode[] = [1, 2, 3, 4, 8];
   return (
     <div
       style={{
@@ -143,7 +143,7 @@ function MonitorSplitBar({
           key={n}
           type="button"
           onClick={() => onSplitChange(n)}
-          title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : "Wall 4×4"}`}
+          title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : "Octo 4×2"}`}
           style={{
             padding: "3px 8px",
             fontSize: 10,
@@ -181,7 +181,7 @@ function MonitorCellGrid({
 }) {
   if (split === 1) return <>{children}</>;
 
-  const columns = split === 16 ? 4 : split === 3 ? 3 : 2;
+  const columns = split === 8 ? 4 : split === 3 ? 3 : 2;
   const filled: ReactNode[] = [];
   for (let i = 0; i < split; i++) {
     filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);

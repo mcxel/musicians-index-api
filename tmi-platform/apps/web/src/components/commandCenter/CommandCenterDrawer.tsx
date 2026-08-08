@@ -24,14 +24,11 @@ import MessagingCanister from "@/components/canisters/MessagingCanister";
 import SubmissionsCanister from "@/components/canisters/SubmissionsCanister";
 import ScoresCanister from "@/components/canisters/ScoresCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
-import SponsorRail from "@/components/sponsors/SponsorRail";
-import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
 import { defaultRoomAuthority } from "@/lib/lobby/FanLobbyPresence";
 import { animationForDrawerModule } from "@/lib/drawers/UniversalDrawerRegistry";
 import { drawerStateStore, useDrawerState, type AnalyticsPeriod, ANALYTICS_PERIOD_LABELS } from "@/lib/drawers/drawerStateStore";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
-import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
 import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
@@ -44,7 +41,6 @@ import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCent
 import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
 import PerformerPerformanceAnalyticsDrawer from "@/components/drawers/PerformerPerformanceAnalyticsDrawer";
 import CommunicationActivityHubDrawer from "@/components/drawers/CommunicationActivityHubDrawer";
-import PerformerSponsorEngagementDrawer from "@/components/drawers/PerformerSponsorEngagementDrawer";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { wireProgressionCommandBus } from "@/lib/progression/ProgressionEngine";
@@ -743,31 +739,7 @@ export default function CommandCenterDrawer({
         </div>
       ) : null}
 
-      {activePanel === "sponsors" && role === "performer" ? (
-        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
-            Sponsor placements for your surfaces (Rule 12 — never empty).
-          </div>
-          <SponsorRail sponsors={getRailSponsors("dashboard-performer")} zone={PERFORMER_SPONSOR_ZONE} />
-          <Link
-            href="/sponsors/advertise"
-            style={{
-              display: "inline-block",
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: `1px solid ${theme.tertiary}66`,
-              color: theme.tertiary,
-              fontWeight: 800,
-              fontSize: 12,
-              textDecoration: "none",
-              width: "fit-content",
-            }}
-          >
-            Advertise / sell a placement →
-          </Link>
-        </div>
-      ) : null}
-
+      {/* Rule 26: sponsor management chrome is not a Performer hub surface */}
       {activePanel === "sponsors" && role === "fan" ? <SponsorsStubFan /> : null}
 
       {activePanel === "marketplace" && role === "fan" ? (
@@ -799,13 +771,9 @@ export default function CommandCenterDrawer({
       {activePanel === "messaging" ? (
         <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.45 }}>
-            Coordinate with friends, send invites, then join a live venue together. Threads load from your real inbox —
-            empty until someone messages you.
+            Community messaging is always on — start a thread anytime. Threads load from your real inbox.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <Link href="/live/lobby" style={toolLink("#00FFFF")}>
-              Open Live Lobby →
-            </Link>
             <Link href="/friends" style={toolLink(theme.secondary)}>
               Friends →
             </Link>
@@ -948,16 +916,8 @@ export default function CommandCenterDrawer({
         />
       ) : null}
 
-      {activePanel === "sponsors" ? (
-        <PerformerSponsorEngagementDrawer
-          open={true}
-          onClose={onClose}
-          displayName={contextDisplayName}
-          performerId={contextPerformerId ?? userId}
-        />
-      ) : null}
-
-      {activePanel === "messaging" ? (
+      {/* Rule 26: no performer sponsor-management chrome. Fan sponsors surface is SponsorsStubFan above. */}
+      {activePanel === "messaging" && role === "fan" ? (
         <CommunicationActivityHubDrawer
           open={true}
           onClose={onClose}

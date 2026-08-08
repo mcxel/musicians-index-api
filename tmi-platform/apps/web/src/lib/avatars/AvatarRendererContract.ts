@@ -46,6 +46,8 @@ export type AvatarGesture =
 /** Self-identifies which implementation is rendering — callers can branch on this without caring how the avatar is actually drawn. */
 export type AvatarRendererType =
   | "2D_ANIMATED"
+  /** Alias used in docs — same entry as 3D_MESH (capsule + socket planes). */
+  | "Primitive3D"
   | "3D_MESH"
   | "POINT_CLOUD"
   | "AI_GENERATED";
@@ -63,6 +65,11 @@ export interface AvatarState {
   seatId?: string | null;
   stageId?: string | null;
   sponsorAssetId?: string | null;
+  /** Fan 3D v0 optional fields — ignored by 2D_ANIMATED host renderer. */
+  portraitUrl?: string;
+  bodyColor?: string;
+  hairColor?: string;
+  crown?: boolean;
 }
 
 export interface IAvatarRenderer {

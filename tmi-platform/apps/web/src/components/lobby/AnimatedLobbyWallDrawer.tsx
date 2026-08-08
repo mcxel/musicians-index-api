@@ -308,7 +308,7 @@ export function AnimatedLobbyWallDrawer({ isOpen, onClose }: DrawerProps) {
               // Desktop: right drawer
               ...(isMobile ? {
                 left: 0, right: 0, bottom: 0,
-                height: "82vh",
+                height: "min(94vh, 1080px)",
                 borderRadius: "20px 20px 0 0",
                 opacity: drawerOpacity as unknown as number,
               } : {

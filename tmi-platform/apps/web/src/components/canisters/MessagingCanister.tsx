@@ -313,6 +313,8 @@ export default function MessagingCanister({
   const [activeTab, setActiveTab] = useState<"chat" | "media">("chat");
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [input, setInput] = useState("");
+  /** Always-on start-thread target when no conversation is selected (community messaging). */
+  const [newTo, setNewTo] = useState("");
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -411,10 +413,26 @@ export default function MessagingCanister({
           setError("Failed to send message. Please try again.");
         }
       } else if (recipientId) {
-        // Create new thread
+        // Create new thread with pre-set recipient
         const threadId = await createThread(recipientId, recipientName ?? recipientId, text);
         if (threadId) {
           setInput("");
+          setActiveThreadId(threadId);
+          await loadThreads();
+        } else {
+          setError("Could not start conversation. Please try again.");
+        }
+      } else {
+        // Community messaging — always-on composer starts a thread by user id / handle
+        const to = newTo.trim();
+        if (!to) {
+          setError("Enter a username or user id to start a thread.");
+          return;
+        }
+        const threadId = await createThread(to, to, text);
+        if (threadId) {
+          setInput("");
+          setNewTo("");
           setActiveThreadId(threadId);
           await loadThreads();
         } else {
@@ -573,12 +591,14 @@ export default function MessagingCanister({
           </div>
         )}
 
-        {/* No thread selected + no recipient */}
-        {!activeThreadId && !recipientId && !loadingThreads && (
+        {/* Empty / start-thread state — composer always available below (no live-room gate) */}
+        {!activeThreadId && !recipientId && activeTab === "chat" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 24 }}>
             <div style={{ fontSize: 32 }}>💬</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 1.6 }}>
-              {threads.length > 0 ? "Select a conversation to start messaging." : "No messages yet.\nSend a message to get started."}
+              {threads.length > 0
+                ? "Select a conversation, or start a new thread below."
+                : "No messages yet. Start a thread below — community messaging is always on."}
             </div>
           </div>
         )}
@@ -601,7 +621,7 @@ export default function MessagingCanister({
             {!loadingMessages && messages.length === 0 && (
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", padding: 24, lineHeight: 1.6 }}>
                 No messages yet.
-                {recipientId && <><br />Send the first message below.</>}
+                <br />Send the first message below.
               </div>
             )}
             {messages.map(msg => (
@@ -611,9 +631,29 @@ export default function MessagingCanister({
           </div>
         )}
 
-        {/* Compose area */}
-        {(activeThreadId || recipientId) && activeTab === "chat" && (
+        {/* Compose area — always on for community messaging */}
+        {activeTab === "chat" && (
           <div style={{ padding: "10px 14px 12px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+            {!activeThreadId && !recipientId && (
+              <input
+                value={newTo}
+                onChange={(e) => setNewTo(e.target.value)}
+                placeholder="To: username or user id"
+                style={{
+                  width: "100%",
+                  marginBottom: 8,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(0,255,255,0.22)",
+                  borderRadius: 8,
+                  padding: "7px 10px",
+                  color: "#fff",
+                  fontSize: 11,
+                  outline: "none",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                }}
+              />
+            )}
             {error && (
               <div style={{ fontSize: 10, color: "#fca5a5", marginBottom: 6, padding: "4px 8px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>
                 {error}
@@ -624,7 +664,11 @@ export default function MessagingCanister({
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                placeholder={`Message ${activeName}…`}
+                placeholder={
+                  activeThreadId || recipientId
+                    ? `Message ${activeName}…`
+                    : "Write a message to start a thread…"
+                }
                 rows={2}
                 style={{
                   flex: 1,
@@ -640,6 +684,7 @@ export default function MessagingCanister({
                 }}
               />
               <button
+                type="button"
                 onClick={() => void handleSend()}
                 disabled={!input.trim() || sending}
                 style={{
@@ -656,7 +701,7 @@ export default function MessagingCanister({
                   transition: "all 0.15s",
                 }}
               >
-                {sending ? "…" : "SEND"}
+                {sending ? "…" : activeThreadId || recipientId ? "SEND" : "START"}
               </button>
             </div>
           </div>

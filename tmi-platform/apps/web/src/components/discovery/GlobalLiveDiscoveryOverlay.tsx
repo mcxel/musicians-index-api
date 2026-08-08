@@ -1,7 +1,8 @@
 /**
  * GlobalLiveDiscoveryOverlay — Live Lobby Walls (human name).
- * Non-modal floating discovery panel. Does not replace page or resize Overseer monitors.
- * Real published rooms only (Rule 20). Instant join via LobbyEntryFlow.
+ * Brady-Bunch WebRTC video wall via LiveLobbyWallGrid.
+ * Non-modal floating discovery panel. Real published rooms only (Rule 20).
+ * Tile click focuses in-panel → LobbyEntryFlow (Instant Join).
  */
 
 "use client";
@@ -10,107 +11,23 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
-import LobbyDiscoveryCard from "@/components/discovery/LobbyDiscoveryCard";
+import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
+import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
 import {
   LIVE_DISCOVERY_CATEGORY_LABELS,
   LIVE_DISCOVERY_RAIL_ORDER,
   type LiveDiscoveryCategory,
-  type LiveDiscoveryRecord,
 } from "@/lib/discovery/LiveDiscoveryRecord";
+import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
-
-const RIM_KEYFRAMES = `
-@keyframes tmiLobbyRimSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-`;
-
-function DiscoveryRail({
-  category,
-  records,
-  focusedId,
-  highlightId,
-  onJoin,
-  onFocus,
-}: {
-  category: LiveDiscoveryCategory;
-  records: LiveDiscoveryRecord[];
-  focusedId: string | null;
-  highlightId: string | null;
-  onJoin: (r: LiveDiscoveryRecord) => void;
-  onFocus: (id: string | null) => void;
-}) {
-  if (records.length === 0) return null;
-  const label = LIVE_DISCOVERY_CATEGORY_LABELS[category];
-
-  return (
-    <section style={{ marginBottom: 18 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: 8,
-          padding: "0 4px",
-        }}
-      >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: 11,
-            fontWeight: 900,
-            letterSpacing: "0.16em",
-            color: "#00FFFF",
-            textTransform: "uppercase",
-          }}
-        >
-          {label}
-        </h3>
-        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>
-          {records.length}
-        </span>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          overflowX: "auto",
-          paddingBottom: 6,
-          scrollSnapType: "x mandatory",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        {records.map((r) => (
-          <div
-            key={r.id}
-            style={{ scrollSnapAlign: "start" }}
-            onMouseEnter={() => onFocus(r.id)}
-            onMouseLeave={() => onFocus(null)}
-            onFocus={() => onFocus(r.id)}
-            onBlur={() => onFocus(null)}
-          >
-            <LobbyDiscoveryCard
-              record={r}
-              focused={focusedId === r.id}
-              highlighted={highlightId === r.id}
-              onJoin={onJoin}
-            />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 export interface GlobalLiveDiscoveryOverlayProps {
   /** Optional session user id for private/friends entitlement */
@@ -126,10 +43,8 @@ export default function GlobalLiveDiscoveryOverlay({
     isOpen,
     lockedCategory,
     tvMode,
-    tvHighlightId,
     close,
     setTvMode,
-    setTvHighlightId,
     setLockedCategory,
   } = useLiveDiscoveryOverlay();
 
@@ -140,9 +55,7 @@ export default function GlobalLiveDiscoveryOverlay({
 
   const records = useDiscoveryBus(viewerUserId);
   const [mounted, setMounted] = useState(false);
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [joinRoom, setJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -166,53 +79,66 @@ export default function GlobalLiveDiscoveryOverlay({
     };
   }, [isOpen, viewerUserIdProp]);
 
-  // Inject rim keyframes once
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const id = "tmi-lobby-rim-keyframes";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = RIM_KEYFRAMES;
-    document.head.appendChild(style);
-  }, []);
-
-  const rails = useMemo(() => {
-    const order = lockedCategory
-      ? ([lockedCategory] as LiveDiscoveryCategory[])
-      : LIVE_DISCOVERY_RAIL_ORDER;
-
-    return order
-      .map((cat) => ({
-        category: cat,
-        records: records.filter(
-          (r) => r.category === cat || r.categories.includes(cat),
-        ),
-      }))
-      .filter((rail) => rail.records.length > 0 || Boolean(lockedCategory));
+  const filteredRecords = useMemo(() => {
+    if (!lockedCategory) return records;
+    return records.filter(
+      (r) => r.category === lockedCategory || r.categories.includes(lockedCategory),
+    );
   }, [records, lockedCategory]);
 
-  // TV Mode — shuffle highlight only; panel position never auto-moves
-  useEffect(() => {
-    if (!isOpen || !tvMode || records.length === 0) {
-      if (!tvMode) setTvHighlightId(null);
-      return;
-    }
-    const pick = () => {
-      const i = Math.floor(Math.random() * records.length);
-      setTvHighlightId(records[i]?.id ?? null);
-    };
-    pick();
-    const id = window.setInterval(pick, 4500);
-    return () => window.clearInterval(id);
-  }, [isOpen, tvMode, records, setTvHighlightId]);
+  const lobbyRooms = useMemo(
+    () => filteredRecords.map(discoveryToLobbyRoom),
+    [filteredRecords],
+  );
 
-  const handleJoin = useCallback(
-    (record: LiveDiscoveryRecord) => {
-      const decision = resolveInstantJoin(record, { role: viewerRole });
-      setJoinRoom(decision);
+  const handleRoomJoin = useCallback(
+    (room: LobbyRoom) => {
+      const record =
+        filteredRecords.find((r) => r.roomId === room.id || r.id === room.id) ?? null;
+      if (record) {
+        setJoinRoom(resolveInstantJoin(record, { role: viewerRole }));
+        return;
+      }
+      const dest = resolveLobbyDestination({
+        roomId: room.id,
+        kind:
+          room.type === "mini-cypher"
+            ? "cypher"
+            : room.type === "gauntlet"
+              ? "gauntlet"
+              : room.type === "battle" ||
+                  room.type === "cypher" ||
+                  room.type === "challenge" ||
+                  room.type === "game" ||
+                  room.type === "live" ||
+                  room.type === "dance" ||
+                  room.type === "concert" ||
+                  room.type === "lounge"
+                ? room.type
+                : "live",
+        href: room.href,
+      });
+      setJoinRoom({
+        instant: true,
+        gateReason: "none",
+        href: dest.href,
+        room: {
+          id: room.id,
+          title: room.name,
+          hostName: room.performerName,
+          genre: room.genre,
+          viewers: room.viewerCount,
+          seatsOpen: undefined,
+          status: room.status === "live" ? "live" : room.status === "starting" ? "starting-soon" : "upcoming",
+          access: "free",
+          accentColor: "#00FFFF",
+          prizeLabel: room.prizePool,
+          roomRoute: dest.href,
+          venueIndex: 0,
+        },
+      });
     },
-    [viewerRole],
+    [filteredRecords, viewerRole],
   );
 
   const emptyMessage = lockedCategory
@@ -238,20 +164,18 @@ export default function GlobalLiveDiscoveryOverlay({
               pointerEvents: "none",
             }}
           >
-            {/* Soft dim — clicks outside close; does not block entire app chrome permanently */}
             <div
               role="presentation"
               onClick={close}
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "rgba(5,5,16,0.35)",
+                background: "rgba(5,5,16,0.45)",
                 pointerEvents: "auto",
               }}
             />
 
             <motion.div
-              ref={panelRef}
               role="dialog"
               aria-label="Live Lobby Walls"
               aria-modal="false"
@@ -264,13 +188,13 @@ export default function GlobalLiveDiscoveryOverlay({
                 pointerEvents: "auto",
                 position: "absolute",
                 left: "50%",
-                top: "8%",
+                top: "4%",
                 transform: "translateX(-50%)",
-                width: "min(920px, calc(100vw - 32px))",
-                maxHeight: "min(78vh, 720px)",
+                width: "min(1100px, calc(100vw - 24px))",
+                maxHeight: "min(90vh, 860px)",
                 display: "flex",
                 flexDirection: "column",
-                background: "rgba(8, 8, 22, 0.94)",
+                background: "rgba(8, 8, 22, 0.96)",
                 backdropFilter: "blur(22px)",
                 border: "1px solid rgba(0,255,255,0.35)",
                 borderRadius: 18,
@@ -281,7 +205,6 @@ export default function GlobalLiveDiscoveryOverlay({
                 overflow: "hidden",
               }}
             >
-              {/* Header */}
               <div
                 style={{
                   flexShrink: 0,
@@ -305,7 +228,7 @@ export default function GlobalLiveDiscoveryOverlay({
                     LIVE LOBBY WALLS
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>
-                    Discover &amp; Instant Join
+                    Continuous Video Wall · Instant Join
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -369,7 +292,6 @@ export default function GlobalLiveDiscoveryOverlay({
                 </div>
               </div>
 
-              {/* Category chips — lock channel on double intent via click+hold alternate: single click filters */}
               <div
                 style={{
                   flexShrink: 0,
@@ -399,15 +321,17 @@ export default function GlobalLiveDiscoveryOverlay({
                 ))}
               </div>
 
-              {/* Rails — user scrolls vertically; horizontal swipe per rail */}
               <div
                 style={{
                   flex: 1,
-                  overflowY: "auto",
-                  padding: "14px 16px 20px",
+                  overflow: "hidden",
+                  padding: "10px 14px 16px",
+                  minHeight: 0,
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                {records.length === 0 ? (
+                {lobbyRooms.length === 0 ? (
                   <div
                     style={{
                       padding: "48px 20px",
@@ -430,32 +354,14 @@ export default function GlobalLiveDiscoveryOverlay({
                     </div>
                   </div>
                 ) : (
-                  rails.map((rail) =>
-                    rail.records.length === 0 && lockedCategory ? (
-                      <div
-                        key={rail.category}
-                        style={{
-                          padding: "40px 16px",
-                          textAlign: "center",
-                          color: "rgba(255,255,255,0.5)",
-                          fontSize: 13,
-                          fontWeight: 700,
-                        }}
-                      >
-                        No live events in your filters
-                      </div>
-                    ) : (
-                      <DiscoveryRail
-                        key={rail.category}
-                        category={rail.category}
-                        records={rail.records}
-                        focusedId={focusedId}
-                        highlightId={tvHighlightId}
-                        onJoin={handleJoin}
-                        onFocus={setFocusedId}
-                      />
-                    ),
-                  )
+                  <LiveLobbyWallGrid
+                    rooms={lobbyRooms}
+                    title="Live Now Video Wall"
+                    accentColor="#00FFFF"
+                    typeLabel="LIVE"
+                    variant="embedded"
+                    onRoomJoin={handleRoomJoin}
+                  />
                 )}
               </div>
             </motion.div>
@@ -466,7 +372,7 @@ export default function GlobalLiveDiscoveryOverlay({
       {joinRoom && (
         <LobbyEntryFlow
           room={joinRoom.room}
-          instant={joinRoom.instant}
+          instant
           onClose={() => {
             setJoinRoom(null);
             close();

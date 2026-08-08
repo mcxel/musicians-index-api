@@ -12,6 +12,7 @@ type ShopItem = {
   id: string;
   name: string;
   price: number;
+  pointsCost?: number;
   category: 'CLOTHING' | 'PROP' | 'EMOTE' | 'BACKGROUND' | 'EFFECT';
   emoji: string;
   rarity?: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
@@ -50,6 +51,15 @@ export default function AvatarShopPage() {
       .then((data: unknown) => { if (Array.isArray(data) && data.length) setItems(data as ShopItem[]); })
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetch('/api/avatar/inventory', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { AvatarInventory?: { items?: { itemId: string; owned?: boolean }[] } } | null) => {
+        const ids = (data?.AvatarInventory?.items ?? [])
+          .filter((i) => i.owned !== false)
+          .map((i) => i.itemId);
+        if (ids.length) setOwned(ids);
+      })
+      .catch(() => {});
   }, []);
 
   const filtered = filter === 'ALL' ? items : items.filter((i) => i.category === filter);
@@ -58,10 +68,27 @@ export default function AvatarShopPage() {
     if (owned.includes(item.id) || purchasing) return;
     setPurchasing(item.id);
     try {
+      // Real entitlement via points unlock (Stripe optional later)
+      const unlock = await fetch('/api/avatar/unlock', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: item.id,
+          payment: (item.pointsCost ?? 0) === 0 ? 'grant_free' : 'points',
+          equip: true,
+        }),
+      });
+      if (unlock.ok) {
+        setOwned((prev) => [...prev, item.id]);
+        setPurchasing(null);
+        return;
+      }
+      // Fallback: Stripe checkout if points unlock unavailable
       const res = await fetch('/api/avatar/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id, itemName: item.name, price: item.price }),
+        body: JSON.stringify({ itemId: item.id, itemName: item.name, price: item.price || 0.99 }),
       });
       const data = await res.json() as { url?: string };
       if (data.url) router.push(data.url);
@@ -76,9 +103,9 @@ export default function AvatarShopPage() {
       <HUDFrame>
         <div style={{ minHeight: '100vh', background: '#050510', paddingBottom: 80 }}>
           <div style={{ background: 'linear-gradient(160deg, #1a0528 0%, #050510 60%)', padding: '48px 32px 32px', borderBottom: '1px solid #FFD70033' }}>
-            <div style={{ fontSize: 11, letterSpacing: 4, color: '#FFD700', marginBottom: 8 }}>AVATAR CENTER</div>
+            <div style={{ fontSize: 11, letterSpacing: 4, color: '#FFD700', marginBottom: 8 }}>3D AVATAR RUNTIME v0 — EVOLVING</div>
             <h1 style={{ fontSize: 40, fontWeight: 900, color: '#fff', margin: '0 0 8px' }}>AVATAR SHOP</h1>
-            <p style={{ color: '#aaa', fontSize: 14 }}>Props, clothing, emotes, backgrounds and effects for your avatar.</p>
+            <p style={{ color: '#aaa', fontSize: 14 }}>Costumes, props, hats & accessories — points unlock (real entitlement). Not a finished photoreal pipeline.</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 24 }}>
               {CATS.map((c) => (
                 <button key={c} onClick={() => setFilter(c)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${filter === c ? '#FFD700' : '#333'}`, background: filter === c ? '#FFD70022' : 'transparent', color: filter === c ? '#FFD700' : '#888', fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontWeight: 700 }}>{c}</button>
@@ -102,9 +129,11 @@ export default function AvatarShopPage() {
                       <div style={{ color: rarityColor, fontSize: 9, letterSpacing: 2, fontWeight: 700, marginBottom: 4 }}>{item.rarity}</div>
                       <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{item.name}</div>
                       <div style={{ color: '#555', fontSize: 10, marginBottom: 12 }}>{item.category}</div>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 10 }}>${item.price.toFixed(2)}</div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 10 }}>
+                        {(item.pointsCost ?? 0) === 0 ? 'FREE' : `${item.pointsCost} PTS`}
+                      </div>
                       <button onClick={() => purchase(item)} disabled={isOwned || purchasing === item.id} style={{ width: '100%', background: isOwned ? '#222' : purchasing === item.id ? '#b8a000' : '#FFD700', color: isOwned ? '#555' : '#000', fontWeight: 800, fontSize: 11, letterSpacing: 1, padding: '8px', borderRadius: 6, border: 'none', cursor: isOwned || purchasing === item.id ? 'default' : 'pointer' }}>
-                        {isOwned ? 'OWNED' : purchasing === item.id ? '...' : 'BUY'}
+                        {isOwned ? 'OWNED' : purchasing === item.id ? '...' : (item.pointsCost ?? 0) === 0 ? 'UNLOCK' : 'UNLOCK PTS'}
                       </button>
                     </div>
                   </motion.div>

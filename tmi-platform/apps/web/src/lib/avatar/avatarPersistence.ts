@@ -74,6 +74,26 @@ const SLOT_CATEGORY_ALLOWLIST: Record<AvatarSlot, AvatarInventoryItem["category"
   lighting: ["lighting", "lighting-packs"],
 };
 
+/** Grant ownership of a catalog cosmetic (points unlock / Flex bridge). */
+export async function grantAvatarCosmetic(
+  userId: string,
+  item: AvatarInventoryItem,
+): Promise<AvatarInventory> {
+  const inventory = await getAvatarInventory(userId);
+  const id = resolveItemId(item) || item.itemId;
+  const existing = inventory.items.find((entry) => resolveItemId(entry) === id);
+  if (existing) {
+    const nextItems = inventory.items.map((entry) =>
+      resolveItemId(entry) === id ? { ...entry, owned: true, updatedAt: Date.now() } : entry,
+    );
+    return saveAvatarInventory(userId, nextItems);
+  }
+  return saveAvatarInventory(userId, [
+    { ...item, avatarId: userId, owned: true, equipped: item.equipped ?? false },
+    ...inventory.items,
+  ]);
+}
+
 function defaultProfile(userId: string): AvatarProfile {
   return {
     userId,
@@ -226,6 +246,10 @@ export async function validateUnlockConditions(userId: string, itemId: string): 
   const inventory = (await getAvatarInventory(userId)).items;
   const item = inventory.find((entry) => resolveItemId(entry) === itemId);
   if (!item) return false;
+  // Owned via points unlock / grant — entitlement already proven
+  if (item.owned !== false && (item.unlockRequirement?.startsWith("points:") || item.unlockRequirement === "starter" || !item.unlockRequirement)) {
+    return true;
+  }
   const ledger = getAvatarUnlockLedger(userId);
   if ((item.xpRequired ?? 0) > ledger.xp) return false;
   if (item.unlockRequirement === "starter" || !item.unlockRequirement) return true;

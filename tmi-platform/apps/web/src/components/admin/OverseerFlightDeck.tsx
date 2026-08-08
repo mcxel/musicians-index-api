@@ -119,8 +119,32 @@ export default function OverseerFlightDeck({
   const [flipKey, setFlipKey] = useState(0);
   const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
   const [isMerging, setIsMerging] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const mergeTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const drawerManager = useDrawerManager();
+
+  // attach stream to video element whenever it changes
+  useEffect(() => {
+    if (screenVideoRef.current) {
+      screenVideoRef.current.srcObject = screenStream;
+    }
+  }, [screenStream]);
+
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      stream.getVideoTracks()[0].addEventListener("ended", () => setScreenStream(null));
+      setScreenStream(stream);
+    } catch {
+      // user cancelled or permission denied — no-op
+    }
+  }, []);
+
+  const stopScreenShare = useCallback(() => {
+    screenStream?.getTracks().forEach((t) => t.stop());
+    setScreenStream(null);
+  }, [screenStream]);
 
   // cascade all monitors to split=1 with staggered animation
   const mergeAllMonitors = useCallback(() => {
@@ -840,12 +864,12 @@ export default function OverseerFlightDeck({
         </button>
         <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
         {/* Quick split presets for both monitors */}
-        {([1, 2, 3, 4, 16] as MonitorSplitMode[]).map((n) => (
+        {([1, 2, 3, 4, 8] as MonitorSplitMode[]).map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => expandAllMonitors(n)}
-            title={`Set both monitors to ${n === 1 ? "single" : n === 16 ? "4×4 wall" : `${n}-pane`}`}
+            title={`Set both monitors to ${n === 1 ? "single" : `${n}-pane`} (dual max 8+8=16)`}
             style={{
               padding: "4px 9px",
               borderRadius: 6,
@@ -863,6 +887,27 @@ export default function OverseerFlightDeck({
           </button>
         ))}
         <span aria-hidden style={{ flex: 1 }} />
+        {/* SHARE SCREEN */}
+        <button
+          type="button"
+          onClick={screenStream ? stopScreenShare : startScreenShare}
+          title={screenStream ? "Stop screen share" : "Share your screen into a monitor"}
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: `1px solid ${screenStream ? "#FF4444" : "rgba(0,255,136,0.6)"}`,
+            background: screenStream ? "rgba(255,68,68,0.2)" : "rgba(0,255,136,0.1)",
+            color: screenStream ? "#FF6B6B" : "#00FF88",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          {screenStream ? "⬛ STOP SHARE" : "⬡ SHARE SCREEN"}
+        </button>
+        <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
         {/* Rail toggles — quick access */}
         <button
           type="button"
@@ -1187,6 +1232,66 @@ export default function OverseerFlightDeck({
           </Link>
         </div>
       </div>
+
+      {/* ── SCREEN SHARE FLOATING OVERLAY ────────────────────────────────── */}
+      {screenStream && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 90,
+            right: 24,
+            zIndex: 9999,
+            width: 420,
+            borderRadius: 12,
+            border: "2px solid #00FF88",
+            background: "#000",
+            boxShadow: "0 0 32px rgba(0,255,136,0.4), 0 8px 40px rgba(0,0,0,0.8)",
+            overflow: "hidden",
+          }}
+          role="dialog"
+          aria-label="Screen share preview"
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "6px 12px",
+              background: "rgba(0,255,136,0.08)",
+              borderBottom: "1px solid rgba(0,255,136,0.3)",
+            }}
+          >
+            <span style={{ color: "#00FF88", fontSize: 10, fontWeight: 900, letterSpacing: "0.12em" }}>
+              ⬡ SCREEN SHARE ACTIVE
+            </span>
+            <button
+              type="button"
+              onClick={stopScreenShare}
+              aria-label="Stop screen share"
+              style={{
+                background: "rgba(255,68,68,0.2)",
+                border: "1px solid #FF4444",
+                borderRadius: 6,
+                color: "#FF6B6B",
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "2px 8px",
+                cursor: "pointer",
+              }}
+            >
+              ✕ STOP
+            </button>
+          </div>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            ref={screenVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: "100%", display: "block", maxHeight: 240, objectFit: "contain", background: "#000" }}
+          />
+        </div>
+      )}
 
       <AdminConciergePanel
         open={conciergeOpen}

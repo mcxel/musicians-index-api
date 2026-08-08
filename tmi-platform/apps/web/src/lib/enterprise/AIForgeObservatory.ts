@@ -42,7 +42,7 @@ export function getActiveForgePrototypes(): ForgePrototype[] {
   return [
     {
       id: 'proto_001',
-      name: '3D Flex Store Photorealistic Lighting Pipeline',
+      name: '3D Flex Store Avatar Runtime v0 Lighting Pipeline',
       targetComponent: 'FlexStoreShowroom.tsx',
       simulationStatus: 'SIMULATION_PASSED',
       benchmarkFps: 60,

@@ -8,16 +8,14 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import AudienceScene from "@/components/live/AudienceScene";
-import CanonicalDualMonitorStack, {
-  CanonicalMonitorFrame,
-} from "@/components/monitors/CanonicalDualMonitorStack";
+import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import {
   HOUSE_SPONSORS,
   type HouseSponsor,
 } from "@/lib/commerce/DualStreamSponsorshipEngine";
 
-export type MediaGridMode = 1 | 2 | 4 | 8 | 16;
+/** @deprecated Shared mega grid removed — per-monitor splits are 1/2/3/4/8 (dual max 16). */
+export type MediaGridMode = 1 | 2 | 3 | 4 | 8;
 
 /**
  * The 3 permanent TMI house sponsors — always present in every user's
@@ -37,41 +35,79 @@ interface ActiveSponsorOverlay {
   pushedAt: number;
 }
 
+/** Broadcast ad bumper — large lower-third with spin + scale entrance (Downy-style). */
 function SponsorOverlayBanner({ overlay }: { overlay: ActiveSponsorOverlay }) {
   return (
     <AnimatePresence>
       <motion.div
         key={`${overlay.sponsor.id}-${overlay.pushedAt}`}
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -40, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        initial={{ opacity: 0, scale: 0.35, rotate: -220, y: 48 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+        exit={{ opacity: 0, scale: 0.6, rotate: 40, y: 24 }}
+        transition={{ type: "spring", stiffness: 220, damping: 16, mass: 0.9 }}
         style={{
           position: "absolute",
-          top: 10,
-          left: "50%",
-          x: "-50%",
-          zIndex: 5,
+          left: 12,
+          right: 12,
+          bottom: 14,
+          zIndex: 8,
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          padding: "6px 14px",
-          borderRadius: 999,
-          background: "rgba(5,5,16,0.85)",
-          border: `1px solid ${overlay.sponsor.accent}`,
-          boxShadow: `0 0 24px ${overlay.sponsor.accent}88`,
-          backdropFilter: "blur(8px)",
+          gap: 14,
+          padding: "14px 18px",
+          borderRadius: 14,
+          background: `linear-gradient(105deg, rgba(5,5,16,0.94) 0%, ${overlay.sponsor.accent}33 55%, rgba(5,5,16,0.9) 100%)`,
+          border: `2px solid ${overlay.sponsor.accent}`,
+          boxShadow: `0 12px 40px rgba(0,0,0,0.65), 0 0 36px ${overlay.sponsor.accent}66`,
+          backdropFilter: "blur(12px)",
+          transformOrigin: "center bottom",
         }}
       >
+        <motion.div
+          animate={{ rotate: [0, 8, -6, 0], scale: [1, 1.06, 1] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 12,
+            flexShrink: 0,
+            background: `${overlay.sponsor.accent}33`,
+            border: `1px solid ${overlay.sponsor.accent}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 22,
+            fontWeight: 900,
+            color: overlay.sponsor.accent,
+          }}
+        >
+          ★
+        </motion.div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", color: overlay.sponsor.accent, marginBottom: 4 }}>
+            SPONSORED BY
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "0.02em", lineHeight: 1.1 }}>
+            {overlay.sponsor.name}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 4 }}>{overlay.sponsor.tagline}</div>
+        </div>
         <motion.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.6, repeat: Infinity }}
-          style={{ width: 7, height: 7, borderRadius: "50%", background: overlay.sponsor.accent, boxShadow: `0 0 8px ${overlay.sponsor.accent}` }}
-        />
-        <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.04em" }}>
-          {overlay.sponsor.name}
-        </span>
-        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{overlay.sponsor.tagline}</span>
+          animate={{ opacity: [0.45, 1, 0.45] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.14em",
+            color: "#050510",
+            background: overlay.sponsor.accent,
+            padding: "8px 12px",
+            borderRadius: 8,
+            flexShrink: 0,
+          }}
+        >
+          AD
+        </motion.span>
       </motion.div>
     </AnimatePresence>
   );
@@ -106,7 +142,9 @@ export interface CommandCenterMediaSlot {
 
 interface CommandCenterMediaStackProps {
   slots: CommandCenterMediaSlot[];
+  /** @deprecated Ignored — dual monitors use per-side 1/2/3/4/8 splits only. */
   mode?: MediaGridMode;
+  /** @deprecated Ignored with shared mega grid removal. */
   onModeChange?: (mode: MediaGridMode) => void;
   footer?: ReactNode;
   /** chrome = Fan/Performer hubs (prototype); gold unused here (Observatory owns gold). */
@@ -347,15 +385,20 @@ function MonitorChrome({
   );
 }
 
+function padSlots(list: CommandCenterMediaSlot[], count: number, prefix: string): CommandCenterMediaSlot[] {
+  const out = [...list];
+  while (out.length < count) {
+    out.push({ id: `${prefix}-${out.length}`, label: `CELL ${out.length + 1}`, kind: "empty" });
+  }
+  return out.slice(0, count);
+}
+
 export default function CommandCenterMediaStack({
   slots,
-  mode: controlledMode,
-  onModeChange,
   footer,
   bezelVariant = "chrome",
   seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
 }: CommandCenterMediaStackProps) {
-  const [internalMode, setInternalMode] = useState<MediaGridMode>(2);
   const [swapOrder, setSwapOrder] = useState(false);
   const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
@@ -366,33 +409,36 @@ export default function CommandCenterMediaStack({
     setSponsorPanelOpen(false);
   };
 
-  const mode = controlledMode ?? internalMode;
-  const setMode = (m: MediaGridMode) => {
-    setInternalMode(m);
-    onModeChange?.(m);
-  };
-
-  const filled = useMemo(() => {
+  // Dual monitors: up to 8 cells each from the slot pool (independent per-side splits in stack).
+  const orderedSlots = useMemo(() => {
     const base = [...slots];
-    while (base.length < mode) {
+    while (base.length < 2) {
       base.push({ id: `empty-${base.length}`, label: `MONITOR ${base.length + 1}`, kind: "empty" });
     }
-    const sliced = base.slice(0, mode);
-    if (swapOrder && sliced.length >= 2) {
-      const copy = [...sliced];
-      const temp = copy[0];
-      copy[0] = copy[1];
+    if (swapOrder && base.length >= 2) {
+      const copy = [...base];
+      const temp = copy[0]!;
+      copy[0] = copy[1]!;
       copy[1] = temp;
       return copy;
     }
-    return sliced;
-  }, [slots, mode, swapOrder]);
+    return base;
+  }, [slots, swapOrder]);
+
+  const topSlots = useMemo(() => padSlots(orderedSlots.slice(0, 8), 8, "top"), [orderedSlots]);
+  const bottomSlots = useMemo(
+    () => padSlots(orderedSlots.slice(8, 16).length > 0 ? orderedSlots.slice(8, 16) : orderedSlots.slice(1, 9), 8, "bot"),
+    [orderedSlots],
+  );
 
   const handleSwap = () => {
     setSwapOrder((prev) => !prev);
   };
 
-  const fullscreenSlot = fullscreenSlotId ? filled.find((s) => s.id === fullscreenSlotId) ?? slots.find((s) => s.id === fullscreenSlotId) : null;
+  const fullscreenSlot =
+    fullscreenSlotId
+      ? [...topSlots, ...bottomSlots, ...slots].find((s) => s.id === fullscreenSlotId) ?? null
+      : null;
 
   const toolbar = (
     <div
@@ -409,29 +455,11 @@ export default function CommandCenterMediaStack({
       }}
     >
       <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)" }}>
-        MEDIA GRID
+        DUAL MONITORS · PER-SIDE 1/2/3/4/8
       </span>
-      {([1, 2, 4, 8, 16] as MediaGridMode[]).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => setMode(m)}
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: mode === m ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.12)",
-            background: mode === m ? "rgba(0,255,255,0.15)" : "transparent",
-            color: mode === m ? "#00FFFF" : "rgba(255,255,255,0.5)",
-            fontFamily: "inherit",
-          }}
-        >
-          {m === 1 ? "1 (SINGLE)" : m === 2 ? "2 (DUAL)" : m === 4 ? "4 (QUAD)" : m === 8 ? "8 (OCTO)" : "16 (MEGA)"}
-        </button>
-      ))}
+      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontWeight: 700 }}>
+        Max 8+8=16
+      </span>
 
       <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
 
@@ -545,7 +573,6 @@ export default function CommandCenterMediaStack({
         padding: 8,
       }}
     >
-      {/* Fullscreen Overlay Modal */}
       {fullscreenSlot ? (
         <div
           style={{
@@ -588,54 +615,56 @@ export default function CommandCenterMediaStack({
             </button>
           </div>
           <div style={{ flex: 1, position: "relative" }}>
-            <MonitorMediaBody slot={fullscreenSlot} />
+            <MonitorMediaBody slot={fullscreenSlot} sponsorOverlay={activeSponsorOverlay} />
           </div>
         </div>
       ) : null}
 
-      {mode === 2 ? (
-        <CanonicalDualMonitorStack
-          variant={bezelVariant}
-          seriesLabel={seriesLabel}
-          toolbar={toolbar}
-          monitors={filled.slice(0, 2).map((slot, index) => ({
-            id: slot.id,
-            label: slot.label,
+      <CanonicalDualMonitorStack
+        variant={bezelVariant}
+        seriesLabel={seriesLabel}
+        toolbar={toolbar}
+        monitors={[
+          {
+            id: topSlots[0]!.id,
+            label: "MONITOR A",
             children: (
               <MonitorChrome
-                slot={slot}
+                slot={topSlots[0]!}
                 onSwap={handleSwap}
-                onFullscreen={() => setFullscreenSlotId(slot.id)}
-                sponsorOverlay={index === 0 ? activeSponsorOverlay : null}
+                onFullscreen={() => setFullscreenSlotId(topSlots[0]!.id)}
+                sponsorOverlay={activeSponsorOverlay}
               />
             ),
-          }))}
-        />
-      ) : (
-        <>
-          {toolbar}
-          <div
-            style={{
-              flex: "0 0 auto",
-              display: "grid",
-              gridTemplateColumns: `repeat(${mode === 1 ? 1 : mode === 4 ? 2 : 4}, minmax(0, 1fr))`,
-              gap: 8,
-              alignContent: "start",
-            }}
-          >
-            {filled.map((slot, index) => (
-              <CanonicalMonitorFrame key={slot.id}>
-                <MonitorChrome
-                  slot={slot}
-                  onSwap={index < 2 ? handleSwap : undefined}
-                  onFullscreen={() => setFullscreenSlotId(slot.id)}
-                  sponsorOverlay={index === 0 ? activeSponsorOverlay : null}
-                />
-              </CanonicalMonitorFrame>
-            ))}
-          </div>
-        </>
-      )}
+            cells: topSlots.map((slot) => (
+              <MonitorChrome
+                key={slot.id}
+                slot={slot}
+                onFullscreen={() => setFullscreenSlotId(slot.id)}
+                sponsorOverlay={activeSponsorOverlay}
+              />
+            )),
+          },
+          {
+            id: bottomSlots[0]!.id,
+            label: "MONITOR B",
+            children: (
+              <MonitorChrome
+                slot={bottomSlots[0]!}
+                onSwap={handleSwap}
+                onFullscreen={() => setFullscreenSlotId(bottomSlots[0]!.id)}
+              />
+            ),
+            cells: bottomSlots.map((slot) => (
+              <MonitorChrome
+                key={slot.id}
+                slot={slot}
+                onFullscreen={() => setFullscreenSlotId(slot.id)}
+              />
+            )),
+          },
+        ]}
+      />
 
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}
     </div>

@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+/**
+ * Free-roam floor + seat anchors.
+ * Perf: local fan uses AvatarRig (3D Avatar Runtime v0); peers stay simpler emoji bubbles.
+ * Sit/stand syncs isSeated → AvatarRig sit pose at seat anchors.
+ */
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { LobbyPropEffectLayer } from "./LobbyPropEffectLayer";
 import { AvatarHeadMediaSurface } from "./AvatarHeadMediaSurface";
@@ -12,6 +19,17 @@ import {
   resolveAvatarHeadMediaMode,
   type LobbyPeerMediaSnapshot,
 } from "@/lib/lobby/lobbyPeerMediaBinding";
+import {
+  cosmeticIdsToAttachments,
+  equippedIdsFromInventory,
+  resolveOutfitTint,
+} from "@/lib/avatars/fanAvatarLoadout";
+import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
 
 interface SelfAvatar {
   userId: string;
@@ -30,6 +48,8 @@ interface SelfAvatar {
   seatAnchorId?: string | null;
   locomotion?: FanLobbyNavigationState;
   navigationState?: FanLobbyNavigationState;
+  /** Optional skin tint from forge snapshot. */
+  skinColor?: string;
 }
 
 interface LobbyFreeRoamAvatarsProps {
@@ -39,24 +59,15 @@ interface LobbyFreeRoamAvatarsProps {
   occupiedSeatIds?: Set<string>;
   accentColor?: string;
   onFloorTap: (xPercent: number, yPercent: number) => void;
-  /** Tap empty chair marker → sit */
   onSeatTap?: (anchor: SeatAnchor) => void;
   onAvatarSelect?: (participant: LobbyParticipant) => void;
   hiddenUserIds?: Set<string>;
-  /**
-   * Phase B peer media — tracks keyed by FanLobbyPresence.userId.
-   * Shared by Fan Lobby + Playlist Lounge via FanLobbyVenue.
-   */
   peerMedia?: LobbyPeerMediaSnapshot | null;
-  /** Local-only: hide own head panel without mutating presence. */
   localHideHeadPanel?: boolean;
+  /** Equipped cosmetic SKUs from inventory / menus. */
+  equippedCosmeticIds?: string[];
 }
 
-/**
- * Free-roam floor + 2D chair anchors (conversation hangout).
- * Head video via shared AvatarHeadMediaSurface (presence → media bind → head socket).
- * No AvatarSeatUI spreadsheet grid.
- */
 export function LobbyFreeRoamAvatars({
   self,
   participants,
@@ -69,8 +80,28 @@ export function LobbyFreeRoamAvatars({
   hiddenUserIds,
   peerMedia = null,
   localHideHeadPanel = false,
+  equippedCosmeticIds: equippedProp,
 }: LobbyFreeRoamAvatarsProps) {
   const floorRef = useRef<HTMLDivElement>(null);
+  const [loadoutIds, setLoadoutIds] = useState<string[]>(equippedProp ?? []);
+
+  useEffect(() => {
+    if (equippedProp?.length) {
+      setLoadoutIds(equippedProp);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { AvatarInventory?: { items?: AvatarInventoryItem[] } } | null) => {
+        if (cancelled || !data?.AvatarInventory?.items) return;
+        setLoadoutIds(equippedIdsFromInventory(data.AvatarInventory.items));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [equippedProp]);
 
   function handleFloorClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = floorRef.current?.getBoundingClientRect();
@@ -81,15 +112,29 @@ export function LobbyFreeRoamAvatars({
   }
 
   const visible = participants.filter((p) => !hiddenUserIds?.has(p.userId));
-  const occupied = occupiedSeatIds ?? new Set(
-    visible
-      .filter((p) => p.isSeated && (p.seatAnchorId ?? p.seatId))
-      .map((p) => (p.seatAnchorId ?? p.seatId)!),
-  );
+  const occupied =
+    occupiedSeatIds ??
+    new Set(
+      visible
+        .filter((p) => p.isSeated && (p.seatAnchorId ?? p.seatId))
+        .map((p) => (p.seatAnchorId ?? p.seatId)!),
+    );
   const selfSeat = self.seatAnchorId ?? self.seatId;
   if (self.isSeated && selfSeat) occupied.add(selfSeat);
 
   const peerUnavailable = Boolean(peerMedia && !peerMedia.sessionReady);
+
+  const attachmentIds = useMemo(() => {
+    const ids = [...loadoutIds];
+    if (self.propTrigger && self.propTrigger !== "none") ids.push(self.propTrigger);
+    return ids;
+  }, [loadoutIds, self.propTrigger]);
+
+  const attachments = useMemo(
+    () => cosmeticIdsToAttachments(attachmentIds, { activePropId: self.propTrigger }),
+    [attachmentIds, self.propTrigger],
+  );
+  const outfitTint = resolveOutfitTint(attachmentIds);
 
   return (
     <div
@@ -171,31 +216,86 @@ export function LobbyFreeRoamAvatars({
         );
       })}
 
-      <AvatarBubble
-        x={self.x}
-        y={self.y}
-        emoji={self.emoji}
-        name={`${self.userName} (you)`}
-        isSpeaking={self.isSpeaking}
-        hasCameraOn={self.hasCameraOn}
-        micEnabled={self.micEnabled ?? true}
-        localStream={self.localStream}
-        frameGlowColor={self.frameGlowColor}
-        isSeated={self.isSeated}
-        locomotion={self.navigationState ?? self.locomotion}
-        isSelf
-        headMode={resolveAvatarHeadMediaMode({
-          isSelf: true,
-          distancePct: 0,
-          localHidePanel: localHideHeadPanel,
-        })}
-        videoTrack={
-          peerMedia?.byUserId.get(self.userId)?.videoTrack ??
-          self.localStream?.getVideoTracks()[0] ??
-          null
-        }
-        peerMediaUnavailable={false}
-      />
+      {/* Local fan — hero 3D AvatarRig; peers stay 2D for perf */}
+      <motion.div
+        animate={{ left: `${self.x}%`, top: `${self.y}%` }}
+        transition={{
+          type: "spring",
+          stiffness: (self.navigationState ?? self.locomotion) === "WALKING" ? 90 : 140,
+          damping: 18,
+        }}
+        style={{
+          position: "absolute",
+          transform: "translate(-50%, -70%)",
+          zIndex: 16,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{ marginBottom: 2 }}>
+          <AvatarHeadMediaSurface
+            mode={resolveAvatarHeadMediaMode({
+              isSelf: true,
+              distancePct: 0,
+              localHidePanel: localHideHeadPanel,
+            })}
+            videoTrack={
+              peerMedia?.byUserId.get(self.userId)?.videoTrack ??
+              self.localStream?.getVideoTracks()[0] ??
+              null
+            }
+            cameraEnabled={self.hasCameraOn}
+            micEnabled={self.micEnabled ?? true}
+            isSpeaking={self.isSpeaking}
+            isSelf
+            peerMediaUnavailable={false}
+            label={`${self.userName} (you)`}
+          />
+        </div>
+        <div
+          style={{
+            width: self.isSeated ? 72 : 88,
+            height: self.isSeated ? 72 : 88,
+            borderRadius: 12,
+            border: `2px solid ${self.isSpeaking ? "#00FF88" : self.frameGlowColor ?? "#00FFFF66"}`,
+            boxShadow: self.isSpeaking ? "0 0 16px #00FF88" : undefined,
+            overflow: "hidden",
+            background: "rgba(5,5,16,0.55)",
+          }}
+        >
+          <AvatarViewer
+            active
+            color={self.skinColor ?? "#AA2DFF"}
+            isSeated={Boolean(self.isSeated)}
+            isPlaying={(self.navigationState ?? self.locomotion) === "WALKING"}
+            attachments={attachments}
+            outfitTint={outfitTint}
+            activePropId={self.propTrigger !== "none" ? self.propTrigger : undefined}
+            crown={attachments.some((a) => a.id === "crown")}
+            size={self.isSeated ? 72 : 88}
+            enableOrbit={false}
+          />
+        </div>
+        <div
+          style={{
+            fontSize: 8,
+            fontWeight: 800,
+            color: "#fff",
+            background: "rgba(0,0,0,0.55)",
+            padding: "2px 6px",
+            borderRadius: 6,
+            whiteSpace: "nowrap",
+            marginTop: 2,
+          }}
+        >
+          {self.isSeated ? `🪑 ${self.userName} (you)` : `${self.userName} (you)`}
+        </div>
+        <div style={{ fontSize: 7, color: "#00FFFF99", letterSpacing: "0.08em", fontWeight: 800 }}>
+          3D AVATAR RUNTIME v0
+        </div>
+      </motion.div>
 
       {visible.map((p) => (
         <LobbyPropEffectLayer key={`${p.userId}-prop`} propId={p.propTrigger} x={p.x} y={p.y} />
@@ -242,7 +342,6 @@ function AvatarBubble({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Bubble face: emoji for peers; self may still show cam in bubble if head panel hidden.
   useEffect(() => {
     if (videoRef.current && localStream && isSelf && headMode === "HIDDEN") {
       videoRef.current.srcObject = localStream;
@@ -281,7 +380,6 @@ function AvatarBubble({
       }
       title={onSelect ? `Safety options for ${name}` : undefined}
     >
-      {/* Avatar-head-top socket (2D) */}
       <div style={{ marginBottom: 2, pointerEvents: "none" }}>
         <AvatarHeadMediaSurface
           mode={headMode}

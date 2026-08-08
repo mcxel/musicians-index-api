@@ -12,6 +12,7 @@
 
 import type { CSSProperties } from "react";
 import UniversalDrawerBase from "./UniversalDrawerBase";
+import { DRAWER_OPEN_HEIGHT } from "@/lib/drawers/DrawerAnimationProfile";
 
 interface PerformerPerformanceAnalyticsDrawerProps {
   open: boolean;
@@ -34,7 +35,7 @@ export default function PerformerPerformanceAnalyticsDrawer({
       onClose={onClose}
       accentColor="#00FFFF"
       mode="overlay"
-      overlayHeight="min(92vh, 880px)"
+      overlayHeight={DRAWER_OPEN_HEIGHT}
     >
       <div
         style={{

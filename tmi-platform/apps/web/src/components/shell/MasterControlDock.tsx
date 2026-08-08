@@ -552,7 +552,7 @@ export default function MasterControlDock({
 
             {[
               { label: 'DISCOVER', icon: '🧭', path: '/explore' as string | null },
-              { label: 'LIVE NOW', icon: '📹', path: '/live' },
+              { label: 'LIVE NOW', icon: '📹', path: null as string | null, liveWall: true },
               { label: 'LOBBY', icon: '👥', path: null as string | null, lobby: true },
               { label: 'MESSAGES', icon: '💬', path: '/messages' },
               { label: 'NOTIFICATIONS', icon: '🔔', path: '/notifications' },
@@ -562,6 +562,10 @@ export default function MasterControlDock({
                   key={nav.label}
                   type="button"
                   onClick={() => {
+                    if ('liveWall' in nav && nav.liveWall) {
+                      openLiveLobbyWalls();
+                      return;
+                    }
                     if ('lobby' in nav && nav.lobby) {
                       // Fan → Avatar Lobby drawer; Performer → Media Locker via onLobbyNav
                       if (!isPerformer && onOpenModule) onOpenModule('lobby');
@@ -572,7 +576,13 @@ export default function MasterControlDock({
                     }
                     openLiveLobbyWalls();
                   }}
-                  aria-label={nav.label === 'LOBBY' ? (isPerformer ? 'Open Media Locker drawer' : 'Open Avatar Fan Lobby') : 'Open Live Lobby Walls'}
+                  aria-label={
+                    nav.label === 'LIVE NOW'
+                      ? 'Open Live Lobby Walls video wall'
+                      : nav.label === 'LOBBY'
+                        ? (isPerformer ? 'Open Media Locker drawer' : 'Open Avatar Fan Lobby')
+                        : 'Open Live Lobby Walls'
+                  }
                   style={{
                     display: 'flex',
                     alignItems: 'center',

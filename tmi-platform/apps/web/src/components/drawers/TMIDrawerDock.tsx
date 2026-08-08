@@ -32,7 +32,10 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
-import type { DrawerAnimationId } from "@/lib/drawers/DrawerAnimationProfile";
+import {
+  DRAWER_OPEN_HEIGHT,
+  type DrawerAnimationId,
+} from "@/lib/drawers/DrawerAnimationProfile";
 
 // ─── Lazy-load heavy canisters ──────────────────────────────────────────────
 
@@ -933,7 +936,7 @@ export default function TMIDrawerDock({
           contentKey={d.id}
           onClose={() => setActiveId(null)}
           mode="overlay"
-          overlayHeight="min(72vh, 600px)"
+          overlayHeight={DRAWER_OPEN_HEIGHT}
           ariaLabel={`${d.label} drawer`}
         >
           <DrawerContent id={d.id} />

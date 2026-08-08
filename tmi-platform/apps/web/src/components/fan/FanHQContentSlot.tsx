@@ -162,7 +162,7 @@ export default function FanHQContentSlot({
         <motion.div
           key="fan-hq-bottom-drawer"
           initial={{ height: 0, opacity: 0.85 }}
-          animate={{ height: "min(48vh, 520px)", opacity: 1 }}
+          animate={{ height: "min(94vh, 1080px)", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={open ? snapIn : snapOut}
           style={{

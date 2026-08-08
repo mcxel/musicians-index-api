@@ -183,7 +183,7 @@ export default function AvatarStudioExperience({ onSaveProfile, onClose }: Avata
                   }`}
                 >
                   <div className="text-xs font-bold text-white">📸 AI Face Scan</div>
-                  <div className="text-[10px] text-white/50 mt-1">Scan Front, Left, and Right angles to generate photorealistic canonical head mesh.</div>
+                  <div className="text-[10px] text-white/50 mt-1">Scan Front, Left, and Right angles for a portrait plate on 3D Avatar Runtime v0 (evolving — not a finished mesh pipeline).</div>
                 </button>
               </div>
             )}

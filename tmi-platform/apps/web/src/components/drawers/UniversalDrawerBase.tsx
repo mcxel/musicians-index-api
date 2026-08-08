@@ -9,6 +9,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { CSSProperties, ReactNode } from "react";
 import {
+  DRAWER_OPEN_HEIGHT,
   getDrawerAnimationProfile,
   overlayShellVariants,
   type DrawerAnimationId,
@@ -47,7 +48,7 @@ export default function UniversalDrawerBase({
   contentKey,
   ariaLabel,
   style,
-  overlayHeight = "min(78vh, 720px)",
+  overlayHeight = DRAWER_OPEN_HEIGHT,
 }: UniversalDrawerBaseProps) {
   const theme = useTheme();
   const profile = getDrawerAnimationProfile(animationId, theme);
@@ -61,6 +62,7 @@ export default function UniversalDrawerBase({
           position: "fixed",
           left: 0,
           right: 0,
+          // Sit on the screen bottom — dock floats above; no dead band under the sheet.
           bottom: 0,
           zIndex: 120,
           height: overlayHeight,
@@ -87,7 +89,11 @@ export default function UniversalDrawerBase({
           // reverting this to position:absolute again).
           position: "relative",
           width: "100%",
-          minHeight: 420,
+          // Height from DrawerAnimationProfile shell animate. Parent clears
+          // dock paddingBottom while open so the sheet drops into that gap.
+          minHeight: DRAWER_OPEN_HEIGHT,
+          // Pull into any leftover dock-clearance band under the sheet.
+          marginBottom: 0,
           overflow: "hidden",
           background: theme.bgSurface,
           borderTop: `1px solid ${accent}55`,

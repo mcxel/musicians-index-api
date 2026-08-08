@@ -1,166 +1,320 @@
 "use client";
 
 /**
- * InventoryCanister — Phase 5.4 High-Fidelity Cyberpunk Inventory Vault
- * 3-Column Glassmorphic Vault Deck:
- *   Left: Equipped Gear, Avatar Chassis & Active Aura
- *   Center: Props, Emotes & Collectibles Grid (Rarity Badges & Equip Actions)
- *   Right: Inventory Stats, TMI Points Balance & Store Quick-Redeem
+ * InventoryCanister — Fan gear vault bound to /api/avatar/inventory + /api/avatar/equip.
+ * Honest empty state when unauthenticated or empty (Rule 20). Fake points removed.
  */
 
-import { useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import RoleGate from "@/components/auth/RoleGate";
 import { InventoryPanel } from "@/components/InventoryPanel";
+import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
+import { getFanCosmetic } from "@/lib/avatars/FanCosmeticCatalog";
+import type { AvatarSlot } from "@/lib/avatar/avatarPersistence";
 
 interface InventoryCanisterProps {
   accentColor?: string;
   onEquip?: () => void;
 }
 
-const INVENTORY_ITEMS = [
-  { id: "i1", name: "Neon Glow Glasses", category: "Wearable", rarity: "LEGENDARY", color: "#00FFFF", equipped: true },
-  { id: "i2", name: "Cyberpunk Stage Aura", category: "Aura", rarity: "EPIC", color: "#FF2DAA", equipped: true },
-  { id: "i3", name: "Flame Hype Emote", category: "Emote", rarity: "RARE", color: "#FF5500", equipped: false },
-  { id: "i4", name: "Gold Mic Trophy", category: "Prop", rarity: "LEGENDARY", color: "#FFD700", equipped: false },
-  { id: "i5", name: "Submarine Bass Chassis", category: "Chassis", rarity: "EPIC", color: "#AA2DFF", equipped: false },
-  { id: "i6", name: "Laser Spotlight", category: "Stage Prop", rarity: "RARE", color: "#00FF88", equipped: false },
-];
+type Row = {
+  id: string;
+  name: string;
+  category: string;
+  rarity: string;
+  color: string;
+  equipped: boolean;
+  owned: boolean;
+  equipSlot: AvatarSlot;
+  icon: string;
+};
+
+function toRow(item: AvatarInventoryItem): Row {
+  const def = getFanCosmetic(item.itemId);
+  return {
+    id: item.itemId,
+    name: item.name,
+    category: item.category ?? "collectibles",
+    rarity: (item.rarity ?? "free").toUpperCase(),
+    color: def?.accent ?? "#00FFFF",
+    equipped: item.equipped,
+    owned: item.owned !== false,
+    equipSlot: (def?.equipSlot ?? "accessory") as AvatarSlot,
+    icon: def?.icon ?? "📦",
+  };
+}
 
 export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: InventoryCanisterProps) {
-  const [items, setItems] = useState(INVENTORY_ITEMS);
+  const [items, setItems] = useState<Row[]>([]);
+  const [points, setPoints] = useState<number | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "empty" | "auth" | "error">("loading");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const toggleEquip = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, equipped: !item.equipped } : item))
-    );
-    onEquip?.();
+  const refresh = useCallback(async () => {
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" });
+      if (res.status === 401 || res.status === 403) {
+        setItems([]);
+        setStatus("auth");
+        return;
+      }
+      if (!res.ok) {
+        setStatus("error");
+        return;
+      }
+      const data = (await res.json()) as { AvatarInventory?: { items?: AvatarInventoryItem[] } };
+      const rows = (data.AvatarInventory?.items ?? [])
+        .filter((i) => i.owned !== false)
+        .map(toRow);
+      setItems(rows);
+      setStatus(rows.length ? "ready" : "empty");
+    } catch {
+      setStatus("error");
+    }
+
+    try {
+      const bal = await fetch("/api/points/discount-quote", { credentials: "include", cache: "no-store" });
+      if (bal.ok) {
+        const q = (await bal.json()) as { pointsBalance?: number };
+        if (typeof q.pointsBalance === "number") setPoints(q.pointsBalance);
+      }
+    } catch {
+      /* points optional */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const toggleEquip = async (row: Row) => {
+    if (busyId) return;
+    setBusyId(row.id);
+    try {
+      const res = await fetch("/api/avatar/equip", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: row.id, slot: row.equipSlot }),
+      });
+      if (res.ok) {
+        await refresh();
+        onEquip?.();
+        window.dispatchEvent(new CustomEvent("tmi:avatar-loadout-changed", { detail: { itemId: row.id } }));
+      }
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
-    <div
-      style={{
-        background: "rgba(5,3,16,0.92)",
-        border: `1.5px solid ${accentColor}`,
-        borderRadius: 14,
-        padding: 14,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        color: "#fff",
-        fontFamily: "'Inter', sans-serif",
-        boxShadow: `0 0 25px ${accentColor}33`,
-      }}
+    <RoleGate
+      allow={["FAN", "ADMIN"]}
+      fallback={
+        <div style={{ padding: 16, color: "#aaa", fontSize: 12 }}>
+          Avatar inventory is Fan-only (Rule 26).
+        </div>
+      }
     >
-      {/* Vault Header */}
       <div
         style={{
+          background: "rgba(5,3,16,0.92)",
+          border: `1.5px solid ${accentColor}`,
+          borderRadius: 14,
+          padding: 14,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingBottom: 8,
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          flexDirection: "column",
+          gap: 12,
+          color: "#fff",
+          boxShadow: `0 0 25px ${accentColor}33`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: `linear-gradient(135deg, ${accentColor}, #AA2DFF)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 16,
-            }}
-          >
-            📦
-          </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingBottom: 8,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
           <div>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
               CANISTER · GEAR & INVENTORY VAULT
             </div>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-              Equipped props, wearables, emotes & chassis — persistent across all rooms
+              3D Avatar Runtime v0 — evolving · real entitlements
             </div>
           </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ fontSize: 10, fontWeight: 900, color: "#FFD700", background: "rgba(255,215,0,0.12)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.4)" }}>
-            💎 12,450 TMI POINTS
-          </div>
-        </div>
-      </div>
-
-      {/* 3-Column Deck */}
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 240px", gap: 12 }}>
-        {/* Left Column: Equipped Loadout */}
-        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.12em" }}>EQUIPPED LOADOUT</div>
-          <div style={{ height: 130, background: "radial-gradient(circle, rgba(0,255,255,0.15), #000)", borderRadius: 8, border: "1px solid #00FFFF", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-            <span style={{ fontSize: 36 }}>🕶</span>
-            <span style={{ fontSize: 10, fontWeight: 900, color: "#fff", marginTop: 4 }}>Neon Cyberpunk Avatar</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-            {items.filter((i) => i.equipped).map((item) => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", background: "rgba(0,255,255,0.1)", padding: "4px 8px", borderRadius: 6, border: "1px solid #00FFFF", fontSize: 9 }}>
-                <span>{item.name}</span>
-                <strong style={{ color: "#00FFFF" }}>EQUIPPED</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Center Column: Collectibles Grid */}
-        <div style={{ background: "rgba(10,5,25,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, letterSpacing: "0.12em" }}>PROPS, EMOTES & WEARABLES</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, flex: 1, overflowY: "auto" }}>
-            {items.map((item) => (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {points != null ? (
               <div
-                key={item.id}
                 style={{
-                  background: item.equipped ? `${item.color}15` : "rgba(255,255,255,0.03)",
-                  border: item.equipped ? `1.5px solid ${item.color}` : "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8,
-                  padding: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  gap: 4,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: "#FFD700",
+                  background: "rgba(255,215,0,0.12)",
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,215,0,0.4)",
                 }}
               >
-                <div style={{ fontSize: 8, fontWeight: 900, color: item.color }}>{item.rarity}</div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{item.name}</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{item.category}</div>
-                <button
-                  type="button"
-                  onClick={() => toggleEquip(item.id)}
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    padding: "3px 6px",
-                    borderRadius: 4,
-                    border: `1px solid ${item.color}`,
-                    background: item.equipped ? item.color : "transparent",
-                    color: item.equipped ? "#000" : item.color,
-                    cursor: "pointer",
-                    marginTop: 4,
-                  }}
-                >
-                  {item.equipped ? "UNEQUIP" : "EQUIP"}
-                </button>
+                💎 {points.toLocaleString()} PTS
               </div>
-            ))}
+            ) : null}
+            <Link href="/avatar/shop" style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800 }}>
+              COSMETICS →
+            </Link>
           </div>
         </div>
 
-        {/* Right Column: Original Source Fallback */}
-        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", marginBottom: 6 }}>AVATAR STUDIO SOURCE</div>
-          <InventoryPanel onEquip={onEquip} />
-        </div>
+        {status === "loading" && (
+          <div style={{ padding: 24, color: "rgba(255,255,255,0.45)", fontSize: 12 }}>Loading inventory…</div>
+        )}
+        {status === "auth" && (
+          <div style={{ padding: 24, color: "rgba(255,255,255,0.55)", fontSize: 12 }}>
+            Sign in as a Fan to load owned cosmetics.{" "}
+            <Link href="/login" style={{ color: "#00FFFF" }}>
+              Log in
+            </Link>
+          </div>
+        )}
+        {status === "error" && (
+          <div style={{ padding: 24, color: "#FF2DAA", fontSize: 12 }}>
+            Unable to load inventory.{" "}
+            <button type="button" onClick={() => void refresh()} style={{ color: "#00FFFF", background: "none", border: "none", cursor: "pointer" }}>
+              Retry
+            </button>
+          </div>
+        )}
+        {status === "empty" && (
+          <div style={{ padding: 24, color: "rgba(255,255,255,0.55)", fontSize: 12 }}>
+            No owned cosmetics yet. Unlock free starters or spend points in the{" "}
+            <Link href="/avatar/shop" style={{ color: "#FFD700" }}>
+              Avatar Shop
+            </Link>
+            .
+          </div>
+        )}
+
+        {status === "ready" && (
+          <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 240px", gap: 12 }}>
+            <div
+              style={{
+                background: "rgba(10,5,25,0.7)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: 12,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.12em" }}>
+                EQUIPPED LOADOUT
+              </div>
+              {items.filter((i) => i.equipped).length === 0 ? (
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Nothing equipped</div>
+              ) : (
+                items
+                  .filter((i) => i.equipped)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        background: "rgba(0,255,255,0.1)",
+                        padding: "4px 8px",
+                        borderRadius: 6,
+                        border: "1px solid #00FFFF",
+                        fontSize: 9,
+                      }}
+                    >
+                      <span>
+                        {item.icon} {item.name}
+                      </span>
+                      <strong style={{ color: "#00FFFF" }}>ON</strong>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div
+              style={{
+                background: "rgba(10,5,25,0.5)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: 12,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 8,
+              }}
+            >
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    background: item.equipped ? `${item.color}15` : "rgba(255,255,255,0.03)",
+                    border: item.equipped ? `1.5px solid ${item.color}` : "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 8,
+                    padding: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ fontSize: 8, fontWeight: 900, color: item.color }}>{item.rarity}</div>
+                  <div style={{ fontSize: 18 }}>{item.icon}</div>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{item.name}</div>
+                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{item.category}</div>
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => void toggleEquip(item)}
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 900,
+                      padding: "3px 6px",
+                      borderRadius: 4,
+                      border: `1px solid ${item.color}`,
+                      background: item.equipped ? item.color : "transparent",
+                      color: item.equipped ? "#000" : item.color,
+                      cursor: "pointer",
+                      marginTop: 4,
+                    }}
+                  >
+                    {busyId === item.id ? "…" : item.equipped ? "EQUIPPED" : "EQUIP"}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                background: "rgba(10,5,25,0.7)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: 10,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", marginBottom: 6 }}>
+                STUDIO SOURCE
+              </div>
+              <InventoryPanel onEquip={onEquip} />
+              <Link
+                href="/store/flex?wing=apparel"
+                style={{ display: "block", marginTop: 10, fontSize: 10, color: "#00E5FF", fontWeight: 800 }}
+              >
+                Flex apparel / costumes →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </RoleGate>
   );
 }
 

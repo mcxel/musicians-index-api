@@ -1,3 +1,5 @@
+import { fanCosmeticStarterItems } from "@/lib/avatars/fanAvatarLoadout";
+
 export type AvatarInventoryCategory =
   | "skins" | "eyes" | "accessories" | "outfits" | "props" | "backgrounds"
   | "lighting" | "emotes" | "collectibles" | "hats" | "glasses" | "jewelry"
@@ -148,7 +150,11 @@ const STARTER_ITEMS: AvatarInventoryItem[] = [
 ];
 
 export function getStarterInventory(): AvatarInventoryItem[] {
-  return STARTER_ITEMS.map((item) => ({ ...item }));
+  const cosmetics = fanCosmeticStarterItems();
+  const byId = new Map<string, AvatarInventoryItem>();
+  for (const item of STARTER_ITEMS) byId.set(item.itemId, { ...item });
+  for (const item of cosmetics) byId.set(item.itemId, item);
+  return [...byId.values()];
 }
 
 export function equipItem(items: AvatarInventoryItem[], itemId: string): AvatarInventoryItem[] {

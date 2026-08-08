@@ -9,6 +9,13 @@
 import type { Transition, Variants } from "framer-motion";
 import type { ThemeTokens } from "@/lib/design/ThemeEngine";
 
+/**
+ * Canonical open height for UniversalDrawerBase shells.
+ * Tall enough to claim unused space under the sheet (closer to dock / screen
+ * bottom) while leaving a thin top chrome band — not full 100vh.
+ */
+export const DRAWER_OPEN_HEIGHT = "min(94vh, 1080px)";
+
 /** User/theme motion preference (maps from ThemeEngine.transitionStyle). */
 export type MotionProfilePreference = "Minimal" | "Standard" | "Cinematic";
 
@@ -55,7 +62,7 @@ function profileScale(
       ...base,
       shell: {
         initial: { height: 0, opacity: 0.92 },
-        animate: { height: "min(48vh, 520px)", opacity: 1 },
+        animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1 },
         exit: { height: 0, opacity: 0 },
       },
       content: {
@@ -99,7 +106,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Vinyl Flip",
     shell: {
       initial: { height: 0, opacity: 0.7, rotateX: 28 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, rotateX: 0 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, rotateX: 0 },
       exit: { height: 0, opacity: 0, rotateX: -18 },
     },
     content: {
@@ -114,7 +121,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Hologram",
     shell: {
       initial: { height: 0, opacity: 0, filter: "blur(8px)" },
-      animate: { height: "min(48vh, 520px)", opacity: 1, filter: "blur(0px)" },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, filter: "blur(0px)" },
       exit: { height: 0, opacity: 0, filter: "blur(6px)" },
     },
     content: {
@@ -129,7 +136,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Mechanical",
     shell: {
       initial: { height: 0, opacity: 0.9, y: 24 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, y: 0 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, y: 0 },
       exit: { height: 0, opacity: 0.85, y: 20 },
     },
     content: {
@@ -144,7 +151,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Memory Scatter",
     shell: {
       initial: { height: 0, opacity: 0.5, scale: 0.96 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, scale: 1 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, scale: 1 },
       exit: { height: 0, opacity: 0, scale: 0.94 },
     },
     content: {
@@ -159,7 +166,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Command Lift",
     shell: {
       initial: { height: 0, opacity: 0.85 },
-      animate: { height: "min(48vh, 520px)", opacity: 1 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1 },
       exit: { height: 0, opacity: 0 },
     },
     content: {
@@ -174,7 +181,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Orbit",
     shell: {
       initial: { height: 0, opacity: 0.6, scale: 0.92 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, scale: 1 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, scale: 1 },
       exit: { height: 0, opacity: 0, scale: 0.95 },
     },
     content: {
@@ -189,7 +196,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Portal",
     shell: {
       initial: { height: 0, opacity: 0, scaleY: 0.4 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, scaleY: 1 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, scaleY: 1 },
       exit: { height: 0, opacity: 0, scaleY: 0.5 },
     },
     content: {
@@ -204,7 +211,7 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
     label: "Fold",
     shell: {
       initial: { height: 0, opacity: 0.8, rotateX: 55 },
-      animate: { height: "min(48vh, 520px)", opacity: 1, rotateX: 0 },
+      animate: { height: DRAWER_OPEN_HEIGHT, opacity: 1, rotateX: 0 },
       exit: { height: 0, opacity: 0, rotateX: 40 },
     },
     content: {
@@ -219,9 +226,9 @@ const PROFILES: Record<DrawerAnimationId, DrawerAnimationProfile> = {
 /** Fixed overlay drawers (e.g. FanAvatarLobbyDrawer) — same personality, y% instead of height. */
 export function overlayShellVariants(profile: DrawerAnimationProfile): Variants {
   return {
-    initial: { y: "42%", opacity: 0.85 },
+    initial: { y: "100%", opacity: 0.85 },
     animate: { y: 0, opacity: 1 },
-    exit: { y: "36%", opacity: 0 },
+    exit: { y: "100%", opacity: 0 },
   };
 }
 

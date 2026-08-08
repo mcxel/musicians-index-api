@@ -52,6 +52,16 @@ type LiveLobbyWallGridProps = {
   title: string;
   accentColor?: string;
   typeLabel?: string;
+  /**
+   * page = full lobby-wall route
+   * embedded = full overlay wall
+   * quick = compact Brady-Bunch quick-menu panel
+   */
+  variant?: "page" | "embedded" | "quick";
+  /** Optional join override — must still resolve THAT room via DestinationResolver / InstantJoin */
+  onRoomJoin?: (room: LobbyRoom) => void;
+  /** Hover / audio focus only — tap always instant-joins */
+  onRoomFocus?: (room: LobbyRoom) => void;
 };
 
 function toWallKind(type: LobbyRoom['type']): LobbyWallKind {
@@ -212,23 +222,39 @@ function LobbyCell({
 
 // ─── Main wall grid ───────────────────────────────────────────────────────────
 
-export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF', typeLabel = 'LIVE' }: LiveLobbyWallGridProps) {
+export default function LiveLobbyWallGrid({
+  rooms,
+  title,
+  accentColor = '#00FFFF',
+  typeLabel = 'LIVE',
+  variant = 'page',
+  onRoomJoin,
+  onRoomFocus,
+}: LiveLobbyWallGridProps) {
   const router = useRouter();
   const [colorOffset, setColorOffset] = useState(0);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
   const [focusTick, setFocusTick] = useState(0);
+  const [focusedRoomId, setFocusedRoomId] = useState<string | null>(null);
   const liveRooms = rooms.filter((r) => r.status !== 'ended');
+  const embedded = variant === 'embedded' || variant === 'quick';
+  const quick = variant === 'quick';
 
   useEffect(() => {
     const t = setInterval(() => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length), 30000);
     return () => clearInterval(t);
   }, []);
 
-  const joinRoom = useCallback((room: LobbyRoom) => {
+  const enterRoom = useCallback((room: LobbyRoom) => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('tmi_handoff_started_at', String(Date.now()));
       sessionStorage.setItem('tmi_handoff_room_id', room.id);
     }
+    if (onRoomJoin) {
+      onRoomJoin(room);
+      return;
+    }
+    // Exact room only — DestinationResolver, never a random redirect
     const dest = resolveLobbyDestination({
       roomId: room.id,
       kind: toWallKind(room.type),
@@ -248,7 +274,16 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
       roomRoute:   dest.href,
       venueIndex:  0,
     });
-  }, []);
+  }, [onRoomJoin]);
+
+  /** Marcel: tile tap → INSTANT join that exact panel (Star Wars LobbyEntryFlow, no black screen). */
+  const joinRoom = useCallback((room: LobbyRoom) => {
+    setFocusedRoomId(room.id);
+    setLobbyAudioFocus(room.id);
+    setFocusTick((n) => n + 1);
+    onRoomFocus?.(room);
+    enterRoom(room);
+  }, [enterRoom, onRoomFocus]);
 
   const prewarmRoom = useCallback((room: LobbyRoom) => {
     const dest = resolveLobbyDestination({
@@ -261,9 +296,12 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
   }, [router]);
 
   const onFocusAudio = useCallback((roomId: string) => {
+    setFocusedRoomId(roomId);
     setLobbyAudioFocus(roomId);
     setFocusTick((n) => n + 1);
-  }, []);
+    const room = liveRooms.find((r) => r.id === roomId);
+    if (room) onRoomFocus?.(room);
+  }, [liveRooms, onRoomFocus]);
 
   const joinRandom = useCallback(() => {
     if (liveRooms.length === 0) return;
@@ -278,14 +316,51 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
   }, [liveRooms]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
-      {activeFlowRoom && (
-        <LobbyEntryFlow room={activeFlowRoom} onClose={() => setActiveFlowRoom(null)} />
+    <div style={{
+      minHeight: embedded ? undefined : '100vh',
+      background: embedded ? 'transparent' : '#050510',
+      color: '#fff',
+      paddingBottom: embedded ? 0 : 80,
+      height: embedded ? '100%' : undefined,
+      display: embedded ? 'flex' : undefined,
+      flexDirection: embedded ? 'column' : undefined,
+      minWidth: 0,
+    }}>
+      {activeFlowRoom && !onRoomJoin && (
+        <LobbyEntryFlow
+          room={activeFlowRoom}
+          instant
+          onClose={() => setActiveFlowRoom(null)}
+        />
       )}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'linear-gradient(180deg, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.8) 100%)', backdropFilter: 'blur(20px)', borderBottom: `1px solid rgba(255,255,255,0.1)`, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{
+        position: embedded ? 'relative' : 'sticky',
+        top: 0,
+        zIndex: 20,
+        flexShrink: 0,
+        background: embedded
+          ? 'transparent'
+          : 'linear-gradient(180deg, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.8) 100%)',
+        backdropFilter: embedded ? undefined : 'blur(20px)',
+        borderBottom: `1px solid rgba(255,255,255,0.1)`,
+        boxShadow: embedded ? 'none' : '0 10px 30px rgba(0,0,0,0.5)',
+        padding: quick ? '6px 2px 8px' : embedded ? '8px 4px 12px' : '14px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        flexWrap: 'wrap',
+      }}>
         <div>
-          <div style={{ fontSize: 9, letterSpacing: '0.35em', color: accentColor, fontWeight: 800 }}>{typeLabel} · LOBBY WALL</div>
-          <h1 style={{ margin: 0, fontSize: 20, color: '#fff' }}>{title}</h1>
+          <div style={{ fontSize: 9, letterSpacing: '0.35em', color: accentColor, fontWeight: 800 }}>
+            {typeLabel} · {quick ? 'QUICK WALL' : 'LOBBY WALL'}
+          </div>
+          <h1 style={{ margin: 0, fontSize: quick ? 13 : embedded ? 16 : 20, color: '#fff' }}>{title}</h1>
+          {embedded && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 700 }}>
+              Tap any live tile → instant join (Star Wars seat entry)
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, color: '#00FF88' }}>
@@ -295,43 +370,54 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
           <button
             type="button"
             onClick={() => onSwipe('prev')}
-            style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+            style={{ padding: embedded ? '6px 8px' : '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
           >
             ← FOCUS
           </button>
           <button
             type="button"
             onClick={() => onSwipe('next')}
-            style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+            style={{ padding: embedded ? '6px 8px' : '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
           >
             FOCUS →
           </button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={joinRandom}
-            disabled={liveRooms.length === 0}
-            style={{
-              padding: '10px 22px',
-              background: accentColor,
-              color: '#000',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 900,
-              fontSize: 12,
-              cursor: liveRooms.length > 0 ? 'pointer' : 'not-allowed',
-              letterSpacing: '0.1em',
-            }}
-          >
-            🎲 RANDOM ROOM
-          </motion.button>
-          <a href="/home/5" style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.07)', color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 11, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.12)' }}>
-            ← BACK
-          </a>
+          {!embedded && (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={joinRandom}
+                disabled={liveRooms.length === 0}
+                style={{
+                  padding: '10px 22px',
+                  background: accentColor,
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 900,
+                  fontSize: 12,
+                  cursor: liveRooms.length > 0 ? 'pointer' : 'not-allowed',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                🎲 RANDOM ROOM
+              </motion.button>
+              <a href="/home/5" style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.07)', color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 11, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.12)' }}>
+                ← BACK
+              </a>
+            </>
+          )}
         </div>
       </div>
 
       <div
-        style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 20px' }}
+        style={{
+          maxWidth: embedded ? 'none' : 1280,
+          margin: embedded ? 0 : '0 auto',
+          padding: embedded ? '8px 4px 12px' : '28px 20px',
+          flex: embedded ? 1 : undefined,
+          minHeight: 0,
+          overflowY: embedded ? 'auto' : undefined,
+        }}
         onTouchStart={(e) => {
           const t = e.changedTouches[0];
           if (t) (e.currentTarget as HTMLDivElement).dataset.swipeX = String(t.clientX);
@@ -343,23 +429,29 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
           if (Math.abs(dx) > 48) onSwipe(dx < 0 ? 'next' : 'prev');
         }}
       >
-        <div style={{ marginBottom: 24, width: '100%' }}>
-          <AdRailSlot
-            slotId="lobby-wall-featured"
-            hasSponsor={false}
-          />
-        </div>
+        {!embedded && (
+          <div style={{ marginBottom: 24, width: '100%' }}>
+            <AdRailSlot
+              slotId="lobby-wall-featured"
+              hasSponsor={false}
+            />
+          </div>
+        )}
         {liveRooms.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.35)' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📡</div>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>No active rooms</div>
+          <div style={{ textAlign: 'center', padding: embedded ? '40px 0' : '80px 0', color: 'rgba(255,255,255,0.35)' }}>
+            <div style={{ fontSize: embedded ? 28 : 40, marginBottom: 12 }}>📡</div>
+            <div style={{ fontWeight: 800, fontSize: embedded ? 14 : 16 }}>No active rooms</div>
             <div style={{ fontSize: 13, marginTop: 6 }}>Go live or check back when creators are broadcasting</div>
           </div>
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: 12,
+            gridTemplateColumns: quick
+              ? 'repeat(auto-fill, minmax(120px, 1fr))'
+              : embedded
+                ? 'repeat(auto-fill, minmax(160px, 1fr))'
+                : 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: quick ? 8 : embedded ? 10 : 12,
           }}>
             <AnimatePresence>
               {liveRooms.map((room, idx) => {
@@ -378,7 +470,10 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
                     key={room.id}
                     room={room}
                     colorIndex={(idx + colorOffset) % CRAYON_PALETTE.length}
-                    preview={preview}
+                    preview={{
+                      ...preview,
+                      focused: focusedRoomId === room.id || preview.focused,
+                    }}
                     onJoin={joinRoom}
                     onPrewarm={prewarmRoom}
                     onFocusAudio={onFocusAudio}

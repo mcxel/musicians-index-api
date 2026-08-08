@@ -48,6 +48,7 @@ import {
   getMutedUserIds,
   muteUserLocal,
 } from "@/lib/trustSafety/localBlocks";
+import { mergePropAtmospheres } from "@/lib/lobby/LobbyPropAtmosphere";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -78,15 +79,10 @@ interface FanLobbyVenueProps {
 }
 
 /**
- * Fan Lobby — free-roam 2D social floor + conversation chair anchors.
- * Not a 3D bobblehead engine / AvatarSeatUI grid (Rule 18/20).
- * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks (mix seated + roam).
- * Phase B: shared AvatarHeadMediaSurface above free-roam heads (local + Daily peers).
- *
- * Phase A.5 Presence Certification: authoritative participant shape is
- * FanLobbyPresence / SocialRoomPresence (via useLobbyPresenceSync + getFanLobbyPresence).
- * Phase B binds media (head panels / Daily tracks) TO this presence — never
- * the reverse (do not invent presence from WebRTC).
+ * Fan Lobby — free-roam floor + conversation chair anchors.
+ * Local fan: 3D Avatar Runtime v0 (AvatarRig sit/stand + socket props).
+ * Peers: simpler emoji bubbles for perf. Prop tray drives animated FX + room atmosphere.
+ * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks.
  */
 export default function FanLobbyVenue({
   roomId = "fan-lobby",
@@ -156,6 +152,14 @@ export default function FanLobbyVenue({
     () => occupiedSeatIds(sync.participants),
     [sync.participants],
   );
+
+  const propAtmosphere = useMemo(() => {
+    const ids = [
+      sync.propTrigger,
+      ...sync.participants.map((p) => p.propTrigger),
+    ].filter((id): id is string => Boolean(id) && id !== "none");
+    return mergePropAtmospheres(ids);
+  }, [sync.propTrigger, sync.participants]);
 
   useEffect(() => {
     sync.setIsSpeaking(isSpeaking);
@@ -522,8 +526,24 @@ export default function FanLobbyVenue({
           height: embedded ? "calc(100% - 44px)" : "calc(100vh - 52px)",
           zIndex: 10,
           background: dressing.floorTint,
+          filter: propAtmosphere ? `brightness(${propAtmosphere.ambientScale})` : undefined,
+          transition: "filter 0.35s ease",
         }}
       >
+        {propAtmosphere ? (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 9,
+              pointerEvents: "none",
+              background: `radial-gradient(ellipse at 50% 70%, ${propAtmosphere.glowColor}66 0%, transparent 65%)`,
+              opacity: propAtmosphere.washOpacity + 0.35,
+              mixBlendMode: propAtmosphere.ambientScale < 1 ? "multiply" : "screen",
+            }}
+          />
+        ) : null}
         <LobbyEnvironmentToys state={"FREE_ROAM" as never} onUseToy={(toyId) => sync.triggerProp(toyMapsToProp(toyId))} />
         <LobbyFreeRoamAvatars
           self={{

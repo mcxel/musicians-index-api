@@ -90,7 +90,10 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
-import type { DrawerAnimationId } from "@/lib/drawers/DrawerAnimationProfile";
+import {
+  DRAWER_OPEN_HEIGHT,
+  type DrawerAnimationId,
+} from "@/lib/drawers/DrawerAnimationProfile";
 
 // ─── Lazy canisters ──────────────────────────────────────────────────────────
 
@@ -292,8 +295,9 @@ const DEMO_DRAWERS: DrawerDef[] = [
 ];
 
 const DRAWER_HEIGHTS: Record<DrawerSize, string> = {
-  default: "min(50vh, 500px)",
-  expanded: "min(78vh, 720px)",
+  // Align with UniversalDrawerBase open height — claim bottom gap, leave dock chrome.
+  default: DRAWER_OPEN_HEIGHT,
+  expanded: "min(96vh, 1120px)",
   fullscreen: "100dvh",
 };
 

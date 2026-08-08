@@ -21,6 +21,7 @@ export interface LobbyPropDef {
 /** Held items — carried by the avatar until duration elapses or re-pressed to release early. */
 export const LOBBY_HOLDABLE_PROPS: LobbyPropDef[] = [
   { id: "mic",          label: "Mic",          icon: "🎤", effect: "hold", durationMs: 6000, accent: "#00FFFF", minTier: "free" },
+  { id: "sparkler",     label: "Sparkler",     icon: "✨", effect: "hold", durationMs: 6000, accent: "#FFD700", minTier: "free" },
   { id: "candle",       label: "Candle",       icon: "🕯️", effect: "hold", durationMs: 6000, accent: "#FFB84A", minTier: "free" },
   { id: "lighter",      label: "Lighter",      icon: "🔥", effect: "hold", durationMs: 6000, accent: "#FF6600", minTier: "free" },
   { id: "glow_stick",   label: "Glow Stick",   icon: "🪄", effect: "hold", durationMs: 6000, accent: "#00FF88", minTier: "pro" },
@@ -34,6 +35,8 @@ export const LOBBY_REACTION_PROPS: LobbyPropDef[] = [
   { id: "fire",      label: "Fire",      icon: "🔥", effect: "burst", durationMs: 1400, accent: "#FF6600", minTier: "free" },
   { id: "confetti",  label: "Confetti",  icon: "🎉", effect: "burst", durationMs: 1600, accent: "#FFD700", minTier: "free" },
   { id: "crown",     label: "Crown",     icon: "👑", effect: "burst", durationMs: 1400, accent: "#FFD700", minTier: "gold" },
+  { id: "jester_hat", label: "Jester Hat", icon: "🃏", effect: "burst", durationMs: 1600, accent: "#FF2DAA", minTier: "pro" },
+  { id: "sunglasses", label: "Sunglasses", icon: "🕶️", effect: "burst", durationMs: 1400, accent: "#00FFFF", minTier: "pro" },
 ];
 
 export const LOBBY_INVENTORY_PROPS: LobbyPropDef[] = [...LOBBY_HOLDABLE_PROPS, ...LOBBY_REACTION_PROPS];

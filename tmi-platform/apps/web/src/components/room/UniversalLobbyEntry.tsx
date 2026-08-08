@@ -24,6 +24,7 @@ import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
 import { getGuestId } from "@/lib/identity/getGuestId";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
+import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
@@ -129,12 +130,15 @@ interface LobbyEntryFlowProps {
 }
 
 export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlowProps) {
-  // instant=true → skip preview/access and jump straight to seat assignment
+  // instant=true → Star Wars hyperspace covers seat claim + scene preload (no black screen)
   const [step, setStep] = useState<Step>(instant ? "seat" : "preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
   const [seatId, setSeatId] = useState<string | null>(null);
   const [occupancyRatio, setOccupancyRatio] = useState(0);
   const [showStarBurst, setShowStarBurst] = useState(false);
+  /** Instant path: hyperspace overlay active until seated reveal */
+  const [hyperspaceActive, setHyperspaceActive] = useState(instant);
+  const [seatReady, setSeatReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { startWatching } = useWatchSession();
@@ -156,13 +160,31 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
     startWatching({ roomId: room.id, title: room.title, accentColor: room.accentColor, viewers: room.viewers, venueIndex: room.venueIndex, seatId: seatId ?? undefined });
   }, [step, room.id, room.title, room.accentColor, room.viewers, room.venueIndex, seatId, startWatching]);
 
-  // Progressive stadium-fill animation when audience step is active
+  // Progressive stadium-fill — starts during hyperspace (instant) or on audience step
   useEffect(() => {
-    if (step !== "audience") return;
-    // Trigger star burst arrival effect
-    setShowStarBurst(true);
-    const burst = setTimeout(() => setShowStarBurst(false), 1200);
-    // Fill 0 → 12% instantly, then +6% every 250ms to 92%
+    const shouldFill = instant ? step === "seat" || step === "audience" : step === "audience";
+    if (!shouldFill) return;
+    if (!instant) {
+      setShowStarBurst(true);
+      const burst = setTimeout(() => setShowStarBurst(false), 1200);
+      // non-instant cleanup via return
+      setOccupancyRatio(0.12);
+      fillTimerRef.current = setInterval(() => {
+        setOccupancyRatio(prev => {
+          const next = prev + 0.06;
+          if (next >= 0.92) {
+            if (fillTimerRef.current) clearInterval(fillTimerRef.current);
+            return 0.92;
+          }
+          return next;
+        });
+      }, 250);
+      return () => {
+        clearTimeout(burst);
+        if (fillTimerRef.current) clearInterval(fillTimerRef.current);
+      };
+    }
+    // Instant: fill audience behind Star Wars so seated reveal is ready
     setOccupancyRatio(0.12);
     fillTimerRef.current = setInterval(() => {
       setOccupancyRatio(prev => {
@@ -175,18 +197,17 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
       });
     }, 250);
     return () => {
-      clearTimeout(burst);
       if (fillTimerRef.current) clearInterval(fillTimerRef.current);
     };
-  }, [step]);
+  }, [step, instant]);
 
   // Auto-navigate when "enter" step is reached — no extra click required
   useEffect(() => {
     if (step !== "enter") return;
     const dest = `${room.roomRoute}${room.roomRoute.includes("?") ? "&" : "?"}from=lobby-wall`;
-    const t = setTimeout(() => router.push(dest), 400);
+    const t = setTimeout(() => router.push(dest), instant ? 220 : 400);
     return () => clearTimeout(t);
-  }, [step, room.roomRoute, router]);
+  }, [step, room.roomRoute, router, instant]);
 
   // Crowd-reaction sound on entering the audience step for concert-type rooms —
   // the anticipation moment right before a performer comes on.
@@ -208,10 +229,10 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
     }
   }, []);
 
-  // Real seat assignment — calls the same assignNextSeat() engine the
-  // /api/live/audience join action uses, instead of fabricating a plausible-
-  // looking "Row C, Seat 17" from Math.random() (a Rule 20 violation: a real
-  // seat-assignment engine already existed and simply wasn't wired here).
+  /**
+   * Seat claim starts immediately on seat step — runs UNDER hyperspace so when
+   * stars clear the user is already seated (Marcel: buy render time).
+   */
   useEffect(() => {
     if (step !== "seat") return;
     let cancelled = false;
@@ -232,22 +253,39 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
           setSeatId(assigned);
           setSeatRow(assigned ? formatSeatLabel(assigned) : "General Admission");
           if (assigned) seatSession.claim(assigned);
+          setSeatReady(true);
         }
       } catch {
-        if (!cancelled) setSeatRow("General Admission");
+        if (!cancelled) {
+          setSeatRow("General Admission");
+          setSeatReady(true);
+        }
       } finally {
-        if (!cancelled) advance("audience", 1600);
+        // Non-instant: classic timed advance. Instant: wait for SeatArrivalTransition onComplete.
+        if (!cancelled && !instant) advance("audience", 1600);
       }
     })();
     return () => { cancelled = true; };
-  }, [step, advance, room.id]);
+  }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim]);
+
+  /** Hyperspace complete → reveal seated audience, then enter room */
+  const onHyperspaceComplete = useCallback(() => {
+    setHyperspaceActive(false);
+    setStep("audience");
+    // Brief seated reveal, then navigate (no black screen — venue already painted)
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setStep("enter"), seatReady ? 650 : 900);
+  }, [seatReady]);
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  // When step >= "seat" the entire overlay becomes the venue shell (no black screen)
+  // Venue shell under hyperspace — never a black empty room during travel
   const isVenueMode = step === "seat" || step === "audience" || step === "enter";
+  const showSeatedAudience = instant
+    ? step === "seat" || step === "audience" || step === "enter"
+    : step === "audience";
 
   const overlay = s({
     position: "fixed", inset: 0, zIndex: 9000,
@@ -283,20 +321,47 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   return (
     <div style={overlay} onClick={e => { if (!isVenueMode && e.target === e.currentTarget) onClose(); }}>
 
-      {/* ── Venue backdrop (no black screen in venue mode) ── */}
+      {/* ── Venue + audience preload UNDER hyperspace (buys render time) ── */}
       {isVenueMode && (
         <div style={s({ position: "absolute", inset: 0, zIndex: 0 })}>
           <RoomEnvironmentLayer
             venueType={venueType}
             mode="audience"
-            energyLevel={step === "audience" ? 0.8 : 0.45}
+            energyLevel={showSeatedAudience ? 0.8 : 0.45}
             style={{ width: "100%", height: "100%" }}
           />
+          {showSeatedAudience && (
+            <div style={s({
+              position: "absolute",
+              inset: instant && hyperspaceActive ? 0 : undefined,
+              bottom: instant && !hyperspaceActive ? 120 : 0,
+              left: 0, right: 0,
+              top: instant ? 0 : undefined,
+              zIndex: 1,
+              opacity: hyperspaceActive ? 0.01 : 1, // keep mounted/painting while covered
+              pointerEvents: "none",
+            })}>
+              <AudienceSceneLazy
+                view="fan"
+                venue={room.venueIndex ?? 0}
+                occupancyRatio={occupancyRatio}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Star arrival burst animation ── */}
-      {showStarBurst && (
+      {/* ── Star Wars hyperspace → slow-down → big stars → seated (instant path) ── */}
+      {instant && (
+        <SeatArrivalTransition
+          active={hyperspaceActive}
+          onComplete={onHyperspaceComplete}
+          destinationLabel={room.title}
+        />
+      )}
+
+      {/* ── Legacy star burst (non-instant audience step only) ── */}
+      {showStarBurst && !instant && (
         <div style={s({ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none", overflow: "hidden" })}>
           <style>{`
             @keyframes starBurst {
@@ -355,7 +420,8 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
         </div>
       )}
 
-      {/* ── Card panel (dim in venue mode so venue shows through) ── */}
+      {/* ── Card panel — hidden during hyperspace so stars own the frame ── */}
+      {!(instant && hyperspaceActive) && (
       <div style={{
         ...panel,
         ...(isVenueMode ? {
@@ -471,34 +537,47 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
             </div>
           )}
 
-          {/* ── STEP: AUDIENCE SCENE ── */}
+          {/* ── STEP: AUDIENCE SCENE — instant: already seated after Star Wars ── */}
           {step === "audience" && (
             <div style={s({ display: "flex", flexDirection: "column", gap: 12 })}>
               <div style={s({ fontSize: 9, fontWeight: 800, color: ac, letterSpacing: "0.15em" })}>
-                VENUE LOADED — {seatRow ?? "GENERAL ADMISSION"}
+                {instant ? "YOU'RE SEATED — " : "VENUE LOADED — "}{seatRow ?? "GENERAL ADMISSION"}
               </div>
-              <div style={s({ borderRadius: 10, overflow: "hidden", border: `1px solid ${ac}33` })}>
-                <AudienceSceneLazy view="fan" venue={room.venueIndex ?? 0} occupancyRatio={occupancyRatio} />
-              </div>
-              <button
-                onClick={() => advance("enter")}
-                style={s({ padding: "13px", background: ac, color: "#050310", borderRadius: 10, fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", border: "none", boxShadow: `0 0 20px ${ac}44` })}
-              >
-                ▶ ENTER ROOM
-              </button>
+              {!instant && (
+                <div style={s({ borderRadius: 10, overflow: "hidden", border: `1px solid ${ac}33` })}>
+                  <AudienceSceneLazy view="fan" venue={room.venueIndex ?? 0} occupancyRatio={occupancyRatio} />
+                </div>
+              )}
+              {instant ? (
+                <div style={s({ fontSize: 11, color: "rgba(255,255,255,0.55)", textAlign: "center", fontWeight: 700 })}>
+                  Seat locked. Entering live room…
+                </div>
+              ) : (
+                <button
+                  onClick={() => advance("enter")}
+                  style={s({ padding: "13px", background: ac, color: "#050310", borderRadius: 10, fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", border: "none", boxShadow: `0 0 20px ${ac}44` })}
+                >
+                  ▶ ENTER ROOM
+                </button>
+              )}
             </div>
           )}
 
           {/* ── STEP: ENTERING ── */}
           {step === "enter" && (
             <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "24px 0", cursor: "pointer" })}>
-              <div style={s({ fontSize: 32 })}>🚪</div>
-              <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>Entering Room…</div>
-              <div style={s({ fontSize: 11, color: "rgba(255,255,255,0.4)" })}>Navigating automatically…</div>
+              <div style={s({ fontSize: 32 })}>💺</div>
+              <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>
+                {instant ? "Seated — joining room…" : "Entering Room…"}
+              </div>
+              <div style={s({ fontSize: 11, color: "rgba(255,255,255,0.4)" })}>
+                {seatRow ? `${seatRow} · ` : ""}Navigating automatically…
+              </div>
             </div>
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

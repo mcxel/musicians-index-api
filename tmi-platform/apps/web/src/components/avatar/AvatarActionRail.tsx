@@ -7,7 +7,7 @@ type AvatarActionRailProps = {
   onReset: () => void;
 };
 
-const poses = ["Idle", "Wave", "Mic Up", "Dance", "Champion"];
+const poses = ["Idle", "Sit", "Wave", "Mic Up", "Dance", "Champion"];
 
 export default function AvatarActionRail({
   pose,

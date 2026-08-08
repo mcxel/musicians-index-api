@@ -170,3 +170,21 @@ export const DEFAULT_SOCKET_TRANSFORMS: Partial<Record<AvatarSocketId, SocketTra
   socket_chest:          { socketId: 'socket_chest',          localOffset: { x: 0, y: 0,    z: 0.05 } },
   socket_waist:          { socketId: 'socket_waist',          localOffset: { x: 0, y: 0,    z: 0 } },
 };
+
+/**
+ * World offsets for capsule AvatarRig (3D Avatar Runtime v0).
+ * No GLB skeleton — sockets are fixed local positions relative to the rig root.
+ */
+export const BIPED_V0_SOCKET_OFFSETS: Partial<Record<AvatarSocketId, [number, number, number]>> = {
+  socket_primary_hand:   [0.38, 0.55, 0.12],
+  socket_secondary_hand: [-0.38, 0.55, 0.12],
+  socket_head:           [0, 1.05, 0],
+  socket_face:           [0, 0.78, 0.28],
+  socket_chest:          [0, 0.5, 0.22],
+  socket_waist:          [0, 0.2, 0.1],
+  socket_back:           [0, 0.55, -0.25],
+};
+
+export function getBipedV0SocketOffset(socketId: AvatarSocketId): [number, number, number] {
+  return BIPED_V0_SOCKET_OFFSETS[socketId] ?? [0, 0.5, 0];
+}
