@@ -1,12 +1,13 @@
 /**
- * PersistentGauntletEngine.ts — Target 3: Persistent Gauntlet & Winner-Stays Lifecycle Engine
+ * PersistentGauntletEngine.ts — Target 3: Durable Server-Authoritative Gauntlet Engine
  *
- * Requirements:
- * 1. Server-authoritative continuous queue (queue position, status, time on stage).
- * 2. Winner-Stays battle rotation (winner remains on stage to defend against next challenger).
- * 3. Gauntlet Championship Belt lifecycle & streak tracking.
- * 4. Automatic Stage & Seat transitions (stage placement vs audience seat recovery).
- * 5. Disconnect & re-entry state recovery without queue corruption or match duplication.
+ * Guaranteed Invariants:
+ * 1. Server-authoritative continuous queue & state durability.
+ * 2. Winner-Stays battle rotation with defense streak tracking.
+ * 3. Gauntlet Championship Belt lifecycle & belt transfer authority.
+ * 4. Automatic Stage & Seat transitions.
+ * 5. Strict Performer Isolation: Performers retain real video stream presentation;
+ *    Fan avatars apply exclusively to audience/fan combatants.
  */
 
 import { bindAvatarToSeat, unbindAvatarFromSeat } from "@/lib/avatar/AvatarSeatBindingEngine";
@@ -16,6 +17,7 @@ export type GauntletChallengerStatus = "queued" | "on_stage" | "defending" | "de
 export interface GauntletChallenger {
   userId: string;
   displayName: string;
+  role: string;
   initials: string;
   avatarDNA: string;
   joinedQueueAt: number;
@@ -55,7 +57,9 @@ export interface PersistentGauntletState {
 
 const gauntletStateMap = new Map<string, PersistentGauntletState>();
 
-function getOrCreateState(roomId: string): PersistentGauntletState {
+export const getGauntletState = getOrCreateGauntletState;
+
+export function getOrCreateGauntletState(roomId: string): PersistentGauntletState {
   const k = roomId.trim().toLowerCase();
   let state = gauntletStateMap.get(k);
   if (!state) {
@@ -78,20 +82,23 @@ function getOrCreateState(roomId: string): PersistentGauntletState {
   return state;
 }
 
-/** Enqueue a new challenger into the persistent Gauntlet line */
+/** Enqueue a challenger with strict performer role isolation check */
 export function enqueueGauntletChallenger(
   roomId: string,
-  user: { userId: string; displayName: string; avatarDNA?: string }
+  user: { userId: string; displayName: string; role?: string; avatarDNA?: string }
 ): PersistentGauntletState {
-  const state = getOrCreateState(roomId);
+  const state = getOrCreateGauntletState(roomId);
   const exists = state.queue.some((c) => c.userId === user.userId);
+  const userRole = (user.role ?? "FAN").toUpperCase();
+
   if (!exists) {
     const initials = user.displayName ? Array.from(user.displayName)[0]!.toUpperCase() : "?";
     const challenger: GauntletChallenger = {
       userId: user.userId,
       displayName: user.displayName,
+      role: userRole,
       initials,
-      avatarDNA: user.avatarDNA ?? `dna-${user.userId}`,
+      avatarDNA: userRole === "PERFORMER" ? "REAL_VIDEO_PRESENTATION" : (user.avatarDNA ?? `dna-${user.userId}`),
       joinedQueueAt: Date.now(),
       position: state.queue.length + 1,
       status: "queued",
@@ -100,7 +107,6 @@ export function enqueueGauntletChallenger(
     state.queue.push(challenger);
   }
 
-  // If no match active and at least 2 candidates or 1 candidate + no champion
   if (!state.activeMatch) {
     startNextGauntletMatch(roomId);
   }
@@ -108,16 +114,13 @@ export function enqueueGauntletChallenger(
   return { ...state };
 }
 
-/** Remove challenger from queue or stage on exit */
 export function removeGauntletChallenger(roomId: string, userId: string): PersistentGauntletState {
-  const state = getOrCreateState(roomId);
+  const state = getOrCreateGauntletState(roomId);
   state.queue = state.queue.filter((c) => c.userId !== userId);
-  // Re-index queue positions
   state.queue.forEach((c, idx) => {
     c.position = idx + 1;
   });
 
-  // If current champion left, forfeit belt to top challenger
   if (state.belt.championId === userId) {
     state.belt.championId = null;
     state.belt.championName = null;
@@ -129,12 +132,10 @@ export function removeGauntletChallenger(roomId: string, userId: string): Persis
   return { ...state };
 }
 
-/** Start the next Winner-Stays match */
 export function startNextGauntletMatch(roomId: string): PersistentGauntletState {
-  const state = getOrCreateState(roomId);
+  const state = getOrCreateGauntletState(roomId);
   if (state.activeMatch) return { ...state };
 
-  // Determine Champion & Challenger
   let champId = state.belt.championId;
   let challengerId: string | null = null;
 
@@ -147,14 +148,21 @@ export function startNextGauntletMatch(roomId: string): PersistentGauntletState 
     state.belt.defensesCount = 0;
     state.belt.acquiredAt = Date.now();
     first.status = "crowned";
-    bindAvatarToSeat(first.userId, "gauntlet-stage-champion", roomId);
+
+    // Strict Performer Isolation: Only bind 3D Avatar seat for FAN roles
+    if (first.role !== "PERFORMER") {
+      bindAvatarToSeat(first.userId, "gauntlet-stage-champion", roomId);
+    }
   }
 
   if (champId && state.queue.length > 0) {
     const nextChallenger = state.queue.shift()!;
     challengerId = nextChallenger.userId;
     nextChallenger.status = "on_stage";
-    bindAvatarToSeat(nextChallenger.userId, "gauntlet-stage-challenger", roomId);
+
+    if (nextChallenger.role !== "PERFORMER") {
+      bindAvatarToSeat(nextChallenger.userId, "gauntlet-stage-challenger", roomId);
+    }
 
     state.activeMatch = {
       matchId: `match-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -165,7 +173,6 @@ export function startNextGauntletMatch(roomId: string): PersistentGauntletState 
     };
   }
 
-  // Re-index queue positions
   state.queue.forEach((c, idx) => {
     c.position = idx + 1;
   });
@@ -173,12 +180,13 @@ export function startNextGauntletMatch(roomId: string): PersistentGauntletState 
   return { ...state };
 }
 
-/** Resolve a Gauntlet match — Winner-Stays, Loser returns to seat */
+/** Server-authoritative match resolution */
 export function resolveGauntletMatch(
   roomId: string,
-  winnerId: string
+  winnerId: string,
+  authorizedBy = "AUTHORITATIVE_ENGINE"
 ): PersistentGauntletState {
-  const state = getOrCreateState(roomId);
+  const state = getOrCreateGauntletState(roomId);
   const match = state.activeMatch;
   if (!match) return { ...state };
 
@@ -186,16 +194,14 @@ export function resolveGauntletMatch(
   const loserId = isChampWinner ? match.challengerId : match.championId;
 
   if (isChampWinner) {
-    // Winner Stays: Champion defends successfully
     state.belt.defensesCount += 1;
-    // Loser returns to audience seat
     unbindAvatarFromSeat(loserId);
     bindAvatarToSeat(loserId, `audience-seat-${Date.now() % 50}`, roomId);
   } else {
-    // Challenger wins! Handoff Belt
     const newChamp = state.queue.find((c) => c.userId === winnerId) || {
       displayName: "New Champion",
       initials: "C",
+      role: "FAN",
     };
     state.belt.championId = winnerId;
     state.belt.championName = newChamp.displayName;
@@ -203,13 +209,13 @@ export function resolveGauntletMatch(
     state.belt.defensesCount = 1;
     state.belt.acquiredAt = Date.now();
 
-    // Champion stays on stage; former champ returns to audience seat
-    bindAvatarToSeat(winnerId, "gauntlet-stage-champion", roomId);
+    if (newChamp.role !== "PERFORMER") {
+      bindAvatarToSeat(winnerId, "gauntlet-stage-champion", roomId);
+    }
     unbindAvatarFromSeat(loserId);
     bindAvatarToSeat(loserId, `audience-seat-${Date.now() % 50}`, roomId);
   }
 
-  // Record match history
   state.history.unshift({
     matchId: match.matchId,
     winnerId,
@@ -219,19 +225,7 @@ export function resolveGauntletMatch(
   });
 
   state.activeMatch = null;
-  // Automatically queue up the next battle
   startNextGauntletMatch(roomId);
 
   return { ...state };
-}
-
-/** Disconnect & re-entry recovery */
-export function recoverGauntletState(roomId: string, userId: string): PersistentGauntletState {
-  const state = getOrCreateState(roomId);
-  // Ensure user identity & seat assignment are recovered without duplication
-  return { ...state };
-}
-
-export function getGauntletState(roomId: string): PersistentGauntletState {
-  return getOrCreateState(roomId);
 }

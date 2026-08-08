@@ -212,7 +212,17 @@ export default function BotObservationGrid() {
 
         {state === "ready" && (
           <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,360px) 1fr", gap: 14, alignItems: "start" }}>
-            <div style={{ display: "grid", gap: 8, maxHeight: "70vh", overflowY: "auto" }}>
+            <div style={{ position: "relative", display: "flex", flexDirection: "column" }}>
+              <div
+                data-bot-list-container
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  maxHeight: "calc(100vh - 340px)",
+                  overflowY: "auto",
+                  paddingRight: 4,
+                }}
+              >
               {visible.length === 0 ? (
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", padding: 16 }}>No bots match this filter.</p>
               ) : (
@@ -250,6 +260,7 @@ export default function BotObservationGrid() {
                   );
                 })
               )}
+            </div>
             </div>
 
             <div style={{ border: "1px solid rgba(0,255,255,0.25)", borderRadius: 14, background: "rgba(0,0,0,0.4)", padding: 16, minHeight: 360 }}>
