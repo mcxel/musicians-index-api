@@ -292,7 +292,31 @@ export default function PersistentMediaInteractionDock({
                   >
                     ⛶
                   </button>
-                  <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontWeight: 700 }}>{progressLabel}</span>
+                  <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontWeight: 700, minWidth: 52 }}>
+                    {progressLabel}
+                  </span>
+                  {nowPlaying?.progress != null ? (
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: 48,
+                        maxWidth: 72,
+                        height: 3,
+                        borderRadius: 2,
+                        background: "rgba(255,255,255,0.12)",
+                        overflow: "hidden",
+                      }}
+                      aria-hidden
+                    >
+                      <div
+                        style={{
+                          width: `${Math.min(100, Math.max(0, nowPlaying.progress * 100))}%`,
+                          height: "100%",
+                          background: `linear-gradient(90deg, ${theme.primary}, ${theme.secondary})`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 20, flexShrink: 0 }} aria-hidden>
@@ -460,9 +484,12 @@ export default function PersistentMediaInteractionDock({
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: "50%",
-                    border: `1px solid ${em.accent}55`,
-                    background: "rgba(255,255,255,0.04)",
+                    borderRadius: isPerformer ? 8 : "50%",
+                    border: `1px solid ${em.accent}${isPerformer ? "cc" : "55"}`,
+                    background: isPerformer
+                      ? `linear-gradient(145deg, ${em.accent}33, rgba(0,0,0,0.5))`
+                      : "rgba(255,255,255,0.04)",
+                    boxShadow: isPerformer ? `0 0 10px ${em.accent}44` : "none",
                     fontSize: 16,
                     cursor: "pointer",
                   }}

@@ -89,8 +89,8 @@ type OverseerFlightDeckProps = {
 const DECK_GAP = 16;
 const RAIL_EXPANDED = 268;
 const RAIL_COLLAPSED = 74;
-/** First-paint cap before ResizeObserver measures monitors — breaks rail/monitor circular stretch. */
-const OPS_STAGE_HEIGHT_FALLBACK = "min(calc(100vh - 280px), 820px)";
+/** First-paint cap before ResizeObserver measures monitors — avoid inflating ops row before measure. */
+const OPS_STAGE_HEIGHT_FALLBACK = "auto";
 const BOT_SCROLL_STEP = 48;
 
 function gemStyle(active = false): CSSProperties {
@@ -372,6 +372,26 @@ export default function OverseerFlightDeck({
     centerColHeight != null ? `${centerColHeight}px` : OPS_STAGE_HEIGHT_FALLBACK;
 
   useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (centerColHeight == null) return;
+    const frame = requestAnimationFrame(() => {
+      const monitor = document.querySelector("[data-monitor-stage-boundary]");
+      const leftRail = document.querySelector('[data-rail-boundary="left"]');
+      if (!monitor || !leftRail) return;
+      const monitorBottom = monitor.getBoundingClientRect().bottom;
+      const leftBottom = leftRail.getBoundingClientRect().bottom;
+      const deltaPx = Math.round(Math.abs(monitorBottom - leftBottom));
+      console.info("[OverseerFlightDeck] rail/monitor bottom alignment", {
+        monitorBottom,
+        leftRailBottom: leftBottom,
+        deltaPx,
+        ok: deltaPx <= 2,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [centerColHeight, leftCollapsed, rightCollapsed, fullscreenPanel]);
+
+  useEffect(() => {
     const el = leftRailScrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(recomputeLeftRailScrollMax);
@@ -624,7 +644,7 @@ export default function OverseerFlightDeck({
           style={{
             flex: 1,
             minWidth: 0,
-            alignSelf: "stretch",
+            alignSelf: "flex-start",
             height: "auto",
             overflowX: "hidden",
             paddingRight: 2,
@@ -783,6 +803,73 @@ export default function OverseerFlightDeck({
               />
             )}
           </div>
+        </div>
+      );
+    }
+
+    if (isLeft && !leftCollapsed) {
+      const botIndex = visible.findIndex((p) => p.id === "bot-roster");
+      const before = botIndex >= 0 ? visible.slice(0, botIndex) : visible;
+      const botPanel = botIndex >= 0 ? visible[botIndex] : null;
+      const after = botIndex >= 0 ? visible.slice(botIndex + 1) : [];
+
+      return (
+        <div
+          data-col={rail}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            minWidth: 0,
+            flex: 1,
+            minHeight: 0,
+            height: "100%",
+            maxHeight: "100%",
+            overflow: "hidden",
+            paddingRight: 2,
+          }}
+        >
+          {before.length > 0 ? (
+            <div
+              ref={leftRailScrollRef}
+              onScroll={(e) => setLeftRailScrollValue(e.currentTarget.scrollTop)}
+              style={{
+                flexShrink: 0,
+                maxHeight: "26%",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {before.map((panel) =>
+                renderPanelCanister(panel, false, false, undefined, true),
+              )}
+            </div>
+          ) : null}
+          {botPanel
+            ? renderPanelCanister(botPanel, false, false, undefined, true)
+            : null}
+          {after.length > 0 ? (
+            <div
+              style={{
+                flexShrink: 0,
+                maxHeight: "22%",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {after.map((panel) =>
+                renderPanelCanister(panel, false, false, undefined, true),
+              )}
+            </div>
+          ) : null}
         </div>
       );
     }
@@ -1234,8 +1321,9 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                height: stageCapCss,
-                maxHeight: stageCapCss,
+                ...(stageCapCss !== "auto"
+                  ? { height: stageCapCss, maxHeight: stageCapCss }
+                  : {}),
               }}
             >
               <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%" }}>
@@ -1325,8 +1413,9 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                height: stageCapCss,
-                maxHeight: stageCapCss,
+                ...(stageCapCss !== "auto"
+                  ? { height: stageCapCss, maxHeight: stageCapCss }
+                  : {}),
               }}
             >
               <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>

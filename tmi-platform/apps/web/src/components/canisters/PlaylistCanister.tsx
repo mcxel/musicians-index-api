@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { sanitizePublicDisplayLabel } from "@/lib/auth/resolveSessionIdentity";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
 import {
+  sendPlaybackCommand,
   subscribePlaybackCommands,
   syncNowPlaying,
 } from "@/lib/playlists/commandCenterPlaybackBus";
@@ -52,6 +53,8 @@ interface PlaylistCanisterProps {
   isOwner?: boolean;
   role?: "fan" | "performer";
   initialPlaylistId?: string | null;
+  /** compact = under-dock library strip; full = 3-column canister deck */
+  layout?: "compact" | "full";
 }
 
 const CARD_ACCENTS = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", "#FF0055"];
@@ -70,7 +73,9 @@ export function PlaylistCanister({
   isOwner = false,
   role = "fan",
   initialPlaylistId = null,
+  layout = "full",
 }: PlaylistCanisterProps) {
+  const isCompact = layout === "compact";
   const [playlists, setPlaylists] = useState<ApiPlaylistSummary[]>([]);
   const [loadingPlaylists, setLoadingPlaylists] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaylistId);
@@ -334,6 +339,131 @@ export function PlaylistCanister({
       targetMonitorId: "mon-a",
     });
   };
+
+  if (isCompact) {
+    return (
+      <div
+        data-playlist-canister-compact
+        style={{
+          background: "rgba(5,3,16,0.88)",
+          border: `1px solid ${accentColor}55`,
+          borderRadius: 10,
+          padding: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          color: "#fff",
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: accentColor }}>
+            {libraryHeader}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist} style={actionBtn("#00FF88")}>
+              {creatingPlaylist ? "…" : "+ PLAYLIST"}
+            </button>
+            <button type="button" onClick={() => sendPlaybackCommand("open-full")} style={actionBtn("#FFD700")}>
+              EXPAND ⛶
+            </button>
+          </div>
+        </div>
+        {loadingPlaylists ? (
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>Loading playlists…</div>
+        ) : playlists.length === 0 ? (
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>
+            No playlists yet. Create one to start playback in the mini player above.
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+            {playlists.map((pl, i) => {
+              const active = pl.id === selectedId;
+              const accent = CARD_ACCENTS[i % CARD_ACCENTS.length];
+              return (
+                <button
+                  key={pl.id}
+                  type="button"
+                  onClick={() => setSelectedId(pl.id)}
+                  style={{
+                    flexShrink: 0,
+                    minWidth: 120,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: active ? `1px solid ${accent}` : "1px solid rgba(255,255,255,0.12)",
+                    background: active ? `${accent}22` : "rgba(255,255,255,0.03)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ fontSize: 10, fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {pl.name}
+                  </div>
+                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                    {pl._count?.items ?? 0} tracks
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 120, overflowY: "auto" }}>
+          {loadingTracks ? (
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Loading tracks…</div>
+          ) : tracks.length === 0 ? (
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Select a playlist with tracks to play.</div>
+          ) : (
+            tracks.slice(0, 8).map((track, idx) => (
+              <button
+                key={track.id}
+                type="button"
+                onClick={() => {
+                  setCurrentTrackIndex(idx);
+                  setIsPlaying(true);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  padding: "5px 8px",
+                  borderRadius: 6,
+                  border:
+                    idx === currentTrackIndex
+                      ? `1px solid ${accentColor}88`
+                      : "1px solid rgba(255,255,255,0.06)",
+                  background: idx === currentTrackIndex ? `${accentColor}18` : "transparent",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {track.title}
+                </span>
+                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", flexShrink: 0 }}>
+                  {idx === currentTrackIndex && isPlaying ? "▶" : ""}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+        {activeTrack?.audioUrl ? (
+          <audio
+            ref={audioRef}
+            key={activeTrack.audioUrl}
+            src={activeTrack.audioUrl}
+            controls={false}
+            autoPlay={isPlaying}
+            style={{ display: "none" }}
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div

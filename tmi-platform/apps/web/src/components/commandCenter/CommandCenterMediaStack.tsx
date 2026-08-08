@@ -156,6 +156,8 @@ interface CommandCenterMediaStackProps {
   /** chrome = Fan/Performer hubs (prototype); gold unused here (Observatory owns gold). */
   bezelVariant?: "chrome" | "gold";
   seriesLabel?: string;
+  /** When true, stack height follows dual monitors (no 100% stretch in hub grid). */
+  naturalHeight?: boolean;
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -404,6 +406,7 @@ export default function CommandCenterMediaStack({
   footer,
   bezelVariant = "chrome",
   seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
+  naturalHeight = false,
 }: CommandCenterMediaStackProps) {
   const [swapOrder, setSwapOrder] = useState(false);
   const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
@@ -687,9 +690,10 @@ export default function CommandCenterMediaStack({
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "auto",
+        height: naturalHeight ? "auto" : "100%",
+        minHeight: naturalHeight ? 0 : 0,
+        flexShrink: naturalHeight ? 0 : undefined,
+        overflow: naturalHeight ? "visible" : "auto",
         background: "#010308",
         padding: 8,
         ...(isFullscreen ? { background: "#050510", padding: 16 } : {}),

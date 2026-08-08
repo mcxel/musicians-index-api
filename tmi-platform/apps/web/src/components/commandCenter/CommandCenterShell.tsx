@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
+import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
@@ -29,6 +30,7 @@ import {
 import {
   type CommandCenterPanelId,
   type CommandCenterRole,
+  isFanOnlyPanel,
 } from "./commandCenterRegistry";
 import { FAN_AD_ZONE, FAN_DRAWER_LAUNCHERS } from "./FanCommandDrawerRegistry";
 import { PERFORMER_DRAWER_LAUNCHERS } from "./PerformerCommandDrawerRegistry";
@@ -116,9 +118,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     return list.filter((id) => !ocPrimaryIds.has(id));
   }, [role, ocPrimaryIds]);
 
-  const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(
-    () => drawerStateStore.getLastPanel(role)
-  );
+  const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(() => {
+    const last = drawerStateStore.getLastPanel(role);
+    if (last && role === "performer" && isFanOnlyPanel(last)) return null;
+    return last;
+  });
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   /** Split-button quick panel: left segment opens this lightweight popover,
    *  right chevron opens the same module's full drawer via onOpenFull. */
@@ -592,7 +596,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           style={{
             display: "grid",
             gridTemplateColumns: "230px minmax(0, 1fr) 300px",
-            minHeight: 520,
+            alignItems: "start",
           }}
         >
           {/* Left rail */}
@@ -682,6 +686,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <CommandCenterMediaStack
               slots={mediaSlots}
               bezelVariant="chrome"
+              naturalHeight
               seriesLabel={
                 role === "performer"
                   ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
@@ -703,6 +708,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   : () => openPanel("media_locker")
               }
               onOpenModule={(mod) => openPanel(mod)}
+            />
+            <CommandCenterPlaylistBand
+              role={role}
+              userId={userId}
+              displayName={resolvedDisplayName}
+              expanded={activePanel === "playlist"}
+              initialPlaylistId={deepLinkPlaylistId}
+              onCollapse={closeDrawer}
             />
           </div>
 

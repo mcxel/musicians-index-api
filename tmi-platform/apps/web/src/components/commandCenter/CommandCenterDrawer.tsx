@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useMemo, useEffect, useRef, type CSSProperties } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
-import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
@@ -39,8 +38,6 @@ import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
 import AchievementCenterDrawer from "@/components/drawers/AchievementCenterDrawer";
 import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCenterDrawer";
 import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
-import PerformerPerformanceAnalyticsDrawer from "@/components/drawers/PerformerPerformanceAnalyticsDrawer";
-import CommunicationActivityHubDrawer from "@/components/drawers/CommunicationActivityHubDrawer";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { wireProgressionCommandBus } from "@/lib/progression/ProgressionEngine";
@@ -341,7 +338,8 @@ export default function CommandCenterDrawer({
     activePerformer?.name ?? contextPerformer?.name ?? displayName;
   const contextSlug = activePerformer?.slug ?? contextPerformer?.slug ?? contextPerformerId ?? undefined;
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
-  const open = appearanceOpen || activePanel != null;
+  const open =
+    appearanceOpen || (activePanel != null && activePanel !== "playlist");
 
   // ── Phase 2B: progression + ceremony + relationship hooks ─────────────────
   useEffect(() => {
@@ -557,19 +555,6 @@ export default function CommandCenterDrawer({
               : `yopho-${userId}`
           }
         />
-      ) : null}
-
-      {activePanel === "playlist" ? (
-        <div style={{ padding: 12 }}>
-          <PlaylistCanister
-            entityId={userId}
-            entityName={displayName}
-            isOwner
-            role={role === "performer" ? "performer" : "fan"}
-            accentColor={theme.primary}
-            initialPlaylistId={initialPlaylistId}
-          />
-        </div>
       ) : null}
 
       {activePanel === "memory" ? (
@@ -907,24 +892,6 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {/* ── High-Fidelity Cyberpunk Drawers (100% Mockup Matched) ─────── */}
-      {activePanel === "analytics" ? (
-        <PerformerPerformanceAnalyticsDrawer
-          open={true}
-          onClose={onClose}
-          performerId={contextPerformerId ?? userId}
-          displayName={contextDisplayName}
-        />
-      ) : null}
-
-      {/* Rule 26: no performer sponsor-management chrome. Fan sponsors surface is SponsorsStubFan above. */}
-      {activePanel === "messaging" && role === "fan" ? (
-        <CommunicationActivityHubDrawer
-          open={true}
-          onClose={onClose}
-          displayName={contextDisplayName}
-        />
-      ) : null}
-
       {activePanel === "tmi_store" ? (
         <ShopDrawerPanel
           role={role}
