@@ -30,7 +30,7 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
   useEffect(() => {
     let mounted = true;
     let delayMs = 30_000;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: number | null = null;
 
     const schedule = (ms: number) => {
       if (timer) window.clearTimeout(timer);
