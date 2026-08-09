@@ -8,7 +8,7 @@
  *   - CHAT: Always-on community MessagingCanister (no live-room gate)
  *   - ROOM: Active venue room metadata
  *   - PEOPLE: Session identity (honest — full roster not wired)
- *   - COMMUNITY: Honest empty until platform feed exists
+ *   - COMMUNITY: Platform-wide public feed (real, one shared Conversation row)
  *   - SUPPORT: Observatory diagnostic reporting
  */
 
@@ -17,6 +17,7 @@ import { useTheme } from "@/lib/design/ThemeEngine";
 import { supportDiagnosticsEngine } from "@/lib/support/SupportDiagnosticsEngine";
 import { tmiSoundRegistry } from "@/lib/audio/TmiSoundRegistry";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import CommunityFeedPanel from "@/components/messaging/CommunityFeedPanel";
 
 export type OperationsTab = "CHAT" | "ROOM" | "PEOPLE" | "COMMUNITY" | "SUPPORT";
 
@@ -154,13 +155,11 @@ export default function OperationsSidebar({
 
         {/* COMMUNITY TAB — Rule 20 honest empty (no fake feed claims) */}
         {activeTab === "COMMUNITY" && (
-          <div style={{ fontSize: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>COMMUNITY</div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", padding: "12px 0", textAlign: "center", lineHeight: 1.5 }}>
-              No platform-wide community feed is wired yet.
-              <br />
-              Use CHAT to message the community anytime.
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 800, letterSpacing: "0.06em" }}>
+              PLATFORM-WIDE — everyone on TMI sees this
             </div>
+            <CommunityFeedPanel />
           </div>
         )}
 
