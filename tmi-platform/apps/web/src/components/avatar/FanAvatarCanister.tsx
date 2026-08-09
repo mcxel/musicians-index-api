@@ -18,6 +18,7 @@ const AvatarViewer = dynamic(
 );
 
 export interface FanAvatarCanisterProps {
+  pure3dAvatarOnly?: boolean;
   userId: string;
   displayName: string;
   role: string;

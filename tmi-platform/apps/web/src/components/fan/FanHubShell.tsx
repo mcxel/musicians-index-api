@@ -7,6 +7,7 @@ import { getSmartRoom } from "@/lib/rooms/SmartRoomRouter";
 import type { FanSubscriptionTier } from "./FanTierSkinEngine";
 import SplitActionButton from "@/components/ui/SplitActionButton";
 import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
+import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
 
 
 type FanHubShellProps = {
@@ -58,10 +59,13 @@ const TRACKS = [
 // useLiveRoomData below). A room with no matching live session stays
 // honestly offline rather than claiming a fabricated viewer count.
 const ROOM_SHELLS = [
-  { id: "main-stage",     name: "Main Stage Room",  genre: "Hip-Hop · Live Sets",    icon: "🎤", featured: true,  slug: "main-stage",     categories: ["live", "concert"] },
-  { id: "battle-a",       name: "Battle Arena A",   genre: "Rap Battle · Open",      icon: "⚔️", featured: false, slug: "battle-arena-a", categories: ["battle"]          },
-  { id: "cypher-lounge",  name: "Cypher Lounge",    genre: "Open Mic · All genres",  icon: "🎤", featured: false, slug: "cypher-lounge",  categories: ["cypher"]          },
-  { id: "chill-zone",     name: "Chill Zone",       genre: "R&B · Neo Soul",         icon: "🎶", featured: false, slug: "chill-zone",     categories: [] as string[]       },
+  { id: "main-stage",             name: "Main Stage Room",          genre: "Hip-Hop · Live Sets",    icon: "🎤", featured: true,  slug: "main-stage",             categories: ["live", "concert"] },
+  { id: "battle-a",               name: "Battle Arena A",           genre: "Rap Battle · Open",      icon: "⚔️", featured: false, slug: "battle-arena-a",         categories: ["battle"]          },
+  { id: "cypher-lounge",          name: "Cypher Lounge",            genre: "Open Mic · All genres",  icon: "🎤", featured: false, slug: "cypher-lounge",          categories: ["cypher"]          },
+  { id: "stadium-concert-hall",   name: "3D Stadium Concert Hall",  genre: "120,000 sq ft Stadium",  icon: "🏟️", featured: true,  slug: "stadium-concert-hall",   categories: ["concert", "stadium"] },
+  { id: "amphitheater-arena",     name: "3D Amphitheater Arena",    genre: "45,000 sq ft Arena",     icon: "🏛️", featured: false, slug: "amphitheater-arena",     categories: ["arena"]           },
+  { id: "monday-night-stage",     name: "3D Monday Night Stage",    genre: "Flagship Show Stage",    icon: "🌟", featured: false, slug: "monday-night-stage",     categories: ["show", "live"]    },
+  { id: "chill-zone",             name: "Chill Zone",               genre: "R&B · Neo Soul",         icon: "🎶", featured: false, slug: "chill-zone",             categories: [] as string[]       },
 ];
 
 interface LiveApiSession { category: string; viewerCount: number; }
@@ -133,6 +137,8 @@ const css = `
 `;
 
 export default function FanHubShell({
+  // Hook for Quick Live Lobby Wall pop-up
+
   fanSlug,
   displayName,
   tier,
@@ -145,6 +151,7 @@ export default function FanHubShell({
   const [floatId, setFloatId] = useState(0);
   const [tipSent, setTipSent] = useState(false);
   const [message, setMessage] = useState("");
+  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [roomFilter, setRoomFilter] = useState("ALL");
@@ -219,6 +226,7 @@ export default function FanHubShell({
           <SplitActionButton presetKey="invite-fans" size="sm" />
           <SplitActionButton presetKey="uploads" size="sm" />
           {tmiBtn("☠ TRIVIA", "/fan/trivia")}
+          {tmiBtn("🌐 QUICK LOBBY", undefined, openLiveLobbyWalls, "cyan")}
           {tier !== "free" && tmiBtn("⭐ UPGRADED", undefined, undefined, "gold")}
         </div>
       </div>
@@ -329,6 +337,19 @@ export default function FanHubShell({
 
           {/* RIGHT COLUMN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* 3D Fan Avatar Canister */}
+            {panel(
+              <div style={{ padding: 8 }}>
+                <FanAvatarCanister
+                  userId={fanSlug || "fan-user"}
+                  displayName={displayName}
+                  role="FAN"
+                  tierColor={(tier === "gold-platinum" || tier === "diamond") ? "#FFD700" : "#00FFFF"}
+                />
+              </div>,
+              { marginBottom: 6 }
+            )}
+
             {/* Cosmetic Shop */}
             {panel(
               <div style={{ padding: 7 }}>
@@ -478,7 +499,28 @@ export default function FanHubShell({
         {/* FAN LOBBY WALL */}
         <div style={{ marginBottom: 7 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-            <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 900, color: C.red, textTransform: "uppercase", letterSpacing: "0.08em" }}>🎭 LIVE LOBBY</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 900, color: C.red, textTransform: "uppercase", letterSpacing: "0.08em" }}>🎭 LIVE LOBBY</div>
+              <button
+                type="button"
+                onClick={() => openLiveLobbyWalls()}
+                style={{
+                  padding: "4px 10px",
+                  background: "rgba(0,229,255,0.12)",
+                  border: `1px solid ${C.cyan}`,
+                  borderRadius: 4,
+                  color: C.cyan,
+                  fontFamily: "'Exo 2', sans-serif",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                }}
+              >
+                🌐 OPEN LIVE LOBBY WALL
+              </button>
+            </div>
             <div style={{ display: "flex", gap: 5 }}>
               {["ALL ROOMS", "HIP-HOP", "BATTLES", "CHILL"].map((f) => (
                 <button key={f} type="button" onClick={() => setRoomFilter(f)} style={{ padding: "3px 8px", background: roomFilter === f ? "rgba(230,48,0,.18)" : "transparent", border: `1px solid ${C.red}`, borderBottom: roomFilter === f ? `2px solid ${C.red}` : undefined, borderRadius: 4, color: roomFilter === f ? C.gold : C.dim, fontFamily: "'Exo 2', sans-serif", fontSize: 8, fontWeight: 700, cursor: "pointer", letterSpacing: "0.06em" }}>{f}</button>
