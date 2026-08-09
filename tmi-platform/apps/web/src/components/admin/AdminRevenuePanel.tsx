@@ -42,7 +42,7 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
     async function poll() {
       try {
         const controller = new AbortController();
-        const timeout = window.setTimeout(() => controller.abort(), 12_000);
+        const timeout: any = window.setTimeout(() => controller.abort(), 12_000);
         const res = await fetch("/api/admin/revenue", { cache: "no-store", signal: controller.signal });
         window.clearTimeout(timeout);
         if (!res.ok) throw new Error(`revenue ${res.status}`);
