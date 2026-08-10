@@ -69,6 +69,50 @@ export interface PortraitLayer {
   depthBlur?: number;
 }
 
+/** CSS / motion overlay effects on portrait preview (instant, reversible). */
+export type YoPhoPortraitOverlayEffectId =
+  | 'neon_pulse'
+  | 'film_burn'
+  | 'smoke'
+  | 'light_sweep'
+  | 'glitch'
+  | 'shake'
+  | 'fade'
+  | 'drift'
+  | 'zoom'
+  | 'rotate'
+  | 'particles'
+  | 'particle_dissolve';
+
+export interface YoPhoPortraitEffectParams {
+  intensity: number;
+  speed: number;
+  durationSec: number;
+  loop: boolean;
+  color: string;
+  direction: 'left' | 'right' | 'up' | 'down';
+}
+
+export interface YoPhoPortraitEffectLayer {
+  effectId: YoPhoPortraitOverlayEffectId;
+  params: YoPhoPortraitEffectParams;
+  enabled: boolean;
+}
+
+export function defaultPortraitEffectParams(
+  partial?: Partial<YoPhoPortraitEffectParams>,
+): YoPhoPortraitEffectParams {
+  return {
+    intensity: 65,
+    speed: 1,
+    durationSec: 6,
+    loop: true,
+    color: '#00E5FF',
+    direction: 'right',
+    ...partial,
+  };
+}
+
 export interface YoPhoPortraitBlueprint {
   id: string;
   title: string;
@@ -89,6 +133,10 @@ export interface YoPhoPortraitBlueprint {
   lightingDirection: 'top-left' | 'top-right' | 'center-stage' | 'bottom-up';
   isAnimated: boolean;
   exportResolution: 'standard' | 'hd' | '4k' | '4k_tv';
+  /** Toggleable motion/CSS overlay stack (preview + master after Apply). */
+  portraitEffects?: YoPhoPortraitEffectLayer[];
+  /** Card animation loop length for timeline scrubber. */
+  previewDurationSec?: number;
   updatedAt: string;
 }
 
@@ -340,6 +388,44 @@ export function createDefaultYoPhoBlueprint(
     lightingDirection: 'top-left',
     isAnimated: true,
     exportResolution: 'hd',
+    portraitEffects: [],
+    previewDurationSec: 6,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function clonePortraitBlueprint(bp: YoPhoPortraitBlueprint): YoPhoPortraitBlueprint {
+  return JSON.parse(JSON.stringify(bp)) as YoPhoPortraitBlueprint;
+}
+
+export function upsertPortraitEffect(
+  blueprint: YoPhoPortraitBlueprint,
+  effectId: YoPhoPortraitOverlayEffectId,
+  params?: Partial<YoPhoPortraitEffectParams>,
+): YoPhoPortraitBlueprint {
+  const list = [...(blueprint.portraitEffects ?? [])];
+  const idx = list.findIndex((e) => e.effectId === effectId);
+  const nextParams = defaultPortraitEffectParams({
+    ...(idx >= 0 ? list[idx]!.params : {}),
+    ...params,
+  });
+  const layer: YoPhoPortraitEffectLayer = {
+    effectId,
+    params: nextParams,
+    enabled: true,
+  };
+  if (idx >= 0) list[idx] = layer;
+  else list.push(layer);
+  return { ...blueprint, portraitEffects: list, updatedAt: new Date().toISOString() };
+}
+
+export function removePortraitEffect(
+  blueprint: YoPhoPortraitBlueprint,
+  effectId: YoPhoPortraitOverlayEffectId,
+): YoPhoPortraitBlueprint {
+  return {
+    ...blueprint,
+    portraitEffects: (blueprint.portraitEffects ?? []).filter((e) => e.effectId !== effectId),
     updatedAt: new Date().toISOString(),
   };
 }

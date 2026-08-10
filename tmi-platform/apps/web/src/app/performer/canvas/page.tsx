@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import YoPhoLivingCanvasOS from "@/components/yopho/YoPhoLivingCanvasOS";
+import {
+  canAccessPerformerLivingCanvas,
+  normalizeSessionRole,
+  yoPhoCanvasPathForRole,
+} from "@/lib/yopho/yophoCanvasAccess";
 import {
   YOPHO_SKIN_CATALOG,
   type YoPhoSkin,
@@ -68,6 +73,7 @@ export default function PerformerYoPhoCanvasPage() {
   const [canvasPublished, setCanvasPublished] = useState(true);
   const [showLiveBadge, setShowLiveBadge]     = useState(false);
   const [saveStatus, setSaveStatus]            = useState<string | null>(null);
+  const redirectOnce = useRef(false);
 
   // ── Auth check ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -75,10 +81,13 @@ export default function PerformerYoPhoCanvasPage() {
       .then((r) => r.json())
       .then((d: { authenticated?: boolean; user?: SessionUser }) => {
         if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
-        const role = d.user.role?.toUpperCase();
-        if (role !== "PERFORMER" && role !== "BAND") {
-          // Fans have their own canvas page
-          router.replace("/fan/canvas");
+        const role = normalizeSessionRole(d.user.role);
+        if (!canAccessPerformerLivingCanvas(role)) {
+          if (!redirectOnce.current) {
+            redirectOnce.current = true;
+            const target = yoPhoCanvasPathForRole(role) ?? "/onboarding";
+            if (target !== "/performer/canvas") router.replace(target);
+          }
           return;
         }
         setUser(d.user);

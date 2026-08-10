@@ -4,12 +4,18 @@ import React from 'react';
 import type { YoPhoPortraitBlueprint, BlendMode } from '@/lib/yopho/YoPhoPortraitEngine';
 import { OBJECT_MASK_CATALOG } from '@/lib/yopho/YoPhoPortraitEngine';
 import YoPhoDepthParallaxCanvas, { createDepthLayerPair } from './YoPhoDepthParallaxCanvas';
+import YoPhoPortraitEffectOverlay from './YoPhoPortraitEffectOverlay';
 
 interface YoPhoPortraitStageCanvasProps {
   blueprint: YoPhoPortraitBlueprint;
   width?: number | string;
   height?: number | string;
   interactive?: boolean;
+  /** Timeline position for scrubber-linked overlays */
+  timelineSec?: number;
+  playbackPaused?: boolean;
+  /** When true, hide overlay stack (before/after compare) */
+  suppressOverlays?: boolean;
 }
 
 /**
@@ -23,6 +29,9 @@ export default function YoPhoPortraitStageCanvas({
   width = '100%',
   height = 500,
   interactive = true,
+  timelineSec = 0,
+  playbackPaused = false,
+  suppressOverlays = false,
 }: YoPhoPortraitStageCanvasProps) {
   const {
     mode,
@@ -340,6 +349,15 @@ export default function YoPhoPortraitStageCanvas({
           </div>
         )}
       </div>
+
+      {!suppressOverlays && (blueprint.portraitEffects?.length ?? 0) > 0 ? (
+        <YoPhoPortraitEffectOverlay
+          layers={blueprint.portraitEffects ?? []}
+          timelineSec={timelineSec}
+          durationSec={blueprint.previewDurationSec ?? 6}
+          paused={playbackPaused}
+        />
+      ) : null}
 
       {/* ── Layer 3: Interactive Title Badge ── */}
       <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 5, background: 'rgba(4,2,12,0.85)', backdropFilter: 'blur(10px)', border: `1px solid ${colorPalette.primaryAccent}66`, borderRadius: 8, padding: '4px 12px' }}>

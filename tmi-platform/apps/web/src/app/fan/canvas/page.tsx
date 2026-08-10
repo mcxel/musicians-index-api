@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -10,7 +10,12 @@ import {
   type YoPhoPortraitBlueprint,
   type SubscriptionPortraitEntitlement,
 } from "@/lib/yopho/YoPhoPortraitEngine";
-import YoPhoPortraitStageCanvas from "@/components/yopho/YoPhoPortraitStageCanvas";
+import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
+import {
+  canAccessFanPortraitCanvas,
+  yoPhoCanvasPathForRole,
+  normalizeSessionRole,
+} from "@/lib/yopho/yophoCanvasAccess";
 
 // Portrait editor is heavy — lazy load after auth resolves
 const YoPhoPortraitEditorDrawer = dynamic(
@@ -53,6 +58,7 @@ export default function FanYoPhoCanvasPage() {
   const [entitlement, setEntitlement]  = useState<SubscriptionPortraitEntitlement | null>(null);
   const [savedEditions, setSavedEditions] = useState<YoPhoPortraitBlueprint[]>([]);
   const [activeEditionIdx, setActiveEditionIdx] = useState(0);
+  const redirectOnce = useRef(false);
 
   // ── Auth check ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -63,9 +69,13 @@ export default function FanYoPhoCanvasPage() {
           router.replace("/auth");
           return;
         }
-        if (d.user.role !== "FAN" && d.user.role !== "fan") {
-          // Performers have their own canvas — redirect
-          router.replace("/performer/canvas");
+        const role = normalizeSessionRole(d.user.role);
+        if (!canAccessFanPortraitCanvas(role)) {
+          if (!redirectOnce.current) {
+            redirectOnce.current = true;
+            const target = yoPhoCanvasPathForRole(role) ?? "/onboarding";
+            if (target !== "/fan/canvas") router.replace(target);
+          }
           return;
         }
         const tier = d.user.tier?.toUpperCase() ?? "FREE";
@@ -302,91 +312,22 @@ export default function FanYoPhoCanvasPage() {
       </div>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 32, flexWrap: "wrap" }}>
+      <div style={{ maxWidth: 1600, margin: "0 auto", padding: "24px 20px 32px" }}>
+        <style>{`
+          @media (max-width: 1100px) {
+            [data-yopho-triple-grid] { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
 
-        {/* LEFT: Active Canvas Preview */}
-        <div style={{ flex: "1 1 480px", minWidth: 320 }}>
-          <div
-            style={{
-              background: "rgba(10,6,26,0.95)",
-              border: `2px solid ${CYAN}33`,
-              borderRadius: 20,
-              overflow: "hidden",
-              boxShadow: `0 0 40px ${CYAN}18`,
-            }}
-          >
-            {/* Canvas header */}
-            <div
-              style={{
-                padding: "14px 20px",
-                borderBottom: `1px solid rgba(255,255,255,0.08)`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                background: "rgba(5,3,15,0.9)",
-              }}
-            >
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 900, color: CYAN, letterSpacing: "0.1em" }}>
-                  ACTIVE EDITION
-                </span>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-                  {blueprint.mode.replace(/_/g, " ").toUpperCase()} · {blueprint.texturePreset.replace(/_/g, " ").toUpperCase()}
-                </div>
-              </div>
-              <button
-                onClick={() => setEditorOpen(true)}
-                style={{
-                  background: `${CYAN}22`,
-                  border: `1px solid ${CYAN}`,
-                  borderRadius: 8,
-                  padding: "6px 14px",
-                  color: CYAN,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  cursor: "pointer",
-                }}
-              >
-                ✏️ EDIT
-              </button>
-            </div>
+        <YoPhoTripleStageStudio
+          master={blueprint}
+          onMasterChange={setBlueprint}
+          onSaveEdition={handleSaveBlueprint}
+          storageKey="tmi_yopho_editions_fan_active"
+        />
 
-            {/* Canvas stage preview */}
-            <div style={{ padding: 20, background: "#030208" }}>
-              <YoPhoPortraitStageCanvas
-                blueprint={blueprint}
-                width="100%"
-                height={420}
-                interactive={false}
-              />
-            </div>
-
-            {/* Canvas metadata */}
-            <div
-              style={{
-                padding: "14px 20px",
-                borderTop: `1px solid rgba(255,255,255,0.06)`,
-                display: "flex",
-                gap: 20,
-                background: "rgba(5,3,15,0.8)",
-              }}
-            >
-              {[
-                { label: "MODE", value: blueprint.mode.replace(/_/g, " ") },
-                { label: "TEXTURE", value: blueprint.texturePreset.replace(/_/g, " ") },
-                { label: "RESOLUTION", value: entitlement.maxResolution.toUpperCase() },
-                { label: "ANIMATED", value: blueprint.isAnimated ? "YES" : "NO" },
-              ].map((meta) => (
-                <div key={meta.label}>
-                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginBottom: 2, letterSpacing: "0.1em" }}>{meta.label}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>{meta.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT: Saved Editions Gallery + Capabilities */}
+        <div style={{ marginTop: 28, display: "flex", gap: 32, flexWrap: "wrap" }}>
+        {/* Editions + capabilities — compact row below triple stage */}
         <div style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* Editions gallery */}
@@ -618,6 +559,7 @@ export default function FanYoPhoCanvasPage() {
               </Link>
             ))}
           </div>
+        </div>
         </div>
       </div>
 
