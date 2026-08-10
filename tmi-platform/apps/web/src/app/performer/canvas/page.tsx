@@ -1,8 +1,5 @@
-import { redirect } from "next/navigation";
+import YoPhoCanvasMount from "@/components/yopho/YoPhoCanvasMount";
 
-/**
- * Legacy full-page living canvas — canonical YoPho is Universal Workspace on Performer Hub.
- */
 export default function PerformerYoPhoCanvasPage() {
-  redirect("/hub/performer?drawer=yopho");
+  return <YoPhoCanvasMount route="/performer/canvas" role="performer" />;
 }

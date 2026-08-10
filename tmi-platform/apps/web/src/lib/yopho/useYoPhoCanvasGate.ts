@@ -8,8 +8,6 @@ import {
   clearYoPhoCanvasRedirectGuard,
   normalizeSessionRole,
   normalizeYoPhoCanvasRole,
-  shouldApplyYoPhoCanvasRedirect,
-  yoPhoHubDeepLink,
   type YoPhoCanvasRoute,
 } from "@/lib/yopho/yophoCanvasAccess";
 
@@ -27,14 +25,21 @@ export interface YoPhoCanvasSessionUser {
 interface GateState {
   loading: boolean;
   user: YoPhoCanvasSessionUser | null;
+  accessDenied: boolean;
+  effectiveRole: string | null;
 }
 
 /**
- * Resolves session + activeRole, applies at most one redirect (loop-safe).
+ * Resolves session + activeRole once. No hub redirects — wrong role shows gate UI on this URL.
  */
 export function useYoPhoCanvasGate(currentPath: YoPhoCanvasRoute): GateState {
   const router = useRouter();
-  const [state, setState] = useState<GateState>({ loading: true, user: null });
+  const [state, setState] = useState<GateState>({
+    loading: true,
+    user: null,
+    accessDenied: false,
+    effectiveRole: null,
+  });
   const decided = useRef(false);
 
   useEffect(() => {
@@ -75,13 +80,14 @@ export function useYoPhoCanvasGate(currentPath: YoPhoCanvasRoute): GateState {
             : canAccessPerformerLivingCanvas(effectiveRole);
 
         if (!allowed) {
-          const hub = yoPhoHubDeepLink(effectiveRole);
-          if (!decided.current && shouldApplyYoPhoCanvasRedirect(currentPath, hub)) {
+          if (!decided.current) {
             decided.current = true;
-            router.replace(hub);
-          } else if (!decided.current) {
-            decided.current = true;
-            router.replace("/hub/fan?drawer=yopho");
+            setState({
+              loading: false,
+              user: null,
+              accessDenied: true,
+              effectiveRole,
+            });
           }
           return;
         }
@@ -94,6 +100,8 @@ export function useYoPhoCanvasGate(currentPath: YoPhoCanvasRoute): GateState {
             ...sessionJson.user,
             role: effectiveRole,
           },
+          accessDenied: false,
+          effectiveRole,
         });
       } catch {
         if (!cancelled) router.replace("/auth");
