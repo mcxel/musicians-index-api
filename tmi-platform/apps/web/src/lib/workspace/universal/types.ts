@@ -65,7 +65,14 @@ export type UniversalWorkspaceId =
   | "media-locker"
   | "sponsors"
   | "notifications"
-  | "achievement-center";
+  | "achievement-center"
+  | "live-destinations"
+  | "room-controls"
+  | "submissions"
+  | "scores"
+  | "marketplace"
+  | "prize-vault"
+  | "championship-center";
 
 export interface UniversalWorkspaceDef {
   id: UniversalWorkspaceId;

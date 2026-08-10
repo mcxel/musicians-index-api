@@ -14,10 +14,6 @@ import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import QuickPanelDock from "@/components/drawers/QuickPanelDock";
-import {
-  digitalQuickPanelFrameStyle,
-  resolveHubQuickPanelPosition,
-} from "@/lib/ui/digitalQuickPanelChrome";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
   type CommandCenterPlaylistCast,
@@ -44,7 +40,7 @@ import {
 } from "@/lib/playlists/PlaylistMonitorCast";
 import { centersForRole } from "@/lib/drawers/operatingCenterRegistry";
 import { drawerStateStore } from "@/lib/drawers/drawerStateStore";
-import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
+import type { ActionId } from "@/lib/os/universalActionRegistry";
 import {
   ActivePerformerProvider,
   useActivePerformer,
@@ -57,6 +53,10 @@ import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
 import UniversalWorkspaceHost from "@/components/workspace/universal/UniversalWorkspaceHost";
 import GlobalErrorBoundary from "@/components/system/GlobalErrorBoundary";
+import {
+  openHubQuickLaunch,
+  isUniversalWorkspaceOpenForModule,
+} from "@/lib/commandCenter/hubQuickLaunch";
 
 interface LiveApiSession {
   userId: string;
@@ -127,18 +127,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     return last;
   });
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  /** Split-button quick panel: left segment opens this lightweight popover,
-   *  right chevron opens the same module's full drawer via onOpenFull. */
   const mediaStageRef = useRef<HTMLDivElement>(null);
-  const [quickPanel, setQuickPanel] = useState<{
-    key: string;
-    label: string;
-    info?: string;
-    accent: string;
-    top: number;
-    left: number;
-    onOpenFull: () => void;
-  } | null>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [featured, setFeatured] = useState<{
@@ -236,6 +225,25 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     setAppearanceOpen(false);
     drawerStateStore.setLastPanel(role, null);
   };
+
+  const launchQuickModule = (moduleId: CommandCenterPanelId, actionId?: ActionId) => {
+    openHubQuickLaunch({
+      moduleId,
+      role,
+      userId,
+      actionId,
+      openDrawer: openPanel,
+      openAppearance: () => {
+        setActivePanel(null);
+        setAppearanceOpen(true);
+        drawerStateStore.setLastPanel(role, null);
+      },
+      closeDrawer,
+    });
+  };
+
+  const isModuleActive = (moduleId: CommandCenterPanelId) =>
+    activePanel === moduleId || isUniversalWorkspaceOpenForModule(moduleId);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,7 +352,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               borderRadius: 4,
             }}
           >
-            {active ? "OPEN" : opts.info}
+            {opts.info}
           </span>
         ) : null}
       </>
@@ -360,126 +368,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       <button key={opts.key} type="button" onClick={opts.onClick} style={style}>
         {inner}
       </button>
-    );
-  };
-
-  /**
-   * Split rail button — same label, two click targets (2026-08-05, Marcel):
-   * left segment (~80%) opens a quick-panel popover; the unlabeled right
-   * chevron (~20%) opens the same module's full drawer. No renaming — it's
-   * the same button, just split into two actions.
-   */
-  const splitRailBtn = (opts: {
-    key: string;
-    panelKey: string;
-    label: string;
-    info?: string;
-    active?: boolean;
-    accent?: string;
-    onOpenFull: () => void;
-  }) => {
-    const active = Boolean(opts.active);
-    const accent = opts.accent ?? theme.primary;
-    return (
-      <div
-        key={opts.key}
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          width: "100%",
-          borderRadius: 8,
-          background: active ? `${accent}22` : "transparent",
-          border: active ? `1px solid ${accent}88` : "1px solid transparent",
-          boxShadow: active ? `0 0 12px ${accent}33` : "none",
-          overflow: "hidden",
-        }}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            if (quickPanel?.key === opts.panelKey) {
-              setQuickPanel(null);
-              return;
-            }
-            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-            const POPOVER_WIDTH = 300;
-            const POPOVER_HEIGHT = 360;
-            const anchor = { x: rect.left + rect.width / 2, y: e.clientY, rect };
-            const { top, left } = resolveHubQuickPanelPosition(
-              opts.panelKey,
-              POPOVER_WIDTH,
-              POPOVER_HEIGHT,
-              anchor,
-            );
-            setQuickPanel({
-              key: opts.panelKey,
-              label: opts.label,
-              info: opts.info,
-              accent,
-              top,
-              left,
-              onOpenFull: opts.onOpenFull,
-            });
-          }}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "9px 8px 9px 10px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: "inherit",
-            color: active ? accent : "#fff",
-          }}
-        >
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {opts.label}
-          </span>
-          {opts.info ? (
-            <span
-              style={{
-                flexShrink: 0,
-                fontSize: 7,
-                fontWeight: 900,
-                color: active ? "#050510" : "rgba(255,255,255,0.4)",
-                background: active ? accent : "rgba(255,255,255,0.06)",
-                padding: "1px 5px",
-                borderRadius: 4,
-                marginLeft: 6,
-              }}
-            >
-              {active ? "OPEN" : opts.info}
-            </span>
-          ) : null}
-        </button>
-        <button
-          type="button"
-          aria-label={`Open ${opts.label} drawer`}
-          title="Open full drawer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setQuickPanel(null);
-            opts.onOpenFull();
-          }}
-          style={{
-            flexShrink: 0,
-            width: 20,
-            border: "none",
-            borderLeft: `1px solid ${active ? accent + "44" : "rgba(255,255,255,0.1)"}`,
-            background: "transparent",
-            color: active ? accent : "rgba(255,255,255,0.4)",
-            cursor: "pointer",
-            fontSize: 10,
-            fontWeight: 900,
-          }}
-        >
-          ›
-        </button>
-      </div>
     );
   };
 
@@ -618,18 +506,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               OPERATING CENTERS
             </div>
             {centers.map((center) => {
-              const isActive = center.modules.some((m) => m === activePanel);
-              return splitRailBtn({
+              const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
+              return railBtn({
                 key: center.id,
-                panelKey: center.primaryModule,
                 label: `${center.icon} ${center.label}`,
                 info: center.info,
                 accent: center.accent,
                 active: isActive,
-                onOpenFull: () => {
-                  livingOsCommandBus.executeAction(center.actionId, { role });
-                  togglePanel(center.primaryModule as CommandCenterPanelId);
-                },
+                onClick: () => launchQuickModule(center.primaryModule as CommandCenterPanelId, center.actionId),
               });
             })}
 
@@ -649,14 +533,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 {drawerLaunchers.map((id) => {
                   const mod = getUniversalDrawerModule(id);
                   if (!mod) return null;
-                  return splitRailBtn({
+                  return railBtn({
                     key: `drawer-${id}`,
-                    panelKey: id,
                     label: mod.label,
                     info: mod.info,
                     accent: mod.accent,
-                    active: activePanel === id,
-                    onOpenFull: () => togglePanel(id),
+                    active: isModuleActive(id),
+                    onClick: () => launchQuickModule(id),
                   });
                 })}
               </>
@@ -668,7 +551,19 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               info: "This device",
               accent: theme.secondary,
               active: appearanceOpen,
-              onClick: openAppearance,
+              onClick: () =>
+                openHubQuickLaunch({
+                  moduleId: "appearance",
+                  role,
+                  userId,
+                  openDrawer: openPanel,
+                  openAppearance: () => {
+                    setActivePanel(null);
+                    setAppearanceOpen(true);
+                    drawerStateStore.setLastPanel(role, null);
+                  },
+                  closeDrawer,
+                }),
             })}
             <div style={{ height: 8 }} />
             {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
@@ -805,74 +700,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       {/* Points-earned flight animation — fires on real backend balance increases only */}
       <PointFlightEngine />
 
-      {/* Split-button quick panel popover (left segment of splitRailBtn) */}
-      {quickPanel ? (
-        <>
-          <div
-            onClick={() => setQuickPanel(null)}
-            style={{ position: "fixed", inset: 0, zIndex: 499, background: "transparent" }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              top: quickPanel.top,
-              left: quickPanel.left,
-              zIndex: 500,
-              width: 300,
-              maxWidth: "calc(100vw - 24px)",
-              maxHeight: "min(360px, calc(100vh - 24px))",
-              padding: 12,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              ...digitalQuickPanelFrameStyle(quickPanel.accent),
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.06em", color: quickPanel.accent }}>
-                {quickPanel.label}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuickPanel(null)}
-                aria-label="Close quick panel"
-                style={{ border: "none", background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer" }}
-              >
-                ×
-              </button>
-            </div>
-            {quickPanel.info ? (
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{quickPanel.info}</span>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                const openFull = quickPanel.onOpenFull;
-                setQuickPanel(null);
-                openFull();
-              }}
-              style={{
-                marginTop: 2,
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: `1px solid ${quickPanel.accent}66`,
-                background: `${quickPanel.accent}18`,
-                color: quickPanel.accent,
-                fontSize: 10,
-                fontWeight: 800,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Open Full Drawer →
-            </button>
-          </div>
-        </>
-      ) : null}
-
-      {/* One workspace overlay stack per hub shell (not per dock — avoids duplicate hosts on /dashboard). */}
       <FloatingWorkspacePanel />
-      <UniversalWorkspaceHost userId={userId} />
+      <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
     </div>
   );
 }

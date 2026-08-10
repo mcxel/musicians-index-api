@@ -13,11 +13,7 @@ export type {
   UniversalWorkspaceDef,
 } from "./types";
 
-export {
-  UNIVERSAL_WORKSPACE_DEFS,
-  getWorkspaceDef,
-  listPhase1Workspaces,
-} from "./UniversalWorkspaceRegistry";
+export { UNIVERSAL_WORKSPACE_DEFS, getWorkspaceDef, listPhase1Workspaces } from "./UniversalWorkspaceRegistry";
 
 export {
   universalWorkspaceRuntime,
@@ -27,6 +23,7 @@ export {
 
 export { WorkspaceTransitionRuntime, getWorkspaceMotion } from "./WorkspaceTransitionRuntime";
 export { wireUniversalWorkspaceCommandBus } from "./wireUniversalWorkspaceCommandBus";
+export { executeQuickLaunchWorkspace } from "./executeQuickLaunchWorkspace";
 export {
   loadWorkspaceGeometry,
   saveWorkspaceGeometry,

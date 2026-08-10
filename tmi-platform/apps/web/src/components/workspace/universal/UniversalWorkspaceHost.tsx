@@ -1,6 +1,6 @@
 /**
- * UniversalWorkspaceHost — mounts Phase 1 workspace windows + wires Command Bus.
- * Mount once from MasterControlDock (Flight Deck). Content stays mounted after first open.
+ * UniversalWorkspaceHost — mounts workspace windows + wires Command Bus.
+ * Mount once per hub shell (Fan / Performer Command Center, Flight Deck).
  */
 
 "use client";
@@ -10,15 +10,26 @@ import {
   useUniversalWorkspaceStore,
   wireUniversalWorkspaceCommandBus,
   getWorkspaceDef,
+  UNIVERSAL_WORKSPACE_DEFS,
 } from "@/lib/workspace/universal";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
 import UniversalWorkspaceWindow from "./UniversalWorkspaceWindow";
 import PlaylistStudioContent from "./PlaylistStudioContent";
 import ShareStudioContent from "./ShareStudioContent";
+import UniversalWorkspaceStubContent from "./UniversalWorkspaceStubContent";
+import type { CommandCenterRole } from "@/components/commandCenter/commandCenterRegistry";
 
-const PHASE1_IDS: UniversalWorkspaceId[] = ["playlist-studio", "share-studio"];
+const ALL_IDS = Object.keys(UNIVERSAL_WORKSPACE_DEFS) as UniversalWorkspaceId[];
 
-export default function UniversalWorkspaceHost({ userId }: { userId?: string }) {
+export default function UniversalWorkspaceHost({
+  userId,
+  displayName,
+  role = "fan",
+}: {
+  userId?: string;
+  displayName?: string;
+  role?: CommandCenterRole;
+}) {
   const store = useUniversalWorkspaceStore();
 
   useEffect(() => {
@@ -27,7 +38,7 @@ export default function UniversalWorkspaceHost({ userId }: { userId?: string }) 
 
   return (
     <>
-      {PHASE1_IDS.map((id) => {
+      {ALL_IDS.map((id) => {
         const def = getWorkspaceDef(id);
         const instance = store[id];
         if (!instance && !def.phase1Content) return null;
@@ -41,21 +52,29 @@ export default function UniversalWorkspaceHost({ userId }: { userId?: string }) 
           keepMounted: false,
         };
 
-        // Only mount shell after first open (keepMounted) or while transitioning.
-        if (
-          !inst.keepMounted &&
-          inst.windowState === "CLOSED"
-        ) {
+        if (!inst.keepMounted && inst.windowState === "CLOSED") {
           return null;
+        }
+
+        let body;
+        if (id === "playlist-studio") {
+          body = <PlaylistStudioContent context={inst.context} userId={userId} />;
+        } else if (id === "share-studio") {
+          body = <ShareStudioContent context={inst.context} />;
+        } else {
+          body = (
+            <UniversalWorkspaceStubContent
+              workspaceId={id}
+              role={role}
+              userId={userId ?? "session"}
+              displayName={displayName ?? "Member"}
+            />
+          );
         }
 
         return (
           <UniversalWorkspaceWindow key={id} id={id} instance={inst}>
-            {id === "playlist-studio" ? (
-              <PlaylistStudioContent context={inst.context} userId={userId} />
-            ) : (
-              <ShareStudioContent context={inst.context} />
-            )}
+            {body}
           </UniversalWorkspaceWindow>
         );
       })}
