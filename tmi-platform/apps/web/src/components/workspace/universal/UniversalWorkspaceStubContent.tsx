@@ -61,24 +61,10 @@ function YoPhoWorkspaceSlot({
   if (role === "fan") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 360 }}>
-        <div style={{ padding: "8px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "8px 16px 0" }}>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
             YOPHO TRIPLE STAGE · PORTRAIT ENGINE
           </div>
-          <Link
-            href="/fan/canvas"
-            style={{
-              fontSize: 9,
-              fontWeight: 800,
-              color: "#00FFFF",
-              textDecoration: "none",
-              border: "1px solid rgba(0,255,255,0.35)",
-              borderRadius: 8,
-              padding: "6px 10px",
-            }}
-          >
-            Full-page studio →
-          </Link>
         </div>
         <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
       </div>
@@ -93,20 +79,6 @@ function YoPhoWorkspaceSlot({
             YOPHO CARD · WHO I AM RIGHT NOW
           </div>
         </div>
-        <Link
-          href="/performer/canvas"
-          style={{
-            fontSize: 9,
-            fontWeight: 800,
-            color: "#FF2DAA",
-            textDecoration: "none",
-            border: "1px solid rgba(255,45,170,0.45)",
-            borderRadius: 8,
-            padding: "6px 10px",
-          }}
-        >
-          Living canvas →
-        </Link>
       </div>
       <YoPhoTradingCard
         role={cardRole}

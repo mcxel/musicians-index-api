@@ -29,11 +29,8 @@ export function yoPhoSurfaceForRole(role: string): YoPhoCanvasSurface | null {
   return null;
 }
 
-export function yoPhoCanvasPathForRole(role: string): string | null {
-  const surface = yoPhoSurfaceForRole(role);
-  if (surface === "fan_portrait") return "/fan/canvas";
-  if (surface === "performer_living") return "/performer/canvas";
-  return null;
+export function yoPhoCanvasPathForRole(role: string): string {
+  return yoPhoHubDeepLink(role);
 }
 
 /** In-hub YoPho (drawer + universal workspace) — no full-page canvas hop. */
@@ -52,13 +49,11 @@ export type YoPhoCanvasRoute = "/fan/canvas" | "/performer/canvas";
  * Returns null when they should stay on `currentPath`.
  */
 export function yoPhoCanvasRedirectTarget(
-  currentPath: YoPhoCanvasRoute,
+  _currentPath: YoPhoCanvasRoute,
   role: string,
 ): string | null {
-  const target = yoPhoCanvasPathForRole(role);
-  if (!target) return yoPhoHubDeepLink(role);
-  if (target === currentPath) return null;
-  return target;
+  // Never cross-redirect between canvas routes — send to hub workspace only.
+  return yoPhoHubDeepLink(role);
 }
 
 export function canAccessFanPortraitCanvas(role: string): boolean {
