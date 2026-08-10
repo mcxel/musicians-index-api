@@ -50,10 +50,10 @@ export type YoPhoCanvasRoute = "/fan/canvas" | "/performer/canvas";
  */
 export function yoPhoCanvasRedirectTarget(
   _currentPath: YoPhoCanvasRoute,
-  role: string,
+  _role: string,
 ): string | null {
-  // Never cross-redirect between canvas routes — send to hub workspace only.
-  return yoPhoHubDeepLink(role);
+  // Full-page canvas is retired (middleware + page.tsx redirect once). Never client-hop.
+  return null;
 }
 
 export function canAccessFanPortraitCanvas(role: string): boolean {
