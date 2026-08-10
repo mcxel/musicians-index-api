@@ -26,7 +26,7 @@ export default function AdvertiserSignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-csrf-token": csrfToken },
         credentials: "include",
-        body: JSON.stringify({ email, password, dateOfBirth, termsAccepted: true, originalityAccepted: true }),
+        body: JSON.stringify({ email, password, dateOfBirth, termsAccepted: true, originalityAccepted: true, roles: ["ADVERTISER"] }),
       });
       if (res.ok) {
         router.push("/dashboard/advertiser");
