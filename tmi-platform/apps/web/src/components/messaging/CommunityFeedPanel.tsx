@@ -26,8 +26,25 @@ export default function CommunityFeedPanel() {
   const [error, setError] = useState<string | null>(null);
   const [reportOpenFor, setReportOpenFor] = useState<string | null>(null);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [newMessageCount, setNewMessageCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
+  const prevCountRef = useRef(0);
+  const isNearBottomRef = useRef(true);
+  const NEAR_BOTTOM_PX = 80;
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+    setNewMessageCount(0);
+  };
+
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+    if (isNearBottomRef.current) setNewMessageCount(0);
+  };
 
   async function submitReport(messageId: string, category: (typeof REPORT_CATEGORIES)[number]) {
     setReportOpenFor(null);
@@ -72,9 +89,15 @@ export default function CommunityFeedPanel() {
 
   useEffect(() => {
     const newestId = messages[messages.length - 1]?.id ?? null;
-    if (newestId && newestId !== lastIdRef.current) {
-      lastIdRef.current = newestId;
-      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (!newestId || newestId === lastIdRef.current) return;
+    const isFirstLoad = lastIdRef.current === null;
+    const arrivedCount = Math.max(0, messages.length - prevCountRef.current);
+    lastIdRef.current = newestId;
+    prevCountRef.current = messages.length;
+    if (isFirstLoad || isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: isFirstLoad ? "auto" : "smooth", block: "end" });
+    } else {
+      setNewMessageCount((n) => n + arrivedCount);
     }
   }, [messages]);
 
@@ -96,6 +119,8 @@ export default function CommunityFeedPanel() {
       }
       setMessages((prev) => [...prev, data.message as CommunityMessage]);
       setInput("");
+      isNearBottomRef.current = true;
+      requestAnimationFrame(() => scrollToBottom("smooth"));
     } catch {
       setError("Unable to send message.");
     } finally {
@@ -105,11 +130,12 @@ export default function CommunityFeedPanel() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0, flex: 1 }}>
+      <div style={{ position: "relative", minHeight: 120, maxHeight: 260, display: "flex" }}>
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         style={{
           flex: 1,
-          minHeight: 120,
-          maxHeight: 260,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
@@ -232,6 +258,30 @@ export default function CommunityFeedPanel() {
           );
         })}
         <div ref={bottomRef} />
+      </div>
+      {newMessageCount > 0 && (
+        <button
+          type="button"
+          onClick={() => scrollToBottom("smooth")}
+          style={{
+            position: "absolute",
+            bottom: 6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            fontSize: 9,
+            fontWeight: 800,
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(0,255,255,0.4)",
+            background: "rgba(5,5,16,0.92)",
+            color: "#00FFFF",
+            cursor: "pointer",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.5)",
+          }}
+        >
+          ↓ {newMessageCount} new message{newMessageCount === 1 ? "" : "s"}
+        </button>
+      )}
       </div>
 
       {error && (
