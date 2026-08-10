@@ -278,8 +278,6 @@ export function middleware(req: NextRequest) {
     '/dashboard/promoter': '/dashboard',
     '/fan/theater': '/hub/fan',
     '/fan/dashboard': '/hub/fan',
-    '/fan/canvas': '/hub/fan?drawer=yopho',
-    '/performer/canvas': '/hub/performer?drawer=yopho',
   };
   if (LEGACY_REDIRECTS[pathname]) {
     return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 301);
