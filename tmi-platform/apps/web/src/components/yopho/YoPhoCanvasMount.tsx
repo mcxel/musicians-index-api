@@ -8,7 +8,7 @@ import {
   type YoPhoCanvasSessionUser,
 } from "@/lib/yopho/useYoPhoCanvasGate";
 import {
-  yoPhoCanvasPathForRole,
+  yoPhoHubDeepLink,
   type YoPhoCanvasRoute,
 } from "@/lib/yopho/yophoCanvasAccess";
 
@@ -86,7 +86,7 @@ function StudioChrome({
               Command Center
             </Link>
             <Link
-              href={role === "fan" ? "/fan/canvas" : "/performer/canvas"}
+              href={`${hubHref}?drawer=yopho`}
               style={{
                 fontSize: 9,
                 color: role === "fan" ? FUCHSIA : GOLD,
@@ -136,7 +136,7 @@ function RoleMismatchPanel({
   role: YoPhoStudioRole;
   effectiveRole: string;
 }) {
-  const correctPath = yoPhoCanvasPathForRole(effectiveRole);
+  const correctPath = yoPhoHubDeepLink(effectiveRole);
   const expectedLabel = role === "fan" ? "Fan YoPho Studio" : "Performer YoPho Studio";
 
   return (
