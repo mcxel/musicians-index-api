@@ -241,7 +241,7 @@ function yophoOffers(): PointsSpendOffer[] {
     // $0.99 skins → 99 pts impulse (matches CoD micro pack psychology)
     pointsCost: Math.max(99, Math.round(skin.priceUsd * 100)),
     role: "SHARED" as const,
-    href: "/fan/canvas",
+    href: "/hub/fan?drawer=yopho",
     engine: "YoPhoSkinRegistry",
     note: "Canvas background / room skin — Fan + Performer",
   }));
@@ -254,7 +254,7 @@ function yophoOffers(): PointsSpendOffer[] {
     label: `YoPho BG — ${scene.label}`,
     pointsCost: 75,
     role: "SHARED" as const,
-    href: "/performer/canvas",
+    href: "/hub/performer?drawer=yopho",
     engine: "YoPhoScenePack",
     note: scene.tagline,
   }));

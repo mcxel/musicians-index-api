@@ -36,7 +36,7 @@ const LANES: {
     id: "yopho",
     label: "YoPho showcase",
     type: "video",
-    href: "/fan/canvas",
+    href: "/hub/fan?drawer=yopho",
     hint: "Canvas / portrait entry",
   },
   {

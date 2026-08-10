@@ -1065,7 +1065,7 @@ export default function YoPhoTradingCard({
                   padding: "4px 12px 10px",
                 }}
               >
-                <CtaChip href="/fan/canvas" color="#FF2DAA" label="✨ EDIT YOPHO" />
+                <CtaChip href="/hub/fan?drawer=yopho" color="#FF2DAA" label="✨ EDIT YOPHO" />
                 <CtaChip href="/hub/fan" color="#00E5FF" label="FAN HQ" />
                 <CtaChip href="/subscribe" color="#FFD700" label="💎 UPGRADE" />
               </div>
