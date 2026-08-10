@@ -86,4 +86,3 @@ export function clearYoPhoCanvasRedirectGuard(from: YoPhoCanvasRoute): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(`${SESSION_GUARD_PREFIX}${from}`);
 }
-

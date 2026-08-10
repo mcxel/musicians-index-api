@@ -20,11 +20,4 @@ export function openYoPhoUniversalWorkspace(role: CommandCenterRole, userId?: st
     userId,
     payload: { workspaceId: wsId },
   });
-  livingOsCommandBus.dispatch({
-    type: "WORKSPACE_OPENED",
-    category: "navigation",
-    role,
-    userId,
-    payload: { workspaceId: wsId, panelId: "yopho" },
-  });
 }
