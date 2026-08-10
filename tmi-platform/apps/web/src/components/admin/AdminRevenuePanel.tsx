@@ -30,11 +30,11 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
   useEffect(() => {
     let mounted = true;
     let delayMs = 30_000;
-    let timer: number | null = null;
+    let timer: NodeJS.Timeout | number | null = null;
 
     const schedule = (ms: number) => {
-      if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
+      if (timer) clearTimeout(timer as NodeJS.Timeout);
+      timer = setTimeout(() => {
         void poll();
       }, ms);
     };
@@ -42,9 +42,9 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
     async function poll() {
       try {
         const controller = new AbortController();
-        const timeout: any = window.setTimeout(() => controller.abort(), 12_000);
+        const timeout: NodeJS.Timeout | number = setTimeout(() => controller.abort(), 12_000);
         const res = await fetch("/api/admin/revenue", { cache: "no-store", signal: controller.signal });
-        window.clearTimeout(timeout);
+        clearTimeout(timeout as NodeJS.Timeout);
         if (!res.ok) throw new Error(`revenue ${res.status}`);
         const d = (await res.json()) as RevenueApiResponse;
         if (mounted) {

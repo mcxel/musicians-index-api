@@ -23,12 +23,13 @@ export default function ProfileAvatarManager({
   tierColor = '#00FFFF',
   isOwner = false
 }: ProfileAvatarManagerProps) {
+  // Hooks must be called before any conditional return (Rules of Hooks)
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(initialAvatarUrl);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   // Owner authorization guard (Rule 20: deny-by-default)
   // Performers are themselves, not avatars. Avatar editor is owner-only.
   if (!isOwner) return null;
-
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(initialAvatarUrl);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleUploadComplete = (finalCdnUrl: string) => {
     setAvatarUrl(finalCdnUrl);

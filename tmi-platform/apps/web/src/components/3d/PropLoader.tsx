@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from 'react';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useEffect, useRef } from 'react';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { getPropManifest } from '@/lib/avatars/AvatarPropManifest';
+import { getPropManifest, type AvatarPropManifest } from '@/lib/avatars/AvatarPropManifest';
 import { getSocketBoneName } from '@/lib/avatars/AvatarSocketSystem';
 import type { AvatarEntity, ActiveProp } from '@/lib/avatars/UnifiedAvatarRuntime';
 
@@ -39,56 +39,35 @@ interface PropLoaderProps {
 const PARTICLE_SYSTEM_PLACEHOLDER = 'particle_placeholder';
 const AUDIO_PLAYBACK_PLACEHOLDER = 'audio_placeholder';
 
+interface PropAttachmentInnerProps {
+  entity: AvatarEntity;
+  activeProp: ActiveProp;
+  armature?: THREE.Bone;
+  audienceCount: number;
+  manifest: AvatarPropManifest;
+  modelUrl: string;
+}
+
 /**
- * Internal prop instance — manages a single equipped prop's lifecycle.
- * Mount via <Suspense><PropAttachment /></Suspense>.
+ * PropAttachmentInner — all R3F hooks called unconditionally.
+ * Only mounted when the guard has verified manifest + modelUrl are valid.
  */
-function PropAttachment({
+function PropAttachmentInner({
   entity,
-  activeProp,
-  skinnedMesh,
   armature,
-  maxVisibleDistance = 1.0,
-  audienceCount = 0,
-}: PropLoaderProps) {
+  audienceCount,
+  manifest,
+  modelUrl,
+}: PropAttachmentInnerProps) {
   const groupRef = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.Light | null>(null);
   const propModel = useRef<THREE.Object3D | null>(null);
 
-  const manifest = useMemo(() => getPropManifest(activeProp.propId), [activeProp.propId]);
+  // Always called — modelUrl is guaranteed non-null by the guard component
+  const modelGltf = useGLTF(modelUrl);
 
-  // Disable rendering if:
-  // 1. Manifest doesn't exist
-  // 2. Manifest.certified is false (asset not placed yet)
-  // 3. modelUrl is null (placeholder)
-  if (!manifest || !manifest.certified || !manifest.modelUrl) {
-    return null;
-  }
-
-  // Load GLB model
-  let modelGltf: ReturnType<typeof useGLTF> | null = null;
-  try {
-    modelGltf = useGLTF(manifest.modelUrl);
-  } catch {
-    return null;
-  }
-
-  // Resolve socket bone name
-  const boneName = getSocketBoneName(
-    entity.avatarClass,
-    manifest.socket,
-    entity.id,
-  );
-
-  if (!boneName || !armature) {
-    return null;
-  }
-
-  // Find the bone in the rig's skeleton
-  const targetBone = armature.getObjectByName(boneName) as THREE.Object3D | undefined;
-  if (!targetBone) {
-    return null;
-  }
+  const boneName = getSocketBoneName(entity.avatarClass, manifest.socket, entity.id);
+  const targetBone = armature?.getObjectByName(boneName ?? '') as THREE.Object3D | undefined;
 
   // Clone the model once (on first render after mount)
   useEffect(() => {
@@ -124,8 +103,6 @@ function PropAttachment({
     if (manifest.lightEffect && manifest.lightEffect.type === 'point') {
       const lightEffect = manifest.lightEffect;
       const lodConfig = manifest.lod;
-
-      // Check LOD gate: only create light if audience is below the disable threshold
       const shouldRenderLight =
         !lodConfig?.disableLightingAfterCount ||
         audienceCount <= lodConfig.disableLightingAfterCount;
@@ -145,7 +122,7 @@ function PropAttachment({
 
   // Parent the prop group to the target bone so it follows the avatar rig
   useEffect(() => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || !targetBone) return;
     targetBone.add(groupRef.current);
     return () => {
       if (groupRef.current?.parent) {
@@ -164,7 +141,39 @@ function PropAttachment({
     }
   });
 
+  // Guards AFTER all hooks — permitted by Rules of Hooks
+  if (!boneName || !armature || !targetBone) return null;
+
   return <group ref={groupRef} />;
+}
+
+/**
+ * PropAttachment — zero-hook guard component.
+ * Resolves the manifest and delegates to PropAttachmentInner only when
+ * certified assets are available. No hooks here — early returns are safe.
+ */
+function PropAttachment({
+  entity,
+  activeProp,
+  skinnedMesh,
+  armature,
+  maxVisibleDistance = 1.0,
+  audienceCount = 0,
+}: PropLoaderProps) {
+  const manifest = getPropManifest(activeProp.propId);
+  if (!manifest || !manifest.certified || !manifest.modelUrl) return null;
+  const modelUrl = manifest.modelUrl; // narrowed to string
+
+  return (
+    <PropAttachmentInner
+      entity={entity}
+      activeProp={activeProp}
+      armature={armature}
+      audienceCount={audienceCount}
+      manifest={manifest}
+      modelUrl={modelUrl}
+    />
+  );
 }
 
 /**

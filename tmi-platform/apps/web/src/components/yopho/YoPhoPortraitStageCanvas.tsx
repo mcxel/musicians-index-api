@@ -3,6 +3,7 @@
 import React from 'react';
 import type { YoPhoPortraitBlueprint, BlendMode } from '@/lib/yopho/YoPhoPortraitEngine';
 import { OBJECT_MASK_CATALOG } from '@/lib/yopho/YoPhoPortraitEngine';
+import YoPhoDepthParallaxCanvas, { createDepthLayerPair } from './YoPhoDepthParallaxCanvas';
 
 interface YoPhoPortraitStageCanvasProps {
   blueprint: YoPhoPortraitBlueprint;
@@ -238,6 +239,59 @@ export default function YoPhoPortraitStageCanvas({
               </div>
             ))}
           </div>
+        ) : mode === 'depth_parallax' ? (
+          /* ── Depth Parallax Mode: foreground image in front, background behind ── */
+          <YoPhoDepthParallaxCanvas
+            layers={[
+              // Primary layer = foreground (closer)
+              {
+                id: primaryLayer.id,
+                imageUrl: primaryLayer.imageUrl,
+                label: primaryLayer.label,
+                depthZ: primaryLayer.depthZ ?? 55,
+                parallaxStrength: primaryLayer.parallaxStrength ?? 1.4,
+                depthBlur: primaryLayer.depthBlur ?? 0,
+                scale: primaryLayer.scale,
+                xOffset: primaryLayer.xOffset,
+                yOffset: primaryLayer.yOffset,
+                opacity: primaryLayer.opacity,
+              },
+              // First secondary layer = background (further back)
+              ...(secondaryLayers[0]
+                ? [
+                    {
+                      id: secondaryLayers[0].id,
+                      imageUrl: secondaryLayers[0].imageUrl,
+                      label: secondaryLayers[0].label,
+                      depthZ: secondaryLayers[0].depthZ ?? -60,
+                      parallaxStrength: secondaryLayers[0].parallaxStrength ?? 0.3,
+                      depthBlur: secondaryLayers[0].depthBlur ?? 1.5,
+                      scale: secondaryLayers[0].scale * 1.12,
+                      xOffset: secondaryLayers[0].xOffset,
+                      yOffset: secondaryLayers[0].yOffset,
+                      opacity: secondaryLayers[0].opacity,
+                    },
+                  ]
+                : []),
+              // Any additional secondary layers at intermediate depths
+              ...secondaryLayers.slice(1).map((layer, i) => ({
+                id: layer.id,
+                imageUrl: layer.imageUrl,
+                label: layer.label,
+                depthZ: layer.depthZ ?? (i % 2 === 0 ? -20 : 20),
+                parallaxStrength: layer.parallaxStrength ?? 0.8,
+                depthBlur: layer.depthBlur ?? 0,
+                scale: layer.scale,
+                xOffset: layer.xOffset,
+                yOffset: layer.yOffset,
+                opacity: layer.opacity,
+              })),
+            ]}
+            width="100%"
+            height="100%"
+            accentColor={colorPalette.primaryAccent}
+            showDepthRuler={interactive}
+          />
         ) : (
           /* Single Portrait / Double Exposure Main Silhouette Composition */
           <div style={{ position: 'relative', width: '85%', height: '90%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

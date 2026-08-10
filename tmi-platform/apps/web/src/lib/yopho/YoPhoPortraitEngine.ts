@@ -10,7 +10,8 @@ export type PortraitCompositionMode =
   | 'opposing'
   | 'multi_montage'
   | 'object_composite'
-  | 'live_cutout';
+  | 'live_cutout'
+  | 'depth_parallax';
 
 export type ObjectMaskType =
   | 'coffee_cup'
@@ -60,6 +61,12 @@ export interface PortraitLayer {
   edgeSoftness: number; // 0 .. 20px
   preserveHairEdges: boolean;
   zIndex: number;
+  /** Depth Parallax: perceived Z-distance. Negative = further back, positive = closer to viewer. Range: -100..100 */
+  depthZ?: number;
+  /** How strongly this layer shifts on mouse/tilt. 0 = locked, 1 = normal, 2 = hyper. */
+  parallaxStrength?: number;
+  /** Depth-of-field blur applied to background layers (px). 0 = sharp. */
+  depthBlur?: number;
 }
 
 export interface YoPhoPortraitBlueprint {

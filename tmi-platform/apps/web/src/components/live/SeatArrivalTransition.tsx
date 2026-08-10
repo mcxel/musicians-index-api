@@ -208,8 +208,6 @@ export default function SeatArrivalTransition({
   const isPausing = phase === "pausing";
   const isSeated  = phase === "seated";
 
-  if (!active) return null;
-
   // Warp entry log — start on mount, track each phase transition
   useEffect(() => {
     WarpEntryLog.start();
@@ -247,6 +245,9 @@ export default function SeatArrivalTransition({
 
   const wasReduced = useRef(false);
   if (phase === "reduced") wasReduced.current = true;
+
+  // Guards after all hooks — safe per Rules of Hooks
+  if (!active) return null;
   if (wasReduced.current) return <ReducedFallback phase={phase} />;
 
   return (
