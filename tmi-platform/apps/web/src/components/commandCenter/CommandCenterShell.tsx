@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
@@ -92,8 +92,11 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
   );
 }
 
+const HUB_DRAWER_DEEPLINK_KEY = "tmi_hub_drawer_deeplink_v1";
+
 function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const theme = useTheme();
   const [liveDisplayName, setLiveDisplayName] = useState(displayName);
   useEffect(() => {
@@ -140,14 +143,37 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     performerSlug?: string;
   } | null>(null);
 
+  const hubDrawerDeepLinkDone = useRef(false);
+
   // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/fan?drawer=yopho (workspace)
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (hubDrawerDeepLinkDone.current) return;
+
     const params = new URLSearchParams(window.location.search);
     const drawer = params.get("drawer") as UniversalDrawerModuleId | null;
     const playlistId = params.get("playlistId");
     if (!drawer || !getUniversalDrawerModule(drawer)) return;
+
+    const consumeKey = `${HUB_DRAWER_DEEPLINK_KEY}:${pathname}:${drawer}:${playlistId ?? ""}`;
+    try {
+      if (sessionStorage.getItem(consumeKey) === "1") {
+        hubDrawerDeepLinkDone.current = true;
+        const clean = new URLSearchParams(window.location.search);
+        clean.delete("drawer");
+        if (drawer !== "playlist") clean.delete("playlistId");
+        const qs = clean.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        return;
+      }
+      sessionStorage.setItem(consumeKey, "1");
+    } catch {
+      /* private mode — still open once via ref */
+    }
+
+    hubDrawerDeepLinkDone.current = true;
     setAppearanceOpen(false);
+
     if (drawer === "yopho") {
       openHubQuickLaunch({
         moduleId: "yopho",
@@ -164,12 +190,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           drawerStateStore.setLastPanel(role, null);
         },
       });
-      return;
+    } else {
+      setActivePanel(drawer);
+      drawerStateStore.setLastPanel(role, drawer);
+      if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
     }
-    setActivePanel(drawer);
-    drawerStateStore.setLastPanel(role, drawer);
-    if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
-  }, [role, userId]);
+
+    const clean = new URLSearchParams(window.location.search);
+    clean.delete("drawer");
+    if (drawer !== "playlist") clean.delete("playlistId");
+    const qs = clean.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [role, userId, pathname, router]);
 
   useEffect(() => {
     const unsubCast = subscribePlaylistCast((payload: PlaylistCastPayload) => {

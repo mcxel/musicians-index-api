@@ -113,7 +113,7 @@ function buildYoPhoSpotlight(): UnifiedMediaRecord | null {
     kind: "yopho_spotlight",
     title: `YoPho Spotlight — ${withCover.name}`,
     subtitle: "Open the living canvas",
-    route: "/performer/canvas",
+    route: "/hub/performer?drawer=yopho",
     accentColor: "#AA2DFF",
     sourceLabel: "YoPho Spotlight",
     categoryKey: `yopho_spotlight:${withCover.slug}`,
