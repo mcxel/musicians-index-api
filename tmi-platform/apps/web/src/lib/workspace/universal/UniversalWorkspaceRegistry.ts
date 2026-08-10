@@ -67,7 +67,7 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     id: "yopho",
     label: "YoPho",
     accent: "#FF2DAA",
-    defaultGeometry: { ...DEFAULT_FLOAT },
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 640 },
     minWidth: 400,
     minHeight: 320,
     phase1Content: false,

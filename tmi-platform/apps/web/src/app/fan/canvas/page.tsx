@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -10,12 +9,8 @@ import {
   type YoPhoPortraitBlueprint,
   type SubscriptionPortraitEntitlement,
 } from "@/lib/yopho/YoPhoPortraitEngine";
-import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
-import {
-  canAccessFanPortraitCanvas,
-  yoPhoCanvasPathForRole,
-  normalizeSessionRole,
-} from "@/lib/yopho/yophoCanvasAccess";
+import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
+import { useYoPhoCanvasGate } from "@/lib/yopho/useYoPhoCanvasGate";
 
 // Portrait editor is heavy — lazy load after auth resolves
 const YoPhoPortraitEditorDrawer = dynamic(
@@ -50,61 +45,34 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export default function FanYoPhoCanvasPage() {
-  const router = useRouter();
-  const [user, setUser]                = useState<SessionUser | null>(null);
-  const [loading, setLoading]          = useState(true);
+  const { loading, user } = useYoPhoCanvasGate("/fan/canvas");
   const [editorOpen, setEditorOpen]    = useState(false);
   const [blueprint, setBlueprint]      = useState<YoPhoPortraitBlueprint | null>(null);
   const [entitlement, setEntitlement]  = useState<SubscriptionPortraitEntitlement | null>(null);
   const [savedEditions, setSavedEditions] = useState<YoPhoPortraitBlueprint[]>([]);
   const [activeEditionIdx, setActiveEditionIdx] = useState(0);
-  const redirectOnce = useRef(false);
 
-  // ── Auth check ────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch("/api/auth/session", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { authenticated?: boolean; user?: SessionUser }) => {
-        if (!d.authenticated || !d.user) {
-          router.replace("/auth");
-          return;
-        }
-        const role = normalizeSessionRole(d.user.role);
-        if (!canAccessFanPortraitCanvas(role)) {
-          if (!redirectOnce.current) {
-            redirectOnce.current = true;
-            const target = yoPhoCanvasPathForRole(role) ?? "/onboarding";
-            if (target !== "/fan/canvas") router.replace(target);
-          }
-          return;
-        }
-        const tier = d.user.tier?.toUpperCase() ?? "FREE";
-        setUser(d.user);
-        const ent = getPortraitEntitlement(tier);
-        setEntitlement(ent);
-
-        // Load saved blueprints from localStorage
-        try {
-          const raw = localStorage.getItem("tmi_yopho_editions_fan");
-          const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
-          if (parsed.length > 0) {
-            setSavedEditions(parsed);
-            setBlueprint(parsed[0]!);
-          } else {
-            const defaultBP = createDefaultYoPhoBlueprint("fan", d.user.name ?? d.user.email.split("@")[0] ?? "Fan");
-            setSavedEditions([defaultBP]);
-            setBlueprint(defaultBP);
-          }
-        } catch {
-          const defaultBP = createDefaultYoPhoBlueprint("fan", d.user.name ?? "Fan");
-          setSavedEditions([defaultBP]);
-          setBlueprint(defaultBP);
-        }
-
-        setLoading(false);
-      })
-      .catch(() => router.replace("/auth"));
-  }, [router]);
+    if (!user) return;
+    const tier = user.tier?.toUpperCase() ?? "FREE";
+    setEntitlement(getPortraitEntitlement(tier));
+    try {
+      const raw = localStorage.getItem("tmi_yopho_editions_fan");
+      const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
+      if (parsed.length > 0) {
+        setSavedEditions(parsed);
+        setBlueprint(parsed[0]!);
+      } else {
+        const defaultBP = createDefaultYoPhoBlueprint("fan", user.name ?? user.email.split("@")[0] ?? "Fan");
+        setSavedEditions([defaultBP]);
+        setBlueprint(defaultBP);
+      }
+    } catch {
+      const defaultBP = createDefaultYoPhoBlueprint("fan", user.name ?? "Fan");
+      setSavedEditions([defaultBP]);
+      setBlueprint(defaultBP);
+    }
+  }, [user]);
 
   // ── Save handler ──────────────────────────────────────────────────────────
   const handleSaveBlueprint = (saved: YoPhoPortraitBlueprint) => {
@@ -177,7 +145,7 @@ export default function FanYoPhoCanvasPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/fan/dashboard" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none", fontSize: 11 }}>
+          <Link href="/hub/fan" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none", fontSize: 11 }}>
             ← FAN HQ
           </Link>
           <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.15)" }} />
@@ -319,11 +287,10 @@ export default function FanYoPhoCanvasPage() {
           }
         `}</style>
 
-        <YoPhoTripleStageStudio
-          master={blueprint}
-          onMasterChange={setBlueprint}
-          onSaveEdition={handleSaveBlueprint}
-          storageKey="tmi_yopho_editions_fan_active"
+        <YoPhoFanPortraitWorkspace
+          userId={user.id}
+          displayName={user.name ?? user.email.split("@")[0] ?? "Fan"}
+          tier={tier}
         />
 
         <div style={{ marginTop: 28, display: "flex", gap: 32, flexWrap: "wrap" }}>

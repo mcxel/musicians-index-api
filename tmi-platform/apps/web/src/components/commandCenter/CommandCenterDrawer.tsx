@@ -11,6 +11,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useEffect, useRef, type CSSProperties } from "react";
+import YoPhoOpenFullStudioButton from "@/components/yopho/YoPhoOpenFullStudioButton";
 import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -97,7 +98,6 @@ function YoPhoSlot({
   bindKey?: string;
   slug?: string;
 }) {
-  const fullHref = role === "performer" ? "/performer/canvas" : "/fan/canvas";
   const cardRole = role === "performer" ? "performer" : "fan";
 
   return (
@@ -115,20 +115,7 @@ function YoPhoSlot({
             {bindKey ? ` · ${displayName}` : ""}
           </div>
         </div>
-        <Link
-          href={fullHref}
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            color: "#00FFFF",
-            textDecoration: "none",
-            border: "1px solid rgba(0,255,255,0.35)",
-            borderRadius: 8,
-            padding: "6px 12px",
-          }}
-        >
-          FULL CANVAS →
-        </Link>
+        <YoPhoOpenFullStudioButton role={role} userId={userId} label="FULL STUDIO →" />
       </div>
       <YoPhoTradingCard
         role={cardRole}

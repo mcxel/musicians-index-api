@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import YoPhoLivingCanvasOS from "@/components/yopho/YoPhoLivingCanvasOS";
-import {
-  canAccessPerformerLivingCanvas,
-  normalizeSessionRole,
-  yoPhoCanvasPathForRole,
-} from "@/lib/yopho/yophoCanvasAccess";
+import { useYoPhoCanvasGate } from "@/lib/yopho/useYoPhoCanvasGate";
 import {
   YOPHO_SKIN_CATALOG,
   type YoPhoSkin,
@@ -56,9 +51,7 @@ const CANVAS_ANALYTICS = [
 ];
 
 export default function PerformerYoPhoCanvasPage() {
-  const router = useRouter();
-  const [user, setUser]           = useState<SessionUser | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const { loading, user } = useYoPhoCanvasGate("/performer/canvas");
   const [activeTab, setActiveTab] = useState<Tab>("canvas");
   const [activeSkin, setActiveSkin] = useState<YoPhoSkin>(YOPHO_SKIN_CATALOG[0]!);
 
@@ -73,28 +66,6 @@ export default function PerformerYoPhoCanvasPage() {
   const [canvasPublished, setCanvasPublished] = useState(true);
   const [showLiveBadge, setShowLiveBadge]     = useState(false);
   const [saveStatus, setSaveStatus]            = useState<string | null>(null);
-  const redirectOnce = useRef(false);
-
-  // ── Auth check ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/api/auth/session", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { authenticated?: boolean; user?: SessionUser }) => {
-        if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
-        const role = normalizeSessionRole(d.user.role);
-        if (!canAccessPerformerLivingCanvas(role)) {
-          if (!redirectOnce.current) {
-            redirectOnce.current = true;
-            const target = yoPhoCanvasPathForRole(role) ?? "/onboarding";
-            if (target !== "/performer/canvas") router.replace(target);
-          }
-          return;
-        }
-        setUser(d.user);
-        setLoading(false);
-      })
-      .catch(() => router.replace("/auth"));
-  }, [router]);
 
   const handleToggleHotspot = (id: string) => {
     setHotspotEnabled((prev) => {
@@ -157,7 +128,7 @@ export default function PerformerYoPhoCanvasPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/performer/dashboard" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none", fontSize: 11 }}>
+          <Link href="/hub/performer" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none", fontSize: 11 }}>
             ← STUDIO
           </Link>
           <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.15)" }} />

@@ -140,7 +140,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     performerSlug?: string;
   } | null>(null);
 
-  // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/performer?drawer=bio_magazine
+  // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/fan?drawer=yopho (workspace)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -148,10 +148,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     const playlistId = params.get("playlistId");
     if (!drawer || !getUniversalDrawerModule(drawer)) return;
     setAppearanceOpen(false);
+    if (drawer === "yopho") {
+      openHubQuickLaunch({
+        moduleId: "yopho",
+        role,
+        userId,
+        actionId: "ACTION_OPEN_YOPHO_STUDIO",
+        openDrawer: (id) => {
+          setActivePanel(id);
+          drawerStateStore.setLastPanel(role, id);
+        },
+        openAppearance: () => setAppearanceOpen(true),
+        closeDrawer: () => {
+          setActivePanel(null);
+          drawerStateStore.setLastPanel(role, null);
+        },
+      });
+      return;
+    }
     setActivePanel(drawer);
     drawerStateStore.setLastPanel(role, drawer);
     if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
-  }, [role]);
+  }, [role, userId]);
 
   useEffect(() => {
     const unsubCast = subscribePlaylistCast((payload: PlaylistCastPayload) => {

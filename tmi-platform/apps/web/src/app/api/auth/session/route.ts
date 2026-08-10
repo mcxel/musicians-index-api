@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
   let dbOnboardingState = 'NO_ROLE_SELECTED';
   let dbOnboardingStep = '2';
   let dbDisplayName: string | null = null;
+  let dbActiveRole: string | null = null;
 
   if (rawEmail) {
     try {
@@ -77,6 +78,7 @@ export async function GET(req: NextRequest) {
           where: { email: rawEmail },
           select: {
             id: true,
+            activeRole: true,
             displayName: true,
             name: true,
             isLive: true,
@@ -95,6 +97,7 @@ export async function GET(req: NextRequest) {
       );
       if (dbUser) {
         canonicalUserId = dbUser.id;
+        dbActiveRole = dbUser.activeRole ?? null;
         isLive = dbUser.isLive;
         liveRoomId = dbUser.liveRoomId;
         avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
@@ -151,6 +154,7 @@ export async function GET(req: NextRequest) {
       email: scopedEmail,
       name: displayName,
       role,
+      activeRole: dbActiveRole ?? role,
       tier,
       isLive,
       liveRoomId,

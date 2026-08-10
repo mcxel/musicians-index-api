@@ -5,6 +5,7 @@
  */
 
 import dynamic from "next/dynamic";
+import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -55,8 +56,34 @@ function YoPhoWorkspaceSlot({
   userId: string;
   slug?: string;
 }) {
-  const fullHref = role === "performer" ? "/performer/canvas" : "/fan/canvas";
   const cardRole = role === "performer" ? "performer" : "fan";
+
+  if (role === "fan") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 360 }}>
+        <div style={{ padding: "8px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
+            YOPHO TRIPLE STAGE · PORTRAIT ENGINE
+          </div>
+          <Link
+            href="/fan/canvas"
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              color: "#00FFFF",
+              textDecoration: "none",
+              border: "1px solid rgba(0,255,255,0.35)",
+              borderRadius: 8,
+              padding: "6px 10px",
+            }}
+          >
+            Full-page studio →
+          </Link>
+        </div>
+        <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -67,7 +94,7 @@ function YoPhoWorkspaceSlot({
           </div>
         </div>
         <Link
-          href={fullHref}
+          href="/performer/canvas"
           style={{
             fontSize: 9,
             fontWeight: 800,
@@ -78,7 +105,7 @@ function YoPhoWorkspaceSlot({
             padding: "6px 10px",
           }}
         >
-          Full Studio →
+          Living canvas →
         </Link>
       </div>
       <YoPhoTradingCard

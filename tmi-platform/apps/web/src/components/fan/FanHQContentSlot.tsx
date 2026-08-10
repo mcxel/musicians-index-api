@@ -18,6 +18,7 @@ import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
+import YoPhoOpenFullStudioButton from "@/components/yopho/YoPhoOpenFullStudioButton";
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   ssr: false,
   loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
@@ -106,21 +107,7 @@ function FanYoPhoSlotEditor({
             Interactive motor card · song · share URL
           </div>
         </div>
-        <Link
-          href="/fan/canvas"
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            color: "#00FFFF",
-            textDecoration: "none",
-            border: "1px solid rgba(0,255,255,0.35)",
-            borderRadius: 8,
-            padding: "6px 12px",
-            letterSpacing: "0.06em",
-          }}
-        >
-          FULL CANVAS →
-        </Link>
+        <YoPhoOpenFullStudioButton role="fan" userId={fanId} label="FULL STUDIO →" />
       </div>
       <YoPhoTradingCard
         role="fan"
