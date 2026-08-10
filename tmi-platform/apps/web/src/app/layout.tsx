@@ -147,7 +147,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Pub id: ca-pub-4088577529436039 (or NEXT_PUBLIC_ADSENSE_CLIENT_ID).
         */}
       </head>
-      <body className="tmi-obsidian-cinematic overflow-x-hidden">
+      <body className="tmi-obsidian-cinematic overflow-x-hidden" suppressHydrationWarning>
         {/* BidVertiser site verification rendered as real HTML comment in page source */}
         <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
         {/* Media.net — Yahoo/Bing contextual ads */}
