@@ -80,7 +80,10 @@ function AuthForm() {
     let active = true;
     void loadSession().then((s) => {
       if (active && s.authenticated) {
-        router.replace("/dashboard");
+        const next = searchParams?.get("next") ?? "";
+        // Sanitize: only allow same-origin relative paths
+        const dest = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+        router.replace(dest);
       }
     });
     return () => { active = false; };

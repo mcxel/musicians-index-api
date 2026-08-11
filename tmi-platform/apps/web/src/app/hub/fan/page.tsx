@@ -22,13 +22,13 @@ export default function FanHubPage() {
       .then((d: { authenticated?: boolean; user?: SessionUser }) => {
         if (cancelled) return;
         if (!d.authenticated || !d.user) {
-          router.replace("/auth");
+          router.replace("/auth?next=/hub/fan");
           return;
         }
         setUser(d.user);
       })
       .catch(() => {
-        if (!cancelled) router.replace("/auth");
+        if (!cancelled) router.replace("/auth?next=/hub/fan");
       });
     return () => {
       cancelled = true;

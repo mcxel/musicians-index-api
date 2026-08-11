@@ -27,7 +27,7 @@ export default function PerformerHubPage() {
       .then((d: { authenticated?: boolean; user?: SessionUser }) => {
         if (cancelled) return;
         if (!d.authenticated || !d.user) {
-          router.replace("/auth");
+          router.replace("/auth?next=/hub/performer");
           return;
         }
         const role = (d.user.role ?? "").toUpperCase();
@@ -38,7 +38,7 @@ export default function PerformerHubPage() {
         setUser(d.user);
       })
       .catch(() => {
-        if (!cancelled) router.replace("/auth");
+        if (!cancelled) router.replace("/auth?next=/hub/performer");
       });
     return () => {
       cancelled = true;

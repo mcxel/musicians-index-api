@@ -157,6 +157,12 @@ export default function RoleSwitcherWidget({
         if (res.ok && data.ok) {
           setActiveRole(role);
           setOpen(false);
+          // Sync to DashboardWorkspaceContainer's localStorage key before navigating
+          const r = role.toUpperCase();
+          const ws =
+            ["PERFORMER", "ARTIST", "BAND"].includes(r) ? "performer" :
+            ["ADMIN", "STAFF", "SUPERADMIN"].includes(r) ? "admin" : "fan";
+          localStorage.setItem("tmi_last_workspace", ws);
           // Small delay so panel closes before navigation
           setTimeout(() => {
             router.push(data.hubUrl ?? getRoleDef(role).hubUrl);
