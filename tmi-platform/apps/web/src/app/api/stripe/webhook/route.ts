@@ -120,8 +120,30 @@ export async function POST(req: NextRequest) {
         });
 
         const perSeatCents = seatManifest.length > 0 ? Math.floor((session.amount_total || 0) / seatManifest.length) : (session.amount_total || 0);
+        const conflictedSeatIds: string[] = [];
 
         for (const seat of seatManifest) {
+          // Payment already cleared by the time this webhook fires, so the
+          // real race window is between this seat's checkout starting and
+          // this line running - the /api/tickets/checkout pre-check narrows
+          // it but can't close it. Lock the seat with a CONDITIONAL update
+          // (only succeeds if still unoccupied, or already held by this same
+          // buyer for a safe retry) and check the affected row count instead
+          // of trusting an unconditional overwrite - if 0 rows changed,
+          // someone else won the race and this buyer gets refunded for that
+          // seat below rather than being charged with no seat to show for it.
+          if (seat.id && seat.id !== 'unreserved') {
+            const lock = await prisma.roomSeatState.updateMany({
+              where: { seatId: seat.id, OR: [{ occupied: false }, { currentUser: userId }] },
+              data: { occupied: true, currentUser: userId },
+            });
+            if (lock.count === 0) {
+              conflictedSeatIds.push(seat.id);
+              console.error(`[stripe/webhook] seat race lost: ${seat.id} already held, refunding this seat for session ${session.id}`);
+              continue;
+            }
+          }
+
           let ticketType = await prisma.ticketType.findFirst({ where: { name: seat.tier || 'STANDARD', eventId: eventRecord.id } });
           if (!ticketType) {
             ticketType = await prisma.ticketType.create({
@@ -132,13 +154,18 @@ export async function POST(req: NextRequest) {
           await prisma.ticket.create({
             data: { eventId: eventRecord.id, ticketTypeId: ticketType.id, orderId: order.id, ownerUserId: userId, tokenHash: `tk_${session.id}_${seat.id}_${Date.now()}` }
           });
+        }
 
-          // Physically lock the 3D seat
-          if (seat.id && seat.id !== 'unreserved') {
-            await prisma.roomSeatState.updateMany({
-              where: { seatId: seat.id },
-              data: { occupied: true, currentUser: userId }
+        if (conflictedSeatIds.length > 0 && stripe) {
+          try {
+            await stripe.refunds.create({
+              payment_intent: session.payment_intent as string,
+              amount: perSeatCents * conflictedSeatIds.length,
+              reason: 'requested_by_customer',
+              metadata: { reason: 'seat_race_conflict', seatIds: conflictedSeatIds.join(','), sessionId: session.id },
             });
+          } catch (refundErr) {
+            console.error('[stripe/webhook] seat-conflict refund FAILED - needs manual follow-up:', session.id, conflictedSeatIds, refundErr);
           }
         }
 

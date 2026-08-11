@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
+import prisma from '@/lib/prisma';
 
 interface SeatItem {
   id: string;
@@ -27,6 +28,24 @@ export async function POST(req: NextRequest) {
 
     if (!seats || seats.length === 0) {
       return NextResponse.json({ error: 'No seats provided' }, { status: 400 });
+    }
+
+    // Refuse to even start a paid checkout for a seat someone already holds.
+    // This is a narrowing check, not a full lock (the webhook below still
+    // needs its own atomic guard for the remaining race window between two
+    // checkouts started for the same seat before either completes).
+    const realSeatIds = seats.map((s) => s.id).filter((id) => id && id !== 'unreserved');
+    if (realSeatIds.length > 0) {
+      const taken = await prisma.roomSeatState.findMany({
+        where: { seatId: { in: realSeatIds }, occupied: true },
+        select: { seatId: true },
+      });
+      if (taken.length > 0) {
+        return NextResponse.json(
+          { error: 'seat_already_taken', seatIds: taken.map((t) => t.seatId) },
+          { status: 409 },
+        );
+      }
     }
 
     const origin = req.nextUrl.origin;
