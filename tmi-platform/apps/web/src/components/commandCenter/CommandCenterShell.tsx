@@ -515,9 +515,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         <RoleSwitcherWidget accentColor={theme.primary} />
       </div>
 
-      {/* Media + rails + drawer dock.
-          Dock clearance (170) only when drawer closed — when open, drop that
-          dead band so the sheet bottom edge sits lower (closer to dock). */}
+      {/* Media + rails + drawer dock */}
       <div
         style={{
           position: "relative",
@@ -741,16 +739,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       </div>
 
       {/* Layer 1 — Canonical 4-zone quick panels (ACT L/R) + legacy quick dock */}
-      <CanonicalLeftQuickPanelHost
-        userId={userId}
-        displayName={resolvedDisplayName}
-        role={role === "performer" ? "performer" : "fan"}
-      />
-      <CanonicalRightQuickPanelHost
-        userId={userId}
-        displayName={resolvedDisplayName}
-        role={role === "performer" ? "performer" : "fan"}
-      />
+      <CanonicalLeftQuickPanelHost />
+      <CanonicalRightQuickPanelHost />
       <QuickPanelDock role={role} />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}

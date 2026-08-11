@@ -14,6 +14,10 @@ import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import UniversalWorkspaceStubContent from "./UniversalWorkspaceStubContent";
 
 const FanAvatarCanister = dynamic(() => import("@/components/avatar/FanAvatarCanister"), { ssr: false });
+const LiveLobbyWallContent = dynamic(
+  () => import("@/components/lobby/LiveLobbyDrawer").then((m) => ({ default: m.LiveLobbyWallContent })),
+  { ssr: false, loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading lobby wall…</div> },
+);
 
 export default function CanonicalBottomDrawerHost({
   userId,
@@ -32,8 +36,9 @@ export default function CanonicalBottomDrawerHost({
   const uid = userId ?? "session";
   const name = displayName ?? "Member";
   const expandedPlaylist = drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded";
-  const maxHeight = expandedPlaylist ? "min(62vh, 640px)" : "min(52vh, 560px)";
-  const minHeight = expandedPlaylist ? 360 : 320;
+  const isLobbyWall = drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations";
+  const maxHeight = expandedPlaylist ? "min(72vh, 700px)" : isLobbyWall ? "min(72vh, 700px)" : "min(60vh, 620px)";
+  const minHeight = expandedPlaylist ? 400 : isLobbyWall ? 480 : 380;
 
   return (
     <div
@@ -126,6 +131,8 @@ export default function CanonicalBottomDrawerHost({
           <SettingsWorkspaceContent userId={uid} displayName={name} />
         ) : drawerWorkspace === "inventory" && role === "fan" ? (
           <FanAvatarCanister userId={uid} displayName={name} role="FAN" />
+        ) : isLobbyWall ? (
+          <LiveLobbyWallContent />
         ) : (
           <UniversalWorkspaceStubContent
             workspaceId={drawerWorkspace}

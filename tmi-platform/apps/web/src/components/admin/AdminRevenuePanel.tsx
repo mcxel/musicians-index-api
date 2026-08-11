@@ -20,6 +20,19 @@ type RevenueApiResponse = {
   subscriptions: {
     active: number | string;
   };
+  streams?: Record<string, { todayCents: number; monthCents: number; countToday: number; countMonth: number }>;
+};
+
+const STREAM_LABELS: Record<string, string> = {
+  subscriptions: "Subs",
+  founding_packs: "Founding",
+  sponsors: "Sponsors",
+  beats: "Beats",
+  tips: "Tips",
+  one_time: "One-Time",
+  payments: "Payments",
+  charges: "Charges",
+  other: "Other",
 };
 
 export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenuePanelProps) {
@@ -69,11 +82,10 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
   const today = loading ? "…" : (rev?.totals?.today ?? "$0");
   const month = loading ? "…" : (rev?.totals?.month ?? "$0");
   const subs  = loading ? "…" : String(rev?.subscriptions?.active ?? "0");
-  const chartBars = [today, month, subs, rev?.mode === "live" ? "100" : rev?.mode === "test" ? "72" : "24"].map((value, index) => ({
-    id: index,
-    label: index === 0 ? "Today" : index === 1 ? "Month" : index === 2 ? "Subs" : "Signal",
-    height: Math.max(24, Math.min(100, Number(String(value).replace(/[^0-9.]/g, "")) || 24)),
-  }));
+  const streamBars = Object.entries(rev?.streams ?? {})
+    .filter(([, s]) => s.monthCents > 0)
+    .map(([key, s]) => ({ label: STREAM_LABELS[key] ?? key, value: Math.round(s.monthCents / 100) }))
+    .sort((a, b) => b.value - a.value);
   const modeLabel =
     rev?.mode === "live"            ? "● LIVE"
     : rev?.mode === "test"          ? "◎ TEST"
@@ -101,94 +113,33 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
         ))}
       </div>
 
-      {/* Billboard Chart Container */}
+      {/* Real fetched totals */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(88px,1fr))", gap: 6 }}>
+        <MetricCard title="Today" value={today} tone="green" />
+        <MetricCard title="This Month" value={month} tone="amber" />
+        <MetricCard title="Active Subs" value={subs} tone="cyan" />
+      </div>
+      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: rev?.mode === "live" ? "#22c55e" : "rgba(255,255,255,0.4)" }}>
+        {modeLabel}
+      </div>
+
+      {/* Revenue by Stream — real data or an honest empty state (Rule 20) */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Artist Revenue Trends (Billboard #)
+          Revenue by Stream (This Month)
         </div>
-        
-        {/* SVG Spline Graph */}
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          {/* Y-axis Labels */}
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 380, fontSize: 7, color: "rgba(255,255,255,0.4)", textAlign: "right", minWidth: 28 }}>
-            <span>$70M</span>
-            <span>$60M</span>
-            <span>$50M</span>
-            <span>$40M</span>
-            <span>$30M</span>
-            <span>$20M</span>
-            <span>$10M</span>
-            <span>0</span>
+        {loading ? (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", padding: "24px 0", textAlign: "center" }}>
+            Loading revenue…
           </div>
-
-          {/* Graph Grid */}
-          <div style={{ flex: 1, height: 380, minHeight: 380, position: "relative", background: "rgba(0,0,0,0.2)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-            {/* Grid Lines */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", pointerEvents: "none" }}>
-              {[...Array(8)].map((_, i) => (
-                <div key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", width: "100%", height: 0 }} />
-              ))}
-            </div>
-            
-            {/* SVG Lines */}
-            <svg width="100%" height="100%" viewBox="0 0 300 110" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
-              <defs>
-                <linearGradient id="purpleArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#AA2DFF" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#AA2DFF" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="goldArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFD700" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#FFD700" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Gold Spline area & line */}
-              <path d="M 0 100 Q 30 80, 65 95 T 120 70 T 180 85 T 240 50 T 300 75 L 300 110 L 0 110 Z" fill="url(#goldArea)" />
-              <path d="M 0 100 Q 30 80, 65 95 T 120 70 T 180 85 T 240 50 T 300 75" fill="none" stroke="#FFD700" strokeWidth="2" />
-              
-              {/* Purple Spline area & line */}
-              <path d="M 0 90 Q 35 60, 70 85 T 140 45 T 210 65 T 280 20 T 300 35 L 300 110 L 0 110 Z" fill="url(#purpleArea)" />
-              <path d="M 0 90 Q 35 60, 70 85 T 140 45 T 210 65 T 280 20 T 300 35" fill="none" stroke="#AA2DFF" strokeWidth="2.5" />
-            </svg>
+        ) : streamBars.length > 0 ? (
+          <BarChart data={streamBars} accentColor="#FFD700" unit="$" height={160} />
+        ) : (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", padding: "24px 0", textAlign: "center" }}>
+            No revenue recorded yet this month.
           </div>
-        </div>
-
-        {/* X-axis Labels */}
-        <div style={{ display: "flex", justifyContent: "space-between", paddingLeft: 38, fontSize: 7, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
-          <span>0</span>
-          <span>10</span>
-          <span>20</span>
-          <span>30</span>
-          <span>40</span>
-          <span>50</span>
-          <span>60</span>
-          <span>70</span>
-          <span>80</span>
-          <span>90</span>
-          <span>100</span>
-        </div>
+        )}
       </div>
     </div>
   );
 }
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ border: "1px solid rgba(251,191,36,0.35)", borderRadius: 8, background: "rgba(255,255,255,0.04)", padding: "6px 7px" }}>
-      <div style={{ fontSize: 9, color: "#fcd34d", letterSpacing: "0.1em" }}>{label}</div>
-      <div style={{ fontSize: 12, color: "#fef3c7", fontWeight: 800 }}>{value}</div>
-    </div>
-  );
-}
-
-const btnStyle: React.CSSProperties = {
-  borderRadius: 999,
-  border: "1px solid rgba(251,191,36,0.55)",
-  background: "rgba(251,191,36,0.15)",
-  color: "#fde68a",
-  fontSize: 10,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  padding: "5px 8px",
-  cursor: "pointer",
-};

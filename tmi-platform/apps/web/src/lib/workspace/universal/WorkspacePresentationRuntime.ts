@@ -45,23 +45,21 @@ export interface WorkspacePresentationConfig {
  * FLOATING = temporary movable exception only (Share Studio)
  */
 export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationConfig> = {
-  // LEFT_QUICK
+  // BOTTOM_DEEP — all OC workspaces dock here (one-click no second door)
   inventory: {
-    preferredSurface: "LEFT_PANEL",
+    preferredSurface: "DRAWER",
     deepSurface: "DRAWER",
-    defaultWidth: 320,
     preserveState: true,
     mediaConsoleMode: "mini",
   },
 
-  // RIGHT_QUICK
-  "memory-wall": { preferredSurface: "RIGHT_PANEL", defaultWidth: 320 },
-  submissions: { preferredSurface: "RIGHT_PANEL", defaultWidth: 340 },
+  "memory-wall": { preferredSurface: "DRAWER", deepSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  submissions: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
   "share-studio": { preferredSurface: "FLOATING", defaultWidth: 480 },
 
-  // DISCOVERY_WALL (not LEFT floating lobby venue / not UniversalWorkspaceWindow)
-  lobby: { preferredSurface: "DISCOVERY_WALL", preserveState: true },
-  "live-destinations": { preferredSurface: "DISCOVERY_WALL", defaultWidth: 420, preserveState: true },
+  // Live Lobby Wall — full-width grid in bottom dock (not floating side panel)
+  lobby: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "live-destinations": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
 
   // BOTTOM_DEEP / DrawerDock — Media Console
   "playlist-studio": {

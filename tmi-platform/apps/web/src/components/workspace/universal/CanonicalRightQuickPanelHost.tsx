@@ -1,41 +1,48 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
-import CanonicalQuickPanelContent from "./CanonicalQuickPanelContent";
+import CyberneticQuickHudOverlay from "@/components/hud/CyberneticQuickHudOverlay";
 
 export default function CanonicalRightQuickPanelHost({
   userId,
   displayName,
   role,
 }: {
-  userId: string;
-  displayName: string;
-  role: "fan" | "performer";
-}) {
+  userId?: string;
+  displayName?: string;
+  role?: string;
+} = {}) {
   const { rightPanelWorkspace, closeSurface } = useWorkspacePresentationStore();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   if (!rightPanelWorkspace) return null;
 
   return (
     <div
-      data-canonical-right-quick
       style={{
         position: "fixed",
-        top: 100,
-        right: 316,
-        width: 320,
+        top: isMobile ? "auto" : 100,
+        bottom: isMobile ? 0 : "auto",
+        right: isMobile ? 0 : 320,
+        left: isMobile ? 0 : "auto",
+        width: isMobile ? "100%" : 320,
         zIndex: 9350,
-        pointerEvents: "auto",
+        paddingBottom: isMobile ? "env(safe-area-inset-bottom, 16px)" : 0,
       }}
     >
-      <CanonicalQuickPanelContent
-        workspaceId={rightPanelWorkspace}
-        userId={userId}
-        displayName={displayName}
-        role={role}
-        accentColor="#AA2DFF"
+      <CyberneticQuickHudOverlay
+        type={rightPanelWorkspace as any}
+        isOpen={true}
         onClose={() => closeSurface("RIGHT_PANEL")}
+        accentColor="#AA2DFF"
       />
     </div>
   );
