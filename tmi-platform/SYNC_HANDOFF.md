@@ -5,7 +5,7 @@
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
 **Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
-**Mobile root-shell isolation candidate (eos tip):** **`8aed6532`** — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
+**Mobile root-shell isolation candidate:** **`8aed6532`** (+ tip **`9949ee24`** matchMedia / no auto-admin eject) — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
 
 **`origin/main` tip (intentionally untouched / CLOSED for this work):** **`fd0f7bd1`** — do **not** merge/push mobile P0 to main.  
 **Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
@@ -81,19 +81,26 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
 901dbd7a — earlier responsive attempt (superseded for CCS by 4620a7b6)
 6d79c5c1 — AdminHubShell mobile tabs + Overseer partial isMobile widths (mid-flight)
 
-8aed6532 — MOBILE P0 ROOT-SHELL ISOLATION (eos tip)
+8aed6532 — MOBILE P0 ROOT-SHELL ISOLATION
          · ROOT CAUSE: DashboardWorkspaceContainer mounted Fan+Performer+Admin as
            siblings (display:none keep-alives) + mobile swipe (≥60px) switched roles;
            ChevronNavigation also history-swiped across role shells. Desktop min-widths
            (290|1fr|320 Admin, 230|1fr|300 CCS, Overseer 268px rails) compounded overflow.
-         · FIX: exclusive single-shell mount; Admin → /admin/overseer only (no swipe);
-           Overseer mobileOpsTab SENTINEL|MONITOR|INBOX; AdminHub COMMAND|MONITOR|INTEL;
-           shell width/maxWidth 100% + minWidth 0; CCS 4620a7b6 preserved
+         · FIX: exclusive single-shell mount; Admin → /admin/overseer only via explicit
+           ADMIN button / Ctrl+3 (no swipe); Overseer mobileOpsTab SENTINEL|MONITOR|INBOX;
+           AdminHub COMMAND|MONITOR|INTEL; shell width/maxWidth 100% + minWidth 0
          · PRESERVED: BOTTOM_DEEP under mini player; Avatar/Memory Quick side HUDs desktop;
            quick IDs (avatar-quick, memory-quick, inventory-quick) ≠ full DRAWER IDs
          · TYPECHECK: pnpm --filter web typecheck PASS
          · MOBILE VISUAL CERT: PENDING (Marcel hard-refresh @ 360/390/430)
          · MAIN: CLOSED — do not promote
+
+9949ee24 — eos tip (P0-A+C follow-on)
+         · matchMedia('(max-width: 767px)') + mobile-first isMobile default on CCS
+           (breaks overflow↔innerWidth detection loop)
+         · No silent router.replace to /admin/overseer on dashboard restore
+         · PlaylistCanister 3-col → stacked on mobile
+         · MOBILE VISUAL CERT still PENDING · MAIN still CLOSED
 ```
 
 **Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers **and** mobile visual cert (scrollWidth≈innerWidth, no role swipe).
@@ -105,7 +112,8 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
 | Ref | SHA | Message | Verified |
 |-----|-----|---------|----------|
 | `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched · **CLOSED** |
-| `origin/eos/vocal-improv-clean` tip | **`8aed6532`** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | local tip; push next |
+| `origin/eos/vocal-improv-clean` tip | **`9949ee24`** | fix(mobile/P0-A+C): matchMedia + no auto-admin eject | ✅ pushed |
+| Isolation code | **`8aed6532`** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | ✅ ancestor of tip |
 | Candidate baseline | **`845c4f6f`** | feat(workspace): wire 4-zone canonical panels from Profiles blueprints | ✅ on eos lineage |
 | Lobby/Settings under baseline | **`c0a4c2ed`** | Visual Live Discovery Wall + Shell Colors → Settings | ✅ **ancestor of 845c4f6f** |
 
@@ -138,11 +146,11 @@ Merge-base with main remains `fd0f7bd1`. Fast-forward to main **only after** Fan
 ### Recent eos log (top 5)
 
 ```
+9949ee24 fix(mobile/P0-A+C): matchMedia detection + auto-nav elimination + PlaylistCanister responsive
+14832075 docs: lock mobile P0 tip SHA 8aed6532 in SYNC_HANDOFF
 8aed6532 fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed
 6d79c5c1 fix(mobile/P0): root shell isolation — eliminate horizontal overflow in Admin + Overseer decks
 4620a7b6 fix(mobile/P0): true conditional render in CommandCenterShell
-901dbd7a fix(mobile/P0): responsive shell — collapse desktop rails at <768px
-d6413ff6 feat(workspace): three-layer interaction stack — quick HUDs + drawer deep workspaces
 ```
 
 ### Recent origin/main log (top 5)

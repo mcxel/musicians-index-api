@@ -129,7 +129,7 @@ export default function OverseerFlightDeck({
   const [flipKey, setFlipKey] = useState(0);
   const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
   const [isMerging, setIsMerging] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const [mobileOpsTab, setMobileOpsTab] = useState<"left" | "center" | "right">("center");
   const {
     screenStream,
@@ -176,10 +176,11 @@ export default function OverseerFlightDeck({
   }, []);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    const mql = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mql.matches);
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
   }, []);
 
   useEffect(() => {

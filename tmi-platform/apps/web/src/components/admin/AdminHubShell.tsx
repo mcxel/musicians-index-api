@@ -27,14 +27,15 @@ export default function AdminHubShell() {
   const selectedId = selectedTarget.id;
 
   const [eventCount, setEventCount] = useState(() => getSystemEventLog().length);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const [mobileAdminTab, setMobileAdminTab] = useState<"command" | "monitor" | "intel">("monitor");
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    const mql = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mql.matches);
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
   }, []);
 
   useEffect(() => {
