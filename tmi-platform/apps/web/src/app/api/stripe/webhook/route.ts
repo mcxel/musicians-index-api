@@ -456,6 +456,32 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // ─── 5B. ADVERTISER AD PURCHASE — HONEST STUB (Rule 20) ─────────────
+      // No AdCampaign/AdPlacement table exists yet. Record the payment so it
+      // is never silently lost (same pattern as NFT/STORE above) — an admin
+      // must manually create the real placement until that engine is built.
+      if (metadata.type === 'ad_purchase') {
+        const buyerEmail = metadata.buyerEmail || metadata.userEmail || session.customer_email || '';
+        const buyer = buyerEmail
+          ? await prisma.user.findFirst({ where: { email: buyerEmail.toLowerCase() } })
+          : null;
+        await prisma.order.create({
+          data: {
+            provider: 'STRIPE',
+            providerPaymentId: (session.payment_intent as string) || (session.subscription as string) || session.id,
+            amountCents: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            status: 'PAID_PENDING_FULFILLMENT',
+            buyerUserId: buyer?.id ?? null,
+          },
+        }).catch((err) => console.error('[webhook] ad_purchase Order create failed', err));
+        console.warn(
+          `[Stripe Webhook] Ad purchase ${session.id} (ref: ${metadata.refId || 'unknown'}) recorded as ` +
+          `PAID_PENDING_FULFILLMENT — AdCampaign/AdPlacement table not implemented; an admin must manually ` +
+          `activate this placement. creativeUrl=${metadata.creativeUrl || 'n/a'} startDate=${metadata.startDate || 'n/a'}`,
+        );
+      }
+
       // ─── 6. PERFORMER SPONSORSHIP FULFILLMENT (Type A) ─────────────────
       // A local business sponsoring a specific performer's profile — runs as
       // a real Stripe subscription so the sponsorship renews monthly.

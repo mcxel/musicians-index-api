@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
 
 const PACKAGES = [
   {
     id: "starter",
     name: "Starter Ad",
     price: "$49 / mo",
-    priceId: "price_ad_starter",
+    priceId: STRIPE_PRODUCTS.AD_PACKAGE_STARTER.priceId,
     color: "#00FFFF",
     perks: ["500K impressions/mo", "Homepage tile placement", "Basic click tracking"],
   },
@@ -16,7 +17,7 @@ const PACKAGES = [
     id: "pro",
     name: "Pro Ad",
     price: "$149 / mo",
-    priceId: "price_ad_pro",
+    priceId: STRIPE_PRODUCTS.AD_PACKAGE_PRO.priceId,
     color: "#FF2DAA",
     perks: ["2M impressions/mo", "Live room + magazine tiles", "Profile page halos", "Full analytics dashboard"],
     featured: true,
@@ -25,7 +26,7 @@ const PACKAGES = [
     id: "premium",
     name: "Premium Ad",
     price: "$399 / mo",
-    priceId: "price_ad_premium",
+    priceId: STRIPE_PRODUCTS.AD_PACKAGE_PREMIUM.priceId,
     color: "#FFD700",
     perks: ["Unlimited impressions", "Jumbotron placements", "Premiere sponsorship slots", "Priority placement bidding", "Dedicated rep"],
   },
@@ -45,7 +46,8 @@ export default function AdvertiserPaymentsPage() {
         credentials: "include",
         body: JSON.stringify({
           items: [{ priceId, quantity: 1 }],
-          successUrl: "/advertiser/payments?success=1",
+          mode: "subscription",
+          successUrl: "/payment-success?type=ad_purchase&session_id={CHECKOUT_SESSION_ID}",
           cancelUrl: "/advertiser/payments?cancelled=1",
         }),
       });

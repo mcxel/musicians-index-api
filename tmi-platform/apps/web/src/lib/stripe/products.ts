@@ -212,6 +212,29 @@ export const STRIPE_PRODUCTS = {
     price:     9900, // $99 per issue
     interval:  "one_time" as const,
   },
+  // Advertiser Hub packages (/advertiser/payments) — recurring bundles, distinct
+  // from the à la carte per-surface slots above.
+  AD_PACKAGE_STARTER: {
+    productId: "prod_ad_package_starter",
+    priceId:   process.env.STRIPE_PRICE_AD_PACKAGE_STARTER ?? "price_ad_package_starter_monthly",
+    name:      "Advertiser — Starter Package",
+    price:     4900, // $49/mo
+    interval:  "month" as const,
+  },
+  AD_PACKAGE_PRO: {
+    productId: "prod_ad_package_pro",
+    priceId:   process.env.STRIPE_PRICE_AD_PACKAGE_PRO ?? "price_ad_package_pro_monthly",
+    name:      "Advertiser — Pro Package",
+    price:     14900, // $149/mo
+    interval:  "month" as const,
+  },
+  AD_PACKAGE_PREMIUM: {
+    productId: "prod_ad_package_premium",
+    priceId:   process.env.STRIPE_PRICE_AD_PACKAGE_PREMIUM ?? "price_ad_package_premium_monthly",
+    name:      "Advertiser — Premium Package",
+    price:     39900, // $399/mo
+    interval:  "month" as const,
+  },
 
   // ── Artist upgrades ───────────────────────────────────────────────────────
   ARTIST_SPOTLIGHT: {

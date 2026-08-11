@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
-import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS } from '@/lib/stripe/products';
+import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, type StripeProductKey } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
@@ -20,6 +20,15 @@ import {
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
   Object.fromEntries(Object.values(STRIPE_PRODUCTS).map(p => [p.priceId, p]));
+
+// Reverse lookup: priceId → STRIPE_PRODUCTS key — used to tag checkout metadata
+// for product families (e.g. advertiser ad packages) that need a fulfillment
+// record even though they're purchased through the generic `items` array.
+const KEY_BY_PRICE_ID: Record<string, StripeProductKey> = Object.fromEntries(
+  (Object.entries(STRIPE_PRODUCTS) as [StripeProductKey, typeof STRIPE_PRODUCTS[StripeProductKey]][]).map(
+    ([key, p]) => [p.priceId, key],
+  ),
+) as Record<string, StripeProductKey>;
 
 // Map subscription product key → UserTier
 const PLAN_TO_TIER: Record<string, UserTier> = {
@@ -73,6 +82,13 @@ export async function GET(req: NextRequest) {
   const sponsorTier = searchParams.get('sponsorTier');
   const sponsorName = searchParams.get('sponsorName') ?? 'Battle Sponsor';
 
+  // Generic purchase-type passthrough (e.g. advertiser à la carte ad placements
+  // bought via /advertiser/buy — custom budget amount, no catalog price ID).
+  const purchaseType = searchParams.get('type');
+  const refId        = searchParams.get('refId') ?? '';
+  const creativeUrl  = searchParams.get('creativeUrl') ?? '';
+  const placementStartDate = searchParams.get('startDate') ?? '';
+
   // For placeholders, build inline price_data from URL params
   const amountStr   = searchParams.get('amount');
   const productName = searchParams.get('productName') ?? 'TMI Pass';
@@ -95,6 +111,8 @@ export async function GET(req: NextRequest) {
   if (battleId) {
     successUrl += `&battleId=${encodeURIComponent(battleId)}`;
     if (sponsorTier) successUrl += `&sponsorTier=${encodeURIComponent(sponsorTier)}&sponsorName=${encodeURIComponent(sponsorName)}`;
+  } else if (purchaseType) {
+    successUrl += `&type=${encodeURIComponent(purchaseType)}&refId=${encodeURIComponent(refId)}`;
   }
   const cancelUrl = battleId ? `${origin}/sponsor/battles?notice=checkout-cancelled` : `${origin}/season-pass`;
 
@@ -136,7 +154,11 @@ export async function GET(req: NextRequest) {
         plan: planKey,
         tierUpgrade,
         userEmail,
-        ...(battleId && { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' }),
+        ...(battleId
+          ? { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' }
+          : purchaseType
+            ? { type: purchaseType, refId, creativeUrl, startDate: placementStartDate }
+            : {}),
       },
     });
     if (!session.url) throw new Error('No session URL returned');
@@ -447,6 +469,13 @@ export async function POST(req: NextRequest) {
 
     const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
 
+    // Advertiser ad-package purchases need a fulfillment record even though
+    // they ride the generic items[] checkout path — tag them so the webhook
+    // can record the order (see AD_PACKAGE_* products.ts + webhook route).
+    const adPackageKey = items
+      .map((i) => KEY_BY_PRICE_ID[i.priceId])
+      .find((k): k is StripeProductKey => Boolean(k) && k.startsWith('AD_PACKAGE_'));
+
     const session = await stripe.checkout.sessions.create({
       mode: checkoutMode,
       payment_method_types: ['card'],
@@ -456,6 +485,7 @@ export async function POST(req: NextRequest) {
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
       ...(userEmail ? { customer_email: userEmail } : {}),
+      ...(adPackageKey ? { metadata: { type: 'ad_purchase', refId: adPackageKey, buyerEmail: userEmail } } : {}),
     });
 
     if (!session.url) throw new Error('No session URL from Stripe');

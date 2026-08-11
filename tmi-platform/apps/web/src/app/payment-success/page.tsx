@@ -22,6 +22,7 @@ type State =
   | 'pass'
   | 'sponsor'
   | 'media_player'
+  | 'ad_purchase'
   | 'unknown';
 
 export default function PaymentSuccessPage() {
@@ -47,6 +48,16 @@ export default function PaymentSuccessPage() {
     // Idempotency: only grant once per session ID
     const grantKey = `tmi_paid_${sessionId}`;
     if (localStorage.getItem(grantKey)) { setStatus('duplicate'); return; }
+
+    // Ad purchase (advertiser packages + à la carte placements) — payment is
+    // recorded server-side by the webhook (see stripe/webhook route.ts's
+    // ad_purchase branch); no AdCampaign/AdPlacement engine exists yet, so
+    // this is an honest "received" confirmation, not a fake "live" state.
+    if (paymentType === 'ad_purchase') {
+      localStorage.setItem(grantKey, '1');
+      setStatus('ad_purchase');
+      return;
+    }
 
     // Media Player chassis — ownership granted by Stripe webhook; confirm + hydrate inventory
     if (paymentType === 'media_player_chassis') {
@@ -118,7 +129,7 @@ export default function PaymentSuccessPage() {
   }, [sessionId, priceId, mode, paymentType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const colors: Record<State, string> = {
-    loading: '#888', granted: '#00FF88', tip: '#FF2DAA', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', media_player: '#00FFFF', unknown: '#FF4444',
+    loading: '#888', granted: '#00FF88', tip: '#FF2DAA', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', media_player: '#00FFFF', ad_purchase: '#FFD700', unknown: '#FF4444',
   };
   const accent = colors[status] ?? '#888';
 
@@ -126,7 +137,7 @@ export default function PaymentSuccessPage() {
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>
-          {status === 'loading' ? '⏳' : status === 'tip' ? '💸' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'media_player' ? '🎛️' : status === 'duplicate' ? '✅' : '❓'}
+          {status === 'loading' ? '⏳' : status === 'tip' ? '💸' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'media_player' ? '🎛️' : status === 'ad_purchase' ? '📢' : status === 'duplicate' ? '✅' : '❓'}
         </div>
 
         {status === 'tip' && (
@@ -198,6 +209,20 @@ export default function PaymentSuccessPage() {
               <Link href="/playlist" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.4)', borderRadius: 8, textDecoration: 'none' }}>
                 PLAYLIST STUDIO
               </Link>
+            </div>
+          </>
+        )}
+
+        {status === 'ad_purchase' && (
+          <>
+            <div style={{ fontSize: 9, letterSpacing: '0.4em', color: accent, fontWeight: 800, marginBottom: 10 }}>PAYMENT RECEIVED</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Ad Placement Request Submitted</h1>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
+              Your payment went through. The TMI team will review your placement and follow up by email once it&apos;s activated.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+              <Link href="/advertiser/campaigns" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#050510', background: accent, borderRadius: 8, textDecoration: 'none' }}>VIEW CAMPAIGNS</Link>
+              <Link href="/advertiser/dashboard" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: accent, border: `1px solid ${accent}`, borderRadius: 8, textDecoration: 'none' }}>ADVERTISER HUB</Link>
             </div>
           </>
         )}

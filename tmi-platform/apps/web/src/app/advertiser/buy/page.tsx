@@ -112,7 +112,6 @@ export default function AdvertiserBuyPage() {
   const [creativeType, setCreativeType] = useState("image");
   const [startDate, setStartDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const budgetNum = Number(budget) || 0;
   const cpm = selected?.cpm ?? 10;
@@ -128,31 +127,12 @@ export default function AdvertiserBuyPage() {
       mode: 'payment',
       amount: String(budgetNum * 100),
       productName: selected.name,
+      type: 'ad_purchase',
+      refId: selected.id,
+      creativeUrl,
+      ...(startDate ? { startDate } : {}),
     });
     window.location.href = `/api/stripe/checkout?${params.toString()}`;
-  }
-
-  if (success && selected) {
-    return (
-      <main style={mainStyle}>
-        <div style={{ maxWidth: 600, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#00FF88", marginBottom: 10 }}>Placement Purchased!</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", maxWidth: 420, margin: "0 auto 8px", lineHeight: 1.7 }}>
-              Your {selected.name} placement is pending creative review. It will go live within 4 hours of approval.
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 28 }}>
-              Budget: ${budgetNum.toLocaleString()} · Est. {estimatedImpressions.toLocaleString()} impressions
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <Link href="/advertiser/campaigns" style={btnStyle("#00FFFF")}>View Campaigns</Link>
-              <Link href="/advertiser/analytics" style={btnStyle("rgba(255,255,255,0.4)")}>Analytics</Link>
-            </div>
-          </motion.div>
-        </div>
-      </main>
-    );
   }
 
   return (
