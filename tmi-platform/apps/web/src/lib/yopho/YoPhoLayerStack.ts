@@ -173,3 +173,72 @@ export function setActiveLayerImage(
     ...(label ? { label } : {}),
   });
 }
+
+/** Canvas position / scale clamps (matches PortraitLayer docs). */
+export const YOPHO_LAYER_X_MIN = -100;
+export const YOPHO_LAYER_X_MAX = 100;
+export const YOPHO_LAYER_Y_MIN = -100;
+export const YOPHO_LAYER_Y_MAX = 100;
+export const YOPHO_LAYER_SCALE_MIN = 0.2;
+export const YOPHO_LAYER_SCALE_MAX = 3;
+export const YOPHO_NUDGE_XY_STEP = 8;
+export const YOPHO_NUDGE_SCALE_STEP = 0.05;
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+export function getLayerById(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+): PortraitLayer | null {
+  if (bp.primaryLayer.id === layerId) return bp.primaryLayer;
+  return bp.secondaryLayers.find((l) => l.id === layerId) ?? null;
+}
+
+/**
+ * Nudge active layer on canvas (X/Y). FREE single-image cards included.
+ * Positive dx = right, positive dy = down (CSS translate).
+ */
+export function nudgeLayerPosition(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  dx: number,
+  dy: number,
+): YoPhoPortraitBlueprint {
+  const layer = getLayerById(bp, layerId);
+  if (!layer) return bp;
+  return updateLayerById(bp, layerId, {
+    xOffset: clamp(layer.xOffset + dx, YOPHO_LAYER_X_MIN, YOPHO_LAYER_X_MAX),
+    yOffset: clamp(layer.yOffset + dy, YOPHO_LAYER_Y_MIN, YOPHO_LAYER_Y_MAX),
+  });
+}
+
+/** Scale + / − on one layer. */
+export function nudgeLayerScale(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  dScale: number,
+): YoPhoPortraitBlueprint {
+  const layer = getLayerById(bp, layerId);
+  if (!layer) return bp;
+  return updateLayerById(bp, layerId, {
+    scale: clamp(
+      Math.round((layer.scale + dScale) * 100) / 100,
+      YOPHO_LAYER_SCALE_MIN,
+      YOPHO_LAYER_SCALE_MAX,
+    ),
+  });
+}
+
+/** Reset X/Y/scale to defaults for one layer (rotation/zIndex unchanged). */
+export function resetLayerTransform(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+): YoPhoPortraitBlueprint {
+  return updateLayerById(bp, layerId, {
+    xOffset: 0,
+    yOffset: 0,
+    scale: 1,
+  });
+}

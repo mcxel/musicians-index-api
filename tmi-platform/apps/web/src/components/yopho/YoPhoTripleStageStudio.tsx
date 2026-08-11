@@ -23,17 +23,26 @@ import {
   addStackLayer,
   bringLayerToFront,
   countStackLayers,
+  getLayerById,
   listStackLayers,
+  nudgeLayerPosition,
+  nudgeLayerScale,
   removeStackLayer,
   reorderStackLayer,
+  resetLayerTransform,
   sendLayerToBack,
   setActiveLayerImage,
+  YOPHO_NUDGE_SCALE_STEP,
+  YOPHO_NUDGE_XY_STEP,
 } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoPortraitStageCanvas from "./YoPhoPortraitStageCanvas";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
 const GOLD = "#FFD700";
+/** Green = positive / confirm nudge direction; red = opposite */
+const GREEN = "#00FF88";
+const RED = "#FF4466";
 
 function formatTime(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
@@ -84,6 +93,10 @@ export default function YoPhoTripleStageStudio({
 
   const durationSec = preview.previewDurationSec ?? master.previewDurationSec ?? 6;
   const stackLayers = useMemo(() => listStackLayers(preview), [preview]);
+  const activeLayer = useMemo(
+    () => getLayerById(preview, activeLayerId) ?? preview.primaryLayer,
+    [preview, activeLayerId],
+  );
 
   useEffect(() => {
     setPreview(clonePortraitBlueprint(master));
@@ -218,6 +231,21 @@ export default function YoPhoTripleStageStudio({
     setStatusLine("Empty layer added — Put your image here.");
   };
 
+  const nudgeActive = (dx: number, dy: number) => {
+    setPreview((p) => nudgeLayerPosition(p, activeLayerId, dx, dy));
+    setStatusLine("Layer moved — Apply to Master to commit.");
+  };
+
+  const scaleActive = (dScale: number) => {
+    setPreview((p) => nudgeLayerScale(p, activeLayerId, dScale));
+    setStatusLine("Layer scaled — Apply to Master to commit.");
+  };
+
+  const resetActiveTransform = () => {
+    setPreview((p) => resetLayerTransform(p, activeLayerId));
+    setStatusLine("Layer position/scale reset — Apply to Master to commit.");
+  };
+
   const effectPreviewBlueprint = useMemo(() => {
     if (!selectedControlId) return preview;
     const def = getPortraitControl(selectedControlId);
@@ -268,87 +296,271 @@ export default function YoPhoTripleStageStudio({
           )}
         </div>
 
-        {capacity.multiImageEnabled ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[...stackLayers].reverse().map((ref, frontIndex) => {
-              const selected = ref.id === activeLayerId;
-              const empty = !ref.layer.imageUrl?.trim();
-              return (
-                <div
-                  key={ref.id}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {[...stackLayers].reverse().map((ref, frontIndex) => {
+            const selected = ref.id === activeLayerId;
+            const empty = !ref.layer.imageUrl?.trim();
+            const multi = stackLayers.length > 1;
+            return (
+              <div
+                key={ref.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  border: selected ? `1px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
+                  background: selected ? `${CYAN}14` : "rgba(255,255,255,0.03)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveLayerId(ref.id)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 8px",
-                    borderRadius: 8,
-                    border: selected ? `1px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
-                    background: selected ? `${CYAN}14` : "rgba(255,255,255,0.03)",
+                    flex: 1,
+                    textAlign: "left",
+                    background: "transparent",
+                    border: "none",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: 800,
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setActiveLayerId(ref.id)}
-                    style={{
-                      flex: 1,
-                      textAlign: "left",
-                      background: "transparent",
-                      border: "none",
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontSize: 10,
-                      fontWeight: 800,
-                    }}
-                  >
-                    z{ref.layer.zIndex} · {empty ? "Put your image here" : ref.layer.label}{" "}
-                    <span style={{ color: "rgba(255,255,255,0.35)" }}>
-                      ({frontIndex === 0 ? "front" : frontIndex === stackLayers.length - 1 ? "back" : "mid"})
-                    </span>
-                  </button>
-                  <button type="button" title="Bring forward" onClick={() => setPreview(reorderStackLayer(preview, ref.id, "forward"))} style={tinyBtn}>
-                    ▲
-                  </button>
-                  <button type="button" title="Send back" onClick={() => setPreview(reorderStackLayer(preview, ref.id, "back"))} style={tinyBtn}>
-                    ▼
-                  </button>
-                  <button type="button" title="Bring to front" onClick={() => setPreview(bringLayerToFront(preview, ref.id))} style={tinyBtn}>
-                    ⇈
-                  </button>
-                  <button type="button" title="Send to back" onClick={() => setPreview(sendLayerToBack(preview, ref.id))} style={tinyBtn}>
-                    ⇊
-                  </button>
-                  {capacity.maxImages > 1 ? (
+                  z{ref.layer.zIndex} · {empty ? "Put your image here" : ref.layer.label}{" "}
+                  <span style={{ color: "rgba(255,255,255,0.35)" }}>
+                    (
+                    {multi
+                      ? frontIndex === 0
+                        ? "front"
+                        : frontIndex === stackLayers.length - 1
+                          ? "back"
+                          : "mid"
+                      : "solo"}
+                    )
+                  </span>
+                </button>
+                {multi ? (
+                  <>
                     <button
                       type="button"
-                      title="Remove layer"
-                      onClick={() => {
-                        const next = removeStackLayer(preview, ref.id);
-                        setPreview(next);
-                        setActiveLayerId(next.primaryLayer.id);
-                      }}
-                      style={{ ...tinyBtn, color: "#ff6688" }}
+                      title="Bring forward"
+                      onClick={() => setPreview(reorderStackLayer(preview, ref.id, "forward"))}
+                      style={{ ...tinyBtn, color: GREEN, borderColor: `${GREEN}66` }}
                     >
-                      ✕
+                      ▲
                     </button>
-                  ) : null}
-                </div>
-              );
-            })}
-            {countStackLayers(preview) >= capacity.maxImages ? (
-              <div style={{ fontSize: 10, color: GOLD }}>
-                At capacity.{" "}
-                <Link href={capacity.upgradeHref} style={{ color: CYAN, fontWeight: 800 }}>
-                  Upgrade to add more images
-                </Link>
+                    <button
+                      type="button"
+                      title="Send back"
+                      onClick={() => setPreview(reorderStackLayer(preview, ref.id, "back"))}
+                      style={{ ...tinyBtn, color: RED, borderColor: `${RED}66` }}
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      title="Bring to front"
+                      onClick={() => setPreview(bringLayerToFront(preview, ref.id))}
+                      style={{ ...tinyBtn, color: GREEN, borderColor: `${GREEN}66` }}
+                    >
+                      ⇈
+                    </button>
+                    <button
+                      type="button"
+                      title="Send to back"
+                      onClick={() => setPreview(sendLayerToBack(preview, ref.id))}
+                      style={{ ...tinyBtn, color: RED, borderColor: `${RED}66` }}
+                    >
+                      ⇊
+                    </button>
+                  </>
+                ) : null}
+                {capacity.maxImages > 1 && stackLayers.length > 1 ? (
+                  <button
+                    type="button"
+                    title="Remove layer"
+                    onClick={() => {
+                      const next = removeStackLayer(preview, ref.id);
+                      setPreview(next);
+                      setActiveLayerId(next.primaryLayer.id);
+                    }}
+                    style={{ ...tinyBtn, color: RED }}
+                  >
+                    ✕
+                  </button>
+                ) : null}
               </div>
-            ) : null}
+            );
+          })}
+          {!capacity.multiImageEnabled ? (
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
+              FREE = one image — still reposition / scale below. Upgrade unlocks multi-layer z-depth
+              (car in front of person).
+            </div>
+          ) : null}
+          {countStackLayers(preview) >= capacity.maxImages && capacity.multiImageEnabled ? (
+            <div style={{ fontSize: 10, color: GOLD }}>
+              At capacity.{" "}
+              <Link href={capacity.upgradeHref} style={{ color: CYAN, fontWeight: 800 }}>
+                Upgrade to add more images
+              </Link>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Active-layer positioning pad — X/Y + z-order + scale */}
+        <div
+          data-yopho-position-pad
+          style={{
+            marginTop: 12,
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: `1px solid ${CYAN}33`,
+            background: "rgba(0,255,255,0.04)",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 14,
+            alignItems: "center",
+          }}
+        >
+          <div style={{ minWidth: 120 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: CYAN }}>
+              POSITION · ACTIVE LAYER
+            </div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
+              {activeLayer.label || "Layer"} · x{activeLayer.xOffset} y{activeLayer.yOffset} · ×
+              {activeLayer.scale.toFixed(2)}
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+              Green = + / Front · Red = − / Back · Free drag = Coming Soon
+            </div>
           </div>
-        ) : (
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
-            FREE = single-layer card. Center is your working image. Upgrade unlocks dimensional stacking
-            (layers behind / in front) and multi-image sets.
+
+          {/* D-pad: left/right + up/down */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "28px 28px 28px",
+              gridTemplateRows: "28px 28px 28px",
+              gap: 4,
+              placeItems: "center",
+            }}
+            aria-label="Nudge layer on canvas"
+          >
+            <span />
+            <button
+              type="button"
+              title="Nudge up"
+              onClick={() => nudgeActive(0, -YOPHO_NUDGE_XY_STEP)}
+              style={padBtn(GREEN)}
+            >
+              ↑
+            </button>
+            <span />
+            <button
+              type="button"
+              title="Nudge left"
+              onClick={() => nudgeActive(-YOPHO_NUDGE_XY_STEP, 0)}
+              style={padBtn(RED)}
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              title="Reset position & scale"
+              onClick={resetActiveTransform}
+              style={{ ...padBtn("rgba(255,255,255,0.55)"), fontSize: 8 }}
+            >
+              ●
+            </button>
+            <button
+              type="button"
+              title="Nudge right"
+              onClick={() => nudgeActive(YOPHO_NUDGE_XY_STEP, 0)}
+              style={padBtn(GREEN)}
+            >
+              →
+            </button>
+            <span />
+            <button
+              type="button"
+              title="Nudge down"
+              onClick={() => nudgeActive(0, YOPHO_NUDGE_XY_STEP)}
+              style={padBtn(RED)}
+            >
+              ↓
+            </button>
+            <span />
           </div>
-        )}
+
+          {/* Depth / z-order for multi-layer; still show Front/Back affordance when multi */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
+              DEPTH
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                title="Bring forward"
+                disabled={stackLayers.length < 2}
+                onClick={() => {
+                  setPreview((p) => reorderStackLayer(p, activeLayerId, "forward"));
+                  setStatusLine("Brought forward — Apply to Master to commit.");
+                }}
+                style={{
+                  ...padBtn(GREEN),
+                  opacity: stackLayers.length < 2 ? 0.35 : 1,
+                  cursor: stackLayers.length < 2 ? "not-allowed" : "pointer",
+                }}
+              >
+                Front
+              </button>
+              <button
+                type="button"
+                title="Send back"
+                disabled={stackLayers.length < 2}
+                onClick={() => {
+                  setPreview((p) => reorderStackLayer(p, activeLayerId, "back"));
+                  setStatusLine("Sent back — Apply to Master to commit.");
+                }}
+                style={{
+                  ...padBtn(RED),
+                  opacity: stackLayers.length < 2 ? 0.35 : 1,
+                  cursor: stackLayers.length < 2 ? "not-allowed" : "pointer",
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+
+          {/* Scale */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
+              SCALE
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                title="Scale up"
+                onClick={() => scaleActive(YOPHO_NUDGE_SCALE_STEP)}
+                style={padBtn(GREEN)}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                title="Scale down"
+                onClick={() => scaleActive(-YOPHO_NUDGE_SCALE_STEP)}
+                style={padBtn(RED)}
+              >
+                −
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Timeline */}
@@ -470,15 +682,16 @@ export default function YoPhoTripleStageStudio({
           />
         </div>
 
-        {/* Center master */}
+        {/* Center working card — live layer stack + transforms; filter overlays stay on Preview panes until Apply */}
         <div>
-          {stageLabel("WORKING CARD", "Center master · Put your image here · Apply commits here")}
+          {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
           <YoPhoPortraitStageCanvas
-            blueprint={master}
+            blueprint={preview}
             height={380}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused
+            suppressOverlays
             emptyLabel="Put your image here"
           />
           <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
@@ -549,8 +762,8 @@ export default function YoPhoTripleStageStudio({
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-              Stack layers by z-order (▲/▼). Filters preview on the side panes; Apply to Master updates the
-              center working card. 60s/70s Era = Coming Soon. B&W + Vintage Album are live CSS looks.
+              Nudge the active layer (←→↑↓ + Front/Back + scale). Filters preview on side panes; Apply to
+              Master commits the center card. Free drag = Coming Soon. 60s/70s Era = Coming Soon.
             </div>
           )}
           {aiMessage ? (
@@ -631,3 +844,20 @@ const tinyBtn: CSSProperties = {
   height: 24,
   cursor: "pointer",
 };
+
+function padBtn(color: string): CSSProperties {
+  return {
+    width: 28,
+    height: 28,
+    padding: 0,
+    borderRadius: 6,
+    border: `1px solid ${color}88`,
+    background: `${color}22`,
+    color,
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    lineHeight: 1,
+  };
+}

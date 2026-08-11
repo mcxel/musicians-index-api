@@ -241,16 +241,18 @@ DrawerDock (CanonicalBottomDrawerHost) — one activeDrawer
 - Lobby / live-destinations → `DISCOVERY_WALL` (`liveDiscoveryOverlayStore`), not FLOATING room.
 - Stage `getBoundingClientRect` Δx/Δy/Δw/Δh must stay 0 when opening/closing/switching drawers.
 
-### YoPho studio contract (honesty + capacity + z-depth)
+### YoPho studio contract (honesty + capacity + z-depth + position)
 
 | Concern | Rule |
 |---------|------|
 | Placeholders | Center = **Put your image here**; sides = **Preview** / **Preview 2** — no bot/stock filler |
-| Filters | Click → live on Preview panes; **Apply to Master** commits center; 60s/70s = Coming Soon; B&W + Vintage live |
+| Filters | Click → live on Preview panes; **Apply to Master** commits; 60s/70s = Coming Soon; B&W + Vintage live |
 | Multi-image | Tier-gated via `YoPhoImageCapacity.ts` |
 | Capacity defaults | FREE **1** · PRO **3** · RUBY **5** · SILVER **6** · GOLD **8** · PLATINUM/BAND **12** · DIAMOND **16** |
 | At limit | Honest **Upgrade to add more images** → `/account/subscription` |
-| Dimensional layers | `YoPhoLayerStack.ts` — zIndex reorder (▲/▼ / front / back); canvas composites by z-order (person behind car). FREE = single layer only |
+| Dimensional layers | `YoPhoLayerStack.ts` — zIndex reorder (▲/▼ / Front / Back); canvas composites by z-order (person behind car) |
+| Layer position | Active-layer pad: ←→↑↓ nudges `xOffset`/`yOffset`; Front/Back z-order; scale +/−; green = +/Front, red = −/Back. FREE single image may still reposition/scale. Persisted on layer → Apply to Master |
+| Free drag | **Coming Soon** — nudges shipped; pointer-drag not wired |
 | Advanced 3D perspective | Coming Soon if missing — **z-order behind/in front must work** for multi-image tiers |
 
 ---
