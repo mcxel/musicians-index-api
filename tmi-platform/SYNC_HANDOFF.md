@@ -1,307 +1,362 @@
-# TMI Platform — SYNC HANDOFF
+# TMI Platform — SYNC HANDOFF (MASTER BUILD STATE)
 
-**Date:** 2026-08-10 (assembly director pass)  
-**Branch:** `main` local HEAD = `origin/eos/vocal-improv-clean` = **`c0a4c2ed`**  
-**Rule:** Never claim 100% certified without logged-in browser proof (Rule 20).
+**Date:** 2026-08-11 (next full-sync resume document)  
+**Branch of record:** `origin/eos/vocal-improv-clean`  
+**Candidate baseline:** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
+**Branch tip (includes baseline + one-line fix):** **`a5e45640`** (`accentColor` prop fix on CanonicalQuickPanelContent)  
+**`origin/main` tip (intentionally untouched):** **`fd0f7bd1`**  
+**Rule:** ChatGPT/Gemini “finished” claims are **code candidates only**. Never claim production certified without logged-in Fan + Performer hard-refresh proof (Rule 20).
 
 ---
 
-## Git SHA verification (this session)
+## Resume sentence (paste into next chat)
+
+> TMI's remaining mission is not to invent another architecture—it is to converge the substantial architecture already built into the exact persistent spatial operating system shown by the blueprints: uninterrupted center stage, simultaneous live quick panels on the sides, deep persistent workspace underneath, one searchable moving Live Lobby Wall for discovery, exact-room entry, and genuine 3D/WebRTC destinations behind it.
+
+---
+
+## Product one-liner
+
+TMI = **persistent entertainment OS**:
+
+| Layer | Job |
+|-------|-----|
+| Headquarters (Command Center) | Watch + operate |
+| Side panels | Quick act / inspect |
+| Bottom workspace | Deep work |
+| Live Lobby Wall | Discover |
+| 3D / WebRTC venues | Participate |
+
+**Do not collapse** the phone-style Lobby Wall reference and the desktop Fan/Performer blueprint into one generic floating window. They define different surfaces of the same OS.
+
+---
+
+## Certification doctrine (permanent)
+
+```
+CODE EXISTS
+    ≠
+TYPECHECK PASSES
+    ≠
+BROWSER WORKS
+    ≠
+UX MATCHES BLUEPRINT
+    ≠
+PRODUCTION CERTIFIED
+```
+
+Only the last state may be called finished.
+
+---
+
+## 1. WHERE WE ACTUALLY ARE
+
+**Phase:** Production UX Convergence (not greenfield architecture).
+
+Underlying platform largely exists (auth, roles, live sessions, competition presentation, avatar data, lobby presence, messaging, community feed, rewards, tickets/payments foundations, workspace registries, sponsor infrastructure, Memory Wall foundations, many routes/components).
+
+**Remaining problem:** pieces are not consistently in the correct **place / size / presentation depth / runtime context**. A component can exist in the tree and still look wrong in the browser.
+
+### Ledger (locked)
+
+```
+845c4f6f — FULL SYNC + 4-ZONE CANDIDATE
+         · TYPECHECK/CODE PASS
+         · HARD-REFRESH FAN/PERFORMER VISUAL-RUNTIME CERT PENDING
+         · MAIN intentionally untouched
+```
+
+Branch tip `a5e45640` = `845c4f6f` + CanonicalQuickPanelContent `accentColor` fix. Cert against **`845c4f6f` geometry contract**; tip is the deploy/checkout candidate that includes the fix.
+
+**Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers.
+
+---
+
+## 2. GIT VERIFICATION (2026-08-11)
 
 | Ref | SHA | Message | Verified |
 |-----|-----|---------|----------|
 | `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched |
-| `origin/eos/vocal-improv-clean` | **`c0a4c2ed`** | feat(lobby): Visual Live Discovery Wall + Shell Colors → Settings | ✅ fetched |
-| Local HEAD (on `main`) | **`c0a4c2ed`** | same as eos tip | ✅ |
-| YoPho canvas lineage | **`559a32f2`** | feat(workspace): Canonical 4-Zone Spatial Architecture | ✅ ancestor of eos |
-| Community feed | **`6434c051`** | feat(community): real platform-wide community message feed | ✅ ancestor of eos |
-| R3F fault boundaries | **`e62b2b45`** | fix(dashboard): isolate R3F crashes + P0 API hardening | ✅ ancestor of main |
-| Admin revenue poll | **`aca0acb9`** | fix(admin): align revenue poll timer | ✅ ancestor of main |
-| Lobby/settings (Gemini claim) | **`c0a4c2ed`** | Visual wall + settings realignment | ✅ **is eos tip** — CODE PASS only |
+| `origin/eos/vocal-improv-clean` tip | **`a5e45640`** | fix(workspace): correct accentColor prop in CanonicalQuickPanelContent | ✅ fetched |
+| Candidate baseline | **`845c4f6f`** | feat(workspace): wire 4-zone canonical panels from Profiles blueprints | ✅ on eos lineage |
+| Lobby/Settings under baseline | **`c0a4c2ed`** | Visual Live Discovery Wall + Shell Colors → Settings | ✅ **ancestor of 845c4f6f** |
 
-### Branch divergence
+### Relationship
 
 ```
-merge-base(main, eos) = fd0f7bd1
-eos is exactly +1 commit ahead of main: c0a4c2ed
-main has no commits eos lacks (fast-forward merge clean)
+origin/main .............. fd0f7bd1
+                              │
+                              ▼
+                    c0a4c2ed  (Lobby Wall + Settings)
+                              │
+                              ▼
+                    845c4f6f  ← CANDIDATE BASELINE (4-zone wire)
+                              │
+                              ▼
+                    a5e45640  ← eos tip (accentColor fix)
 ```
 
-**Production note:** Vercel prod last verified in REALITY_AUDIT at Aug 8 deploy (~`aca0acb9` window). `fd0f7bd1` and post-session commits are **not browser-certified on production** until Marcel hard-refreshes logged-in dashboard.
+`eos` is **+3 commits** ahead of `origin/main` (`c0a4c2ed`, `845c4f6f`, `a5e45640`). Merge-base = `fd0f7bd1`. Fast-forward would be clean **after** cert — not before.
 
----
+### Local note (this workspace)
 
-## Profiles/ folder inventory (2026-08-10 full scan)
+- Working tree may sit on local `main` pointing at eos tip (`a5e45640`) while `origin/main` remains `fd0f7bd1`. That does **not** mean main was promoted remotely.
+- Local branch name `eos/vocal-improv-clean` may lag tracking; **trust `origin/eos/vocal-improv-clean`**.
+- Unrelated dirty files (Stripe/advertiser, Profiles assets untracked, Sounds Pack, etc.) must not ride into handoff commits.
 
-| File | Type | Drawer/Panel shown |
-|------|------|-------------------|
-| `tmi fan and performer blue print Ui with drawers.png` | **Master 4-zone layout** | All zones + floating quick panels |
-| `tmi fan and performer blue print.png` | Hub without bottom drawer expanded | WATCH + ACT overlays only |
-| `digital-panel-1.jpg` | Quick panel HUD chrome (cyan) | ACT L/R cybernetic frame reference |
-| `digital-panel-2.jpg` | Quick panel HUD chrome (green) | Alternate HUD gauge style |
-| `Playlist drawer base.jpg` / `playlist drawer base.png` | **Playlist deep drawer** | WORK bottom — library grid + EQ |
-| `playlisy detach blue print.png` | Detached playlist window | Floating WMP-style (legacy — prefer bottom drawer) |
-| `messenger drawer base.png` | **Messenger drawer** | Multi-zone comms hub |
-| `YoPho base drawer.png` / `YoPho base.png` | **YoPho studio drawer** | Identity card + avatar customizer |
-| `Sponser base drawer.png` | **Sponsor/commercial drawer** | Sponsor canister + GO LIVE |
-| `Stats and analitics base drawer.png` | **Analytics drawer** | 4-quadrant revenue/engagement |
-| `Adminisratation Hub.jpg` | Admin overseer | Not fan/performer command center |
-| `Advertiser and sponser hub.jpg` | Advertiser hub | Role-specific |
-| `Fan/Performer/Sponsor/Advertiser Sign up.png` | Onboarding | Not command center |
-| `overeeser what i see now.png` | Overseer runtime | Admin-only |
-| `season Pass.jpg` | Season pass UI | Commerce |
-| `error.png` | Error state reference | SYSTEM INTERRUPT styling |
-| `tmi_platform_prototype_complete.html` | Interactive HTML prototype | Drawer gallery tab |
-| `tmi_master_prototype_all_systems.html` | Interactive HTML prototype | Platform + playlist + messenger screens |
-
-**Also:** `Lobbies/lobies walls base.png` — Live Lobby Wall mobile matrix (search + category chips + video tile grid).
-
----
-
-## Profiles drawer/panel style map (L → R, blueprint-derived)
-
-### Zone WATCH — center (never resize/cover)
-
-| Element | Blueprint source | Spec |
-|---------|-----------------|------|
-| Dual 16:9 monitors | `tmi fan…with drawers.png` | Chrome/gold bezel; split 1/2/4/8 configurable; monitors stay fixed size when panels open |
-| Stage / live feed | Same + `tmi fan…blue print.png` | Performer on stage; LIVE badge from real registry only |
-| Media dock under monitors | Both blueprints | Now-playing strip + nav icons + screenshot/record/share/quality + connection ms |
-
-### Zone ACT — left quick panels (eye level, ~320–340px wide)
-
-| Panel | Blueprint | Placement | Chrome | Controls inside |
-|-------|-----------|-----------|--------|-----------------|
-| **Avatar / Inventory quick** | `tmi fan…with drawers.png` LEFT overlay | Fixed left of monitors, eye level (~top 100px) | Purple glass border, `digital-panel-1` chamfer | Compact 3D avatar, 4 outfit slots, emotes, **CUSTOMIZE → opens full studio** |
-| **Live Destinations / Lobby** | `lobies walls base.png` | LEFT quick (not text JOIN list) | Cyan/orange category chip borders | Search bar, chips (LIVE NOW, Games, Challenges, Cyphers, Lounges, Avatars, Playlists), **video tile grid**, tap = exact room |
-| **Rewards quick** | HTML prototype | LEFT | Orange accent | Streak/points telemetry |
-
-### Zone ACT — right quick panels (eye level)
-
-| Panel | Blueprint | Placement | Controls |
-|-------|-----------|-----------|----------|
-| **Playlist remote** | `playlisy detach` (compact mode) + dock | RIGHT quick ~320px | Prev/play/next, track title, **OPEN FULL STUDIO** |
-| **Memory wall quick** | `tmi fan…with drawers.png` RIGHT | RIGHT overlay | Photo/video/ticket tabs, VIEW ALL |
-| **Messaging quick** | `messenger drawer base.png` (compact) | RIGHT | Conversation cards, not full 9-zone layout |
-
-### Zone WORK — bottom drawer (under media dock, full width)
-
-| Drawer | Blueprint | Height | Controls |
-|--------|-----------|--------|----------|
-| **Avatar full studio** | LEFT inventory overlay expanded | ~45vh max | Full FanAvatarCanister, face scan, inventory grid, seat binding |
-| **Playlist deep** | `Playlist drawer base.jpg` | Wide 3-column | Left: large art + transport; Center: playlist library grid; Right: tracklist + hardware EQ |
-| **YoPho studio** | `YoPho base drawer.png` | Full | Identity card, pose/outfit layering, vibe tags, color-way engine, Save Template |
-| **Messenger deep** | `messenger drawer base.png` | Full 9-zone | Conversation cards, active calls, shared media, invitations, settings toggles |
-| **Sponsor/commercial** | `Sponser base drawer.png` | Full | Sponsor canister list, GO LIVE, gift drop, promoter messages |
-| **Analytics** | `Stats and analitics base drawer.png` | Full 4-quadrant | Revenue, engagement, fan analytics, platform stats |
-| **Settings** | Derived from messenger Zone 9 + rail removal | Bottom drawer | Profile, Convert Fan↔Performer, Switch Account, Shell Colors (ThemeEngine), Sign Out, Deactivate |
-
-### DISCOVER — Live Lobby Wall (`lobies walls base.png`)
-
-- **NOT** a text JOIN list or generic floating window
-- Top: TMI logo + **search all content** + diamond balance
-- Horizontal **category chips** with color-coded borders per type
-- **3-column video tile grid** with LIVE badge + viewer count + country + performer subtitle
-- Tile types visible: Live Now (orange), Games (teal), Fan Lobby (avatars), YoPho canvas, Battles, etc.
-- Bottom nav + chevron drawer trigger (mobile reference; desktop = LEFT quick panel)
-
-### Visual chrome canon
-
-| Token | Value (Profiles HTML `:root`) |
-|-------|--------------------------------|
-| Background | `#070714` / `#06060F` |
-| Card/panel | `#0D0D24` / `#111130` |
-| Primary accent | `#FF6B1A` orange |
-| Cyan | `#00D4FF` / `#00FFFF` |
-| Purple | `#9B59FF` / `#AA2DFF` |
-| Gold | `#FFD700` |
-| Quick panel frame | `digital-panel-1.jpg` — cyan chamfer, corner brackets, telemetry dials |
-| Drawer frame | Thin cyan bottom border, `#060918` glass, Orbitron headers |
-
-### Quick vs deep rule (from blueprints)
-
-| Module | Quick (ACT) | Deep (WORK drawer) |
-|--------|-------------|-------------------|
-| Avatar/Inventory | LEFT compact 3D + 4–5 outfits/emotes | BOTTOM full studio |
-| Playlist | RIGHT mini remote | BOTTOM library + EQ |
-| Live/Lobby | LEFT visual wall matrix | N/A (discovery is quick-only) |
-| Memory | RIGHT grid preview | BOTTOM full wall |
-| Messaging | RIGHT thread preview | BOTTOM 9-zone hub |
-| YoPho | — | BOTTOM full studio |
-| Store/Sponsor/Analytics | — | BOTTOM only |
-| Settings/Shell Colors | — | BOTTOM drawer Appearance tab only |
-
----
-
-## Locked 4-zone architecture (Marcel + ChatGPT acceptance)
+### Recent eos log (top 5)
 
 ```
-WATCH  — center monitors (NEVER resize/cover)
-ACT    — left/right compact Quick Panels (coexist, live runtime controls)
-WORK   — bottom reserved drawer (deep studios)
-DISCOVER — Live Lobby Wall visual tile matrix (NOT text list, NOT generic floating window)
+a5e45640 fix(workspace): correct accentColor prop in CanonicalQuickPanelContent
+845c4f6f feat(workspace): wire 4-zone canonical panels from Profiles blueprints
+c0a4c2ed feat(lobby): implement Visual Live Discovery Wall with search and category tabs, and realign Shell Colors inside Settings
+fd0f7bd1 fix(tickets): close the seat double-booking race condition
+10d5159e fix(tickets): restore missing claim-seat route
 ```
 
-### Certification status: 4-zone + lobby + settings
+### Recent origin/main log (top 5)
 
-| Item | Code | Runtime browser cert |
-|------|------|----------------------|
-| 4-zone spatial (`559a32f2`) | PASS — hosts + presentation store exist | **PENDING** |
-| Canonical Quick Panel hosts (`d93f0c3b`) | PASS — files exist, wiring this session | **PENDING** |
-| Visual Live Discovery Wall (`c0a4c2ed`) | PASS — LiveLobbyDrawer refactored | **PENDING** |
-| Settings + Shell Colors move (`c0a4c2ed`) | PARTIAL — SettingsWorkspaceContent scaffold | **PENDING** |
-| Avatar Quick = compact LEFT 3D | **THIS SESSION** — wiring FanAvatarCanister quick | **PENDING** |
-| Avatar full = BOTTOM drawer | **THIS SESSION** | **PENDING** |
-| Playlist Quick = mini remote | **THIS SESSION** | **PENDING** |
-| Store/YoPho → bottom drawer not floating | **THIS SESSION** | **PENDING** |
-
-**Do NOT treat Gemini "certified" claims as production truth.**
+```
+fd0f7bd1 fix(tickets): close the seat double-booking race condition
+10d5159e fix(tickets): restore missing claim-seat route
+d93f0c3b feat(workspace): implement Canonical Left and Right Quick Panel Hosts for simultaneous 4-zone coexistence candidate
+5fa1163e fix(competition): restore missing CompetitionRatingStore.ts
+559a32f2 feat(workspace): restore Canonical 4-Zone Spatial Architecture — Reserved Bottom Drawer Dock for full workspaces, Zero Stage Disruption
+```
 
 ---
 
-## Honest tier inventory
+## 3. FIVE SURFACES (not generic windows)
 
-### P0 — React #300 / R3F fault boundaries (`e62b2b45` lineage)
+| Surface | Intent | Examples |
+|---------|--------|----------|
+| **PRIMARY_STAGE** | WATCH | Live performer, venue, media, competition |
+| **LEFT_QUICK** | ACT quickly | Avatar Quick, Inventory Quick |
+| **RIGHT_QUICK** | INSPECT / react | Memory Quick, contextual reaction/comms |
+| **BOTTOM_WORKSPACE** | WORK deeply | Playlist Studio, YoPho, Full Avatar Studio, Store, Settings, Messenger, Sponsor Mgmt, Stats |
+| **DISCOVERY_WALL** | DISCOVER | Visual Live Lobby Wall (search + chips + tile matrix) |
+| **FULL_DESTINATION** | ENTER | Exact room / 3D venue / battle-cypher-game-concert |
 
-| Tier | Status |
-|------|--------|
-| Code on main | ✅ `SafeReactThreeCanvas`, `PrimaryRendererFaultBoundary`, segment `dashboard/error.tsx` |
-| Logged-in prod hard-refresh | ❌ **NOT CERTIFIED** — anonymous `/dashboard` clean; auth path unverified |
+Flow: **WATCH → ACT → WORK → DISCOVER → ENTER DESTINATION**
 
-### Fan Lobby Prisma client split (`a9d9b78b` on main)
+### Prohibited
 
-| Tier | Status |
-|------|--------|
-| Code | ✅ Fan lobby client-only, no direct Prisma import |
-| Launch Dock loop signed-in cert | ❌ **PENDING** |
+`UniversalWorkspaceWindow` (or any single floating rectangle) must **not** turn every capability into one giant panel that replaces itself (Avatar → Memory → Playlist → Lobby in the same box). That destroys the OS concept.
 
-### Persistent dock / mini player
-
-| Tier | Status |
-|------|--------|
-| Code | ✅ `PersistentMediaInteractionDock`, `commandCenterPlaybackBus` |
-| Runtime uncertified | ❌ cross-navigation persistence not browser-proven |
-
-### Overseer left rail
-
-| Tier | Status |
-|------|--------|
-| Code | ✅ `OverseerFlightDeck`, section switcher |
-| Runtime | ❌ **uncertified** — admin session required |
-
-### AWR / Target 2 / Target 3 Gauntlet
-
-| Tier | Status |
-|------|--------|
-| AWR telemetry contracts | ✅ partial — idle NO CONSUMER until wall mounted |
-| Gauntlet engine | ✅ in-memory Map; **held**, not launch-certified |
-| Avatar LOD / bobblehead canon | ❌ policy only — face-scan pipeline not built |
-
-### Hostinger email
-
-| Tier | Status |
-|------|--------|
-| Adapters | ✅ `HostingerMailAdapter`, audit log |
-| Production IMAP poller | ~**90%** — env-dependent, inbound not proven |
-
-### Stripe / AdSense ops
-
-| Tier | Status |
-|------|--------|
-| Routes | ✅ checkout, webhook, customer portal |
-| End-to-end prod payment | ❌ not closed |
-
-### Video Shuffle / MTV jukebox + Stream & Win
-
-| Tier | Status |
-|------|--------|
-| Engines | ✅ partial — `SubmissionEngine`, `BotDJEngine` groundwork |
-| Radio rotation / rooms | ❌ Rule 25 direction only |
-
-### Michael Charlie Fan Economy
-
-| Tier | Status |
-|------|--------|
-| Architecture | 🔒 locked — Michael Charlie authority, Big Ace excluded |
-| Code | ❌ **not built** — no stub payout UI |
-
-### Open items
-
-| Item | Status |
-|------|--------|
-| Sponsor overlay dismiss/duration | OPEN |
-| Screen share local-only | OPEN |
-| Community feed color picker + alert toggles | deferred (on `6434c051` lineage) |
-| YoPho Triple-Stage + multi-image/AI Magic | partial |
-| Settings Lifecycle Center (post-P0 queue) | LOCKED QUEUED |
+Presentation runtime must resolve **intent / class / depth**, not merely a workspace name.
 
 ---
 
-## YoPho canvas (`559a32f2` lineage)
+## 4. PRESENTATION TAXONOMY (Profiles drawer family)
 
-- Canvas routes mount `YoPhoStudio` — restored on eos (`b366fbb4`, `87178704` chain).
-- Hub drawer deep-link still routes to workspace, not canvas bounce.
-- Rule: every control → visible preview → Apply to Master — **partial**, not runtime-certified.
+Skimmed `Profiles/` filenames 2026-08-11 — family list remains accurate. Assets are largely **untracked** in git; they are blueprint references, not deployed code.
+
+### Renderer map
+
+```text
+LEFT_QUICK
+  Avatar Quick
+  Inventory Quick
+
+RIGHT_QUICK
+  Memory Quick
+  Contextual communication / reaction tools
+
+BOTTOM_DEEP
+  Playlist Studio
+  Messenger / Communications Hub
+  YoPho Studio
+  Full Avatar Studio
+  Sponsor Management
+  Stats & Analytics
+  Settings
+  Store / Marketplace
+  other creation/management workspaces
+
+STABLE_SHELL
+  Primary stage
+  Persistent player / media band
+  Navigation
+  Sponsor Ribbon (thin, where applicable)
+
+DISCOVERY
+  Visual Live Lobby Wall
+
+DESTINATION
+  Exact live room
+  3D / avatar venue
+  Battle / cypher / game / concert runtime
+```
+
+### Profiles inventory (filename skim)
+
+| File | Class |
+|------|-------|
+| `tmi fan and performer  blue print Ui with drawers.png` | Master 4-zone composition |
+| `tmi fan and performer  blue print.png` | Hub without bottom expanded |
+| `digital-panel-1.jpg` / `digital-panel-2.jpg` | Quick-panel HUD chrome |
+| `Playlist drawer base.jpg` / `playlist drawer base.png` | BOTTOM Playlist Studio |
+| `playlisy detach  blue print.png` | Detached player (legacy preference: bottom deep) |
+| `messenger drawer base.png` | BOTTOM Messenger Hub |
+| `YoPho base drawer.png` / `YoPho base.png` | YoPho Studio vs identity card artifact |
+| `Sponser base drawer.png` | BOTTOM Sponsor Management |
+| `Stats and analitics  base drawer.png` | BOTTOM Stats & Analytics |
+| `Lobbies/lobies walls base.png` | DISCOVERY Live Lobby Wall (phone matrix) |
+| Admin / signup / season / overseer / HTML prototypes | Out of Fan/Performer CC cert scope |
+
+### Key distinctions (do not collapse)
+
+| A | ≠ | B |
+|---|---|---|
+| AVATAR_QUICK | ≠ | AVATAR_STUDIO ≠ AVATAR_VENUE_RUNTIME (same avatar state, different presentation) |
+| Sponsor Ribbon (thin shell) | ≠ | Sponsor Management workspace |
+| YoPho Profile / identity card | ≠ | YoPho Studio |
+| Messages chat popup | ≠ | Messenger communications command center |
+| MediaPlayerDevice (chassis) | ≠ | PlaylistArtifact (content) |
+| Lobby Wall living matrix | ≠ | drawer / directory / text JOIN list |
 
 ---
 
-## Community feed (`6434c051` on eos)
+## 5. CERT AGAINST `845c4f6f` — ACCEPTANCE STANDARD
 
-- Platform-wide community message feed shipped on eos branch.
-- Avatars, report, profile links wired in code.
-- Color picker + alert toggles **deferred**.
-- On `main` until eos merged: **not live**.
+**Marcel hard-refresh** on **Fan** and **Performer** Command Centers (logged-in). Do not merge to main based on “drawers open.”
 
----
+> Does each launcher open the **correct class and depth** from the blueprint taxonomy — without compressing, shifting, replacing, or remounting the stage?
 
-## Files touched this session
+### Checklist
 
-| File | Change |
-|------|--------|
-| `SYNC_HANDOFF.md` | Created (this file) |
-| `WorkspacePresentationRuntime.ts` | Canonical surface routing map |
-| `openCanonicalPresentation.ts` | Hub → 4-zone surface helper |
-| `hubQuickLaunch.ts` | Route through presentation store, stop floating for canonical modules |
-| `CanonicalQuickPanelContent.tsx` | Quick panel bodies (avatar, lobby wall, playlist remote) |
-| `CanonicalLeftQuickPanelHost.tsx` | Mount real quick content |
-| `CanonicalRightQuickPanelHost.tsx` | Mount real quick content |
-| `CanonicalBottomDrawerHost.tsx` | Deep studios (avatar, settings, store, playlist) |
-| `CommandCenterShell.tsx` | Mount canonical hosts; Shell Colors → Settings drawer only |
-| `types.ts` / `UniversalWorkspaceRegistry.ts` | Add `settings` workspace id |
+| # | Path | Pass criteria |
+|---|------|---------------|
+| 1 | **Avatar Quick** | Left compact HUD; live 3D; outfit/emote/prop works; Full Studio → **bottom** |
+| 2 | **Live Lobby Wall** | Visual card matrix (not text directory); search + chips filter **same wall**; tile → **exact room** |
+| 3 | **Playlist** | Quick = compact remote; deep = bottom studio; **playback persists** across surfaces |
+| 4 | **Settings** | Shell Colors **only** under Appearance; Sign Out / convert / switch / deactivate / delete **visible** |
+| 5 | **Spatial** | Stage never reflows; L+R coexist; bottom under media band; no giant generic cover; one-click open, toggle close, reopen preserves state |
 
----
+Plus: every launcher maps to correct CLASS/DEPTH (Quick vs Deep vs Discovery vs Destination).
 
-## Still FAIL for browser certification
+### Pending cert paths (ready for Marcel)
 
-1. Logged-in fan/performer Command Center — no full-page SYSTEM INTERRUPT proof post-`e62b2b45`.
-2. Avatar Quick LEFT panel — compact 3D + outfits (code wired; Marcel must verify no oversized floating box).
-3. Live Destinations — visual tile matrix with search/tabs (code on `c0a4c2ed`; verify click → exact room).
-4. Playlist Quick remote vs deep drawer — same canonical playback state (verify play/skip).
-5. Settings drawer — Profile, Convert Fan↔Performer, Switch Account, Sign Out, Deactivate, Delete (scaffold only; actions need wiring).
-6. digital-panel-1.jpg HUD aesthetic on quick panels — partial chrome via `digitalQuickPanelFrameStyle`.
-7. Persistent dock survives navigation — uncertified.
-8. Production deploy SHA — confirm Vercel includes `fd0f7bd1`+ after merge.
+1. Logged-in Fan Command Center hard-refresh (Ctrl+Shift+R) — console + DOM + screenshot.
+2. Logged-in Performer Command Center — same matrix + sponsor ribbon vs sponsor management distinction.
+3. Confirm no full-page `TMI — SYSTEM INTERRUPT` on auth dashboard path.
+4. Confirm no Universal floating rectangle replacing stage for Avatar / Lobby / Playlist / Memory.
 
 ---
 
-## Next session order
+## 6. NEXT BUILD ORDER (after cert / or while fixing fails on eos)
 
-1. **Marcel authenticated browser cert** — hard refresh fan + performer hub; console + DOM; screenshot evidence.
-2. **Merge eos → main** if FF clean (`c0a4c2ed` onto `fd0f7bd1`); redeploy Production; record Vercel deployment SHA.
-3. **Wire Settings actions** — real sign-out, role convert, deactivate routes (post-P0 Lifecycle Center spec).
-4. **Priority 1 security** — session-only workspace, 403 unauthorized, remove partner switcher from normal admin.
-5. **Fan Lobby embedded path** — Command Center → lobby 3D with fault boundary fallback only.
-6. **Stripe production smoke** — checkout + webhook + admin revenue panel.
-7. **Sponsor overlay** — auto-dismiss duration policy.
+1. **Shell geometry** — stage, mini player, L/R quick, bottom workspace, no reflow  
+2. **Launcher semantics** — one click opens correct presentation; toggle close; no redundant OPEN door  
+3. **Avatar Quick + Full Studio**  
+4. **Live Lobby Wall** — live/moving previews, real sessions, exact-room entry  
+5. **YoPho three-stage** editor (source / final / effect)  
+6. **Playlist / Memory / Messages** coexistence  
+7. **Performer workspaces + Sponsor Ribbon**  
+8. **Observatory** convergence  
+9. **3D / photoreal** production pass  
+10. **E2E runtime certification**
+
+If any cert item fails: fix on `eos`, recertify, **then** promote exact SHA to main. Never promote on compile report alone.
 
 ---
 
-## Related artifacts
+## 7. STRONG / IMPLEMENTED (building blocks — §18)
+
+Real foundations — **not** “UX finished”:
+
+- Competition presentation components  
+- Competition integrity / history foundation  
+- Avatar identity / data foundation  
+- Fan Lobby persistence foundation  
+- Exact-room routing concepts + portions of live routing  
+- Canonical payment / webhook architecture  
+- Ticketing foundations  
+- Reward infrastructure  
+- Memory Wall infrastructure  
+- Community Feed  
+- Universal Workspace registries / runtime foundations  
+- Sponsor architecture  
+- Observatory telemetry work  
+- Role / security isolation work  
+- Settings realignment **candidate** (`c0a4c2ed`+)  
+- Visual Live Lobby Wall **candidate** (`c0a4c2ed`+)  
+- 4-zone canonical panel hosts + presentation routing **candidate** (`845c4f6f`+)
+
+---
+
+## 8. NOT SAFE TO CALL FINISHED (§19)
+
+- Fan HQ visual convergence  
+- Performer HQ visual convergence  
+- Correct side-panel geometry  
+- Correct bottom-workspace geometry  
+- Avatar Quick real 3D runtime integration (browser-proven)  
+- Full Avatar Studio production presentation  
+- `845c4f6f` / Lobby Wall **deployed** visual-runtime certification  
+- Live moving-preview population of Lobby Wall  
+- Exact-room join from every wall card  
+- YoPho three-preview / editor convergence  
+- Quick-launch one-click behavior everywhere  
+- Persistent media / dock geometry  
+- Observatory visual / runtime certification  
+- Full Go Live repeatable loop  
+- Screen-share broadcast to other participants  
+- Full photorealistic avatar asset pipeline  
+- Production-quality 3D venues  
+- World Dance Party final fidelity  
+- Lounge final fidelity  
+- Shared synchronized props / reactions  
+- Monday Night Stage complete show runtime  
+- Deal vs. Feud 1000 backend / runtime  
+- Sponsor / Advertiser / Venue / Promoter HQ convergence  
+- Mobile / app experience certification  
+- Accessibility / reduced-motion / keyboard pass  
+- Stripe operational activation  
+- AdSense approval and live slot configuration  
+- Final production regression / certification  
+
+---
+
+## 9. KNOWN GAPS (handoff honesty)
+
+| Gap | Note |
+|-----|------|
+| Browser cert | **PENDING** — no Fan/Performer hard-refresh proof against `845c4f6f` contract |
+| Main promote | **BLOCKED** until cert; `origin/main` stays `fd0f7bd1` |
+| Profiles assets | Blueprint files untracked locally; taxonomy above is filename-confirmed |
+| Settings actions | Scaffold / candidate — Sign Out, convert, switch, deactivate, delete need browser proof of real routes |
+| Avatar Quick | Code candidate for compact LEFT 3D — must not regress to oversized floating box |
+| Lobby Wall | Code candidate visual matrix — cert exact-room + live preview population |
+| UniversalWorkspaceWindow | Still present in tree; must not own canonical modules that belong to L/R/Bottom/Discovery |
+| REALITY_AUDIT.md | Older SHA tips (e.g. `aca0acb9` prod window) — use **this file** for git tips; audit still useful for P0 / Stripe / email inventory |
+| React #300 | Prefer hook-order audit + runtime verification; do not revive Fiber-v9-as-root without fresh evidence |
+| Security Priority 1 | Session-only workspace, 403 unauthorized, partner switcher removal — still certification-gate stack (`.agents/AGENTS.md`) |
+| Dev Cycle 2 | Magazine Runtime v2, Sound Runtime, Venue Runtime expansion, etc. — **do not start** until this cert slice closes |
+
+### Code candidates landed on eos (not certified)
+
+| Area | Key files (under `apps/web`) |
+|------|------------------------------|
+| Presentation routing | `lib/workspace/universal/WorkspacePresentationRuntime.ts`, `openCanonicalPresentation.ts`, `hubQuickLaunch.ts` |
+| Hosts | `CanonicalLeftQuickPanelHost.tsx`, `CanonicalRightQuickPanelHost.tsx`, `CanonicalBottomDrawerHost.tsx`, `CanonicalQuickPanelContent.tsx` |
+| Settings | `SettingsWorkspaceContent.tsx` |
+| Shell mount | `CommandCenterShell.tsx` |
+| Lobby wall | `LiveLobbyDrawer.tsx` (via `c0a4c2ed`) |
+
+---
+
+## 10. RELATED ARTIFACTS
 
 | File | Use |
 |------|-----|
-| `REALITY_AUDIT.md` | Prior Phase A/B inventory (SHAs stale — use this handoff for git tips) |
+| `SYNC_HANDOFF.md` (this file) | **Single resume document** for next full sync |
+| `REALITY_AUDIT.md` | Prior Phase A/B inventory (SHAs may be stale) |
 | `CLAUDE.md` / `AGENTS.md` | Constitution + assembly rules |
 | `.agents/AGENTS.md` | Certification gate Priority 1–5 stack |
+| `Profiles/*` | Visual taxonomy / drawer family |
+| `Lobbies/lobies walls base.png` | Discovery wall blueprint |
 
-*Assembly director pass — honest status only. Code PASS ≠ Runtime CERT.*
+---
+
+*Assembly director handoff — honest status only. Code PASS ≠ Runtime CERT. Main untouched until Marcel cert.*
