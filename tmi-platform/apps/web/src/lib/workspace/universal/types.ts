@@ -73,7 +73,11 @@ export type UniversalWorkspaceId =
   | "marketplace"
   | "prize-vault"
   | "championship-center"
-  | "settings";
+  | "settings"
+  // Compact quick-HUD variants — route to LEFT_PANEL / RIGHT_PANEL, never DRAWER
+  | "avatar-quick"
+  | "inventory-quick"
+  | "memory-quick";
 
 export interface UniversalWorkspaceDef {
   id: UniversalWorkspaceId;

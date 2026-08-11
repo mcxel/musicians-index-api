@@ -43,6 +43,7 @@ export default function CanonicalRightQuickPanelHost({
         isOpen={true}
         onClose={() => closeSurface("RIGHT_PANEL")}
         accentColor="#AA2DFF"
+        side="right"
       />
     </div>
   );

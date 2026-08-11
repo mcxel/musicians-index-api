@@ -16,6 +16,7 @@ import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import type { PlatformRole } from "@/lib/os/universalPermissionRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import {
   sendPlaybackCommand,
   subscribePlaybackCommands,
@@ -71,6 +72,7 @@ export default function PersistentMediaInteractionDock({
   const { screenStream, startScreenShare, stopScreenShare } = useMonitorScreenShare({
     openPickerOnStart: true,
   });
+  const openInSurface = useWorkspacePresentationStore((s) => s.openInSurface);
 
   useEffect(() => {
     const unsub = subscribePlaylistNowPlaying((payload) => setNowPlaying(payload));
@@ -371,6 +373,22 @@ export default function PersistentMediaInteractionDock({
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
               <button
                 type="button"
+                onClick={() => openInSurface("avatar-quick")}
+                style={toolBtn}
+                aria-label="Avatar quick HUD"
+              >
+                👤 AVATAR
+              </button>
+              <button
+                type="button"
+                onClick={() => openInSurface("inventory-quick")}
+                style={toolBtn}
+                aria-label="Inventory quick HUD"
+              >
+                🎒 INV
+              </button>
+              <button
+                type="button"
                 onClick={() => (screenStream ? stopScreenShare() : void startScreenShare())}
                 style={toolBtn}
                 aria-label={screenStream ? "Stop screen share" : "Start screen share"}
@@ -418,12 +436,9 @@ export default function PersistentMediaInteractionDock({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  if (onOpenModule) onOpenModule("memory");
-                  else setIsMemoryWallOpen(true);
-                }}
+                onClick={() => openInSurface("memory-quick")}
                 style={toolBtn}
-                aria-label="Memory Wall"
+                aria-label="Memory quick HUD"
               >
                 🧠
               </button>
