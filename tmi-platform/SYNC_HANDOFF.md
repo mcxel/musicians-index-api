@@ -4,7 +4,7 @@
 **Branch of record:** `origin/eos/vocal-improv-clean`  
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
-**Presentation-fix candidate (eos tip):** **`99fa4f98`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
+**Presentation-fix candidate (eos tip):** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
 
 **`origin/main` tip (intentionally untouched):** **`fd0f7bd1`**  
 **Rule:** ChatGPT/Gemini “finished” claims are **code candidates only**. Never claim production certified without logged-in Fan + Performer hard-refresh proof (Rule 20). Cert still **PENDING** until Marcel hard-refresh proof.
@@ -67,7 +67,7 @@ Underlying platform largely exists (auth, roles, live sessions, competition pres
          · HARD-REFRESH VISUAL CERT FAIL (FLOATING over stage)
          · MAIN intentionally untouched
 
-99fa4f98 — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
+d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
          · Root cause: WORKSPACE_OPENED → universalWorkspaceRuntime.open() → FLOATING
            after canonical path had already set drawerWorkspace
          · HQ modules → WorkspacePresentationRuntime (BOTTOM_DEEP / L/R / DISCOVERY)
