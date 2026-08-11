@@ -27,6 +27,15 @@ export default function AdminHubShell() {
   const selectedId = selectedTarget.id;
 
   const [eventCount, setEventCount] = useState(() => getSystemEventLog().length);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileAdminTab, setMobileAdminTab] = useState<"command" | "monitor" | "intel">("monitor");
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     return subscribeSystemEvent(() => {
@@ -137,24 +146,78 @@ export default function AdminHubShell() {
         </div>
       </header>
 
-      <section style={{ display: "grid", gridTemplateColumns: "290px 1fr 320px", gap: 12, padding: 12, minHeight: 0 }}>
-        <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-          <AdminChainCommand selectedId={selectedId} onSelect={selectSection} />
-          <AdminSecurityWall selectedId={selectedId} onSelect={selectSection} />
-          <AdminAccountLinker selectedId={selectedId} onSelect={selectSection} />
+      {isMobile ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
+          {/* Mobile tab bar */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["command", "monitor", "intel"] as const).map((tab) => {
+              const labels = { command: "COMMAND", monitor: "MONITOR", intel: "INTEL" } as const;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setMobileAdminTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: "7px 4px",
+                    borderRadius: 8,
+                    border: `1px solid ${mobileAdminTab === tab ? "rgba(250,204,21,0.8)" : "rgba(148,163,184,0.25)"}`,
+                    background: mobileAdminTab === tab ? "rgba(250,204,21,0.12)" : "rgba(15,23,42,0.6)",
+                    color: mobileAdminTab === tab ? "#fcd34d" : "rgba(255,255,255,0.45)",
+                    fontSize: 9,
+                    fontWeight: 900,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {labels[tab]}
+                </button>
+              );
+            })}
+          </div>
+          {mobileAdminTab === "command" && (
+            <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+              <AdminChainCommand selectedId={selectedId} onSelect={selectSection} />
+              <AdminSecurityWall selectedId={selectedId} onSelect={selectSection} />
+              <AdminAccountLinker selectedId={selectedId} onSelect={selectSection} />
+            </div>
+          )}
+          {mobileAdminTab === "monitor" && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <AdminMonitorRouter selectedTarget={selectedTarget} onOpenFullView={openFullView} />
+              <AdminLiveFeedExplorer />
+            </div>
+          )}
+          {mobileAdminTab === "intel" && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <AdminRevenuePanel selectedId={selectedId} onSelect={selectSection} />
+              <AdminMagazineAnalytics selectedId={selectedId} onSelect={selectSection} />
+              <AdminRuntimePanel />
+            </div>
+          )}
         </div>
+      ) : (
+        <section style={{ display: "grid", gridTemplateColumns: "290px 1fr 320px", gap: 12, padding: 12, minHeight: 0 }}>
+          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+            <AdminChainCommand selectedId={selectedId} onSelect={selectSection} />
+            <AdminSecurityWall selectedId={selectedId} onSelect={selectSection} />
+            <AdminAccountLinker selectedId={selectedId} onSelect={selectSection} />
+          </div>
 
-        <div style={{ display: "grid", gridTemplateRows: "1fr auto", gap: 10, minHeight: 0 }}>
-          <AdminMonitorRouter selectedTarget={selectedTarget} onOpenFullView={openFullView} />
-          <AdminLiveFeedExplorer />
-        </div>
+          <div style={{ display: "grid", gridTemplateRows: "1fr auto", gap: 10, minHeight: 0 }}>
+            <AdminMonitorRouter selectedTarget={selectedTarget} onOpenFullView={openFullView} />
+            <AdminLiveFeedExplorer />
+          </div>
 
-        <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 10, minHeight: 0 }}>
-          <AdminRevenuePanel selectedId={selectedId} onSelect={selectSection} />
-          <AdminMagazineAnalytics selectedId={selectedId} onSelect={selectSection} />
-          <AdminRuntimePanel />
-        </div>
-      </section>
+          <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 10, minHeight: 0 }}>
+            <AdminRevenuePanel selectedId={selectedId} onSelect={selectSection} />
+            <AdminMagazineAnalytics selectedId={selectedId} onSelect={selectSection} />
+            <AdminRuntimePanel />
+          </div>
+        </section>
+      )}
 
       <footer
         style={{

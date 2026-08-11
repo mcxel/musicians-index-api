@@ -129,6 +129,8 @@ export default function OverseerFlightDeck({
   const [flipKey, setFlipKey] = useState(0);
   const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
   const [isMerging, setIsMerging] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpsTab, setMobileOpsTab] = useState<"left" | "center" | "right">("center");
   const {
     screenStream,
     shareSlot,
@@ -171,6 +173,13 @@ export default function OverseerFlightDeck({
 
   useEffect(() => {
     return () => { mergeTimers.current.forEach(clearTimeout); };
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   useEffect(() => {
@@ -1284,7 +1293,7 @@ export default function OverseerFlightDeck({
           height: "auto",
           maxHeight: "none",
           display: "flex",
-          flexDirection: "row",
+          flexDirection: isMobile ? "column" : "row",
           alignItems: "flex-start",
           gap: 8,
           border: "1px solid rgba(255,215,0,0.18)",
@@ -1313,7 +1322,7 @@ export default function OverseerFlightDeck({
               data-rail-boundary="left"
               style={{
                 flexShrink: 0,
-                width: leftWidth,
+                width: isMobile ? "100%" : leftWidth,
                 minWidth: 0,
                 overflow: "hidden",
                 transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
@@ -1321,7 +1330,7 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                ...(stageCapCss !== "auto"
+                ...(!isMobile && stageCapCss !== "auto"
                   ? { height: stageCapCss, maxHeight: stageCapCss }
                   : {}),
               }}
@@ -1405,7 +1414,7 @@ export default function OverseerFlightDeck({
               data-rail-boundary="right"
               style={{
                 flexShrink: 0,
-                width: rightWidth,
+                width: isMobile ? "100%" : rightWidth,
                 minWidth: 0,
                 overflow: "hidden",
                 transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
@@ -1413,7 +1422,7 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                ...(stageCapCss !== "auto"
+                ...(!isMobile && stageCapCss !== "auto"
                   ? { height: stageCapCss, maxHeight: stageCapCss }
                   : {}),
               }}
@@ -1473,7 +1482,7 @@ export default function OverseerFlightDeck({
           height: bottomCollapsed ? intelligenceMinHeight : "auto",
           maxHeight: "none",
           display: "grid",
-          gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
           gap: DECK_GAP,
           border: "2px solid rgba(255,45,170,0.35)",
           borderRadius: 12,
