@@ -39,14 +39,14 @@ export interface CanonicalQuickPanelContentProps {
 
 function QuickPanelShell({
   title,
-  accent,
+  accentColor,
   onClose,
   onOpenDeep,
   deepLabel,
   children,
 }: {
   title: string;
-  accent: string;
+  accentColor: string;
   onClose: () => void;
   onOpenDeep?: () => void;
   deepLabel?: string;
@@ -59,7 +59,7 @@ function QuickPanelShell({
         maxHeight: "70vh",
         overflowY: "auto",
         borderRadius: 4,
-        ...digitalQuickPanelFrameStyle(accent),
+        ...digitalQuickPanelFrameStyle(accentColor),
       }}
     >
       <div
@@ -68,14 +68,14 @@ function QuickPanelShell({
           alignItems: "center",
           gap: 8,
           padding: "10px 12px",
-          borderBottom: `1px solid ${accent}44`,
+          borderBottom: `1px solid ${accentColor}44`,
           position: "sticky",
           top: 0,
           background: "rgba(2,8,22,0.92)",
           zIndex: 1,
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 900, color: accent, letterSpacing: "0.1em", flex: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 900, color: accentColor, letterSpacing: "0.1em", flex: 1 }}>
           {title}
         </span>
         {onOpenDeep ? (
@@ -87,9 +87,9 @@ function QuickPanelShell({
               fontWeight: 800,
               padding: "4px 8px",
               borderRadius: 4,
-              border: `1px solid ${accent}`,
-              background: `${accent}18`,
-              color: accent,
+              border: `1px solid ${accentColor}`,
+              background: `${accentColor}18`,
+              color: accentColor,
               cursor: "pointer",
             }}
           >
@@ -114,7 +114,7 @@ function AvatarQuickPanel({
   userId,
   displayName,
   role,
-  accent,
+  accentColor = "#00E5FF",
   onClose,
 }: Omit<CanonicalQuickPanelContentProps, "workspaceId">) {
   const outfits = useMemo(() => listEquippableCostumes().slice(0, 5), []);
@@ -125,7 +125,7 @@ function AvatarQuickPanel({
 
   if (!isFan) {
     return (
-      <QuickPanelShell title="PERFORMER PRESENTATION" accent={accent} onClose={onClose}>
+      <QuickPanelShell title="PERFORMER PRESENTATION" accentColor={accentColor} onClose={onClose}>
         <div style={{ padding: 14, fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
           Real camera & stage video — avatar ownership is fan-only (Rule 26).
         </div>
@@ -136,7 +136,7 @@ function AvatarQuickPanel({
   return (
     <QuickPanelShell
       title="AVATAR QUICK · LIVE 3D"
-      accent={accent}
+      accentColor={accentColor}
       onClose={onClose}
       onOpenDeep={() => openCanonicalDeepStudio("inventory")}
       deepLabel="FULL STUDIO"
@@ -153,9 +153,9 @@ function AvatarQuickPanel({
             border: "1px solid rgba(0,229,255,0.2)",
           }}
         >
-          <AvatarViewer active color={accent} visorColor={accent} isPlaying={expression === "hype"} size={120} />
+          <AvatarViewer active color={accentColor} visorColor={accentColor} isPlaying={expression === "hype"} size={120} />
         </div>
-        <div style={{ fontSize: 9, fontWeight: 800, color: accent, letterSpacing: "0.08em" }}>OUTFITS</div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>OUTFITS</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {outfits.map((o) => (
             <button
@@ -167,9 +167,9 @@ function AvatarQuickPanel({
                 fontWeight: 800,
                 padding: "4px 8px",
                 borderRadius: 6,
-                border: `1px solid ${activeOutfit === o.id ? accent : "rgba(255,255,255,0.15)"}`,
-                background: activeOutfit === o.id ? `${accent}22` : "rgba(255,255,255,0.04)",
-                color: activeOutfit === o.id ? accent : "rgba(255,255,255,0.7)",
+                border: `1px solid ${activeOutfit === o.id ? accentColor : "rgba(255,255,255,0.15)"}`,
+                background: activeOutfit === o.id ? `${accentColor}22` : "rgba(255,255,255,0.04)",
+                color: activeOutfit === o.id ? accentColor : "rgba(255,255,255,0.7)",
                 cursor: "pointer",
               }}
             >
@@ -177,7 +177,7 @@ function AvatarQuickPanel({
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 9, fontWeight: 800, color: accent, letterSpacing: "0.08em" }}>EMOTES</div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>EMOTES</div>
         <div style={{ display: "flex", gap: 6 }}>
           {(["neutral", "smile", "hype"] as const).map((expr) => (
             <button
@@ -189,8 +189,8 @@ function AvatarQuickPanel({
                 fontWeight: 800,
                 padding: "4px 10px",
                 borderRadius: 6,
-                border: `1px solid ${expression === expr ? accent : "rgba(255,255,255,0.15)"}`,
-                background: expression === expr ? accent : "rgba(255,255,255,0.04)",
+                border: `1px solid ${expression === expr ? accentColor : "rgba(255,255,255,0.15)"}`,
+                background: expression === expr ? accentColor : "rgba(255,255,255,0.04)",
                 color: expression === expr ? "#050510" : "rgba(255,255,255,0.7)",
                 cursor: "pointer",
                 textTransform: "uppercase",
@@ -225,10 +225,10 @@ function AvatarQuickPanel({
 }
 
 function LiveDestinationsQuickPanel({
-  accent,
+  accentColor,
   onClose,
 }: {
-  accent: string;
+  accentColor: string;
   onClose: () => void;
 }) {
   const records = useDiscoveryBus(null);
@@ -259,17 +259,17 @@ function LiveDestinationsQuickPanel({
           viewers: room.viewerCount,
           status: room.status === "live" ? "live" : "starting-soon",
           access: "free",
-          accentColor: accent,
+          accentColor: accentColor,
           roomRoute: dest.href,
           venueIndex: 0,
         },
       });
     },
-    [records, accent],
+    [records, accentColor],
   );
 
   return (
-    <QuickPanelShell title="LIVE LOBBY WALL · DISCOVER" accent={accent} onClose={onClose}>
+    <QuickPanelShell title="LIVE LOBBY WALL · DISCOVER" accentColor={accentColor} onClose={onClose}>
       <div style={{ padding: 8, minHeight: 220 }}>
         {rooms.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
@@ -279,7 +279,7 @@ function LiveDestinationsQuickPanel({
           <LiveLobbyWallGrid
             rooms={rooms}
             title="Tap tile → join room"
-            accentColor={accent}
+            accentColor={accentColor}
             typeLabel="LIVE"
             variant="quick"
             onRoomJoin={handleRoomJoin}
@@ -294,10 +294,10 @@ function LiveDestinationsQuickPanel({
 }
 
 function PlaylistQuickRemotePanel({
-  accent,
+  accentColor,
   onClose,
 }: {
-  accent: string;
+  accentColor: string;
   onClose: () => void;
 }) {
   const [nowPlaying, setNowPlaying] = useState<PlaylistNowPlayingPayload | null>(null);
@@ -309,7 +309,7 @@ function PlaylistQuickRemotePanel({
   return (
     <QuickPanelShell
       title="PLAYLIST REMOTE"
-      accent={accent}
+      accentColor={accentColor}
       onClose={onClose}
       onOpenDeep={() => openCanonicalDeepStudio("playlist-studio")}
       deepLabel="FULL STUDIO"
@@ -320,15 +320,15 @@ function PlaylistQuickRemotePanel({
             <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{nowPlaying.title}</div>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{nowPlaying.artist ?? "Unknown artist"}</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
-              <button type="button" onClick={() => sendPlaybackCommand("prev")} style={remoteBtn(accent)}>⏮</button>
+              <button type="button" onClick={() => sendPlaybackCommand("prev")} style={remoteBtn(accentColor)}>⏮</button>
               <button
                 type="button"
                 onClick={() => sendPlaybackCommand(nowPlaying.isPlaying ? "pause" : "play")}
-                style={{ ...remoteBtn(accent), padding: "8px 16px" }}
+                style={{ ...remoteBtn(accentColor), padding: "8px 16px" }}
               >
                 {nowPlaying.isPlaying ? "⏸" : "▶"}
               </button>
-              <button type="button" onClick={() => sendPlaybackCommand("next")} style={remoteBtn(accent)}>⏭</button>
+              <button type="button" onClick={() => sendPlaybackCommand("next")} style={remoteBtn(accentColor)}>⏭</button>
             </div>
           </>
         ) : (
@@ -336,7 +336,7 @@ function PlaylistQuickRemotePanel({
             Nothing playing. Open full studio to pick a playlist.
           </div>
         )}
-        <Link href="/hub/fan?drawer=playlist" style={{ fontSize: 9, color: accent, textAlign: "center" }}>
+        <Link href="/hub/fan?drawer=playlist" style={{ fontSize: 9, color: accentColor, textAlign: "center" }}>
           Change playlist →
         </Link>
       </div>
@@ -344,14 +344,14 @@ function PlaylistQuickRemotePanel({
   );
 }
 
-function remoteBtn(accent: string): React.CSSProperties {
+function remoteBtn(accentColor: string): React.CSSProperties {
   return {
     fontSize: 14,
     padding: "8px 12px",
     borderRadius: 8,
-    border: `1px solid ${accent}`,
-    background: `${accent}18`,
-    color: accent,
+    border: `1px solid ${accentColor}`,
+    background: `${accentColor}18`,
+    color: accentColor,
     cursor: "pointer",
   };
 }
@@ -370,22 +370,22 @@ export default function CanonicalQuickPanelContent({
         userId={userId}
         displayName={displayName}
         role={role}
-        accent={accentColor}
+        accentColor={accentColor}
         onClose={onClose}
       />
     );
   }
 
   if (workspaceId === "lobby" || workspaceId === "live-destinations") {
-    return <LiveDestinationsQuickPanel accent={accentColor} onClose={onClose} />;
+    return <LiveDestinationsQuickPanel accentColor={accentColor} onClose={onClose} />;
   }
 
   if (workspaceId === "playlist-studio") {
-    return <PlaylistQuickRemotePanel accent={accentColor} onClose={onClose} />;
+    return <PlaylistQuickRemotePanel accentColor={accentColor} onClose={onClose} />;
   }
 
   return (
-    <QuickPanelShell title={workspaceId.toUpperCase()} accent={accentColor} onClose={onClose}>
+    <QuickPanelShell title={workspaceId.toUpperCase()} accentColor={accentColor} onClose={onClose}>
       <div style={{ padding: 14, fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
         Quick controls for this workspace — open full studio for deep work.
       </div>
