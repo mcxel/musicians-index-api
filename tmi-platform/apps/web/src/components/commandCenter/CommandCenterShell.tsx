@@ -57,6 +57,10 @@ import {
   openHubQuickLaunch,
   isUniversalWorkspaceOpenForModule,
 } from "@/lib/commandCenter/hubQuickLaunch";
+import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
+import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
+import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface LiveApiSession {
   userId: string;
@@ -498,24 +502,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             </span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={openAppearance}
-          style={{
-            fontSize: 9,
-            fontWeight: 900,
-            letterSpacing: "0.1em",
-            padding: "6px 12px",
-            borderRadius: 8,
-            cursor: "pointer",
-            border: `1px solid ${theme.secondary}66`,
-            background: appearanceOpen ? `${theme.secondary}22` : "rgba(255,255,255,0.04)",
-            color: theme.secondary,
-            fontFamily: "inherit",
-          }}
-        >
-          🎨 SHELL COLORS
-        </button>
         <RoleSwitcherWidget accentColor={theme.primary} />
       </div>
 
@@ -595,32 +581,17 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </>
             ) : null}
 
-            {railBtn({
-              key: "appearance",
-              label: "SHELL COLORS",
-              info: "This device",
-              accent: theme.secondary,
-              active: appearanceOpen,
-              onClick: () =>
-                openHubQuickLaunch({
-                  moduleId: "appearance",
-                  role,
-                  userId,
-                  openDrawer: openPanel,
-                  openAppearance: () => {
-                    setActivePanel(null);
-                    setAppearanceOpen(true);
-                    drawerStateStore.setLastPanel(role, null);
-                  },
-                  closeDrawer,
-                }),
-            })}
-            <div style={{ height: 8 }} />
             {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
             {role === "performer"
               ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
               : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
-            {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
+            {railBtn({
+              key: "settings",
+              label: "SETTINGS",
+              info: "Account",
+              accent: theme.primary,
+              onClick: () => openCanonicalWorkspaceQuick("settings", "DRAWER"),
+            })}
 
             <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
           </div>
@@ -666,6 +637,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               expanded={activePanel === "playlist"}
               initialPlaylistId={deepLinkPlaylistId}
               onCollapse={closeDrawer}
+            />
+            <CanonicalBottomDrawerHost
+              userId={userId}
+              displayName={resolvedDisplayName}
+              role={role === "performer" ? "performer" : "fan"}
             />
           </div>
 
@@ -744,7 +720,17 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         </GlobalErrorBoundary>
       </div>
 
-      {/* Layer 1 — Quick Panels (Living OS): instant overlays, never block live media */}
+      {/* Layer 1 — Canonical 4-zone quick panels (ACT L/R) + legacy quick dock */}
+      <CanonicalLeftQuickPanelHost
+        userId={userId}
+        displayName={resolvedDisplayName}
+        role={role === "performer" ? "performer" : "fan"}
+      />
+      <CanonicalRightQuickPanelHost
+        userId={userId}
+        displayName={resolvedDisplayName}
+        role={role === "performer" ? "performer" : "fan"}
+      />
       <QuickPanelDock role={role} />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}

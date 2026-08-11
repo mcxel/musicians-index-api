@@ -72,7 +72,8 @@ export type UniversalWorkspaceId =
   | "scores"
   | "marketplace"
   | "prize-vault"
-  | "championship-center";
+  | "championship-center"
+  | "settings";
 
 export interface UniversalWorkspaceDef {
   id: UniversalWorkspaceId;

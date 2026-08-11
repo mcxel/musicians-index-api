@@ -233,6 +233,15 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     phase1Content: false,
     legacyDrawerId: "championship_center",
   },
+  settings: {
+    id: "settings",
+    label: "Settings",
+    accent: "#00FFFF",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 920, height: 520 },
+    minWidth: 480,
+    minHeight: 360,
+    phase1Content: true,
+  },
 };
 
 export function getWorkspaceDef(id: UniversalWorkspaceId): UniversalWorkspaceDef {

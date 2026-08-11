@@ -13,6 +13,7 @@ import type { ActionId } from "@/lib/os/universalActionRegistry";
 import { floatingWorkspaceStore } from "@/lib/workspace/floatingWorkspaceStore";
 import type { FloatingWorkspaceModuleId } from "@/lib/workspace/FloatingWorkspaceModules";
 import { executeQuickLaunchWorkspace } from "@/lib/workspace/universal/executeQuickLaunchWorkspace";
+import { openCanonicalWorkspaceQuick, isCanonicalWorkspaceActive } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 const DRAWER_TO_FLOATING: Partial<Record<CommandCenterPanelId, FloatingWorkspaceModuleId>> = {
   memory: "memory_wall",
@@ -40,7 +41,7 @@ export function resolveUniversalWorkspaceIdForDrawerModule(
   moduleId: CommandCenterPanelId | "appearance",
 ): UniversalWorkspaceId | "playlist-studio" | null {
   if (moduleId === "playlist") return "playlist-studio";
-  if (moduleId === "appearance") return null;
+  if (moduleId === "appearance") return "settings";
   const mapped = HUB_QUICK_LAUNCH_WORKSPACE_MAP[moduleId];
   if (mapped !== undefined) return mapped;
   for (const def of Object.values(UNIVERSAL_WORKSPACE_DEFS)) {
@@ -50,6 +51,7 @@ export function resolveUniversalWorkspaceIdForDrawerModule(
 }
 
 export function isUniversalWorkspaceOpenForModule(moduleId: CommandCenterPanelId): boolean {
+  if (isCanonicalWorkspaceActive(moduleId)) return true;
   const wsId = resolveUniversalWorkspaceIdForDrawerModule(moduleId);
   if (!wsId || wsId === "playlist-studio") {
     return wsId === "playlist-studio" && universalWorkspaceRuntime.isOpen("playlist-studio");
@@ -73,7 +75,8 @@ export function openHubQuickLaunch(opts: HubQuickLaunchOptions): void {
   const { moduleId, role, userId, actionId, openDrawer, openAppearance, closeDrawer } = opts;
 
   if (moduleId === "appearance") {
-    openAppearance();
+    closeDrawer();
+    openCanonicalWorkspaceQuick("appearance", "DRAWER");
     return;
   }
 
@@ -85,27 +88,15 @@ export function openHubQuickLaunch(opts: HubQuickLaunchOptions): void {
     });
   }
 
-  if (moduleId === "playlist") {
+  const canonicalOpened = openCanonicalWorkspaceQuick(moduleId);
+  if (canonicalOpened) {
     closeDrawer();
-    if (universalWorkspaceRuntime.isOpen("playlist-studio")) {
-      universalWorkspaceRuntime.focus("playlist-studio");
-    } else {
-      livingOsCommandBus.executeAction("ACTION_OPEN_PLAYLIST_STUDIO", {
-        role,
-        userId,
-        payload: { workspaceId: "playlist-studio", actionId: "ACTION_OPEN_PLAYLIST_STUDIO" },
-      });
-    }
     livingOsCommandBus.dispatch({
       type: "WORKSPACE_OPENED",
       category: "navigation",
       role,
       userId,
-      payload: {
-        workspaceId: "playlist-studio",
-        actionId: "ACTION_OPEN_PLAYLIST_STUDIO",
-        panelId: moduleId,
-      },
+      payload: { workspaceId: canonicalOpened, panelId: moduleId },
     });
     return;
   }

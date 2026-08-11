@@ -2,28 +2,40 @@
 
 import React from "react";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
-import CyberneticQuickHudOverlay from "@/components/hud/CyberneticQuickHudOverlay";
+import CanonicalQuickPanelContent from "./CanonicalQuickPanelContent";
 
-export default function CanonicalRightQuickPanelHost() {
+export default function CanonicalRightQuickPanelHost({
+  userId,
+  displayName,
+  role,
+}: {
+  userId: string;
+  displayName: string;
+  role: "fan" | "performer";
+}) {
   const { rightPanelWorkspace, closeSurface } = useWorkspacePresentationStore();
 
   if (!rightPanelWorkspace) return null;
 
   return (
     <div
+      data-canonical-right-quick
       style={{
         position: "fixed",
         top: 100,
-        right: 320,
+        right: 316,
         width: 320,
         zIndex: 9350,
+        pointerEvents: "auto",
       }}
     >
-      <CyberneticQuickHudOverlay
-        type={rightPanelWorkspace as any}
-        isOpen={true}
-        onClose={() => closeSurface("RIGHT_PANEL")}
+      <CanonicalQuickPanelContent
+        workspaceId={rightPanelWorkspace}
+        userId={userId}
+        displayName={displayName}
+        role={role}
         accentColor="#AA2DFF"
+        onClose={() => closeSurface("RIGHT_PANEL")}
       />
     </div>
   );
