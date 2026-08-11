@@ -5,30 +5,37 @@ import Link from "next/link";
 import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 import { getActiveSessions, onSessionsChanged, type LiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 
-type LobbyTab = "fans" | "performers" | "mixed";
+export type LobbyCategory =
+  | "LIVE NOW"
+  | "BATTLES"
+  | "CYPHERS"
+  | "CHALLENGES"
+  | "GAMES"
+  | "LOUNGES"
+  | "FAN LOBBIES"
+  | "CONCERTS"
+  | "COMEDY"
+  | "DANCE"
+  | "PLAYLISTS";
 
-const TAB_COLOR: Record<LobbyTab, string> = {
-  fans:       "#00FFFF",
-  performers: "#FF2DAA",
-  mixed:      "#AA2DFF",
-};
+const CATEGORIES: LobbyCategory[] = [
+  "LIVE NOW",
+  "BATTLES",
+  "CYPHERS",
+  "CHALLENGES",
+  "GAMES",
+  "LOUNGES",
+  "FAN LOBBIES",
+  "CONCERTS",
+  "COMEDY",
+  "DANCE",
+  "PLAYLISTS",
+];
 
-const TAB_LABEL: Record<LobbyTab, string> = {
-  fans:       "FANS",
-  performers: "PERFORMERS",
-  mixed:      "MIXED",
-};
-
-const TAB_HREF: Record<LobbyTab, string> = {
-  fans:       "/live/lobby/fans",
-  performers: "/live/lobby/performers",
-  mixed:      "/live/rooms",
-};
-
-// Real performer roster only — no hardcoded mock names (Rule 20). Live
-// performers sort first. There is no real fan roster/presence source yet,
-// so the Fans tab shows an honest empty state rather than inventing names.
-function useLobbyRoster() {
+export default function LiveLobbyDrawer() {
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [category, setCategory] = useState<LobbyCategory>("LIVE NOW");
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>(() => getActiveSessions());
 
   useEffect(() => {
@@ -38,258 +45,194 @@ function useLobbyRoster() {
 
   const liveUserIds = new Set(liveSessions.map((s) => s.userId));
 
-  return PERFORMER_REGISTRY
-    .filter((p) => p.profileImageUrl && p.profileImageUrl.trim().length > 0)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      image: p.profileImageUrl,
-      color: liveUserIds.has(p.id) ? '#E63000' : '#FF2DAA',
-      status: liveUserIds.has(p.id) ? 'Live Now' : p.category,
-      isLive: liveUserIds.has(p.id),
-      href: liveUserIds.has(p.id) && p.liveRoomRoute ? `${p.liveRoomRoute}?from=lobby-drawer` : p.profileRoute,
-    }))
-    .sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
-}
+  // Filter performers by category and search query
+  const filteredRoster = PERFORMER_REGISTRY.filter((p) => {
+    const matchesSearch =
+      searchQuery.trim().length === 0 ||
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-export default function LiveLobbyDrawer() {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<LobbyTab>("mixed");
-  const roster = useLobbyRoster();
-
-  const accent = TAB_COLOR[tab];
-  const tiles = tab === "fans" ? [] : roster;
+    if (!matchesSearch) return false;
+    if (category === "LIVE NOW") return liveUserIds.has(p.id);
+    if (category === "BATTLES") return p.category.toLowerCase().includes("battle") || p.id.includes("battle");
+    if (category === "CYPHERS") return p.category.toLowerCase().includes("cypher") || p.id.includes("cypher");
+    if (category === "COMEDY") return p.category.toLowerCase().includes("comedy");
+    return true;
+  });
 
   return (
-    <div style={{
-      position: "fixed",
-      right: 0,
-      top: "50%",
-      transform: "translateY(-50%)",
-      zIndex: 8000,
-      display: "flex",
-      flexDirection: "row",
-      alignItems: "stretch",
-    }}>
-      {/* Toggle tab — pops the panel open/closed */}
+    <div
+      style={{
+        position: "fixed",
+        right: 0,
+        top: "50%",
+        transform: "translateY(-50%)",
+        zIndex: 8000,
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "stretch",
+      }}
+    >
+      {/* Side Trigger Tab */}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close lobby drawer" : "Open lobby drawer"}
+        aria-label={open ? "Close live lobby matrix" : "Open live lobby matrix"}
         style={{
-          width: 28,
+          width: 32,
           paddingTop: 32,
           paddingBottom: 32,
           border: "none",
-          borderRadius: "10px 0 0 10px",
+          borderRadius: "12px 0 0 12px",
           background: open
-            ? `linear-gradient(180deg, ${accent}, #050510)`
-            : "rgba(10,10,30,0.9)",
-          borderLeft: `2px solid ${accent}44`,
-          borderTop: `1px solid ${accent}33`,
-          borderBottom: `1px solid ${accent}33`,
+            ? "linear-gradient(180deg, #00FFFF, #050510)"
+            : "rgba(10,10,30,0.95)",
+          borderLeft: "2px solid #00FFFF",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           writingMode: "vertical-lr",
-          fontSize: 7,
+          fontSize: 8,
           fontWeight: 900,
           letterSpacing: "0.15em",
-          color: accent,
-          gap: 4,
+          color: "#00FFFF",
+          gap: 6,
         }}
       >
-        {open ? "▶ CLOSE" : "◀ LOBBY"}
+        <span>LIVE LOBBY MATRIX</span>
       </button>
 
-      {/* Panel — angular cut corners, glass-panel styling */}
-      <div style={{
-        width: open ? 240 : 0,
-        overflow: "hidden",
-        transition: "width 0.3s ease",
-        background: "rgba(5,5,20,0.97)",
-        borderLeft: open ? `1px solid ${accent}33` : "none",
-        boxShadow: open ? `0 0 30px rgba(0,0,0,0.8), -4px 0 20px ${accent}11` : "none",
-        clipPath: open ? "polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)" : "none",
-      }}>
-        <div style={{ width: 240, padding: "16px 12px", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Header */}
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: accent, marginBottom: 10, flexShrink: 0 }}>
-            LIVE LOBBY
-          </div>
-
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 12, flexShrink: 0 }}>
-            {(["fans", "performers", "mixed"] as LobbyTab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                style={{
-                  flex: 1,
-                  padding: "4px 0",
-                  borderRadius: 5,
-                  border: `1px solid ${tab === t ? TAB_COLOR[t] + "66" : "rgba(255,255,255,0.1)"}`,
-                  background: tab === t ? `${TAB_COLOR[t]}14` : "transparent",
-                  color: tab === t ? TAB_COLOR[t] : "rgba(255,255,255,0.4)",
-                  fontSize: 7,
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  cursor: "pointer",
-                }}
-              >
-                {TAB_LABEL[t]}
+      {/* Main Visual Discovery Panel */}
+      {open && (
+        <div
+          style={{
+            width: 480,
+            maxHeight: "85vh",
+            background: "rgba(4, 8, 22, 0.98)",
+            backdropFilter: "blur(24px)",
+            border: "1px solid rgba(0,229,255,0.4)",
+            borderRadius: "0 0 0 16px",
+            boxShadow: "-16px 0 50px rgba(0,0,0,0.9)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            padding: 16,
+          }}
+        >
+          {/* Header & Global Search Bar */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+                LIVE LOBBY DISCOVERY WALL
+              </span>
+              <button onClick={() => setOpen(false)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer" }}>
+                ✕
               </button>
-            ))}
+            </div>
+
+            {/* Global Search Input */}
+            <input
+              type="text"
+              placeholder="Search comedy, music, battles, cyphers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                background: "rgba(10,16,38,0.8)",
+                border: "1px solid rgba(0,229,255,0.3)",
+                borderRadius: 8,
+                color: "#fff",
+                fontSize: 11,
+                fontFamily: "'Inter', sans-serif",
+                outline: "none",
+              }}
+            />
           </div>
 
-          {/* Style injection for smooth scale transitions on hover */}
-          <style dangerouslySetInnerHTML={{ __html: `
-            .tmi-lobby-card:hover .tmi-lobby-img {
-              transform: scale(1.08);
-              opacity: 0.9 !important;
-            }
-            .tmi-lobby-card:hover {
-              border-color: rgba(255, 255, 255, 0.45) !important;
-            }
-          `}} />
-
-          {/* Scrollable roster — grid of 9:16 vertical cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 2 }}>
-            {tab === "fans" ? (
-              <div style={{ gridColumn: "span 2", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
-                No fans in the lobby yet.
-              </div>
-            ) : tiles.length === 0 ? (
-              <div style={{ gridColumn: "span 2", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
-                No accounts to show yet.
-              </div>
-            ) : (
-              tiles.map((tile) => (
-                <Link
-                  key={tile.id}
-                  href={tile.href}
-                  className="tmi-lobby-card"
-                  style={{
-                    position: "relative",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-end",
-                    aspectRatio: "9/16",
-                    borderRadius: 8,
-                    border: `1.5px solid ${tile.isLive ? "#E63000" : "rgba(255,255,255,0.12)"}`,
-                    boxShadow: tile.isLive ? "0 0 12px rgba(230,48,0,0.3)" : "none",
-                    overflow: "hidden",
-                    textDecoration: "none",
-                    background: "rgba(5,5,16,0.5)",
-                    cursor: "pointer",
-                    transition: "border-color 0.2s ease",
-                  }}
-                >
-                  {/* Background media preview — image with cover fit */}
-                  <img
-                    src={tile.image}
-                    alt={tile.name}
-                    className="tmi-lobby-img"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      opacity: 0.72,
-                      transition: "transform 0.3s ease, opacity 0.3s ease",
-                    }}
-                  />
-
-                  {/* Gradient shadow for text readability */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "linear-gradient(to top, rgba(3,1,10,0.92) 0%, rgba(3,1,10,0.35) 45%, transparent 100%)",
-                      pointerEvents: "none",
-                      zIndex: 1,
-                    }}
-                  />
-
-                  {/* Live badge overlay at top right */}
-                  {tile.isLive && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        right: 6,
-                        background: "#E63000",
-                        color: "#fff",
-                        fontSize: 6,
-                        fontWeight: 900,
-                        padding: "2px 4px",
-                        borderRadius: 3,
-                        letterSpacing: "0.08em",
-                        boxShadow: "0 0 6px #E63000",
-                        zIndex: 2,
-                      }}
-                    >
-                      LIVE
-                    </div>
-                  )}
-
-                  {/* Info overlaid at bottom */}
-                  <div style={{ position: "relative", zIndex: 2, padding: "8px 6px" }}>
-                    <div
-                      style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        color: "#fff",
-                        textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {tile.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 6,
-                        color: tile.color,
-                        fontWeight: 800,
-                        marginTop: 1,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {tile.status}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-
-          {/* Jump to full lobby */}
-          <Link
-            href={TAB_HREF[tab]}
+          {/* Category Tabs Scroll Bar */}
+          <div
             style={{
-              display: "block",
-              marginTop: 14,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: `1px solid ${accent}55`,
-              background: `${accent}12`,
-              color: accent,
-              fontSize: 8,
-              fontWeight: 900,
-              letterSpacing: "0.12em",
-              textDecoration: "none",
-              textAlign: "center",
-              flexShrink: 0,
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              paddingBottom: 8,
+              marginBottom: 12,
+              scrollbarWidth: "none",
             }}
           >
-            ENTER {TAB_LABEL[tab]} LOBBY →
-          </Link>
+            {CATEGORIES.map((cat) => {
+              const active = category === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: `1px solid ${active ? "#00FFFF" : "rgba(255,255,255,0.12)"}`,
+                    background: active ? "rgba(0,229,255,0.2)" : "rgba(10,16,38,0.6)",
+                    color: active ? "#00FFFF" : "rgba(255,255,255,0.7)",
+                    fontFamily: "'Orbitron', sans-serif",
+                    fontSize: 8,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Visual Live Video Cards Grid */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 10,
+            }}
+          >
+            {filteredRoster.map((item) => {
+              const isLive = liveUserIds.has(item.id);
+              return (
+                <Link
+                  key={item.id}
+                  href={item.profileRoute}
+                  onClick={() => setOpen(false)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    background: "rgba(10,16,38,0.85)",
+                    border: `1px solid ${isLive ? "#E63000" : "rgba(255,255,255,0.1)"}`,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    textDecoration: "none",
+                    transition: "transform 0.15s ease",
+                  }}
+                >
+                  <div style={{ height: 96, position: "relative", background: "#050815" }}>
+                    <img src={item.profileImageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {isLive && (
+                      <span style={{ position: "absolute", top: 6, left: 6, background: "#E63000", color: "#fff", fontSize: 7, fontWeight: 900, padding: "2px 6px", borderRadius: 4 }}>
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ padding: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{item.name}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>{item.category}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
