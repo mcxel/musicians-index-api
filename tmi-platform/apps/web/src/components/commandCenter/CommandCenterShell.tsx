@@ -138,7 +138,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const mediaStageRef = useRef<HTMLDivElement>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
@@ -347,14 +347,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   }, []);
 
   useEffect(() => {
+    // Use matchMedia — reads CSS viewport width, immune to layout-overflow inflating window.innerWidth.
+    const mql = window.matchMedia("(max-width: 767px)");
     const check = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = mql.matches;
       setIsMobile(mobile);
       if (!mobile) { setMobileLeftOpen(false); setMobileRightOpen(false); }
     };
     check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    mql.addEventListener("change", check);
+    return () => mql.removeEventListener("change", check);
   }, []);
 
   const mediaSlots: CommandCenterMediaSlot[] = useMemo(() => {
@@ -651,6 +653,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             display: "flex",
             flexDirection: "column",
             minHeight: "calc(100vh - 100px)",
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
+            overflowX: "clip",
             overflowY: "auto",
           }}
         >
@@ -659,6 +665,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               display: "grid",
               gridTemplateColumns: "230px minmax(0, 1fr) 300px",
               alignItems: "start",
+              width: "100%",
+              minWidth: 0,
             }}
           >
             {/* Left rail — static in-flow grid child */}

@@ -136,10 +136,9 @@ export default function DashboardWorkspaceContainer() {
     if (!sessionRole || restored) return;
     setRestored(true);
     const saved = localStorage.getItem(LS_KEY);
-    if (saved === "admin" && showAdmin) {
-      router.replace("/admin/overseer");
-      return;
-    }
+    // Never auto-navigate to /admin/overseer — that is an uncommanded redirect (P0-A).
+    // Admin users who last used the admin panel land on the fan (or performer) dashboard.
+    // They can navigate to admin explicitly via the ADMIN button in the role switcher.
     if (saved === "performer" && showPerformer) {
       setActive("performer");
       return;

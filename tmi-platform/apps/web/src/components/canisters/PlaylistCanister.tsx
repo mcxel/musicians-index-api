@@ -76,6 +76,7 @@ export function PlaylistCanister({
   layout = "full",
 }: PlaylistCanisterProps) {
   const isCompact = layout === "compact";
+  const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids 3-column overflow on phones
   const [playlists, setPlaylists] = useState<ApiPlaylistSummary[]>([]);
   const [loadingPlaylists, setLoadingPlaylists] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaylistId);
@@ -111,6 +112,15 @@ export function PlaylistCanister({
     const base = ownerLabel ?? entityName;
     return sanitizePublicDisplayLabel(base, { email: sessionEmail, userId: entityId });
   }, [ownerLabel, entityName, sessionEmail, entityId]);
+
+  // Mobile detection — matchMedia is immune to layout-overflow inflating window.innerWidth
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const check = () => setIsMobile(mql.matches);
+    check();
+    mql.addEventListener("change", check);
+    return () => mql.removeEventListener("change", check);
+  }, []);
 
   useEffect(() => {
     if (!isOwner) return;
@@ -557,13 +567,13 @@ export function PlaylistCanister({
         </div>
       </div>
 
-      {/* 3-Column Main Content Deck */}
+      {/* 3-Column Main Content Deck — stacks to single column on mobile */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr) 300px",
+          gridTemplateColumns: isMobile ? "1fr" : "320px minmax(0, 1fr) 300px",
           gap: 12,
-          minHeight: 440,
+          minHeight: isMobile ? undefined : 440,
         }}
       >
         {/* LEFT COLUMN: Glowing Neon Vinyl Turntable & Transport */}
