@@ -8,7 +8,7 @@ import {
   type YoPhoCanvasSessionUser,
 } from "@/lib/yopho/useYoPhoCanvasGate";
 import {
-  yoPhoHubDeepLink,
+  yoPhoCanvasPathForRole,
   type YoPhoCanvasRoute,
 } from "@/lib/yopho/yophoCanvasAccess";
 
@@ -136,7 +136,7 @@ function RoleMismatchPanel({
   role: YoPhoStudioRole;
   effectiveRole: string;
 }) {
-  const correctPath = yoPhoHubDeepLink(effectiveRole);
+  const correctPath = yoPhoCanvasPathForRole(effectiveRole);
   const expectedLabel = role === "fan" ? "Fan YoPho Studio" : "Performer YoPho Studio";
 
   return (
