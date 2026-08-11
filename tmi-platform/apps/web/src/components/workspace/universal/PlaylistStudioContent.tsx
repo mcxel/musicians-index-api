@@ -398,7 +398,7 @@ export default function PlaylistStudioContent({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(160px, 1fr) minmax(220px, 1.2fr) minmax(200px, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
           gap: 10,
           flex: 1,
           minHeight: 0,

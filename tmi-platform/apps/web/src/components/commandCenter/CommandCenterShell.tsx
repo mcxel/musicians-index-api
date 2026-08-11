@@ -138,6 +138,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const mediaStageRef = useRef<HTMLDivElement>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
+  const [mobileRightOpen, setMobileRightOpen] = useState(false);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
   const [featured, setFeatured] = useState<{
@@ -343,6 +346,17 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     };
   }, []);
 
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) { setMobileLeftOpen(false); setMobileRightOpen(false); }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const mediaSlots: CommandCenterMediaSlot[] = useMemo(() => {
     const stageVideo =
       featured?.videoUrl ||
@@ -512,7 +526,27 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             </span>
           ) : null}
         </div>
-        <RoleSwitcherWidget accentColor={theme.primary} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {isMobile && (
+            <>
+              <button
+                type="button"
+                onClick={() => setMobileLeftOpen((v) => !v)}
+                style={{ background: "transparent", border: `1px solid ${theme.primary}44`, borderRadius: 6, color: theme.primary, fontSize: 10, fontWeight: 800, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                ☰ OPS
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileRightOpen((v) => !v)}
+                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, color: "#fff", fontSize: 10, fontWeight: 800, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                💬 CHAT
+              </button>
+            </>
+          )}
+          <RoleSwitcherWidget accentColor={theme.primary} />
+        </div>
       </div>
 
       {/* Media + rails + drawer dock */}
@@ -524,28 +558,55 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           flexDirection: "column",
           minHeight: "calc(100vh - 100px)",
           overflowY: "auto",
+          overflowX: "hidden",
           paddingBottom: 0,
         }}
       >
+        {isMobile && (mobileLeftOpen || mobileRightOpen) && (
+          <div
+            role="presentation"
+            onClick={() => { setMobileLeftOpen(false); setMobileRightOpen(false); }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9400, touchAction: "none" }}
+          />
+        )}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "230px minmax(0, 1fr) 300px",
+            gridTemplateColumns: isMobile ? "1fr" : "230px minmax(0, 1fr) 300px",
             alignItems: "start",
           }}
         >
-          {/* Left rail */}
+          {/* Left rail — desktop static grid child; mobile fixed slide-in overlay */}
           <div
             style={{
-              background: `${theme.bgSurface}cc`,
+              ...(isMobile ? {
+                position: "fixed" as const,
+                top: 0,
+                left: 0,
+                height: "100dvh",
+                width: 280,
+                zIndex: 9500,
+                transform: mobileLeftOpen ? "translateX(0)" : "translateX(-100%)",
+                transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
+              } : {}),
+              background: `${theme.bgSurface}ee`,
               borderRight: `1px solid ${theme.primary}18`,
               padding: "12px 12px",
               display: "flex",
               flexDirection: "column",
               gap: 5,
-              overflowY: "auto",
+              overflowY: "auto" as const,
             }}
           >
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setMobileLeftOpen(false)}
+                style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px" }}
+              >
+                ✕
+              </button>
+            )}
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
               OPERATING CENTERS
             </div>
@@ -663,18 +724,37 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             />
           </div>
 
-          {/* Right rail */}
+          {/* Right rail — desktop static grid child; mobile fixed slide-in overlay */}
           <div
             style={{
-              background: `${theme.bgSurface}cc`,
+              ...(isMobile ? {
+                position: "fixed" as const,
+                top: 0,
+                right: 0,
+                height: "100dvh",
+                width: 300,
+                zIndex: 9500,
+                transform: mobileRightOpen ? "translateX(0)" : "translateX(100%)",
+                transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
+              } : {}),
+              background: `${theme.bgSurface}ee`,
               borderLeft: `1px solid ${theme.primary}18`,
               padding: 12,
               display: "flex",
               flexDirection: "column",
               gap: 10,
-              overflowY: "auto",
+              overflowY: "auto" as const,
             }}
           >
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setMobileRightOpen(false)}
+                style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px" }}
+              >
+                ✕
+              </button>
+            )}
             <OperationsSidebar
               role={role}
               userId={userId}
@@ -738,9 +818,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         </GlobalErrorBoundary>
       </div>
 
-      {/* Layer 1 — Canonical 4-zone quick panels (ACT L/R) + legacy quick dock */}
-      <CanonicalLeftQuickPanelHost />
-      <CanonicalRightQuickPanelHost />
+      {/* Layer 1 — Canonical 4-zone quick panels (desktop only) + legacy quick dock */}
+      {!isMobile && <CanonicalLeftQuickPanelHost />}
+      {!isMobile && <CanonicalRightQuickPanelHost />}
       <QuickPanelDock role={role} />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}

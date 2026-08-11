@@ -210,6 +210,7 @@ export default function PersistentMediaInteractionDock({
               width: "100%",
               minHeight: 56,
               gap: 12,
+              flexWrap: "wrap",
             }}
           >
             {/* LEFT — Mini Media Player (compact, fixed) */}
@@ -221,9 +222,10 @@ export default function PersistentMediaInteractionDock({
                 paddingRight: 14,
                 marginRight: 14,
                 borderRight: "1px solid rgba(255,255,255,0.12)",
-                minWidth: 260,
+                minWidth: 0,
                 maxWidth: 320,
-                flexShrink: 0,
+                flexShrink: 1,
+                flex: "0 1 260px",
               }}
             >
               <button
