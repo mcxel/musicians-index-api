@@ -4,7 +4,7 @@ import { getHostById, type HostIdentity } from "@/lib/hosts/HostIdentityRegistry
 import { battleFormatRulesEngine, type BattleFormatType, type BattleTier } from "@/lib/competition/BattleFormatRulesEngine";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import { getPA, type PAScriptKey } from "@/lib/hosts/hostEngine";
-import { competitionIntegrityEngine } from "@/lib/competition/CompetitionIntegrityEngine";
+import { competitionIntegrityEngine } from "@/lib/competition/CompetitionRatingStore";
 // MatchHistoryEngine (getHeadToHead, getPlayerStats) stays available as a
 // real, separate service for other callers - just not invoked here, since
 // competitionIntegrityEngine.recordMatchOutcome already writes the

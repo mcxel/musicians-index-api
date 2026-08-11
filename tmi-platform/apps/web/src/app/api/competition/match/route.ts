@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { battleMatchLifecycleEngine, type BattleMatchLifecycle } from "@/lib/competition/BattleMatchLifecycleEngine";
-import { competitionIntegrityEngine } from "@/lib/competition/CompetitionIntegrityEngine";
+import { competitionIntegrityEngine } from "@/lib/competition/CompetitionRatingStore";
 import { matchHistoryEngine } from "@/lib/competition/MatchHistoryEngine";
 import { eventOrchestrator } from "@/lib/competition/EventOrchestrator";
 

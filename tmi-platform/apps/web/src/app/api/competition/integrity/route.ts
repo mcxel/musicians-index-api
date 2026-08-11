@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { competitionIntegrityEngine } from "@/lib/competition/CompetitionIntegrityEngine";
+import { competitionIntegrityEngine } from "@/lib/competition/CompetitionRatingStore";
 
 export const dynamic = "force-dynamic";
 
