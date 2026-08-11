@@ -5,7 +5,7 @@
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
 **Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
-**Mobile root-shell isolation candidate (eos tip):** **see §1 ledger** — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
+**Mobile root-shell isolation candidate (eos tip):** **`8aed6532`** — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
 
 **`origin/main` tip (intentionally untouched / CLOSED for this work):** **`fd0f7bd1`** — do **not** merge/push mobile P0 to main.  
 **Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
@@ -81,7 +81,7 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
 901dbd7a — earlier responsive attempt (superseded for CCS by 4620a7b6)
 6d79c5c1 — AdminHubShell mobile tabs + Overseer partial isMobile widths (mid-flight)
 
-MOBILE P0 ROOT-SHELL ISOLATION (this tip — SHA filled after push)
+8aed6532 — MOBILE P0 ROOT-SHELL ISOLATION (eos tip)
          · ROOT CAUSE: DashboardWorkspaceContainer mounted Fan+Performer+Admin as
            siblings (display:none keep-alives) + mobile swipe (≥60px) switched roles;
            ChevronNavigation also history-swiped across role shells. Desktop min-widths
@@ -105,7 +105,7 @@ MOBILE P0 ROOT-SHELL ISOLATION (this tip — SHA filled after push)
 | Ref | SHA | Message | Verified |
 |-----|-----|---------|----------|
 | `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched · **CLOSED** |
-| `origin/eos/vocal-improv-clean` tip | **(mobile P0 SHA after push)** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | pending push |
+| `origin/eos/vocal-improv-clean` tip | **`8aed6532`** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | local tip; push next |
 | Candidate baseline | **`845c4f6f`** | feat(workspace): wire 4-zone canonical panels from Profiles blueprints | ✅ on eos lineage |
 | Lobby/Settings under baseline | **`c0a4c2ed`** | Visual Live Discovery Wall + Shell Colors → Settings | ✅ **ancestor of 845c4f6f** |
 
@@ -135,14 +135,14 @@ Merge-base with main remains `fd0f7bd1`. Fast-forward to main **only after** Fan
 - Unrelated dirty files (finance/payouts, Profiles assets, Sounds Pack, etc.) must **not** ride into handoff commits.
 - KG role-conversion scripts exist (`scripts/convert-kg-account.js`, `scripts/find-user.js`) targeting `thegreatestlesp@gmail.com` — if email is not in DB, note only; **do not block mobile P0** on KG.
 
-### Recent eos log (top 5 at handoff write — refresh after push)
+### Recent eos log (top 5)
 
 ```
+8aed6532 fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed
 6d79c5c1 fix(mobile/P0): root shell isolation — eliminate horizontal overflow in Admin + Overseer decks
 4620a7b6 fix(mobile/P0): true conditional render in CommandCenterShell
 901dbd7a fix(mobile/P0): responsive shell — collapse desktop rails at <768px
 d6413ff6 feat(workspace): three-layer interaction stack — quick HUDs + drawer deep workspaces
-d289c3ee feat(mobile): implement iOS & Android Mobile Responsive Layouts
 ```
 
 ### Recent origin/main log (top 5)
