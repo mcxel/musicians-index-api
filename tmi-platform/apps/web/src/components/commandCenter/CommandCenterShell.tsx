@@ -549,123 +549,20 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         </div>
       </div>
 
-      {/* Media + rails + drawer dock */}
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "calc(100vh - 100px)",
-          overflowY: "auto",
-          overflowX: "hidden",
-          paddingBottom: 0,
-        }}
-      >
-        {isMobile && (mobileLeftOpen || mobileRightOpen) && (
-          <div
-            role="presentation"
-            onClick={() => { setMobileLeftOpen(false); setMobileRightOpen(false); }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9400, touchAction: "none" }}
-          />
-        )}
+      {/* ══ MEDIA ZONE — mobile: single-column flex (no grid); desktop: 3-column grid ══ */}
+      {isMobile ? (
+        /* ── MOBILE: pure flex-column, zero grid, zero in-flow side rails ── */
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "230px minmax(0, 1fr) 300px",
-            alignItems: "start",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            minWidth: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
           }}
         >
-          {/* Left rail — desktop static grid child; mobile fixed slide-in overlay */}
-          <div
-            style={{
-              ...(isMobile ? {
-                position: "fixed" as const,
-                top: 0,
-                left: 0,
-                height: "100dvh",
-                width: 280,
-                zIndex: 9500,
-                transform: mobileLeftOpen ? "translateX(0)" : "translateX(-100%)",
-                transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
-              } : {}),
-              background: `${theme.bgSurface}ee`,
-              borderRight: `1px solid ${theme.primary}18`,
-              padding: "12px 12px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 5,
-              overflowY: "auto" as const,
-            }}
-          >
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setMobileLeftOpen(false)}
-                style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px" }}
-              >
-                ✕
-              </button>
-            )}
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
-              OPERATING CENTERS
-            </div>
-            {centers.map((center) => {
-              const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
-              return railBtn({
-                key: center.id,
-                label: `${center.icon} ${center.label}`,
-                info: center.info,
-                accent: center.accent,
-                active: isActive,
-                onClick: () => launchQuickModule(center.primaryModule as CommandCenterPanelId, center.actionId),
-              });
-            })}
-
-            {drawerLaunchers.length > 0 ? (
-              <>
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: "rgba(255,255,255,0.4)",
-                    fontWeight: 900,
-                    letterSpacing: "0.14em",
-                    margin: "10px 0 4px",
-                  }}
-                >
-                  OPEN DRAWERS
-                </div>
-                {drawerLaunchers.map((id) => {
-                  const mod = getUniversalDrawerModule(id);
-                  if (!mod) return null;
-                  return railBtn({
-                    key: `drawer-${id}`,
-                    label: mod.label,
-                    info: mod.info,
-                    accent: mod.accent,
-                    active: isModuleActive(id),
-                    onClick: () => launchQuickModule(id),
-                  });
-                })}
-              </>
-            ) : null}
-
-            {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
-            {role === "performer"
-              ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
-              : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
-            {railBtn({
-              key: "settings",
-              label: "SETTINGS",
-              info: "Account",
-              accent: theme.primary,
-              onClick: () => openCanonicalWorkspaceQuick("settings", "DRAWER"),
-            })}
-
-            <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
-          </div>
-
-          {/* Center media — monitors + persistent dock (blueprint anchor) */}
           <div
             ref={mediaStageRef}
             data-hub-monitor-stage
@@ -676,11 +573,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 slots={mediaSlots}
                 bezelVariant="chrome"
                 naturalHeight
-                seriesLabel={
-                  role === "performer"
-                    ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                    : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                }
+                seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
               />
             </GlobalErrorBoundary>
             <CommandCenterSessionControlStrip
@@ -692,131 +585,398 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               role={role === "performer" ? "performer" : "fan"}
               userId={userId}
               roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
-              onLobbyNav={
-                role === "fan"
-                  ? () => {
-                      liveDiscoveryOverlayStore.open();
-                      openCanonicalWorkspaceQuick("lobby");
-                    }
-                  : () => openPanel("media_locker")
-              }
+              onLobbyNav={role === "fan" ? () => { liveDiscoveryOverlayStore.open(); openCanonicalWorkspaceQuick("lobby"); } : () => openPanel("media_locker")}
               onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
             />
-            {/* Playlist band expands only when Media Console mode=expanded (playlist drawer). */}
+            {/* Mobile quick-action strip — phone-accessible commands without needing the rails */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                overflowX: "auto",
+                padding: "8px 12px",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                scrollbarWidth: "none" as const,
+              }}
+            >
+              {(["memory", "messaging", "lobby", "inventory", "playlist", "media_locker"] as const).map((id) => {
+                const labels: Record<string, string> = { memory: "🧠 MEMORY", messaging: "💬 MSGS", lobby: "🏟️ LOBBY", inventory: "🎒 INV", playlist: "🎵 MUSIC", media_locker: "📁 MEDIA" };
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => launchQuickModule(id as CommandCenterPanelId)}
+                    style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
+                  >
+                    {labels[id]}
+                  </button>
+                );
+              })}
+            </div>
             <CommandCenterPlaylistBand
               role={role}
               userId={userId}
               displayName={resolvedDisplayName}
-              expanded={
-                (drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") ||
-                activePanel === "playlist"
-              }
+              expanded={(drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") || activePanel === "playlist"}
               initialPlaylistId={deepLinkPlaylistId}
-              onCollapse={() => {
-                useWorkspacePresentationStore.getState().closeSurface("DRAWER");
-                closeDrawer();
-              }}
+              onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
             />
-            <CanonicalBottomDrawerHost
+            <CanonicalBottomDrawerHost userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
+          </div>
+          <GlobalErrorBoundary context="Command Center Drawer">
+            <CommandCenterDrawer
+              role={role}
+              activePanel={activePanel}
+              appearanceOpen={appearanceOpen}
               userId={userId}
               displayName={resolvedDisplayName}
-              role={role === "performer" ? "performer" : "fan"}
+              onClose={closeDrawer}
+              onSelectPanel={openPanel}
+              initialPlaylistId={deepLinkPlaylistId}
             />
-          </div>
-
-          {/* Right rail — desktop static grid child; mobile fixed slide-in overlay */}
+          </GlobalErrorBoundary>
+        </div>
+      ) : (
+        /* ── DESKTOP: 3-column grid, rails are static in-flow grid children ── */
+        <div
+          style={{
+            position: "relative",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "calc(100vh - 100px)",
+            overflowY: "auto",
+          }}
+        >
           <div
             style={{
-              ...(isMobile ? {
-                position: "fixed" as const,
-                top: 0,
-                right: 0,
-                height: "100dvh",
-                width: 300,
-                zIndex: 9500,
-                transform: mobileRightOpen ? "translateX(0)" : "translateX(100%)",
-                transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
-              } : {}),
-              background: `${theme.bgSurface}ee`,
-              borderLeft: `1px solid ${theme.primary}18`,
-              padding: 12,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              overflowY: "auto" as const,
+              display: "grid",
+              gridTemplateColumns: "230px minmax(0, 1fr) 300px",
+              alignItems: "start",
             }}
           >
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setMobileRightOpen(false)}
-                style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px" }}
-              >
-                ✕
-              </button>
-            )}
-            <OperationsSidebar
-              role={role}
-              userId={userId}
-              displayName={resolvedDisplayName}
-              featuredPerformerName={featured?.name}
-            />
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
-              <button
-                type="button"
-                onClick={() => liveDiscoveryOverlayStore.open()}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  fontSize: 10,
-                  color: theme.secondary,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  background: "rgba(255,255,255,0.02)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Open Live Lobby Wall →
-              </button>
+            {/* Left rail — static in-flow grid child */}
+            <div
+              style={{
+                background: `${theme.bgSurface}ee`,
+                borderRight: `1px solid ${theme.primary}18`,
+                padding: "12px 12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 5,
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
+                OPERATING CENTERS
+              </div>
+              {centers.map((center) => {
+                const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
+                return railBtn({
+                  key: center.id,
+                  label: `${center.icon} ${center.label}`,
+                  info: center.info,
+                  accent: center.accent,
+                  active: isActive,
+                  onClick: () => launchQuickModule(center.primaryModule as CommandCenterPanelId, center.actionId),
+                });
+              })}
+              {drawerLaunchers.length > 0 ? (
+                <>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", margin: "10px 0 4px" }}>
+                    OPEN DRAWERS
+                  </div>
+                  {drawerLaunchers.map((id) => {
+                    const mod = getUniversalDrawerModule(id);
+                    if (!mod) return null;
+                    return railBtn({
+                      key: `drawer-${id}`,
+                      label: mod.label,
+                      info: mod.info,
+                      accent: mod.accent,
+                      active: isModuleActive(id),
+                      onClick: () => launchQuickModule(id),
+                    });
+                  })}
+                </>
+              ) : null}
+              {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
+              {role === "performer"
+                ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
+                : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
+              {railBtn({
+                key: "settings",
+                label: "SETTINGS",
+                info: "Account",
+                accent: theme.primary,
+                onClick: () => openCanonicalWorkspaceQuick("settings", "DRAWER"),
+              })}
+              <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
             </div>
 
-            {/* Rule 12 ads for fans; Rule 26 — no sponsor-management chrome on performer hub */}
-            {role === "fan" ? (
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
-                  AD SLOT · {FAN_AD_ZONE}
-                </div>
-                <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="ADVERTISEMENT" accentColor={theme.primary} />
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
-                  PLATFORM
-                </div>
-                <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
-              </div>
-            )}
-          </div>
-        </div>
+            {/* Center media — monitors + persistent dock (blueprint anchor) */}
+            <div
+              ref={mediaStageRef}
+              data-hub-monitor-stage
+              style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
+            >
+              <GlobalErrorBoundary context="Command Center Monitors">
+                <CommandCenterMediaStack
+                  slots={mediaSlots}
+                  bezelVariant="chrome"
+                  naturalHeight
+                  seriesLabel={
+                    role === "performer"
+                      ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                      : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                  }
+                />
+              </GlobalErrorBoundary>
+              <CommandCenterSessionControlStrip
+                role={role === "performer" ? "performer" : "fan"}
+                onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
+                onEnterStage={() => router.push("/live/go")}
+              />
+              <PersistentMediaInteractionDock
+                role={role === "performer" ? "performer" : "fan"}
+                userId={userId}
+                roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
+                onLobbyNav={
+                  role === "fan"
+                    ? () => {
+                        liveDiscoveryOverlayStore.open();
+                        openCanonicalWorkspaceQuick("lobby");
+                      }
+                    : () => openPanel("media_locker")
+                }
+                onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
+              />
+              {/* Playlist band expands only when Media Console mode=expanded (playlist drawer). */}
+              <CommandCenterPlaylistBand
+                role={role}
+                userId={userId}
+                displayName={resolvedDisplayName}
+                expanded={
+                  (drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") ||
+                  activePanel === "playlist"
+                }
+                initialPlaylistId={deepLinkPlaylistId}
+                onCollapse={() => {
+                  useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+                  closeDrawer();
+                }}
+              />
+              <CanonicalBottomDrawerHost
+                userId={userId}
+                displayName={resolvedDisplayName}
+                role={role === "performer" ? "performer" : "fan"}
+              />
+            </div>
 
-        {/* Layer 2 — Full Drawers: below persistent dock + separator (playlist expands here) */}
-        <GlobalErrorBoundary context="Command Center Drawer">
-          <CommandCenterDrawer
-            role={role}
-            activePanel={activePanel}
-            appearanceOpen={appearanceOpen}
-            userId={userId}
-            displayName={resolvedDisplayName}
-            onClose={closeDrawer}
-            onSelectPanel={openPanel}
-            initialPlaylistId={deepLinkPlaylistId}
-          />
-        </GlobalErrorBoundary>
-      </div>
+            {/* Right rail — static in-flow grid child */}
+            <div
+              style={{
+                background: `${theme.bgSurface}ee`,
+                borderLeft: `1px solid ${theme.primary}18`,
+                padding: 12,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                overflowY: "auto",
+              }}
+            >
+              <OperationsSidebar
+                role={role}
+                userId={userId}
+                displayName={resolvedDisplayName}
+                featuredPerformerName={featured?.name}
+              />
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
+                <button
+                  type="button"
+                  onClick={() => liveDiscoveryOverlayStore.open()}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    fontSize: 10,
+                    color: theme.secondary,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "rgba(255,255,255,0.02)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Open Live Lobby Wall →
+                </button>
+              </div>
+              {/* Rule 12 ads for fans; Rule 26 — no sponsor-management chrome on performer hub */}
+              {role === "fan" ? (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                    AD SLOT · {FAN_AD_ZONE}
+                  </div>
+                  <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="ADVERTISEMENT" accentColor={theme.primary} />
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                    PLATFORM
+                  </div>
+                  <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Layer 2 — Full Drawers: below persistent dock + separator (playlist expands here) */}
+          <GlobalErrorBoundary context="Command Center Drawer">
+            <CommandCenterDrawer
+              role={role}
+              activePanel={activePanel}
+              appearanceOpen={appearanceOpen}
+              userId={userId}
+              displayName={resolvedDisplayName}
+              onClose={closeDrawer}
+              onSelectPanel={openPanel}
+              initialPlaylistId={deepLinkPlaylistId}
+            />
+          </GlobalErrorBoundary>
+        </div>
+      )}
+
+      {/* Mobile rail overlays — position:fixed panes outside layout flow, toggled by status bar */}
+      {isMobile && (mobileLeftOpen || mobileRightOpen) && (
+        <div
+          role="presentation"
+          onClick={() => { setMobileLeftOpen(false); setMobileRightOpen(false); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9400, touchAction: "none" }}
+        />
+      )}
+      {isMobile && mobileLeftOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "min(85vw, 300px)",
+            height: "100dvh",
+            zIndex: 9500,
+            background: `${theme.bgSurface}f0`,
+            borderRight: `1px solid ${theme.primary}30`,
+            padding: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+            overflowY: "auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileLeftOpen(false)}
+            style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px", marginBottom: 4 }}
+          >
+            ✕
+          </button>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
+            OPERATING CENTERS
+          </div>
+          {centers.map((center) => {
+            const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
+            return railBtn({
+              key: center.id,
+              label: `${center.icon} ${center.label}`,
+              info: center.info,
+              accent: center.accent,
+              active: isActive,
+              onClick: () => { launchQuickModule(center.primaryModule as CommandCenterPanelId, center.actionId); setMobileLeftOpen(false); },
+            });
+          })}
+          {drawerLaunchers.length > 0 ? (
+            <>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", margin: "10px 0 4px" }}>
+                OPEN DRAWERS
+              </div>
+              {drawerLaunchers.map((id) => {
+                const mod = getUniversalDrawerModule(id);
+                if (!mod) return null;
+                return railBtn({
+                  key: `drawer-${id}`,
+                  label: mod.label,
+                  info: mod.info,
+                  accent: mod.accent,
+                  active: isModuleActive(id),
+                  onClick: () => { launchQuickModule(id); setMobileLeftOpen(false); },
+                });
+              })}
+            </>
+          ) : null}
+          {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
+          {role === "performer"
+            ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
+            : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
+          {railBtn({
+            key: "settings",
+            label: "SETTINGS",
+            info: "Account",
+            accent: theme.primary,
+            onClick: () => { openCanonicalWorkspaceQuick("settings", "DRAWER"); setMobileLeftOpen(false); },
+          })}
+          <CommandCenterIdentityCard userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
+        </div>
+      )}
+      {isMobile && mobileRightOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            right: 0,
+            width: "min(85vw, 300px)",
+            height: "100dvh",
+            zIndex: 9500,
+            background: `${theme.bgSurface}f0`,
+            borderLeft: `1px solid ${theme.primary}30`,
+            padding: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            overflowY: "auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileRightOpen(false)}
+            style={{ alignSelf: "flex-end", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 4px 4px", marginBottom: 4 }}
+          >
+            ✕
+          </button>
+          <OperationsSidebar role={role} userId={userId} displayName={resolvedDisplayName} featuredPerformerName={featured?.name} />
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
+            <button
+              type="button"
+              onClick={() => { liveDiscoveryOverlayStore.open(); setMobileRightOpen(false); }}
+              style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10, color: theme.secondary, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Open Live Lobby Wall →
+            </button>
+          </div>
+          {role === "fan" ? (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>AD SLOT · {FAN_AD_ZONE}</div>
+              <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="ADVERTISEMENT" accentColor={theme.primary} />
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>PLATFORM</div>
+              <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Layer 1 — Canonical 4-zone quick panels (desktop only) + legacy quick dock */}
       {!isMobile && <CanonicalLeftQuickPanelHost />}
