@@ -1,17 +1,17 @@
 /**
- * wireUniversalWorkspaceCommandBus — Command Bus → Universal Workspace Runtime.
+ * wireUniversalWorkspaceCommandBus — Command Bus → presentation authority.
  *
- * SHARE / playlist open paths:
- *   ACTION_OPEN_SHARE_STUDIO    → open("share-studio", context)
- *   ACTION_OPEN_PLAYLIST_STUDIO → open("playlist-studio", context)
- *   ACTION_CLOSE_WORKSPACE      → close(payload.workspaceId)
+ * HQ modules → WorkspacePresentationRuntime (Media Console DrawerDock / L/R / Discovery).
+ * FLOATING_EXCEPTION only → UniversalWorkspaceRuntime (LEGACY movable window).
  *
- * Legacy DRAWER_OPENED with panelId playlist from Flight Deck should prefer
- * ACTION_OPEN_PLAYLIST_STUDIO (this wire). Under-monitor drawers stay on DRAWER_*.
+ * Previously every WORKSPACE_OPENED called universalWorkspaceRuntime.open() → FLOATING,
+ * which overwrote the 4-zone path and showed the "FLOATING" chrome Marcel screenshotted.
  */
 
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import { universalWorkspaceRuntime } from "./UniversalWorkspaceRuntime";
+import { presentCanonicalWorkspace, openCanonicalDeepStudio } from "./openCanonicalPresentation";
+import { isFloatingException, resolvePreferredSurface } from "./WorkspacePresentationRuntime";
 import type { UniversalWorkspaceId, WorkspaceContext } from "./types";
 
 let wired = false;
@@ -30,6 +30,19 @@ function asContext(payload?: Record<string, unknown>): WorkspaceContext {
   };
 }
 
+function openViaPresentation(workspaceId: UniversalWorkspaceId, context?: WorkspaceContext): void {
+  if (isFloatingException(workspaceId)) {
+    universalWorkspaceRuntime.open(workspaceId, context);
+    return;
+  }
+  const surface = resolvePreferredSurface(workspaceId);
+  if (surface === "FLOATING") {
+    universalWorkspaceRuntime.open(workspaceId, context);
+    return;
+  }
+  presentCanonicalWorkspace(workspaceId);
+}
+
 export function wireUniversalWorkspaceCommandBus(): () => void {
   if (wired) return () => undefined;
   wired = true;
@@ -39,16 +52,17 @@ export function wireUniversalWorkspaceCommandBus(): () => void {
       const actionId = cmd.payload?.actionId;
       const context = asContext(cmd.payload);
       if (actionId === "ACTION_OPEN_PLAYLIST_STUDIO") {
-        universalWorkspaceRuntime.open("playlist-studio", context);
+        openViaPresentation("playlist-studio", context);
         return;
       }
       if (actionId === "ACTION_OPEN_SHARE_STUDIO") {
+        // FLOATING_EXCEPTION — temporary share window
         universalWorkspaceRuntime.open("share-studio", context);
         return;
       }
       const workspaceId = cmd.payload?.workspaceId;
       if (typeof workspaceId === "string") {
-        universalWorkspaceRuntime.open(workspaceId as UniversalWorkspaceId, context);
+        openViaPresentation(workspaceId as UniversalWorkspaceId, context);
       }
     }),
     livingOsCommandBus.on("WORKSPACE_CLOSED", (cmd) => {
@@ -63,4 +77,9 @@ export function wireUniversalWorkspaceCommandBus(): () => void {
     for (const u of unsubs) u();
     wired = false;
   };
+}
+
+/** @deprecated Use presentCanonicalWorkspace — kept for call sites that imported deep open. */
+export function openDeepViaWire(workspaceId: UniversalWorkspaceId): void {
+  openCanonicalDeepStudio(workspaceId);
 }

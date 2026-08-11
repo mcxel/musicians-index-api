@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { type CSSProperties } from 'react';
 import type { YoPhoPortraitBlueprint, BlendMode } from '@/lib/yopho/YoPhoPortraitEngine';
 import { OBJECT_MASK_CATALOG } from '@/lib/yopho/YoPhoPortraitEngine';
 import YoPhoDepthParallaxCanvas, { createDepthLayerPair } from './YoPhoDepthParallaxCanvas';
@@ -16,6 +16,8 @@ interface YoPhoPortraitStageCanvasProps {
   playbackPaused?: boolean;
   /** When true, hide overlay stack (before/after compare) */
   suppressOverlays?: boolean;
+  /** Honest empty-state copy when no user image (Rule 20) */
+  emptyLabel?: string;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function YoPhoPortraitStageCanvas({
   timelineSec = 0,
   playbackPaused = false,
   suppressOverlays = false,
+  emptyLabel = "Put your image here",
 }: YoPhoPortraitStageCanvasProps) {
   const {
     mode,
@@ -47,9 +50,16 @@ export default function YoPhoPortraitStageCanvas({
   // Selected Object Mask Definition if mode === 'object_composite'
   const activeMaskDef = OBJECT_MASK_CATALOG.find((m) => m.id === objectMask) || OBJECT_MASK_CATALOG[0];
 
-  // Preset Visual Treatments
+  const hasSubject = Boolean(primaryLayer.imageUrl?.trim());
+
+  // Preset Visual Treatments — CSS only; never swaps in stock photos
   const getTextureStyle = () => {
     switch (texturePreset) {
+      case 'black_white':
+        return {
+          filter: 'grayscale(1) contrast(1.08)',
+          boxShadow: 'inset 0 0 40px rgba(0,0,0,0.55)',
+        };
       case '80s_airbrush':
         return {
           filter: 'drop-shadow(0 0 25px #FF2DAA) saturate(1.8) contrast(1.1)',
@@ -69,6 +79,11 @@ export default function YoPhoPortraitStageCanvas({
         return {
           filter: 'contrast(1.6) saturate(0.8)',
           boxShadow: 'inset 0 0 30px rgba(0,0,0,0.8)',
+        };
+      case 'none':
+        return {
+          filter: 'none',
+          boxShadow: 'inset 0 0 30px rgba(0, 229, 255, 0.12)',
         };
       case 'cyber_glow':
       default:
@@ -144,7 +159,32 @@ export default function YoPhoPortraitStageCanvas({
 
       {/* ── Layer 2: Main Subject Cutout / Double Exposure / Object Composite ── */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {mode === 'object_composite' ? (
+        {!hasSubject ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: 24,
+              textAlign: 'center',
+              border: `1px dashed ${colorPalette.primaryAccent}66`,
+              borderRadius: 16,
+              width: '80%',
+              height: '80%',
+              background: 'rgba(5,5,18,0.65)',
+            }}
+          >
+            <div style={{ fontSize: 28, opacity: 0.45 }}>▣</div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', letterSpacing: '0.06em' }}>
+              {emptyLabel}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', maxWidth: 200 }}>
+              Upload or select a real image — no demo photos
+            </div>
+          </div>
+        ) : mode === 'object_composite' ? (
           /* Object Mask Composition */
           <div style={{ position: 'relative', width: '75%', height: '75%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox={activeMaskDef.viewBox} width="100%" height="100%" style={{ filter: `drop-shadow(0 0 25px ${colorPalette.primaryAccent})` }}>
@@ -301,17 +341,16 @@ export default function YoPhoPortraitStageCanvas({
             accentColor={colorPalette.primaryAccent}
             showDepthRuler={interactive}
           />
-        ) : (
-          /* Single Portrait / Double Exposure Main Silhouette Composition */
+        ) : mode === 'double_exposure' ? (
+          /* Double Exposure Main Silhouette Composition */
           <div style={{ position: 'relative', width: '85%', height: '90%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {/* Secondary Inner Blend Layer for Double Exposure */}
-            {mode === 'double_exposure' && secondaryLayers[0] && (
+            {secondaryLayers[0]?.imageUrl ? (
               <div
                 style={{
                   position: 'absolute',
                   inset: 0,
                   zIndex: 1,
-                  mixBlendMode: secondaryLayers[0].blendMode as any,
+                  mixBlendMode: secondaryLayers[0].blendMode as CSSProperties['mixBlendMode'],
                   opacity: secondaryLayers[0].opacity,
                   maskImage: `url(${primaryLayer.imageUrl})`,
                   WebkitMaskImage: `url(${primaryLayer.imageUrl})`,
@@ -329,9 +368,7 @@ export default function YoPhoPortraitStageCanvas({
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
-            )}
-
-            {/* Primary Cutout Subject */}
+            ) : null}
             <img
               src={primaryLayer.imageUrl}
               alt={primaryLayer.label}
@@ -346,6 +383,38 @@ export default function YoPhoPortraitStageCanvas({
                 opacity: primaryLayer.opacity,
               }}
             />
+          </div>
+        ) : (
+          /* Dimensional stack — all layers composited by zIndex (behind / in front) */
+          <div style={{ position: 'relative', width: '90%', height: '92%' }}>
+            {[primaryLayer, ...secondaryLayers]
+              .slice()
+              .sort((a, b) => a.zIndex - b.zIndex)
+              .map((layer) =>
+                layer.imageUrl?.trim() ? (
+                  <img
+                    key={layer.id}
+                    src={layer.imageUrl}
+                    alt={layer.label}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      margin: 'auto',
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      zIndex: layer.zIndex,
+                      transform: `scale(${layer.scale}) translate(${layer.xOffset}px, ${layer.yOffset}px) rotate(${layer.rotation}deg)`,
+                      opacity: layer.opacity,
+                      mixBlendMode: layer.blendMode as CSSProperties['mixBlendMode'],
+                      filter: `drop-shadow(0 0 ${layer.edgeSoftness}px ${colorPalette.primaryAccent})`,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                ) : null,
+              )}
           </div>
         )}
       </div>

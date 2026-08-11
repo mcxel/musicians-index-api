@@ -42,7 +42,9 @@ export type TexturePreset =
   | '80s_airbrush'
   | 'vintage_album'
   | 'cyber_glow'
-  | 'gold_foil';
+  | 'gold_foil'
+  /** Honest CSS grayscale — not a stock B&W photo swap */
+  | 'black_white';
 
 export type FacingDirection = 'left' | 'right' | 'center';
 
@@ -141,7 +143,7 @@ export interface YoPhoPortraitBlueprint {
 }
 
 export interface SubscriptionPortraitEntitlement {
-  tier: 'FREE' | 'PRO' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
+  tier: 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
   maxActivePortraits: number;
   allowBasicCutout: boolean;
   allowDoubleExposure: boolean | 'preview';
@@ -169,7 +171,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   PRO: {
     tier: 'PRO',
-    maxActivePortraits: 2,
+    maxActivePortraits: 3,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'basic',
@@ -179,9 +181,21 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
     maxSavedEditions: 3,
     maxResolution: 'hd',
   },
+  RUBY: {
+    tier: 'RUBY',
+    maxActivePortraits: 5,
+    allowBasicCutout: true,
+    allowDoubleExposure: true,
+    objectMaskAccess: 'basic',
+    allowAnimatedComposition: 'limited',
+    liveScenePlacement: 'preview',
+    allowCustomMasks: false,
+    maxSavedEditions: 5,
+    maxResolution: 'hd',
+  },
   SILVER: {
     tier: 'SILVER',
-    maxActivePortraits: 3,
+    maxActivePortraits: 6,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'full',
@@ -193,7 +207,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   GOLD: {
     tier: 'GOLD',
-    maxActivePortraits: 4,
+    maxActivePortraits: 8,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'full',
@@ -205,7 +219,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   PLATINUM: {
     tier: 'PLATINUM',
-    maxActivePortraits: 6,
+    maxActivePortraits: 12,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'advanced',
@@ -217,7 +231,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   DIAMOND: {
     tier: 'DIAMOND',
-    maxActivePortraits: 10,
+    maxActivePortraits: 16,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'advanced',
@@ -231,7 +245,13 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
 
 export function getPortraitEntitlement(tierName: string): SubscriptionPortraitEntitlement {
   const normalized = (tierName || 'FREE').toUpperCase();
-  return SUBSCRIPTION_PORTRAIT_ENTITLEMENTS[normalized] || SUBSCRIPTION_PORTRAIT_ENTITLEMENTS.FREE;
+  if (normalized === 'BAND') {
+    return SUBSCRIPTION_PORTRAIT_ENTITLEMENTS.PLATINUM!;
+  }
+  if (normalized === 'BRONZE') {
+    return SUBSCRIPTION_PORTRAIT_ENTITLEMENTS.RUBY!;
+  }
+  return SUBSCRIPTION_PORTRAIT_ENTITLEMENTS[normalized] || SUBSCRIPTION_PORTRAIT_ENTITLEMENTS.FREE!;
 }
 
 // ─── Object Mask Definitions (SVG Paths for Render Composite) ─────────────────
@@ -330,24 +350,28 @@ export const OBJECT_MASK_CATALOG: ObjectMaskDefinition[] = [
 ];
 
 // ─── Default Initial Blueprint Factory ────────────────────────────────────────
+/**
+ * Empty honest blueprint — no bot/stock/demo images (Rule 20).
+ * Pass a real user upload URL via imageUrl when available.
+ */
 export function createDefaultYoPhoBlueprint(
   userRole: 'fan' | 'performer' = 'fan',
   displayName: string = 'User',
   imageUrl?: string
 ): YoPhoPortraitBlueprint {
-  const defaultImg = imageUrl || '/bot-images/Bot image 1.png';
+  const subjectUrl = (imageUrl && imageUrl.trim()) || '';
   return {
     id: `yopho_blueprint_${Date.now()}`,
     title: `${displayName}'s Living YoPho Card`,
     userRole,
-    mode: 'double_exposure',
-    activePortraitsCount: 2,
+    mode: 'single',
+    activePortraitsCount: subjectUrl ? 1 : 0,
     primaryLayer: {
       id: 'layer_primary',
-      imageUrl: defaultImg,
-      label: 'Main Profile Silhouette',
+      imageUrl: subjectUrl,
+      label: 'Working image',
       role: 'primary',
-      facing: 'left',
+      facing: 'center',
       scale: 1.0,
       xOffset: 0,
       yOffset: 0,
@@ -358,35 +382,18 @@ export function createDefaultYoPhoBlueprint(
       preserveHairEdges: true,
       zIndex: 2,
     },
-    secondaryLayers: [
-      {
-        id: 'layer_secondary_1',
-        imageUrl: '/yopho/Yoho Canvas base 2.mp4',
-        label: 'Inner Scene Memory',
-        role: 'secondary',
-        facing: 'right',
-        scale: 1.15,
-        xOffset: 10,
-        yOffset: -5,
-        rotation: 0,
-        blendMode: 'screen',
-        opacity: 0.85,
-        edgeSoftness: 6,
-        preserveHairEdges: true,
-        zIndex: 1,
-      },
-    ],
+    secondaryLayers: [],
     objectMask: 'coffee_cup',
     secondaryFillType: 'stage',
-    secondaryFillUrl: '/banners/lightning/204835-925552445_medium Battle of the chapions lightning.mp4',
-    texturePreset: 'cyber_glow',
+    secondaryFillUrl: '',
+    texturePreset: 'none',
     colorPalette: {
       primaryAccent: '#00E5FF',
       secondaryAccent: '#FF2DAA',
       ambientGlow: 'rgba(0, 229, 255, 0.4)',
     },
-    lightingDirection: 'top-left',
-    isAnimated: true,
+    lightingDirection: 'center-stage',
+    isAnimated: false,
     exportResolution: 'hd',
     portraitEffects: [],
     previewDurationSec: 6,

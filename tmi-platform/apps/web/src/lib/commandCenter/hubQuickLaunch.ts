@@ -1,7 +1,7 @@
 /**
- * hubQuickLaunch — one press opens workspace (Living OS quick launch, locked 2026-08-10).
- * Resolves drawer module → Universal Workspace Window, playlist-studio, floating panel,
- * or under-monitor drawer (single click — never select-then-OPEN).
+ * hubQuickLaunch — one press opens workspace (Living OS quick launch).
+ * Resolves drawer module → canonical presentation surfaces (Media Console DrawerDock /
+ * L/R quick / Discovery Wall). Never defaults HQ modules to UniversalWorkspaceWindow FLOATING.
  */
 
 import type { CommandCenterPanelId, CommandCenterRole } from "@/components/commandCenter/commandCenterRegistry";
@@ -10,17 +10,12 @@ import { universalWorkspaceRuntime } from "@/lib/workspace/universal/UniversalWo
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import type { ActionId } from "@/lib/os/universalActionRegistry";
-import { floatingWorkspaceStore } from "@/lib/workspace/floatingWorkspaceStore";
-import type { FloatingWorkspaceModuleId } from "@/lib/workspace/FloatingWorkspaceModules";
 import { executeQuickLaunchWorkspace } from "@/lib/workspace/universal/executeQuickLaunchWorkspace";
-import { openCanonicalWorkspaceQuick, isCanonicalWorkspaceActive } from "@/lib/workspace/universal/openCanonicalPresentation";
-
-const DRAWER_TO_FLOATING: Partial<Record<CommandCenterPanelId, FloatingWorkspaceModuleId>> = {
-  memory: "memory_wall",
-  inventory: "avatar_inventory",
-  messaging: "messages",
-  lobby: "fan_lobby",
-};
+import {
+  openCanonicalWorkspaceQuick,
+  isCanonicalWorkspaceActive,
+} from "@/lib/workspace/universal/openCanonicalPresentation";
+import { isFloatingException } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 
 /** Stable map for certification docs — drawer module → workspace id (null = drawer/floating only). */
 export const HUB_QUICK_LAUNCH_WORKSPACE_MAP: Record<string, UniversalWorkspaceId | "playlist-studio" | null> =
@@ -56,7 +51,9 @@ export function isUniversalWorkspaceOpenForModule(moduleId: CommandCenterPanelId
   if (!wsId || wsId === "playlist-studio") {
     return wsId === "playlist-studio" && universalWorkspaceRuntime.isOpen("playlist-studio");
   }
-  return universalWorkspaceRuntime.isOpen(wsId);
+  // Only FLOATING_EXCEPTION may still report open via universal runtime
+  if (isFloatingException(wsId)) return universalWorkspaceRuntime.isOpen(wsId);
+  return false;
 }
 
 export interface HubQuickLaunchOptions {
@@ -80,6 +77,7 @@ export function openHubQuickLaunch(opts: HubQuickLaunchOptions): void {
     return;
   }
 
+  // Fire action for analytics / permission — presentation open is owned below (not by FLOATING wire).
   if (actionId) {
     livingOsCommandBus.executeAction(actionId, {
       role,
@@ -91,12 +89,17 @@ export function openHubQuickLaunch(opts: HubQuickLaunchOptions): void {
   const canonicalOpened = openCanonicalWorkspaceQuick(moduleId);
   if (canonicalOpened) {
     closeDrawer();
+    // Dispatch without re-triggering floating: wire routes WORKSPACE_OPENED → presentation.
     livingOsCommandBus.dispatch({
       type: "WORKSPACE_OPENED",
       category: "navigation",
       role,
       userId,
-      payload: { workspaceId: canonicalOpened, panelId: moduleId },
+      payload: {
+        workspaceId: canonicalOpened,
+        panelId: moduleId,
+        presentation: "canonical",
+      },
     });
     return;
   }
@@ -110,18 +113,11 @@ export function openHubQuickLaunch(opts: HubQuickLaunchOptions): void {
       category: "navigation",
       role,
       userId,
-      payload: { workspaceId: wsId, panelId: moduleId },
+      payload: { workspaceId: wsId, panelId: moduleId, presentation: "canonical" },
     });
     return;
   }
 
-  const floatingId = DRAWER_TO_FLOATING[moduleId];
-  if (floatingId) {
-    closeDrawer();
-    floatingWorkspaceStore.setRole(role === "performer" ? "PERFORMER" : "FAN");
-    floatingWorkspaceStore.open(floatingId);
-    return;
-  }
-
+  // Last resort: legacy under-monitor CommandCenterDrawer (not UniversalWorkspaceWindow).
   openDrawer(moduleId);
 }

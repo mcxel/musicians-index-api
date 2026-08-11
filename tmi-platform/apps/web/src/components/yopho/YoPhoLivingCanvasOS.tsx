@@ -38,7 +38,7 @@ export default function YoPhoLivingCanvasOS({
   performerName,
   performerSlug,
   performerCategory = 'Hip-Hop',
-  performerImageUrl = '/bot-images/Bot image 1.png',
+  performerImageUrl = '',
   performerBio = 'Create, perform, headline. Welcome to my living stage.',
   isLive = false,
   activeTracks = [

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+/**
+ * YoPho Triple-Stage Studio — Master (center) + Preview + Preview 2.
+ * Multi-image / dimensional z-layers gated by tier capacity (YoPhoImageCapacity).
+ * Filters apply to preview first; Apply to Master commits. No fake stock images.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import type { YoPhoPortraitBlueprint, YoPhoPortraitOverlayEffectId } from "@/lib/yopho/YoPhoPortraitEngine";
 import { clonePortraitBlueprint } from "@/lib/yopho/YoPhoPortraitEngine";
 import {
@@ -11,6 +18,17 @@ import {
   patchOverlayParams,
   resetPreviewEffects,
 } from "@/lib/yopho/YoPhoPortraitEffectCatalog";
+import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import {
+  addStackLayer,
+  bringLayerToFront,
+  countStackLayers,
+  listStackLayers,
+  removeStackLayer,
+  reorderStackLayer,
+  sendLayerToBack,
+  setActiveLayerImage,
+} from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoPortraitStageCanvas from "./YoPhoPortraitStageCanvas";
 
 const CYAN = "#00FFFF";
@@ -38,6 +56,8 @@ export interface YoPhoTripleStageStudioProps {
   onMasterChange: (next: YoPhoPortraitBlueprint) => void;
   onSaveEdition?: (bp: YoPhoPortraitBlueprint) => void;
   storageKey?: string;
+  /** Membership tier or BAND role — drives image/layer capacity */
+  tierOrRole?: string;
 }
 
 export default function YoPhoTripleStageStudio({
@@ -45,9 +65,12 @@ export default function YoPhoTripleStageStudio({
   onMasterChange,
   onSaveEdition,
   storageKey = "tmi_yopho_triple_stage",
+  tierOrRole = "FREE",
 }: YoPhoTripleStageStudioProps) {
+  const capacity = useMemo(() => getYoPhoImageCapacity(tierOrRole), [tierOrRole]);
   const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() => clonePortraitBlueprint(master));
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+  const [activeLayerId, setActiveLayerId] = useState<string>(master.primaryLayer.id);
   const [timelineSec, setTimelineSec] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loopTimeline, setLoopTimeline] = useState(true);
@@ -57,11 +80,17 @@ export default function YoPhoTripleStageStudio({
   const undoStack = useRef<YoPhoPortraitBlueprint[]>([]);
   const rafRef = useRef<number | null>(null);
   const lastTick = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const durationSec = preview.previewDurationSec ?? master.previewDurationSec ?? 6;
+  const stackLayers = useMemo(() => listStackLayers(preview), [preview]);
 
   useEffect(() => {
     setPreview(clonePortraitBlueprint(master));
+    setActiveLayerId((prev) => {
+      const ids = new Set([master.primaryLayer.id, ...master.secondaryLayers.map((l) => l.id)]);
+      return ids.has(prev) ? prev : master.primaryLayer.id;
+    });
   }, [master.id, master.updatedAt]);
 
   useEffect(() => {
@@ -113,7 +142,7 @@ export default function YoPhoTripleStageStudio({
     const def = getPortraitControl(controlId);
     if (!def) return;
     if (def.status === "coming_soon") {
-      setStatusLine(`${def.label} — coming soon (not wired).`);
+      setStatusLine(`${def.label} — Coming Soon (not wired).`);
       setSelectedControlId(controlId);
       if (controlId === "ai_magic") {
         setAiMessage("AI Magic preview is not connected yet. No generative pipeline on this build.");
@@ -124,7 +153,7 @@ export default function YoPhoTripleStageStudio({
     setAiMessage(null);
     const next = applyPortraitControl(preview, controlId);
     setPreview(next);
-    setStatusLine(`${def.label} applied to preview stage.`);
+    setStatusLine(`${def.label} → Preview / Preview 2 (not on Master until Apply).`);
     if (!isPlaying) setIsPlaying(true);
   };
 
@@ -150,7 +179,7 @@ export default function YoPhoTripleStageStudio({
     }
     onSaveEdition?.(applied);
     setPreview(clonePortraitBlueprint(applied));
-    setStatusLine("Applied to master canvas.");
+    setStatusLine("Applied to Master (center working card).");
   };
 
   const handleUndo = () => {
@@ -164,18 +193,164 @@ export default function YoPhoTripleStageStudio({
     setStatusLine("Undid last apply.");
   };
 
-  const demoBlueprint = useMemo(() => {
+  const onPickImage = () => fileInputRef.current?.click();
+
+  const onFileChosen = (file: File | null) => {
+    if (!file || !file.type.startsWith("image/")) {
+      setStatusLine("Choose a real image file.");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
+    setPreview(next);
+    setStatusLine(`Image set on active layer — Apply to Master to commit.`);
+  };
+
+  const handleAddLayer = () => {
+    const next = addStackLayer(preview, capacity.maxImages);
+    if (!next) {
+      setStatusLine(`Layer limit reached (${capacity.maxImages}). Upgrade to add more.`);
+      return;
+    }
+    setPreview(next);
+    const added = listStackLayers(next).at(-1);
+    if (added) setActiveLayerId(added.id);
+    setStatusLine("Empty layer added — Put your image here.");
+  };
+
+  const effectPreviewBlueprint = useMemo(() => {
     if (!selectedControlId) return preview;
     const def = getPortraitControl(selectedControlId);
     if (!def || def.status === "coming_soon") return preview;
-    return applyPortraitControl(
-      { ...preview, portraitEffects: [], mode: "single", isAnimated: false },
-      selectedControlId,
-    );
+    return applyPortraitControl(preview, selectedControlId);
   }, [preview, selectedControlId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          onFileChosen(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Capacity + dimensional layer strip */}
+      <div
+        style={{
+          padding: "10px 14px",
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(5,5,16,0.92)",
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA }}>
+            LAYERS · Z-DEPTH · {capacity.tierKey}
+          </span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
+            {countStackLayers(preview)} / {capacity.maxImages} images
+          </span>
+          <button type="button" onClick={onPickImage} style={chipBtn(CYAN)}>
+            UPLOAD TO ACTIVE LAYER
+          </button>
+          {capacity.multiImageEnabled ? (
+            <button type="button" onClick={handleAddLayer} style={chipBtn(GOLD)}>
+              + ADD LAYER
+            </button>
+          ) : (
+            <Link href={capacity.upgradeHref} style={{ ...chipBtn(GOLD), textDecoration: "none" }}>
+              UPGRADE FOR MULTI-LAYER
+            </Link>
+          )}
+        </div>
+
+        {capacity.multiImageEnabled ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[...stackLayers].reverse().map((ref, frontIndex) => {
+              const selected = ref.id === activeLayerId;
+              const empty = !ref.layer.imageUrl?.trim();
+              return (
+                <div
+                  key={ref.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    border: selected ? `1px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
+                    background: selected ? `${CYAN}14` : "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveLayerId(ref.id)}
+                    style={{
+                      flex: 1,
+                      textAlign: "left",
+                      background: "transparent",
+                      border: "none",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    z{ref.layer.zIndex} · {empty ? "Put your image here" : ref.layer.label}{" "}
+                    <span style={{ color: "rgba(255,255,255,0.35)" }}>
+                      ({frontIndex === 0 ? "front" : frontIndex === stackLayers.length - 1 ? "back" : "mid"})
+                    </span>
+                  </button>
+                  <button type="button" title="Bring forward" onClick={() => setPreview(reorderStackLayer(preview, ref.id, "forward"))} style={tinyBtn}>
+                    ▲
+                  </button>
+                  <button type="button" title="Send back" onClick={() => setPreview(reorderStackLayer(preview, ref.id, "back"))} style={tinyBtn}>
+                    ▼
+                  </button>
+                  <button type="button" title="Bring to front" onClick={() => setPreview(bringLayerToFront(preview, ref.id))} style={tinyBtn}>
+                    ⇈
+                  </button>
+                  <button type="button" title="Send to back" onClick={() => setPreview(sendLayerToBack(preview, ref.id))} style={tinyBtn}>
+                    ⇊
+                  </button>
+                  {capacity.maxImages > 1 ? (
+                    <button
+                      type="button"
+                      title="Remove layer"
+                      onClick={() => {
+                        const next = removeStackLayer(preview, ref.id);
+                        setPreview(next);
+                        setActiveLayerId(next.primaryLayer.id);
+                      }}
+                      style={{ ...tinyBtn, color: "#ff6688" }}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+            {countStackLayers(preview) >= capacity.maxImages ? (
+              <div style={{ fontSize: 10, color: GOLD }}>
+                At capacity.{" "}
+                <Link href={capacity.upgradeHref} style={{ color: CYAN, fontWeight: 800 }}>
+                  Upgrade to add more images
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
+            FREE = single-layer card. Center is your working image. Upgrade unlocks dimensional stacking
+            (layers behind / in front) and multi-image sets.
+          </div>
+        )}
+      </div>
+
       {/* Timeline */}
       <div
         style={{
@@ -230,12 +405,11 @@ export default function YoPhoTripleStageStudio({
         data-yopho-triple-grid
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(200px, 240px) 1fr 1fr 1fr",
+          gridTemplateColumns: "minmax(180px, 220px) 1fr 1.15fr 1fr",
           gap: 14,
           alignItems: "start",
         }}
       >
-        {/* Controls rail */}
         <div
           style={{
             padding: 12,
@@ -247,7 +421,10 @@ export default function YoPhoTripleStageStudio({
           }}
         >
           <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA, marginBottom: 10 }}>
-            CREATIVE CONTROLS
+            FILTERS & EFFECTS
+          </div>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8, lineHeight: 1.4 }}>
+            Click → live on Preview / Preview 2. Master unchanged until Apply.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {YOPHO_PORTRAIT_CONTROLS.map((c) => {
@@ -273,47 +450,49 @@ export default function YoPhoTripleStageStudio({
                   }}
                 >
                   {c.label}
-                  {soon ? (
-                    <span style={{ marginLeft: 6, fontSize: 8, color: GOLD }}>SOON</span>
-                  ) : null}
+                  {soon ? <span style={{ marginLeft: 6, fontSize: 8, color: GOLD }}>SOON</span> : null}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Left demo */}
+        {/* Preview — effect path */}
         <div>
-          {stageLabel("EFFECT DEMO", "What this control does")}
+          {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
           <YoPhoPortraitStageCanvas
-            blueprint={demoBlueprint}
+            blueprint={effectPreviewBlueprint}
             height={360}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused={!isPlaying}
+            emptyLabel="Preview"
           />
         </div>
 
         {/* Center master */}
         <div>
-          {stageLabel("MASTER", "Untouched until Apply")}
+          {stageLabel("WORKING CARD", "Center master · Put your image here · Apply commits here")}
           <YoPhoPortraitStageCanvas
             blueprint={master}
-            height={360}
+            height={380}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused
-            suppressOverlays={false}
+            emptyLabel="Put your image here"
           />
+          <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
+            SET IMAGE ON ACTIVE LAYER
+          </button>
         </div>
 
-        {/* Right preview */}
+        {/* Preview 2 — compare */}
         <div
           onPointerDown={() => setCompareHold(true)}
           onPointerUp={() => setCompareHold(false)}
           onPointerLeave={() => setCompareHold(false)}
         >
-          {stageLabel("PREVIEW STAGE", "Hold to compare · updates on every click")}
+          {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
           <YoPhoPortraitStageCanvas
             blueprint={compareHold ? master : preview}
             height={360}
@@ -321,14 +500,14 @@ export default function YoPhoTripleStageStudio({
             timelineSec={timelineSec}
             playbackPaused={!isPlaying}
             suppressOverlays={compareHold}
+            emptyLabel="Preview 2"
           />
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-            {compareHold ? "Showing master (before)" : "Showing preview (with effects)"}
+            {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
           </div>
         </div>
       </div>
 
-      {/* Params + actions */}
       <div
         style={{
           display: "grid",
@@ -367,19 +546,11 @@ export default function YoPhoTripleStageStudio({
                   />
                 </div>
               ))}
-              <div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Accent color</div>
-                <input
-                  type="color"
-                  value={activeParams.color}
-                  onChange={(e) => patchSelectedParams({ color: e.target.value })}
-                />
-              </div>
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-              Select an overlay control (Neon, Glitch, Particles, etc.) to expose intensity, speed, and color.
-              Mode controls (Double Exposure, Parallax) apply instantly on the preview stage.
+              Stack layers by z-order (▲/▼). Filters preview on the side panes; Apply to Master updates the
+              center working card. 60s/70s Era = Coming Soon. B&W + Vintage Album are live CSS looks.
             </div>
           )}
           {aiMessage ? (
@@ -434,3 +605,29 @@ function actionBtn(bg: string, color: string) {
     cursor: "pointer",
   } as const;
 }
+
+function chipBtn(color: string): CSSProperties {
+  return {
+    padding: "6px 10px",
+    borderRadius: 6,
+    border: `1px solid ${color}66`,
+    background: `${color}18`,
+    color,
+    fontSize: 9,
+    fontWeight: 900,
+    letterSpacing: "0.06em",
+    cursor: "pointer",
+    fontFamily: "inherit",
+  };
+}
+
+const tinyBtn: CSSProperties = {
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.15)",
+  color: "#fff",
+  borderRadius: 4,
+  fontSize: 10,
+  width: 26,
+  height: 24,
+  cursor: "pointer",
+};

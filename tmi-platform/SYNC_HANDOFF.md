@@ -2,10 +2,12 @@
 
 **Date:** 2026-08-11 (next full-sync resume document)  
 **Branch of record:** `origin/eos/vocal-improv-clean`  
-**Candidate baseline:** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
-**Branch tip (includes baseline + one-line fix):** **`a5e45640`** (`accentColor` prop fix on CanonicalQuickPanelContent)  
+**Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
+**`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
+**Presentation-fix candidate (eos tip):** **`99fa4f98`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
+
 **`origin/main` tip (intentionally untouched):** **`fd0f7bd1`**  
-**Rule:** ChatGPT/Gemini “finished” claims are **code candidates only**. Never claim production certified without logged-in Fan + Performer hard-refresh proof (Rule 20).
+**Rule:** ChatGPT/Gemini “finished” claims are **code candidates only**. Never claim production certified without logged-in Fan + Performer hard-refresh proof (Rule 20). Cert still **PENDING** until Marcel hard-refresh proof.
 
 ---
 
@@ -62,11 +64,18 @@ Underlying platform largely exists (auth, roles, live sessions, competition pres
 ```
 845c4f6f — FULL SYNC + 4-ZONE CANDIDATE
          · TYPECHECK/CODE PASS
-         · HARD-REFRESH FAN/PERFORMER VISUAL-RUNTIME CERT PENDING
+         · HARD-REFRESH VISUAL CERT FAIL (FLOATING over stage)
+         · MAIN intentionally untouched
+
+99fa4f98 — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
+         · Root cause: WORKSPACE_OPENED → universalWorkspaceRuntime.open() → FLOATING
+           after canonical path had already set drawerWorkspace
+         · HQ modules → WorkspacePresentationRuntime (BOTTOM_DEEP / L/R / DISCOVERY)
+         · UniversalWorkspaceHost mounts FLOATING_EXCEPTION only (e.g. share-studio)
+         · YoPho: honest placeholders + tier image capacity + z-depth layers
+         · HARD-REFRESH FAN/PERFORMER VISUAL-RUNTIME CERT STILL PENDING
          · MAIN intentionally untouched
 ```
-
-Branch tip `a5e45640` = `845c4f6f` + CanonicalQuickPanelContent `accentColor` fix. Cert against **`845c4f6f` geometry contract**; tip is the deploy/checkout candidate that includes the fix.
 
 **Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers.
 
@@ -214,6 +223,35 @@ DESTINATION
 | Messages chat popup | ≠ | Messenger communications command center |
 | MediaPlayerDevice (chassis) | ≠ | PlaylistArtifact (content) |
 | Lobby Wall living matrix | ≠ | drawer / directory / text JOIN list |
+| Media Console mini player | ≠ | expanded Playlist Studio (same playback session) |
+| FLOATING_EXCEPTION (Share) | ≠ | HQ BOTTOM_DEEP drawers |
+
+### Media Console contract (presentation fix)
+
+```
+MAIN STAGE (never covered/resized by deep drawers)
+  [LEFT_QUICK]              [RIGHT_QUICK]
+MINI MEDIA PLAYER  ← PersistentMediaInteractionDock
+        ⇅ ATTACHED
+DrawerDock (CanonicalBottomDrawerHost) — one activeDrawer
+  playlist | messaging | yopho | championship | store | settings | …
+```
+
+- `mediaConsoleMode`: `expanded` only for playlist-studio; else `mini` + dock under mini player.
+- Lobby / live-destinations → `DISCOVERY_WALL` (`liveDiscoveryOverlayStore`), not FLOATING room.
+- Stage `getBoundingClientRect` Δx/Δy/Δw/Δh must stay 0 when opening/closing/switching drawers.
+
+### YoPho studio contract (honesty + capacity + z-depth)
+
+| Concern | Rule |
+|---------|------|
+| Placeholders | Center = **Put your image here**; sides = **Preview** / **Preview 2** — no bot/stock filler |
+| Filters | Click → live on Preview panes; **Apply to Master** commits center; 60s/70s = Coming Soon; B&W + Vintage live |
+| Multi-image | Tier-gated via `YoPhoImageCapacity.ts` |
+| Capacity defaults | FREE **1** · PRO **3** · RUBY **5** · SILVER **6** · GOLD **8** · PLATINUM/BAND **12** · DIAMOND **16** |
+| At limit | Honest **Upgrade to add more images** → `/account/subscription` |
+| Dimensional layers | `YoPhoLayerStack.ts` — zIndex reorder (▲/▼ / front / back); canvas composites by z-order (person behind car). FREE = single layer only |
+| Advanced 3D perspective | Coming Soon if missing — **z-order behind/in front must work** for multi-image tiers |
 
 ---
 
@@ -322,7 +360,7 @@ Real foundations — **not** “UX finished”:
 
 | Gap | Note |
 |-----|------|
-| Browser cert | **PENDING** — no Fan/Performer hard-refresh proof against `845c4f6f` contract |
+| Browser cert | **PENDING** — `845c4f6f` VISUAL FAIL; presentation-fix tip needs Marcel hard-refresh proof |
 | Main promote | **BLOCKED** until cert; `origin/main` stays `fd0f7bd1` |
 | Profiles assets | Blueprint files untracked locally; taxonomy above is filename-confirmed |
 | Settings actions | Scaffold / candidate — Sign Out, convert, switch, deactivate, delete need browser proof of real routes |

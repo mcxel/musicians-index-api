@@ -61,6 +61,7 @@ import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/Canoni
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
 import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 
 interface LiveApiSession {
   userId: string;
@@ -137,6 +138,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const mediaStageRef = useRef<HTMLDivElement>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
+  const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
+  const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -264,6 +267,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   /** Always open/swap into drawer (never toggle-close) — used by dock + drawer chips. */
   const openPanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
+    // Prefer Media Console / 4-zone presentation over legacy CommandCenterDrawer + FLOATING.
+    const opened = openCanonicalWorkspaceQuick(id);
+    if (opened) {
+      setActivePanel(null);
+      drawerStateStore.setLastPanel(role, null);
+      return;
+    }
     setActivePanel(id);
     drawerStateStore.setLastPanel(role, id);
   };
@@ -625,18 +635,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
               onLobbyNav={
                 role === "fan"
-                  ? () => openPanel("lobby")
+                  ? () => {
+                      liveDiscoveryOverlayStore.open();
+                      openCanonicalWorkspaceQuick("lobby");
+                    }
                   : () => openPanel("media_locker")
               }
-              onOpenModule={(mod) => openPanel(mod)}
+              onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
             />
+            {/* Playlist band expands only when Media Console mode=expanded (playlist drawer). */}
             <CommandCenterPlaylistBand
               role={role}
               userId={userId}
               displayName={resolvedDisplayName}
-              expanded={activePanel === "playlist"}
+              expanded={
+                (drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") ||
+                activePanel === "playlist"
+              }
               initialPlaylistId={deepLinkPlaylistId}
-              onCollapse={closeDrawer}
+              onCollapse={() => {
+                useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+                closeDrawer();
+              }}
             />
             <CanonicalBottomDrawerHost
               userId={userId}

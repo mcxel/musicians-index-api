@@ -165,7 +165,8 @@ export default function YoPhoTradingCard({
   const performer = useMemo(() => (slug ? getPerformerBySlug(slug) : null), [slug]);
   const resolvedName = performer?.name ?? displayName;
   const resolvedSlug = performer?.slug ?? slug;
-  const subjectUrl = imageUrl ?? performer?.profileImageUrl ?? "/images/tmi-placeholder.jpg";
+  // Rule 20 — no fake/stock placeholder presented as user content; empty string → honest empty card art
+  const subjectUrl = (imageUrl ?? performer?.profileImageUrl ?? "").trim();
 
   const [comp, setComp] = useState<YoPhoCardComposition>(() =>
     loadCardComposition(role, userKey),
@@ -883,37 +884,62 @@ export default function YoPhoTradingCard({
                     borderRadius: 12,
                     overflow: "hidden",
                     boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
+                    background: "rgba(5,5,18,0.9)",
                   }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={subjectUrl}
-                    alt={resolvedName}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      filter:
-                        stylePreset.overlay === "vaseline"
-                          ? "blur(0.4px) brightness(1.05)"
-                          : stylePreset.overlay === "minilab"
-                            ? "sepia(0.25) saturate(1.2)"
-                            : undefined,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "radial-gradient(ellipse at center, transparent 42%, rgba(5,5,16,0.55) 100%)",
-                      pointerEvents: "none",
-                    }}
-                  />
-                  <YoPhoStudioStyleOverlay
-                    kind={stylePreset.overlay}
-                    displayName={resolvedName}
-                  />
+                  {subjectUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={subjectUrl}
+                        alt={resolvedName}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          filter:
+                            stylePreset.overlay === "vaseline"
+                              ? "blur(0.4px) brightness(1.05)"
+                              : stylePreset.overlay === "minilab"
+                                ? "sepia(0.25) saturate(1.2)"
+                                : undefined,
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "radial-gradient(ellipse at center, transparent 42%, rgba(5,5,16,0.55) 100%)",
+                          pointerEvents: "none",
+                        }}
+                      />
+                      <YoPhoStudioStyleOverlay
+                        kind={stylePreset.overlay}
+                        displayName={resolvedName}
+                      />
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexDirection: "column",
+                        gap: 6,
+                        border: "1px dashed rgba(0,255,255,0.35)",
+                        color: "rgba(255,255,255,0.55)",
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
+                      <span>Put your image here</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.35)" }}>
+                        No demo photo
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div

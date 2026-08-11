@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * CanonicalBottomDrawerHost — Media Console DrawerDock.
+ * Attached under PersistentMediaInteractionDock (mini player). One activeDrawer at a time.
+ * Stage geometry must not reflow when this opens/closes/swaps (document-flow under media band).
+ */
+
 import React from "react";
 import dynamic from "next/dynamic";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
@@ -18,26 +24,32 @@ export default function CanonicalBottomDrawerHost({
   displayName?: string;
   role: "fan" | "performer";
 }) {
-  const { drawerWorkspace, isDrawerExpanded, closeSurface, toggleDrawerExpand } =
+  const { drawerWorkspace, isDrawerExpanded, mediaConsoleMode, closeSurface, toggleDrawerExpand } =
     useWorkspacePresentationStore();
 
   if (!drawerWorkspace || !isDrawerExpanded) return null;
 
   const uid = userId ?? "session";
   const name = displayName ?? "Member";
+  const expandedPlaylist = drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded";
+  const maxHeight = expandedPlaylist ? "min(62vh, 640px)" : "min(52vh, 560px)";
+  const minHeight = expandedPlaylist ? 360 : 320;
 
   return (
     <div
       data-canonical-bottom-drawer
+      data-media-console-drawer
+      data-active-drawer={drawerWorkspace}
+      data-media-console-mode={mediaConsoleMode}
       style={{
         width: "100%",
-        marginTop: 8,
+        flexShrink: 0,
+        marginTop: 0,
         background: "rgba(6, 9, 24, 0.98)",
         border: "1px solid rgba(0, 229, 255, 0.3)",
-        borderRadius: "16px 16px 0 0",
+        borderTop: "none",
         boxShadow: "0 -10px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(0,229,255,0.2)",
         overflow: "hidden",
-        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
       <div
@@ -62,7 +74,17 @@ export default function CanonicalBottomDrawerHost({
               textTransform: "uppercase",
             }}
           >
-            WORK · {drawerWorkspace.replace(/-/g, " ")}
+            MEDIA CONSOLE · {drawerWorkspace.replace(/-/g, " ")}
+          </span>
+          <span
+            style={{
+              fontSize: 8,
+              fontWeight: 800,
+              color: "rgba(0,255,255,0.55)",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {mediaConsoleMode === "expanded" ? "EXPANDED" : "MINI + DOCK"}
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -97,7 +119,7 @@ export default function CanonicalBottomDrawerHost({
         </div>
       </div>
 
-      <div style={{ padding: 16, minHeight: 280, maxHeight: "45vh", overflowY: "auto" }}>
+      <div style={{ padding: 16, minHeight, maxHeight, overflowY: "auto" }}>
         {drawerWorkspace === "playlist-studio" ? (
           <PlaylistStudioContent userId={uid} context={{}} />
         ) : drawerWorkspace === "settings" ? (

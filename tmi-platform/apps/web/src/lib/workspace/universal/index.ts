@@ -25,6 +25,19 @@ export { WorkspaceTransitionRuntime, getWorkspaceMotion } from "./WorkspaceTrans
 export { wireUniversalWorkspaceCommandBus } from "./wireUniversalWorkspaceCommandBus";
 export { executeQuickLaunchWorkspace } from "./executeQuickLaunchWorkspace";
 export {
+  openCanonicalWorkspaceQuick,
+  openCanonicalDeepStudio,
+  presentCanonicalWorkspace,
+  isCanonicalWorkspaceActive,
+} from "./openCanonicalPresentation";
+export {
+  useWorkspacePresentationStore,
+  WORKSPACE_PRESENTATION_MAP,
+  isFloatingException,
+  resolvePreferredSurface,
+  resolveMediaConsoleMode,
+} from "./WorkspacePresentationRuntime";
+export {
   loadWorkspaceGeometry,
   saveWorkspaceGeometry,
   resolveOpenGeometry,

@@ -37,6 +37,10 @@ export interface YoPhoPortraitControlDef {
 }
 
 export const YOPHO_PORTRAIT_CONTROLS: YoPhoPortraitControlDef[] = [
+  { id: "black_white", label: "Black & White", kind: "texture", status: "pass", description: "Grayscale look on the active working image (CSS filter — live preview)." },
+  { id: "era_60s", label: "60s Era", kind: "texture", status: "coming_soon", description: "Dedicated 60s era filter pack — not wired yet." },
+  { id: "era_70s", label: "70s Era", kind: "texture", status: "coming_soon", description: "Dedicated 70s era filter pack — not wired yet." },
+  { id: "vintage", label: "Vintage Album", kind: "texture", status: "pass", description: "Warm sepia album texture (real CSS preset)." },
   { id: "animation", label: "Animation", kind: "layer", status: "pass", description: "Loop stage underlay video on the card." },
   { id: "particles", label: "Particles", kind: "overlay", status: "pass", description: "Foreground celebration flecks.", overlayId: "particles" },
   { id: "double_exposure", label: "Double Exposure", kind: "mode", status: "pass", description: "Silhouette filled with memory scene." },
@@ -93,6 +97,12 @@ export function applyPortraitControl(
   let next = { ...blueprint, updatedAt: new Date().toISOString() };
 
   switch (controlId) {
+    case "black_white":
+      next.texturePreset = next.texturePreset === "black_white" ? "none" : "black_white";
+      break;
+    case "vintage":
+      next.texturePreset = next.texturePreset === "vintage_album" ? "none" : "vintage_album";
+      break;
     case "animation":
       next.isAnimated = !next.isAnimated;
       break;
@@ -153,6 +163,7 @@ export function textureFromControl(id: string): TexturePreset | null {
   const map: Record<string, TexturePreset> = {
     cyber_glow: "cyber_glow",
     vintage: "vintage_album",
+    black_white: "black_white",
   };
   return map[id] ?? null;
 }

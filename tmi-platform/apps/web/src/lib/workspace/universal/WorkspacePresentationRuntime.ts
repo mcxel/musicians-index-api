@@ -1,9 +1,25 @@
 "use client";
 
+/**
+ * WorkspacePresentationRuntime — 4-zone + Media Console presentation authority.
+ *
+ * HQ modules resolve here (LEFT_QUICK / RIGHT_QUICK / BOTTOM_DEEP / DISCOVERY_WALL).
+ * UniversalWorkspaceWindow FLOATING is FLOATING_EXCEPTION only — never default for HQ.
+ */
+
 import { create } from "zustand";
 import type { UniversalWorkspaceId } from "./types";
 
-export type WorkspaceSurface = "LEFT_PANEL" | "RIGHT_PANEL" | "DRAWER" | "FLOATING";
+/** Surfaces used by Command Center hosts (aliases kept for existing hosts). */
+export type WorkspaceSurface =
+  | "LEFT_PANEL"
+  | "RIGHT_PANEL"
+  | "DRAWER"
+  | "DISCOVERY_WALL"
+  | "FULL_DESTINATION"
+  | "FLOATING";
+
+export type MediaConsoleMode = "mini" | "expanded";
 
 export interface WorkspacePresentationConfig {
   preferredSurface: WorkspaceSurface;
@@ -12,36 +28,88 @@ export interface WorkspacePresentationConfig {
   defaultWidth?: number;
   defaultHeight?: number;
   preserveState?: boolean;
+  /**
+   * Media Console mode when this workspace occupies BOTTOM_DEEP.
+   * playlist → expanded (full Media Player/Playlist Studio under mini-player band).
+   * other deep drawers → mini player stays compact; drawer docks under it.
+   */
+  mediaConsoleMode?: MediaConsoleMode;
 }
 
 /**
- * Canonical 4-zone routing (locked 2026-08-10):
- * ACT left/right = compact quick runtime controls
- * WORK bottom drawer = deep studios
- * DISCOVER = visual lobby wall (left quick), not text list / floating window
+ * Canonical presentation map (locked 2026-08-11):
+ * LEFT_QUICK  = compact ACT (Avatar / Inventory)
+ * RIGHT_QUICK = compact INSPECT (Memory)
+ * BOTTOM_DEEP = Media Console DrawerDock (one activeDrawer)
+ * DISCOVERY_WALL = Live Lobby Wall matrix (not floating room)
+ * FLOATING = temporary movable exception only (Share Studio)
  */
 export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationConfig> = {
-  inventory: { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", defaultWidth: 320, preserveState: true },
-  lobby: { preferredSurface: "LEFT_PANEL", defaultWidth: 420, preserveState: true },
-  "live-destinations": { preferredSurface: "LEFT_PANEL", defaultWidth: 420, preserveState: true },
-  "playlist-studio": { preferredSurface: "RIGHT_PANEL", deepSurface: "DRAWER", preserveState: true },
+  // LEFT_QUICK
+  inventory: {
+    preferredSurface: "LEFT_PANEL",
+    deepSurface: "DRAWER",
+    defaultWidth: 320,
+    preserveState: true,
+    mediaConsoleMode: "mini",
+  },
+
+  // RIGHT_QUICK
   "memory-wall": { preferredSurface: "RIGHT_PANEL", defaultWidth: 320 },
   submissions: { preferredSurface: "RIGHT_PANEL", defaultWidth: 340 },
-  messaging: { preferredSurface: "RIGHT_PANEL", defaultWidth: 340 },
-  rewards: { preferredSurface: "LEFT_PANEL", defaultWidth: 300 },
-  "share-studio": { preferredSurface: "RIGHT_PANEL", defaultWidth: 360 },
-  yopho: { preferredSurface: "DRAWER", preserveState: true },
-  store: { preferredSurface: "DRAWER", preserveState: true },
-  analytics: { preferredSurface: "DRAWER", preserveState: true },
-  booking: { preferredSurface: "DRAWER", preserveState: true },
-  settings: { preferredSurface: "DRAWER", preserveState: true },
+  "share-studio": { preferredSurface: "FLOATING", defaultWidth: 480 },
+
+  // DISCOVERY_WALL (not LEFT floating lobby venue / not UniversalWorkspaceWindow)
+  lobby: { preferredSurface: "DISCOVERY_WALL", preserveState: true },
+  "live-destinations": { preferredSurface: "DISCOVERY_WALL", defaultWidth: 420, preserveState: true },
+
+  // BOTTOM_DEEP / DrawerDock — Media Console
+  "playlist-studio": {
+    preferredSurface: "DRAWER",
+    deepSurface: "DRAWER",
+    preserveState: true,
+    mediaConsoleMode: "expanded",
+  },
+  messaging: { preferredSurface: "DRAWER", defaultWidth: 340, preserveState: true, mediaConsoleMode: "mini" },
+  yopho: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  store: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  analytics: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  booking: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  settings: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  sponsors: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "beat-lab": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "media-locker": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  notifications: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "achievement-center": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "room-controls": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  scores: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  marketplace: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "prize-vault": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "championship-center": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  rewards: { preferredSurface: "DRAWER", defaultWidth: 300, mediaConsoleMode: "mini" },
 };
+
+/** HQ modules that must never open as UniversalWorkspaceWindow FLOATING. */
+export function isFloatingException(id: string): boolean {
+  return (WORKSPACE_PRESENTATION_MAP[id]?.preferredSurface ?? "DRAWER") === "FLOATING";
+}
+
+export function resolvePreferredSurface(id: string): WorkspaceSurface {
+  return WORKSPACE_PRESENTATION_MAP[id]?.preferredSurface ?? "DRAWER";
+}
+
+export function resolveMediaConsoleMode(id: string | null): MediaConsoleMode {
+  if (!id) return "mini";
+  return WORKSPACE_PRESENTATION_MAP[id]?.mediaConsoleMode ?? "mini";
+}
 
 interface PresentationState {
   leftPanelWorkspace: UniversalWorkspaceId | null;
   rightPanelWorkspace: UniversalWorkspaceId | null;
+  /** Single active BOTTOM_DEEP drawer in Media Console DrawerDock */
   drawerWorkspace: UniversalWorkspaceId | null;
   isDrawerExpanded: boolean;
+  mediaConsoleMode: MediaConsoleMode;
 
   openInSurface: (id: UniversalWorkspaceId, surface?: WorkspaceSurface) => void;
   openDeepStudio: (id: UniversalWorkspaceId) => void;
@@ -54,25 +122,54 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   rightPanelWorkspace: null,
   drawerWorkspace: null,
   isDrawerExpanded: false,
+  mediaConsoleMode: "mini",
 
   openInSurface: (id, targetSurface) => {
-    const config = WORKSPACE_PRESENTATION_MAP[id] ?? { preferredSurface: "DRAWER" as WorkspaceSurface };
+    const config = WORKSPACE_PRESENTATION_MAP[id] ?? {
+      preferredSurface: "DRAWER" as WorkspaceSurface,
+      mediaConsoleMode: "mini" as MediaConsoleMode,
+    };
     const surface = targetSurface ?? config.preferredSurface;
 
     if (surface === "LEFT_PANEL") {
       set({ leftPanelWorkspace: id });
-    } else if (surface === "RIGHT_PANEL") {
-      set({ rightPanelWorkspace: id });
-    } else if (surface === "DRAWER") {
-      set({ drawerWorkspace: id, isDrawerExpanded: true });
+      return;
     }
+    if (surface === "RIGHT_PANEL") {
+      set({ rightPanelWorkspace: id });
+      return;
+    }
+    if (surface === "DISCOVERY_WALL" || surface === "FULL_DESTINATION") {
+      // Discovery / destination handled by openCanonicalPresentation (overlay / router).
+      // Clear bottom deep so stage + dock stay clean while wall is open.
+      set({
+        drawerWorkspace: null,
+        isDrawerExpanded: false,
+        mediaConsoleMode: "mini",
+      });
+      return;
+    }
+    if (surface === "FLOATING") {
+      // Caller opens UniversalWorkspaceRuntime — presentation store does not own FLOATING.
+      return;
+    }
+    // BOTTOM_DEEP / DRAWER — one activeDrawer; swaps previous
+    set({
+      drawerWorkspace: id,
+      isDrawerExpanded: true,
+      mediaConsoleMode: config.mediaConsoleMode ?? "mini",
+    });
   },
 
   openDeepStudio: (id) => {
     const config = WORKSPACE_PRESENTATION_MAP[id];
     const deep = config?.deepSurface ?? "DRAWER";
     if (deep === "DRAWER") {
-      set({ drawerWorkspace: id, isDrawerExpanded: true });
+      set({
+        drawerWorkspace: id,
+        isDrawerExpanded: true,
+        mediaConsoleMode: config?.mediaConsoleMode ?? "mini",
+      });
     } else {
       get().openInSurface(id, deep);
     }
@@ -81,7 +178,9 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   closeSurface: (surface) => {
     if (surface === "LEFT_PANEL") set({ leftPanelWorkspace: null });
     if (surface === "RIGHT_PANEL") set({ rightPanelWorkspace: null });
-    if (surface === "DRAWER") set({ drawerWorkspace: null, isDrawerExpanded: false });
+    if (surface === "DRAWER") {
+      set({ drawerWorkspace: null, isDrawerExpanded: false, mediaConsoleMode: "mini" });
+    }
   },
 
   toggleDrawerExpand: () => set((s) => ({ isDrawerExpanded: !s.isDrawerExpanded })),
