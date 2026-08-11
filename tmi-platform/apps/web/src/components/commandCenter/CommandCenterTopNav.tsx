@@ -54,6 +54,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [isMobile, setIsMobile] = useState(true); // mobile-first: nav links collapse on phones
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +103,14 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
     };
   }, [userId]);
 
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const check = () => setIsMobile(mql.matches);
+    check();
+    mql.addEventListener("change", check);
+    return () => mql.removeEventListener("change", check);
+  }, []);
+
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = searchValue.trim();
@@ -140,7 +149,8 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         TMI
       </Link>
 
-      {/* Primary nav */}
+      {/* Primary nav — hidden on mobile (☰ OPS in status bar handles mobile navigation) */}
+      {!isMobile && (
       <nav style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
         {NAV_LINKS.map((link) =>
           link.href === null || ("liveWall" in link && link.liveWall) ? (
@@ -181,6 +191,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           ),
         )}
       </nav>
+      )}
 
       {/* Search */}
       <form
