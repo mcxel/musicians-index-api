@@ -97,11 +97,16 @@ export default function AdminHubShell() {
       data-fallback-route="/home/1"
       style={{
         minHeight: "100vh",
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
         background:
           "radial-gradient(circle at 10% 0%, rgba(250,204,21,0.18), transparent 38%), radial-gradient(circle at 90% 5%, rgba(168,85,247,0.2), transparent 35%), #03020b",
         color: "#e2e8f0",
+        overflowX: "clip",
+        boxSizing: "border-box",
       }}
     >
       <header
@@ -147,9 +152,9 @@ export default function AdminHubShell() {
       </header>
 
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
-          {/* Mobile tab bar */}
-          <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
+          {/* Mobile tab bar — one surface at a time (no 290|1fr|320 desktop matrix) */}
+          <div style={{ display: "flex", gap: 6, width: "100%", minWidth: 0 }}>
             {(["command", "monitor", "intel"] as const).map((tab) => {
               const labels = { command: "COMMAND", monitor: "MONITOR", intel: "INTEL" } as const;
               return (
@@ -225,8 +230,14 @@ export default function AdminHubShell() {
           background: "linear-gradient(180deg, rgba(8,16,30,0.95), rgba(3,6,16,0.98))",
           padding: "8px 12px",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+          gridTemplateColumns: isMobile
+            ? "repeat(auto-fit,minmax(min(100%,140px),1fr))"
+            : "repeat(auto-fit,minmax(180px,1fr))",
           gap: 8,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
         }}
       >
         {ADMIN_ROUTE_LIST.filter((item) => item.id !== "monitor").map((item) => {

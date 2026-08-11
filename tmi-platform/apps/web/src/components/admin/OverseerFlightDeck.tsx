@@ -489,17 +489,19 @@ export default function OverseerFlightDeck({
     left: drawerManager.getWindowState(panel.id as string)?.x ?? 32,
     top: drawerManager.getWindowState(panel.id as string)?.y ?? 32,
     width: panel.id && activeWorkspace.bottom.some((b) => b.id === panel.id)
-      ? 560
-      : "min(720px, calc(100vw - 48px))",
+      ? (isMobile ? "min(560px, calc(100% - 24px))" : 560)
+      : "min(720px, calc(100% - 24px))",
     height: panel.fixedHeight
       ? panel.fixedHeight
       : activeWorkspace.bottom.some((b) => b.id === panel.id)
         ? 320
         : 360,
-    minWidth: 320,
+    minWidth: isMobile ? 0 : 320,
+    maxWidth: "calc(100% - 16px)",
     minHeight: 220,
     zIndex: 1,
     pointerEvents: "auto",
+    boxSizing: "border-box",
   });
 
   const surroundSections = useMemo(() => buildSurroundSectionOptions(), []);
@@ -934,13 +936,18 @@ export default function OverseerFlightDeck({
       data-overseer-flight-deck
       data-canon-overseer-shell
       data-two-deck="ops-ticker-intelligence"
+      data-mobile={isMobile ? "true" : "false"}
       style={{
         minHeight: "100vh",
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
         height: "auto",
         maxHeight: "none",
+        boxSizing: "border-box",
         background:
           "radial-gradient(130% 90% at 50% -5%, rgba(92,26,74,0.45) 0%, rgba(28,10,32,0.85) 46%, rgba(7,3,12,1) 100%)",
-        border: "14px solid transparent",
+        border: isMobile ? "6px solid transparent" : "14px solid transparent",
         borderImage:
           "linear-gradient(135deg, #ffd700 0%, #b8860b 35%, #ffd700 50%, #b8860b 65%, #ffd700 100%) 14",
         boxShadow:
@@ -948,11 +955,12 @@ export default function OverseerFlightDeck({
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        padding: 10,
+        padding: isMobile ? 6 : 10,
         paddingBottom: 24,
         fontFamily: "inherit",
         position: "relative",
-        overflow: "visible",
+        overflowX: "clip",
+        overflowY: "visible",
       }}
     >
       <div style={{ ...gemStyle(), top: 2, left: 2 }} />
@@ -1285,6 +1293,7 @@ export default function OverseerFlightDeck({
         data-deck="operations"
         data-stage-cap={stageCapCss}
         data-center-col-height={centerColHeight ?? "pending"}
+        data-mobile-ops-tab={isMobile ? mobileOpsTab : "desktop"}
         style={{
           position: "relative",
           zIndex: 1,
@@ -1292,6 +1301,9 @@ export default function OverseerFlightDeck({
           flexShrink: 0,
           height: "auto",
           maxHeight: "none",
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
           alignItems: "flex-start",
@@ -1300,6 +1312,8 @@ export default function OverseerFlightDeck({
           borderRadius: 10,
           padding: 8,
           background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
+          boxSizing: "border-box",
+          overflowX: "clip",
         }}
       >
         {fullscreenPanel ? (
@@ -1312,20 +1326,57 @@ export default function OverseerFlightDeck({
               minHeight: "min(70vh, 720px)",
               aspectRatio: "16 / 9",
               width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
             }}
           >
             {fullscreenMatch?.content ?? null}
           </Canister>
         ) : (
           <>
+            {isMobile ? (
+              <div style={{ display: "flex", gap: 6, width: "100%", minWidth: 0 }}>
+                {([
+                  ["left", "SENTINEL"],
+                  ["center", "MONITOR"],
+                  ["right", "INBOX"],
+                ] as const).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setMobileOpsTab(tab)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: "7px 4px",
+                      borderRadius: 8,
+                      border: `1px solid ${mobileOpsTab === tab ? "rgba(255,215,0,0.85)" : "rgba(148,163,184,0.25)"}`,
+                      background: mobileOpsTab === tab ? "rgba(255,215,0,0.12)" : "rgba(15,23,42,0.6)",
+                      color: mobileOpsTab === tab ? "#FFD700" : "rgba(255,255,255,0.45)",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase" as const,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "left") ? (
             <div
               data-rail-boundary="left"
               style={{
                 flexShrink: 0,
                 width: isMobile ? "100%" : leftWidth,
+                maxWidth: "100%",
                 minWidth: 0,
                 overflow: "hidden",
-                transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "flex-start",
@@ -1335,11 +1386,11 @@ export default function OverseerFlightDeck({
                   : {}),
               }}
             >
-              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%" }}>
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%", minWidth: 0 }}>
                 <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", height: "100%" }}>
                   {renderRail(activeWorkspace.leftRail, "left")}
                 </div>
-                {!leftCollapsed && botRosterScrollMax > 0 ? (
+                {!isMobile && !leftCollapsed && botRosterScrollMax > 0 ? (
                   <div
                     style={{
                       flexShrink: 0,
@@ -1369,7 +1420,7 @@ export default function OverseerFlightDeck({
                       }}
                     />
                   </div>
-                ) : !leftCollapsed && leftRailScrollMax > 0 ? (
+                ) : !isMobile && !leftCollapsed && leftRailScrollMax > 0 ? (
                   <div
                     style={{
                       flexShrink: 0,
@@ -1402,22 +1453,36 @@ export default function OverseerFlightDeck({
                 ) : null}
               </div>
             </div>
-            {/* Center monitors — ref measures natural height; flex-start prevents stretch feedback loop. */}
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "center") ? (
             <div
               ref={centerColRef}
               data-monitor-stage-boundary
-              style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignSelf: "flex-start" }}
+              style={{
+                flex: 1,
+                width: isMobile ? "100%" : undefined,
+                maxWidth: "100%",
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "flex-start",
+              }}
             >
               {renderRail(activeWorkspace.center, "center")}
             </div>
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "right") ? (
             <div
               data-rail-boundary="right"
               style={{
                 flexShrink: 0,
                 width: isMobile ? "100%" : rightWidth,
+                maxWidth: "100%",
                 minWidth: 0,
                 overflow: "hidden",
-                transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "flex-start",
@@ -1427,10 +1492,11 @@ export default function OverseerFlightDeck({
                   : {}),
               }}
             >
-              <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", minWidth: 0 }}>
                 {renderRail(activeWorkspace.rightRail, "right")}
               </div>
             </div>
+            ) : null}
           </>
         )}
       </div>
@@ -1478,6 +1544,9 @@ export default function OverseerFlightDeck({
           zIndex: 1,
           flex: "0 0 auto",
           flexShrink: 0,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
           minHeight: intelligenceMinHeight,
           height: bottomCollapsed ? intelligenceMinHeight : "auto",
           maxHeight: "none",
@@ -1486,9 +1555,11 @@ export default function OverseerFlightDeck({
           gap: DECK_GAP,
           border: "2px solid rgba(255,45,170,0.35)",
           borderRadius: 12,
-          padding: bottomCollapsed ? 6 : 18,
+          padding: bottomCollapsed ? 6 : isMobile ? 10 : 18,
           background: "linear-gradient(180deg, rgba(255,45,170,0.08), rgba(255,215,0,0.05))",
           boxShadow: "inset 0 0 24px rgba(255,45,170,0.06), 0 8px 28px rgba(0,0,0,0.45)",
+          boxSizing: "border-box",
+          overflowX: "clip",
         }}
       >
         {!bottomCollapsed ? (

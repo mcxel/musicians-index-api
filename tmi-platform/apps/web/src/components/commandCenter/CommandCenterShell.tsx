@@ -451,13 +451,19 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   return (
     <div
+      data-command-center-shell
+      data-role={role}
       style={{
         minHeight: "100vh",
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
         background: theme.bgBase,
         color: "#e2e8f0",
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Inter', sans-serif",
+        overflowX: "clip",
       }}
     >
       <CommandCenterTopNav userId={userId} displayName={resolvedDisplayName} />

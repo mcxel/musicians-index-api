@@ -4,10 +4,11 @@
 **Branch of record:** `origin/eos/vocal-improv-clean`  
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
-**Presentation-fix candidate (eos tip):** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
+**Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
+**Mobile root-shell isolation candidate (eos tip):** **see §1 ledger** — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
 
-**`origin/main` tip (intentionally untouched):** **`fd0f7bd1`**  
-**Rule:** ChatGPT/Gemini “finished” claims are **code candidates only**. Never claim production certified without logged-in Fan + Performer hard-refresh proof (Rule 20). Cert still **PENDING** until Marcel hard-refresh proof.
+**`origin/main` tip (intentionally untouched / CLOSED for this work):** **`fd0f7bd1`** — do **not** merge/push mobile P0 to main.  
+**Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
 
 ---
 
@@ -75,9 +76,27 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
          · YoPho: honest placeholders + tier image capacity + z-depth layers
          · HARD-REFRESH FAN/PERFORMER VISUAL-RUNTIME CERT STILL PENDING
          · MAIN intentionally untouched
+
+4620a7b6 — CommandCenterShell true conditional mobile render (no in-flow rails)
+901dbd7a — earlier responsive attempt (superseded for CCS by 4620a7b6)
+6d79c5c1 — AdminHubShell mobile tabs + Overseer partial isMobile widths (mid-flight)
+
+MOBILE P0 ROOT-SHELL ISOLATION (this tip — SHA filled after push)
+         · ROOT CAUSE: DashboardWorkspaceContainer mounted Fan+Performer+Admin as
+           siblings (display:none keep-alives) + mobile swipe (≥60px) switched roles;
+           ChevronNavigation also history-swiped across role shells. Desktop min-widths
+           (290|1fr|320 Admin, 230|1fr|300 CCS, Overseer 268px rails) compounded overflow.
+         · FIX: exclusive single-shell mount; Admin → /admin/overseer only (no swipe);
+           Overseer mobileOpsTab SENTINEL|MONITOR|INBOX; AdminHub COMMAND|MONITOR|INTEL;
+           shell width/maxWidth 100% + minWidth 0; CCS 4620a7b6 preserved
+         · PRESERVED: BOTTOM_DEEP under mini player; Avatar/Memory Quick side HUDs desktop;
+           quick IDs (avatar-quick, memory-quick, inventory-quick) ≠ full DRAWER IDs
+         · TYPECHECK: pnpm --filter web typecheck PASS
+         · MOBILE VISUAL CERT: PENDING (Marcel hard-refresh @ 360/390/430)
+         · MAIN: CLOSED — do not promote
 ```
 
-**Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers.
+**Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers **and** mobile visual cert (scrollWidth≈innerWidth, no role swipe).
 
 ---
 
@@ -85,15 +104,15 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
 
 | Ref | SHA | Message | Verified |
 |-----|-----|---------|----------|
-| `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched |
-| `origin/eos/vocal-improv-clean` tip | **`a5e45640`** | fix(workspace): correct accentColor prop in CanonicalQuickPanelContent | ✅ fetched |
+| `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched · **CLOSED** |
+| `origin/eos/vocal-improv-clean` tip | **(mobile P0 SHA after push)** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | pending push |
 | Candidate baseline | **`845c4f6f`** | feat(workspace): wire 4-zone canonical panels from Profiles blueprints | ✅ on eos lineage |
 | Lobby/Settings under baseline | **`c0a4c2ed`** | Visual Live Discovery Wall + Shell Colors → Settings | ✅ **ancestor of 845c4f6f** |
 
 ### Relationship
 
 ```
-origin/main .............. fd0f7bd1
+origin/main .............. fd0f7bd1   ← CLOSED (do not merge mobile P0 here)
                               │
                               ▼
                     c0a4c2ed  (Lobby Wall + Settings)
@@ -102,25 +121,28 @@ origin/main .............. fd0f7bd1
                     845c4f6f  ← CANDIDATE BASELINE (4-zone wire)
                               │
                               ▼
-                    a5e45640  ← eos tip (accentColor fix)
+                    … presentation + CCS mobile lineage …
+                              │
+                              ▼
+                    eos tip   ← MOBILE P0 isolation (VISUAL CERT PENDING)
 ```
 
-`eos` is **+3 commits** ahead of `origin/main` (`c0a4c2ed`, `845c4f6f`, `a5e45640`). Merge-base = `fd0f7bd1`. Fast-forward would be clean **after** cert — not before.
+Merge-base with main remains `fd0f7bd1`. Fast-forward to main **only after** Fan/Performer + mobile visual cert — not before.
 
 ### Local note (this workspace)
 
-- Working tree may sit on local `main` pointing at eos tip (`a5e45640`) while `origin/main` remains `fd0f7bd1`. That does **not** mean main was promoted remotely.
-- Local branch name `eos/vocal-improv-clean` may lag tracking; **trust `origin/eos/vocal-improv-clean`**.
-- Unrelated dirty files (Stripe/advertiser, Profiles assets untracked, Sounds Pack, etc.) must not ride into handoff commits.
+- **Trust `origin/eos/vocal-improv-clean`** after push; main stays closed.
+- Unrelated dirty files (finance/payouts, Profiles assets, Sounds Pack, etc.) must **not** ride into handoff commits.
+- KG role-conversion scripts exist (`scripts/convert-kg-account.js`, `scripts/find-user.js`) targeting `thegreatestlesp@gmail.com` — if email is not in DB, note only; **do not block mobile P0** on KG.
 
-### Recent eos log (top 5)
+### Recent eos log (top 5 at handoff write — refresh after push)
 
 ```
-a5e45640 fix(workspace): correct accentColor prop in CanonicalQuickPanelContent
-845c4f6f feat(workspace): wire 4-zone canonical panels from Profiles blueprints
-c0a4c2ed feat(lobby): implement Visual Live Discovery Wall with search and category tabs, and realign Shell Colors inside Settings
-fd0f7bd1 fix(tickets): close the seat double-booking race condition
-10d5159e fix(tickets): restore missing claim-seat route
+6d79c5c1 fix(mobile/P0): root shell isolation — eliminate horizontal overflow in Admin + Overseer decks
+4620a7b6 fix(mobile/P0): true conditional render in CommandCenterShell
+901dbd7a fix(mobile/P0): responsive shell — collapse desktop rails at <768px
+d6413ff6 feat(workspace): three-layer interaction stack — quick HUDs + drawer deep workspaces
+d289c3ee feat(mobile): implement iOS & Android Mobile Responsive Layouts
 ```
 
 ### Recent origin/main log (top 5)
@@ -363,7 +385,9 @@ Real foundations — **not** “UX finished”:
 | Gap | Note |
 |-----|------|
 | Browser cert | **PENDING** — `845c4f6f` VISUAL FAIL; presentation-fix tip needs Marcel hard-refresh proof |
-| Main promote | **BLOCKED** until cert; `origin/main` stays `fd0f7bd1` |
+| **MOBILE VISUAL CERT** | **PENDING** — prove @ 360/390/430: `document.documentElement.scrollWidth ≈ window.innerWidth`; swipe does **not** reveal Fan↔Performer↔Admin; monitor visible first on HQ |
+| Main promote | **CLOSED / BLOCKED** until cert; `origin/main` stays `fd0f7bd1` |
+| KG account scripts | `scripts/convert-kg-account.js` — if target email missing from DB, handoff-only; not a mobile P0 blocker |
 | Profiles assets | Blueprint files untracked locally; taxonomy above is filename-confirmed |
 | Settings actions | Scaffold / candidate — Sign Out, convert, switch, deactivate, delete need browser proof of real routes |
 | Avatar Quick | Code candidate for compact LEFT 3D — must not regress to oversized floating box |
