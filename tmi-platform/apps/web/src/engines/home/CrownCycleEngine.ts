@@ -49,16 +49,14 @@ export function resolveCrownHolder(
   return winner;
 }
 
-// Increment random vote counts (live simulation)
-export function simulateVoteTick(
+// Recompute isCurrentCrown flags from real vote counts — call after refreshing
+// `contenders` from the real leaderboard/performers API, never on a timer with
+// fabricated deltas (Rule 20 — no fake live vote counts).
+export function recomputeCrownHolder(
   contenders: CrownContender[]
 ): CrownContender[] {
-  const next = contenders.map((c) => ({
-    ...c,
-    votes: c.votes + Math.floor(Math.random() * 80 + 10),
-  }));
-  const holder = resolveCrownHolder(next);
-  return next.map((c) => ({
+  const holder = resolveCrownHolder(contenders);
+  return contenders.map((c) => ({
     ...c,
     isCurrentCrown: holder?.performerId === c.performerId,
   }));

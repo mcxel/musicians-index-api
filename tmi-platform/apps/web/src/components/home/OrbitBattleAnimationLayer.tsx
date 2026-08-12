@@ -1,12 +1,11 @@
 "use client";
 
-import { memo, useState, useEffect, useMemo } from "react";
+import { memo, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ImageSlotWrapper, PerformerPortraitWrapper } from '@/components/visual-enforcement';
 import {
   type CrownContender,
-  simulateVoteTick,
   resolveCrownHolder,
 } from "@/engines/home/CrownCycleEngine";
 import type { MusicGenre } from "@/engines/home/CoverGenreRotationAuthority";
@@ -387,19 +386,14 @@ const OrbitBattleAnimationLayer = memo(function OrbitBattleAnimationLayer({
   shapeIdentity = "circle",
   renderMode = "circle",
 }: OrbitBattleAnimationLayerProps) {
-  const [contenders, setContenders] = useState(initialContenders);
+  // Real scores, refreshed every 60s by the parent (Home1MagazineCoverHero's
+  // /api/public/performers poll) and passed straight through — no fabricated
+  // vote ticks between refreshes (Rule 20).
+  const contenders = initialContenders;
   const accent     = GENRE_ACCENT[genre];
   const half       = containerSize / 2;
   const effectiveRadiusX = orbitRadiusX ?? orbitRadiusPx;
   const effectiveRadiusY = orbitRadiusY ?? Math.round(orbitRadiusPx * 0.818);
-
-  // Vote tick every 5s — keeps crown logic alive without touching rotation
-  useEffect(() => {
-    const id = setInterval(() => {
-      setContenders((prev) => simulateVoteTick(prev));
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
 
   const holder = resolveCrownHolder(contenders);
   const orbiters = useMemo(

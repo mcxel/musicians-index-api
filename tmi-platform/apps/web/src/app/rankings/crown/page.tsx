@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   makeContender,
-  simulateVoteTick,
+  recomputeCrownHolder,
   resolveCrownHolder,
   buildOrbitPositions,
   type CrownContender,
@@ -48,8 +48,10 @@ export default function CrownRankingsPage() {
   const [tab, setTab] = useState<"global" | "genre" | "rising">("global");
   const [tick, setTick] = useState(0);
 
-  // Seed contenders from live database API
-  useEffect(() => {
+  // Load contenders from the live database leaderboard — real Elo/skill
+  // ratings, not simulated. Falls back to the static Top 10 dataset only
+  // when the API is unreachable.
+  const loadLeaderboard = useCallback(() => {
     fetch("/api/competition/leaderboard?type=elo&limit=10")
       .then((res) => res.json())
       .then((resData) => {
@@ -67,11 +69,8 @@ export default function CrownRankingsPage() {
         const seeded = top.map((e: any, i: number) =>
           makeContender(e.userId, e.name, e.skillRating ?? e.score, e.genre ?? "", angles[i])
         );
-        const withHolder = seeded.map((c: any) => ({
-          ...c,
-          isCurrentCrown: resolveCrownHolder(seeded)?.performerId === c.performerId,
-        }));
-        setContenders(withHolder);
+        setContenders(recomputeCrownHolder(seeded));
+        setTick((t) => t + 1);
       })
       .catch(() => {
         const top = getTop10();
@@ -79,24 +78,21 @@ export default function CrownRankingsPage() {
         const seeded = top.map((e: any, i: number) =>
           makeContender(e.name, e.name, e.score, "", angles[i])
         );
-        const withHolder = seeded.map((c: any) => ({
-          ...c,
-          isCurrentCrown: resolveCrownHolder(seeded)?.performerId === c.performerId,
-        }));
-        setContenders(withHolder);
+        setContenders(recomputeCrownHolder(seeded));
+        setTick((t) => t + 1);
       });
   }, []);
 
-  // Live vote simulation every 4s
-  const tickVotes = useCallback(() => {
-    setContenders((prev) => simulateVoteTick(prev));
-    setTick((t) => t + 1);
-  }, []);
-
   useEffect(() => {
-    const id = setInterval(tickVotes, 4000);
+    loadLeaderboard();
+  }, [loadLeaderboard]);
+
+  // Refresh from the real leaderboard periodically — no fabricated vote
+  // deltas between refreshes (Rule 20).
+  useEffect(() => {
+    const id = setInterval(loadLeaderboard, 20_000);
     return () => clearInterval(id);
-  }, [tickVotes]);
+  }, [loadLeaderboard]);
 
   const holder = resolveCrownHolder(contenders);
   const sorted = [...contenders].sort((a, b) => b.votes - a.votes);
