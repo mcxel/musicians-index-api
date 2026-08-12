@@ -10,7 +10,7 @@ import styles from "./TMIGlobalNav.module.css";
 
 interface SessionState {
   authenticated: boolean;
-  user?: { id?: string; role?: string; tier?: string; avatarUrl?: string | null };
+  user?: { id?: string; name?: string; role?: string; tier?: string; avatarUrl?: string | null };
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -116,7 +116,11 @@ export default function TMIGlobalNav() {
   const user = session?.user;
   const role = (user?.role ?? "default").toLowerCase();
   const userId = user?.id ?? "";
-  const userInitial = userId.charAt(0).toUpperCase() || "?";
+  // P0 Identity/Entitlement Integrity: derive the fallback circle from the
+  // person's own registered name, never their database ID — a CUID's first
+  // character (e.g. "c" from "cmoq0bpst0000...") is not their initial and
+  // reads as a random letter unrelated to who they actually are.
+  const userInitial = (user?.name ?? "").trim().charAt(0).toUpperCase() || "?";
   const avatarUrl = user?.avatarUrl ?? null;
   const roleColor = ROLE_COLOR[role] ?? ROLE_COLOR.default!;
   const profileBase = ROLE_PROFILE[role] ?? "/profile";
