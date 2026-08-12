@@ -64,6 +64,27 @@ export function normalizeAccountType(
   return "FAN";
 }
 
+/**
+ * Rule 26 multi-role signup — normalizes every selected role, not just the
+ * first. Order is preserved (roles[0] stays primary for user.role/onboarding
+ * elsewhere) and unknown/duplicate entries are dropped. Falls back to a
+ * single-element ["FAN"] array when nothing valid was provided.
+ */
+export function normalizeAccountTypes(
+  roles?: string[],
+  accountType?: string,
+): ProvisionAccountType[] {
+  const rawList = roles && roles.length > 0 ? roles : accountType ? [accountType] : [];
+  const seen = new Set<ProvisionAccountType>();
+  for (const raw of rawList) {
+    const normalized = ROLE_NORMALIZATION[raw.toUpperCase()] ?? raw.toUpperCase();
+    if (VALID_ACCOUNT_TYPES.has(normalized as ProvisionAccountType)) {
+      seen.add(normalized as ProvisionAccountType);
+    }
+  }
+  return seen.size > 0 ? [...seen] : ["FAN"];
+}
+
 async function stepOk(
   name: string,
   fn: () => Promise<Record<string, unknown> | void>,
@@ -91,10 +112,15 @@ function slugify(input: string): string {
 
 async function provisionCommon(
   userId: string,
-  accountType: ProvisionAccountType,
+  accountTypes: ProvisionAccountType[],
   displayName: string | null,
 ): Promise<ProvisionStep[]> {
-  const starterPoints = accountType === "PERFORMER" || accountType === "BAND" ? 250 : 100;
+  // Primary account type (accountTypes[0]) drives the single-valued
+  // user.role/onboarding fields — same convention /api/auth/register already
+  // uses (user.role = platformRoles[0]) — while every selected role still
+  // gets its own UserRole row below.
+  const primaryAccountType = accountTypes[0]!;
+  const starterPoints = accountTypes.some((t) => t === "PERFORMER" || t === "BAND") ? 250 : 100;
 
   const profile = await stepOk("profile_created", async () => {
     const row = await prisma.userProfile.upsert({
@@ -172,20 +198,29 @@ async function provisionCommon(
   });
 
   const roleSync = await stepOk("role_assigned", async () => {
-    const prismaRole = ACCOUNT_TO_PRISMA_ROLE[accountType];
+    const primaryPrismaRole = ACCOUNT_TO_PRISMA_ROLE[primaryAccountType];
     await prisma.user.update({
       where: { id: userId },
       data: {
-        role: prismaRole,
+        role: primaryPrismaRole,
         onboardingState: "INCOMPLETE",
       },
     });
-    await prisma.userRole.upsert({
-      where: { userId_role: { userId, role: prismaRole } },
-      create: { userId, role: prismaRole },
-      update: {},
-    });
-    return { role: prismaRole };
+    // A UserRole row for every selected role, not just the primary one —
+    // this is the multi-role signup case (e.g. Fan + Performer checked
+    // together): each selected role must actually be provisioned, not just
+    // recorded as a row while its resources never get created below.
+    const prismaRoles = accountTypes.map((t) => ACCOUNT_TO_PRISMA_ROLE[t]);
+    await Promise.all(
+      prismaRoles.map((role) =>
+        prisma.userRole.upsert({
+          where: { userId_role: { userId, role } },
+          create: { userId, role },
+          update: {},
+        }),
+      ),
+    );
+    return { role: primaryPrismaRole, roles: prismaRoles };
   });
 
   const bots = stepSkipped(
@@ -515,17 +550,46 @@ async function provisionAdvertiser(userId: string, displayName: string | null): 
 
 export type ProvisionResult = {
   userId: string;
+  /** Primary role (accountTypes[0]) — kept for backward compat with existing callers. */
   accountType: ProvisionAccountType;
+  /** Every role actually provisioned in this call. */
+  accountTypes: ProvisionAccountType[];
   completedAt: string;
   ok: boolean;
   steps: ProvisionStep[];
   error?: string;
 };
 
-export async function provisionRoleResources(
+async function provisionForType(
   userId: string,
   accountType: ProvisionAccountType,
+  displayName: string | null,
+): Promise<ProvisionStep[]> {
+  switch (accountType) {
+    case "FAN":
+      return provisionFan(userId, displayName);
+    case "PERFORMER":
+      return provisionPerformerLike(userId, displayName, "PERFORMER");
+    case "BAND":
+      return provisionPerformerLike(userId, displayName, "BAND");
+    case "VENUE":
+      return provisionVenue(userId, displayName);
+    case "PROMOTER":
+      return provisionPromoter(userId, displayName);
+    case "SPONSOR":
+      return provisionSponsor(userId, displayName);
+    case "ADVERTISER":
+      return provisionAdvertiser(userId, displayName);
+  }
+}
+
+export async function provisionRoleResources(
+  userId: string,
+  accountType: ProvisionAccountType | ProvisionAccountType[],
 ): Promise<ProvisionResult> {
+  const accountTypes = Array.isArray(accountType) ? accountType : [accountType];
+  const primaryAccountType = accountTypes[0]!;
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, displayName: true, name: true, email: true },
@@ -533,7 +597,8 @@ export async function provisionRoleResources(
   if (!user) {
     return {
       userId,
-      accountType,
+      accountType: primaryAccountType,
+      accountTypes,
       completedAt: new Date().toISOString(),
       ok: false,
       steps: [{ step: "user_lookup", status: "ERROR", error: "user_not_found" }],
@@ -544,30 +609,14 @@ export async function provisionRoleResources(
   const displayName = user.displayName ?? user.name ?? user.email?.split("@")[0] ?? null;
   const steps: ProvisionStep[] = [];
 
-  steps.push(...(await provisionCommon(userId, accountType, displayName)));
+  steps.push(...(await provisionCommon(userId, accountTypes, displayName)));
 
-  switch (accountType) {
-    case "FAN":
-      steps.push(...(await provisionFan(userId, displayName)));
-      break;
-    case "PERFORMER":
-      steps.push(...(await provisionPerformerLike(userId, displayName, "PERFORMER")));
-      break;
-    case "BAND":
-      steps.push(...(await provisionPerformerLike(userId, displayName, "BAND")));
-      break;
-    case "VENUE":
-      steps.push(...(await provisionVenue(userId, displayName)));
-      break;
-    case "PROMOTER":
-      steps.push(...(await provisionPromoter(userId, displayName)));
-      break;
-    case "SPONSOR":
-      steps.push(...(await provisionSponsor(userId, displayName)));
-      break;
-    case "ADVERTISER":
-      steps.push(...(await provisionAdvertiser(userId, displayName)));
-      break;
+  // Every selected role gets its own resources — a Fan+Performer signup
+  // used to only ever provision whichever role happened to be first in the
+  // array, leaving the other role's UserRole row present but its actual
+  // resources (artist profile, media locker, etc.) never created.
+  for (const type of accountTypes) {
+    steps.push(...(await provisionForType(userId, type, displayName)));
   }
 
   const hardErrors = steps.filter((s) => s.status === "ERROR");
@@ -585,7 +634,8 @@ export async function provisionRoleResources(
 
   return {
     userId,
-    accountType,
+    accountType: primaryAccountType,
+    accountTypes,
     completedAt: new Date().toISOString(),
     ok: !criticalFailed,
     steps,

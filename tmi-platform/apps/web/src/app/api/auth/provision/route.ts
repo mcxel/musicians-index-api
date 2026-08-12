@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { DiamondInviteEngine } from "@/lib/auth/DiamondInviteEngine";
 import {
-  normalizeAccountType,
+  normalizeAccountTypes,
   provisionRoleResources,
   type ProvisionStep,
 } from "@/lib/auth/provisionRoleResources";
@@ -28,14 +28,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "userId required", ok: false }, { status: 400 });
   }
 
-  const accountType = normalizeAccountType(body.roles, body.accountType);
+  const accountTypes = normalizeAccountTypes(body.roles, body.accountType);
 
   let vipRedeemed = false;
   let vipRole: string | undefined;
   const vipSteps: ProvisionStep[] = [];
 
   // Core role resources first so wallet exists before VIP credit seed.
-  const result = await provisionRoleResources(userId, accountType);
+  // Every selected role is provisioned, not just the first (Rule 26
+  // multi-role signup — e.g. Fan + Performer checked together).
+  const result = await provisionRoleResources(userId, accountTypes);
 
   if (vipToken) {
     const invite = DiamondInviteEngine.getInvite(vipToken);

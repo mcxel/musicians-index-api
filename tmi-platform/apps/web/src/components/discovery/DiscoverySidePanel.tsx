@@ -52,7 +52,7 @@ export default function DiscoverySidePanel() {
           top: "50%",
           transform: "translateY(-50%)",
           zIndex: 9990,
-          display: open ? "none" : "flex",
+          display: open || (typeof window !== "undefined" && window.innerWidth < 768) ? "none" : "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: 4,
