@@ -25,6 +25,10 @@ interface FeatureUpgradePromptProps {
 export function FeatureGate({ feature, children, onAccess, fallback }: FeatureUpgradePromptProps) {
   const permission = useTierPermission(feature);
 
+  // Avoid flashing the paywall (or briefly leaking gated content) before the
+  // real session tier has loaded — same convention as RoleGate.tsx.
+  if (permission.loading) return null;
+
   if (permission.hasAccess) {
     if (onAccess) {
       onAccess();
