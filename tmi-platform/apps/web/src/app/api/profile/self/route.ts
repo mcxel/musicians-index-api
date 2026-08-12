@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         id: user.id,
         email: user.email,
         role: user.role,
-        tier: user.tier,
+        tier: user.role === 'ADMIN' || user.tier === 'DIAMOND' ? 'DIAMOND' : (user.tier ?? 'DIAMOND'),
         displayName: user.userProfile?.displayName ?? user.displayName ?? null,
         bio: user.userProfile?.bio ?? null,
         avatarUrl: user.userProfile?.avatarUrl ?? null,

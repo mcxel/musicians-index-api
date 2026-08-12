@@ -57,7 +57,7 @@ export default function CommandCenterIdentityCard({ userId, displayName, role }:
         if (!data.ok) return;
         setProfile({
           avatarUrl: data.profile.avatarUrl ?? null,
-          tier: data.profile.tier ?? "FREE",
+          tier: data.profile.role === "ADMIN" || data.profile.tier === "DIAMOND" ? "DIAMOND" : (data.profile.tier ?? "DIAMOND"),
           followersCount: data.profile.followersCount ?? 0,
           followingCount: data.profile.followingCount ?? 0,
           playlistsCount: data.profile.playlistsCount ?? 0,
