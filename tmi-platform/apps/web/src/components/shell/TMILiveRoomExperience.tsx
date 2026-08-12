@@ -1293,8 +1293,8 @@ export default function TMILiveRoomExperience({
             </div>
             <PersistentGauntletPanel
               roomId={roomId || "cypher-room"}
-              currentUserId="fan-local"
-              currentDisplayName="Authenticated Fan"
+              currentUserId={userId ?? ""}
+              currentDisplayName={userName}
               className="mt-2"
             />
           </div>

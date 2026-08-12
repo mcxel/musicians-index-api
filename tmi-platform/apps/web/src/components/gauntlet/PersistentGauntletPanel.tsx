@@ -3,17 +3,18 @@
 /**
  * PersistentGauntletPanel.tsx — Target 3: Persistent Gauntlet HUD Surface
  * Displays real-time Belt Holder, Active Match Stage, Queue Dock, and Split Action Controls.
+ *
+ * State is server-authoritative (see /api/gauntlet/state, /api/gauntlet/resolve —
+ * both backed by PersistentGauntletEngine.ts). This panel only fetches/posts to
+ * those routes; it never imports the engine directly. Importing it directly
+ * would give each browser tab its own private copy of the engine's in-memory
+ * state (it's bundled into the client and re-evaluated per page load), so two
+ * fans in the same room would see two disconnected queues instead of one
+ * shared gauntlet.
  */
 
-import { useState, useEffect } from "react";
-import SplitActionButton from "@/components/ui/SplitActionButton";
-import {
-  enqueueGauntletChallenger,
-  removeGauntletChallenger,
-  resolveGauntletMatch,
-  getGauntletState,
-  type PersistentGauntletState,
-} from "@/lib/gauntlet/PersistentGauntletEngine";
+import { useState, useEffect, useCallback } from "react";
+import type { PersistentGauntletState } from "@/lib/gauntlet/PersistentGauntletEngine";
 
 export interface PersistentGauntletPanelProps {
   roomId: string;
@@ -22,40 +23,87 @@ export interface PersistentGauntletPanelProps {
   className?: string;
 }
 
+const POLL_MS = 4000;
+
 export default function PersistentGauntletPanel({
   roomId,
   currentUserId,
-  currentDisplayName,
   className = "",
 }: PersistentGauntletPanelProps) {
-  const [state, setState] = useState<PersistentGauntletState>(() => getGauntletState(roomId));
-  const [isQueued, setIsQueued] = useState(false);
+  const [state, setState] = useState<PersistentGauntletState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => {
+    fetch(`/api/gauntlet/state?roomId=${encodeURIComponent(roomId)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setState(d.state);
+      })
+      .catch(() => undefined);
+  }, [roomId]);
 
   useEffect(() => {
-    setState(getGauntletState(roomId));
-    const inQueue = state.queue.some((c) => c.userId === currentUserId);
-    setIsQueued(inQueue);
-  }, [roomId, currentUserId, state.queue]);
+    refresh();
+    const id = setInterval(refresh, POLL_MS);
+    return () => clearInterval(id);
+  }, [refresh]);
 
-  const handleToggleQueue = () => {
-    if (isQueued) {
-      const next = removeGauntletChallenger(roomId, currentUserId);
-      setState(next);
-      setIsQueued(false);
-    } else {
-      const next = enqueueGauntletChallenger(roomId, {
-        userId: currentUserId,
-        displayName: currentDisplayName,
+  const isQueued = Boolean(state?.queue.some((c) => c.userId === currentUserId));
+
+  const handleToggleQueue = async () => {
+    if (busy || !currentUserId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/gauntlet/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: isQueued ? "leave" : "enqueue", roomId }),
       });
-      setState(next);
-      setIsQueued(true);
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Request failed");
+      setState(data.state);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleResolveWinner = (winnerId: string) => {
-    const next = resolveGauntletMatch(roomId, winnerId);
-    setState(next);
+  const handleResolveWinner = async (winnerId: string) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/gauntlet/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ roomId, winnerId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Request failed");
+      setState(data.state);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setBusy(false);
+    }
   };
+
+  if (!state) {
+    return (
+      <div
+        data-persistent-gauntlet={roomId}
+        className={`p-4 rounded-2xl border bg-black/60 text-white/40 text-xs text-center ${className}`}
+        style={{ borderColor: "rgba(255, 107, 0, 0.4)" }}
+      >
+        Loading gauntlet…
+      </div>
+    );
+  }
 
   const { belt, activeMatch, queue, history } = state;
 
@@ -94,8 +142,9 @@ export default function PersistentGauntletPanel({
             <span className="text-xs font-bold my-1">{belt.championName}</span>
             <button
               type="button"
+              disabled={busy}
               onClick={() => handleResolveWinner(activeMatch.championId)}
-              className="text-[9px] font-black uppercase px-3 py-1 rounded bg-amber-500 text-black hover:bg-amber-400"
+              className="text-[9px] font-black uppercase px-3 py-1 rounded bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-50"
             >
               Defend (+1)
             </button>
@@ -106,8 +155,9 @@ export default function PersistentGauntletPanel({
             <span className="text-xs font-bold my-1">Challenger</span>
             <button
               type="button"
+              disabled={busy}
               onClick={() => handleResolveWinner(activeMatch.challengerId)}
-              className="text-[9px] font-black uppercase px-3 py-1 rounded bg-cyan-400 text-black hover:bg-cyan-300"
+              className="text-[9px] font-black uppercase px-3 py-1 rounded bg-cyan-400 text-black hover:bg-cyan-300 disabled:opacity-50"
             >
               Crown Challenger
             </button>
@@ -126,18 +176,27 @@ export default function PersistentGauntletPanel({
           <span className="text-xs font-bold">{queue.length} Challengers Waiting</span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleToggleQueue}
-          className={`text-[9px] font-black uppercase px-4 py-2 rounded-lg transition-all ${
-            isQueued
-              ? "bg-red-600 text-white hover:bg-red-500"
-              : "bg-gradient-to-r from-[#FF6B00] to-amber-400 text-black shadow-lg"
-          }`}
-        >
-          {isQueued ? "Leave Gauntlet Line" : "Step Up To Gauntlet →"}
-        </button>
+        {currentUserId ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleToggleQueue}
+            className={`text-[9px] font-black uppercase px-4 py-2 rounded-lg transition-all disabled:opacity-50 ${
+              isQueued
+                ? "bg-red-600 text-white hover:bg-red-500"
+                : "bg-gradient-to-r from-[#FF6B00] to-amber-400 text-black shadow-lg"
+            }`}
+          >
+            {isQueued ? "Leave Gauntlet Line" : "Step Up To Gauntlet →"}
+          </button>
+        ) : (
+          <span className="text-[9px] font-bold text-white/30 uppercase">Sign in to join the line</span>
+        )}
       </div>
+
+      {error && (
+        <div className="text-[9px] font-bold text-red-400 text-center">{error}</div>
+      )}
 
       {/* Recent Match History */}
       {history.length > 0 && (
