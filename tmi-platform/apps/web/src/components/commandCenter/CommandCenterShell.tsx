@@ -663,19 +663,19 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "230px minmax(0, 1fr) 300px",
+              gridTemplateColumns: typeof window !== "undefined" && window.innerWidth < 768 ? "1fr" : "230px minmax(0, 1fr) 300px",
               alignItems: "start",
               width: "100%",
               minWidth: 0,
             }}
           >
-            {/* Left rail — static in-flow grid child */}
+            {/* Left rail — static in-flow grid child (0px footprint on mobile) */}
             <div
               style={{
+                display: typeof window !== "undefined" && window.innerWidth < 768 ? "none" : "flex",
                 background: `${theme.bgSurface}ee`,
                 borderRight: `1px solid ${theme.primary}18`,
                 padding: "12px 12px",
-                display: "flex",
                 flexDirection: "column",
                 gap: 5,
                 overflowY: "auto",
@@ -787,13 +787,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               />
             </div>
 
-            {/* Right rail — static in-flow grid child */}
+            {/* Right rail — static in-flow grid child (0px footprint on mobile) */}
             <div
               style={{
+                display: typeof window !== "undefined" && window.innerWidth < 768 ? "none" : "flex",
                 background: `${theme.bgSurface}ee`,
                 borderLeft: `1px solid ${theme.primary}18`,
                 padding: 12,
-                display: "flex",
                 flexDirection: "column",
                 gap: 10,
                 overflowY: "auto",
