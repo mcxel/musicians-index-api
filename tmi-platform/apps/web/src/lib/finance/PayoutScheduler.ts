@@ -2,7 +2,9 @@
 
 import { getLedger, type LedgerEntry } from "./revenueLedger";
 import { getReleasableHolds, releaseHold, meetsPayoutThreshold } from "./RefundRiskEngine";
-import { calculateAdminSplits, recordAdminPayout } from "./AdminSplitEngine";
+import { calculateAdminSplits, recordAdminPayout, markAdminPayoutPaid, markAdminPayoutFailed, getAdminRecipients } from "./AdminSplitEngine";
+import { getStripe } from "@/lib/stripe/client";
+import { prisma } from "@/lib/prisma";
 
 export type PayoutCycle = "daily" | "twice_weekly" | "weekly" | "monthly" | "post_event";
 
@@ -96,17 +98,58 @@ export function schedulePayout(
   return payout;
 }
 
-export function runPayoutCycle(): ScheduledPayout[] {
+/**
+ * Rule 20 — never mark "paid" without a confirmed Stripe transfer. Each due
+ * payout only becomes "paid" after stripe.transfers.create() actually
+ * succeeds against the recipient's connected Wallet; otherwise it's marked
+ * "failed" with the real reason (no Connect account, not onboarded, no
+ * Stripe configured, or a real transfer error) so it can be retried once
+ * the underlying cause is fixed — never silently reported as paid.
+ */
+export async function runPayoutCycle(): Promise<ScheduledPayout[]> {
   const now = Date.now();
   const due = scheduled.filter(p => p.status === "queued" && p.scheduledFor <= now);
+
+  const stripe = getStripe();
 
   for (const payout of due) {
     payout.status = "processing";
     payout.processedAt = Date.now();
-    // In production: call Stripe Connect transfer here
-    // stripe.transfers.create({ amount: payout.amountCents, currency: "usd", destination: connectId })
-    payout.status = "paid";
-    writeAuditLog(payout, "Payout processed via Stripe Connect");
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: payout.recipientId },
+      select: { id: true, stripeAccountId: true, stripeOnboarded: true },
+    });
+
+    if (!stripe) {
+      payout.status = "failed";
+      payout.failureReason = "stripe_not_configured";
+      writeAuditLog(payout, "Payout failed — Stripe not configured");
+      continue;
+    }
+    if (!wallet || !wallet.stripeAccountId || !wallet.stripeOnboarded) {
+      payout.status = "failed";
+      payout.failureReason = "connect_onboarding_incomplete";
+      writeAuditLog(payout, "Payout failed — recipient has no completed Stripe Connect account");
+      continue;
+    }
+
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: payout.amountCents,
+        currency: "usd",
+        destination: wallet.stripeAccountId,
+        transfer_group: payout.id,
+        metadata: { payoutId: payout.id, recipientId: payout.recipientId, recipientType: payout.recipientType },
+      });
+      payout.status = "paid";
+      payout.stripeTransferId = transfer.id;
+      writeAuditLog(payout, "Payout processed via Stripe Connect");
+    } catch (err) {
+      payout.status = "failed";
+      payout.failureReason = err instanceof Error ? err.message : "stripe_transfer_failed";
+      writeAuditLog(payout, `Payout failed — ${payout.failureReason}`);
+    }
   }
 
   return due;
@@ -133,14 +176,37 @@ export function buildCreatorPayoutQueue(): ScheduledPayout[] {
   return payouts;
 }
 
-export function runAdminPayoutCycle(periodStart: number, periodEnd: number): void {
+export async function runAdminPayoutCycle(periodStart: number, periodEnd: number): Promise<void> {
   const splits = calculateAdminSplits(periodStart, periodEnd);
+  const stripe = getStripe();
+
   for (const split of splits) {
     split.status = "processing";
-    // In production: Stripe Connect transfer to split.stripeConnectId
-    split.status = "paid";
-    split.paidAt = Date.now();
     recordAdminPayout(split);
+
+    const recipient = getAdminRecipients().find(r => r.id === split.recipientId);
+
+    if (!stripe) {
+      markAdminPayoutFailed(split.id, "stripe_not_configured");
+      continue;
+    }
+    if (!recipient?.stripeConnectId) {
+      markAdminPayoutFailed(split.id, "no_stripe_connect_account_configured");
+      continue;
+    }
+
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: split.amountCents,
+        currency: "usd",
+        destination: recipient.stripeConnectId,
+        transfer_group: split.id,
+        metadata: { payoutId: split.id, recipientId: split.recipientId },
+      });
+      markAdminPayoutPaid(split.id, transfer.id);
+    } catch (err) {
+      markAdminPayoutFailed(split.id, err instanceof Error ? err.message : "stripe_transfer_failed");
+    }
   }
 }
 

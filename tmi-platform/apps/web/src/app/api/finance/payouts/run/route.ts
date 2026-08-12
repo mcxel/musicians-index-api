@@ -19,10 +19,13 @@ export async function POST(req: NextRequest) {
 
   if (mode === "creators" || mode === "all") {
     const queued = buildCreatorPayoutQueue();
-    const processed = runPayoutCycle();
+    const processed = await runPayoutCycle();
 
-    // Send payout_sent notifications
-    for (const p of processed) {
+    // Only notify recipients whose transfer actually succeeded — a failed
+    // Stripe transfer must never generate a "you got paid" notification.
+    const paid = processed.filter(p => p.status === "paid");
+    const failed = processed.filter(p => p.status === "failed");
+    for (const p of paid) {
       dispatchNotification({
         event: "payout_sent",
         recipientId: p.recipientId,
@@ -31,13 +34,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    results.creators = { queued: queued.length, processed: processed.length };
+    results.creators = { queued: queued.length, paid: paid.length, failed: failed.length };
   }
 
   if (mode === "admins" || mode === "all") {
     const now = Date.now();
     const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-    runAdminPayoutCycle(weekAgo, now);
+    await runAdminPayoutCycle(weekAgo, now);
     results.admins = { status: "processed" };
   }
 
