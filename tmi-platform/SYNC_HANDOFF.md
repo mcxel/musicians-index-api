@@ -2,19 +2,20 @@
 
 **Date:** 2026-08-11 (next full-sync resume document)  
 **Branch of record:** `origin/eos/vocal-improv-clean`  
+**Full platform audit (honest inventory ≠ cert):** **`FULL_PLATFORM_AUDIT.md`** — tip lock **`c270ede7`**; three buckets + route matrix + next-sync order. Prefer that file over Gemini/Copilot “100% certified” tables.  
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
 **Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
-**Mobile root-shell isolation candidate:** **`8aed6532`** · eos tip **`6d0c776b`** — TYPECHECK PASS; **MOBILE VISUAL CERT PENDING**
+**Mobile root-shell isolation candidate:** **`8aed6532`** · eos tip **`c270ede7`** (was `6d0c776b` at prior lock) — TYPECHECK PASS lineage; **MOBILE VISUAL CERT PENDING** (Gate E/C Playwright at tip ≠ Marcel UX cert)
 
-**`origin/main` tip (intentionally untouched / CLOSED for this work):** **`fd0f7bd1`** — do **not** merge/push mobile P0 to main.  
+**`origin/main` tip (fetched 2026-08-11):** **`d289c3ee`** — *supersedes older handoff claim `fd0f7bd1`*. Do **not** merge/push eos mobile/UX P0 to main until Fan/Performer + mobile visual cert.  
 **Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
 
 ---
 
 ## Resume sentence (paste into next chat)
 
-> TMI's remaining mission is not to invent another architecture—it is to converge the substantial architecture already built into the exact persistent spatial operating system shown by the blueprints: uninterrupted center stage, simultaneous live quick panels on the sides, deep persistent workspace underneath, one searchable moving Live Lobby Wall for discovery, exact-room entry, and genuine 3D/WebRTC destinations behind it.
+> TMI on `eos/vocal-improv-clean` tip **`c270ede7`** is Production UX Convergence + Mobile P0: 4-zone hosts and exclusive shells are code-wired, but `845c4f6f` visual cert FAILED (floating), mobile/Fan/Performer blueprint match are PENDING, `/stream-win` is a static shell vs `/radio` Stream & Win, dual VideoShuffle files exist, and `origin/main` is **`d289c3ee`** (do not merge)—next sync proves mobile geometry + one-click drawers + Lobby/YoPho/Avatar against Profiles blueprints (see `FULL_PLATFORM_AUDIT.md`).
 
 ---
 
@@ -101,9 +102,14 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
          · No silent router.replace to /admin/overseer on dashboard restore
          · PlaylistCanister 3-col → stacked on mobile
 
-6d0c776b — eos tip
+6d0c776b — prior mobile tip lock (superseded by `c270ede7` for tip pointer)
          · AdminHubShell + OverseerFlightDeck: same matchMedia + mobile-first default
          · SYNC_HANDOFF ledger locked · MOBILE VISUAL CERT PENDING · MAIN CLOSED
+
+c270ede7 — current eos tip (audit lock)
+         · Gate E+C: deployment identity + Playwright mobile audit
+         · FULL_PLATFORM_AUDIT.md written · MOBILE + HQ VISUAL CERT still PENDING
+         · Do not promote to main without Marcel hard-refresh
 ```
 
 **Do NOT promote** `eos/vocal-improv-clean` → `main` until Marcel hard-refresh cert passes on Fan + Performer Command Centers **and** mobile visual cert (scrollWidth≈innerWidth, no role swipe).
@@ -114,8 +120,8 @@ d9c4b2fb — PRESENTATION FIX CANDIDATE (Media Console DrawerDock)
 
 | Ref | SHA | Message | Verified |
 |-----|-----|---------|----------|
-| `origin/main` | **`fd0f7bd1`** | fix(tickets): close the seat double-booking race condition | ✅ fetched · **CLOSED** |
-| `origin/eos/vocal-improv-clean` tip | **`6d0c776b`** | fix(mobile/P0): matchMedia on Admin/Overseer + handoff lock | ✅ pushed |
+| `origin/main` | **`d289c3ee`** | feat(mobile): iOS & Android Mobile Responsive Layouts… | ✅ fetched · **do not merge eos UX until cert** (older handoff `fd0f7bd1` superseded) |
+| `origin/eos/vocal-improv-clean` tip | **`c270ede7`** | feat(gate-e+c): deployment identity + Playwright mobile audit | ✅ local tip at audit time |
 | Isolation code | **`8aed6532`** | fix(mobile/P0): exclusive role shells — kill Fan/Admin swipe bleed | ✅ ancestor of tip |
 | matchMedia CCS | **`9949ee24`** | fix(mobile/P0-A+C): matchMedia + no auto-admin eject | ✅ ancestor of tip |
 | Candidate baseline | **`845c4f6f`** | feat(workspace): wire 4-zone canonical panels from Profiles blueprints | ✅ on eos lineage |
@@ -427,6 +433,7 @@ Real foundations — **not** “UX finished”:
 | File | Use |
 |------|-----|
 | `SYNC_HANDOFF.md` (this file) | **Single resume document** for next full sync |
+| `FULL_PLATFORM_AUDIT.md` | **Honest full-platform buckets + route matrix** (2026-08-11; tip `c270ede7`) |
 | `REALITY_AUDIT.md` | Prior Phase A/B inventory (SHAs may be stale) |
 | `CLAUDE.md` / `AGENTS.md` | Constitution + assembly rules |
 | `.agents/AGENTS.md` | Certification gate Priority 1–5 stack |
