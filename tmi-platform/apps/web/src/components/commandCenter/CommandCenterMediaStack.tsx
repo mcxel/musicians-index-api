@@ -1,3 +1,4 @@
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 "use client";
 
 /**
@@ -691,6 +692,91 @@ export default function CommandCenterMediaStack({
         <span>{isFullscreen ? "⛶" : "⛶"}</span>
         <span>{isFullscreen ? "EXIT BIG SCREEN" : "BIG SCREEN"}</span>
       </button>
+
+      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
+
+      {/* Direct-Action Quick Shortcuts: One Tap = Immediate Action */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => openCanonicalWorkspaceQuick("inventory", "DRAWER")}
+          title="Open Avatar Studio"
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: "1px solid #00FFFF",
+            background: "rgba(0,255,255,0.14)",
+            color: "#00FFFF",
+            fontFamily: "inherit",
+          }}
+        >
+          👤 AVATAR
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openCanonicalWorkspaceQuick("memory", "DRAWER")}
+          title="Open Memory Wall"
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: "1px solid #9D4EDD",
+            background: "rgba(157,78,221,0.14)",
+            color: "#9D4EDD",
+            fontFamily: "inherit",
+          }}
+        >
+          🧠 MEMORY
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openCanonicalWorkspaceQuick("playlist", "DRAWER")}
+          title="Open Playlist Library"
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: "1px solid #00FF88",
+            background: "rgba(0,255,136,0.14)",
+            color: "#00FF88",
+            fontFamily: "inherit",
+          }}
+        >
+          🎵 PLAYLIST
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openCanonicalWorkspaceQuick("yopho", "DRAWER")}
+          title="Open YoPho Studio"
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "3px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+            border: "1px solid #FF2DAA",
+            background: "rgba(255,45,170,0.14)",
+            color: "#FF2DAA",
+            fontFamily: "inherit",
+          }}
+        >
+          📸 YOPHO
+        </button>
+      </div>
     </div>
   );
 
