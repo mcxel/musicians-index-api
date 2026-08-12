@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
 
@@ -38,7 +38,9 @@ export async function GET(req: NextRequest) {
   const role = (req.cookies.get('tmi_role')?.value ?? 'USER').toUpperCase();
   const cookieTier = req.cookies.get('tmi_tier')?.value ?? 'FREE';
   const rawEmail = req.cookies.get('tmi_user_email')?.value ?? '';
-  const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
+  // P0 Identity/Entitlement Integrity: cookie is only a fallback if the
+  // fresh DB read below fails — it's not the authority.
+  let tier: string = cookieTier;
 
   if (!sessionId || !sessionToken) {
     return NextResponse.json({ authenticated: false, user: null }, { status: 200 });
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest) {
           id: true,
           displayName: true,
           name: true,
+          tier: true,
           userProfile: { select: { displayName: true } },
         },
       });
@@ -65,6 +68,9 @@ export async function GET(req: NextRequest) {
         dbUser?.userProfile?.displayName ??
         dbUser?.name ??
         null;
+      if (dbUser) {
+        tier = resolveTierFromDb(rawEmail, dbUser.tier);
+      }
     } catch {
       // Keep session fallback identity when DB is unavailable.
     }

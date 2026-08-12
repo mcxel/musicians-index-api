@@ -8,7 +8,7 @@ import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
 import { compare } from 'bcryptjs';
 import prisma, { ensureUserDatabaseSchema } from '@/lib/prisma';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 
 const COOKIE_OPTS = {
@@ -107,14 +107,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    // Founder diamond override — lifetime grant list takes priority over DB tier
-    const resolvedUser = isFounderDiamondEmail(email) && user.tier !== 'DIAMOND'
-      ? (() => {
-          // Persist to DB so future logins read DIAMOND directly (fire-and-forget)
-          prisma.user.updateMany({ where: { email }, data: { tier: 'DIAMOND' } }).catch(() => {});
-          return { ...user, tier: 'DIAMOND' as import('@/lib/auth/UserStore').UserTier };
-        })()
-      : user;
+    // Authoritative tier resolution (P0 Identity/Entitlement Integrity) —
+    // same rule every session-reading route now shares via
+    // resolveAuthoritativeTier.ts, was previously duplicated inline here.
+    const resolvedUser = { ...user, tier: resolveTierFromDb(email, user.tier) };
 
     // Trust & safety gate — blocks sign-in for suspended/banned accounts.
     // A temporary auto-suspend self-clears here once its hold window

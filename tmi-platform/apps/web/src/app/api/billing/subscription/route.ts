@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
+import prisma from '@/lib/prisma';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 
 function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString('en-US', {
@@ -10,7 +12,19 @@ function formatDate(ts: number): string {
 
 export async function GET(req: NextRequest) {
   const email = req.cookies.get('tmi_user_email')?.value;
-  const tier  = req.cookies.get('tmi_tier')?.value ?? 'FREE';
+  // P0 Identity/Entitlement Integrity: cookie is only a fallback if the DB
+  // read below fails or the user has no email cookie at all — the billing
+  // page must show the real subscription tier, not a stale login-time
+  // snapshot.
+  let tier: string = req.cookies.get('tmi_tier')?.value ?? 'FREE';
+  if (email) {
+    try {
+      const dbUser = await prisma.user.findUnique({ where: { email }, select: { tier: true } });
+      if (dbUser) tier = resolveTierFromDb(email, dbUser.tier);
+    } catch {
+      // Keep cookie fallback when DB is unavailable.
+    }
+  }
 
   const stripe = getStripe();
   if (!stripe || !email) {

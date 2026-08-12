@@ -57,7 +57,10 @@ export default function CommandCenterIdentityCard({ userId, displayName, role }:
         if (!data.ok) return;
         setProfile({
           avatarUrl: data.profile.avatarUrl ?? null,
-          tier: data.profile.role === "ADMIN" || data.profile.tier === "DIAMOND" ? "DIAMOND" : (data.profile.tier ?? "DIAMOND"),
+          // P0 Identity/Entitlement Integrity: trust whatever the server
+          // resolved (see /api/profile/self, now DB-authoritative) — never
+          // re-derive tier from role client-side (bf9024fd reverted).
+          tier: data.profile.tier ?? "FREE",
           followersCount: data.profile.followersCount ?? 0,
           followingCount: data.profile.followingCount ?? 0,
           playlistsCount: data.profile.playlistsCount ?? 0,

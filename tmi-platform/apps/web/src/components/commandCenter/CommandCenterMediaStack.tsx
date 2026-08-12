@@ -1,5 +1,6 @@
-import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 "use client";
+
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.

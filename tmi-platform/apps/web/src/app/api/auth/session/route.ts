@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
   const role = (req.cookies.get('tmi_role')?.value ?? 'USER').toUpperCase();
   const cookieTier = req.cookies.get('tmi_tier')?.value ?? 'FREE';
   const rawEmail = req.cookies.get('tmi_user_email')?.value ?? '';
-  const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
+  // P0 Identity/Entitlement Integrity: the cookie is a display cache, not
+  // an authority. It's only the fallback below if the fresh DB read a few
+  // lines down fails/times out — the DB tier read there overwrites this.
+  let tier: string = cookieTier;
 
   const csrfToken = 'tmi-phase1-csrf';
 
@@ -81,6 +84,7 @@ export async function GET(req: NextRequest) {
             activeRole: true,
             displayName: true,
             name: true,
+            tier: true,
             isLive: true,
             liveRoomId: true,
             onboardingState: true,
@@ -102,6 +106,10 @@ export async function GET(req: NextRequest) {
         liveRoomId = dbUser.liveRoomId;
         avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
         dbOnboardingState = dbUser.onboardingState ?? 'NO_ROLE_SELECTED';
+        // Authoritative tier — overwrites the cookie fallback above with the
+        // real DB value (plus founder-pass self-heal) now that the lookup
+        // succeeded. Never derived from role.
+        tier = resolveTierFromDb(rawEmail, dbUser.tier);
         const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
         dbOnboardingStep = links.onboarding_step ?? '2';
         dbDisplayName =

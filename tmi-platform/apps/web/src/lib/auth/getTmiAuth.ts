@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 
 export interface TmiAuthSession {
@@ -26,7 +26,9 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
   const role = (cookieStore.get('tmi_role')?.value ?? 'USER').toUpperCase();
   const cookieTier = cookieStore.get('tmi_tier')?.value ?? 'FREE';
   const rawEmail = cookieStore.get('tmi_user_email')?.value ?? '';
-  const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
+  // P0 Identity/Entitlement Integrity: cookie is only a fallback if the
+  // fresh DB read below fails — it's not the authority.
+  let tier: string = cookieTier;
 
   let id = sessionId;
   let dbDisplayName: string | null = null;
@@ -37,11 +39,15 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
         select: {
           id: true,
           displayName: true,
+          tier: true,
           userProfile: { select: { displayName: true } },
         },
       });
       if (dbUser?.id) id = dbUser.id;
       dbDisplayName = dbUser?.displayName ?? dbUser?.userProfile?.displayName ?? null;
+      if (dbUser) {
+        tier = resolveTierFromDb(rawEmail, dbUser.tier);
+      }
     } catch {
       // Keep full session fallback identity when DB is unavailable.
     }
