@@ -48,9 +48,14 @@ const BOT_NAMES = [
   "LyricsLover", "BattleViewer", "StageWatcher", "BeatNerd", "RoomEnergy",
 ];
 
+// Real portrait set already used by BotAccountRegistry.ts/BotFleetRegistry.ts —
+// public/bot-images/ has "Bot image 1.png"..."Bot image 64.png" (no 59) plus
+// two "fan" variants. The previous /avatars/bot-0N.png paths pointed at a
+// public/avatars/ directory that never existed (every bot avatar 404'd), and
+// cycling only 5 images repeated identical bots on-screen past 5 seats.
 const BOT_AVATARS = [
-  "/avatars/bot-01.png", "/avatars/bot-02.png", "/avatars/bot-03.png",
-  "/avatars/bot-04.png", "/avatars/bot-05.png",
+  ...Array.from({ length: 58 }, (_, i) => `/bot-images/Bot image ${i + 1}.png`),
+  ...Array.from({ length: 5 }, (_, i) => `/bot-images/Bot image ${i + 60}.png`),
 ];
 
 const BOT_STATES: AvatarState[] = ["sitting", "clapping", "waving", "reacting"];
