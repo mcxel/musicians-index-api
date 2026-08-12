@@ -609,3 +609,20 @@ body.tmi-obsidian-cinematic::after {
     filter: brightness(1);
   }
 }
+
+
+/* Ensure no stray floating discovery elements bleed onto active monitors or cameras */
+.discovery-tab-floater,
+.floating-discovery-container,
+[aria-label="Open Discovery"] {
+  display: none !important;
+}
+
+/* Ensure mobile containers handle sizing cleanly */
+.admin-monitor-container,
+.command-deck-container {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}

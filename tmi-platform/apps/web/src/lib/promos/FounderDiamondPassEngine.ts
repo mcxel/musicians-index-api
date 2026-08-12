@@ -14,6 +14,24 @@ export interface DiamondPassHolder {
 
 const FOUNDER_PASSES: DiamondPassHolder[] = [
   {
+    // P0 Identity/Entitlement Integrity (2026-08-11/12): the founder's own
+    // account. `role: "fan"` below is this list's shared metadata shape
+    // (only read by the generic promo-code redemption flow, never by
+    // isFounderDiamondEmail()/resolveAuthoritativeTier.ts) — it does not
+    // affect his real account role, which is the separate, correct
+    // User.role = 'ADMIN'. Subscription tier and administrative authority
+    // stay independent dimensions; this entry only grants DIAMOND tier.
+    email: "berntmusic33@gmail.com",
+    name: "Marcel Dickens",
+    grantedBy: "TMI Platform — Founder Account",
+    grantedAt: new Date("2026-05-22"),
+    code: "DIAMOND-FOUNDER-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
+  {
     email: "Cyrisaiah24@gmail.com",
     name: "Cyrisaiah",
     grantedBy: "Marcel Dickens — Founder",
