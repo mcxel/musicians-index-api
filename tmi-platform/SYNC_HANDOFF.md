@@ -1,22 +1,22 @@
 # TMI Platform — SYNC HANDOFF (MASTER BUILD STATE)
 
-**Date:** 2026-08-11 (next full-sync resume document)  
+**Date:** 2026-08-12  
 **Branch of record:** `origin/eos/vocal-improv-clean`  
-**Full platform audit (honest inventory ≠ cert):** **`FULL_PLATFORM_AUDIT.md`** — tip lock **`c270ede7`**; three buckets + route matrix + next-sync order. Prefer that file over Gemini/Copilot “100% certified” tables.  
-**Fix #1 Mobile Visual Cert (measure-only):** **`MOBILE_VISUAL_CERT_MEASURE.md`** — measured HEAD **`811b2bc6`** (ancestor includes `c270ede7`); overall **BLOCKED** (auth gate); do not start Fix #1 code until authenticated Fan/Performer/Admin shells are re-measured.  
-**Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
-**`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
-**Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
-**Mobile root-shell isolation candidate:** **`8aed6532`** · eos tip **`c270ede7`** (was `6d0c776b` at prior lock) — TYPECHECK PASS lineage; **MOBILE VISUAL CERT PENDING** (Gate E/C Playwright at tip ≠ Marcel UX cert)
+**NEXT FULL SYNC (authoritative re-sync of this arc):** **`NEXT_SYNC_2026_08_12.md`** — tip **`bde16456`**; three workstreams A Mobile Cert / B Identity / C UX queue; Gemini Fix #1 PASS **rejected**.  
+**Full platform audit (honest inventory ≠ cert):** **`FULL_PLATFORM_AUDIT.md`** — prefer over Gemini/Copilot “100% certified” tables.  
+**Fix #1 Mobile Visual Cert:** **`MOBILE_VISUAL_CERT_MEASURE.md`** — last *honest* measure **BLOCKED ON AUTH** (`2d6cf6c1`). Authenticated Fan 360/390/430 still required. Gemini later PASS + main promote = **invalid**.  
+**Identity foundation:** `resolveAuthoritativeTier` + `1a829d06` — DB-backed tier; no ADMIN⇒DIAMOND. Next = founder persist + profile accuracy + entitlement matrix.  
+**Candidate baseline (geometry contract):** **`845c4f6f`** — visual cert **FAIL** (floaters).  
+**Discovery:** still suspect — `DiscoverySidePanel.tsx` mounts edge `DISCOVERY`; browser-prove after `bde16456`.
 
-**`origin/main` tip (fetched 2026-08-11):** **`d289c3ee`** — *supersedes older handoff claim `fd0f7bd1`*. Do **not** merge/push eos mobile/UX P0 to main until Fan/Performer + mobile visual cert.  
+**`origin/main` tip:** **`bf9024fd`** — **CLOSED**. Do not merge until Fix #1 + agreed visual gates.  
 **Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
 
 ---
 
 ## Resume sentence (paste into next chat)
 
-> TMI on `eos/vocal-improv-clean` tip **`c270ede7`** is Production UX Convergence + Mobile P0: 4-zone hosts and exclusive shells are code-wired, but `845c4f6f` visual cert FAILED (floating), mobile/Fan/Performer blueprint match are PENDING, `/stream-win` is a static shell vs `/radio` Stream & Win, dual VideoShuffle files exist, and `origin/main` is **`d289c3ee`** (do not merge)—next sync proves mobile geometry + one-click drawers + Lobby/YoPho/Avatar against Profiles blueprints (see `FULL_PLATFORM_AUDIT.md`).
+> TMI on `eos/vocal-improv-clean` tip **`bde16456`**: A Mobile Cert NOT done (auth-blocked measure only; Gemini PASS invalid); B Identity foundation at `1a829d06` (founder DIAMOND persist + profile + entitlements still open; no ADMIN⇒DIAMOND); C UX queue (drawers/Discovery/Camera/toolbar) candidate-only — see `NEXT_SYNC_2026_08_12.md`; `main` closed at `bf9024fd`.
 
 ---
 
