@@ -24,6 +24,7 @@ import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
 import { ensureAnchorRoomsSeeded, getAnchorDiscoveryRecords, listAnchorLiveRoomRecords } from '@/lib/live/AnchorRoomNetwork';
+import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoomEntitlement';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,27 +40,57 @@ async function sessionUserId(req: NextRequest): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await sessionUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  let body: Partial<GoLivePayload> & { action?: string } & LivePingPayload = {};
+  let body: Partial<GoLivePayload> & {
+    action?: string;
+    intent?: string;
+    createRoom?: boolean;
+  } & LivePingPayload = {};
   try { body = await req.json(); } catch { /* body optional */ }
 
-  // Ping-only (heartbeat from broadcaster)
+  // Ping-only (heartbeat from broadcaster) — auth by session id only
   if (body.action === 'ping') {
+    const userId = await sessionUserId(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     await ensureHydrated();
     pingSessionWithTelemetryPersisted(userId, body);
     return NextResponse.json({ ok: true });
   }
 
+  const isCreateRoomIntent =
+    body.intent === 'create-room' || body.createRoom === true;
+
+  let userId: string;
+  let displayName: string;
+
+  if (isCreateRoomIntent) {
+    // Target 2/3: member CREATE ROOM requires PLATINUM+ (server 403 otherwise)
+    const gate = await assertCreateRoomEntitlement(req);
+    if (!gate.ok) {
+      return NextResponse.json(
+        { ok: false, error: gate.error, code: gate.code, tier: gate.tier },
+        { status: gate.status },
+      );
+    }
+    userId = gate.userId;
+    displayName = body.displayName ?? gate.displayName;
+  } else {
+    // Go Live / broadcast path — authenticated session only (not the CREATE ROOM gate)
+    const uid = await sessionUserId(req);
+    if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    userId = uid;
+    displayName = body.displayName ?? uid;
+  }
+
   await ensureHydrated();
+
+  const roomId = body.roomId ?? `room-${userId}-${Date.now()}`;
 
   const session = registerLiveSession({
     userId,
-    displayName:   body.displayName ?? userId,
-    title:         body.title ?? `${body.displayName ?? userId} — Live`,
+    displayName,
+    title:         body.title ?? `${displayName} — Live`,
     category:      body.category ?? 'live',
-    roomId:        body.roomId ?? `room-${userId}`,
+    roomId,
     avatarUrl:     body.avatarUrl,
     previewUrl:    body.previewUrl,
     thumbnailUrl:  body.thumbnailUrl,
@@ -110,7 +141,12 @@ export async function POST(req: NextRequest) {
   });
   botCrowdFillEngine.startActivity(session.roomId);
 
-  return NextResponse.json({ ok: true, session }, { status: 200 });
+  return NextResponse.json({
+    ok: true,
+    session,
+    roomId: session.roomId,
+    href: `/live/rooms/${encodeURIComponent(session.roomId)}?from=live-lobby`,
+  }, { status: 200 });
 }
 
 export async function DELETE(req: NextRequest) {

@@ -18,6 +18,10 @@ export type SubscriptionEntitlement = {
   articlePlacementBenefits: string[];
   badgeTier: string;
   liveRoomsEnabled: boolean;
+  createRoomEnabled: boolean;
+  maxSimultaneousRooms: number;
+  unlockedSkinSlots: number;
+  loungeHostingEnabled: boolean;
   beatSellingEnabled: boolean;
   nftSellingEnabled: boolean;
   bookingEnabled: boolean;
@@ -70,8 +74,15 @@ export function resolveEntitlement(accountType: AccountType, tier: SubscriptionT
 
     badgeTier: tier.toUpperCase(),
 
-    liveRoomsEnabled:    isCreator ? idx >= 1 : true,
-    beatSellingEnabled:  isCreator ? idx >= 1 : false,
+    liveRoomsEnabled:      isCreator ? idx >= 1 : true,
+    // Target 2 lock: FREE→GOLD blocked; PLATINUM+ only. Independent of role/ADMIN.
+    createRoomEnabled:     idx >= 5,
+    // Progressive caps below are engine-local placeholders already present —
+    // SubscriptionPlanEngine does NOT define room limits yet (see T2 evidence).
+    maxSimultaneousRooms:  [0, 0, 0, 0, 0, 3, 10][idx],
+    unlockedSkinSlots:     [1, 2, 2, 3, 4, 8, 20][idx],
+    loungeHostingEnabled:  idx >= 5,
+    beatSellingEnabled:    isCreator ? idx >= 1 : false,
     nftSellingEnabled:   isCreator ? idx >= 1 : idx >= 6,
     bookingEnabled:      isCreator ? idx >= 1 : false,
     tipsEnabled:         idx >= 1,
