@@ -44,11 +44,26 @@ export async function ensureHydrated(): Promise<void> {
 
 export async function getActiveSessionsDurable(): Promise<LiveSession[]> {
   await ensureHydrated();
-  return getActiveSessions();
+  let active = getActiveSessions();
+  // Next.js HMR / route recompiles can reset the in-memory Map while
+  // `hydratedFromDb` stays true on a fresh module — reconcile from durable
+  // when memory is empty so LIVE NOW count cannot go false-zero after create.
+  if (active.length === 0) {
+    try {
+      const durable = await loadPersistedLiveSessions();
+      for (const session of durable) {
+        upsertHydratedSession(session);
+      }
+    } catch (err) {
+      console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
+    }
+    active = getActiveSessions();
+  }
+  return active;
 }
 
 export async function getAllSessionsDurable(): Promise<LiveSession[]> {
-  await ensureHydrated();
+  await getActiveSessionsDurable();
   return getAllSessions();
 }
 

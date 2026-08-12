@@ -77,7 +77,7 @@ function sessionFromUserRow(u: {
     entryPriceUsd: null,
     accentColor: "#00FFFF",
     startedAt,
-    lastPingAt: startedAt,
+    lastPingAt: Date.now(),
     hostDisconnectedAt: null,
     bitrateKbps: 0,
     droppedFramesPct: 0,
