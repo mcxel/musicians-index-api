@@ -1237,7 +1237,7 @@ export default function OverseerFlightDeck({
                   <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,215,0,0.6)", marginBottom: 5 }}>
                     MONITOR {mon + 1}
                   </div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box" }}>
                     {([-1, 0, 1, 2, 3, 4, 5, 6, 7] as const).map((ci) => {
                       const active = shareSlot?.monitor === mon && shareSlot.cellIndex === ci;
                       return (
