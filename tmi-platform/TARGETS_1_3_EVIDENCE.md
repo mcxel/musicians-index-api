@@ -108,6 +108,8 @@
 ---
 
 ## Gates
-- Tests: entitlement + create-room E2E unit + active inventory + tier resolution (run this pass)
-- Typecheck / build: see commit message / CI output after push
-- **Do not promote main**
+- Tests: entitlement + create-room E2E unit + active inventory — **PASS** (executed)
+- Typecheck: `pnpm typecheck` (apps/web) — **PASS**
+- Production build: **FAIL (environment)** — `pnpm --filter web build` blocked by locked/corrupt `.next` (`ENOTEMPTY` / missing `build-manifest.json` while another Next process holds the cache). Not a T2/T3 type error. Re-run build after stopping conflicting `next dev` / clearing `.next` with owner approval.
+- Commit: **`ad402319`** on `origin/eos/vocal-improv-clean`
+- **main** remains **`bf9024fd`** (CLOSED)
