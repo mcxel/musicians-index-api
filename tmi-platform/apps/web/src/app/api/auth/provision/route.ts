@@ -13,7 +13,8 @@ import { prisma } from "@/lib/prisma";
  * Rule 26 — creates real Prisma resources per role. Never returns fabricated OK.
  *
  * Body: { userId, roles?: ["FAN"|"PERFORMER"|...], accountType?: string, vipToken?: string }
- * Priority: roles[0] > accountType > default FAN
+ * Every role in `roles` is provisioned (not just the first) — roles[0] stays
+ * primary for user.role/onboarding. Falls back to accountType, then FAN.
  */
 export async function POST(req: NextRequest) {
   let body: { userId?: string; roles?: string[]; accountType?: string; vipToken?: string } = {};
@@ -101,7 +102,8 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         userId,
-        accountType,
+        accountType: result.accountType,
+        accountTypes: result.accountTypes,
         completedAt: result.completedAt,
         steps,
         error: result.error ?? "provision_failed",
@@ -114,7 +116,8 @@ export async function POST(req: NextRequest) {
     {
       ok: true,
       userId,
-      accountType,
+      accountType: result.accountType,
+      accountTypes: result.accountTypes,
       completedAt: result.completedAt,
       steps,
     },
