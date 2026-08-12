@@ -2,24 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { formatLiveNowActiveRoomsLabel } from '@/lib/broadcast/activeRoomTruth';
 
-interface LiveApiSession { category: string; }
+interface LiveApiSession { category: string; privacy?: string; }
 
 export default function Home3LiveDensityRail() {
   const [sessions, setSessions] = useState<LiveApiSession[]>([]);
+  const [truthCount, setTruthCount] = useState(0);
 
-  // Real room/cypher counts from GlobalLiveSessionRegistry — replaces a prior
-  // version that derived all four stats from a local setInterval tick with no
-  // connection to real data at all.
+  // Target 4: Open Rooms = GET /api/live/go `count` (not sessions.length / seeds / anchors).
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        const data = await res.json() as { sessions?: LiveApiSession[] };
-        if (!cancelled) setSessions(data.sessions ?? []);
+        const res = await fetch('/api/live/go', { cache: 'no-store', credentials: 'include' });
+        const data = await res.json() as { sessions?: LiveApiSession[]; count?: number };
+        if (cancelled) return;
+        setSessions(data.sessions ?? []);
+        setTruthCount(
+          typeof data.count === 'number' && Number.isFinite(data.count)
+            ? Math.max(0, Math.floor(data.count))
+            : 0,
+        );
       } catch {
-        if (!cancelled) setSessions([]);
+        if (!cancelled) {
+          setSessions([]);
+          setTruthCount(0);
+        }
       }
     };
     void load();
@@ -27,14 +36,17 @@ export default function Home3LiveDensityRail() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const rooms = sessions.length;
-  const cyphers = sessions.filter((s) => s.category === 'cypher').length;
+  const rooms = truthCount;
+  const cyphers = sessions.filter((s) => s.category === 'cypher' && s.privacy !== 'INVITE_ONLY').length;
 
   return (
     <section style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 24px 10px' }}>
       <div style={{ border: '1px solid rgba(0,255,255,0.35)', borderRadius: 10, background: 'linear-gradient(165deg, rgba(8,26,40,0.94), rgba(5,5,16,0.96))', padding: '10px 12px', display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           <Tag text='LIVE NOW' color='#00FFFF' pulse={rooms > 0} />
+          <span data-testid="live-now-active-rooms" data-active-room-count={String(rooms)} style={{ fontSize: 9, fontWeight: 800, color: '#FF4444', letterSpacing: '0.12em' }}>
+            {formatLiveNowActiveRoomsLabel(rooms)}
+          </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
           <Cell label='Open Rooms' value={rooms.toString()} color='#00FFFF' />

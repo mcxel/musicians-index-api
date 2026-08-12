@@ -384,6 +384,37 @@ export function getSessionCount(): number {
   return getActiveSessions().length;
 }
 
+/**
+ * Target 4 — public LIVE NOW truth.
+ * Active = in GlobalLiveSessionRegistry after getActiveSessions() TTL eviction
+ * (lastPingAt within 120s). Public count excludes INVITE_ONLY (same visibility
+ * contract as DiscoveryPublisher) and dedupes by roomId so duplicate registry
+ * rows cannot inflate N. Seeds / anchors / /rooms/* routes never enter this path.
+ */
+export function isPubliclyCountedLiveSession(session: LiveSession): boolean {
+  return session.privacy !== "INVITE_ONLY";
+}
+
+export function listPublicActiveRooms(source?: LiveSession[]): LiveSession[] {
+  const active = source ?? getActiveSessions();
+  const byRoomId = new Map<string, LiveSession>();
+  for (const session of active) {
+    if (!isPubliclyCountedLiveSession(session)) continue;
+    const prev = byRoomId.get(session.roomId);
+    if (!prev || session.startedAt >= prev.startedAt) {
+      byRoomId.set(session.roomId, session);
+    }
+  }
+  return Array.from(byRoomId.values()).sort((a, b) => {
+    if (b.viewerCount !== a.viewerCount) return b.viewerCount - a.viewerCount;
+    return b.startedAt - a.startedAt;
+  });
+}
+
+export function getActiveRoomTruthCount(source?: LiveSession[]): number {
+  return listPublicActiveRooms(source).length;
+}
+
 export function onSessionsChanged(handler: (sessions: LiveSession[]) => void): () => void {
   handlers.add(handler);
   return () => handlers.delete(handler);

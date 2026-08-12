@@ -52,6 +52,7 @@ interface LiveApiSession {
   displayName: string;
   roomId: string;
   viewerCount: number;
+  privacy?: string;
   avatarUrl: string | null;
 }
 
@@ -61,20 +62,22 @@ export default function Home3LiveWorldSurface() {
 
   const [pending, setPending] = useState<UniversalRoom | null>(null);
   const [featuredPerformer, setFeaturedPerformer] = useState<FeaturedPerformer | null>(null);
-  // Rule 20: live room count comes from real session registry via API, never hardcoded
+  // Target 4 / Rule 20: LIVE NOW N from GET /api/live/go `count` only — never sessions.length seeds.
   const [liveRoomCount, setLiveRoomCount] = useState(0);
 
-  // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
-  // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        const data = await res.json() as { sessions?: LiveApiSession[] };
+        const res = await fetch('/api/live/go', { cache: 'no-store', credentials: 'include' });
+        const data = await res.json() as { sessions?: LiveApiSession[]; count?: number };
         const sessions = data.sessions ?? [];
-        if (!cancelled) setLiveRoomCount(sessions.length);
-        const top = sessions[0];
+        const truth =
+          typeof data.count === 'number' && Number.isFinite(data.count)
+            ? Math.max(0, Math.floor(data.count))
+            : 0;
+        if (!cancelled) setLiveRoomCount(truth);
+        const top = sessions.find((s) => s.privacy !== 'INVITE_ONLY') ?? sessions[0];
         if (cancelled) return;
         if (!top) { setFeaturedPerformer(null); return; }
         const profile = getPerformerById(top.userId);
@@ -89,7 +92,10 @@ export default function Home3LiveWorldSurface() {
           audienceCount: top.viewerCount,
         });
       } catch {
-        if (!cancelled) setFeaturedPerformer(null);
+        if (!cancelled) {
+          setFeaturedPerformer(null);
+          setLiveRoomCount(0);
+        }
       }
     };
     void load();
@@ -151,7 +157,9 @@ export default function Home3LiveWorldSurface() {
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#E63000', animation: 'none', display: 'inline-block' }} />
               LIVE
             </div>
-            <span style={{ color: '#E63000', fontSize: 11, fontWeight: 700 }}>{liveRoomCount === 0 ? 'No active rooms right now' : `${liveRoomCount} ${liveRoomCount === 1 ? 'room' : 'rooms'} live now`}</span>
+            <span data-testid="live-now-active-rooms" data-active-room-count={String(liveRoomCount)} style={{ color: '#E63000', fontSize: 11, fontWeight: 700 }}>
+              {liveRoomCount === 0 ? 'LIVE NOW — 0 ACTIVE ROOMS' : `LIVE NOW — ${liveRoomCount} ACTIVE ROOMS`}
+            </span>
           </div>
         </div>
         {/* Broadcast mode tabs */}

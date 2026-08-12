@@ -3,29 +3,67 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import SectionTitle from "@/components/ui/SectionTitle";
+import LiveNowActiveRoomsBadge from "@/components/live/LiveNowActiveRoomsBadge";
 import { getHomeLive, type HomeLiveRoom, type HomeLiveShow } from "@/components/home/data/getHomeLive";
 
 const TYPE_COLORS: Record<string, string> = { CYPHER: "#AA2DFF", LIVE: "#FF4444", ARENA: "#FFD700", SHOWCASE: "#00FFFF" };
 
+type LiveApiSession = {
+  roomId: string;
+  displayName: string;
+  title?: string;
+  category: string;
+  viewerCount: number;
+  privacy?: string;
+};
+
 export default function LiveWorldScreen() {
   const [rooms, setRooms] = useState<HomeLiveRoom[]>([]);
   const [shows, setShows] = useState<HomeLiveShow[]>([]);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
+    // Target 4: room tiles from GET /api/live/go sessions only — never FALLBACK demo rooms.
+    let cancelled = false;
+    const loadSessions = async () => {
+      try {
+        const res = await fetch("/api/live/go", { cache: "no-store", credentials: "include" });
+        const data = (await res.json()) as { sessions?: LiveApiSession[] };
+        if (cancelled) return;
+        const mapped: HomeLiveRoom[] = (data.sessions ?? [])
+          .filter((s) => s.privacy !== "INVITE_ONLY")
+          .slice(0, 8)
+          .map((s) => ({
+            id: s.roomId,
+            name: s.title ?? `${s.displayName} — Live`,
+            host: s.displayName,
+            viewers: s.viewerCount ?? 0,
+            genre: s.category,
+            type: (s.category ?? "live").toUpperCase(),
+          }));
+        setRooms(mapped);
+      } catch {
+        if (!cancelled) setRooms([]);
+      }
+    };
+    void loadSessions();
+    const id = setInterval(() => void loadSessions(), 10_000);
+
     getHomeLive(4, 3)
       .then((result) => {
-        setRooms(result.data.rooms);
-        setShows(result.data.shows);
-        setSource(result.source);
+        if (!cancelled) setShows(result.data.shows);
       })
       .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   return (
     <div style={{ minHeight: "calc(100vh - 52px)", background: "#050510", padding: "0 0 40px" }}>
 
-      {/* Live Now Hero Banner */}
+      {/* Live Now Hero Banner — Target 4 SoT badge */}
       <div style={{
         background: "linear-gradient(135deg, #0A0010 0%, #1A0510 100%)",
         borderBottom: "1px solid rgba(255,68,68,0.2)",
@@ -37,9 +75,7 @@ export default function LiveWorldScreen() {
             transition={{ duration: 1.2, repeat: Infinity }}
             style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF4444", boxShadow: "0 0 10px #FF4444" }}
           />
-          <span style={{ fontSize: 11, fontWeight: 900, color: "#FF4444", letterSpacing: "0.2em" }}>
-            LIVE NOW — {rooms.length} ACTIVE ROOMS · {source === "live" ? "LIVE" : "FALLBACK"}
-          </span>
+          <LiveNowActiveRoomsBadge />
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", margin: 0 }}>
           Live World
@@ -51,10 +87,19 @@ export default function LiveWorldScreen() {
         {/* ── LIVE ROOMS ── */}
         <div>
           <SectionTitle title="Live Rooms" accent="cyan" badge="Now" />
+          {rooms.length === 0 && (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", padding: "12px 0" }}>
+              No active rooms right now.
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
             {rooms.map((room, i) => (
-              <motion.div
+              <Link
                 key={room.id}
+                href={`/live/rooms/${encodeURIComponent(room.id)}?from=live-lobby`}
+                style={{ textDecoration: "none" }}
+              >
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.06 }}
@@ -87,10 +132,11 @@ export default function LiveWorldScreen() {
                   </span>
                 </div>
               </motion.div>
+              </Link>
             ))}
           </div>
           <div style={{ textAlign: "right", marginTop: 12 }}>
-            <Link href="/rooms" style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>
+            <Link href="/live/lobby" style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>
               All Live Rooms →
             </Link>
           </div>

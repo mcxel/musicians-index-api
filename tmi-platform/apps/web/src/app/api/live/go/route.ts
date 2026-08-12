@@ -15,11 +15,12 @@ import {
 } from '@/lib/broadcast/globalLiveSessionStore';
 import {
   ensureHydrated,
-  getAllSessionsDurable,
+  getActiveSessionsDurable,
   persistSessionNow,
   removeSessionNow,
   pingSessionWithTelemetryPersisted,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
+import { getActiveRoomTruthCount } from '@/lib/broadcast/globalLiveSessionStore';
 import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
@@ -170,11 +171,18 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
+/**
+ * Target 4 SoT — LIVE NOW active-room inventory.
+ * sessions = registry-active only (TTL-evicted; no LiveRegistry seeds).
+ * count = public truth (dedupe roomId; exclude INVITE_ONLY). Anchors are
+ * returned separately and MUST NOT be added into count.
+ */
 export async function GET() {
   try {
     ensureAnchorRoomsSeeded();
     const anchorRecords = getAnchorDiscoveryRecords();
-    const sessions = await getAllSessionsDurable();
+    const sessions = await getActiveSessionsDurable();
+    const count = getActiveRoomTruthCount(sessions);
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
     const live = sessions.map((s) => ({
       userId:      s.userId,
@@ -185,16 +193,37 @@ export async function GET() {
       roomId:      s.roomId,
       avatarUrl:   s.avatarUrl ?? undefined,
       accentColor: s.accentColor,
+      privacy:     s.privacy,
     }));
     return NextResponse.json({
       sessions,
       live,
-      count: sessions.length,
+      count,
       anchors: listAnchorLiveRoomRecords(),
       anchorDiscovery: anchorRecords,
+      activeDefinition: {
+        source: 'GlobalLiveSessionRegistry.getActiveSessions',
+        staleEvictionMs: 120_000,
+        publicCountExcludes: ['INVITE_ONLY'],
+        dedupeKey: 'roomId',
+        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+      },
     });
   } catch (err) {
     console.error('[api/live/go] GET error:', err);
-    return NextResponse.json({ sessions: [], live: [], count: 0, anchors: [], anchorDiscovery: [] });
+    return NextResponse.json({
+      sessions: [],
+      live: [],
+      count: 0,
+      anchors: [],
+      anchorDiscovery: [],
+      activeDefinition: {
+        source: 'GlobalLiveSessionRegistry.getActiveSessions',
+        staleEvictionMs: 120_000,
+        publicCountExcludes: ['INVITE_ONLY'],
+        dedupeKey: 'roomId',
+        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+      },
+    });
   }
 }

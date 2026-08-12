@@ -98,12 +98,12 @@
 
 ---
 
-## Targets 4–8 (carried — not started)
-4 Active-room truth from `GET /api/live/go` count  
-5 Lounges first-class destinations  
+## Targets 4–8 (carried)
+4 Active-room truth — **implemented; unit PASS; runtime cert PENDING** → see `TARGETS_1_4_EVIDENCE.md`  
+5 Lounges first-class destinations — queued (after T3 live join + T4 runtime)  
 6 Venue Skin economy  
 7 Revenue Go-Live  
-8 Room/Lounge runtime certification  
+8 Room/Lounge runtime certification 
 
 ---
 
