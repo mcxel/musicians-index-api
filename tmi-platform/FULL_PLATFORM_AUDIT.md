@@ -184,4 +184,23 @@ Align with SYNC_HANDOFF §6 + mobile P0:
 
 ---
 
+---
+
+## Fix #1 Mobile Visual Cert — Measure Report
+
+**Pointer:** Full matrices, overflow walk, and exclusive-shell results live in **`MOBILE_VISUAL_CERT_MEASURE.md`**.
+
+| Field | Value |
+|-------|--------|
+| Measured HEAD | **`811b2bc6`** (requested candidate `c270ede7` is ancestor; tip ahead by docs+finance commits) |
+| Overall | **BLOCKED** |
+| Auth | All `/hub/fan`, `/hub/performer`, `/admin/overseer` → `/auth?next=…` (no E2E session) |
+| Width (`scrollWidth≤innerWidth+2`) on auth | PASS numerically @ 360/390/430 |
+| Exclusive shell (Fan/Performer/Admin) | **BLOCKED** — CC not mounted |
+| UX geometry (stage/OPS/CHAT/order) | **BLOCKED** |
+| Notable | Off-canvas DISCOVERY `DIV` (~331px past viewport); first constrained ancestor `BODY…overflow-x-hidden` — not a cert shortcut win |
+| Start Fix #1 code? | **NO** until authenticated re-measure |
+
+---
+
 *Assembly director honest audit. Inventory ≠ certification.*

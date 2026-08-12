@@ -3,6 +3,7 @@
 **Date:** 2026-08-11 (next full-sync resume document)  
 **Branch of record:** `origin/eos/vocal-improv-clean`  
 **Full platform audit (honest inventory ≠ cert):** **`FULL_PLATFORM_AUDIT.md`** — tip lock **`c270ede7`**; three buckets + route matrix + next-sync order. Prefer that file over Gemini/Copilot “100% certified” tables.  
+**Fix #1 Mobile Visual Cert (measure-only):** **`MOBILE_VISUAL_CERT_MEASURE.md`** — measured HEAD **`811b2bc6`** (ancestor includes `c270ede7`); overall **BLOCKED** (auth gate); do not start Fix #1 code until authenticated Fan/Performer/Admin shells are re-measured.  
 **Candidate baseline (geometry contract):** **`845c4f6f`** — FULL SYNC + 4-ZONE CANDIDATE  
 **`845c4f6f` visual cert:** **FAIL** — HQ deep workspaces still opened as UniversalWorkspaceWindow **FLOATING** over stage (Marcel screenshots). CODE/TYPECHECK had passed; browser geometry did not.  
 **Presentation-fix candidate:** **`d9c4b2fb`** — Media Console DrawerDock + YoPho honesty/capacity/z-depth  
