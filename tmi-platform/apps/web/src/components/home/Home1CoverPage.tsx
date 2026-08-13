@@ -102,8 +102,7 @@ const LINEUP_ICON: Record<'solo' | 'duo' | 'band' | 'group', string> = {
 function hasUploadedProfileImage(url?: string): boolean {
   if (!url) return false;
   const trimmed = url.trim();
-  if (trimmed.startsWith('/bot-images/')) return false;
-  if (trimmed.includes('venue-') || trimmed.includes('gameshow-')) return false;
+  if (!trimmed || trimmed === "") return false;
   return !DEFAULT_PROFILE_PLACEHOLDERS.has(trimmed);
 }
 
