@@ -3,6 +3,13 @@
 // CRITICAL: sorted ASCENDING by viewers — 0 viewers = position 1 (discovery-first law)
 // Copilot wires: useRoomList({ sort: 'viewers_asc', limit: 8 })
 // Proof: position 1 always = artist with fewest viewers
+//
+// LEGACY — zero production importers as of 2026-08-12 (confirmed via full-codebase
+// import search); every tile is still the literal placeholder "Artist Name" /
+// "0 viewers" this file's own comment says Copilot would replace. Superseded by
+// LiveLobbyWallGrid.tsx, the canonical full-page Live Lobby Wall. If the
+// discovery-first (ascending-viewer) sort philosophy above is still wanted,
+// port it into the canonical wall rather than wiring this file up as-is.
 export function LobbyWallPanel() {
   return (
     <div className="tmi-lobby-wall">

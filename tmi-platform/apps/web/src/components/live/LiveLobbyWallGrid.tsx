@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AdRailSlot from '@/components/ads/AdRailSlot';
@@ -16,6 +16,7 @@ import {
 import { useLobbyPreviewBind } from '@/lib/lobby/useLobbyPreviewBind';
 import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/DestinationResolver';
 import { sanitizeWallHostLabel } from '@/lib/lobby/wallPublicIdentity';
+import LobbyCategoryPillRow, { type LobbyCategoryPill } from '@/components/lobby/LobbyCategoryPillRow';
 import {
   LIVE_LOBBY_WALL_CONTRACT_ID,
   useAdaptiveWorldRuntime,
@@ -69,6 +70,22 @@ type LiveLobbyWallGridProps = {
   onRoomJoin?: (room: LobbyRoom) => void;
   /** Hover / audio focus only — tap always instant-joins */
   onRoomFocus?: (room: LobbyRoom) => void;
+  /**
+   * Optional category pill row (additive). Omit entirely to preserve the
+   * exact existing single-category page behavior — the 5 real dedicated
+   * lobby-wall routes do not pass this and are unaffected by it existing.
+   */
+  categoryPills?: {
+    items: LobbyCategoryPill[];
+    activeId: string;
+    onSelect: (id: string) => void;
+  };
+  /**
+   * When provided, replaces the room grid/empty-state section entirely —
+   * used for non-room categories (e.g. Avatars/Playlists) that aren't
+   * LobbyRoom-shaped data and shouldn't be forced through LobbyCell.
+   */
+  overrideContent?: ReactNode;
 };
 
 function toWallKind(type: LobbyRoom['type']): LobbyWallKind {
@@ -242,6 +259,8 @@ export default function LiveLobbyWallGrid({
   variant = 'page',
   onRoomJoin,
   onRoomFocus,
+  categoryPills,
+  overrideContent,
 }: LiveLobbyWallGridProps) {
   const router = useRouter();
   useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
@@ -433,6 +452,15 @@ export default function LiveLobbyWallGrid({
             </>
           )}
         </div>
+        {categoryPills && (
+          <div style={{ width: '100%' }}>
+            <LobbyCategoryPillRow
+              items={categoryPills.items}
+              activeId={categoryPills.activeId}
+              onSelect={categoryPills.onSelect}
+            />
+          </div>
+        )}
       </div>
 
       <div
@@ -463,7 +491,9 @@ export default function LiveLobbyWallGrid({
             />
           </div>
         )}
-        {liveRooms.length === 0 ? (
+        {overrideContent ? (
+          overrideContent
+        ) : liveRooms.length === 0 ? (
           <div style={{ textAlign: 'center', padding: embedded ? '40px 0' : '80px 0', color: 'rgba(255,255,255,0.35)' }}>
             <div style={{ fontSize: embedded ? 28 : 40, marginBottom: 12 }}>📡</div>
             <div style={{ fontWeight: 800, fontSize: embedded ? 14 : 16 }}>No active rooms</div>

@@ -1,5 +1,14 @@
 "use client";
 
+// LEGACY — the default export is a hard `return null` (unreachable content),
+// and the real content component (LiveLobbyWallContent) is only reachable
+// through a chain of components none of which any app/ route actually
+// renders — confirmed 2026-08-12. Its 10 hardcoded stock-photo room cards
+// with fake viewer counts/flags/names are real-registry-plumbing dead code,
+// not live in production. Superseded by LiveLobbyWallGrid.tsx, the canonical
+// full-page Live Lobby Wall. Not deleted in case another concurrent tool has
+// plans for it.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";

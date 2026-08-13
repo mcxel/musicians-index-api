@@ -1,3 +1,7 @@
+// LEGACY — zero importers anywhere in the codebase as of 2026-08-12 (confirmed
+// via full-codebase import search). Not deleted in case another concurrent
+// tool has plans for it.
+
 export interface LobbyWallCard {
   id: string;
   title: string;

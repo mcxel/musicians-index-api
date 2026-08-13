@@ -1,5 +1,9 @@
 "use client";
 
+// LEGACY — zero production importers as of 2026-08-12 (confirmed via full-codebase
+// import search). Superseded by LiveLobbyWallGrid.tsx, the canonical full-page
+// Live Lobby Wall. Not deleted in case another concurrent tool has plans for it.
+
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";

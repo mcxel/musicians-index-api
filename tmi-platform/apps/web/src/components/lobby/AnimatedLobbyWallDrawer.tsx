@@ -1,5 +1,13 @@
 "use client";
 
+// LEGACY — zero production importers as of 2026-08-12 (confirmed via full-codebase
+// import search, including its exported LobbyWallTrigger helper). All room data
+// is 100% hardcoded (11 static rooms, viewers:0/isLive:false literals) — a
+// Rule 20 violation if ever wired up. Superseded by LiveLobbyWallGrid.tsx, the
+// canonical full-page Live Lobby Wall. Not deleted in case another concurrent
+// tool has plans for it, but do not wire this file up as-is — port its genre
+// filter-chip UX pattern into the canonical wall instead of reviving its data.
+
 /**
  * AnimatedLobbyWallDrawer
  *

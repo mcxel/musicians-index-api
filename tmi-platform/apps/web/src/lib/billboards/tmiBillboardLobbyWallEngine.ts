@@ -1,3 +1,8 @@
+// LEGACY — transitively dead as of 2026-08-12: this engine's only consumer,
+// tmiBillboardRotationEngine.ts, itself has zero importers anywhere in the
+// codebase (confirmed via full-codebase import search). Not deleted in case
+// another concurrent tool has plans for it.
+
 import { listBillboardRoutes, type TmiBillboardRouteRecord } from "@/lib/billboards/tmiBillboardRouteRegistry";
 
 export type TmiBillboardLobbyWallState = {

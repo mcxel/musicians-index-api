@@ -1,3 +1,7 @@
+// LEGACY — zero production importers as of 2026-08-12 (confirmed via full-codebase
+// import search). Superseded by LiveLobbyWallGrid.tsx, the canonical full-page
+// Live Lobby Wall. Not deleted in case another concurrent tool has plans for it.
+
 import React from "react";
 
 export function LobbyWallGrid({ children }: { children: React.ReactNode }) {

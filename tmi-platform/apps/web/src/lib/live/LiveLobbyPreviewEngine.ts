@@ -3,6 +3,10 @@
  * Determines whether a performer is live and returns the correct preview data.
  * Wraps LiveRoomEngine + LivePresenceEngine into a single query interface.
  *
+ * LEGACY — zero importers anywhere in the codebase as of 2026-08-12 (confirmed
+ * via full-codebase import search). None of the Live Lobby Wall components
+ * consume this. Not deleted in case another concurrent tool has plans for it.
+ *
  * Usage in article/profile pages:
  *   const preview = getLivePreviewData(artistSlug);
  *   if (preview.isLive) render <LiveLobbyPreviewWindow />
