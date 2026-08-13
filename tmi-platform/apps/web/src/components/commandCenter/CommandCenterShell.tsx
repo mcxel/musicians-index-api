@@ -1147,6 +1147,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               })}
             </>
           ) : null}
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", margin: "10px 0 4px" }}>
+            DISCOVER
+          </div>
+          {railBtn({
+            key: "discover-lobby",
+            label: "🏟️ LIVE LOBBY WALL",
+            info: "Live now, battles, cyphers, games, lounges",
+            onClick: () => { presentCanonicalWorkspace("lobby", "DRAWER"); setMobileLeftOpen(false); },
+          })}
           {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
           {role === "performer"
             ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
@@ -1187,19 +1196,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             ✕
           </button>
           <OperationsSidebar role={role} userId={userId} displayName={resolvedDisplayName} featuredPerformerName={featured?.name} />
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
-            <button
-              type="button"
-              onClick={() => {
-                presentCanonicalWorkspace("lobby", "DRAWER");
-                setMobileRightOpen(false);
-              }}
-              style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10, color: theme.secondary, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Open Live Lobby Wall →
-            </button>
-          </div>
+          {/* Discovery lives in the OPS (left) panel only, per direction — one owner, not scattered. */}
           {role === "fan" ? (
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>AD SLOT · {FAN_AD_ZONE}</div>
