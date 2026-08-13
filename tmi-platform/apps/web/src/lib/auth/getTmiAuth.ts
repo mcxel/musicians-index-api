@@ -32,25 +32,29 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
 
   let id = sessionId;
   let dbDisplayName: string | null = null;
-  if (rawEmail) {
-    try {
-      const dbUser = await prisma.user.findUnique({
-        where: { email: rawEmail },
-        select: {
-          id: true,
-          displayName: true,
-          tier: true,
-          userProfile: { select: { displayName: true } },
-        },
-      });
-      if (dbUser?.id) id = dbUser.id;
-      dbDisplayName = dbUser?.displayName ?? dbUser?.userProfile?.displayName ?? null;
-      if (dbUser) {
-        tier = resolveTierFromDb(rawEmail, dbUser.tier);
-      }
-    } catch {
-      // Keep full session fallback identity when DB is unavailable.
+  try {
+    const dbUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: sessionId },
+          ...(rawEmail ? [{ email: rawEmail }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        tier: true,
+        userProfile: { select: { displayName: true } },
+      },
+    });
+    if (dbUser?.id) id = dbUser.id;
+    dbDisplayName = dbUser?.displayName ?? dbUser?.userProfile?.displayName ?? null;
+    if (dbUser) {
+      tier = resolveTierFromDb(dbUser.email ?? rawEmail, dbUser.tier);
     }
+  } catch {
+    // Keep full session fallback identity when DB is unavailable.
   }
 
   return {

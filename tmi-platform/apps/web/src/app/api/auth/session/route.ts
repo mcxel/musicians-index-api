@@ -74,53 +74,57 @@ export async function GET(req: NextRequest) {
   let dbDisplayName: string | null = null;
   let dbActiveRole: string | null = null;
 
-  if (rawEmail) {
-    try {
-      const dbUser = await withTimeout(
-        prisma.user.findUnique({
-          where: { email: rawEmail },
-          select: {
-            id: true,
-            activeRole: true,
-            displayName: true,
-            name: true,
-            tier: true,
-            isLive: true,
-            liveRoomId: true,
-            onboardingState: true,
-            userProfile: {
-              select: {
-                avatarUrl: true,
-                socialLinks: true,
-                displayName: true,
-              }
-            }
+  try {
+    const dbUser = await withTimeout(
+      prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: sessionId },
+            ...(rawEmail ? [{ email: rawEmail }] : []),
+          ],
+        },
+        select: {
+          id: true,
+          email: true,
+          activeRole: true,
+          displayName: true,
+          name: true,
+          tier: true,
+          isLive: true,
+          liveRoomId: true,
+          onboardingState: true,
+          userProfile: {
+            select: {
+              avatarUrl: true,
+              socialLinks: true,
+              displayName: true,
+            },
           },
-        }),
-        SESSION_DB_LOOKUP_TIMEOUT_MS
-      );
-      if (dbUser) {
-        canonicalUserId = dbUser.id;
-        dbActiveRole = dbUser.activeRole ?? null;
-        isLive = dbUser.isLive;
-        liveRoomId = dbUser.liveRoomId;
-        avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
-        dbOnboardingState = dbUser.onboardingState ?? 'NO_ROLE_SELECTED';
-        // Authoritative tier — overwrites the cookie fallback above with the
-        // real DB value (plus founder-pass self-heal) now that the lookup
-        // succeeded. Never derived from role.
-        tier = resolveTierFromDb(rawEmail, dbUser.tier);
-        const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
-        dbOnboardingStep = links.onboarding_step ?? '2';
-        dbDisplayName =
-          dbUser.displayName ??
-          dbUser.userProfile?.displayName ??
-          dbUser.name ??
-          null;
-      }
-    } catch {
-      // Keep session fallback identity if DB is temporarily unavailable.
+        },
+      }),
+      SESSION_DB_LOOKUP_TIMEOUT_MS
+    );
+    if (dbUser) {
+      canonicalUserId = dbUser.id;
+      dbActiveRole = dbUser.activeRole ?? null;
+      isLive = dbUser.isLive;
+      liveRoomId = dbUser.liveRoomId;
+      avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
+      dbOnboardingState = dbUser.onboardingState ?? 'NO_ROLE_SELECTED';
+      // Authoritative tier — overwrites the cookie fallback above with the
+      // real DB value (plus founder-pass self-heal) now that the lookup
+      // succeeded. Never derived from role.
+      tier = resolveTierFromDb(dbUser.email ?? rawEmail, dbUser.tier);
+      const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
+      dbOnboardingStep = links.onboarding_step ?? '2';
+      dbDisplayName =
+        dbUser.displayName ??
+        dbUser.userProfile?.displayName ??
+        dbUser.name ??
+        null;
     }
+  } catch {
+    // Keep session fallback identity if DB is temporarily unavailable.
   }
 
   // Trust & safety gate — a user suspended/banned mid-session (existing
@@ -183,6 +187,8 @@ export async function GET(req: NextRequest) {
     path: '/',
   };
   response.cookies.set('tmi_onboarding_state', dbOnboardingState.toLowerCase(), COOKIE_OPTS);
+  response.cookies.set('tmi_tier', tier, COOKIE_OPTS);
+  response.cookies.set('tmi_role', role, COOKIE_OPTS);
 
   return response;
 }
