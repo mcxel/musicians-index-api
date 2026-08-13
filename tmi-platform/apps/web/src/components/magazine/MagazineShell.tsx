@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TIMING } from "@/lib/motion/timingRegistry";
 import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
@@ -171,6 +172,7 @@ export default function MagazineShell({
   initialLeftIndex = 0,
   onPageChange,
 }: MagazineShellProps) {
+  const router = useRouter();
   const normalizeStartIndex = useCallback((index: number) => {
     if (!Number.isFinite(index)) return 0;
     if (index <= 0) return 0;
@@ -197,6 +199,7 @@ export default function MagazineShell({
   const { trackAction } = useGamificationEngine();
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const audioRef = useRef<TmiMagazineAudioEngine | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -410,14 +413,19 @@ export default function MagazineShell({
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
   }
   function onTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
     touchStartX.current = null;
-    if (Math.abs(dx) < 50) return;
-    if (dx < 0) goNext();
-    else goPrev();
+    touchStartY.current = null;
+    // Bounded horizontal swipe check: ensure horizontal motion is dominant
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
   }
 
   let flipTransform = "perspective(1400px) rotateY(0deg) scale(1)";
@@ -594,13 +602,45 @@ export default function MagazineShell({
         flexWrap: "wrap",
         zIndex: 50,
       }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 8, letterSpacing: "0.4em", color: archetype.accentColor, fontWeight: 800, textTransform: "uppercase" }}>
-            {issueTitle}
-          </span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em" }}>
-            Issue #{issue} — April 2026
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              const origin = typeof window !== "undefined" ? sessionStorage.getItem("tmi_magazine_origin") : null;
+              if (origin && origin !== "/magazine/issue/current") {
+                router.push(origin);
+              } else {
+                router.push("/hub/performer");
+              }
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,45,170,0.18)",
+              border: "1px solid #FF2DAA",
+              borderRadius: 8,
+              color: "#FF2DAA",
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              padding: "6px 14px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              boxShadow: "0 0 10px rgba(255,45,170,0.3)",
+            }}
+          >
+            <span>←</span>
+            <span>EXIT TO HUB</span>
+          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 8, letterSpacing: "0.4em", color: archetype.accentColor, fontWeight: 800, textTransform: "uppercase" }}>
+              {issueTitle}
+            </span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em" }}>
+              Issue #{issue} — April 2026
+            </span>
+          </div>
         </div>
 
         {/* Dynamic Theme Picker */}

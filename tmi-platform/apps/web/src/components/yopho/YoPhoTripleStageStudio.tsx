@@ -43,6 +43,15 @@ const GOLD = "#FFD700";
 /** Green = positive / confirm nudge direction; red = opposite */
 const GREEN = "#00FF88";
 const RED = "#FF4466";
+/**
+ * Stage Deck mobile fix: these were fixed-pixel (360/380) desktop sizes that, once the
+ * 4-col grid collapses to a 1-col stack under 900px, made three full-height canvases
+ * stack inside the drawer's ~58-72vh cap — previews read as squeezed at the bottom
+ * instead of actually filling the space the monitors vacated. clamp() keeps desktop
+ * near-identical while letting mobile shrink to what the viewport can actually show.
+ */
+const STAGE_CANVAS_HEIGHT = "clamp(200px, 34vh, 360px)";
+const WORKING_CARD_CANVAS_HEIGHT = "clamp(220px, 36vh, 380px)";
 
 function formatTime(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
@@ -255,6 +264,17 @@ export default function YoPhoTripleStageStudio({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <style>{`
+        @media (max-width: 900px) {
+          [data-yopho-triple-grid] {
+            grid-template-columns: 1fr !important;
+          }
+          [data-yopho-position-pad] {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+        }
+      `}</style>
       <input
         ref={fileInputRef}
         type="file"
@@ -674,7 +694,7 @@ export default function YoPhoTripleStageStudio({
           {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
           <YoPhoPortraitStageCanvas
             blueprint={effectPreviewBlueprint}
-            height={360}
+            height={STAGE_CANVAS_HEIGHT}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused={!isPlaying}
@@ -687,7 +707,7 @@ export default function YoPhoTripleStageStudio({
           {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
           <YoPhoPortraitStageCanvas
             blueprint={preview}
-            height={380}
+            height={WORKING_CARD_CANVAS_HEIGHT}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused
@@ -708,7 +728,7 @@ export default function YoPhoTripleStageStudio({
           {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
           <YoPhoPortraitStageCanvas
             blueprint={compareHold ? master : preview}
-            height={360}
+            height={STAGE_CANVAS_HEIGHT}
             interactive={false}
             timelineSec={timelineSec}
             playbackPaused={!isPlaying}

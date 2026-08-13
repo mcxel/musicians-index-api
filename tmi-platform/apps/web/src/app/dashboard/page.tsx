@@ -1,5 +1,7 @@
 import DashboardWorkspaceContainer from "@/components/dashboard/DashboardWorkspaceContainer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Dashboard | The Musician's Index",
   description: "Your personal TMI workspace — Fan, Performer, and Administration in one place.",

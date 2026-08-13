@@ -9,6 +9,7 @@ export type FlexItemType =
   | 'EMOTE'
   | 'YOPHO_TEMPLATE'
   | 'PLAYLIST_SKIN'
+  | 'VENUE_SKIN'
   | 'BEAT_LICENSE'
   | 'NFT_COLLECTIBLE'
   | 'SEASON_PASS'
@@ -55,6 +56,35 @@ export interface UserEntitlement {
 
 // ─── CANONICAL FLEX STORE CATALOG ($0.99 - $4.99 Micro-Pricing) ─────────────
 export const FLEX_STORE_CATALOG: FlexStoreItem[] = [
+  // ── 0. VENUE SKINS ($2.99 - $4.99) ──
+  {
+    id: 'venue-skin-rooftop-penthouse',
+    name: 'Skyline Penthouse Lounge Skin',
+    description: '3D luxury penthouse venue with rooftop pool & panoramic city view.',
+    itemType: 'VENUE_SKIN',
+    collectionTier: 'FEATURED',
+    priceCents: 499,
+    icon: '🏙️',
+    badge: 'HOT',
+    preview: {
+      thumbnail: '/bot-images/Bot image 1.png',
+      accentColor: '#FF2DAA',
+    },
+  },
+  {
+    id: 'venue-skin-underground-cypher',
+    name: 'Underground Cypher Club Skin',
+    description: 'Graffiti brick basement venue with neon strobe lighting & cypher pit.',
+    itemType: 'VENUE_SKIN',
+    collectionTier: 'EVERYDAY',
+    priceCents: 299,
+    icon: '🎙️',
+    badge: 'NEW',
+    preview: {
+      thumbnail: '/bot-images/Bot image 2.png',
+      accentColor: '#00FFFF',
+    },
+  },
   // ── 1. AVATAR APPAREL & ACCESSORIES ($0.99 - $2.99) ──
   {
     id: 'cyber-jacket-neon',

@@ -43,6 +43,8 @@ type TabId =
   | "interviews"
   | "commerce";
 
+export const PERFORMER_BIO_MAGAZINE_TAB_EVENT = "tmi:performer-bio-magazine-open-tab";
+
 const TABS: { id: TabId; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "biography", label: "Biography" },
@@ -76,6 +78,18 @@ export interface PerformerBioMagazineDrawerProps {
   onPreview?: () => void;
   /** Open first-class Creator Commerce Center drawer (Living OS). */
   onOpenCommerceCenter?: () => void;
+  /** Optional initial tab for quick-link launches inside Command Center. */
+  initialTab?: TabId;
+}
+
+function isTabId(value: unknown): value is TabId {
+  return value === "profile"
+    || value === "biography"
+    || value === "magazine"
+    || value === "gallery"
+    || value === "music"
+    || value === "interviews"
+    || value === "commerce";
 }
 
 function resolveRegistryPerformer(
@@ -158,6 +172,7 @@ export default function PerformerBioMagazineDrawer({
   showRequestInterview = false,
   onPreview,
   onOpenCommerceCenter,
+  initialTab,
 }: PerformerBioMagazineDrawerProps) {
   const registryPerformer = useMemo(
     () => resolveRegistryPerformer(performerSlug, userId, displayName),
@@ -168,7 +183,7 @@ export default function PerformerBioMagazineDrawer({
     performerSlug || registryPerformer?.slug || userId || "session",
   );
   const [tier, setTier] = useState<PerformerTier | string>(registryPerformer?.tier ?? "FREE");
-  const [tab, setTab] = useState<TabId>("profile");
+  const [tab, setTab] = useState<TabId>(initialTab && isTabId(initialTab) ? initialTab : "profile");
   const [stageName, setStageName] = useState(
     registryPerformer?.name ?? displayName ?? "",
   );
@@ -199,6 +214,22 @@ export default function PerformerBioMagazineDrawer({
     [effectiveSlug],
   );
   const songs: PerformerSong[] = registryPerformer?.songs ?? [];
+
+  useEffect(() => {
+    if (initialTab && isTabId(initialTab)) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    const onOpenTab = (event: Event) => {
+      const detail = (event as CustomEvent<{ tab?: unknown }>).detail;
+      const nextTab = detail?.tab;
+      if (isTabId(nextTab)) setTab(nextTab);
+    };
+    window.addEventListener(PERFORMER_BIO_MAGAZINE_TAB_EVENT, onOpenTab);
+    return () => window.removeEventListener(PERFORMER_BIO_MAGAZINE_TAB_EVENT, onOpenTab);
+  }, []);
 
   useEffect(() => {
     if (registryPerformer) {

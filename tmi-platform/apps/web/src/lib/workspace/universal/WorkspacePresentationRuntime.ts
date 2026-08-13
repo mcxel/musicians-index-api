@@ -1,9 +1,12 @@
 "use client";
 
 /**
- * WorkspacePresentationRuntime — 4-zone + Media Console presentation authority.
+ * WorkspacePresentationRuntime — 4-zone + Media Console + Mobile Stage Deck.
  *
  * HQ modules resolve here (LEFT_QUICK / RIGHT_QUICK / BOTTOM_DEEP / DISCOVERY_WALL).
+ * On mobile Command Center, DRAWER workspaces occupy the Stage Deck region
+ * (MONITORS ⇄ WORKSPACE) via CommandCenterShell + CanonicalBottomDrawerHost —
+ * not a second stacked drawer under live monitors.
  * UniversalWorkspaceWindow FLOATING is FLOATING_EXCEPTION only — never default for HQ.
  */
 

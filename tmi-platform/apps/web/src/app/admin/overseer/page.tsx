@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import WorkspaceManager from "@/components/admin/overseer/workspace/WorkspaceManager";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Overseer Deck | TMI Admin",
   description: "Canonical broadcast command deck for administration operations.",

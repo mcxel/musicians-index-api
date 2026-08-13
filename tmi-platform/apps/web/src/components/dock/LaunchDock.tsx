@@ -37,10 +37,11 @@ export default function LaunchDock() {
   const pathname = usePathname() ?? "";
   const dock = useLaunchDock();
   const onAdminRoute = pathname.startsWith("/admin");
+  const onHubRoute = pathname.startsWith("/hub");
 
   // Hydrate role from session once when opened
   useEffect(() => {
-    if (onAdminRoute || !dock.isOpen) return;
+    if (onAdminRoute || onHubRoute || !dock.isOpen) return;
     let cancelled = false;
     fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
@@ -52,7 +53,7 @@ export default function LaunchDock() {
     return () => {
       cancelled = true;
     };
-  }, [dock.isOpen, onAdminRoute]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dock.isOpen, onAdminRoute, onHubRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const preview = resolveLiveDestination({
     role: dock.role,
@@ -91,8 +92,8 @@ export default function LaunchDock() {
     }
   }, [dock, requestMedia, router]);
 
-  // Never mount GO LIVE floater on admin / Overseer — Admin Cam is OverlayHost only.
-  if (onAdminRoute) {
+  // Never mount GO LIVE floater on admin or Command Center /hub pages
+  if (onAdminRoute || pathname.startsWith("/hub")) {
     return null;
   }
 

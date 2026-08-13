@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AdRailSlot from '@/components/ads/AdRailSlot';
@@ -20,7 +20,6 @@ import LobbyCategoryPillRow, { type LobbyCategoryPill } from '@/components/lobby
 import {
   LIVE_LOBBY_WALL_CONTRACT_ID,
   useAdaptiveWorldRuntime,
-  getGovernedIdleFallbackPolicy,
 } from '@/lib/adaptiveWorldRuntime';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
@@ -36,6 +35,44 @@ const CRAYON_PALETTE = [
 
 function roomColor(index: number): string {
   return CRAYON_PALETTE[index % CRAYON_PALETTE.length];
+}
+
+function stableColorForRoomId(roomId: string): string {
+  let h = 0;
+  for (let i = 0; i < roomId.length; i++) h = (h * 31 + roomId.charCodeAt(i)) >>> 0;
+  return CRAYON_PALETTE[h % CRAYON_PALETTE.length];
+}
+
+/** Sticky mosaic geometry — assigned once per roomId so polling cannot thrash layout. */
+type TileGeometry = {
+  gridColumn: string;
+  gridRow: string;
+  aspectRatio: string;
+};
+
+const stickyTileGeometry = new Map<string, TileGeometry>();
+
+function resolveStickyTileGeometry(room: LobbyRoom): TileGeometry {
+  const existing = stickyTileGeometry.get(room.id);
+  if (existing) return existing;
+
+  const wide = room.type === 'concert' || room.type === 'game' || room.type === 'lounge';
+  const tall = room.type === 'battle' || room.type === 'live' || room.type === 'cypher';
+  // Hero only on first assignment when featured by type+truthful occupancy floor (sticky thereafter).
+  const hero = room.viewerCount >= 200 && (room.type === 'concert' || room.type === 'battle' || room.type === 'live');
+
+  let geom: TileGeometry;
+  if (hero) {
+    geom = { gridColumn: 'span 2', gridRow: 'span 2', aspectRatio: '16 / 9' };
+  } else if (wide) {
+    geom = { gridColumn: 'span 2', gridRow: 'span 1', aspectRatio: '21 / 9' };
+  } else if (tall) {
+    geom = { gridColumn: 'span 1', gridRow: 'span 2', aspectRatio: '3 / 4' };
+  } else {
+    geom = { gridColumn: 'span 1', gridRow: 'span 1', aspectRatio: '1 / 1' };
+  }
+  stickyTileGeometry.set(room.id, geom);
+  return geom;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,7 +105,7 @@ type LiveLobbyWallGridProps = {
   variant?: "page" | "embedded" | "quick";
   /** Optional join override — must still resolve THAT room via DestinationResolver / InstantJoin */
   onRoomJoin?: (room: LobbyRoom) => void;
-  /** Hover / audio focus only — tap always instant-joins */
+  /** Hover / audio focus / in-place preview promotion */
   onRoomFocus?: (room: LobbyRoom) => void;
   /**
    * Optional category pill row (additive). Omit entirely to preserve the
@@ -100,34 +137,39 @@ function toWallKind(type: LobbyRoom['type']): LobbyWallKind {
   return 'live';
 }
 
-// ─── Single Brady-Bunch cell — Continuous Live Lobby Wall Standard ───────────
+// ─── Single mosaic cell — Browse (tap) promotes in-place monitor; Join is explicit ─
 
 function LobbyCell({
   room,
-  colorIndex,
+  color,
+  geometry,
   preview,
-  onJoin,
+  selected,
+  onSelect,
   onPrewarm,
   onFocusAudio,
 }: {
   room: LobbyRoom;
-  colorIndex: number;
+  color: string;
+  geometry: TileGeometry;
   preview: LobbyPreviewTileState;
-  onJoin: (room: LobbyRoom) => void;
+  selected: boolean;
+  onSelect: (room: LobbyRoom) => void;
   onPrewarm: (room: LobbyRoom) => void;
   onFocusAudio: (roomId: string) => void;
 }) {
-  const bg = roomColor(colorIndex);
+  const bg = color;
   const cellRef = useRef<HTMLDivElement | null>(null);
-  const isLive = room.status === 'live' && preview.isLive;
+  const isLive = room.status === 'live';
+  const previewLive = isLive && preview.isLive;
   const hostLabel = sanitizeWallHostLabel(room.performerName, {
     hostUserId: room.hostUserId,
   });
   const { mediaStream } = useLobbyPreviewBind(room.id, {
-    subscribed: preview.subscribed,
-    focused: preview.focused,
-    isLive,
-    quality: preview.quality,
+    subscribed: preview.subscribed || selected,
+    focused: preview.focused || selected,
+    isLive: previewLive,
+    quality: selected ? 'medium' : preview.quality,
   });
 
   useEffect(() => {
@@ -152,11 +194,13 @@ function LobbyCell({
   return (
     <motion.div
       ref={cellRef}
-      initial={{ opacity: 0, scale: 0.88 }}
+      layout
+      layoutId={`mosaic-tile-${room.id}`}
+      initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.35, delay: colorIndex * 0.04 }}
-      whileHover={{ scale: 1.04, zIndex: 10 }}
-      onClick={() => onJoin(room)}
+      transition={{ duration: 0.28 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onSelect(room)}
       onMouseEnter={() => {
         onPrewarm(room);
         onFocusAudio(room.id);
@@ -167,37 +211,26 @@ function LobbyCell({
       }}
       style={{
         position: 'relative',
-        borderRadius: 12,
-        aspectRatio: '4/3',
+        gridColumn: geometry.gridColumn,
+        gridRow: geometry.gridRow,
+        aspectRatio: geometry.aspectRatio,
+        borderRadius: 14,
         background: isLive
           ? `radial-gradient(circle at 35% 35%, ${bg}cc, ${bg}55 60%, #050510)`
           : `radial-gradient(circle at 50% 40%, rgba(255,255,255,0.08), #050510 70%)`,
-        border: preview.focused ? `1px solid ${bg}` : `1px solid rgba(255,255,255,0.1)`,
+        border: selected ? `2px solid ${bg}` : `1px solid ${bg}88`,
         boxShadow: isLive
-          ? `0 4px 35px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.15)`
+          ? `0 4px 28px rgba(0,0,0,0.55), 0 0 18px ${bg}33`
           : `0 2px 12px rgba(0,0,0,0.4)`,
         cursor: 'pointer',
         overflow: 'hidden',
+        minHeight: 0,
       }}
     >
-      {isLive && (
-        <motion.div
-          animate={{ opacity: [1, 0.3, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-          style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#00FF88',
-            boxShadow: '0 0 8px #00FF88',
-            zIndex: 3,
-          }}
-        />
-      )}
-
-      {/* Same-room preview bind (Daily receive-only / URL / composed motion) */}
+      {/* Canonical preview transport (WebRTC / URL video / composed motion) — never static LIVE photo */}
       <LobbyPreviewWindow
         roomId={room.id}
-        preview={preview}
+        preview={{ ...preview, focused: selected || preview.focused }}
         accent={bg}
         performerInitial={hostLabel}
         mediaStream={mediaStream}
@@ -206,43 +239,63 @@ function LobbyCell({
 
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.2) 100%)',
+        background: 'linear-gradient(transparent 40%, rgba(0,0,0,0.88))',
         pointerEvents: 'none',
         zIndex: 4,
       }} />
 
       <div style={{
-        position: 'absolute', top: 8, left: 8,
-        fontSize: 8, fontWeight: 800, letterSpacing: '0.15em',
-        color: '#000', background: bg,
-        padding: '2px 6px', borderRadius: 3, zIndex: 3,
+        position: 'absolute', top: 8, left: 8, right: 8,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        gap: 6, zIndex: 5, pointerEvents: 'none',
       }}>
-        {room.type.toUpperCase()}
+        {isLive ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 8, fontWeight: 900, letterSpacing: '0.08em',
+            color: '#fff', background: 'rgba(230,48,0,0.92)',
+            padding: '3px 7px', borderRadius: 999,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+            LIVE{room.viewerCount > 0 ? ` · ${room.viewerCount.toLocaleString()}` : ''}
+          </span>
+        ) : (
+          <span style={{
+            fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
+            color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.55)',
+            padding: '3px 7px', borderRadius: 999, textTransform: 'uppercase',
+          }}>
+            {room.status === 'starting' ? 'Starting' : room.status}
+          </span>
+        )}
+        <span style={{
+          fontSize: 8, fontWeight: 800, letterSpacing: '0.12em',
+          color: '#000', background: bg,
+          padding: '2px 6px', borderRadius: 4,
+        }}>
+          {room.type.toUpperCase()}
+        </span>
       </div>
 
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
-        padding: '16px 8px 8px',
-        zIndex: 3,
+        padding: '14px 8px 8px',
+        zIndex: 5,
       }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginBottom: 2 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', lineHeight: 1.2, marginBottom: 2 }}>
+          {room.name}
+        </div>
+        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
           {hostLabel}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 9, color: isLive ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
-            {isLive
-              ? (room.viewerCount > 0 ? `👁 ${room.viewerCount.toLocaleString()}` : 'No audience yet')
-              : 'No live audience'}
-          </span>
-          <span style={{ fontSize: 9, color: preview.muted ? 'rgba(255,255,255,0.35)' : '#FFD700' }}>
-            {preview.muted ? '🔇' : '🔊 FOCUS'}
-          </span>
-          {mediaStream && (
-            <span style={{ fontSize: 9, color: '#00FFFF', fontWeight: 700 }}>PREVIEW LIVE</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+          {mediaStream && isLive && (
+            <span style={{ fontSize: 8, color: '#00FFFF', fontWeight: 800 }}>PREVIEW LIVE</span>
           )}
-          {room.prizePool && <span style={{ fontSize: 9, color: '#FFD700' }}>🏆 {room.prizePool}</span>}
-          {room.genre && <span style={{ fontSize: 9, color: `${bg}`, fontWeight: 700 }}>{room.genre}</span>}
+          {!mediaStream && isLive && (
+            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>Connecting preview…</span>
+          )}
+          <span style={{ fontSize: 8, color: '#00E5FF', fontWeight: 800, marginLeft: 'auto' }}>Watch →</span>
         </div>
       </div>
     </motion.div>
@@ -264,32 +317,18 @@ export default function LiveLobbyWallGrid({
 }: LiveLobbyWallGridProps) {
   const router = useRouter();
   useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
-  const [colorOffset, setColorOffset] = useState(0);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const [focusedRoomId, setFocusedRoomId] = useState<string | null>(null);
-  const liveRooms = rooms.filter((r) => r.status !== 'ended');
+  const [promotedRoomId, setPromotedRoomId] = useState<string | null>(null);
+  // Public wall: only discoverable active/starting sessions — ended never stay as dead cards.
+  const liveRooms = rooms.filter((r) => r.status === 'live' || r.status === 'starting');
   const embedded = variant === 'embedded' || variant === 'quick';
   const quick = variant === 'quick';
-
-  useEffect(() => {
-    let timer = window.setInterval(
-      () => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length),
-      getGovernedIdleFallbackPolicy().rotationIntervalMs,
-    );
-    const resync = window.setInterval(() => {
-      window.clearInterval(timer);
-      timer = window.setInterval(
-        () => setColorOffset((p) => (p + 1) % CRAYON_PALETTE.length),
-        getGovernedIdleFallbackPolicy().rotationIntervalMs,
-      );
-    }, 15000);
-    return () => {
-      window.clearInterval(timer);
-      window.clearInterval(resync);
-    };
-  }, []);
-
+  const promotedIndex = promotedRoomId
+    ? liveRooms.findIndex((r) => r.id === promotedRoomId)
+    : -1;
+  const promotedRoom = promotedIndex >= 0 ? liveRooms[promotedIndex] : null;
   const enterRoom = useCallback((room: LobbyRoom) => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('tmi_handoff_started_at', String(Date.now()));
@@ -321,7 +360,16 @@ export default function LiveLobbyWallGrid({
     });
   }, [onRoomJoin]);
 
-  /** Marcel: tile tap → INSTANT join that exact panel (Star Wars LobbyEntryFlow, no black screen). */
+  /** Tap tile → in-place monitor promotion (Browse → Watch). Does not navigate. */
+  const selectRoom = useCallback((room: LobbyRoom) => {
+    setPromotedRoomId(room.id);
+    setFocusedRoomId(room.id);
+    setLobbyAudioFocus(room.id);
+    setFocusTick((n) => n + 1);
+    onRoomFocus?.(room);
+  }, [onRoomFocus]);
+
+  /** Explicit JOIN / ENTER → exact room via LobbyEntryFlow / DestinationResolver. */
   const joinRoom = useCallback((room: LobbyRoom) => {
     setFocusedRoomId(room.id);
     setLobbyAudioFocus(room.id);
@@ -329,6 +377,17 @@ export default function LiveLobbyWallGrid({
     onRoomFocus?.(room);
     enterRoom(room);
   }, [enterRoom, onRoomFocus]);
+
+  const promoteAdjacent = useCallback((direction: 'next' | 'prev') => {
+    if (liveRooms.length === 0) return;
+    const base = promotedIndex >= 0 ? promotedIndex : 0;
+    const next =
+      direction === 'next'
+        ? (base + 1) % liveRooms.length
+        : (base - 1 + liveRooms.length) % liveRooms.length;
+    const room = liveRooms[next];
+    if (room) selectRoom(room);
+  }, [liveRooms, promotedIndex, selectRoom]);
 
   const prewarmRoom = useCallback((room: LobbyRoom) => {
     const dest = resolveLobbyDestination({
@@ -403,7 +462,7 @@ export default function LiveLobbyWallGrid({
           <h1 style={{ margin: 0, fontSize: quick ? 13 : embedded ? 16 : 20, color: '#fff' }}>{title}</h1>
           {embedded && (
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 700 }}>
-              Tap any live tile → instant join (Star Wars seat entry)
+              Tap a tile to watch in place · JOIN enters that exact room
             </div>
           )}
         </div>
@@ -414,17 +473,17 @@ export default function LiveLobbyWallGrid({
           </span>
           <button
             type="button"
-            onClick={() => onSwipe('prev')}
+            onClick={() => (promotedRoom ? promoteAdjacent('prev') : onSwipe('prev'))}
             style={{ padding: embedded ? '6px 8px' : '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
           >
-            ← FOCUS
+            ← PREV
           </button>
           <button
             type="button"
-            onClick={() => onSwipe('next')}
+            onClick={() => (promotedRoom ? promoteAdjacent('next') : onSwipe('next'))}
             style={{ padding: embedded ? '6px 8px' : '8px 10px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
           >
-            FOCUS →
+            NEXT →
           </button>
           {!embedded && (
             <>
@@ -444,7 +503,7 @@ export default function LiveLobbyWallGrid({
                   letterSpacing: '0.1em',
                 }}
               >
-                🎲 RANDOM ROOM
+                🎲 RANDOM JOIN
               </motion.button>
               <a href="/home/5" style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.07)', color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 11, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.12)' }}>
                 ← BACK
@@ -457,7 +516,10 @@ export default function LiveLobbyWallGrid({
             <LobbyCategoryPillRow
               items={categoryPills.items}
               activeId={categoryPills.activeId}
-              onSelect={categoryPills.onSelect}
+              onSelect={(id) => {
+                setPromotedRoomId(null);
+                categoryPills.onSelect(id);
+              }}
             />
           </div>
         )}
@@ -496,21 +558,23 @@ export default function LiveLobbyWallGrid({
         ) : liveRooms.length === 0 ? (
           <div style={{ textAlign: 'center', padding: embedded ? '40px 0' : '80px 0', color: 'rgba(255,255,255,0.35)' }}>
             <div style={{ fontSize: embedded ? 28 : 40, marginBottom: 12 }}>📡</div>
-            <div style={{ fontWeight: 800, fontSize: embedded ? 14 : 16 }}>No active rooms</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>Go live or check back when creators are broadcasting</div>
+            <div style={{ fontWeight: 800, fontSize: embedded ? 14 : 16 }}>No active sessions in this lens</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>Switch lenses or check back when creators are broadcasting</div>
           </div>
         ) : (
           <div style={{
             display: 'grid',
             gridTemplateColumns: quick
-              ? 'repeat(auto-fill, minmax(120px, 1fr))'
+              ? 'repeat(2, minmax(0, 1fr))'
               : embedded
-                ? 'repeat(auto-fill, minmax(160px, 1fr))'
-                : 'repeat(auto-fill, minmax(200px, 1fr))',
+                ? 'repeat(2, minmax(0, 1fr))'
+                : 'repeat(auto-fill, minmax(140px, 1fr))',
+            gridAutoRows: quick ? '110px' : embedded ? '120px' : '140px',
             gap: quick ? 8 : embedded ? 10 : 12,
+            gridAutoFlow: 'dense',
           }}>
             <AnimatePresence>
-              {liveRooms.map((room, idx) => {
+              {liveRooms.map((room) => {
                 const preview = buildLobbyPreviewTile({
                   roomId: room.id,
                   kind: toWallKind(room.type),
@@ -519,18 +583,20 @@ export default function LiveLobbyWallGrid({
                   hasActivePerformer: room.status === 'live',
                   isGauntlet: room.type === 'gauntlet',
                 });
-                // focusTick forces re-read of audio focus after swipe/hover
                 void focusTick;
+                const geometry = resolveStickyTileGeometry(room);
                 return (
                   <LobbyCell
                     key={room.id}
                     room={room}
-                    colorIndex={(idx + colorOffset) % CRAYON_PALETTE.length}
+                    color={stableColorForRoomId(room.id)}
+                    geometry={geometry}
                     preview={{
                       ...preview,
                       focused: focusedRoomId === room.id || preview.focused,
                     }}
-                    onJoin={joinRoom}
+                    selected={promotedRoomId === room.id}
+                    onSelect={selectRoom}
                     onPrewarm={prewarmRoom}
                     onFocusAudio={onFocusAudio}
                   />
@@ -540,6 +606,157 @@ export default function LiveLobbyWallGrid({
           </div>
         )}
       </div>
+
+      {/* In-place Watch monitor — mosaic stays; JOIN is the only exact-room navigation */}
+      <AnimatePresence>
+        {promotedRoom && (
+          <InPlaceWatchMonitor
+            room={promotedRoom}
+            index={promotedIndex}
+            total={liveRooms.length}
+            accent={stableColorForRoomId(promotedRoom.id)}
+            onMinimize={() => setPromotedRoomId(null)}
+            onPrev={() => promoteAdjacent('prev')}
+            onNext={() => promoteAdjacent('next')}
+            onJoin={() => joinRoom(promotedRoom)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+function InPlaceWatchMonitor({
+  room,
+  index,
+  total,
+  accent,
+  onMinimize,
+  onPrev,
+  onNext,
+  onJoin,
+}: {
+  room: LobbyRoom;
+  index: number;
+  total: number;
+  accent: string;
+  onMinimize: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onJoin: () => void;
+}) {
+  const isLive = room.status === 'live';
+  const preview = buildLobbyPreviewTile({
+    roomId: room.id,
+    kind: toWallKind(room.type),
+    href: room.href,
+    isLive,
+    hasActivePerformer: isLive,
+    isGauntlet: room.type === 'gauntlet',
+  });
+  const hostLabel = sanitizeWallHostLabel(room.performerName, { hostUserId: room.hostUserId });
+  const { mediaStream } = useLobbyPreviewBind(room.id, {
+    subscribed: true,
+    focused: true,
+    isLive,
+    quality: 'medium',
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 40 }}
+      style={{
+        position: 'fixed',
+        left: 12,
+        right: 12,
+        bottom: 16,
+        zIndex: 80,
+        maxWidth: 720,
+        margin: '0 auto',
+        borderRadius: 18,
+        overflow: 'hidden',
+        border: `1px solid ${accent}66`,
+        background: 'rgba(8,10,28,0.96)',
+        boxShadow: '0 -12px 40px rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(16px)',
+      }}
+    >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isLive && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E63000' }} />}
+          <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', color: isLive ? '#FF6B6B' : 'rgba(255,255,255,0.6)' }}>
+            IN-PLACE MONITOR
+          </span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
+            ({Math.max(1, index + 1)} / {total})
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" onClick={onPrev} style={monitorChipStyle}>← Prev</button>
+          <button type="button" onClick={onNext} style={monitorChipStyle}>Next →</button>
+          <button type="button" onClick={onMinimize} style={{ ...monitorChipStyle, borderRadius: 999, width: 28, padding: 0 }} title="Minimize">✕</button>
+        </div>
+      </div>
+      <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000', maxHeight: 320 }}>
+        <LobbyPreviewWindow
+          roomId={room.id}
+          preview={{ ...preview, focused: true, muted: false }}
+          accent={accent}
+          performerInitial={hostLabel}
+          mediaStream={mediaStream}
+          previewUrl={room.previewUrl}
+        />
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.1)',
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {room.name}
+          </div>
+          <div style={{ fontSize: 11, color: '#00FF88', fontWeight: 700 }}>
+            {hostLabel}
+            {isLive && room.viewerCount > 0 ? ` · ${room.viewerCount.toLocaleString()} watching` : ''}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button type="button" onClick={onMinimize} style={monitorChipStyle}>Minimize</button>
+          <button
+            type="button"
+            onClick={onJoin}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 12,
+              border: 'none',
+              background: 'linear-gradient(90deg,#00FF88,#00E5FF)',
+              color: '#000',
+              fontWeight: 900,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+            }}
+          >
+            JOIN ROOM →
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const monitorChipStyle: CSSProperties = {
+  padding: '6px 10px',
+  borderRadius: 8,
+  border: '1px solid rgba(255,255,255,0.15)',
+  background: 'rgba(255,255,255,0.08)',
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: 800,
+  cursor: 'pointer',
+};

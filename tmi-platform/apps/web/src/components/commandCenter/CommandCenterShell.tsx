@@ -98,6 +98,8 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
 }
 
 const HUB_DRAWER_DEEPLINK_KEY = "tmi_hub_drawer_deeplink_v1";
+const BIO_MAGAZINE_TAB_EVENT = "tmi:performer-bio-magazine-open-tab";
+type PerformerBioTab = "profile" | "biography" | "magazine" | "gallery" | "music" | "interviews";
 
 function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
   const router = useRouter();
@@ -141,9 +143,19 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenOps = () => setMobileLeftOpen(true);
+    window.addEventListener("tmi:open-ops-menu", handleOpenOps);
+    return () => window.removeEventListener("tmi:open-ops-menu", handleOpenOps);
+  }, []);
   const [monitorsCollapsed, setMonitorsCollapsed] = useState(false);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
+  const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
   const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
+  /** Mobile Stage Deck: MONITORS ⇄ WORKSPACE — mutually exclusive presentation of one region. */
+  const stageDeckWork = isMobile && Boolean(drawerWorkspace && isDrawerExpanded);
+  const stageDeckShowMonitors = isMobile && !stageDeckWork && !monitorsCollapsed;
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -155,6 +167,57 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   } | null>(null);
 
   const hubDrawerDeepLinkDone = useRef(false);
+  /** True only when a control surface collapsed the Stage — not when Marcel hid it manually. */
+  const stageCollapsedByControlRef = useRef(false);
+  const monitorsCollapsedRef = useRef(monitorsCollapsed);
+  monitorsCollapsedRef.current = monitorsCollapsed;
+
+  // Role-switcher CONTROL_FOCUS: collapse empty stage while picker is open (no workspace yet).
+  // Manual HIDE wins: do not restore Stage on close unless this control performed the collapse.
+  useEffect(() => {
+    if (!isMobile) return;
+    const onFocus = () => {
+      if (drawerWorkspace) return;
+      if (!monitorsCollapsedRef.current) {
+        stageCollapsedByControlRef.current = true;
+        setMonitorsCollapsed(true);
+      }
+    };
+    const onFocusEnd = () => {
+      if (drawerWorkspace) return;
+      if (stageCollapsedByControlRef.current) {
+        stageCollapsedByControlRef.current = false;
+        setMonitorsCollapsed(false);
+      }
+    };
+    window.addEventListener("tmi:control-focus", onFocus);
+    window.addEventListener("tmi:control-focus-end", onFocusEnd);
+    return () => {
+      window.removeEventListener("tmi:control-focus", onFocus);
+      window.removeEventListener("tmi:control-focus-end", onFocusEnd);
+    };
+  }, [isMobile, drawerWorkspace]);
+
+  /** Explicit 📺 MONITORS while in WORK — user asked for WATCH; clear manual hide. */
+  const restoreStageMonitors = () => {
+    useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+    stageCollapsedByControlRef.current = false;
+    setMonitorsCollapsed(false);
+    setMobileLeftOpen(false);
+  };
+
+  const openStageWorkspace = (id: string) => {
+    setMobileLeftOpen(false);
+    setMobileRightOpen(false);
+    // Do not clear monitorsCollapsed — manual HIDE must survive WORK → close → stay hidden.
+    presentCanonicalWorkspace(id as any, "DRAWER");
+  };
+
+  /** Manual Stage hide (session strip / header toggle) — ownership stays with the user. */
+  const hideStageManually = () => {
+    stageCollapsedByControlRef.current = false;
+    setMonitorsCollapsed(true);
+  };
 
   // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/fan?drawer=yopho (workspace)
   useEffect(() => {
@@ -271,7 +334,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   /** Always open/swap into drawer (never toggle-close) — used by dock + drawer chips. */
   const openPanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
-    // Prefer Media Console / 4-zone presentation over legacy CommandCenterDrawer + FLOATING.
+    setMobileLeftOpen(false);
+    setMobileRightOpen(false);
+    // Prefer Media Console / Stage Deck presentation over legacy CommandCenterDrawer + FLOATING.
     const opened = openCanonicalWorkspaceQuick(id);
     if (opened) {
       setActivePanel(null);
@@ -312,6 +377,17 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   const isModuleActive = (moduleId: CommandCenterPanelId) =>
     activePanel === moduleId || isUniversalWorkspaceOpenForModule(moduleId);
+
+  const openPerformerBioMagazineTab = (tabId: PerformerBioTab) => {
+    openPanel("bio_magazine");
+    if (typeof window === "undefined") return;
+    const emit = () => {
+      window.dispatchEvent(new CustomEvent(BIO_MAGAZINE_TAB_EVENT, { detail: { tab: tabId } }));
+    };
+    emit();
+    window.requestAnimationFrame(emit);
+    window.setTimeout(emit, 90);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -446,7 +522,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       );
     }
     return (
-      <button key={opts.key} type="button" onClick={opts.onClick} style={style}>
+      <button
+        key={opts.key}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          opts.onClick?.();
+        }}
+        style={style}
+      >
         {inner}
       </button>
     );
@@ -540,9 +624,20 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <>
               <button
                 type="button"
-                onClick={() => setMonitorsCollapsed((v) => !v)}
+                onClick={() => {
+                  if (stageDeckWork) {
+                    restoreStageMonitors();
+                    return;
+                  }
+                  if (monitorsCollapsed) {
+                    stageCollapsedByControlRef.current = false;
+                    setMonitorsCollapsed(false);
+                  } else {
+                    hideStageManually();
+                  }
+                }}
                 style={{
-                  background: monitorsCollapsed ? "rgba(0,229,255,0.22)" : "rgba(255,255,255,0.06)",
+                  background: stageDeckShowMonitors ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
                   border: "1px solid #00E5FF",
                   borderRadius: 6,
                   color: "#00E5FF",
@@ -552,9 +647,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   cursor: "pointer",
                   fontFamily: "inherit",
                 }}
-                title={monitorsCollapsed ? "Pop-up stage monitors" : "Collapse stage monitors for full-screen drawer workspace"}
+                title={
+                  stageDeckWork
+                    ? "Restore monitors — media session preserved"
+                    : monitorsCollapsed
+                      ? "Show Stage Deck monitors"
+                      : "Hide Stage Deck monitors (media stays alive)"
+                }
               >
-                {monitorsCollapsed ? "📺 SHOW STAGE" : "📺 HIDE STAGE"}
+                📺 MONITORS
               </button>
               <button
                 type="button"
@@ -593,9 +694,37 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           <div
             ref={mediaStageRef}
             data-hub-monitor-stage
-            style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
+            data-stage-deck={stageDeckWork ? "work" : stageDeckShowMonitors ? "watch" : "collapsed"}
+            style={{
+              position: "relative",
+              minWidth: 0,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              flex: stageDeckWork ? 1 : undefined,
+            }}
           >
-            {!monitorsCollapsed && (
+            {/* WATCH surface — keep mounted when WORK/COLLAPSED so MediaStream survives */}
+            <div
+              aria-hidden={!stageDeckShowMonitors}
+              style={
+                stageDeckShowMonitors
+                  ? { minWidth: 0, minHeight: 0 }
+                  : {
+                      position: "absolute",
+                      width: 1,
+                      height: 1,
+                      overflow: "hidden",
+                      clip: "rect(0 0 0 0)",
+                      whiteSpace: "nowrap",
+                      border: 0,
+                      padding: 0,
+                      margin: -1,
+                      opacity: 0,
+                      pointerEvents: "none",
+                    }
+              }
+            >
               <GlobalErrorBoundary context="Command Center Monitors">
                 <CommandCenterMediaStack
                   slots={mediaSlots}
@@ -604,66 +733,127 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                 />
               </GlobalErrorBoundary>
-            )}
-            <CommandCenterSessionControlStrip
-              role={role === "performer" ? "performer" : "fan"}
-              onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
-              onEnterStage={() => router.push("/live/go")}
-            />
-            <PersistentMediaInteractionDock
-              role={role === "performer" ? "performer" : "fan"}
-              userId={userId}
-              roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
-              onLobbyNav={
-                role === "fan"
-                  ? () => presentCanonicalWorkspace("lobby", "DRAWER")
-                  : () => openPanel("media_locker")
-              }
-              onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
-            />
-            {/* Mobile quick-action strip — Omni Rolodex in-place canisters (bottom drawer) */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                padding: "8px 12px",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-                scrollbarWidth: "none" as const,
-              }}
-            >
-              {[
-                { id: "yopho", label: "📷 YOPHO" },
-                { id: "playlist-studio", label: "🎵 PLAYLIST" },
-                { id: "stream-win", label: "📻 STREAM & WIN", onClick: () => presentCanonicalWorkspace("playlist-studio", "DRAWER") },
-                { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE", onClick: () => presentCanonicalWorkspace("live-destinations", "DRAWER") },
-                { id: "avatar-quick", label: "👤 AVATAR" },
-                { id: "memory-wall", label: "🧠 MEMORY" },
-                { id: "messaging", label: "💬 MSGS" },
-                { id: "lobby", label: "🏟️ LOBBY WALL" },
-                { id: "inventory", label: "🎒 INV" },
-                { id: "live-destinations", label: "📹 LIVE" },
-                { id: "share-studio", label: "↗ SHARE" },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={item.onClick ?? (() => presentCanonicalWorkspace(item.id as any, "DRAWER"))}
-                  style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
-                >
-                  {item.label}
-                </button>
-              ))}
             </div>
-            <CommandCenterPlaylistBand
-              role={role}
-              userId={userId}
-              displayName={resolvedDisplayName}
-              expanded={(drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") || activePanel === "playlist"}
-              initialPlaylistId={deepLinkPlaylistId}
-              onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
-            />
-            <CanonicalBottomDrawerHost userId={userId} displayName={resolvedDisplayName} role={role === "performer" ? "performer" : "fan"} />
+
+            {stageDeckWork ? (
+              <CanonicalBottomDrawerHost
+                userId={userId}
+                displayName={resolvedDisplayName}
+                role={role === "performer" ? "performer" : "fan"}
+                stageDeck
+              />
+            ) : (
+              <>
+                {!monitorsCollapsed && (
+                  <CommandCenterSessionControlStrip
+                    role={role === "performer" ? "performer" : "fan"}
+                    leaveLabel="📺 MONITORS"
+                    onLeaveRoom={hideStageManually}
+                    onEnterStage={() => router.push("/live/go")}
+                  />
+                )}
+                <PersistentMediaInteractionDock
+                  role={role === "performer" ? "performer" : "fan"}
+                  userId={userId}
+                  roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
+                  onLobbyNav={
+                    role === "fan"
+                      ? () => openStageWorkspace("lobby")
+                      : () => openPanel("media_locker")
+                  }
+                  onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
+                />
+                {/* Mobile quick-action strip — Stage Deck WORK tools (in-place, no navigate) */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    overflowX: "auto",
+                    padding: "8px 12px",
+                    borderTop: "1px solid rgba(255,255,255,0.08)",
+                    scrollbarWidth: "none" as const,
+                  }}
+                >
+                  {(
+                    role === "performer"
+                      ? [
+                          {
+                            id: "magazine",
+                            label: "📰 MAGAZINE",
+                            onClick: () => {
+                              if (typeof window !== "undefined") {
+                                sessionStorage.setItem("tmi_magazine_origin", window.location.pathname + window.location.search);
+                              }
+                              router.push("/magazine/issue/current");
+                            },
+                          },
+                          { id: "my-article", label: "✍️ MY ARTICLE", onClick: () => openPerformerBioMagazineTab("magazine") },
+                          { id: "photos", label: "🖼️ PHOTOS", onClick: () => openPerformerBioMagazineTab("gallery") },
+                          { id: "bio", label: "👤 BIO", onClick: () => openPerformerBioMagazineTab("biography") },
+                          { id: "music", label: "🎵 MUSIC", onClick: () => openPerformerBioMagazineTab("music") },
+                          { id: "press-media", label: "🎙️ PRESS/MEDIA", onClick: () => openPerformerBioMagazineTab("interviews") },
+                          { id: "preview", label: "👁️ PREVIEW", onClick: () => openPerformerBioMagazineTab("magazine") },
+                          { id: "submit-update", label: "✅ SUBMIT/UPDATE", onClick: () => openPerformerBioMagazineTab("profile") },
+                          { id: "yopho", label: "📷 YOPHO" },
+                          { id: "playlist-studio", label: "🎚️ PLAYER" },
+                          { id: "live-destinations", label: "📹 LIVE" },
+                          { id: "messaging", label: "💬 MSGS" },
+                        ]
+                      : [
+                          {
+                            id: "magazine",
+                            label: "📰 MAGAZINE",
+                            onClick: () => {
+                              if (typeof window !== "undefined") {
+                                sessionStorage.setItem("tmi_magazine_origin", window.location.pathname + window.location.search);
+                              }
+                              router.push("/magazine/issue/current");
+                            },
+                          },
+                          { id: "yopho", label: "📷 YOPHO" },
+                          { id: "playlist-studio", label: "🎵 PLAYLIST" },
+                          { id: "stream-win", label: "📻 STREAM & WIN", onClick: () => openStageWorkspace("playlist-studio") },
+                          { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE", onClick: () => openStageWorkspace("live-destinations") },
+                          { id: "avatar-quick", label: "👤 AVATAR" },
+                          { id: "memory-wall", label: "🧠 MEMORY" },
+                          { id: "messaging", label: "💬 MSGS" },
+                          { id: "lobby", label: "🏟️ LOBBY WALL" },
+                          { id: "inventory", label: "🎒 INV" },
+                          { id: "live-destinations", label: "📹 LIVE" },
+                          { id: "share-studio", label: "↗ SHARE" },
+                        ]
+                  ).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={item.onClick ?? (() => openStageWorkspace(item.id))}
+                      style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                <CommandCenterPlaylistBand
+                  role={role}
+                  userId={userId}
+                  displayName={resolvedDisplayName}
+                  expanded={false}
+                  initialPlaylistId={deepLinkPlaylistId}
+                  onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
+                />
+              </>
+            )}
+
+            {/* Compact dock while WORK owns Stage Deck — keep essential media controls reachable */}
+            {stageDeckWork && (
+              <PersistentMediaInteractionDock
+                role={role === "performer" ? "performer" : "fan"}
+                userId={userId}
+                roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
+                onLobbyNav={() => openStageWorkspace("lobby")}
+                onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
+              />
+            )}
           </div>
           <GlobalErrorBoundary context="Command Center Drawer">
             <CommandCenterDrawer
@@ -782,7 +972,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </GlobalErrorBoundary>
               <CommandCenterSessionControlStrip
                 role={role === "performer" ? "performer" : "fan"}
-                onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
+                leaveLabel="📺 MONITORS"
+                onLeaveRoom={hideStageManually}
                 onEnterStage={() => router.push("/live/go")}
               />
               <PersistentMediaInteractionDock

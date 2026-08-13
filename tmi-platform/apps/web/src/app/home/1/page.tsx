@@ -1,4 +1,6 @@
 import React from 'react';
+
+export const dynamic = "force-dynamic";
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';

@@ -1,5 +1,4 @@
 import FanLobbyWall from "@/components/lobby/FanLobbyWall";
-import LiveLobbyDrawer from "@/components/lobby/LiveLobbyDrawer";
 import Link from "next/link";
 
 export const metadata = { title: "Fan Lobby · TMI", description: "Discover fans and build your crew." };
@@ -36,7 +35,6 @@ export default function FanLobbyPage() {
         <div style={{ marginBottom: 28 }} />
         <FanLobbyWall />
       </div>
-      <LiveLobbyDrawer />
     </main>
   );
 }

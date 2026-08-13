@@ -18,6 +18,8 @@ import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
 export interface CommandCenterSessionControlStripProps {
   role: "fan" | "performer";
   onLeaveRoom?: () => void;
+  /** Command Center dashboard: use MONITORS / HIDE STAGE — not venue LEAVE. */
+  leaveLabel?: string;
   onEnterStage?: () => void;
   onEmotesFocus?: () => void;
 }
@@ -25,6 +27,7 @@ export interface CommandCenterSessionControlStripProps {
 export default function CommandCenterSessionControlStrip({
   role,
   onLeaveRoom,
+  leaveLabel = "🚪 LEAVE",
   onEnterStage,
   onEmotesFocus,
 }: CommandCenterSessionControlStripProps) {
@@ -93,7 +96,7 @@ export default function CommandCenterSessionControlStrip({
             maxWidth: "100%",
           }}
         >
-          <SessionBtn label="🚪 LEAVE" accent="#FF4D4D" border="#E63000" onClick={onLeaveRoom} />
+          <SessionBtn label={leaveLabel} accent="#FF4D4D" border="#E63000" onClick={onLeaveRoom} />
           <SessionBtn
             label={isMicActive ? "🎙️ MIC ON" : "🎙️ MIC OFF"}
             accent={isMicActive ? "#00FF88" : "#fff"}

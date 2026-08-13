@@ -20,7 +20,8 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
+import { usePathname, useRouter } from "next/navigation";
 
 // ─── Role metadata ────────────────────────────────────────────────────────────
 
@@ -90,18 +91,39 @@ interface RoleSwitcherWidgetProps {
   buttonLabel?: string;
 }
 
+function isAdminRoleId(role: string): boolean {
+  const r = role.toUpperCase();
+  return r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN";
+}
+
 export default function RoleSwitcherWidget({
   accentColor = "#00FFFF",
   buttonLabel,
 }: RoleSwitcherWidgetProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const onHub = pathname.startsWith("/hub");
   const [open, setOpen] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const sync = () => setIsNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // Fetch available roles once on mount
   useEffect(() => {
@@ -114,6 +136,15 @@ export default function RoleSwitcherWidget({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Hub phone: opening the switcher claims CONTROL_FOCUS (collapse stage via shell).
+  useEffect(() => {
+    if (!open || !onHub || !isNarrow) return;
+    window.dispatchEvent(new CustomEvent("tmi:control-focus", { detail: { source: "role-switcher" } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("tmi:control-focus-end", { detail: { source: "role-switcher" } }));
+    };
+  }, [open, onHub, isNarrow]);
 
   // Dismiss on outside click
   useEffect(() => {
@@ -183,6 +214,11 @@ export default function RoleSwitcherWidget({
 
   const currentRole = activeRole ?? roles[0] ?? "USER";
   const currentDef = getRoleDef(currentRole);
+  // Hub phone: never brand the permanent trigger as ADMIN DECK — that label
+  // belongs in Overseer, not as Fan/Performer Command Center chrome.
+  const hubTriggerLabel =
+    onHub && isNarrow ? "SWITCH ROLES" : undefined;
+  const resolvedTriggerLabel = buttonLabel ?? hubTriggerLabel ?? currentDef.label;
 
   const triggerStyle: CSSProperties = {
     fontSize: 9,
@@ -217,7 +253,7 @@ export default function RoleSwitcherWidget({
         aria-haspopup="dialog"
       >
         <span style={{ fontSize: 12 }}>{currentDef.icon}</span>
-        <span>{buttonLabel ?? currentDef.label}</span>
+        <span>{resolvedTriggerLabel}</span>
         <span
           style={{
             display: "inline-block",
@@ -230,18 +266,24 @@ export default function RoleSwitcherWidget({
         </span>
       </button>
 
-      {/* ── Floating panel ── */}
-      {open && (
+      {/* Portal escapes Command Center stacking contexts so the panel never
+          renders under monitors as an inaccessible in-flow card (T1). */}
+      {mounted &&
+        open &&
+        createPortal(
         <div
           ref={panelRef}
           role="dialog"
           aria-label="Role switcher panel"
+          data-tmi-role-switcher-panel="1"
           style={{
             position: "fixed",
             top: 54,
             right: 12,
-            zIndex: 9999,
-            width: 300,
+            left: isNarrow ? 12 : undefined,
+            zIndex: 12000,
+            width: isNarrow ? "auto" : 300,
+            maxWidth: isNarrow ? "calc(100vw - 24px)" : 300,
             background:
               "linear-gradient(160deg, rgba(6,7,13,0.98), rgba(10,6,20,0.99))",
             border: `1px solid ${accentColor}44`,
@@ -329,6 +371,14 @@ export default function RoleSwitcherWidget({
                 const isCurrent =
                   role.toUpperCase() === currentRole.toUpperCase();
                 const isSwitching = switching === role;
+                const adminDestination =
+                  onHub && isNarrow && isAdminRoleId(role);
+                const tileLabel = adminDestination
+                  ? "ENTER ADMIN DECK"
+                  : def.label;
+                const tileHint = adminDestination
+                  ? "Leaves Command Center → Overseer"
+                  : def.hubUrl;
 
                 return (
                   <button
@@ -378,10 +428,10 @@ export default function RoleSwitcherWidget({
                           color: def.color,
                         }}
                       >
-                        {def.label}
+                        {tileLabel}
                       </div>
                       <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>
-                        {def.hubUrl}
+                        {tileHint}
                       </div>
                     </div>
 
@@ -431,9 +481,12 @@ export default function RoleSwitcherWidget({
               letterSpacing: "0.06em",
             }}
           >
-            Switching updates your active session and navigates to that hub.
+            {onHub && isNarrow
+              ? "Admin opens Overseer as a full destination. Fan/Performer stay in Command Center hubs."
+              : "Switching updates your active session and navigates to that hub."}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

@@ -1,5 +1,4 @@
 import PerformerLobbyWall from "@/components/lobby/PerformerLobbyWall";
-import LiveLobbyDrawer from "@/components/lobby/LiveLobbyDrawer";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -27,7 +26,6 @@ export default function PerformerLobbyPage() {
         </p>
         <PerformerLobbyWall />
       </div>
-      <LiveLobbyDrawer />
     </main>
   );
 }
