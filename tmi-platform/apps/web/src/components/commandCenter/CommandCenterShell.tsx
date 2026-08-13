@@ -30,7 +30,6 @@ import {
 } from "./commandCenterRegistry";
 import { FAN_AD_ZONE, FAN_DRAWER_LAUNCHERS } from "./FanCommandDrawerRegistry";
 import { PERFORMER_DRAWER_LAUNCHERS } from "./PerformerCommandDrawerRegistry";
-import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import {
@@ -48,6 +47,7 @@ import {
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import OperationsSidebar from "@/components/sidebar/OperationsSidebar";
 import CommandCenterTopNav from "./CommandCenterTopNav";
+import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
@@ -141,6 +141,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
+  const [monitorsCollapsed, setMonitorsCollapsed] = useState(false);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
   const [featured, setFeatured] = useState<{
@@ -348,7 +349,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   useEffect(() => {
     // Use matchMedia — reads CSS viewport width, immune to layout-overflow inflating window.innerWidth.
-    const mql = window.matchMedia("(max-width: 767px)");
+    const mql = window.matchMedia("(max-width: 900px)");
     const check = () => {
       const mobile = mql.matches;
       setIsMobile(mobile);
@@ -539,6 +540,24 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <>
               <button
                 type="button"
+                onClick={() => setMonitorsCollapsed((v) => !v)}
+                style={{
+                  background: monitorsCollapsed ? "rgba(0,229,255,0.22)" : "rgba(255,255,255,0.06)",
+                  border: "1px solid #00E5FF",
+                  borderRadius: 6,
+                  color: "#00E5FF",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+                title={monitorsCollapsed ? "Pop-up stage monitors" : "Collapse stage monitors for full-screen drawer workspace"}
+              >
+                {monitorsCollapsed ? "📺 SHOW STAGE" : "📺 HIDE STAGE"}
+              </button>
+              <button
+                type="button"
                 onClick={() => setMobileLeftOpen((v) => !v)}
                 style={{ background: "transparent", border: `1px solid ${theme.primary}44`, borderRadius: 6, color: theme.primary, fontSize: 10, fontWeight: 800, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
               >
@@ -576,14 +595,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             data-hub-monitor-stage
             style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
           >
-            <GlobalErrorBoundary context="Command Center Monitors">
-              <CommandCenterMediaStack
-                slots={mediaSlots}
-                bezelVariant="chrome"
-                naturalHeight
-                seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
-              />
-            </GlobalErrorBoundary>
+            {!monitorsCollapsed && (
+              <GlobalErrorBoundary context="Command Center Monitors">
+                <CommandCenterMediaStack
+                  slots={mediaSlots}
+                  bezelVariant="chrome"
+                  naturalHeight
+                  seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
+                />
+              </GlobalErrorBoundary>
+            )}
             <CommandCenterSessionControlStrip
               role={role === "performer" ? "performer" : "fan"}
               onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
@@ -593,10 +614,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               role={role === "performer" ? "performer" : "fan"}
               userId={userId}
               roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
-              onLobbyNav={role === "fan" ? () => { liveDiscoveryOverlayStore.open(); openCanonicalWorkspaceQuick("lobby"); } : () => openPanel("media_locker")}
+              onLobbyNav={
+                role === "fan"
+                  ? () => presentCanonicalWorkspace("lobby", "DRAWER")
+                  : () => openPanel("media_locker")
+              }
               onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
             />
-            {/* Mobile quick-action strip — phone-accessible commands without needing the rails */}
+            {/* Mobile quick-action strip — Omni Rolodex in-place canisters (bottom drawer) */}
             <div
               style={{
                 display: "flex",
@@ -607,19 +632,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 scrollbarWidth: "none" as const,
               }}
             >
-              {(["memory", "messaging", "lobby", "inventory", "playlist", "media_locker"] as const).map((id) => {
-                const labels: Record<string, string> = { memory: "🧠 MEMORY", messaging: "💬 MSGS", lobby: "🏟️ LOBBY", inventory: "🎒 INV", playlist: "🎵 MUSIC", media_locker: "📁 MEDIA" };
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => launchQuickModule(id as CommandCenterPanelId)}
-                    style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
-                  >
-                    {labels[id]}
-                  </button>
-                );
-              })}
+              {[
+                { id: "yopho", label: "📷 YOPHO" },
+                { id: "playlist-studio", label: "🎵 PLAYLIST" },
+                { id: "stream-win", label: "📻 STREAM & WIN", onClick: () => presentCanonicalWorkspace("playlist-studio", "DRAWER") },
+                { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE", onClick: () => presentCanonicalWorkspace("live-destinations", "DRAWER") },
+                { id: "avatar-quick", label: "👤 AVATAR" },
+                { id: "memory-wall", label: "🧠 MEMORY" },
+                { id: "messaging", label: "💬 MSGS" },
+                { id: "lobby", label: "🏟️ LOBBY WALL" },
+                { id: "inventory", label: "🎒 INV" },
+                { id: "live-destinations", label: "📹 LIVE" },
+                { id: "share-studio", label: "↗ SHARE" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={item.onClick ?? (() => presentCanonicalWorkspace(item.id as any, "DRAWER"))}
+                  style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
             <CommandCenterPlaylistBand
               role={role}
@@ -663,7 +697,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: typeof window !== "undefined" && window.innerWidth < 768 ? "1fr" : "230px minmax(0, 1fr) 300px",
+              gridTemplateColumns: typeof window !== "undefined" && window.innerWidth < 900 ? "1fr" : "230px minmax(0, 1fr) 300px",
               alignItems: "start",
               width: "100%",
               minWidth: 0,
@@ -757,10 +791,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
                 onLobbyNav={
                   role === "fan"
-                    ? () => {
-                        liveDiscoveryOverlayStore.open();
-                        openCanonicalWorkspaceQuick("lobby");
-                      }
+                    ? () => presentCanonicalWorkspace("lobby", "DRAWER")
                     : () => openPanel("media_locker")
                 }
                 onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
@@ -809,7 +840,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
                 <button
                   type="button"
-                  onClick={() => liveDiscoveryOverlayStore.open()}
+                  onClick={() => presentCanonicalWorkspace("lobby", "DRAWER")}
                   style={{
                     display: "block",
                     width: "100%",
@@ -972,7 +1003,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
             <button
               type="button"
-              onClick={() => { liveDiscoveryOverlayStore.open(); setMobileRightOpen(false); }}
+              onClick={() => {
+                presentCanonicalWorkspace("lobby", "DRAWER");
+                setMobileRightOpen(false);
+              }}
               style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10, color: theme.secondary, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", cursor: "pointer", fontFamily: "inherit" }}
             >
               Open Live Lobby Wall →

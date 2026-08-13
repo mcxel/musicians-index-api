@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
 import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
 import { useTheme } from "@/lib/design/ThemeEngine";
-import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
+import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
   userId: string;
@@ -22,7 +22,7 @@ interface CommandCenterTopNavProps {
 
 const NAV_LINKS = [
   { label: "HOME", href: "/" },
-  { label: "DISCOVER", href: "/explore" },
+  { label: "DISCOVER", href: null as string | null, liveWall: true },
   { label: "LIVE NOW", href: null as string | null, liveWall: true },
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
@@ -47,7 +47,6 @@ function mapSessionTier(raw: string | null | undefined): TierLevel {
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
-  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [tier, setTier] = useState<TierLevel>("free");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -157,7 +156,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             <button
               key={link.label}
               type="button"
-              onClick={() => openLiveLobbyWalls()}
+              onClick={() => presentCanonicalWorkspace("lobby", "DRAWER")}
               style={{
                 fontSize: 10,
                 fontWeight: 800,

@@ -11,12 +11,15 @@ import Link from "next/link";
 import MemoryWallPanelOverlay from "@/components/panels/MemoryWallPanelOverlay";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
-import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import type { PlatformRole } from "@/lib/os/universalPermissionRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import {
+  openCanonicalWorkspaceQuick,
+  presentCanonicalWorkspace,
+} from "@/lib/workspace/universal/openCanonicalPresentation";
 import {
   sendPlaybackCommand,
   subscribePlaybackCommands,
@@ -68,7 +71,6 @@ export default function PersistentMediaInteractionDock({
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace } =
     useFloatingWorkspace();
-  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
   const { screenStream, startScreenShare, stopScreenShare } = useMonitorScreenShare({
     openPickerOnStart: true,
   });
@@ -144,17 +146,7 @@ export default function PersistentMediaInteractionDock({
   }, []);
 
   const openShareStudio = () => {
-    const href = typeof window !== "undefined" ? window.location.href : undefined;
-    const path = typeof window !== "undefined" ? window.location.pathname : "/";
-    livingOsCommandBus.executeAction("ACTION_OPEN_SHARE_STUDIO", {
-      role: commandRole(),
-      payload: {
-        workspaceId: "share-studio",
-        trackTitle: nowPlaying?.title,
-        linkUrl: href,
-        sharePath: path,
-      },
-    });
+    presentCanonicalWorkspace("share-studio", "DRAWER");
   };
 
   const progressLabel = (() => {
@@ -356,36 +348,28 @@ export default function PersistentMediaInteractionDock({
               }}
             >
               <NavHome workspaceOpen={workspaceOpen} onToggleWorkspace={toggleWorkspace} />
-              <NavLink label="DISCOVER" icon="🧭" href="/explore" />
-              <NavButton label="LIVE NOW" icon="📹" onClick={openLiveLobbyWalls} />
-              <NavButton
-                label="LOBBY"
-                icon="👥"
-                onClick={() => {
-                  if (!isPerformer && onOpenModule) onOpenModule("lobby");
-                  else if (onLobbyNav) onLobbyNav();
-                  else openLiveLobbyWalls();
-                }}
-              />
-              <NavLink label="MESSAGES" icon="💬" href="/messages" badge={unreadMessages} />
-              <NavLink label="NOTIFICATIONS" icon="🔔" href="/notifications" badge={unreadNotifications} />
+              <NavButton label="DISCOVER" icon="🧭" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
+              <NavButton label="LIVE NOW" icon="📹" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
+              <NavButton label="LOBBY" icon="👥" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
+              <NavButton label="MESSAGES" icon="💬" onClick={() => openCanonicalWorkspaceQuick("messaging", "DRAWER")} badge={unreadMessages} />
+              <NavButton label="NOTIFICATIONS" icon="🔔" onClick={() => openCanonicalWorkspaceQuick("notifications", "DRAWER")} badge={unreadNotifications} />
             </div>
 
             {/* RIGHT — Live / Media controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
               <button
                 type="button"
-                onClick={() => openInSurface("avatar-quick")}
+                onClick={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
                 style={toolBtn}
-                aria-label="Avatar quick HUD"
+                aria-label="Avatar workspace"
               >
                 👤 AVATAR
               </button>
               <button
                 type="button"
-                onClick={() => openInSurface("inventory-quick")}
+                onClick={() => presentCanonicalWorkspace("inventory", "DRAWER")}
                 style={toolBtn}
-                aria-label="Inventory quick HUD"
+                aria-label="Inventory workspace"
               >
                 🎒 INV
               </button>
@@ -397,7 +381,7 @@ export default function PersistentMediaInteractionDock({
               >
                 🖥 {screenStream ? "STOP SHARE" : "SHARE SCREEN"}
               </button>
-              <button type="button" onClick={() => setIsCameraOpen(true)} style={toolBtn} aria-label="Record capture">
+              <button type="button" onClick={() => setIsCameraOpen(true)} style={toolBtn} aria-label="Camera workspace">
                 ⏺ RECORD
               </button>
               <button type="button" onClick={openShareStudio} style={toolBtn} aria-label="Open Share Studio">
@@ -438,11 +422,11 @@ export default function PersistentMediaInteractionDock({
               </div>
               <button
                 type="button"
-                onClick={() => openInSurface("memory-quick")}
+                onClick={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
                 style={toolBtn}
-                aria-label="Memory quick HUD"
+                aria-label="Memory workspace"
               >
-                🧠
+                🧠 MEMORY
               </button>
               <button
                 type="button"
@@ -596,10 +580,12 @@ function NavButton({
   label,
   icon,
   onClick,
+  badge,
 }: {
   label: string;
   icon: string;
   onClick: () => void;
+  badge?: number;
 }) {
   return (
     <button
@@ -618,10 +604,12 @@ function NavButton({
         cursor: "pointer",
         fontFamily: "inherit",
         whiteSpace: "nowrap",
+        position: "relative",
       }}
     >
       <span>{icon}</span>
       <span>{label}</span>
+      {badge != null && badge > 0 ? <Badge count={badge} /> : null}
     </button>
   );
 }

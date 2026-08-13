@@ -496,6 +496,7 @@ export default function CommandCenterMediaStack({
       style={{
         flexShrink: 0,
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
         gap: 6,
         padding: "6px 10px",

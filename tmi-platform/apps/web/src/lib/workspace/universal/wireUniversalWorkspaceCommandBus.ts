@@ -56,8 +56,7 @@ export function wireUniversalWorkspaceCommandBus(): () => void {
         return;
       }
       if (actionId === "ACTION_OPEN_SHARE_STUDIO") {
-        // FLOATING_EXCEPTION — temporary share window
-        universalWorkspaceRuntime.open("share-studio", context);
+        openViaPresentation("share-studio", context);
         return;
       }
       const workspaceId = cmd.payload?.workspaceId;

@@ -27,7 +27,6 @@ import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
 import { MonitorRuntimeProvider } from "@/components/monitor/MonitorRuntimeContext";
 import MonitorRuntime from "@/components/monitor/MonitorRuntime";
 import PlatformFooter from "@/components/layout/PlatformFooter";
-import DiscoverySidePanel from "@/components/discovery/DiscoverySidePanel";
 import { WatchSessionProvider } from "@/lib/presence/WatchSessionContext";
 import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
 import LaunchDock from "@/components/dock/LaunchDock";
@@ -225,7 +224,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* VoiceDirector / TMIVideoMonitor floaters permanently unmounted — Admin Cam = Overseer gem OverlayHost only */}
               <LiveFeedbackPanel />
               <MonitorRuntime />
-              <DiscoverySidePanel />
               <PersistentMiniPlayer />
               <LaunchDock />
               <GlobalLiveDiscoveryOverlay />

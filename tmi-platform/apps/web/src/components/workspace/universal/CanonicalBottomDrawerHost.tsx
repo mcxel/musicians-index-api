@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import PlaylistStudioContent from "./PlaylistStudioContent";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
+import ShareStudioContent from "./ShareStudioContent";
 import UniversalWorkspaceStubContent from "./UniversalWorkspaceStubContent";
 
 const FanAvatarCanister = dynamic(() => import("@/components/avatar/FanAvatarCanister"), { ssr: false });
@@ -127,6 +128,8 @@ export default function CanonicalBottomDrawerHost({
       <div style={{ padding: 16, minHeight, maxHeight, overflowY: "auto" }}>
         {drawerWorkspace === "playlist-studio" ? (
           <PlaylistStudioContent userId={uid} context={{}} />
+        ) : drawerWorkspace === "share-studio" ? (
+          <ShareStudioContent context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }} />
         ) : drawerWorkspace === "settings" ? (
           <SettingsWorkspaceContent userId={uid} displayName={name} />
         ) : drawerWorkspace === "inventory" && role === "fan" ? (

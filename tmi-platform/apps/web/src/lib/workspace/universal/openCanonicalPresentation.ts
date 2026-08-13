@@ -4,7 +4,6 @@
  */
 
 import type { CommandCenterPanelId } from "@/components/commandCenter/commandCenterRegistry";
-import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import { UNIVERSAL_WORKSPACE_DEFS } from "./UniversalWorkspaceRegistry";
 import {
   useWorkspacePresentationStore,
@@ -45,11 +44,12 @@ export function presentCanonicalWorkspace(
   const config = WORKSPACE_PRESENTATION_MAP[wsId];
   const surface = surfaceOverride ?? config?.preferredSurface ?? "DRAWER";
 
+  // Omni Rolodex: never open the floating Live Lobby overlay for HQ workspaces.
+  // DISCOVERY_WALL callers converge into the in-place bottom drawer.
   if (surface === "DISCOVERY_WALL") {
-    liveDiscoveryOverlayStore.open();
-    useWorkspacePresentationStore.getState().openInSurface(wsId, "DISCOVERY_WALL");
+    useWorkspacePresentationStore.getState().openInSurface(wsId, "DRAWER");
     suppressFloatingForCanonical(wsId);
-    return surface;
+    return "DRAWER";
   }
 
   if (surface === "FLOATING") {
@@ -83,9 +83,6 @@ export function isCanonicalWorkspaceActive(moduleId: CommandCenterPanelId): bool
   const state = useWorkspacePresentationStore.getState();
   const wsId = resolveWorkspaceId(moduleId);
   if (!wsId) return false;
-  if (wsId === "lobby" || wsId === "live-destinations") {
-    return liveDiscoveryOverlayStore.getState().isOpen;
-  }
   return (
     state.leftPanelWorkspace === wsId ||
     state.rightPanelWorkspace === wsId ||

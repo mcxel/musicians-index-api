@@ -55,7 +55,7 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
 
   "memory-wall": { preferredSurface: "DRAWER", deepSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
   submissions: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
-  "share-studio": { preferredSurface: "FLOATING", defaultWidth: 480 },
+  "share-studio": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
 
   // Live Lobby Wall — full-width grid in bottom dock (not floating side panel)
   lobby: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },

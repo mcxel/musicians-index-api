@@ -6,6 +6,10 @@ import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
 import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
+import {
+  openCanonicalWorkspaceQuick,
+  presentCanonicalWorkspace,
+} from "@/lib/workspace/universal/openCanonicalPresentation";
 import styles from "./TMIGlobalNav.module.css";
 
 interface SessionState {
@@ -69,6 +73,9 @@ export default function TMIGlobalNav() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const isHubPath =
+    pathname.startsWith("/hub/") || pathname.startsWith("/dashboard");
 
   useEffect(() => {
     setMounted(true);
@@ -248,16 +255,24 @@ export default function TMIGlobalNav() {
       {/* Core nav items */}
       {NAV_ITEMS.map(({ icon, label, href }) => {
         const targetHref = label === "Home" ? dashboardHref : href;
-        const opensLiveWall = label === "Lobby" || label === "Live Now";
+        const opensLobbyDrawer =
+          label === "Lobby" || label === "Live Now" || label === "Discover";
         const active =
-          !opensLiveWall &&
+          !opensLobbyDrawer &&
           (pathname === targetHref || (targetHref !== "/" && pathname.startsWith(targetHref + "/")));
         return (
           <button
             key={label}
-            title={opensLiveWall ? "Live Lobby Walls video wall" : label}
+            title={opensLobbyDrawer ? "Open lobby / live destinations in drawer" : label}
             onClick={() => {
-              if (opensLiveWall) {
+              if (isHubPath && opensLobbyDrawer) {
+                presentCanonicalWorkspace(
+                  label === "Live Now" ? "live-destinations" : "lobby",
+                  "DRAWER",
+                );
+                return;
+              }
+              if (label === "Lobby" || label === "Live Now") {
                 liveDiscoveryOverlayStore.open();
                 return;
               }
@@ -275,7 +290,13 @@ export default function TMIGlobalNav() {
       {/* Notifications */}
       <button
         title="Notifications"
-        onClick={() => router.push("/notifications")}
+        onClick={() => {
+          if (isHubPath) {
+            openCanonicalWorkspaceQuick("notifications", "DRAWER");
+            return;
+          }
+          router.push("/notifications");
+        }}
         className={styles.dockItem}
         data-active={String(pathname.startsWith("/notifications"))}
       >
@@ -293,7 +314,13 @@ export default function TMIGlobalNav() {
       {/* Messages */}
       <button
         title="Messages"
-        onClick={() => router.push("/messages")}
+        onClick={() => {
+          if (isHubPath) {
+            openCanonicalWorkspaceQuick("messaging", "DRAWER");
+            return;
+          }
+          router.push("/messages");
+        }}
         className={styles.dockItem}
         data-active={String(pathname.startsWith("/messages"))}
       >

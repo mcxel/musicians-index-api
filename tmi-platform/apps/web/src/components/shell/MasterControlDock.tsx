@@ -18,13 +18,13 @@ import FloatingWorkspacePanel from '@/components/workspace/FloatingWorkspacePane
 import UniversalWorkspaceHost from '@/components/workspace/universal/UniversalWorkspaceHost';
 import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
-import { useLiveDiscoveryOverlay } from '@/lib/discovery/liveDiscoveryOverlayStore';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
 import { livingOsCommandBus } from '@/lib/os/livingOsCommandBus';
 import type { PlatformRole } from '@/lib/os/universalPermissionRegistry';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/design/ThemeEngine';
+import { openCanonicalWorkspaceQuick, presentCanonicalWorkspace } from '@/lib/workspace/universal/openCanonicalPresentation';
 
 export type DockModuleId = 'lobby' | 'yopho' | 'playlist' | 'memory';
 
@@ -87,7 +87,6 @@ export default function MasterControlDock({
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace, setRole } =
     useFloatingWorkspace();
-  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
 
   const isPerformer = role === 'performer' || role === 'artist';
 
@@ -114,19 +113,9 @@ export default function MasterControlDock({
     });
   };
 
-  /** Flight Deck Share → Universal Workspace share-studio with active context. */
+  /** Flight Deck Share → Universal Workspace share-studio inside bottom drawer. */
   const openShareStudio = () => {
-    const href = typeof window !== 'undefined' ? window.location.href : undefined;
-    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
-    livingOsCommandBus.executeAction('ACTION_OPEN_SHARE_STUDIO', {
-      role: commandRole(),
-      payload: {
-        workspaceId: 'share-studio',
-        trackTitle: isPlayingAudio ? 'Playing from playlist' : undefined,
-        linkUrl: href,
-        sharePath: path,
-      },
-    });
+    presentCanonicalWorkspace('share-studio', 'DRAWER');
   };
 
   const handleMicClick = () => {
@@ -551,81 +540,38 @@ export default function MasterControlDock({
             </div>
 
             {[
-              { label: 'DISCOVER', icon: '🧭', path: '/explore' as string | null },
-              { label: 'LIVE NOW', icon: '📹', path: null as string | null, liveWall: true },
-              { label: 'LOBBY', icon: '👥', path: null as string | null, lobby: true },
-              { label: 'MESSAGES', icon: '💬', path: '/messages' },
-              { label: 'NOTIFICATIONS', icon: '🔔', path: '/notifications' },
-            ].map((nav) =>
-              nav.path === null ? (
-                <button
-                  key={nav.label}
-                  type="button"
-                  onClick={() => {
-                    if ('liveWall' in nav && nav.liveWall) {
-                      openLiveLobbyWalls();
-                      return;
-                    }
-                    if ('lobby' in nav && nav.lobby) {
-                      // Fan → Avatar Lobby drawer; Performer → Media Locker via onLobbyNav
-                      if (!isPerformer && onOpenModule) onOpenModule('lobby');
-                      else if (onLobbyNav) onLobbyNav();
-                      else if (onOpenModule) onOpenModule('lobby');
-                      else openLiveLobbyWalls();
-                      return;
-                    }
-                    openLiveLobbyWalls();
-                  }}
-                  aria-label={
-                    nav.label === 'LIVE NOW'
-                      ? 'Open Live Lobby Walls video wall'
-                      : nav.label === 'LOBBY'
-                        ? (isPerformer ? 'Open Media Locker drawer' : 'Open Avatar Fan Lobby')
-                        : 'Open Live Lobby Walls'
-                  }
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 9,
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    color: 'rgba(255,255,255,0.8)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    padding: '2px 4px',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span>{nav.icon}</span>
-                  <span>{nav.label}</span>
-                </button>
-              ) : (
-                <a
-                  key={nav.label}
-                  href={nav.path}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 9,
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    color: 'rgba(255,255,255,0.8)',
-                    textDecoration: 'none',
-                    position: 'relative',
-                    padding: '2px 4px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span>{nav.icon}</span>
-                  <span>{nav.label}</span>
-                </a>
-              ),
-            )}
+              { label: 'DISCOVER', icon: '🧭', moduleId: 'lobby' as const },
+              { label: 'LIVE NOW', icon: '📹', moduleId: 'lobby' as const },
+              { label: 'LOBBY', icon: '👥', moduleId: 'lobby' as const },
+              { label: 'MESSAGES', icon: '💬', moduleId: 'messaging' as const },
+              { label: 'NOTIFICATIONS', icon: '🔔', moduleId: 'notifications' as const },
+            ].map((nav) => (
+              <button
+                key={nav.label}
+                type="button"
+                onClick={() => openCanonicalWorkspaceQuick(nav.moduleId, 'DRAWER')}
+                aria-label={`Open ${nav.label} workspace drawer`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  color: 'rgba(255,255,255,0.8)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  padding: '2px 4px',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span>{nav.icon}</span>
+                <span>{nav.label}</span>
+              </button>
+            ))}
           </div>
 
           {/* Tools + honest connection segment (Rule 20 — no fake ms/ping) */}

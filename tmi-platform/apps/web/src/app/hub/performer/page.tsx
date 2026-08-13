@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Performer Hub — matching Command Center shell (shared with Fan).
  * Drawer: Media Locker / YoPho / Beat Lab / Bookings / Stage — never Fan Lobby ownership.
