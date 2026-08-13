@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { NextRequest } from "next/server";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 
 const VALID_GENRES = ["Trap","Hip-Hop","R&B","EDM","Dance","Afrobeat","Latin","Rock","Pop","House","Drill","Reggaeton","Other"];
 
 // Admin auto-submit pipeline — J. Paul Sanchez and other admin producers.
 // No security bypass: still validates all fields and writes full audit log.
 export async function POST(req: NextRequest) {
-  const role = req.cookies.get("tmi_role")?.value ?? "";
-  if (role !== "ADMIN" && role !== "admin") {
+  const auth = await getTmiAuth();
+  const role = (auth?.user.role ?? req.cookies.get("tmi_role")?.value ?? "").toUpperCase();
+  if (role !== "ADMIN" && role !== "SUPERADMIN" && role !== "OWNER") {
     return NextResponse.json({ ok: false, error: "admin only" }, { status: 403 });
   }
 
-  const actorId = req.cookies.get("tmi_session_id")?.value ?? "";
+  // Bind to DB user id — same owner key as locker-submit / beats/list?mine=1
+  const actorId = auth?.user.id ?? "";
+  if (!actorId) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no body */ }
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const beat = await prisma.beat.create({
     data: {
-      producerId: actorId || "admin",
+      producerId: actorId,
       slug,
       title,
       genre,

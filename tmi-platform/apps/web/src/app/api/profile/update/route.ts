@@ -51,18 +51,9 @@ export async function PUT(req: NextRequest) {
     user = await prisma.user.findUnique({ where: { id: userIdCookie }, select: { id: true, role: true, displayName: true, email: true } });
   }
 
+  // P0 Media Integrity: never bind avatar/profile writes to an unrelated "first user".
   if (!user) {
-    // Fallback: look up last active non-QA user or default performer account
-    const firstUser = await prisma.user.findFirst({
-      where: { isQA: false },
-      orderBy: { userCreatedAt: 'desc' },
-      select: { id: true, role: true, displayName: true, email: true },
-    });
-    user = firstUser;
-  }
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Unauthorized. Log in to update profile.', saved: false }, { status: 401 });
   }
 
   let saved = false;
@@ -157,8 +148,15 @@ export async function PUT(req: NextRequest) {
 
     saved = true;
   } catch (err) {
-    console.error('[api/profile/update] DB write warning:', err);
-    saved = true; // Non-fatal fallback for UI responsiveness
+    console.error('[api/profile/update] DB write failed:', err);
+    return NextResponse.json(
+      { ok: false, saved: false, error: 'Profile update failed to persist.' },
+      { status: 500 },
+    );
+  }
+
+  if (!saved) {
+    return NextResponse.json({ ok: false, saved: false, error: 'Profile update did not persist.' }, { status: 500 });
   }
 
   const response = NextResponse.json({ ok: true, saved: true, displayName: body.displayName ?? user.displayName });

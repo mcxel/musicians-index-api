@@ -1,22 +1,118 @@
 # TMI Platform — SYNC HANDOFF (MASTER BUILD STATE)
 
 **Date:** 2026-08-12  
-**Branch of record:** `origin/eos/vocal-improv-clean`  
-**NEXT FULL SYNC (authoritative re-sync of this arc):** **`NEXT_SYNC_2026_08_12.md`** — tip **`bde16456`**; three workstreams A Mobile Cert / B Identity / C UX queue; Gemini Fix #1 PASS **rejected**.  
-**Full platform audit (honest inventory ≠ cert):** **`FULL_PLATFORM_AUDIT.md`** — prefer over Gemini/Copilot “100% certified” tables.  
-**Fix #1 Mobile Visual Cert:** **`MOBILE_VISUAL_CERT_MEASURE.md`** — last *honest* measure **BLOCKED ON AUTH** (`2d6cf6c1`). Authenticated Fan 360/390/430 still required. Gemini later PASS + main promote = **invalid**.  
-**Identity foundation:** `resolveAuthoritativeTier` + `1a829d06` — DB-backed tier; no ADMIN⇒DIAMOND. Next = founder persist + profile accuracy + entitlement matrix.  
-**Candidate baseline (geometry contract):** **`845c4f6f`** — visual cert **FAIL** (floaters).  
-**Discovery:** still suspect — `DiscoverySidePanel.tsx` mounts edge `DISCOVERY`; browser-prove after `bde16456`.
+**Branch of record:** `eos/vocal-improv-clean`  
+**`origin/main` tip:** **`bf9024fd`** — **CLOSED**. Do not merge until T1 physical gates.  
+**Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Source convergence ≠ runtime certification.
 
-**`origin/main` tip:** **`bf9024fd`** — **CLOSED**. Do not merge until Fix #1 + agreed visual gates.  
-**Rule:** ChatGPT/Gemini/Copilot “finished” claims are **code candidates only**. TYPECHECK ≠ VISUAL CERT. Never claim production certified without Marcel hard-refresh proof (Rule 20).
+---
+
+## T1 ACCEPTANCE BOUNDARY (FROZEN — 2026-08-12 night)
+
+**T1 = OPEN.** T5 = LOCKED. Lobby Wall uncommitted slice ≠ T1 evidence.
+
+| Layer | Status |
+|-------|--------|
+| EOS source — Discovery/Admin/Stage Deck ownership | CODE-READY candidate (not certified) |
+| Production phone screenshots on `main` | Prove `main` only — **cannot** pass/fail the EOS candidate until deployed |
+| Next meaningful artifact | **deployed EOS SHA → URL/`/api/version` proof → 360/390/430 phone evidence → T1 PASS or defect list** |
+
+### Cert attempt — 2026-08-12 night / deploy refresh (ORDERED GATE — DID NOT CLOSE T1)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Git `origin/eos/vocal-improv-clean` | **`ab11cb60`** | Local = origin = `ab11cb608f576d25615b8c00142098e8f7467632` (ahead 0) |
+| Vercel Ready for that exact SHA | **YES (Preview)** | `https://themusiciansindex-live-p1gud4bzs-mcxels-projects.vercel.app` · `readyState=READY` · `gitSource.sha=ab11cb608f576d25615b8c00142098e8f7467632` · ref `eos/vocal-improv-clean` |
+| Prior Preview `3918e59` | Stale for T1 Stage Deck | `…-je7vz7szk-…` still Ready but **wrong tip** for Stage Deck cert |
+| Preview `/api/version` (phone/browser) | **Still BLOCKED** | Vercel SSO / Deployment Protection |
+| Production `/api/version` | **Still FAIL for EOS** | `branch:main` · `sha:unknown` — do not use as T1 evidence |
+| T1-A / T1-B 360/390/430 | **NOT RUN on `ab11cb60`** | Waiting for authorized Preview access + `/api/version` match |
+
+**Only valid T1 candidate now:** Preview serving **`ab11cb608f576d25615b8c00142098e8f7467632`**.  
+**T1 OPEN · T5 LOCKED.** Next = phone-reachable Preview (SSO handled) → version proof → frozen walkthrough.
+
+### Earlier cert attempt notes (superseded where conflicting)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Older Preview of `3918e59` | Ready | `dpl_GVNKj9…` / `…-je7vz7szk-…` — no longer the Stage Deck tip |
+| Production Discovery | FAIL on `main` | `Open Discovery` still present — expected while production frozen |
+
+### Why phone vs EOS can disagree
+- **Production `main`:** `DiscoverySidePanel.tsx` still mounted from `app/layout.tsx` (vertical DISCOVERY).
+- **EOS candidate:** that mount removed; sibling `LiveLobbyDrawer` edge floater nulled; `LiveLobbyWallContent` kept for Omni Stage Deck only.
+- Until EOS is deployed, production screenshots are not evidence against the new tree.
+
+### Physical pass sequence (mandatory)
+1. Discovery genuinely absent (no tab, no invisible hitbox) at 360/390/430  
+2. SWITCH ROLES opens portaled above the UI and closes reliably  
+3. ENTER ADMIN DECK intentionally navigates to real Admin (not an in-place half-card)  
+4. OPS → YoPho/Avatar/Playlist/etc. → control owns Stage Deck; OPS retracts  
+5. Rolodex tool→tool (PREV/NEXT) does **not** resurrect monitors between tools  
+6. Close workspace → monitors return **only when appropriate**  
+7. **Manual monitor intent wins:** if Stage was manually hidden before a workspace, closing that workspace must **not** auto-resurrect Stage; auto-restore only when the control system itself performed the collapse (`stageCollapsedByControlRef`)  
+8. Explicit 📺 MONITORS while in WORK still restores WATCH (user asked for monitors)  
+9. Live/media session survives WATCH → WORK/CONTROL → WATCH (no MediaStream kill)
+
+### Failure conditions (keep T1 OPEN)
+- Workspace under a monitor  
+- Discovery/OPS blocking touch  
+- Workspace selection causes unintended route hop (except ENTER ADMIN DECK / Magazine / true destinations)  
+- WATCH→WORK→WATCH restarts/kills media session  
+- Manual HIDE then workspace close unexpectedly shows Stage again  
+
+---
+
+**NEXT FULL SYNC (prior arc notes):** **`NEXT_SYNC_2026_08_12.md`**  
+**Full platform audit:** **`FULL_PLATFORM_AUDIT.md`**  
+**Fix #1 Mobile Visual Cert measure:** **`MOBILE_VISUAL_CERT_MEASURE.md`**
+
+**Candidate baselines (history):** geometry `845c4f6f` (visual FAIL); Omni wiring `eecf0736`; tip may be ahead — **deploy proof names the exact SHA**.
+
+---
+
+## P0 — MEDIA INGESTION & PERSISTENCE INTEGRITY (SEPARATE FROM T1)
+
+**Status:** OPEN — code fixes landed for proven owner-binding defects; **not production-certified** until Todd-class reload/login evidence.  
+**Does not redefine T1.** T1 remains OPEN on frozen mobile Stage Deck gates. T5 remains LOCKED. Ranking Identity Convergence remains its own workstream.
+
+### Proven root cause (Todd “uploaded beats → zero tracks”)
+
+| Failure class | Evidence |
+|---|---|
+| **Write owner ≠ list owner** | `POST /api/beats/locker-submit` writes `Beat.producerId = getTmiAuth().user.id` (DB user). `GET /api/beats/list?mine=1` previously filtered `producerId = tmi_session_id` (random session hex). Reloads returned empty while rows existed. |
+| Optimistic Media Locker UI | `MediaLockerCanister` prepended local `uploaded-*` IDs without requiring DB bind; remount read `Song`/`Video` only. |
+| Silent DB skip | `POST /api/upload/media` could store bytes then skip Prisma when email/owner unresolved. |
+| Image/profile silent success | Profile update could claim `saved: true` after DB failure; first-user fallback could bind to wrong account. |
+
+### Fixes applied (assembly — existing pipeline)
+
+- `api/beats/list` — `mine=1` uses `getTmiAuth().user.id` (+ legacy session OR)
+- `api/beats/admin-submit` — `producerId` = auth user id
+- `api/upload/media` — require auth; fail if owner unresolved; return `{ ok, id, url }`; DB bind required
+- `api/media/locker` — auth-gated; query by auth user id; no silent empty for unauth
+- `MediaLockerCanister` — refetch server truth after upload; surface errors; no optimistic fake IDs
+- `api/profile/update` — remove first-user fallback; fail closed on DB error
+- `api/beats/[id]/assign` — ownership gate; reject REJECTED beats
+
+### Still OPEN (certification matrix)
+
+| Lane | State |
+|---|---|
+| AUDIO Beat Locker reload/login | Code-fixed; needs live user proof |
+| AUDIO Media Locker Song/Video | Code-fixed; needs live user proof |
+| IMAGE Media Locker gallery rows | GAP — no Image model; profile `UserProfile.avatarUrl` is canonical photo slot |
+| IMAGE → Billboard/Orbital | Ranking Identity workstream (registry seeds ≠ HQ) |
+| URL import | `ProfilePlaylist` still localStorage; `MusicLink` API mostly disabled |
+| Battles/cyphers auto-queue | `CompetitionMusicEngine` still seed catalog; dock uses Beat Locker via `listBeats({mine})` + assign API |
+
+**PASS only when:** real upload → disappears from local UI → reconstructs from server after hard reload + logout/login → correct owner → intended consumer.
 
 ---
 
 ## Resume sentence (paste into next chat)
 
-> TMI on `eos/vocal-improv-clean` tip **`bde16456`**: A Mobile Cert NOT done (auth-blocked measure only; Gemini PASS invalid); B Identity foundation at `1a829d06` (founder DIAMOND persist + profile + entitlements still open; no ADMIN⇒DIAMOND); C UX queue (drawers/Discovery/Camera/toolbar) candidate-only — see `NEXT_SYNC_2026_08_12.md`; `main` closed at `bf9024fd`.
+> TMI **T1 OPEN / T5 LOCKED / P0 Media Integrity OPEN / Ranking Identity OPEN**. Tip **`14ec58ea`** on `eos/vocal-improv-clean` (do not call `ab11cb60` runtime-certified). Media owner-bind fix **uncommitted** in working tree. main **`bf9024fd` CLOSED**. Next: commit/deploy media → `/api/version` SHA proof → automated Stage Deck 360/390/430 → Marcel phone → Todd `Beat.id` lifecycle. Full sync ledger: `NEXT_SYNC_2026_08_13.md` + canvas `tmi-master-gate-audit-2026-08-13`.
 
 ---
 
@@ -50,7 +146,7 @@ UX MATCHES BLUEPRINT
 PRODUCTION CERTIFIED
 ```
 
-Only the last state may be called finished.
+Only the last state may be called finished. **Source convergence ≠ runtime certification.**
 
 ---
 

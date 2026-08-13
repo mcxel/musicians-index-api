@@ -33,14 +33,23 @@ export default function MediaLockerCanister({
   const [items, setItems] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const reloadLocker = async () => {
+    const r = await fetch("/api/media/locker", { credentials: "include" });
+    const d = (await r.json()) as { items?: MediaItem[]; error?: string };
+    if (!r.ok) {
+      setItems([]);
+      setUploadError(d.error ?? "Unable to load Media Locker.");
+      return;
+    }
+    setItems(d.items || []);
+    setUploadError(null);
+  };
+
   useEffect(() => {
-    fetch("/api/media/locker", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d) => setItems(d.items || []))
-      .catch(() => setItems([]))
-      .finally(() => setIsLoading(false));
+    void reloadLocker().finally(() => setIsLoading(false));
   }, []);
 
   const ACCEPT_MAP: Record<MediaLockerTab, string> = {
@@ -54,33 +63,53 @@ export default function MediaLockerCanister({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
+    setUploadError(null);
 
     try {
       const isImage = file.type.startsWith("image/");
-      const endpoint = isImage ? "/api/upload" : "/api/upload/media";
+      const isDocument = activeTab === "documents" || file.type.startsWith("application/") || file.type === "text/plain";
+
+      // Images: blob upload exists, but no Media Locker image row model yet.
+      // Documents: no durable locker path — do not pretend success.
+      if (isDocument && !isImage) {
+        setUploadError("Document locker binding is not available yet. Upload was not saved.");
+        return;
+      }
+      if (isImage) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("context", "media-locker");
+        const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+        const data = (await res.json()) as { url?: string; success?: boolean; error?: string };
+        if (!res.ok || !data.url) {
+          setUploadError(data.error ?? "Image upload failed. Nothing was saved.");
+          return;
+        }
+        setUploadError(
+          "Image reached storage, but is not bound into Media Locker yet. Set your Profile photo for canonical identity.",
+        );
+        return;
+      }
+
       const fd = new FormData();
       fd.append("file", file);
-      if (isImage) fd.append("context", "media-locker");
-
-      const res = await fetch(endpoint, { method: "POST", body: fd, credentials: "include" });
-      if (res.ok) {
-        const data = await res.json() as { url?: string; success?: boolean };
-        if (data.url) {
-          const newItem: MediaItem = {
-            id: `uploaded-${Date.now()}`,
-            title: file.name.replace(/\.[^.]+$/, ""),
-            type: activeTab,
-            url: data.url,
-            addedAt: new Date().toISOString().slice(0, 10),
-          };
-          setItems((p) => [newItem, ...p]);
-        }
+      const res = await fetch("/api/upload/media", { method: "POST", body: fd, credentials: "include" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        url?: string;
+        id?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.id) {
+        setUploadError(data.error ?? "Upload failed. Track was not saved.");
+        return;
       }
+      // Reconstruct list from server truth — never keep optimistic local-only IDs.
+      await reloadLocker();
     } catch {
-      // Silent fail — user can retry
+      setUploadError("Upload failed. Check connection and try again.");
     } finally {
       setIsUploading(false);
-      // Reset file input so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -110,7 +139,24 @@ export default function MediaLockerCanister({
       accentColor={accentColor}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        
+        {uploadError && (
+          <div
+            role="alert"
+            style={{
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: "1px solid rgba(255,80,80,0.45)",
+              background: "rgba(255,40,40,0.12)",
+              color: "#FFB4B4",
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1.4,
+            }}
+          >
+            {uploadError}
+          </div>
+        )}
+
         {/* Tabs */}
         <div style={{ display: "flex", gap: 6, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 8 }}>
           {tabs.map((tab) => (

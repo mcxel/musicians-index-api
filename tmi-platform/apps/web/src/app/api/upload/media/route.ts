@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import prisma from '@/lib/prisma';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 import { recordMediaObservabilityEvent } from '@/lib/media/media-observability-store';
 
 const ALLOWED_AUDIO = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac', 'audio/flac', 'audio/webm', 'audio/x-m4a'];
@@ -15,6 +16,12 @@ export async function POST(req: NextRequest) {
   if (!allowed) {
     recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'rate_limit' });
     return NextResponse.json({ error: 'Rate limit exceeded. Please wait a moment.' }, { status: 429 });
+  }
+
+  const auth = await getTmiAuth();
+  if (!auth) {
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'unauthorized' });
+    return NextResponse.json({ error: 'Log in to upload media.' }, { status: 401 });
   }
 
   let formData: FormData;
@@ -48,50 +55,99 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Use Vercel Blob when token is present; fall back to a mock CDN URL
-  const email = req.cookies.get('tmi_user_email')?.value;
-  const dbUser = email
-    ? await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null)
-    : null;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: auth.user.id },
+    select: { id: true },
+  }).catch(() => null);
+
+  // If auth fell back to session hex (no email), resolve via email cookie once more
+  let uploaderId = dbUser?.id ?? null;
+  if (!uploaderId && auth.user.email) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: auth.user.email },
+      select: { id: true },
+    }).catch(() => null);
+    uploaderId = byEmail?.id ?? null;
+  }
+
+  if (!uploaderId) {
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'owner_unresolved' });
+    return NextResponse.json(
+      { error: 'Could not bind upload to your account. Re-login and try again.' },
+      { status: 401 },
+    );
+  }
 
   const isAudio = ALLOWED_AUDIO.includes(file.type);
   const isVideo = ALLOWED_VIDEO.includes(file.type);
   const title = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
 
-  async function persistToDB(url: string) {
-    if (!dbUser) return;
-    try {
-      if (isVideo) {
-        await prisma.video.create({ data: { uploaderId: dbUser.id, title, videoUrl: url, status: 'ACTIVE' } });
-      } else if (isAudio) {
-        await prisma.song.create({ data: { uploaderId: dbUser.id, title, audioUrl: url, status: 'ACTIVE' } });
-      }
-    } catch { /* non-fatal */ }
+  async function persistToDB(url: string): Promise<{ id: string; type: 'songs' | 'videos' }> {
+    if (isVideo) {
+      const row = await prisma.video.create({
+        data: { uploaderId: uploaderId!, title, videoUrl: url, status: 'ACTIVE' },
+        select: { id: true },
+      });
+      return { id: row.id, type: 'videos' };
+    }
+    const row = await prisma.song.create({
+      data: { uploaderId: uploaderId!, title, audioUrl: url, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    return { id: row.id, type: 'songs' };
   }
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { put } = await import('@vercel/blob');
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const pathname = `tmi-media/${Date.now()}-${safeName}`;
-    const blob = await put(pathname, file, { access: 'public' });
-    await persistToDB(blob.url);
-    recordMediaObservabilityEvent(isVideo ? 'video_upload_success' : 'song_upload_success', { storage: 'blob', mimeType: file.type });
-    return NextResponse.json({ url: blob.url, isAudio, isVideo });
+  try {
+    let url: string;
+    let storage: 'blob' | 'local_disk';
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { put } = await import('@vercel/blob');
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const pathname = `tmi-media/${uploaderId}/${Date.now()}-${safeName}`;
+      const blob = await put(pathname, file, { access: 'public' });
+      url = blob.url;
+      storage = 'blob';
+    } else {
+      // Local development fallback: persist file on disk and expose a first-party URL.
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? (isVideo ? 'mp4' : 'mp3');
+      const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload';
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}.${ext}`;
+      const uploadDir = path.join(process.cwd(), '.tmi-data', 'uploads', 'media');
+      const absolutePath = path.join(uploadDir, fileName);
+      const bytes = Buffer.from(await file.arrayBuffer());
+
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(absolutePath, bytes);
+
+      url = `/api/upload/media/local/${encodeURIComponent(fileName)}`;
+      storage = 'local_disk';
+    }
+
+    const persisted = await persistToDB(url);
+    recordMediaObservabilityEvent(isVideo ? 'video_upload_success' : 'song_upload_success', {
+      storage,
+      mimeType: file.type,
+      assetId: persisted.id,
+      ownerUserId: uploaderId,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      url,
+      id: persisted.id,
+      type: persisted.type,
+      title,
+      isAudio,
+      isVideo,
+      ...(storage === 'local_disk' ? { _local: true } : {}),
+    });
+  } catch (err) {
+    console.error('[upload/media] persist failed', err);
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'persist_failed' });
+    return NextResponse.json(
+      { error: 'Upload stored but failed to bind to Media Locker. Retry or contact support.' },
+      { status: 500 },
+    );
   }
-
-  // Local development fallback: persist file on disk and expose a first-party URL.
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? (isVideo ? 'mp4' : 'mp3');
-  const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload';
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}.${ext}`;
-  const uploadDir = path.join(process.cwd(), '.tmi-data', 'uploads', 'media');
-  const absolutePath = path.join(uploadDir, fileName);
-  const bytes = Buffer.from(await file.arrayBuffer());
-
-  await fs.mkdir(uploadDir, { recursive: true });
-  await fs.writeFile(absolutePath, bytes);
-
-  const localUrl = `/api/upload/media/local/${encodeURIComponent(fileName)}`;
-  await persistToDB(localUrl);
-  recordMediaObservabilityEvent(isVideo ? 'video_upload_success' : 'song_upload_success', { storage: 'local_disk', mimeType: file.type });
-  return NextResponse.json({ url: localUrl, isAudio, isVideo, _local: true });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { NextRequest } from "next/server";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 
 const VALID_TARGET_TYPES = [
   "battle",
@@ -16,7 +17,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const actorId = req.cookies.get("tmi_session_id")?.value ?? "";
+  const auth = await getTmiAuth();
+  if (!auth) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const actorId = auth.user.id;
+  const sessionCookie = req.cookies.get("tmi_session_id")?.value ?? "";
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no body */ }
@@ -36,6 +42,20 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "beat not found" }, { status: 404 });
   }
 
+  const ownsBeat =
+    beat.producerId === actorId ||
+    (sessionCookie.length > 0 && beat.producerId === sessionCookie);
+  const role = (auth.user.role ?? "").toUpperCase();
+  const isAdmin = role === "ADMIN" || role === "SUPERADMIN" || role === "OWNER";
+  if (!ownsBeat && !isAdmin) {
+    return NextResponse.json({ ok: false, error: "Not authorized to assign this beat" }, { status: 403 });
+  }
+
+  // Do not auto-publicize private/unapproved audio into competition pools.
+  if (beat.moderationStatus === "REJECTED") {
+    return NextResponse.json({ ok: false, error: "Rejected beats cannot enter competition queues" }, { status: 403 });
+  }
+
   const assignment = await prisma.beatAssignment.upsert({
     where: { beatId_targetType_targetId: { beatId: params.id, targetType, targetId } },
     create: { beatId: params.id, targetType, targetId },
@@ -43,16 +63,14 @@ export async function POST(
   });
 
   try {
-    if (actorId) {
-      await prisma.auditLog.create({
-        data: {
-          action: "BEAT_ASSIGNED",
-          actorId,
-          targetId: beat.id,
-          details: { beatTitle: beat.title, targetType, targetId, assignedAt: new Date().toISOString() },
-        },
-      });
-    }
+    await prisma.auditLog.create({
+      data: {
+        action: "BEAT_ASSIGNED",
+        actorId,
+        targetId: beat.id,
+        details: { beatTitle: beat.title, targetType, targetId, assignedAt: new Date().toISOString() },
+      },
+    });
   } catch {
     console.error("[assign] audit log write failed for beat", beat.id);
   }
