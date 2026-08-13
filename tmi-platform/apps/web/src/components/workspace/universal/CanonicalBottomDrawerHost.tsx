@@ -81,10 +81,17 @@ export default function CanonicalBottomDrawerHost({
   const { drawerWorkspace, isDrawerExpanded, mediaConsoleMode, closeSurface, toggleDrawerExpand } =
     useWorkspacePresentationStore();
 
+  const visibleTools = useMemo(() => {
+    if (role === "performer") {
+      return ROLODEX_TOOLS.filter((t) => t.id !== "avatar-quick" && t.id !== "inventory");
+    }
+    return ROLODEX_TOOLS;
+  }, [role]);
+
   const rolodexIndex = useMemo(() => {
     if (!drawerWorkspace) return -1;
-    return ROLODEX_TOOLS.findIndex((t) => t.id === drawerWorkspace);
-  }, [drawerWorkspace]);
+    return visibleTools.findIndex((t) => t.id === drawerWorkspace);
+  }, [drawerWorkspace, visibleTools]);
 
   if (!drawerWorkspace || !isDrawerExpanded) return null;
 
@@ -94,14 +101,14 @@ export default function CanonicalBottomDrawerHost({
   const restoreMonitors = () => closeSurface("DRAWER");
 
   const goPrev = () => {
-    if (ROLODEX_TOOLS.length === 0) return;
-    const i = rolodexIndex < 0 ? 0 : (rolodexIndex - 1 + ROLODEX_TOOLS.length) % ROLODEX_TOOLS.length;
-    presentCanonicalWorkspace(ROLODEX_TOOLS[i]!.id, "DRAWER");
+    if (visibleTools.length === 0) return;
+    const i = rolodexIndex < 0 ? 0 : (rolodexIndex - 1 + visibleTools.length) % visibleTools.length;
+    presentCanonicalWorkspace(visibleTools[i]!.id, "DRAWER");
   };
   const goNext = () => {
-    if (ROLODEX_TOOLS.length === 0) return;
-    const i = rolodexIndex < 0 ? 0 : (rolodexIndex + 1) % ROLODEX_TOOLS.length;
-    presentCanonicalWorkspace(ROLODEX_TOOLS[i]!.id, "DRAWER");
+    if (visibleTools.length === 0) return;
+    const i = rolodexIndex < 0 ? 0 : (rolodexIndex + 1) % visibleTools.length;
+    presentCanonicalWorkspace(visibleTools[i]!.id, "DRAWER");
   };
 
   const contentMinHeight = stageDeck ? "min(58vh, 640px)" : isLobbyWall ? 480 : 380;
@@ -193,7 +200,7 @@ export default function CanonicalBottomDrawerHost({
           flexShrink: 0,
         }}
       >
-        {ROLODEX_TOOLS.map((tool) => {
+        {visibleTools.map((tool) => {
           const isActive = drawerWorkspace === tool.id;
           return (
             <button
@@ -240,7 +247,7 @@ export default function CanonicalBottomDrawerHost({
           <ShareStudioContent context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }} />
         ) : drawerWorkspace === "settings" ? (
           <SettingsWorkspaceContent userId={uid} displayName={name} />
-        ) : drawerWorkspace === "inventory" && role === "fan" ? (
+        ) : (drawerWorkspace === "inventory" || drawerWorkspace === "avatar-quick") && role === "fan" ? (
           <FanAvatarCanister userId={uid} displayName={name} role="FAN" />
         ) : isLobbyWall ? (
           <LiveLobbyWallContent />

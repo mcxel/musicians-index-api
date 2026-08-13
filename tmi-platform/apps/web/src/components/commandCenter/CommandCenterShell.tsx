@@ -844,18 +844,20 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </>
             )}
           </div>
-          <GlobalErrorBoundary context="Command Center Drawer">
-            <CommandCenterDrawer
-              role={role}
-              activePanel={activePanel}
-              appearanceOpen={appearanceOpen}
-              userId={userId}
-              displayName={resolvedDisplayName}
-              onClose={closeDrawer}
-              onSelectPanel={openPanel}
-              initialPlaylistId={deepLinkPlaylistId}
-            />
-          </GlobalErrorBoundary>
+          {!isMobile && activePanel && (
+            <GlobalErrorBoundary context="Command Center Drawer">
+              <CommandCenterDrawer
+                role={role}
+                activePanel={activePanel}
+                appearanceOpen={appearanceOpen}
+                userId={userId}
+                displayName={resolvedDisplayName}
+                onClose={closeDrawer}
+                onSelectPanel={openPanel}
+                initialPlaylistId={deepLinkPlaylistId}
+              />
+            </GlobalErrorBoundary>
+          )}
         </div>
       ) : (
         /* ── DESKTOP: 3-column grid, rails are static in-flow grid children ── */

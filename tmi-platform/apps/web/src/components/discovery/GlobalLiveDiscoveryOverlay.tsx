@@ -65,7 +65,8 @@ export default function GlobalLiveDiscoveryOverlay({
   }, []);
 
   // Never mount discovery overlay on Command Center /hub or /dashboard routes
-  if (pathname.startsWith("/hub") || pathname.startsWith("/dashboard")) {
+  const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+  if (currentPath.startsWith("/hub") || currentPath.startsWith("/dashboard")) {
     return null;
   }
 

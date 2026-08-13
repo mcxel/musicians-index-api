@@ -117,7 +117,8 @@ export default function NavigationRail() {
   }, []);
 
   // Hide on excluded paths
-  const isExcluded = EXCLUDED_PREFIXES.some(p => (pathname ?? "").startsWith(p));
+  const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+  const isExcluded = EXCLUDED_PREFIXES.some((p) => currentPath.startsWith(p));
   if (isExcluded) return null;
 
   function handleLink(href: string) {
