@@ -843,17 +843,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 />
               </>
             )}
-
-            {/* Compact dock while WORK owns Stage Deck — keep essential media controls reachable */}
-            {stageDeckWork && (
-              <PersistentMediaInteractionDock
-                role={role === "performer" ? "performer" : "fan"}
-                userId={userId}
-                roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
-                onLobbyNav={() => openStageWorkspace("lobby")}
-                onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
-              />
-            )}
           </div>
           <GlobalErrorBoundary context="Command Center Drawer">
             <CommandCenterDrawer

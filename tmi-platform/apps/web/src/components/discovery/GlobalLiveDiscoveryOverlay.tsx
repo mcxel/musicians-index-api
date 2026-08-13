@@ -7,6 +7,7 @@
 
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -40,6 +41,7 @@ export default function GlobalLiveDiscoveryOverlay({
   viewerUserId: viewerUserIdProp = null,
   viewerRole: viewerRoleProp,
 }: GlobalLiveDiscoveryOverlayProps) {
+  const pathname = usePathname() ?? "";
   const {
     isOpen,
     lockedCategory,
@@ -48,6 +50,11 @@ export default function GlobalLiveDiscoveryOverlay({
     setTvMode,
     setLockedCategory,
   } = useLiveDiscoveryOverlay();
+
+  // Never mount discovery overlay on Command Center /hub routes
+  if (pathname.startsWith("/hub")) {
+    return null;
+  }
 
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionRole, setSessionRole] = useState<string>("FAN");

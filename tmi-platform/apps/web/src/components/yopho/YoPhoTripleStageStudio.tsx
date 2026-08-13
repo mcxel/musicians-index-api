@@ -92,12 +92,21 @@ export default function YoPhoTripleStageStudio({
   const [timelineSec, setTimelineSec] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loopTimeline, setLoopTimeline] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"working" | "preview" | "compare" | "filters">("working");
+  const [isMobile, setIsMobile] = useState(false);
   const [compareHold, setCompareHold] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const undoStack = useRef<YoPhoPortraitBlueprint[]>([]);
   const rafRef = useRef<number | null>(null);
   const lastTick = useRef<number | null>(null);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const durationSec = preview.previewDurationSec ?? master.previewDurationSec ?? 6;
@@ -633,112 +642,167 @@ export default function YoPhoTripleStageStudio({
         </span>
       </div>
 
+      {/* Mobile stage selector tab strip */}
+      {isMobile && (
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            overflowX: "auto",
+            padding: "4px 0 10px",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            marginBottom: 10,
+            scrollbarWidth: "none" as const,
+          }}
+        >
+          {[
+            { id: "working" as const, label: "🖼️ WORKING CARD" },
+            { id: "preview" as const, label: "✨ PREVIEW 1" },
+            { id: "compare" as const, label: "🪞 PREVIEW 2 (COMPARE)" },
+            { id: "filters" as const, label: "🎨 FILTERS & EFFECTS" },
+          ].map((tab) => {
+            const active = mobileTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMobileTab(tab.id)}
+                style={{
+                  flexShrink: 0,
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: active ? `1px solid ${CYAN}` : "1px solid rgba(255,255,255,0.12)",
+                  background: active ? `${CYAN}22` : "rgba(255,255,255,0.04)",
+                  color: active ? CYAN : "rgba(255,255,255,0.7)",
+                  fontSize: 9,
+                  fontWeight: active ? 900 : 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div
         data-yopho-triple-grid
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(180px, 220px) 1fr 1.15fr 1fr",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(180px, 220px) 1fr 1.15fr 1fr",
           gap: 14,
           alignItems: "start",
         }}
       >
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(8,5,20,0.95)",
-            maxHeight: 520,
-            overflowY: "auto",
-          }}
-        >
-          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA, marginBottom: 10 }}>
-            FILTERS & EFFECTS
+        {/* FILTERS & EFFECTS PANEL */}
+        {(!isMobile || mobileTab === "filters") && (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(8,5,20,0.95)",
+              maxHeight: isMobile ? 380 : 520,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA, marginBottom: 10 }}>
+              FILTERS & EFFECTS
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8, lineHeight: 1.4 }}>
+              Click → live on Preview / Preview 2. Master unchanged until Apply.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {YOPHO_PORTRAIT_CONTROLS.map((c) => {
+                const selected = selectedControlId === c.id;
+                const soon = c.status === "coming_soon";
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    title={c.description}
+                    onClick={() => handleControlClick(c.id)}
+                    style={{
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: selected ? `2px solid ${CYAN}` : "1px solid rgba(255,255,255,0.12)",
+                      background: soon ? "rgba(255,255,255,0.03)" : selected ? `${CYAN}18` : "rgba(255,255,255,0.04)",
+                      color: soon ? "rgba(255,255,255,0.35)" : "#fff",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      opacity: soon ? 0.75 : 1,
+                    }}
+                  >
+                    {c.label}
+                    {soon ? <span style={{ marginLeft: 6, fontSize: 8, color: GOLD }}>SOON</span> : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8, lineHeight: 1.4 }}>
-            Click → live on Preview / Preview 2. Master unchanged until Apply.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {YOPHO_PORTRAIT_CONTROLS.map((c) => {
-              const selected = selectedControlId === c.id;
-              const soon = c.status === "coming_soon";
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  title={c.description}
-                  onClick={() => handleControlClick(c.id)}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: selected ? `2px solid ${CYAN}` : "1px solid rgba(255,255,255,0.12)",
-                    background: soon ? "rgba(255,255,255,0.03)" : selected ? `${CYAN}18` : "rgba(255,255,255,0.04)",
-                    color: soon ? "rgba(255,255,255,0.35)" : "#fff",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    opacity: soon ? 0.75 : 1,
-                  }}
-                >
-                  {c.label}
-                  {soon ? <span style={{ marginLeft: 6, fontSize: 8, color: GOLD }}>SOON</span> : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
 
-        {/* Preview — effect path */}
-        <div>
-          {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
-          <YoPhoPortraitStageCanvas
-            blueprint={effectPreviewBlueprint}
-            height={STAGE_CANVAS_HEIGHT}
-            interactive={false}
-            timelineSec={timelineSec}
-            playbackPaused={!isPlaying}
-            emptyLabel="Preview"
-          />
-        </div>
-
-        {/* Center working card — live layer stack + transforms; filter overlays stay on Preview panes until Apply */}
-        <div>
-          {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
-          <YoPhoPortraitStageCanvas
-            blueprint={preview}
-            height={WORKING_CARD_CANVAS_HEIGHT}
-            interactive={false}
-            timelineSec={timelineSec}
-            playbackPaused
-            suppressOverlays
-            emptyLabel="Put your image here"
-          />
-          <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
-            SET IMAGE ON ACTIVE LAYER
-          </button>
-        </div>
-
-        {/* Preview 2 — compare */}
-        <div
-          onPointerDown={() => setCompareHold(true)}
-          onPointerUp={() => setCompareHold(false)}
-          onPointerLeave={() => setCompareHold(false)}
-        >
-          {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
-          <YoPhoPortraitStageCanvas
-            blueprint={compareHold ? master : preview}
-            height={STAGE_CANVAS_HEIGHT}
-            interactive={false}
-            timelineSec={timelineSec}
-            playbackPaused={!isPlaying}
-            suppressOverlays={compareHold}
-            emptyLabel="Preview 2"
-          />
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-            {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
+        {/* PREVIEW 1 — effect path */}
+        {(!isMobile || mobileTab === "preview") && (
+          <div>
+            {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
+            <YoPhoPortraitStageCanvas
+              blueprint={effectPreviewBlueprint}
+              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused={!isPlaying}
+              emptyLabel="Preview"
+            />
           </div>
-        </div>
+        )}
+
+        {/* WORKING CARD — live layer stack + transforms */}
+        {(!isMobile || mobileTab === "working") && (
+          <div>
+            {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
+            <YoPhoPortraitStageCanvas
+              blueprint={preview}
+              height={isMobile ? "clamp(240px, 44vh, 400px)" : WORKING_CARD_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused
+              suppressOverlays
+              emptyLabel="Put your image here"
+            />
+            <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
+              SET IMAGE ON ACTIVE LAYER
+            </button>
+          </div>
+        )}
+
+        {/* PREVIEW 2 — compare */}
+        {(!isMobile || mobileTab === "compare") && (
+          <div
+            onPointerDown={() => setCompareHold(true)}
+            onPointerUp={() => setCompareHold(false)}
+            onPointerLeave={() => setCompareHold(false)}
+          >
+            {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
+            <YoPhoPortraitStageCanvas
+              blueprint={compareHold ? master : preview}
+              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused={!isPlaying}
+              suppressOverlays={compareHold}
+              emptyLabel="Preview 2"
+            />
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+              {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
+            </div>
+          </div>
+        )}
       </div>
 
       <div

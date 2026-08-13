@@ -41,6 +41,10 @@ const EXCLUDED_PREFIXES = [
   "/payment-cancelled",
   "/admin/overseer",
   "/admin/observatory",
+  // Hub Command Center owns its own Omni chrome — left-edge TMI-OS rail
+  // competes with monitors / drawers on phone (T1 ownership).
+  "/hub/",
+  "/hub",
 ];
 
 // ── Menu items — all real routes ─────────────────────────────────────────────
