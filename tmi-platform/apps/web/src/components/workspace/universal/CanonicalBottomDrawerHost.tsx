@@ -18,6 +18,11 @@ import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
 import UniversalWorkspaceStubContent from "./UniversalWorkspaceStubContent";
 
+const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/PerformerBioMagazineDrawer"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading…</div>,
+});
+
 const FanAvatarCanister = dynamic(() => import("@/components/avatar/FanAvatarCanister"), { ssr: false });
 const LiveLobbyWallContent = dynamic(
   () => import("@/components/lobby/LiveLobbyDrawer").then((m) => ({ default: m.LiveLobbyWallContent })),
@@ -247,8 +252,10 @@ export default function CanonicalBottomDrawerHost({
           <ShareStudioContent context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }} />
         ) : drawerWorkspace === "settings" ? (
           <SettingsWorkspaceContent userId={uid} displayName={name} />
-        ) : (drawerWorkspace === "inventory" || drawerWorkspace === "avatar-quick") && role === "fan" ? (
+        ) : drawerWorkspace === "avatar-quick" && role === "fan" ? (
           <FanAvatarCanister userId={uid} displayName={name} role="FAN" />
+        ) : drawerWorkspace === "bio-magazine" && role === "performer" ? (
+          <PerformerBioMagazineDrawer userId={uid} displayName={name} />
         ) : isLobbyWall ? (
           <LiveLobbyWallContent />
         ) : (

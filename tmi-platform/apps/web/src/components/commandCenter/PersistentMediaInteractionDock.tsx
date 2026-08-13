@@ -357,22 +357,27 @@ export default function PersistentMediaInteractionDock({
 
             {/* RIGHT — Live / Media controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
-                style={toolBtn}
-                aria-label="Avatar workspace"
-              >
-                👤 AVATAR
-              </button>
-              <button
-                type="button"
-                onClick={() => presentCanonicalWorkspace("inventory", "DRAWER")}
-                style={toolBtn}
-                aria-label="Inventory workspace"
-              >
-                🎒 INV
-              </button>
+              {/* Avatar/Inventory ownership is Fan-only (Rule 26 Identity Policy) — never expose the chrome to Performers. */}
+              {!isPerformer && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
+                    style={toolBtn}
+                    aria-label="Avatar workspace"
+                  >
+                    👤 AVATAR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => presentCanonicalWorkspace("inventory", "DRAWER")}
+                    style={toolBtn}
+                    aria-label="Inventory workspace"
+                  >
+                    🎒 INV
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => (screenStream ? stopScreenShare() : void startScreenShare())}

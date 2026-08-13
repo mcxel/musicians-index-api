@@ -269,6 +269,15 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     minHeight: 360,
     phase1Content: true,
   },
+  "bio-magazine": {
+    id: "bio-magazine",
+    label: "Bio / Article / Magazine",
+    accent: "#FF2DAA",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 640 },
+    minWidth: 480,
+    minHeight: 400,
+    phase1Content: false,
+  },
 };
 
 export function getWorkspaceDef(id: UniversalWorkspaceId): UniversalWorkspaceDef {

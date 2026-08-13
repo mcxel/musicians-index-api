@@ -88,6 +88,7 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   "prize-vault": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
   "championship-center": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
   rewards: { preferredSurface: "DRAWER", defaultWidth: 300, mediaConsoleMode: "mini" },
+  "bio-magazine": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
 
   // Compact quick-HUD variants — open side panels, with deepSurface pointing to full workspace
   "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mediaConsoleMode: "mini" },

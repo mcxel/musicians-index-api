@@ -379,7 +379,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     activePanel === moduleId || isUniversalWorkspaceOpenForModule(moduleId);
 
   const openPerformerBioMagazineTab = (tabId: PerformerBioTab) => {
-    openPanel("bio_magazine");
+    // Route through Stage Deck (WATCH/WORK mutual exclusivity) on mobile instead of the
+    // legacy CommandCenterDrawer, which is desktop-only and left this dead-tap on phones.
+    if (isMobile) {
+      openStageWorkspace("bio-magazine");
+    } else {
+      openPanel("bio_magazine");
+    }
     if (typeof window === "undefined") return;
     const emit = () => {
       window.dispatchEvent(new CustomEvent(BIO_MAGAZINE_TAB_EVENT, { detail: { tab: tabId } }));
