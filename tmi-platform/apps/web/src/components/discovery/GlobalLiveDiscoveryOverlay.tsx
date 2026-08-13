@@ -51,11 +51,6 @@ export default function GlobalLiveDiscoveryOverlay({
     setLockedCategory,
   } = useLiveDiscoveryOverlay();
 
-  // Never mount discovery overlay on Command Center /hub routes
-  if (pathname.startsWith("/hub")) {
-    return null;
-  }
-
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionRole, setSessionRole] = useState<string>("FAN");
   const viewerUserId = viewerUserIdProp ?? sessionUserId;
@@ -68,6 +63,11 @@ export default function GlobalLiveDiscoveryOverlay({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Never mount discovery overlay on Command Center /hub or /dashboard routes
+  if (pathname.startsWith("/hub") || pathname.startsWith("/dashboard")) {
+    return null;
+  }
 
   useEffect(() => {
     if (!isOpen || viewerUserIdProp) return;

@@ -92,8 +92,8 @@ export default function LaunchDock() {
     }
   }, [dock, requestMedia, router]);
 
-  // Never mount GO LIVE floater on admin or Command Center /hub pages
-  if (onAdminRoute || pathname.startsWith("/hub")) {
+  // Never mount GO LIVE floater on admin, Command Center /hub, or /dashboard pages
+  if (onAdminRoute || pathname.startsWith("/hub") || pathname.startsWith("/dashboard")) {
     return null;
   }
 

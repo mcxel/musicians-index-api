@@ -45,6 +45,8 @@ const EXCLUDED_PREFIXES = [
   // competes with monitors / drawers on phone (T1 ownership).
   "/hub/",
   "/hub",
+  "/dashboard/",
+  "/dashboard",
 ];
 
 // ── Menu items — all real routes ─────────────────────────────────────────────
