@@ -60,12 +60,64 @@ export type OrchestratorAuditEvent = {
   detail: string;
 };
 
+import { prisma } from "@/lib/prisma";
+
 const auditLog: OrchestratorAuditEvent[] = [];
 const MAX_AUDIT = 500;
 
 function audit(kind: OrchestratorAuditEvent["kind"], anchorSlug: string, detail: string): void {
   auditLog.push({ ts: Date.now(), kind, anchorSlug, detail });
   if (auditLog.length > MAX_AUDIT) auditLog.shift();
+}
+
+export async function syncOverflowRoomToDb(overflow: OverflowRoom): Promise<boolean> {
+  try {
+    await prisma.room.upsert({
+      where: { id: overflow.id },
+      create: {
+        id: overflow.id,
+        name: overflow.title,
+        type: "LOUNGE",
+        status: "LIVE",
+        ownerId: null,
+        maxCapacity: 40,
+      },
+      update: {
+        status: "LIVE",
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function closeOverflowInDb(overflowId: string): Promise<boolean> {
+  try {
+    await prisma.room.updateMany({
+      where: { id: overflowId },
+      data: { status: "CLOSED" },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readRealOccupancyFromDb(roomId: string): Promise<number> {
+  try {
+    const activeThreshold = new Date(Date.now() - 30_000);
+    const count = await prisma.roomPresence.count({
+      where: {
+        roomId,
+        connected: true,
+        lastSeenAt: { gt: activeThreshold },
+      },
+    });
+    return count;
+  } catch {
+    return readRealOccupancy(roomId);
+  }
 }
 
 // ── Core operations ───────────────────────────────────────────────────────────
@@ -117,6 +169,7 @@ export function createOverflow(anchorSlug: string): OverflowRoom {
     route: `${anchor.route}-${overflowCounter + 1}`,
   };
   overflowRooms.set(id, overflow);
+  void syncOverflowRoomToDb(overflow).catch(() => {});
   audit("overflow_created", anchorSlug, `Created overflow room ${slug}`);
   return overflow;
 }
@@ -161,6 +214,7 @@ export function closeOverflow(overflowId: string): void {
   }
 
   overflowRooms.delete(overflowId);
+  void closeOverflowInDb(overflowId).catch(() => {});
   audit("overflow_closed", overflow.parentAnchorSlug, `Closed overflow room ${overflow.slug}`);
 }
 
