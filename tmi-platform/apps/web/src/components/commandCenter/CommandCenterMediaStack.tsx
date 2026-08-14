@@ -161,6 +161,8 @@ interface CommandCenterMediaStackProps {
   seriesLabel?: string;
   /** When true, stack height follows dual monitors (no 100% stretch in hub grid). */
   naturalHeight?: boolean;
+  /** Presentation-only layout mode for Stage Deck monitor visibility. */
+  monitorLayoutMode?: "dual" | "primary";
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -428,6 +430,7 @@ export default function CommandCenterMediaStack({
   bezelVariant = "chrome",
   seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
   naturalHeight = false,
+  monitorLayoutMode = "dual",
 }: CommandCenterMediaStackProps) {
   const [swapOrder, setSwapOrder] = useState(false);
   const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
@@ -472,8 +475,13 @@ export default function CommandCenterMediaStack({
   // Dual monitors: up to 8 cells each from the slot pool (independent per-side splits in stack).
   const orderedSlots = useMemo(() => {
     const base = [...slots];
-    while (base.length < 2) {
+    while (base.length < 1) {
       base.push({ id: `empty-${base.length}`, label: `MONITOR ${base.length + 1}`, kind: "empty" });
+    }
+    if (monitorLayoutMode === "dual") {
+      while (base.length < 2) {
+        base.push({ id: `empty-${base.length}`, label: `MONITOR ${base.length + 1}`, kind: "empty" });
+      }
     }
     if (swapOrder && base.length >= 2) {
       const copy = [...base];
@@ -483,7 +491,7 @@ export default function CommandCenterMediaStack({
       return copy;
     }
     return base;
-  }, [slots, swapOrder]);
+  }, [slots, swapOrder, monitorLayoutMode]);
 
   const topSlots = useMemo(() => padSlots(orderedSlots.slice(0, 8), 8, "top"), [orderedSlots]);
   const bottomSlots = useMemo(
@@ -867,6 +875,7 @@ export default function CommandCenterMediaStack({
         variant={bezelVariant}
         seriesLabel={seriesLabel}
         toolbar={toolbar}
+        minMonitorCount={monitorLayoutMode === "primary" ? 1 : 2}
         monitors={[
           {
             id: topSlots[0]!.id,
@@ -895,7 +904,8 @@ export default function CommandCenterMediaStack({
               ),
             ),
           },
-          {
+          ...(monitorLayoutMode === "dual"
+            ? [{
             id: bottomSlots[0]!.id,
             label: "MONITOR B",
             children:
@@ -919,7 +929,8 @@ export default function CommandCenterMediaStack({
                 />
               ),
             ),
-          },
+          }]
+            : []),
         ]}
       />
 

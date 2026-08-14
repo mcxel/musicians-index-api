@@ -164,6 +164,7 @@ export default function MediaPlayer({
     <>
       <audio
         ref={audioRef}
+        data-audio-owner="media-player"
         onTimeUpdate={handleAudioTimeUpdate}
         onEnded={handleAudioEnded}
         style={{ display: "none" }}

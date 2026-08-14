@@ -139,6 +139,7 @@ export default function TMIGlobalNav() {
     pathname.startsWith("/admin/observatory/");
   const canGoLive = isAuthenticated && LIVE_ROLES.has(role) && !pathname.startsWith("/admin");
   const dashboardHref = isAuthenticated ? ROLE_DASHBOARD[role] ?? "/hub/fan" : "/home/1";
+  const safeBottomInset = "max(8px, env(safe-area-inset-bottom, 0px))";
 
   if (!mounted) {
     return (
@@ -157,7 +158,7 @@ export default function TMIGlobalNav() {
           backdropFilter: "blur(20px)",
           borderTop: "1px solid rgba(0,255,255,0.16)",
           boxShadow: "0 -4px 24px rgba(0,0,0,0.7)",
-          padding: "6px 10px",
+          padding: `6px 10px calc(6px + ${safeBottomInset})`,
           overflowX: "auto",
           flexWrap: "nowrap",
         }}
@@ -187,7 +188,7 @@ export default function TMIGlobalNav() {
         backdropFilter: "blur(20px)",
         borderTop: "1px solid rgba(0,255,255,0.16)",
         boxShadow: "0 -4px 24px rgba(0,0,0,0.7)",
-        padding: "6px 10px",
+        padding: `6px 10px calc(6px + ${safeBottomInset})`,
         overflowX: "auto",
         flexWrap: "nowrap",
       }}

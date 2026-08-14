@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
+import { LiveLobbyWallContent } from "@/components/lobby/LiveLobbyDrawer";
 import PlaylistStudioContent from "./PlaylistStudioContent";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
@@ -24,10 +25,6 @@ const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/Pe
 });
 
 const FanAvatarCanister = dynamic(() => import("@/components/avatar/FanAvatarCanister"), { ssr: false });
-const LiveLobbyWallContent = dynamic(
-  () => import("@/components/lobby/LiveLobbyDrawer").then((m) => ({ default: m.LiveLobbyWallContent })),
-  { ssr: false, loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading lobby wall…</div> },
-);
 
 const ROLODEX_TOOLS: { id: UniversalWorkspaceId; label: string }[] = [
   { id: "avatar-quick", label: "👤 AVATAR" },

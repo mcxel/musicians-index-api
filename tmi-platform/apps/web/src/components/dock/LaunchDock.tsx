@@ -7,7 +7,7 @@
  * Does not magnetize Overseer rails.
  */
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -36,8 +36,25 @@ export default function LaunchDock() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const dock = useLaunchDock();
+  const [isMobile, setIsMobile] = useState(false);
   const onAdminRoute = pathname.startsWith("/admin");
   const onHubRoute = pathname.startsWith("/hub");
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    // Mobile contract: no persistent floating LaunchDock trigger.
+    // LaunchDock may still be opened intentionally by in-layout controls.
+    if (isMobile && dock.isOpen && dock.collapsed) {
+      dock.close();
+    }
+  }, [isMobile, dock]);
 
   // Hydrate role from session once when opened
   useEffect(() => {
@@ -99,6 +116,8 @@ export default function LaunchDock() {
 
   // Collapsed pill
   if (dock.isOpen && dock.collapsed) {
+    if (isMobile) return null;
+    const safeBottom = "max(12px, env(safe-area-inset-bottom, 0px))";
     return (
       <motion.button
         type="button"
@@ -109,7 +128,7 @@ export default function LaunchDock() {
         style={{
           position: "fixed",
           right: 16,
-          top: "42%",
+          bottom: `calc(${safeBottom} + 92px)`,
           zIndex: 9400,
           pointerEvents: "auto",
           padding: "10px 12px",
@@ -124,11 +143,13 @@ export default function LaunchDock() {
           letterSpacing: "0.1em",
           cursor: "pointer",
           boxShadow: dock.isReady ? "0 0 18px rgba(255,45,170,0.45)" : "0 8px 24px rgba(0,0,0,0.5)",
-          writingMode: "vertical-rl",
-          textOrientation: "mixed",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
-        {dock.isReady ? "● READY" : "🚀 LAUNCH"}
+        <span style={{ fontSize: 12, lineHeight: 1 }}>🚀</span>
+        {dock.isReady ? "● READY" : "LAUNCH"}
       </motion.button>
     );
   }

@@ -111,6 +111,8 @@ export interface CanonicalDualMonitorStackProps {
   onSplitsChange?: (splits: [MonitorSplitMode, MonitorSplitMode]) => void;
   /** Restrict which split modes are offered. Defaults to all modes for the variant. */
   availableModes?: MonitorSplitMode[];
+  /** Minimum monitors to render; defaults to dual stack behavior. */
+  minMonitorCount?: 1 | 2;
 }
 
 // ─── Split control bar ────────────────────────────────────────────────────────
@@ -342,6 +344,7 @@ export default function CanonicalDualMonitorStack({
   controlledSplits,
   onSplitsChange,
   availableModes,
+  minMonitorCount = 2,
 }: CanonicalDualMonitorStackProps) {
   const bezel = BEZEL[variant];
   const accent = variant === "gold" ? "#FF6B1A" : "#00D4FF";
@@ -377,7 +380,7 @@ export default function CanonicalDualMonitorStack({
   };
 
   const panes = monitors.slice(0, 2);
-  while (panes.length < 2) {
+  while (panes.length < minMonitorCount) {
     panes.push({
       id: `empty-mon-${panes.length}`,
       label: `MONITOR ${panes.length + 1}`,

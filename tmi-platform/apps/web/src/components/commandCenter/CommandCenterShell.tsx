@@ -77,6 +77,10 @@ interface CommandCenterShellProps {
   displayName: string;
 }
 
+type MonitorLayoutMode = "DUAL" | "PRIMARY_ONLY" | "HIDDEN";
+type MonitorStagePhase = "VISIBLE" | "EXITING" | "HIDDEN" | "ENTERING";
+const MONITOR_STAGE_TRANSITION_MS = 190;
+
 export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
   const defaultPerformer = useMemo(() => {
     if (role !== "performer") return null;
@@ -149,13 +153,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     window.addEventListener("tmi:open-ops-menu", handleOpenOps);
     return () => window.removeEventListener("tmi:open-ops-menu", handleOpenOps);
   }, []);
-  const [monitorsCollapsed, setMonitorsCollapsed] = useState(false);
+  const [monitorLayoutMode, setMonitorLayoutMode] = useState<MonitorLayoutMode>("DUAL");
+  const [monitorStagePhase, setMonitorStagePhase] = useState<MonitorStagePhase>("VISIBLE");
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const monitorPhaseTimerRef = useRef<number | null>(null);
+  const monitorLayoutModeRef = useRef<MonitorLayoutMode>("DUAL");
+  monitorLayoutModeRef.current = monitorLayoutMode;
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
   const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
   /** Mobile Stage Deck: MONITORS ⇄ WORKSPACE — mutually exclusive presentation of one region. */
   const stageDeckWork = isMobile && Boolean(drawerWorkspace && isDrawerExpanded);
-  const stageDeckShowMonitors = isMobile && !stageDeckWork && !monitorsCollapsed;
+  const stageDeckShowMonitors = isMobile && !stageDeckWork && monitorLayoutMode !== "HIDDEN";
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -169,8 +178,76 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const hubDrawerDeepLinkDone = useRef(false);
   /** True only when a control surface collapsed the Stage — not when Marcel hid it manually. */
   const stageCollapsedByControlRef = useRef(false);
-  const monitorsCollapsedRef = useRef(monitorsCollapsed);
-  monitorsCollapsedRef.current = monitorsCollapsed;
+  const stageCollapseRestoreModeRef = useRef<MonitorLayoutMode>("DUAL");
+
+  const monitorCount = monitorLayoutMode === "DUAL" ? 2 : monitorLayoutMode === "PRIMARY_ONLY" ? 1 : 0;
+  const monitorTransitionLocked = monitorStagePhase === "EXITING" || monitorStagePhase === "ENTERING";
+  const monitorLayoutForStack = monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
+  const monitorRegionHiddenStyle: CSSProperties = {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    whiteSpace: "nowrap",
+    border: 0,
+    padding: 0,
+    margin: -1,
+    opacity: 0,
+    pointerEvents: "none",
+  };
+
+  const monitorRegionStyle: CSSProperties = {
+    minWidth: 0,
+    minHeight: 0,
+    ...(monitorStagePhase === "HIDDEN" ? monitorRegionHiddenStyle : {}),
+    ...(!prefersReducedMotion && monitorStagePhase === "EXITING" ? { animation: `tmiMonitorExit ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) forwards` } : {}),
+    ...(!prefersReducedMotion && monitorStagePhase === "ENTERING" ? { animation: `tmiMonitorEnter ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) both` } : {}),
+  };
+
+  const clearMonitorPhaseTimer = () => {
+    if (monitorPhaseTimerRef.current != null) {
+      window.clearTimeout(monitorPhaseTimerRef.current);
+      monitorPhaseTimerRef.current = null;
+    }
+  };
+
+  const scheduleMonitorPhase = (handler: () => void) => {
+    if (prefersReducedMotion) {
+      handler();
+      return;
+    }
+    clearMonitorPhaseTimer();
+    monitorPhaseTimerRef.current = window.setTimeout(() => {
+      monitorPhaseTimerRef.current = null;
+      handler();
+    }, MONITOR_STAGE_TRANSITION_MS);
+  };
+
+  const transitionMonitorLayout = (nextMode: MonitorLayoutMode) => {
+    if (monitorTransitionLocked) return;
+    if (nextMode === monitorLayoutMode) return;
+
+    if (nextMode === "HIDDEN") {
+      setMonitorStagePhase("EXITING");
+      scheduleMonitorPhase(() => {
+        setMonitorLayoutMode("HIDDEN");
+        setMonitorStagePhase("HIDDEN");
+      });
+      return;
+    }
+
+    if (monitorLayoutMode === "HIDDEN") {
+      setMonitorLayoutMode(nextMode);
+      setMonitorStagePhase("ENTERING");
+      scheduleMonitorPhase(() => setMonitorStagePhase("VISIBLE"));
+      return;
+    }
+
+    setMonitorLayoutMode(nextMode);
+    setMonitorStagePhase("ENTERING");
+    scheduleMonitorPhase(() => setMonitorStagePhase("VISIBLE"));
+  };
 
   // Role-switcher CONTROL_FOCUS: collapse empty stage while picker is open (no workspace yet).
   // Manual HIDE wins: do not restore Stage on close unless this control performed the collapse.
@@ -178,16 +255,17 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     if (!isMobile) return;
     const onFocus = () => {
       if (drawerWorkspace) return;
-      if (!monitorsCollapsedRef.current) {
+      if (monitorLayoutModeRef.current !== "HIDDEN") {
+        stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
         stageCollapsedByControlRef.current = true;
-        setMonitorsCollapsed(true);
+        transitionMonitorLayout("HIDDEN");
       }
     };
     const onFocusEnd = () => {
       if (drawerWorkspace) return;
       if (stageCollapsedByControlRef.current) {
         stageCollapsedByControlRef.current = false;
-        setMonitorsCollapsed(false);
+        transitionMonitorLayout(stageCollapseRestoreModeRef.current);
       }
     };
     window.addEventListener("tmi:control-focus", onFocus);
@@ -196,27 +274,61 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       window.removeEventListener("tmi:control-focus", onFocus);
       window.removeEventListener("tmi:control-focus-end", onFocusEnd);
     };
-  }, [isMobile, drawerWorkspace]);
+  }, [isMobile, drawerWorkspace, monitorTransitionLocked, monitorLayoutMode, prefersReducedMotion]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPrefersReducedMotion(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => () => clearMonitorPhaseTimer(), []);
 
   /** Explicit 📺 MONITORS while in WORK — user asked for WATCH; clear manual hide. */
   const restoreStageMonitors = () => {
     useWorkspacePresentationStore.getState().closeSurface("DRAWER");
     stageCollapsedByControlRef.current = false;
-    setMonitorsCollapsed(false);
+    transitionMonitorLayout("DUAL");
     setMobileLeftOpen(false);
   };
 
   const openStageWorkspace = (id: string) => {
     setMobileLeftOpen(false);
     setMobileRightOpen(false);
-    // Do not clear monitorsCollapsed — manual HIDE must survive WORK → close → stay hidden.
+    // Monitor presentation mode persists while entering WORK.
     presentCanonicalWorkspace(id as any, "DRAWER");
   };
 
   /** Manual Stage hide (session strip / header toggle) — ownership stays with the user. */
   const hideStageManually = () => {
     stageCollapsedByControlRef.current = false;
-    setMonitorsCollapsed(true);
+    transitionMonitorLayout("HIDDEN");
+  };
+
+  const cycleMonitorMode = (): MonitorLayoutMode => {
+    if (monitorLayoutMode === "DUAL") return "PRIMARY_ONLY";
+    if (monitorLayoutMode === "PRIMARY_ONLY") return "HIDDEN";
+    return "DUAL";
+  };
+
+  const monitorButtonTitle =
+    stageDeckWork
+      ? "Restore monitors from WORK surface"
+      : monitorTransitionLocked
+        ? "Monitor layout transition in progress"
+        : `Cycle monitors ${monitorCount} → ${cycleMonitorMode() === "DUAL" ? 2 : cycleMonitorMode() === "PRIMARY_ONLY" ? 1 : 0}`;
+
+  /** Unified monitor-cycle control used by command-bar controls on mobile and desktop. */
+  const toggleStageMonitors = () => {
+    if (monitorTransitionLocked) return;
+    if (stageDeckWork) {
+      restoreStageMonitors();
+      return;
+    }
+    stageCollapsedByControlRef.current = false;
+    transitionMonitorLayout(cycleMonitorMode());
   };
 
   // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/fan?drawer=yopho (workspace)
@@ -559,6 +671,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         overflowX: "clip",
       }}
     >
+      <style>{`
+        @keyframes tmiMonitorExit {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(-6px) scale(0.97); }
+        }
+        @keyframes tmiMonitorEnter {
+          from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
       <CommandCenterTopNav userId={userId} displayName={resolvedDisplayName} />
 
       {/* Status bar */}
@@ -630,45 +752,30 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <>
               <button
                 type="button"
-                onClick={() => {
-                  if (stageDeckWork) {
-                    restoreStageMonitors();
-                    return;
-                  }
-                  if (monitorsCollapsed) {
-                    stageCollapsedByControlRef.current = false;
-                    setMonitorsCollapsed(false);
-                  } else {
-                    hideStageManually();
-                  }
-                }}
+                onClick={toggleStageMonitors}
+                disabled={monitorTransitionLocked}
                 style={{
-                  background: stageDeckShowMonitors ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
+                  background: monitorCount > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
                   border: "1px solid #00E5FF",
                   borderRadius: 6,
                   color: "#00E5FF",
                   fontSize: 10,
                   fontWeight: 900,
                   padding: "4px 10px",
-                  cursor: "pointer",
+                  cursor: monitorTransitionLocked ? "not-allowed" : "pointer",
                   fontFamily: "inherit",
+                  opacity: monitorTransitionLocked ? 0.75 : 1,
                 }}
-                title={
-                  stageDeckWork
-                    ? "Restore monitors — media session preserved"
-                    : monitorsCollapsed
-                      ? "Show Stage Deck monitors"
-                      : "Hide Stage Deck monitors (media stays alive)"
-                }
+                title={monitorButtonTitle}
               >
-                📺 MONITORS
+                📺 MONITORS {monitorCount}
               </button>
               <button
                 type="button"
                 onClick={() => setMobileLeftOpen((v) => !v)}
                 style={{ background: "transparent", border: `1px solid ${theme.primary}44`, borderRadius: 6, color: theme.primary, fontSize: 10, fontWeight: 800, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
               >
-                ☰ OPS
+                ☰ GPS
               </button>
               <button
                 type="button"
@@ -679,8 +786,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </button>
             </>
           )}
-          {/* Mobile: role / Admin Deck lives inside OPS drawer — never a float over Monitor A. */}
-          {!isMobile ? <RoleSwitcherWidget accentColor={theme.primary} /> : null}
+          {!isMobile ? (
+            <button
+              type="button"
+              onClick={toggleStageMonitors}
+              disabled={monitorTransitionLocked}
+              style={{
+                background: monitorCount > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
+                border: "1px solid #00E5FF",
+                borderRadius: 6,
+                color: "#00E5FF",
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "4px 10px",
+                cursor: monitorTransitionLocked ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: monitorTransitionLocked ? 0.75 : 1,
+              }}
+              title={monitorButtonTitle}
+            >
+              📺 MONITORS {monitorCount}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -714,29 +841,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             {/* WATCH surface — keep mounted when WORK/COLLAPSED so MediaStream survives */}
             <div
               aria-hidden={!stageDeckShowMonitors}
-              style={
-                stageDeckShowMonitors
-                  ? { minWidth: 0, minHeight: 0 }
-                  : {
-                      position: "absolute",
-                      width: 1,
-                      height: 1,
-                      overflow: "hidden",
-                      clip: "rect(0 0 0 0)",
-                      whiteSpace: "nowrap",
-                      border: 0,
-                      padding: 0,
-                      margin: -1,
-                      opacity: 0,
-                      pointerEvents: "none",
-                    }
-              }
+              style={monitorRegionStyle}
             >
               <GlobalErrorBoundary context="Command Center Monitors">
                 <CommandCenterMediaStack
                   slots={mediaSlots}
                   bezelVariant="chrome"
                   naturalHeight
+                  monitorLayoutMode={monitorLayoutForStack}
                   seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                 />
               </GlobalErrorBoundary>
@@ -751,7 +863,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               />
             ) : (
               <>
-                {!monitorsCollapsed && (
+                {monitorLayoutMode !== "HIDDEN" && (
                   <CommandCenterSessionControlStrip
                     role={role === "performer" ? "performer" : "fan"}
                     leaveLabel="📺 MONITORS"
@@ -956,18 +1068,21 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               data-hub-monitor-stage
               style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}
             >
-              <GlobalErrorBoundary context="Command Center Monitors">
-                <CommandCenterMediaStack
-                  slots={mediaSlots}
-                  bezelVariant="chrome"
-                  naturalHeight
-                  seriesLabel={
-                    role === "performer"
-                      ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                      : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                  }
-                />
-              </GlobalErrorBoundary>
+              <div aria-hidden={monitorLayoutMode === "HIDDEN"} style={monitorRegionStyle}>
+                <GlobalErrorBoundary context="Command Center Monitors">
+                  <CommandCenterMediaStack
+                    slots={mediaSlots}
+                    bezelVariant="chrome"
+                    naturalHeight
+                    monitorLayoutMode={monitorLayoutForStack}
+                    seriesLabel={
+                      role === "performer"
+                        ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                        : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                    }
+                  />
+                </GlobalErrorBoundary>
+              </div>
               <CommandCenterSessionControlStrip
                 role={role === "performer" ? "performer" : "fan"}
                 leaveLabel="📺 MONITORS"
@@ -1118,7 +1233,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
             OPERATING CENTERS
           </div>
-          {/* Admin / role switch lives in OPS only on mobile — never floats over Monitor A. */}
+          {/* Admin / role switch lives in GPS only on mobile — never floats over Monitor A. */}
           <div style={{ marginBottom: 8 }}>
             <RoleSwitcherWidget accentColor={theme.primary} />
           </div>

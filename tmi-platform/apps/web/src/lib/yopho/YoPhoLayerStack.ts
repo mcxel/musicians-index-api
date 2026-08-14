@@ -181,8 +181,11 @@ export const YOPHO_LAYER_Y_MIN = -100;
 export const YOPHO_LAYER_Y_MAX = 100;
 export const YOPHO_LAYER_SCALE_MIN = 0.2;
 export const YOPHO_LAYER_SCALE_MAX = 3;
+export const YOPHO_LAYER_ROTATION_MIN = -180;
+export const YOPHO_LAYER_ROTATION_MAX = 180;
 export const YOPHO_NUDGE_XY_STEP = 8;
 export const YOPHO_NUDGE_SCALE_STEP = 0.05;
+export const YOPHO_NUDGE_ROTATION_STEP = 5;
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -228,6 +231,19 @@ export function nudgeLayerScale(
       YOPHO_LAYER_SCALE_MIN,
       YOPHO_LAYER_SCALE_MAX,
     ),
+  });
+}
+
+/** Rotate one layer in degrees. */
+export function nudgeLayerRotation(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  dRotation: number,
+): YoPhoPortraitBlueprint {
+  const layer = getLayerById(bp, layerId);
+  if (!layer) return bp;
+  return updateLayerById(bp, layerId, {
+    rotation: clamp(layer.rotation + dRotation, YOPHO_LAYER_ROTATION_MIN, YOPHO_LAYER_ROTATION_MAX),
   });
 }
 

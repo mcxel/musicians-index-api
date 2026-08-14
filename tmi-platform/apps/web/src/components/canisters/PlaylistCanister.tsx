@@ -466,6 +466,7 @@ export function PlaylistCanister({
             ref={audioRef}
             key={activeTrack.audioUrl}
             src={activeTrack.audioUrl}
+            data-audio-owner="playlist-canister"
             controls={false}
             autoPlay={isPlaying}
             style={{ display: "none" }}
@@ -697,6 +698,7 @@ export function PlaylistCanister({
               ref={audioRef}
               key={activeTrack.audioUrl}
               src={activeTrack.audioUrl}
+              data-audio-owner="playlist-canister"
               controls={false}
               autoPlay={isPlaying}
               style={{ display: "none" }}
