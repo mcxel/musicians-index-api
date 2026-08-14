@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 import type { UserTier } from '@/lib/auth/UserStore';
 
-const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'ADMIN']);
+const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']);
 
 /**
  * P0 Identity/Entitlement Integrity — single source of truth for turning an
@@ -15,26 +15,32 @@ const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 
  *
  * An unknown/missing/invalid tier always resolves to FREE, never DIAMOND —
  * defaulting unknown state to the highest privilege tier is a privilege
- * escalation, not a safe fallback.
- *
- * Previously this exact founder-diamond-pass check + self-heal was
- * duplicated ad hoc across /api/auth/signin, /api/auth/session,
- * /api/auth/me, and getTmiAuth.ts (three of the four never even read the
- * DB tier at all — they trusted a stale tmi_tier cookie). Converged here so
- * there is exactly one place this rule lives.
+ * escalation, not a safe fallback. Legacy "ADMIN" in the tier column is
+ * normalized to "DIAMOND" for executive accounts or "FREE" otherwise.
  */
 export function computeAuthoritativeTier(
   email: string,
   dbTier: string | null | undefined,
 ): { tier: UserTier; needsFounderHeal: boolean } {
   const normalized = dbTier?.toUpperCase();
-  const baseTier: UserTier = normalized && VALID_TIERS.has(normalized as UserTier) ? (normalized as UserTier) : 'FREE';
-
   const isFounderEmail = Boolean(email) && isFounderDiamondEmail(email);
+
+  let baseTier: UserTier = 'FREE';
+  let needsFounderHeal = false;
+
+  if (normalized === 'ADMIN') {
+    // Legacy migration: ADMIN is a role, not a subscription tier. Executive
+    // admins (e.g. founder accounts) receive DIAMOND tier; others revert to FREE.
+    baseTier = isFounderEmail ? 'DIAMOND' : 'FREE';
+    needsFounderHeal = true;
+  } else if (normalized && VALID_TIERS.has(normalized as UserTier)) {
+    baseTier = normalized as UserTier;
+  }
+
   if (isFounderEmail && baseTier !== 'DIAMOND') {
     return { tier: 'DIAMOND', needsFounderHeal: true };
   }
-  return { tier: baseTier, needsFounderHeal: false };
+  return { tier: baseTier, needsFounderHeal };
 }
 
 /**

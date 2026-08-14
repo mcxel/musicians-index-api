@@ -12,7 +12,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 
-export type UserTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ADMIN';
+export type UserTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 export type UserRole = 'user' | 'admin' | 'staff' | 'fan' | 'artist' | 'performer' | 'sponsor' | 'advertiser' | 'venue' | 'writer' | 'promoter';
 
 export interface StoredUser {
@@ -205,7 +205,7 @@ export function resolveHardcodedTierRole(email: string): { tier: UserTier; role:
   const e = email.toLowerCase();
   const envAdmins = (process.env.ADMIN_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   const envDiamond = (process.env.DIAMOND_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
-  if (HARDCODED_ADMINS.has(e) || envAdmins.includes(e)) return { tier: 'ADMIN', role: 'admin' };
+  if (HARDCODED_ADMINS.has(e) || envAdmins.includes(e)) return { tier: 'DIAMOND', role: 'admin' };
   if (HARDCODED_PERFORMER.has(e)) return { tier: 'DIAMOND', role: 'performer' };
   if (HARDCODED_DIAMOND.has(e) || envDiamond.includes(e)) return { tier: 'DIAMOND', role: 'fan' };
   return null;
@@ -335,8 +335,8 @@ export function updateUserTier(email: string, tier: UserTier): boolean {
   const e = email.trim().toLowerCase();
   const user = STORE.get(e);
   if (!user) return false;
-  // Never downgrade ADMIN or DIAMOND hardcoded accounts
-  if (user.tier === 'ADMIN') return false;
+  // Never downgrade hardcoded founder/admin accounts
+  if (resolveHardcodedTierRole(e)?.tier === 'DIAMOND') return false;
   user.tier = tier;
   STORE.set(e, user);
   waitUntil(persistUser(user));

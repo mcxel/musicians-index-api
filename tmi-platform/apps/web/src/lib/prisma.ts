@@ -70,6 +70,7 @@ export async function ensureUserDatabaseSchema(): Promise<void> {
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_room_id" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_genre" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_started_at" TIMESTAMP(3);
+      UPDATE "User" SET "tier" = 'DIAMOND' WHERE "tier" = 'ADMIN' OR "email" = 'berntmusic33@gmail.com';
     `);
     schemaHealed = true;
   } catch (err) {
