@@ -78,17 +78,16 @@ export function clearHumanRankPoints(profileId?: string): void {
   else humanScoreOverlay.clear();
 }
 
+import { getAllUsers } from '@/lib/auth/UserStore';
+
 /**
  * Delta-based sibling to setHumanRankPoints() for callers that award XP in
  * increments (submissions, fan-loop completion, referrals, ...) rather than
- * publishing an absolute total. No-ops for any profileId that isn't a real
- * PERFORMER_REGISTRY entry (e.g. a fan's userId) — never fabricates a new
- * ranked entry.
+ * publishing an absolute total. Operates on any canonical profileId (DB user,
+ * performer, or registry entry).
  */
 export function addHumanRankPoints(profileId: string, delta: number): void {
-  if (delta === 0) return;
-  const isRankedPerformer = PERFORMER_REGISTRY.some((p) => p.id === profileId);
-  if (!isRankedPerformer) return;
+  if (delta === 0 || !profileId) return;
   const base = PERFORMER_REGISTRY.find((p) => p.id === profileId)?.xp ?? 0;
   const current = humanScoreOverlay.get(profileId)?.points ?? base;
   setHumanRankPoints(profileId, current + delta);
@@ -100,12 +99,17 @@ function botScoreReachedAt(createdAt: string): number {
 }
 
 /**
- * Build registry-backed candidates.
- * Humans: PerformerRegistry (+ optional overlay points).
+ * Build registry- and DB-backed candidates.
+ * Humans: PerformerRegistry + DB Users (+ optional overlay points).
  * Bots: BotAccountRegistry ACTIVE seats (fill band).
  */
 export function collectRankCandidates(): RankCandidate[] {
-  const humans: RankCandidate[] = PERFORMER_REGISTRY.map((p) => {
+  const registryIds = new Set<string>();
+
+  const registryHumans: RankCandidate[] = PERFORMER_REGISTRY.map((p) => {
+    registryIds.add(p.id);
+    if (p.slug) registryIds.add(p.slug);
+
     const overlay = humanScoreOverlay.get(p.id);
     const points = overlay?.points ?? p.xp;
     const scoreReachedAt =
@@ -120,12 +124,53 @@ export function collectRankCandidates(): RankCandidate[] {
       displayName: p.name,
       slug: p.slug,
       profileRoute: p.profileRoute || `/performers/${p.slug}`,
-      avatarUrl: p.profileImageUrl,
+      avatarUrl: p.profileImageUrl || '/images/tmi-placeholder.jpg',
       genre: p.category,
       isLive: Boolean(p.isLive),
       motionUrl: p.introVideoUrl ?? p.motionPosterUrl,
     };
   });
+
+  // DB registered users (e.g. berntmusic33@gmail.com, executive admins, real performers)
+  const dbUsers = getAllUsers();
+  const dbHumans: RankCandidate[] = [];
+
+  for (const u of dbUsers) {
+    if (registryIds.has(u.id) || registryIds.has(u.email)) continue;
+    const overlay = humanScoreOverlay.get(u.id) || humanScoreOverlay.get(u.email);
+    const points = overlay?.points ?? (u.role === 'admin' ? 100000 : 0);
+    if (points <= 0 && u.role !== 'admin') continue;
+
+    dbHumans.push({
+      profileId: u.id,
+      kind: 'human' as RankKind,
+      points,
+      scoreReachedAt: overlay?.scoreReachedAt ?? u.createdAt,
+      displayName: u.displayName || u.email.split('@')[0] || 'User',
+      slug: u.id,
+      profileRoute: `/profile/${encodeURIComponent(u.id)}`,
+      avatarUrl: '/images/tmi-placeholder.jpg',
+      genre: u.role === 'admin' ? 'Executive' : 'Performer',
+      isLive: false,
+    });
+  }
+
+  // Include any overlay-only human profiles
+  for (const [profileId, overlayData] of humanScoreOverlay.entries()) {
+    if (registryIds.has(profileId) || dbUsers.some((u) => u.id === profileId || u.email === profileId)) continue;
+    dbHumans.push({
+      profileId,
+      kind: 'human' as RankKind,
+      points: overlayData.points,
+      scoreReachedAt: overlayData.scoreReachedAt,
+      displayName: profileId.includes('@') ? profileId.split('@')[0]! : profileId,
+      slug: profileId,
+      profileRoute: `/profile/${encodeURIComponent(profileId)}`,
+      avatarUrl: '/images/tmi-placeholder.jpg',
+      genre: 'Performer',
+      isLive: false,
+    });
+  }
 
   const bots: RankCandidate[] = getActiveBots().map((b) => ({
     profileId: b.id,
@@ -135,12 +180,12 @@ export function collectRankCandidates(): RankCandidate[] {
     displayName: `[BOT] ${b.displayName}`,
     slug: b.slug,
     profileRoute: b.profileRoute || `/bots/${b.slug}`,
-    avatarUrl: b.avatarUrl,
+    avatarUrl: b.avatarUrl || '/images/tmi-placeholder.jpg',
     genre: b.genres[0] ?? 'All Genres',
     isLive: false,
   }));
 
-  return [...humans, ...bots];
+  return [...registryHumans, ...dbHumans, ...bots];
 }
 
 /**

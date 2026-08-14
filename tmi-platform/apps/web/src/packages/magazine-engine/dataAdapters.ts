@@ -174,16 +174,30 @@ const MOCK_NEWS: NewsAlertEntry[] = [
 
 // ─── Adapters (sync, fallback-safe) ──────────────────────────────────────────
 
+import { getUniversalRankingSnapshot } from '@/lib/rankings/UniversalRankingSnapshot';
+
 export function getGlobalRanking(): ArtistRankEntry[] {
+  const snapshot = getUniversalRankingSnapshot();
+  if (snapshot && snapshot.slots.length > 0) {
+    return snapshot.slots.map((s) => ({
+      rank: s.rank,
+      name: s.displayName,
+      genre: s.genre || 'Hip-Hop',
+      score: s.points,
+      delta: 0,
+      badge: s.rank === 1 ? 'CROWN' : 'TOP',
+    }));
+  }
   return MOCK_GLOBAL_RANKING;
 }
 
 export function getCrownLeader(): ArtistRankEntry {
-  return MOCK_GLOBAL_RANKING[0];
+  const global = getGlobalRanking();
+  return global[0] ?? MOCK_GLOBAL_RANKING[0];
 }
 
 export function getTop10(): ArtistRankEntry[] {
-  return MOCK_GLOBAL_RANKING.slice(0, 10);
+  return getGlobalRanking().slice(0, 10);
 }
 
 export function getGenreRanking(): typeof MOCK_GENRE_RANKING {
