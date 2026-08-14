@@ -118,7 +118,12 @@ export default function RoleSwitcherWidget({
   }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
+    // 900px, not 768px — must agree with CommandCenterShell's own mobile
+    // breakpoint. A mismatch here let this panel render its desktop-compact
+    // form (narrow floating box, real role label instead of "SWITCH ROLES")
+    // inside a viewport the Stage Deck had already correctly classified as
+    // mobile — the exact "ADMIN DECK" box floating over Monitor A.
+    const mq = window.matchMedia("(max-width: 900px)");
     const sync = () => setIsNarrow(mq.matches);
     sync();
     mq.addEventListener("change", sync);
