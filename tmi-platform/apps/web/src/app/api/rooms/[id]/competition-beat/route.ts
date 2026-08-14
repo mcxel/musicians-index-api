@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   attachCompetitionBeat,
   confirmBeatSwap,
+  deleteBeatAssignmentFromDb,
   getCompetitionBeatRoom,
   initCompetitionBeatRoom,
   listCompetitionRegistryBeats,
   openBeatVetoWindow,
+  persistBeatAssignmentToDb,
   recordBeatRefusePenalty,
   requestBeatSwap,
+  restoreBeatAssignmentFromDb,
   setCompetitionBeatStyle,
   type CompetitionBeatLane,
   type CompetitionBeatStyle,
@@ -50,6 +53,13 @@ export async function GET(
   const roomId = params.id;
   const lane = parseLane(req.nextUrl.searchParams.get("lane"));
   let state = getCompetitionBeatRoom(roomId);
+  if (!state || !state.attached) {
+    const dbAttached = await restoreBeatAssignmentFromDb(roomId);
+    if (dbAttached) {
+      attachCompetitionBeat({ roomId, lane, beat: dbAttached });
+      state = getCompetitionBeatRoom(roomId);
+    }
+  }
   if (!state) {
     state = initCompetitionBeatRoom({ roomId, lane });
   }
@@ -119,19 +129,28 @@ export async function POST(
         { status: 409 },
       );
     }
+    const attachedRef: AttachedBeatRef = {
+      beatId,
+      title: String(beat.title ?? ""),
+      genre: beat.genre ? String(beat.genre) : undefined,
+      bpm: typeof beat.bpm === "number" ? beat.bpm : undefined,
+      audioUrl: beat.audioUrl ? String(beat.audioUrl) : null,
+      producerName: beat.producerName ? String(beat.producerName) : null,
+      source: beat.source === "competition-registry" ? "competition-registry" : "beat-locker",
+    };
     const result = attachCompetitionBeat({
       roomId,
       lane,
-      beat: {
-        beatId,
-        title: String(beat.title ?? ""),
-        genre: beat.genre ? String(beat.genre) : undefined,
-        bpm: typeof beat.bpm === "number" ? beat.bpm : undefined,
-        audioUrl: beat.audioUrl ? String(beat.audioUrl) : null,
-        producerName: beat.producerName ? String(beat.producerName) : null,
-        source: beat.source === "competition-registry" ? "competition-registry" : "beat-locker",
-      },
+      beat: attachedRef,
     });
+    if (result.ok && result.state?.attached) {
+      await persistBeatAssignmentToDb({
+        roomId,
+        lane,
+        beat: result.state.attached,
+        assignedBy: typeof body.assignedBy === "string" ? body.assignedBy : undefined,
+      });
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   }
 
@@ -148,6 +167,9 @@ export async function POST(
     const result = requestBeatSwap({ roomId, performerId, lane });
     if (result.ok && result.bothAgreed) {
       const confirmed = confirmBeatSwap(roomId, lane);
+      if (confirmed.ok) {
+        await deleteBeatAssignmentFromDb(roomId);
+      }
       return NextResponse.json({
         ok: confirmed.ok,
         bothAgreed: true,
@@ -161,6 +183,9 @@ export async function POST(
 
   if (action === "confirm-swap") {
     const result = confirmBeatSwap(roomId, lane);
+    if (result.ok) {
+      await deleteBeatAssignmentFromDb(roomId);
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   }
 

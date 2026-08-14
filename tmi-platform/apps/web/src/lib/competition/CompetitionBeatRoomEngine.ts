@@ -19,8 +19,8 @@ import {
   type MusicConfig,
   BEAT_REGISTRY_SEED,
   type BeatRegistryEntry,
-} from "@/lib/competition/CompetitionMusicEngine";
-import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
+} from "./CompetitionMusicEngine";
+import { isBeatExclusivelySold } from "../beats/BeatInventoryEngine";
 
 export type CompetitionBeatLane = "battle" | "gauntlet" | "cypher";
 
@@ -75,6 +75,8 @@ export type CompetitionBeatRoomState = {
   updatedAt: number;
 };
 
+import { prisma } from "../prisma";
+
 const DEFAULT_ALLOWED: CompetitionBeatStyle[] = [
   "attached",
   "acapella",
@@ -90,6 +92,101 @@ const DEFAULT_MAX_SWAPS = 2;
 const REFUSE_PENALTY_POINTS = 25;
 
 const rooms = new Map<string, CompetitionBeatRoomState>();
+
+export async function restoreBeatAssignmentFromDb(roomId: string): Promise<AttachedBeatRef | null> {
+  try {
+    const assignment = await prisma.beatAssignment.findFirst({
+      where: { targetId: roomId },
+      include: { beat: true },
+      orderBy: { assignedAt: "desc" },
+    });
+    if (!assignment || !assignment.beat) return null;
+    const b = assignment.beat;
+    return {
+      beatId: b.id,
+      title: b.title,
+      genre: b.genre || undefined,
+      bpm: b.bpm || undefined,
+      audioUrl: b.audioAssetUrl || b.previewUrl || null,
+      producerName: b.producerName || b.producerId || null,
+      source: "beat-locker",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function persistBeatAssignmentToDb(params: {
+  roomId: string;
+  lane: CompetitionBeatLane;
+  beat: AttachedBeatRef;
+  assignedBy?: string;
+}): Promise<boolean> {
+  try {
+    const beatId = params.beat.beatId;
+    const audioUrl = params.beat.audioUrl || "/audio/beats/demo-beat.mp3";
+    const producerId = params.assignedBy || params.beat.producerName || "producer-community";
+    const slug = `beat-${beatId.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
+
+    await prisma.beat.upsert({
+      where: { id: beatId },
+      create: {
+        id: beatId,
+        producerId,
+        producerName: params.beat.producerName || producerId,
+        slug,
+        title: params.beat.title,
+        genre: params.beat.genre || "Hip-Hop",
+        bpm: params.beat.bpm || 95,
+        previewUrl: audioUrl,
+        taggedUrl: audioUrl,
+        audioAssetUrl: audioUrl,
+        basicPrice: 0,
+        premiumPrice: 0,
+        status: "PUBLISHED",
+      },
+      update: {
+        title: params.beat.title,
+        audioAssetUrl: audioUrl,
+        previewUrl: audioUrl,
+      },
+    });
+
+    await prisma.beatAssignment.upsert({
+      where: {
+        beatId_targetType_targetId: {
+          beatId,
+          targetType: params.lane,
+          targetId: params.roomId,
+        },
+      },
+      create: {
+        beatId,
+        targetType: params.lane,
+        targetId: params.roomId,
+        assignedAt: new Date(),
+      },
+      update: {
+        assignedAt: new Date(),
+      },
+    });
+    return true;
+  } catch (err) {
+    console.error("persistBeatAssignmentToDb error:", err);
+    return false;
+  }
+}
+
+export async function deleteBeatAssignmentFromDb(roomId: string): Promise<boolean> {
+  try {
+    await prisma.beatAssignment.deleteMany({
+      where: { targetId: roomId },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function laneToCompetitionType(lane: CompetitionBeatLane): CompetitionType {
   return lane === "cypher" ? "cypher" : "battle";
