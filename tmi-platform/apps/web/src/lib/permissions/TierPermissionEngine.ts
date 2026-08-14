@@ -146,39 +146,13 @@ export const TIER_FEATURES: Record<UserTier, Feature[]> = {
     'custom_profile',
     'hd_streaming',
     'no_ads',
-    'offline_mode',
-  ],
-  ADMIN: [
-    // Admins have all features
-    'performer_analytics',
-    'advanced_streaming',
-    'custom_stage_effects',
-    'merchandise_store',
-    'booking_requests',
-    'fan_recognition',
-    'exclusive_content',
-    'sponsorship_dashboard',
-    'vip_lounge_access',
-    'world_tour_events',
-    'fan_follower_limit',
-    'fan_playlist_limit',
-    'fan_custom_avatar',
-    'fan_vip_badge',
-    'fan_exclusive_streams',
-    'fan_priority_chat',
-    'fan_early_access',
-    'fan_fanclub_creation',
-    'custom_profile',
-    'hd_streaming',
-    'no_ads',
-    'offline_mode',
   ],
 };
 
 /**
  * Tier pricing (locked) — for display and upgrade CTAs
  */
-export const TIER_PRICING: Record<Exclude<UserTier, 'FREE' | 'ADMIN'>, { monthly: number; displayName: string }> = {
+export const TIER_PRICING: Record<Exclude<UserTier, 'FREE'>, { monthly: number; displayName: string }> = {
   PRO: { monthly: 0, displayName: 'Pro' },
   RUBY: { monthly: 199, displayName: 'Ruby' },
   SILVER: { monthly: 499, displayName: 'Silver' },
@@ -220,14 +194,14 @@ export function getTierForFeature(feature: Feature): UserTier | null {
  */
 export function getUpgradeMessage(currentTier: UserTier, requiredFeature: Feature): { tier: UserTier; price: number; message: string } | null {
   const requiredTier = getTierForFeature(requiredFeature);
-  if (!requiredTier || requiredTier === 'ADMIN') return null;
+  if (!requiredTier || (requiredTier as string) === 'ADMIN') return null;
 
   if (hasTierFeature(currentTier, requiredFeature)) {
     // Already has feature
     return null;
   }
 
-  const tierInfo = TIER_PRICING[requiredTier as Exclude<UserTier, 'FREE' | 'ADMIN'>];
+  const tierInfo = TIER_PRICING[requiredTier as Exclude<UserTier, 'FREE'>];
   if (!tierInfo) return null;
 
   const priceDisplay = tierInfo.monthly === 0 ? 'Free' : `$${(tierInfo.monthly / 100).toFixed(2)}/month`;
@@ -243,7 +217,7 @@ export function getUpgradeMessage(currentTier: UserTier, requiredFeature: Featur
  */
 export function getEntryLevelUpgradeMessage(role: 'performer' | 'fan'): { tier: UserTier; price: number; message: string } {
   const tier = role === 'performer' ? 'RUBY' : 'SILVER';
-  const tierInfo = TIER_PRICING[tier as Exclude<UserTier, 'FREE' | 'ADMIN'>];
+  const tierInfo = TIER_PRICING[tier as Exclude<UserTier, 'FREE'>];
   const priceDisplay = `$${(tierInfo.monthly / 100).toFixed(2)}/month`;
 
   if (role === 'performer') {
@@ -264,11 +238,11 @@ export function getEntryLevelUpgradeMessage(role: 'performer' | 'fan'): { tier: 
 /**
  * Get all available tiers for upgrade (excluding current and ADMIN)
  */
-export function getAvailableUpgradeTiers(currentTier: UserTier): (Exclude<UserTier, 'FREE' | 'ADMIN'>)[] {
-  const order: (Exclude<UserTier, 'FREE' | 'ADMIN'>)[] = ['PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
-  const tiers: (Exclude<UserTier, 'FREE' | 'ADMIN'>)[] = ['PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+export function getAvailableUpgradeTiers(currentTier: UserTier): (Exclude<UserTier, 'FREE'>)[] {
+  const order: (Exclude<UserTier, 'FREE'>)[] = ['PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+  const tiers: (Exclude<UserTier, 'FREE'>)[] = ['PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
 
-  if (currentTier === 'ADMIN') return [];
+  if ((currentTier as string) === 'ADMIN') return [];
 
   const currentIndex = order.indexOf(currentTier as any);
   if (currentIndex === -1) {

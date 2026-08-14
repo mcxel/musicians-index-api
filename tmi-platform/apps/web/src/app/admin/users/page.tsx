@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
             { label: "Total Users",    value: String(total),                              color: "#fff" },
             { label: "This Session",   value: String(users.length),                       color: "#22c55e" },
             { label: "Diamond",        value: String(users.filter(u => u.tier === "DIAMOND").length),  color: "#00FF88" },
-            { label: "Admin",          value: String(users.filter(u => u.tier === "ADMIN").length),    color: "#ef4444" },
+            { label: "Admin",          value: String(users.filter(u => u.role === "admin").length),    color: "#ef4444" },
           ].map((s) => (
             <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
