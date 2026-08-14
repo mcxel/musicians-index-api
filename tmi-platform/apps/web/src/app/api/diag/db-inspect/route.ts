@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 
 // Temporary, read-only diagnostic for the T1 Preview DB-runtime investigation.
 // Reports table names + row counts only — never connection strings or any
-// secret value. Remove once the eos-preview schema question is settled.
+// secret value. Deliberately outside /api/admin so middleware.ts's
+// tmi_session admin-role gate doesn't block a pre-auth infra check; the
+// token check below is the only gate. Remove once the eos-preview schema
+// question is settled.
 export async function GET(req: Request) {
   const adminKey = req.headers.get("x-admin-key");
   if (!adminKey || (adminKey !== process.env.ADMIN_API_KEY && adminKey !== process.env.DB_INSPECT_TOKEN)) {
