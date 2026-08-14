@@ -260,7 +260,16 @@ function MonitorMediaBody({ slot, sponsorOverlay }: { slot: CommandCenterMediaSl
   }, [videoSrc]);
 
   return (
-    <div style={{ position: "relative", flex: 1, width: "100%", minHeight: 0, overflow: "hidden" }}>
+    <div
+      style={{
+        position: "relative",
+        flex: 1,
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
       {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
       {slot.kind === "playlist" && slot.playlistCast ? (
         <PlaylistCastBody cast={slot.playlistCast} />
@@ -799,6 +808,7 @@ export default function CommandCenterMediaStack({
     >
       {fullscreenSlot ? (
         <div
+          data-tmi-monitor-fullscreen="1"
           style={{
             position: "fixed",
             inset: 0,
@@ -806,16 +816,21 @@ export default function CommandCenterMediaStack({
             background: "#000",
             display: "flex",
             flexDirection: "column",
+            width: "100vw",
+            height: "100dvh",
+            maxHeight: "100dvh",
           }}
         >
           <div
             style={{
+              flexShrink: 0,
               padding: "10px 16px",
-              background: "rgba(10,10,25,0.9)",
+              background: "rgba(10,10,25,0.95)",
               borderBottom: "1px solid rgba(0,255,255,0.3)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 12,
             }}
           >
             <span style={{ fontSize: 12, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
@@ -827,7 +842,7 @@ export default function CommandCenterMediaStack({
               style={{
                 fontSize: 10,
                 fontWeight: 900,
-                padding: "6px 12px",
+                padding: "8px 14px",
                 borderRadius: 6,
                 border: "1px solid #FFD700",
                 background: "rgba(255,215,0,0.2)",
@@ -838,8 +853,12 @@ export default function CommandCenterMediaStack({
               EXIT FULLSCREEN ✕
             </button>
           </div>
-          <div style={{ flex: 1, position: "relative" }}>
-            <MonitorMediaBody slot={fullscreenSlot} sponsorOverlay={activeSponsorOverlay} />
+          {/* Absolute fill — MonitorMediaBody uses height:100%; flex:1 alone on a
+              non-flex parent previously collapsed to 0px → black viewport. */}
+          <div style={{ flex: 1, minHeight: 0, position: "relative", width: "100%" }}>
+            <div style={{ position: "absolute", inset: 0 }}>
+              <MonitorMediaBody slot={fullscreenSlot} sponsorOverlay={activeSponsorOverlay} />
+            </div>
           </div>
         </div>
       ) : null}

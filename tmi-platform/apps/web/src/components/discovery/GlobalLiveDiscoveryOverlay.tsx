@@ -64,11 +64,15 @@ export default function GlobalLiveDiscoveryOverlay({
     setMounted(true);
   }, []);
 
-  // Never mount discovery overlay on Command Center /hub or /dashboard routes
+  // HQ / Command Center: Discovery must never permanently obstruct Stage Deck.
+  // Path gate runs AFTER all hooks (Rules of Hooks). Capability stays under OPS/GPS.
   const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
-  if (currentPath.startsWith("/hub") || currentPath.startsWith("/dashboard")) {
-    return null;
-  }
+  const suppressOnHq =
+    currentPath.startsWith("/hub") || currentPath.startsWith("/dashboard");
+
+  useEffect(() => {
+    if (suppressOnHq && isOpen) close();
+  }, [suppressOnHq, isOpen, close]);
 
   useEffect(() => {
     if (!isOpen || viewerUserIdProp) return;
@@ -154,7 +158,7 @@ export default function GlobalLiveDiscoveryOverlay({
     ? "No live events in your filters"
     : "No live rooms right now";
 
-  if (!mounted) return null;
+  if (suppressOnHq || !mounted) return null;
 
   return createPortal(
     <>

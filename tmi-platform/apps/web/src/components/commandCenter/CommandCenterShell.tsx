@@ -679,7 +679,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </button>
             </>
           )}
-          <RoleSwitcherWidget accentColor={theme.primary} />
+          {/* Mobile: role / Admin Deck lives inside OPS drawer — never a float over Monitor A. */}
+          {!isMobile ? <RoleSwitcherWidget accentColor={theme.primary} /> : null}
         </div>
       </div>
 
@@ -1116,6 +1117,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           </button>
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
             OPERATING CENTERS
+          </div>
+          {/* Admin / role switch lives in OPS only on mobile — never floats over Monitor A. */}
+          <div style={{ marginBottom: 8 }}>
+            <RoleSwitcherWidget accentColor={theme.primary} />
           </div>
           {centers.map((center) => {
             const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));

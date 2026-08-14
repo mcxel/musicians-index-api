@@ -692,12 +692,71 @@ export default function YoPhoTripleStageStudio({
         data-yopho-triple-grid
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "minmax(180px, 220px) 1fr 1.15fr 1fr",
+          // Desktop: WORKING | PREVIEW | COMPARE | FILTERS (controls last, not first).
+          // Mobile tabs keep one surface; filters tab still shows controls only.
+          gridTemplateColumns: isMobile ? "1fr" : "1.15fr 1fr 1fr minmax(180px, 220px)",
           gap: 14,
           alignItems: "start",
         }}
       >
-        {/* FILTERS & EFFECTS PANEL */}
+        {/* WORKING CARD — primary visual TOP / Stage Deck ownership */}
+        {(!isMobile || mobileTab === "working") && (
+          <div>
+            {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
+            <YoPhoPortraitStageCanvas
+              blueprint={preview}
+              height={isMobile ? "clamp(240px, 44vh, 400px)" : WORKING_CARD_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused
+              suppressOverlays
+              emptyLabel="Put your image here"
+            />
+            <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
+              SET IMAGE ON ACTIVE LAYER
+            </button>
+          </div>
+        )}
+
+        {/* PREVIEW 1 — effect path */}
+        {(!isMobile || mobileTab === "preview") && (
+          <div>
+            {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
+            <YoPhoPortraitStageCanvas
+              blueprint={effectPreviewBlueprint}
+              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused={!isPlaying}
+              emptyLabel="Preview"
+            />
+          </div>
+        )}
+
+        {/* PREVIEW 2 — compare */}
+        {(!isMobile || mobileTab === "compare") && (
+          <div
+            onPointerDown={() => setCompareHold(true)}
+            onPointerUp={() => setCompareHold(false)}
+            onPointerLeave={() => setCompareHold(false)}
+          >
+            {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
+            <YoPhoPortraitStageCanvas
+              blueprint={compareHold ? master : preview}
+              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
+              interactive={false}
+              timelineSec={timelineSec}
+              playbackPaused={!isPlaying}
+              suppressOverlays={compareHold}
+              emptyLabel="Preview 2"
+            />
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+              {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
+            </div>
+          </div>
+        )}
+
+        {/* FILTERS & EFFECTS — BOTTOM / last column (never above preview canvases) */}
         {(!isMobile || mobileTab === "filters") && (
           <div
             style={{
@@ -743,63 +802,6 @@ export default function YoPhoTripleStageStudio({
                   </button>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* PREVIEW 1 — effect path */}
-        {(!isMobile || mobileTab === "preview") && (
-          <div>
-            {stageLabel("PREVIEW", "Effect on full stack · click a filter")}
-            <YoPhoPortraitStageCanvas
-              blueprint={effectPreviewBlueprint}
-              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
-              interactive={false}
-              timelineSec={timelineSec}
-              playbackPaused={!isPlaying}
-              emptyLabel="Preview"
-            />
-          </div>
-        )}
-
-        {/* WORKING CARD — live layer stack + transforms */}
-        {(!isMobile || mobileTab === "working") && (
-          <div>
-            {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
-            <YoPhoPortraitStageCanvas
-              blueprint={preview}
-              height={isMobile ? "clamp(240px, 44vh, 400px)" : WORKING_CARD_CANVAS_HEIGHT}
-              interactive={false}
-              timelineSec={timelineSec}
-              playbackPaused
-              suppressOverlays
-              emptyLabel="Put your image here"
-            />
-            <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
-              SET IMAGE ON ACTIVE LAYER
-            </button>
-          </div>
-        )}
-
-        {/* PREVIEW 2 — compare */}
-        {(!isMobile || mobileTab === "compare") && (
-          <div
-            onPointerDown={() => setCompareHold(true)}
-            onPointerUp={() => setCompareHold(false)}
-            onPointerLeave={() => setCompareHold(false)}
-          >
-            {stageLabel("PREVIEW 2", "Hold = master before · release = pending effects")}
-            <YoPhoPortraitStageCanvas
-              blueprint={compareHold ? master : preview}
-              height={isMobile ? "clamp(240px, 42vh, 380px)" : STAGE_CANVAS_HEIGHT}
-              interactive={false}
-              timelineSec={timelineSec}
-              playbackPaused={!isPlaying}
-              suppressOverlays={compareHold}
-              emptyLabel="Preview 2"
-            />
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-              {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
             </div>
           </div>
         )}
