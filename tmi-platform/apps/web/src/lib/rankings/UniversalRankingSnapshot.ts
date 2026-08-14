@@ -78,8 +78,6 @@ export function clearHumanRankPoints(profileId?: string): void {
   else humanScoreOverlay.clear();
 }
 
-import { getAllUsers } from '@/lib/auth/UserStore';
-
 /**
  * Delta-based sibling to setHumanRankPoints() for callers that award XP in
  * increments (submissions, fan-loop completion, referrals, ...) rather than
@@ -99,9 +97,16 @@ function botScoreReachedAt(createdAt: string): number {
 }
 
 /**
- * Build registry- and DB-backed candidates.
- * Humans: PerformerRegistry + DB Users (+ optional overlay points).
+ * Build registry-backed candidates.
+ * Humans: PerformerRegistry (+ optional overlay points, + overlay-only profiles).
  * Bots: BotAccountRegistry ACTIVE seats (fill band).
+ *
+ * Deliberately client-safe: this module is imported directly by client
+ * components (Home1CoverPage, OrbitalWheel, Home1Top10DoubleSpreaded), so it
+ * must never statically import anything that pulls in Node-only built-ins
+ * (e.g. UserStore's node:crypto) — that breaks the client webpack bundle.
+ * DB-user-merged candidates live in UniversalRankingSnapshot.server.ts,
+ * for server-only callers (API routes / Server Components) only.
  */
 export function collectRankCandidates(): RankCandidate[] {
   const registryIds = new Set<string>();
@@ -131,33 +136,13 @@ export function collectRankCandidates(): RankCandidate[] {
     };
   });
 
-  // DB registered users (e.g. berntmusic33@gmail.com, executive admins, real performers)
-  const dbUsers = getAllUsers();
   const dbHumans: RankCandidate[] = [];
 
-  for (const u of dbUsers) {
-    if (registryIds.has(u.id) || registryIds.has(u.email)) continue;
-    const overlay = humanScoreOverlay.get(u.id) || humanScoreOverlay.get(u.email);
-    const points = overlay?.points ?? (u.role === 'admin' ? 100000 : 0);
-    if (points <= 0 && u.role !== 'admin') continue;
-
-    dbHumans.push({
-      profileId: u.id,
-      kind: 'human' as RankKind,
-      points,
-      scoreReachedAt: overlay?.scoreReachedAt ?? u.createdAt,
-      displayName: u.displayName || u.email.split('@')[0] || 'User',
-      slug: u.id,
-      profileRoute: `/profile/${encodeURIComponent(u.id)}`,
-      avatarUrl: '/images/tmi-placeholder.jpg',
-      genre: u.role === 'admin' ? 'Executive' : 'Performer',
-      isLive: false,
-    });
-  }
-
-  // Include any overlay-only human profiles
+  // Include any overlay-only human profiles (pure in-memory Map — client-safe).
+  // DB-registered users are merged in separately by collectRankCandidatesWithDbUsers()
+  // (UniversalRankingSnapshot.server.ts, server-only callers).
   for (const [profileId, overlayData] of humanScoreOverlay.entries()) {
-    if (registryIds.has(profileId) || dbUsers.some((u) => u.id === profileId || u.email === profileId)) continue;
+    if (registryIds.has(profileId)) continue;
     dbHumans.push({
       profileId,
       kind: 'human' as RankKind,
