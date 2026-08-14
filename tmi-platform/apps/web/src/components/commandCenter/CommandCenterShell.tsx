@@ -47,7 +47,10 @@ import {
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import OperationsSidebar from "@/components/sidebar/OperationsSidebar";
 import CommandCenterTopNav from "./CommandCenterTopNav";
-import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
+import {
+  openCanonicalWorkspaceQuick,
+  presentCanonicalWorkspace,
+} from "@/lib/workspace/universal/openCanonicalPresentation";
 import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
@@ -60,8 +63,8 @@ import {
 import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
-import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 
 interface LiveApiSession {
   userId: string;
@@ -319,6 +322,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       : monitorTransitionLocked
         ? "Monitor layout transition in progress"
         : `Cycle monitors ${monitorCount} → ${cycleMonitorMode() === "DUAL" ? 2 : cycleMonitorMode() === "PRIMARY_ONLY" ? 1 : 0}`;
+
+  const hasActiveWorkspaceSurface = Boolean(drawerWorkspace && isDrawerExpanded);
+  const isLiveRoomRoute = pathname.startsWith("/live/") || pathname.startsWith("/room/");
+  const monetizationExperienceMode: AdRailExperienceMode = isLiveRoomRoute
+    ? "live-room"
+    : hasActiveWorkspaceSurface
+      ? "workspace"
+      : "dashboard";
 
   /** Unified monitor-cycle control used by command-bar controls on mobile and desktop. */
   const toggleStageMonitors = () => {
@@ -960,6 +971,33 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   initialPlaylistId={deepLinkPlaylistId}
                   onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
                 />
+
+                {/* Monetization lives in scroll depth only — never overlays stage controls. */}
+                <div style={{ padding: "0 12px 16px" }}>
+                  {role === "fan" ? (
+                    <>
+                      <AdRail
+                        placement="fan-cc-bottom"
+                        role="fan"
+                        reserve="medium-rectangle"
+                        experienceMode={monetizationExperienceMode}
+                      />
+                      <AdRail
+                        placement="fan-cc-mid"
+                        role="fan"
+                        reserve="mobile-banner"
+                        experienceMode={monetizationExperienceMode}
+                      />
+                    </>
+                  ) : (
+                    <AdRail
+                      placement="performer-cc-bottom"
+                      role="performer"
+                      reserve="medium-rectangle"
+                      experienceMode={monetizationExperienceMode}
+                    />
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1194,6 +1232,33 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               initialPlaylistId={deepLinkPlaylistId}
             />
           </GlobalErrorBoundary>
+
+          {/* Monetization lives below core experience and sponsor ribbon, never over controls. */}
+          <div style={{ padding: "12px 16px 18px" }}>
+            {role === "fan" ? (
+              <>
+                <AdRail
+                  placement="fan-cc-bottom"
+                  role="fan"
+                  reserve="medium-rectangle"
+                  experienceMode={monetizationExperienceMode}
+                />
+                <AdRail
+                  placement="fan-cc-mid"
+                  role="fan"
+                  reserve="mobile-banner"
+                  experienceMode={monetizationExperienceMode}
+                />
+              </>
+            ) : (
+              <AdRail
+                placement="performer-cc-bottom"
+                role="performer"
+                reserve="medium-rectangle"
+                experienceMode={monetizationExperienceMode}
+              />
+            )}
+          </div>
         </div>
       )}
 
