@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +9,20 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Temporary root-cause instrumentation (T1 runtime sweep) — this boundary
+  // already receives the full error object but never logged it, so the
+  // real stack/digest never reached the console. Remove once the /battles
+  // removeChild + Server Component crash root causes are found and fixed.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.error('[TMI global-error]', {
+      message: error.message,
+      digest: error.digest,
+      stack: error.stack,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    });
+  }, [error]);
+
   return (
     <html lang="en">
       <body style={{ background: '#0a0a0a', color: '#fff', fontFamily: 'sans-serif' }}>
