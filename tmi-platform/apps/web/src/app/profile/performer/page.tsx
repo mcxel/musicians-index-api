@@ -1,20 +1,32 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const C = { bg: '#07071a', panel: 'rgba(12,20,50,.9)', border: '#1a1a3a', accent: '#FF2DAA', gold: '#FFD700', cyan: '#00FFFF', purple: '#AA2DFF', green: '#00FF88', text: '#fff', dim: '#666' };
 
 interface Session { authenticated: boolean; user: { id: string; email: string; displayName?: string } | null; role: string; tier: string; }
 
 export default function PerformerProfilePage() {
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
-      .then(r => r.json()).then((d: Session) => { setSession(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+      .then(r => r.json())
+      .then((d: Session) => {
+        if (!d?.authenticated || !d?.user) {
+          router.replace('/auth?next=/profile/performer');
+          return;
+        }
+        setSession(d);
+        setLoading(false);
+      })
+      .catch(() => {
+        router.replace('/auth?next=/profile/performer');
+      });
+  }, [router]);
 
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
 
