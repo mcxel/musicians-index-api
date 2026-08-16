@@ -1162,7 +1162,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     <button
                       key={item.id}
                       type="button"
-                      data-testid={`tmi-${item.id}-trigger`}
+                      data-testid={item.id === "yopho" ? "tmi-quickstrip-yopho-trigger" : `tmi-${item.id}-trigger`}
                       data-tmi-workspace={item.id}
                       onClick={item.onClick ?? (() => openStageWorkspace(item.id))}
                       style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
@@ -1536,6 +1536,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           </div>
           {centers.map((center) => {
             const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
+            const isYoPhoCenter = center.primaryModule === "yopho";
             return railBtn({
               key: center.id,
               label: `${center.icon} ${center.label}`,
@@ -1543,6 +1544,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               accent: center.accent,
               active: isActive,
               onClick: () => { launchQuickModule(center.primaryModule as CommandCenterPanelId, center.actionId); setMobileLeftOpen(false); },
+              testId: isYoPhoCenter ? "tmi-gps-yopho-trigger" : undefined,
+              dataTmiAction: isYoPhoCenter ? "open-workspace" : undefined,
+              dataTmiWorkspace: isYoPhoCenter ? "yopho" : undefined,
             });
           })}
           {drawerLaunchers.length > 0 ? (
@@ -1572,7 +1576,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     launchQuickModule(id);
                     setMobileLeftOpen(false);
                   },
-                  testId: isYoPho ? "tmi-yopho-trigger" : undefined,
+                  testId: isYoPho ? "tmi-gps-yopho-trigger" : undefined,
                   dataTmiAction: isYoPho ? "open-workspace" : undefined,
                   dataTmiWorkspace: isYoPho ? "yopho" : undefined,
                 });
