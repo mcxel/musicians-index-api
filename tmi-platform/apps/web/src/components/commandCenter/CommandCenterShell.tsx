@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
@@ -65,6 +65,7 @@ import CanonicalRightQuickPanelHost from "@/components/workspace/universal/Canon
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
+import PerformerCreatorControlCluster from "./PerformerCreatorControlCluster";
 
 interface LiveApiSession {
   userId: string;
@@ -83,6 +84,27 @@ interface CommandCenterShellProps {
 type MonitorLayoutMode = "DUAL" | "PRIMARY_ONLY" | "HIDDEN";
 type MonitorStagePhase = "VISIBLE" | "EXITING" | "HIDDEN" | "ENTERING";
 const MONITOR_STAGE_TRANSITION_MS = 190;
+
+function isProofDiagnosticsEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("proof") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function traceLaunch(action: string, payload?: unknown): void {
+  if (process.env.NODE_ENV !== "development" && !isProofDiagnosticsEnabled()) return;
+  if (typeof window !== "undefined") {
+    const w = window as Window & { __TMI_LAUNCH_TRACE__?: Array<unknown> };
+    const current = w.__TMI_LAUNCH_TRACE__ ?? [];
+    current.push({ action, payload, timestamp: performance.now() });
+    if (current.length > 200) current.shift();
+    w.__TMI_LAUNCH_TRACE__ = current;
+  }
+  console.debug("[TMI:LAUNCH]", { action, payload });
+}
 
 export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
   const defaultPerformer = useMemo(() => {
@@ -109,8 +131,18 @@ const BIO_MAGAZINE_TAB_EVENT = "tmi:performer-bio-magazine-open-tab";
 type PerformerBioTab = "profile" | "biography" | "magazine" | "gallery" | "music" | "interviews";
 
 function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
+  const isDevBuild = process.env.NODE_ENV === "development";
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
+  const isProofReplay = searchParams?.get("proof") === "1";
+  const proofAdsOverride = searchParams?.get("proofAds");
+  const diagnosticsEnabled = isDevBuild || isProofReplay;
+  // Dev-only isolation switch for /hub/performer?proof=1 crash triage.
+  const suppressProofPerformerAd =
+    role === "performer" &&
+    isProofReplay &&
+    proofAdsOverride !== "on";
   const theme = useTheme();
   const [liveDisplayName, setLiveDisplayName] = useState(displayName);
   useEffect(() => {
@@ -156,6 +188,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     window.addEventListener("tmi:open-ops-menu", handleOpenOps);
     return () => window.removeEventListener("tmi:open-ops-menu", handleOpenOps);
   }, []);
+  useEffect(() => {
+    if (!diagnosticsEnabled) return;
+    document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-16-proof4");
+  }, [diagnosticsEnabled]);
   const [monitorLayoutMode, setMonitorLayoutMode] = useState<MonitorLayoutMode>("DUAL");
   const [monitorStagePhase, setMonitorStagePhase] = useState<MonitorStagePhase>("VISIBLE");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -165,8 +201,59 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
   const mediaConsoleMode = useWorkspacePresentationStore((s) => s.mediaConsoleMode);
+  const mobileMode = useWorkspacePresentationStore((s) => s.mobileMode);
+  const activeWorkspace = useWorkspacePresentationStore((s) => s.activeWorkspace);
+  const activeControlMode = useWorkspacePresentationStore((s) => s.activeControlMode);
+  const previousMonitorCount = useWorkspacePresentationStore((s) => s.previousMonitorCount);
+  const storeMonitorCount = useWorkspacePresentationStore((s) => s.monitorCount);
+  const focusedViewport = useWorkspacePresentationStore((s) => s.focusedViewport);
+  const sourceA = useWorkspacePresentationStore((s) => s.sourceA);
+  const sourceB = useWorkspacePresentationStore((s) => s.sourceB);
+  const transition = useWorkspacePresentationStore((s) => s.transition);
+  const openWorkspace = useWorkspacePresentationStore((s) => s.openWorkspace);
+  const closeWorkspace = useWorkspacePresentationStore((s) => s.closeWorkspace);
+  const openControl = useWorkspacePresentationStore((s) => s.openControl);
+  const closeControl = useWorkspacePresentationStore((s) => s.closeControl);
+  const cycleMonitorCount = useWorkspacePresentationStore((s) => s.cycleMonitorCount);
+  const setPresentationMonitorCount = useWorkspacePresentationStore((s) => s.setMonitorCount);
+  const mobilePresentation = useMemo(
+    () => ({
+      mode: mobileMode,
+      activeWorkspace,
+      activeControlMode,
+      previousMonitorCount,
+      monitorCount: storeMonitorCount,
+      focusedViewport,
+      sourceA,
+      sourceB,
+      transition,
+      openWorkspace,
+      closeWorkspace,
+      openControl,
+      closeControl,
+      cycleMonitorCount,
+      setMonitorCount: setPresentationMonitorCount,
+    }),
+    [
+      mobileMode,
+      activeWorkspace,
+      activeControlMode,
+      previousMonitorCount,
+      storeMonitorCount,
+      focusedViewport,
+      sourceA,
+      sourceB,
+      transition,
+      openWorkspace,
+      closeWorkspace,
+      openControl,
+      closeControl,
+      cycleMonitorCount,
+      setPresentationMonitorCount,
+    ],
+  );
   /** Mobile Stage Deck: MONITORS ⇄ WORKSPACE — mutually exclusive presentation of one region. */
-  const stageDeckWork = isMobile && Boolean(drawerWorkspace && isDrawerExpanded);
+  const stageDeckWork = isMobile && mobilePresentation.mode === "WORK";
   const stageDeckShowMonitors = isMobile && !stageDeckWork && monitorLayoutMode !== "HIDDEN";
   const [featured, setFeatured] = useState<{
     name: string;
@@ -179,13 +266,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   } | null>(null);
 
   const hubDrawerDeepLinkDone = useRef(false);
+  const proofDrawerDeepLinkDone = useRef(false);
   /** True only when a control surface collapsed the Stage — not when Marcel hid it manually. */
   const stageCollapsedByControlRef = useRef(false);
   const stageCollapseRestoreModeRef = useRef<MonitorLayoutMode>("DUAL");
 
   const monitorCount = monitorLayoutMode === "DUAL" ? 2 : monitorLayoutMode === "PRIMARY_ONLY" ? 1 : 0;
   const monitorTransitionLocked = monitorStagePhase === "EXITING" || monitorStagePhase === "ENTERING";
-  const monitorLayoutForStack = monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
+  const isWatchMode = mobilePresentation.mode === "WATCH";
+  const isWorkMode = mobilePresentation.mode === "WORK";
+  const isControlMode = mobilePresentation.mode === "CONTROL";
+  const isOpeningWork = isWorkMode && monitorStagePhase === "EXITING";
+  const effectiveMonitorCount = isWorkMode ? 0 : isControlMode ? 1 : monitorCount;
+  const monitorLayoutForStack = isControlMode || monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
+  const shouldCollapseMonitorRegion =
+    (isWorkMode && !isOpeningWork) ||
+    (isWatchMode && effectiveMonitorCount === 0);
   const monitorRegionHiddenStyle: CSSProperties = {
     position: "absolute",
     width: 1,
@@ -203,7 +299,23 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const monitorRegionStyle: CSSProperties = {
     minWidth: 0,
     minHeight: 0,
-    ...(monitorStagePhase === "HIDDEN" ? monitorRegionHiddenStyle : {}),
+    ...(shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN"
+      ? {
+          display: "none",
+          height: 0,
+          minHeight: 0,
+          maxHeight: 0,
+          flexBasis: 0,
+          aspectRatio: "unset",
+          margin: 0,
+          padding: 0,
+          gap: 0,
+          border: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          visibility: "hidden",
+        }
+      : {}),
     ...(!prefersReducedMotion && monitorStagePhase === "EXITING" ? { animation: `tmiMonitorExit ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) forwards` } : {}),
     ...(!prefersReducedMotion && monitorStagePhase === "ENTERING" ? { animation: `tmiMonitorEnter ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) both` } : {}),
   };
@@ -230,6 +342,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const transitionMonitorLayout = (nextMode: MonitorLayoutMode) => {
     if (monitorTransitionLocked) return;
     if (nextMode === monitorLayoutMode) return;
+    const nextCount = nextMode === "DUAL" ? 2 : nextMode === "PRIMARY_ONLY" ? 1 : 0;
+    if (mobilePresentation.monitorCount !== nextCount) {
+      mobilePresentation.setMonitorCount(nextCount);
+    }
 
     if (nextMode === "HIDDEN") {
       setMonitorStagePhase("EXITING");
@@ -256,8 +372,30 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   // Manual HIDE wins: do not restore Stage on close unless this control performed the collapse.
   useEffect(() => {
     if (!isMobile) return;
+    if (isWorkMode && monitorLayoutModeRef.current !== "HIDDEN") {
+      stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
+      stageCollapsedByControlRef.current = true;
+      transitionMonitorLayout("HIDDEN");
+      return;
+    }
+
+    if (isControlMode && monitorLayoutModeRef.current !== "PRIMARY_ONLY") {
+      stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current === "HIDDEN"
+        ? stageCollapseRestoreModeRef.current
+        : monitorLayoutModeRef.current;
+      stageCollapsedByControlRef.current = true;
+      transitionMonitorLayout("PRIMARY_ONLY");
+      return;
+    }
+
+    if (!isWorkMode && !isControlMode && stageCollapsedByControlRef.current && monitorLayoutModeRef.current === "HIDDEN") {
+      stageCollapsedByControlRef.current = false;
+      transitionMonitorLayout(stageCollapseRestoreModeRef.current);
+      return;
+    }
+
     const onFocus = () => {
-      if (drawerWorkspace) return;
+      if (mobilePresentation.mode !== "WATCH") return;
       if (monitorLayoutModeRef.current !== "HIDDEN") {
         stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
         stageCollapsedByControlRef.current = true;
@@ -265,7 +403,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       }
     };
     const onFocusEnd = () => {
-      if (drawerWorkspace) return;
+      if (mobilePresentation.mode !== "WATCH") return;
       if (stageCollapsedByControlRef.current) {
         stageCollapsedByControlRef.current = false;
         transitionMonitorLayout(stageCollapseRestoreModeRef.current);
@@ -277,7 +415,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       window.removeEventListener("tmi:control-focus", onFocus);
       window.removeEventListener("tmi:control-focus-end", onFocusEnd);
     };
-  }, [isMobile, drawerWorkspace, monitorTransitionLocked, monitorLayoutMode, prefersReducedMotion]);
+  }, [isMobile, mobilePresentation.mode, monitorTransitionLocked, monitorLayoutMode, prefersReducedMotion]);
 
   useEffect(() => {
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -291,13 +429,20 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   /** Explicit 📺 MONITORS while in WORK — user asked for WATCH; clear manual hide. */
   const restoreStageMonitors = () => {
-    useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+    if (mobilePresentation.mode === "CONTROL") {
+      mobilePresentation.closeControl();
+    } else if (mobilePresentation.mode === "WORK") {
+      mobilePresentation.closeWorkspace();
+    } else {
+      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+    }
     stageCollapsedByControlRef.current = false;
-    transitionMonitorLayout("DUAL");
+    transitionMonitorLayout(stageCollapseRestoreModeRef.current);
     setMobileLeftOpen(false);
   };
 
   const openStageWorkspace = (id: string) => {
+    traceLaunch("OPEN_STAGE_WORKSPACE", { source: "command-center-shell", workspaceId: id });
     setMobileLeftOpen(false);
     setMobileRightOpen(false);
     // Monitor presentation mode persists while entering WORK.
@@ -342,15 +487,57 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     transitionMonitorLayout(cycleMonitorMode());
   };
 
+  // Deterministic mobile proof opener: bypasses click flakiness by forcing the
+  // canonical workspace path once for explicit proof URLs.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (proofDrawerDeepLinkDone.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const isProofReplay = params.get("proof") === "1";
+    const drawer = params.get("drawer");
+    if (!isProofReplay || drawer !== "yopho") return;
+
+    proofDrawerDeepLinkDone.current = true;
+    if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-yopho-open", "1");
+    setAppearanceOpen(false);
+    setActivePanel(null);
+    drawerStateStore.setLastPanel(role, null);
+    presentCanonicalWorkspace("yopho", "DRAWER");
+    hubDrawerDeepLinkDone.current = true;
+  }, [role, diagnosticsEnabled]);
+
   // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/fan?drawer=yopho (workspace)
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (hubDrawerDeepLinkDone.current) return;
 
+    if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", "entered");
+
     const params = new URLSearchParams(window.location.search);
     const drawer = params.get("drawer") as UniversalDrawerModuleId | null;
     const playlistId = params.get("playlistId");
-    if (!drawer || !getUniversalDrawerModule(drawer)) return;
+    const isProofReplay = params.get("proof") === "1";
+    if (!drawer) {
+      if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", "no-drawer");
+      return;
+    }
+    if (!getUniversalDrawerModule(drawer)) {
+      if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", `invalid-${drawer}`);
+      return;
+    }
+
+    if (isProofReplay) {
+      if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-drawer-open", drawer);
+      setAppearanceOpen(false);
+      setActivePanel(null);
+      drawerStateStore.setLastPanel(role, null);
+      if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
+      presentCanonicalWorkspace(drawer as any, "DRAWER");
+      if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", `proof-open-${drawer}`);
+      hubDrawerDeepLinkDone.current = true;
+      return;
+    }
 
     const consumeKey = `${HUB_DRAWER_DEEPLINK_KEY}:${pathname}:${drawer}:${playlistId ?? ""}`;
     try {
@@ -398,7 +585,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     if (drawer !== "playlist") clean.delete("playlistId");
     const qs = clean.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [role, userId, pathname, router]);
+  }, [role, userId, pathname, router, diagnosticsEnabled]);
 
   useEffect(() => {
     const unsubCast = subscribePlaylistCast((payload: PlaylistCastPayload) => {
@@ -604,6 +791,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     accent?: string;
     onClick?: () => void;
     href?: string;
+    testId?: string;
+    dataTmiAction?: string;
+    dataTmiWorkspace?: string;
   }) => {
     const active = Boolean(opts.active);
     const accent = opts.accent ?? theme.primary;
@@ -645,7 +835,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     );
     if (opts.href) {
       return (
-        <Link key={opts.key} href={opts.href} style={style}>
+        <Link
+          key={opts.key}
+          href={opts.href}
+          style={style}
+          data-testid={opts.testId}
+          data-tmi-action={opts.dataTmiAction}
+          data-tmi-workspace={opts.dataTmiWorkspace}
+        >
           {inner}
         </Link>
       );
@@ -658,6 +855,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           e.stopPropagation();
           opts.onClick?.();
         }}
+        data-testid={opts.testId}
+        data-tmi-action={opts.dataTmiAction}
+        data-tmi-workspace={opts.dataTmiWorkspace}
         style={style}
       >
         {inner}
@@ -739,7 +939,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               {featured.viewers != null ? ` · ${featured.viewers.toLocaleString()} watching` : ""}
             </button>
           ) : (
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>No one live right now</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 9, fontWeight: 700 }}>
+              No one live right now
+            </span>
           )}
           {activePerformer ? (
             <span
@@ -783,6 +985,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </button>
               <button
                 type="button"
+                data-testid="tmi-gps-trigger"
+                data-tmi-action="open-gps"
                 onClick={() => setMobileLeftOpen((v) => !v)}
                 style={{ background: "transparent", border: `1px solid ${theme.primary}44`, borderRadius: 6, color: theme.primary, fontSize: 10, fontWeight: 800, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
               >
@@ -840,6 +1044,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             ref={mediaStageRef}
             data-hub-monitor-stage
             data-stage-deck={stageDeckWork ? "work" : stageDeckShowMonitors ? "watch" : "collapsed"}
+            data-presentation-mode={mobilePresentation.mode}
+            data-presentation-transition={mobilePresentation.transition}
             style={{
               position: "relative",
               minWidth: 0,
@@ -956,6 +1162,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     <button
                       key={item.id}
                       type="button"
+                      data-testid={`tmi-${item.id}-trigger`}
+                      data-tmi-workspace={item.id}
                       onClick={item.onClick ?? (() => openStageWorkspace(item.id))}
                       style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
                     >
@@ -974,6 +1182,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
                 {/* Monetization lives in scroll depth only — never overlays stage controls. */}
                 <div style={{ padding: "0 12px 16px" }}>
+                  {role === "performer" ? <PerformerCreatorControlCluster compact /> : null}
                   {role === "fan" ? (
                     <>
                       <AdRail
@@ -1213,7 +1422,29 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
                     PLATFORM
                   </div>
-                  <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+                  {suppressProofPerformerAd ? (
+                    <div
+                      data-proof-ad-suppressed="1"
+                      style={{
+                        minHeight: 90,
+                        borderRadius: 8,
+                        border: `1px dashed ${theme.primary}55`,
+                        background: "rgba(255,255,255,0.02)",
+                        color: "rgba(255,255,255,0.55)",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.08em",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Proof Ad Suppressed
+                    </div>
+                  ) : (
+                    <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+                  )}
                 </div>
               )}
             </div>
@@ -1235,6 +1466,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
           {/* Monetization lives below core experience and sponsor ribbon, never over controls. */}
           <div style={{ padding: "12px 16px 18px" }}>
+            {role === "performer" ? <PerformerCreatorControlCluster /> : null}
             {role === "fan" ? (
               <>
                 <AdRail
@@ -1321,13 +1553,28 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               {drawerLaunchers.map((id) => {
                 const mod = getUniversalDrawerModule(id);
                 if (!mod) return null;
+                const isYoPho = id === "yopho";
                 return railBtn({
                   key: `drawer-${id}`,
                   label: mod.label,
                   info: mod.info,
                   accent: mod.accent,
                   active: isModuleActive(id),
-                  onClick: () => { launchQuickModule(id); setMobileLeftOpen(false); },
+                  onClick: () => {
+                    if (isYoPho) {
+                      traceLaunch("WORKSPACE_LAUNCH", {
+                        workspace: "yopho",
+                        source: "GPS_PANEL",
+                        role,
+                        surface: "mobile-left-rail",
+                      });
+                    }
+                    launchQuickModule(id);
+                    setMobileLeftOpen(false);
+                  },
+                  testId: isYoPho ? "tmi-yopho-trigger" : undefined,
+                  dataTmiAction: isYoPho ? "open-workspace" : undefined,
+                  dataTmiWorkspace: isYoPho ? "yopho" : undefined,
                 });
               })}
             </>
@@ -1381,7 +1628,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             ✕
           </button>
           <OperationsSidebar role={role} userId={userId} displayName={resolvedDisplayName} featuredPerformerName={featured?.name} />
-          {/* Discovery lives in the OPS (left) panel only, per direction — one owner, not scattered. */}
+          {/* Discovery lives in the GPS (left) panel only, per direction — one owner, not scattered. */}
           {role === "fan" ? (
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>AD SLOT · {FAN_AD_ZONE}</div>
@@ -1390,7 +1637,29 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           ) : (
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>PLATFORM</div>
-              <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+              {suppressProofPerformerAd ? (
+                <div
+                  data-proof-ad-suppressed="1"
+                  style={{
+                    minHeight: 90,
+                    borderRadius: 8,
+                    border: `1px dashed ${theme.primary}55`,
+                    background: "rgba(255,255,255,0.02)",
+                    color: "rgba(255,255,255,0.55)",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Proof Ad Suppressed
+                </div>
+              ) : (
+                <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="TMI PROMOTION" accentColor={theme.primary} />
+              )}
             </div>
           )}
         </div>
