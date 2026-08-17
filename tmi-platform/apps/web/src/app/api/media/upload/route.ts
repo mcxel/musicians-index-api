@@ -52,11 +52,21 @@ export async function POST(req: NextRequest) {
     const result = await MediaEngine.upload(uploadReq);
     if (!result.ok) return NextResponse.json(result, { status: 400 });
 
-    // Persist to DB so CRUD routes (/api/songs/[id], /api/videos/[id]) can manage it
+    const resolvedGenre = uploadReq.genre?.trim() || "Other";
+    const resolvedBpm = Number.isFinite(uploadReq.bpm) ? Number(uploadReq.bpm) : 120;
+
+    // Persist to DB so CRUD routes (/api/songs/[id], /api/videos/[id], Beat Vault) can manage it
     if (result.assetId && result.url) {
-      const dbUser = cookieEmail
-        ? await prisma.user.findUnique({ where: { email: cookieEmail }, select: { id: true } })
+      const resolvedUserId = ownerId || cookieEmail;
+      const dbUser = resolvedUserId
+        ? await prisma.user.findFirst({
+            where: {
+              OR: [{ id: resolvedUserId }, { email: resolvedUserId }],
+            },
+            select: { id: true },
+          })
         : null;
+
       if (dbUser) {
         const isVideo = mediaType === "video" || mediaType === "interview" || mediaType === "venue_promo";
         try {
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
                 uploaderId: dbUser.id,
                 title: uploadReq.title,
                 videoUrl: result.url,
-                genre: uploadReq.genre,
+                genre: resolvedGenre,
                 status: 'ACTIVE',
               },
             });
@@ -78,14 +88,35 @@ export async function POST(req: NextRequest) {
                 uploaderId: dbUser.id,
                 title: uploadReq.title,
                 audioUrl: result.url,
-                genre: uploadReq.genre,
-                bpm: uploadReq.bpm,
+                genre: resolvedGenre,
+                bpm: resolvedBpm,
                 status: 'ACTIVE',
               },
             });
+            const beatSlug = `media-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            await prisma.beat.create({
+              data: {
+                id: result.assetId,
+                title: uploadReq.title,
+                producerId: dbUser.id,
+                slug: beatSlug,
+                tags: ["media-upload"],
+                previewUrl: result.url,
+                taggedUrl: result.url,
+                genre: resolvedGenre,
+                bpm: resolvedBpm,
+                basicPrice: 299,
+                premiumPrice: 999,
+                exclusivePrice: 4999,
+                status: 'draft',
+                moderationStatus: 'PENDING',
+                adminSubmitted: false,
+                producerName: ownerName,
+              },
+            }).catch(() => null);
           }
-        } catch {
-          // Non-fatal: in-memory asset already created; DB write fails gracefully
+        } catch (dbErr) {
+          console.error("[media/upload DB error]", dbErr);
         }
       }
     }
