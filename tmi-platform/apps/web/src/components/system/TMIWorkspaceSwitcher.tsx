@@ -57,8 +57,9 @@ export default function TMIWorkspaceSwitcher() {
     pathname.startsWith("/admin/overseer/") ||
     pathname === "/admin/observatory" ||
     pathname.startsWith("/admin/observatory/");
+  const onHub = pathname === "/hub" || pathname.startsWith("/hub/");
 
-  if (!session?.authenticated || !session?.user || isFlightDeck) {
+  if (!session?.authenticated || !session?.user || isFlightDeck || onHub) {
     return null;
   }
 
@@ -74,9 +75,9 @@ export default function TMIWorkspaceSwitcher() {
   const showAdmin = ["ADMIN", "SUPERADMIN"].includes(role);
 
   const workspaces: WorkspaceEntry[] = [
-    ...(showFan       ? [{ label: "Fan",       icon: "🎵", path: "/dashboard", wsId: "fan" as const }] : []),
-    ...(showPerformer ? [{ label: "Performer", icon: "🎤", path: "/dashboard", wsId: "performer" as const }] : []),
-    ...(showAdmin     ? [{ label: "Admin",     icon: "🛡", path: "/admin/overseer", wsId: "admin" as const }] : []),
+    ...(showFan       ? [{ label: "Fan",       icon: "🎵", path: "/hub/fan" }] : []),
+    ...(showPerformer ? [{ label: "Performer", icon: "🎤", path: "/hub/performer" }] : []),
+    ...(showAdmin     ? [{ label: "Admin",     icon: "🛡", path: "/admin/overseer" }] : []),
   ];
 
   const isOnDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
@@ -94,20 +95,11 @@ export default function TMIWorkspaceSwitcher() {
   })();
 
   const handleClick = (w: WorkspaceEntry) => {
-    if (w.wsId && w.path === "/dashboard") {
-      localStorage.setItem(LS_KEY, w.wsId);
-      setLocalWorkspace(w.wsId);
-      if (isOnDashboard) {
-        // Already on dashboard — switch in-place, no navigation
-        window.dispatchEvent(
-          new CustomEvent("tmi:workspace-switch", { detail: { workspace: w.wsId } })
-        );
-      } else {
-        // Navigate to dashboard; container will restore from localStorage
-        router.push("/dashboard");
-      }
-      return;
-    }
+    const nextWs =
+      w.path.startsWith("/hub/performer") ? "performer" :
+      w.path.startsWith("/admin") ? "admin" : "fan";
+    localStorage.setItem(LS_KEY, nextWs);
+    setLocalWorkspace(nextWs);
     router.push(w.path);
   };
 

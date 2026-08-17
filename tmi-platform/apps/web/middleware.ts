@@ -121,11 +121,20 @@ function isPlaylistSurface(pathname: string): boolean {
 }
 
 function roleDashboardPath(role: string): string {
-  return '/dashboard';
+  const r = role.toUpperCase();
+  if (r === 'PERFORMER' || r === 'ARTIST' || r === 'BAND') return '/hub/performer';
+  if (r === 'WRITER') return '/hub/writer';
+  if (r === 'VENUE') return '/hub/venue';
+  if (r === 'PROMOTER') return '/hub/promoter';
+  if (r === 'SPONSOR') return '/hub/sponsor';
+  if (r === 'ADVERTISER') return '/hub/advertiser';
+  // FAN / USER / ADMIN / STAFF land on Fan Command Center.
+  // Admin does not auto-enter Overseer — that remains an explicit GPS destination.
+  return '/hub/fan';
 }
 
 function resolvePrimaryPathForRoles(userRoles: string[]): string | null {
-  const precedence = ['ADMIN', 'STAFF', 'PERFORMER', 'ARTIST', 'FAN', 'SPONSOR', 'ADVERTISER', 'VENUE', 'WRITER', 'PROMOTER'];
+  const precedence = ['PERFORMER', 'ARTIST', 'BAND', 'FAN', 'SPONSOR', 'ADVERTISER', 'VENUE', 'WRITER', 'PROMOTER', 'ADMIN', 'STAFF'];
   const match = precedence.find((role) => hasAnyRole(userRoles, [role]));
   if (match) return roleDashboardPath(match);
   return null;
@@ -151,6 +160,14 @@ function isQuarantined(pathname: string): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  const proofMode = req.nextUrl.searchParams.get('proof') === '1';
+  const isLocalHost = req.nextUrl.hostname === 'localhost' || req.nextUrl.hostname === '127.0.0.1';
+
+  // Local visual-cert bypass for performer command center proof runs.
+  // Never active outside localhost.
+  if (proofMode && isLocalHost && (pathname === '/hub/performer' || pathname.startsWith('/hub/performer/'))) {
+    return NextResponse.next();
+  }
 
   // Blueprint/design-reference quarantine — return 404 before any other check.
   if (isQuarantined(pathname)) {
@@ -158,9 +175,8 @@ export function middleware(req: NextRequest) {
   }
 
   // ── Logged-in landing redirect ──────────────────────────────────────────────
-  // When an authenticated user visits `/`, `/lobby`, `/home/1`, or the bare `/home`
-  // path, send them straight to `/dashboard` — just like Facebook / YouTube do.
-  // Unauthenticated users still land on the marketing page as before.
+  // Authenticated visits to `/` and home land on the canonical role hub,
+  // never the legacy /dashboard workspace container.
   const isMarketingOrLobby =
     pathname === '/' ||
     pathname === '/lobby' ||
@@ -175,7 +191,8 @@ export function middleware(req: NextRequest) {
   if (isMarketingOrLobby) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
     if (sessionCookie) {
-      return NextResponse.redirect(new URL('/dashboard', req.url), 307);
+      const hub = resolvePrimaryPathForRoles(getUserRoles(req)) ?? '/hub/fan';
+      return NextResponse.redirect(new URL(hub, req.url), 307);
     }
   }
   // ────────────────────────────────────────────────────────────────────────────
@@ -266,21 +283,29 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  if (pathname === '/dashboard') {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    if (sessionCookie) {
+      const hub = resolvePrimaryPathForRoles(getUserRoles(req)) ?? '/hub/fan';
+      return NextResponse.redirect(new URL(hub, req.url), 307);
+    }
+  }
+
   const LEGACY_REDIRECTS: Record<string, string> = {
-    '/dashboard/fan': '/dashboard',
-    '/dashboard/performer': '/dashboard',
-    '/dashboard/artist': '/dashboard',
-    '/dashboard/producer': '/dashboard',
-    '/dashboard/sponsor': '/dashboard',
-    '/dashboard/advertiser': '/dashboard',
-    '/dashboard/venue': '/dashboard',
-    '/dashboard/writer': '/dashboard',
-    '/dashboard/promoter': '/dashboard',
+    '/dashboard/fan': '/hub/fan',
+    '/dashboard/performer': '/hub/performer',
+    '/dashboard/artist': '/hub/performer',
+    '/dashboard/producer': '/hub/performer',
+    '/dashboard/sponsor': '/hub/sponsor',
+    '/dashboard/advertiser': '/hub/advertiser',
+    '/dashboard/venue': '/hub/venue',
+    '/dashboard/writer': '/hub/writer',
+    '/dashboard/promoter': '/hub/promoter',
     '/fan/theater': '/hub/fan',
     '/fan/dashboard': '/hub/fan',
   };
   if (LEGACY_REDIRECTS[pathname]) {
-    return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 301);
+    return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 307);
   }
 
   // Hub path multi-role routing: verify user has the role they're accessing
@@ -301,7 +326,7 @@ export function middleware(req: NextRequest) {
       // Map dashboard path to required roles
       const roleMap: Record<string, string[]> = {
         'fan': ['FAN'],
-        'performer': ['PERFORMER', 'ARTIST'],
+        'performer': ['PERFORMER', 'ARTIST', 'BAND'],
         'sponsor': ['SPONSOR'],
         'advertiser': ['ADVERTISER'],
         'venue': ['VENUE'],
