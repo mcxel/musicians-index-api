@@ -58,6 +58,7 @@ import { RoomBubbleRail } from '@/components/chat/RoomBubbleRail';
 import { useVenueSpeechBubbles, audienceMessageToRoomChat } from '@/components/messaging/useVenueSpeechBubbles';
 import VenueInRoomMessagingPanel from '@/components/messaging/VenueInRoomMessagingPanel';
 import { RoomBubbleChatEngine } from '@/lib/chat/RoomBubbleChatEngine';
+import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
 
 const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
 import {
@@ -145,6 +146,7 @@ type LiveSession = {
   stageState: string;
   accentColor: string;
   userId: string;
+  performerTier?: string;
 };
 
 type FloatingReaction = { id: string; emoji: string; x: number };
@@ -245,6 +247,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         ? realOccupancyRatio
         : 0.08;
   const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
+  const tierSkin = resolveBaseVenueSkin(liveSession?.performerTier ?? 'FREE');
   const watchingCount = snapshot?.present ?? 0;
   const loungeContextParticipantId = snapshot?.activeMembers?.[0]?.userId;
 
@@ -489,12 +492,28 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   }
 
   return (
-    <section style={{ border: '1px solid rgba(0,255,255,0.25)', borderRadius: 14, padding: 12, background: 'rgba(5,5,16,0.22)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', marginTop: 14 }}>
+    <section
+      style={{
+        border: `1px solid ${tierSkin.accent}40`,
+        borderRadius: 14,
+        padding: 12,
+        background: `radial-gradient(ellipse at 50% 0%, ${tierSkin.accent}0a 0%, rgba(5,5,16,0.22) 60%)`,
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        marginTop: 14,
+        ['--tier-accent' as string]: tierSkin.accent,
+        ['--tier-trim' as string]: tierSkin.trim,
+        ['--tier-lighting-layers' as string]: String(tierSkin.lightingLayers),
+        ['--tier-prestige-fx' as string]: tierSkin.prestigeFx ? '1' : '0',
+      } as React.CSSProperties
+    }>
       <style>{`@keyframes universalReactionFloat{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-90px) scale(1.4);}}`}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#00FFFF', fontWeight: 800 }}>TMI VENUE</div>
+          <div style={{ fontSize: 10, letterSpacing: '0.14em', color: tierSkin.accent, fontWeight: 800 }}>
+            TMI VENUE · {tierSkin.label.toUpperCase()}
+          </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{snapshot?.present ?? 0} inside · {roomId}</div>
         </div>
         {mode === 'audience' ? (
