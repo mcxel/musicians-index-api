@@ -12,8 +12,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
+import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
-import QuickPanelDock from "@/components/drawers/QuickPanelDock";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
   type CommandCenterPlaylistCast,
@@ -182,6 +182,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenOps = () => setMobileLeftOpen(true);
@@ -189,9 +190,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     return () => window.removeEventListener("tmi:open-ops-menu", handleOpenOps);
   }, []);
   useEffect(() => {
-    if (!diagnosticsEnabled) return;
-    document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-16-proof4");
-  }, [diagnosticsEnabled]);
+    document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-16-p0shell");
+  }, []);
   const [monitorLayoutMode, setMonitorLayoutMode] = useState<MonitorLayoutMode>("DUAL");
   const [monitorStagePhase, setMonitorStagePhase] = useState<MonitorStagePhase>("VISIBLE");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -276,48 +276,41 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const isWatchMode = mobilePresentation.mode === "WATCH";
   const isWorkMode = mobilePresentation.mode === "WORK";
   const isControlMode = mobilePresentation.mode === "CONTROL";
-  const isOpeningWork = isWorkMode && monitorStagePhase === "EXITING";
   const effectiveMonitorCount = isWorkMode ? 0 : isControlMode ? 1 : monitorCount;
   const monitorLayoutForStack = isControlMode || monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
   const shouldCollapseMonitorRegion =
-    (isWorkMode && !isOpeningWork) ||
+    isWorkMode ||
     (isWatchMode && effectiveMonitorCount === 0);
-  const monitorRegionHiddenStyle: CSSProperties = {
-    position: "absolute",
-    width: 1,
-    height: 1,
-    overflow: "hidden",
-    clip: "rect(0 0 0 0)",
-    whiteSpace: "nowrap",
-    border: 0,
+  const monitorZeroGeometry: CSSProperties = {
+    display: "none",
+    height: 0,
+    minHeight: 0,
+    maxHeight: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 0,
+    aspectRatio: "unset",
+    margin: 0,
     padding: 0,
-    margin: -1,
-    opacity: 0,
+    gap: 0,
+    border: 0,
+    overflow: "hidden",
     pointerEvents: "none",
+    visibility: "hidden",
+    opacity: 0,
   };
 
+  const hideMonitorLayout = shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN" || isWorkMode;
   const monitorRegionStyle: CSSProperties = {
     minWidth: 0,
     minHeight: 0,
-    ...(shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN"
-      ? {
-          display: "none",
-          height: 0,
-          minHeight: 0,
-          maxHeight: 0,
-          flexBasis: 0,
-          aspectRatio: "unset",
-          margin: 0,
-          padding: 0,
-          gap: 0,
-          border: 0,
-          overflow: "hidden",
-          pointerEvents: "none",
-          visibility: "hidden",
-        }
+    ...(!hideMonitorLayout && !prefersReducedMotion && monitorStagePhase === "EXITING"
+      ? { animation: `tmiMonitorExit ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) forwards` }
       : {}),
-    ...(!prefersReducedMotion && monitorStagePhase === "EXITING" ? { animation: `tmiMonitorExit ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) forwards` } : {}),
-    ...(!prefersReducedMotion && monitorStagePhase === "ENTERING" ? { animation: `tmiMonitorEnter ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) both` } : {}),
+    ...(!hideMonitorLayout && !prefersReducedMotion && monitorStagePhase === "ENTERING"
+      ? { animation: `tmiMonitorEnter ${MONITOR_STAGE_TRANSITION_MS}ms cubic-bezier(0.22,1,0.36,1) both` }
+      : {}),
+    ...(hideMonitorLayout ? monitorZeroGeometry : {}),
   };
 
   const clearMonitorPhaseTimer = () => {
@@ -372,10 +365,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   // Manual HIDE wins: do not restore Stage on close unless this control performed the collapse.
   useEffect(() => {
     if (!isMobile) return;
-    if (isWorkMode && monitorLayoutModeRef.current !== "HIDDEN") {
-      stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
-      stageCollapsedByControlRef.current = true;
-      transitionMonitorLayout("HIDDEN");
+    if (isWorkMode) {
+      if (monitorLayoutModeRef.current !== "HIDDEN") {
+        stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
+        stageCollapsedByControlRef.current = true;
+      }
+      clearMonitorPhaseTimer();
+      if (monitorLayoutMode !== "HIDDEN") setMonitorLayoutMode("HIDDEN");
+      if (monitorStagePhase !== "HIDDEN") setMonitorStagePhase("HIDDEN");
       return;
     }
 
@@ -966,22 +963,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               <button
                 type="button"
                 onClick={toggleStageMonitors}
-                disabled={monitorTransitionLocked}
+                disabled={monitorTransitionLocked && !isWorkMode}
                 style={{
-                  background: monitorCount > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
+                  background: effectiveMonitorCount > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
                   border: "1px solid #00E5FF",
                   borderRadius: 6,
                   color: "#00E5FF",
                   fontSize: 10,
                   fontWeight: 900,
                   padding: "4px 10px",
-                  cursor: monitorTransitionLocked ? "not-allowed" : "pointer",
+                  cursor: monitorTransitionLocked && !isWorkMode ? "not-allowed" : "pointer",
                   fontFamily: "inherit",
-                  opacity: monitorTransitionLocked ? 0.75 : 1,
+                  opacity: monitorTransitionLocked && !isWorkMode ? 0.75 : 1,
                 }}
                 title={monitorButtonTitle}
               >
-                📺 MONITORS {monitorCount}
+                📺 MONITORS {isWorkMode ? 0 : monitorCount}
               </button>
               <button
                 type="button"
@@ -1036,7 +1033,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             flexDirection: "column",
             width: "100%",
             minWidth: 0,
-            overflowY: "auto",
+            overflowY: stageDeckWork ? "hidden" : "auto",
             overflowX: "hidden",
           }}
         >
@@ -1053,6 +1050,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               display: "flex",
               flexDirection: "column",
               flex: stageDeckWork ? 1 : undefined,
+              // WORK: explicit viewport height bypasses the minHeight:100vh parent ambiguity
+              height: stageDeckWork ? "calc(100dvh - 100px)" : undefined,
+              overflow: stageDeckWork ? "hidden" : undefined,
             }}
           >
             {/* WATCH surface — keep mounted when WORK/COLLAPSED so MediaStream survives */}
@@ -1066,6 +1066,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   bezelVariant="chrome"
                   naturalHeight
                   monitorLayoutMode={monitorLayoutForStack}
+                  role={role === "performer" ? "performer" : "fan"}
                   seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                 />
               </GlobalErrorBoundary>
@@ -1162,7 +1163,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     <button
                       key={item.id}
                       type="button"
-                      data-testid={item.id === "yopho" ? "tmi-quickstrip-yopho-trigger" : `tmi-${item.id}-trigger`}
+                      data-testid={item.id === "yopho" ? "tmi-yopho-trigger" : `tmi-${item.id}-trigger`}
                       data-tmi-workspace={item.id}
                       onClick={item.onClick ?? (() => openStageWorkspace(item.id))}
                       style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
@@ -1298,7 +1299,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
               {role === "performer"
                 ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
-                : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
+                : null}
+              {railBtn({
+                key: "camera",
+                label: "CAMERA",
+                info: "HD still → Memory Wall",
+                onClick: () => setIsCameraOpen(true),
+              })}
               {railBtn({
                 key: "settings",
                 label: "SETTINGS",
@@ -1322,6 +1329,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     bezelVariant="chrome"
                     naturalHeight
                     monitorLayoutMode={monitorLayoutForStack}
+                    role={role === "performer" ? "performer" : "fan"}
                     seriesLabel={
                       role === "performer"
                         ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
@@ -1528,12 +1536,25 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             ✕
           </button>
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
-            OPERATING CENTERS
+            GPS · NAV
           </div>
           {/* Admin / role switch lives in GPS only on mobile — never floats over Monitor A. */}
           <div style={{ marginBottom: 8 }}>
             <RoleSwitcherWidget accentColor={theme.primary} />
           </div>
+          {railBtn({
+            key: "live-lobby-wall",
+            label: "📡 LIVE LOBBY WALL",
+            info: "Discovery · Join live rooms",
+            accent: "#FF2DAA",
+            onClick: () => {
+              openStageWorkspace("live-destinations");
+              setMobileLeftOpen(false);
+            },
+            testId: "tmi-gps-discovery-trigger",
+            dataTmiAction: "open-workspace",
+            dataTmiWorkspace: "live-destinations",
+          })}
           {centers.map((center) => {
             const isActive = center.modules.some((m) => isModuleActive(m as CommandCenterPanelId));
             const isYoPhoCenter = center.primaryModule === "yopho";
@@ -1583,19 +1604,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               })}
             </>
           ) : null}
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", margin: "10px 0 4px" }}>
-            DISCOVER
-          </div>
           {railBtn({
-            key: "discover-lobby",
-            label: "🏟️ LIVE LOBBY WALL",
-            info: "Live now, battles, cyphers, games, lounges",
+            key: "avatar-lobby",
+            label: "🏟️ FAN LOBBY",
+            info: "Social hangout before the show",
             onClick: () => { presentCanonicalWorkspace("lobby", "DRAWER"); setMobileLeftOpen(false); },
           })}
           {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
           {role === "performer"
             ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
-            : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
+            : null}
+          {railBtn({
+            key: "camera",
+            label: "CAMERA",
+            info: "HD still → Memory Wall",
+            onClick: () => { setIsCameraOpen(true); setMobileLeftOpen(false); },
+          })}
           {railBtn({
             key: "settings",
             label: "SETTINGS",
@@ -1669,13 +1693,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         </div>
       )}
 
-      {/* Layer 1 — Canonical 4-zone quick panels (desktop only) + legacy quick dock */}
+      {/* Canonical 4-zone quick panels — desktop only. Mobile uses GPS + Stage Deck. */}
       {!isMobile && <CanonicalLeftQuickPanelHost />}
       {!isMobile && <CanonicalRightQuickPanelHost />}
-      <QuickPanelDock role={role} />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}
       <PointFlightEngine />
+
+      <CameraCaptureOverlay isOpen={isCameraOpen} onClose={() => setIsCameraOpen(false)} />
 
       <FloatingWorkspacePanel />
       <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
