@@ -59,6 +59,10 @@ class PersonalMediaRouterCompat {
     return router.getMonitorAssignment(target);
   }
 
+  getAssignment(target: MonitorTarget): ParticipantMediaIdentity | null {
+    return router.getAssignment(target);
+  }
+
   pinAudio(participantId: string): void {
     router.pinAudio(participantId);
   }

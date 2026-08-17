@@ -34,6 +34,10 @@ export function resolveCanonicalHudFamily(experienceType: ExperienceType): HudFa
   return "VENUE_HUD";
 }
 
+export function shouldMountLoungeHud(experienceType: ExperienceType): boolean {
+  return resolveCanonicalHudFamily(experienceType) === "LOUNGE_HUD";
+}
+
 export type UserRoleCapability = "fan" | "performer" | "host" | "judge" | "admin";
 
 export type HudPresentationState =

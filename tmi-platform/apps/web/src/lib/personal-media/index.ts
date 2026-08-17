@@ -39,3 +39,15 @@ export { LIVE_LOUNGE_MEDIA_ROUTING_CERT } from "./certification";
 
 export { getParticipantMediaMenu, labelMonitorTarget } from "./contextActions";
 export type { ParticipantMediaMenuItem } from "./contextActions";
+
+export {
+  adaptRoomParticipantToMediaIdentity,
+  registerAndAdaptParticipant,
+} from "./CanonicalParticipantMediaAdapter";
+export type { CanonicalParticipantMediaAdapterInput } from "./CanonicalParticipantMediaAdapter";
+
+export {
+  consumeCanonicalMonitorAssignment,
+  consumeCanonicalMonitorAB,
+} from "./CanonicalMonitorAssignmentAdapter";
+export type { CanonicalMonitorAssignmentConsumption } from "./CanonicalMonitorAssignmentAdapter";

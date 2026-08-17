@@ -16,7 +16,7 @@ export const LIVE_LOUNGE_MEDIA_ROUTING_CERT = {
   webrtcLiveLounge: "open",
   monitors0PhoneCert: "open",
   note:
-    "PersonalMediaRouter is client-local curation only. Passing unit/contract tests does not certify live lounge media routing or MONITORS 0 phone identity.",
+    "PersonalMediaRouter is client-local curation only. Passing unit/contract tests does not certify live lounge media routing, live WebRTC device continuity, or MONITORS 0 phone identity.",
 } as const;
 
 export type LiveLoungeMediaRoutingCert = typeof LIVE_LOUNGE_MEDIA_ROUTING_CERT;

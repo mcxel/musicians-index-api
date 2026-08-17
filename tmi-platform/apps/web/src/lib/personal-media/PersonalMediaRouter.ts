@@ -184,6 +184,11 @@ export class PersonalMediaRouter {
     return this.participants.get(participantId) ?? null;
   }
 
+  /** Existing monitor slots read assignments through this alias. */
+  getAssignment(target: MonitorTarget): ParticipantMediaIdentity | null {
+    return this.getMonitorAssignment(target);
+  }
+
   pinAudio(participantId: string): boolean {
     if (!this.participants.has(participantId)) return false;
     this.pinnedAudio.add(participantId);

@@ -48,10 +48,9 @@ import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
-import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
 import TMIInteractiveLoungeHud from "@/components/venue-hud/TMIInteractiveLoungeHud";
-import { resolveCanonicalHudFamily, type ExperienceType } from "@/lib/venue-hud/TMIExperienceHudRuntime";
-import { registerAndAdaptParticipant } from "@/lib/venue-hud/CanonicalParticipantMediaAdapter";
+import { registerAndAdaptParticipant } from "@/lib/personal-media";
+import { loungeHudMountsForRoom } from "@/lib/venue-hud/loungeContainer";
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 import { AttentionDebugOverlay } from '@/components/live/AttentionDebugOverlay';
@@ -245,27 +244,28 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       : snapshot
         ? realOccupancyRatio
         : 0.08;
-  const isLoungeRoom = roomId.toLowerCase().includes("lounge");
-  const canonicalExpType: ExperienceType = isLoungeRoom ? "LOUNGE" : "LIVE";
-  const canonicalHudFamily = resolveCanonicalHudFamily(canonicalExpType);
+  const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
   const watchingCount = snapshot?.present ?? 0;
+  const loungeContextParticipantId = snapshot?.activeMembers?.[0]?.userId;
 
   useEffect(() => {
-    if (snapshot?.activeMembers) {
-      snapshot.activeMembers.forEach((m) => {
-        registerAndAdaptParticipant({
-          participantId: m.userId,
-          canonicalIdentityId: m.userId,
-          roomId,
-          displayName: m.displayName,
-          videoTrackRef: stream ?? undefined,
-          audioTrackRef: stream ?? undefined,
-          isAudioAvailable: true,
-          isVideoAvailable: true,
-        });
+    if (!canonicalHudFamilyIsLounge) return;
+    const members = snapshot?.activeMembers ?? [];
+    const localVideoTrack = stream?.getVideoTracks?.()[0] ?? null;
+    const localAudioTrack = stream?.getAudioTracks?.()[0] ?? null;
+    for (const member of members) {
+      const isLocalCapture = member.userId === userId && Boolean(stream);
+      registerAndAdaptParticipant({
+        participantId: member.userId,
+        canonicalIdentityId: member.userId,
+        roomId,
+        displayName: member.displayName,
+        videoTrackRef: isLocalCapture ? localVideoTrack : null,
+        audioTrackRef: isLocalCapture ? localAudioTrack : null,
+        spatialPodId: null,
       });
     }
-  }, [snapshot?.activeMembers, roomId, stream]);
+  }, [canonicalHudFamilyIsLounge, snapshot?.activeMembers, roomId, stream, userId]);
 
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
@@ -514,22 +514,17 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
       {/* ── Stage + 3D ambient crowd ─────────────────────────────────────── */}
       <div style={{ position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 12 }}>
-        {canonicalHudFamily === "LOUNGE_HUD" ? (
+        {canonicalHudFamilyIsLounge ? (
           <TMIInteractiveLoungeHud
             loungeId={roomId}
             loungeTitle={`Lounge ${roomId}`}
-            loungeMode="CHILL_LOUNGE"
+            loungeMode={roomId.toLowerCase().includes("playlist") ? "PLAYLIST_LOUNGE" : "CHILL_LOUNGE"}
             userRole={mode === "performer" ? "performer" : "fan"}
+            contextParticipantId={loungeContextParticipantId}
+            occupancyPresent={snapshot?.present ?? 0}
+            occupancyCapacity={snapshot?.capacity}
           />
-        ) : (
-          <TMIInteractiveVenueHud
-            roomId={roomId}
-            roomTitle={`Venue ${roomId}`}
-            experienceType={canonicalExpType}
-            role={mode === "performer" ? "performer" : "fan"}
-            tier="PRO"
-          />
-        )}
+        ) : null}
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000' }}>
           <LiveRecoveryOverlay status={recoveryStatus} />
           {(liveSession || instantEmptyStage) && (

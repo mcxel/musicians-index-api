@@ -1,93 +1,175 @@
 /**
- * Real Lounge Mount & Media Binding Integration Certification Suite
+ * Real Lounge Page Mount + CanonicalParticipantMediaAdapter + Monitor A/B bind.
  *
- * Verifies:
- *   1. real_route_mounts_lounge_hud: resolveCanonicalHudFamily maps "LOUNGE" to "LOUNGE_HUD"
- *   2. real_participant_adapter_resolves_identity: CanonicalParticipantMediaAdapter creates valid ParticipantMediaIdentity
- *   3. context_ring_targets_real_participant: Target participant identity is registered in PersonalMediaRouter
- *   4. monitor_a_receives_assignment: Assigning participant to MONITOR_A succeeds with streamReconnected: false
- *   5. my_view_reflects_assignment: Recovery summary tracks monitor assignments
- *   6. remove_monitor_releases_assignment: Removing from MONITOR_A releases assignment
- *   7. spatial_presence_remains: 3D spatial pod & identity remain untouched in room
- *   8. no_duplicate_media_identity_created: WebRTC track references remain single-sourced
+ * Honest contract suite. Live WebRTC device continuity remains OPEN / certified: false.
  */
 
 import {
-  resolveCanonicalHudFamily,
-} from "../lib/venue-hud/TMIExperienceHudRuntime";
+  CANONICAL_LOUNGE_CONTAINER,
+  loungeHudMountsForRoom,
+} from "../lib/venue-hud/loungeContainer";
 import {
-  registerAndAdaptParticipant,
   adaptRoomParticipantToMediaIdentity,
-  type CanonicalParticipantMediaAdapterInput,
-} from "../lib/venue-hud/CanonicalParticipantMediaAdapter";
-import {
-  PersonalMediaRouter,
-  type MonitorTarget,
-} from "../lib/venue-hud/PersonalMediaRouter";
+  consumeCanonicalMonitorAssignment,
+  createCountingMediaTransport,
+  createPersonalMediaCommandBus,
+  createPersonalMediaRouter,
+  DEFAULT_MONITOR_A,
+  getParticipantMediaMenu,
+  LIVE_LOUNGE_MEDIA_ROUTING_CERT,
+  registerAndAdaptParticipant,
+} from "../lib/personal-media";
 
-export function runRealLoungeMountIntegrationTest(): { allPassed: boolean; results: Record<string, boolean> } {
+export function runRealLoungeMountIntegrationTest(): {
+  allPassed: boolean;
+  results: Record<string, boolean>;
+} {
   const results: Record<string, boolean> = {};
 
-  // 1. Real Route Mounts Lounge HUD Family
-  const family = resolveCanonicalHudFamily("LOUNGE");
-  results["real_route_mounts_lounge_hud"] = family === "LOUNGE_HUD";
+  results["live_webrtc_device_continuity_open"] = LIVE_LOUNGE_MEDIA_ROUTING_CERT.certified === false;
+  results["live_webrtc_device_continuity_status_open"] = LIVE_LOUNGE_MEDIA_ROUTING_CERT.status === "open";
 
-  // 2. Real Participant Adapter Resolves Identity
-  const dummyAudioTrack = { kind: "audio", id: "track-aud-1" };
-  const dummyVideoTrack = { kind: "video", id: "track-vid-1" };
+  results["real_lounge_container_mounts_hud"] =
+    CANONICAL_LOUNGE_CONTAINER.routePattern === "/live/rooms/[id]" &&
+    CANONICAL_LOUNGE_CONTAINER.exampleRoute === "/live/rooms/lounge-playlist" &&
+    CANONICAL_LOUNGE_CONTAINER.renderer === "UniversalVenueRenderer" &&
+    CANONICAL_LOUNGE_CONTAINER.hud === "TMIInteractiveLoungeHud" &&
+    loungeHudMountsForRoom("lounge-playlist") === true &&
+    loungeHudMountsForRoom("battle-thunder-dome") === false;
 
-  const adapterInput: CanonicalParticipantMediaAdapterInput = {
-    participantId: "part-real-1",
-    canonicalIdentityId: "user-real-1",
-    roomId: "lounge-main-01",
+  const { transport, counts } = createCountingMediaTransport();
+  const router = createPersonalMediaRouter({ mediaTransport: transport });
+  const bus = createPersonalMediaCommandBus(router);
+
+  const videoTrack = { id: "v-track-charlie", kind: "video" as const };
+  const audioTrack = { id: "a-track-charlie", kind: "audio" as const };
+
+  const identity = adaptRoomParticipantToMediaIdentity({
+    participantId: "part-charlie",
+    canonicalIdentityId: "user-charlie",
+    roomId: "lounge-playlist",
     displayName: "Charlie",
     spatialPodId: "pod-charlie-1",
-    audioTrackRef: dummyAudioTrack,
-    videoTrackRef: dummyVideoTrack,
-    isAudioAvailable: true,
-    isVideoAvailable: true,
-  };
+    videoTrackRef: videoTrack,
+    audioTrackRef: audioTrack,
+  });
 
-  const identity = adaptRoomParticipantToMediaIdentity(adapterInput);
+  results["participant_adapter_resolves_identity"] =
+    identity.participantId === "part-charlie" &&
+    identity.canonicalIdentityId === "user-charlie" &&
+    identity.roomId === "lounge-playlist" &&
+    identity.videoTrackId === "v-track-charlie" &&
+    identity.audioTrackId === "a-track-charlie" &&
+    identity.spatialPodId === "pod-charlie-1";
 
-  results["real_participant_adapter_resolves_identity"] =
-    identity.participantId === "part-real-1" &&
-    identity.displayName === "Charlie" &&
-    identity.videoTrackId !== null;
+  const remoteOnly = adaptRoomParticipantToMediaIdentity({
+    participantId: "part-dana",
+    canonicalIdentityId: "user-dana",
+    roomId: "lounge-playlist",
+    displayName: "Dana",
+  });
+  results["adapter_does_not_invent_missing_tracks"] =
+    remoteOnly.videoTrackId === null &&
+    remoteOnly.audioTrackId === null &&
+    remoteOnly.spatialPodId === null;
 
-  // 3. Register & Target Real Participant
-  registerAndAdaptParticipant(adapterInput);
-  const registered = PersonalMediaRouter.getParticipant("part-real-1");
-  results["context_ring_targets_real_participant"] = registered?.displayName === "Charlie";
+  const streamShaped = { id: "stream-not-a-track", getTracks: () => [] };
+  const ignoredStream = adaptRoomParticipantToMediaIdentity({
+    participantId: "part-stream",
+    canonicalIdentityId: "user-stream",
+    roomId: "lounge-playlist",
+    videoTrackRef: streamShaped,
+    audioTrackRef: streamShaped,
+  });
+  results["adapter_ignores_mediastream_as_track"] =
+    ignoredStream.videoTrackId === null && ignoredStream.audioTrackId === null;
 
-  // 4. Assign To Monitor A (0 WebRTC Reconnections)
-  const targetA: MonitorTarget = { monitorId: "MONITOR_A", slotId: "PRIMARY" };
-  const assignRes = PersonalMediaRouter.assignToMonitor("part-real-1", targetA);
-  results["monitor_a_receives_assignment"] = assignRes.ok && assignRes.streamReconnected === false;
+  registerAndAdaptParticipant(
+    {
+      participantId: "part-charlie",
+      canonicalIdentityId: "user-charlie",
+      roomId: "lounge-playlist",
+      displayName: "Charlie",
+      spatialPodId: "pod-charlie-1",
+      videoTrackId: "v-track-charlie",
+      audioTrackId: "a-track-charlie",
+    },
+    router,
+  );
 
-  // 5. MY VIEW Reflects Assignment
-  const summary = PersonalMediaRouter.getStateSummary();
-  results["my_view_reflects_assignment"] = summary.assignmentsCount === 1;
+  const menu = getParticipantMediaMenu(router, "part-charlie");
+  results["real_participant_reaches_context_ring"] =
+    router.getParticipant("part-charlie")?.canonicalIdentityId === "user-charlie" &&
+    menu.some((item) => item.id === "WATCH_ON") &&
+    menu.some((item) => item.id === "PIN_AUDIO") &&
+    menu.some((item) => item.id === "MUTE_FOR_ME") &&
+    menu.some((item) => item.id === "HIDE_VIDEO_FOR_ME") &&
+    menu.some((item) => item.id === "REMOVE_FROM_MY_VIEW");
 
-  // 6. Remove Assignment Releases Monitor
-  const removeRes = PersonalMediaRouter.removeFromMonitor(targetA);
-  results["remove_monitor_releases_assignment"] = removeRes.ok && PersonalMediaRouter.getMonitorAssignment(targetA) === null;
+  results["watch_on_monitor_a_creates_assignment"] = bus.execute("MEDIA.ASSIGN_TO_MONITOR", {
+    participantId: "part-charlie",
+    target: DEFAULT_MONITOR_A,
+  });
 
-  // 7. Spatial Presence Remains
-  results["spatial_presence_remains"] = PersonalMediaRouter.getParticipant("part-real-1") !== undefined;
+  const consumed = consumeCanonicalMonitorAssignment(DEFAULT_MONITOR_A, router);
+  results["canonical_monitor_a_consumes_assignment"] =
+    consumed.identity?.participantId === "part-charlie" &&
+    consumed.identity.videoTrackId === "v-track-charlie" &&
+    consumed.streamReconnected === false &&
+    consumed.createdVideoElement === false &&
+    consumed.source === "PersonalMediaRouter.getAssignment" &&
+    router.getAssignment(DEFAULT_MONITOR_A)?.participantId === "part-charlie";
 
-  // 8. No Duplicate Media Identity Created
-  const reAdapted = adaptRoomParticipantToMediaIdentity(adapterInput);
-  results["no_duplicate_media_identity_created"] =
-    reAdapted.participantId === identity.participantId &&
-    reAdapted.spatialPodId === identity.spatialPodId;
+  const snapshot = router.getSnapshot();
+  results["my_view_reflects_assignment"] =
+    snapshot.assignments.length === 1 &&
+    snapshot.assignments[0]?.identity.participantId === "part-charlie" &&
+    snapshot.assignments[0]?.target.monitorId === "MONITOR_A";
+
+  results["remove_monitor_releases_assignment"] =
+    bus.execute("MEDIA.REMOVE_FROM_MONITOR", { target: DEFAULT_MONITOR_A }) &&
+    router.getAssignment(DEFAULT_MONITOR_A) === null &&
+    consumeCanonicalMonitorAssignment(DEFAULT_MONITOR_A, router).identity === null;
+
+  results["spatial_participant_remains"] =
+    router.getParticipant("part-charlie")?.spatialPodId === "pod-charlie-1" &&
+    router.getParticipant("part-charlie")?.videoTrackId === "v-track-charlie";
+
+  results["pin_audio_reaches_local_audio_policy"] =
+    bus.execute("MEDIA.PIN_AUDIO", { participantId: "part-charlie" }) &&
+    (() => {
+      router.simulateAvatarMove("part-charlie", 40);
+      const resolved = router.evaluateAudio("part-charlie");
+      return resolved.audible && resolved.resolvedBy === "pinned_audio";
+    })();
+
+  registerAndAdaptParticipant(
+    {
+      participantId: "part-charlie",
+      canonicalIdentityId: "user-charlie",
+      roomId: "lounge-playlist",
+      displayName: "Charlie",
+      spatialPodId: "pod-charlie-1",
+      videoTrackId: "v-track-charlie",
+      audioTrackId: "a-track-charlie",
+    },
+    router,
+  );
+  results["no_duplicate_track_identity_created"] =
+    router.getStateSummary().identityCount === 1 &&
+    router.getParticipant("part-charlie")?.videoTrackId === "v-track-charlie" &&
+    counts.subscribe === 0 &&
+    counts.reconnect === 0;
 
   const allPassed = Object.values(results).every(Boolean);
-
   console.log(`[REAL_LOUNGE_MOUNT_INTEGRATION_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
 
-if (require.main === module) {
-  runRealLoungeMountIntegrationTest();
+declare const require: { main: unknown };
+declare const module: { exports: unknown };
+
+if (typeof require !== "undefined" && require.main === module) {
+  const outcome = runRealLoungeMountIntegrationTest();
+  if (!outcome.allPassed) process.exitCode = 1;
 }
