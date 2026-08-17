@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { getArtistShareIdentity } from "@/lib/identity/ArtistShareIdentity";
+import { buildUserShareIdentity, getShareBaseUrl } from "@/lib/identity/ArtistShareIdentity";
 
 interface TmiIdentitySurfaceProps {
   userId: string;
@@ -17,6 +17,10 @@ interface TmiIdentitySurfaceProps {
  * when WATCH mode has 0 monitors. Same ArtistShareIdentity + QR payload
  * used everywhere else (YoPho cards, future posters) — never a second,
  * per-surface QR identity.
+ *
+ * Deliberately encodes identity.profileUrl, never oneTapActionUrl or the
+ * action:"follow" qrPayload — scanning must open the profile and require an
+ * explicit tap to follow/connect, never silently create a relationship.
  */
 export default function TmiIdentitySurface({
   userId,
@@ -29,12 +33,27 @@ export default function TmiIdentitySurface({
   const [copied, setCopied] = useState(false);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
-  const identity = getArtistShareIdentity(userId, role);
+  const identity = useMemo(
+    () =>
+      buildUserShareIdentity({
+        userId,
+        // No separate stable username/slug is wired through the shell yet —
+        // the permanent userId doubles as the slug input so the URL never
+        // breaks on a display-name change (canonicalSlug just sanitizes it).
+        username: userId,
+        role: role === "performer" ? "performer" : "fan",
+        displayName,
+        avatarUrl,
+      }),
+    [userId, role, displayName, avatarUrl],
+  );
+  const scanUrl = `${getShareBaseUrl()}${identity.profileUrl}`;
+  const publicCode = `${role === "performer" ? "ART" : "FAN"}-${userId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
   const label = role === "performer" ? "TMI ARTIST ID" : "TMI FAN ID";
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(identity.canonicalUrl);
+      await navigator.clipboard.writeText(scanUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -49,7 +68,7 @@ export default function TmiIdentitySurface({
         await navigator.share({
           title: `${displayName} on TMI`,
           text: `Scan to connect with ${displayName} on The Musician's Index`,
-          url: identity.canonicalUrl,
+          url: scanUrl,
         });
       } catch {
         // User cancelled the native share sheet — no error state needed.
@@ -63,7 +82,7 @@ export default function TmiIdentitySurface({
     const canvas = qrRef.current;
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = `${identity.publicCode}.png`;
+    link.download = `${publicCode}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
@@ -121,7 +140,7 @@ export default function TmiIdentitySurface({
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 14, fontWeight: 900, color: "#fff" }}>{displayName}</div>
         <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 700, marginTop: 2 }}>
-          ID: {identity.publicCode}
+          ID: {publicCode}
         </div>
       </div>
 
@@ -135,7 +154,7 @@ export default function TmiIdentitySurface({
       >
         <QRCodeCanvas
           ref={qrRef}
-          value={identity.canonicalUrl}
+          value={scanUrl}
           size={qrSize}
           bgColor="#ffffff"
           fgColor="#0a0a0a"
