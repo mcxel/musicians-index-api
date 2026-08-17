@@ -1,30 +1,20 @@
 /**
- * Personal Media Router — Client-Side Monitor & Local Curation Engine.
- *
- * Laws:
- *   1. Owns my personal presentation of room participants (local monitor assignments, pin audio, local mute, hide, remove).
- *   2. ParticipantMediaIdentity is invariant: assigning to Monitor A/B, pinning audio, or hiding locally NEVER reconnects WebRTC stream.
- *   3. Pin Audio overrides proximity attenuation while roaming, but respects local mute and moderation locks.
- *   4. Local curation never alters global room membership or moderation state.
- *   5. MY VIEW recovery drawer provides individual and RESTORE_ALL controls.
+ * Compatibility shim — canonical engine lives in `@/lib/personal-media`.
+ * Existing Lounge HUD from the prior HUD commit still imports this path.
+ * New code should import from `@/lib/personal-media` directly.
  */
 
-export interface ParticipantMediaIdentity {
-  participantId: string;
-  roomId: string;
-  videoTrackId: string | null;
-  audioTrackId: string | null;
-  spatialPodId: string;
-  canonicalIdentityId: string;
-  displayName: string;
-}
+import {
+  defaultPersonalMediaRouter,
+  DEFAULT_MONITOR_A,
+  DEFAULT_MONITOR_B,
+  type MonitorTarget,
+  type ParticipantMediaIdentity,
+} from "@/lib/personal-media";
 
+export type { MonitorTarget, ParticipantMediaIdentity };
 export type MonitorId = "MONITOR_A" | "MONITOR_B" | string;
-
-export interface MonitorTarget {
-  monitorId: MonitorId;
-  slotId: string; // e.g. "PRIMARY", "SLOT_1", "SLOT_2"
-}
+export { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B };
 
 export type AudioResolutionState =
   | "BLOCKED"
@@ -33,152 +23,101 @@ export type AudioResolutionState =
   | "PINNED_FOREGROUND"
   | "PROXIMITY_ATTENUATED";
 
-export interface PersonalMediaState {
-  monitorAssignments: Map<string, ParticipantMediaIdentity>; // key: `${monitorId}:${slotId}`
-  pinnedAudio: Set<string>; // participantId
-  mutedAudio: Set<string>; // participantId
-  hiddenVideo: Set<string>; // participantId
-  removedFromView: Set<string>; // participantId
-}
+const router = defaultPersonalMediaRouter;
 
-class PersonalMediaRouterImpl {
-  private state: PersonalMediaState = {
-    monitorAssignments: new Map(),
-    pinnedAudio: new Set(),
-    mutedAudio: new Set(),
-    hiddenVideo: new Set(),
-    removedFromView: new Set(),
-  };
-
-  private participants = new Map<string, ParticipantMediaIdentity>();
-
+class PersonalMediaRouterCompat {
   registerParticipant(identity: ParticipantMediaIdentity): void {
-    this.participants.set(identity.participantId, identity);
+    router.registerParticipant(identity);
   }
 
   getParticipant(participantId: string): ParticipantMediaIdentity | undefined {
-    return this.participants.get(participantId);
+    return router.getParticipant(participantId);
   }
 
-  /**
-   * Assign participant to addressable monitor target.
-   * Guaranteed ZERO WebRTC reconnection.
-   */
   assignToMonitor(
     participantId: string,
     target: MonitorTarget,
   ): { ok: boolean; streamReconnected: false; key: string } {
-    const identity = this.participants.get(participantId);
-    if (!identity) return { ok: false, streamReconnected: false, key: "" };
-
-    const key = `${target.monitorId}:${target.slotId}`;
-    this.state.monitorAssignments.set(key, identity);
-    return { ok: true, streamReconnected: false, key };
+    const res = router.assignToMonitor(participantId, target);
+    return { ok: res.ok, streamReconnected: false, key: res.key };
   }
 
-  removeFromMonitor(target: MonitorTarget): { ok: boolean; previous: ParticipantMediaIdentity | null } {
-    const key = `${target.monitorId}:${target.slotId}`;
-    const previous = this.state.monitorAssignments.get(key) ?? null;
-    this.state.monitorAssignments.delete(key);
-    return { ok: true, previous };
+  removeFromMonitor(target: MonitorTarget): {
+    ok: boolean;
+    previous: ParticipantMediaIdentity | null;
+  } {
+    const previous = router.getMonitorAssignment(target);
+    const res = router.removeFromMonitor(target);
+    return { ok: res.ok, previous };
   }
 
   swapMonitorAssignments(target1: MonitorTarget, target2: MonitorTarget): boolean {
-    const key1 = `${target1.monitorId}:${target1.slotId}`;
-    const key2 = `${target2.monitorId}:${target2.slotId}`;
-    const p1 = this.state.monitorAssignments.get(key1);
-    const p2 = this.state.monitorAssignments.get(key2);
-
-    if (p1) this.state.monitorAssignments.set(key2, p1);
-    else this.state.monitorAssignments.delete(key2);
-
-    if (p2) this.state.monitorAssignments.set(key1, p2);
-    else this.state.monitorAssignments.delete(key1);
-
-    return true;
+    return router.swapMonitorAssignments(target1, target2);
   }
 
   getMonitorAssignment(target: MonitorTarget): ParticipantMediaIdentity | null {
-    const key = `${target.monitorId}:${target.slotId}`;
-    return this.state.monitorAssignments.get(key) ?? null;
+    return router.getMonitorAssignment(target);
   }
 
   pinAudio(participantId: string): void {
-    this.state.pinnedAudio.add(participantId);
+    router.pinAudio(participantId);
   }
 
   unpinAudio(participantId: string): void {
-    this.state.pinnedAudio.delete(participantId);
+    router.unpinAudio(participantId);
   }
 
   muteLocal(participantId: string): void {
-    this.state.mutedAudio.add(participantId);
+    router.muteLocal(participantId);
   }
 
   unmuteLocal(participantId: string): void {
-    this.state.mutedAudio.delete(participantId);
+    router.unmuteLocal(participantId);
   }
 
   hideVideoLocal(participantId: string): void {
-    this.state.hiddenVideo.add(participantId);
+    router.hideVideoLocal(participantId);
   }
 
   restoreVideoLocal(participantId: string): void {
-    this.state.hiddenVideo.delete(participantId);
+    router.restoreVideoLocal(participantId);
   }
 
   removeFromView(participantId: string): void {
-    this.state.removedFromView.add(participantId);
-    this.state.mutedAudio.add(participantId);
-    this.state.hiddenVideo.add(participantId);
-
-    // Remove from any assigned monitors
-    for (const [key, identity] of this.state.monitorAssignments.entries()) {
-      if (identity.participantId === participantId) {
-        this.state.monitorAssignments.delete(key);
-      }
-    }
+    router.removeFromView(participantId);
   }
 
   restoreToView(participantId: string): void {
-    this.state.removedFromView.delete(participantId);
-    this.state.mutedAudio.delete(participantId);
-    this.state.hiddenVideo.delete(participantId);
+    router.restoreToView(participantId);
   }
 
   restoreAllPersonalViewSettings(): void {
-    this.state.monitorAssignments.clear();
-    this.state.pinnedAudio.clear();
-    this.state.mutedAudio.clear();
-    this.state.hiddenVideo.clear();
-    this.state.removedFromView.clear();
+    router.restoreAll();
   }
 
-  /**
-   * Audio Evaluation Resolution Hierarchy:
-   *   1. BLOCKED
-   *   2. LOCAL MUTE
-   *   3. PRIVATE CHANNEL
-   *   4. PINNED FOREGROUND
-   *   5. PROXIMITY ATTENUATED
-   */
-  evaluateAudioState(participantId: string, isBlocked: boolean, isPrivate: boolean): AudioResolutionState {
-    if (isBlocked) return "BLOCKED";
-    if (this.state.mutedAudio.has(participantId)) return "LOCAL_MUTE_ACTIVE";
-    if (isPrivate) return "PRIVATE_CHANNEL";
-    if (this.state.pinnedAudio.has(participantId)) return "PINNED_FOREGROUND";
+  restoreAll(): void {
+    router.restoreAll();
+  }
+
+  evaluateAudioState(
+    participantId: string,
+    isBlocked: boolean,
+    isPrivate: boolean,
+  ): AudioResolutionState {
+    const resolved = router.evaluateAudio(participantId, {
+      blocked: isBlocked,
+      privateChannelRestricted: isPrivate,
+    });
+    if (resolved.resolvedBy === "blocked_unauthorized") return "BLOCKED";
+    if (resolved.resolvedBy === "local_mute") return "LOCAL_MUTE_ACTIVE";
+    if (resolved.resolvedBy === "private_channel_policy") return "PRIVATE_CHANNEL";
+    if (resolved.resolvedBy === "pinned_audio") return "PINNED_FOREGROUND";
     return "PROXIMITY_ATTENUATED";
   }
 
   getStateSummary() {
-    return {
-      assignmentsCount: this.state.monitorAssignments.size,
-      pinnedAudioCount: this.state.pinnedAudio.size,
-      mutedAudioCount: this.state.mutedAudio.size,
-      hiddenVideoCount: this.state.hiddenVideo.size,
-      removedFromViewCount: this.state.removedFromView.size,
-    };
+    return router.getStateSummary();
   }
 }
 
-export const PersonalMediaRouter = new PersonalMediaRouterImpl();
+export const PersonalMediaRouter = new PersonalMediaRouterCompat();

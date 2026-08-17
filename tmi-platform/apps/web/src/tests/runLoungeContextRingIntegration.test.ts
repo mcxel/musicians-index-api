@@ -1,88 +1,110 @@
 /**
- * Lounge Context Ring & Personal Media Router Integration Test Suite
- *
- * Verifies:
- *   1. Context Ring Action Dispatch -> PersonalMediaRouter state updates
- *   2. Monitor Target Assignment (Monitor A / Monitor B) without WebRTC reconnection
- *   3. Pin Audio Overriding Proximity while Roam Avatar moves
- *   4. Local Mute / Hide Video Isolation
- *   5. MY VIEW Recovery Drawer State & RESTORE ALL round-trip
+ * Lounge context-ring + PersonalMediaCommandBus integration.
+ * Uses the canonical PersonalMediaRouter — no fake 3D lounge, no WebRTC reconnect.
  */
 
 import {
-  PersonalMediaRouter,
+  createCountingMediaTransport,
+  createPersonalMediaCommandBus,
+  createPersonalMediaRouter,
+  DEFAULT_MONITOR_A,
+  DEFAULT_MONITOR_B,
+  getParticipantMediaMenu,
+  LIVE_LOUNGE_MEDIA_ROUTING_CERT,
   type ParticipantMediaIdentity,
-  type MonitorTarget,
-} from "../lib/venue-hud/PersonalMediaRouter";
+} from "../lib/personal-media";
 import { HudCommandBus } from "../lib/venue-hud/TMIExperienceHudRuntime";
 
-export function runLoungeContextRingIntegrationTest(): { allPassed: boolean; results: Record<string, boolean> } {
+export function runLoungeContextRingIntegrationTest(): {
+  allPassed: boolean;
+  results: Record<string, boolean>;
+} {
   const results: Record<string, boolean> = {};
+  results["live_cert_still_open"] = LIVE_LOUNGE_MEDIA_ROUTING_CERT.certified === false;
 
-  const pAlice: ParticipantMediaIdentity = {
+  const { transport, counts } = createCountingMediaTransport();
+  const router = createPersonalMediaRouter({ mediaTransport: transport });
+  const bus = createPersonalMediaCommandBus(router);
+
+  const alice: ParticipantMediaIdentity = {
     participantId: "part-alice",
+    canonicalIdentityId: "user-alice",
     roomId: "lounge-chill-1",
     videoTrackId: "v-track-alice",
     audioTrackId: "a-track-alice",
     spatialPodId: "pod-alice",
-    canonicalIdentityId: "user-alice",
     displayName: "Alice",
   };
-
-  const pBob: ParticipantMediaIdentity = {
+  const bob: ParticipantMediaIdentity = {
     participantId: "part-bob",
+    canonicalIdentityId: "user-bob",
     roomId: "lounge-chill-1",
     videoTrackId: "v-track-bob",
     audioTrackId: "a-track-bob",
-    spatialPodId: "pod-bob",
-    canonicalIdentityId: "user-bob",
+    spatialPodId: null,
     displayName: "Bob",
   };
 
-  PersonalMediaRouter.registerParticipant(pAlice);
-  PersonalMediaRouter.registerParticipant(pBob);
+  router.registerParticipant(alice);
+  router.registerParticipant(bob);
 
-  // 1. Assign Alice to Monitor A
-  const targetA: MonitorTarget = { monitorId: "MONITOR_A", slotId: "PRIMARY" };
-  const assignRes = PersonalMediaRouter.assignToMonitor("part-alice", targetA);
-  results["ux_assign_alice_monitor_a"] = assignRes.ok && assignRes.streamReconnected === false;
-  results["ux_monitor_a_assigned"] = PersonalMediaRouter.getMonitorAssignment(targetA)?.displayName === "Alice";
+  const unbind = bus.bindToHudBus(HudCommandBus as never);
 
-  // 2. Assign Bob to Monitor B
-  const targetB: MonitorTarget = { monitorId: "MONITOR_B", slotId: "PRIMARY" };
-  PersonalMediaRouter.assignToMonitor("part-bob", targetB);
-  results["ux_monitor_b_assigned"] = PersonalMediaRouter.getMonitorAssignment(targetB)?.displayName === "Bob";
+  void HudCommandBus.execute("MEDIA.ASSIGN_TO_MONITOR", {
+    params: { participantId: "part-alice", target: DEFAULT_MONITOR_A },
+  });
+  void HudCommandBus.execute("MEDIA.ASSIGN_TO_MONITOR", {
+    params: { participantId: "part-bob", target: DEFAULT_MONITOR_B },
+  });
 
-  // 3. Pin Alice's Audio & Roam Avatar
-  PersonalMediaRouter.pinAudio("part-alice");
-  const audioStateAlice = PersonalMediaRouter.evaluateAudioState("part-alice", false, false);
-  results["ux_pin_audio_roam_foreground"] = audioStateAlice === "PINNED_FOREGROUND";
+  results["hud_bus_assigns_monitor_a"] = router.getMonitorAssignment(DEFAULT_MONITOR_A)?.participantId === "part-alice";
+  results["hud_bus_assigns_monitor_b"] = router.getMonitorAssignment(DEFAULT_MONITOR_B)?.participantId === "part-bob";
 
-  // 4. Mute Bob Locally
-  PersonalMediaRouter.muteLocal("part-bob");
-  const audioStateBob = PersonalMediaRouter.evaluateAudioState("part-bob", false, false);
-  results["ux_mute_bob_local_active"] = audioStateBob === "LOCAL_MUTE_ACTIVE";
+  const menuAssigned = getParticipantMediaMenu(router, "part-alice", { profileHref: "/profiles/user-alice" });
+  results["context_watch_on"] = menuAssigned.some((item) => item.id === "WATCH_ON");
+  results["context_move_to"] = menuAssigned.some((item) => item.id === "MOVE_TO");
+  results["context_remove_from_monitor"] = menuAssigned.some((item) => item.id === "REMOVE_FROM_MONITOR");
+  results["context_pin_audio"] = menuAssigned.some((item) => item.id === "PIN_AUDIO");
+  results["context_mute_for_me"] = menuAssigned.some((item) => item.id === "MUTE_FOR_ME");
+  results["context_hide_video"] = menuAssigned.some((item) => item.id === "HIDE_VIDEO_FOR_ME");
+  results["context_remove_from_my_view"] = menuAssigned.some((item) => item.id === "REMOVE_FROM_MY_VIEW");
+  results["context_profile"] = menuAssigned.some((item) => item.id === "PROFILE");
 
-  // 5. Remove Alice From Monitor A (Spatial presence remains)
-  const removeRes = PersonalMediaRouter.removeFromMonitor(targetA);
-  results["ux_remove_alice_monitor_unassigned"] = PersonalMediaRouter.getMonitorAssignment(targetA) === null;
-  results["ux_alice_spatial_pod_remains"] = PersonalMediaRouter.getParticipant("part-alice") !== undefined;
+  void HudCommandBus.execute("MEDIA.PIN_AUDIO", { params: { participantId: "part-alice" } });
+  router.simulateAvatarMove("part-alice", 40);
+  const roam = router.evaluateAudio("part-alice");
+  results["pin_overrides_proximity_while_roaming"] = roam.audible && roam.resolvedBy === "pinned_audio";
 
-  // 6. MY VIEW Drawer State & Restore All
-  PersonalMediaRouter.removeFromView("part-bob");
-  const summaryBefore = PersonalMediaRouter.getStateSummary();
-  results["ux_my_view_drawer_populates"] = summaryBefore.removedFromViewCount === 1;
+  void HudCommandBus.execute("MEDIA.MUTE_LOCAL", { params: { participantId: "part-bob" } });
+  results["mute_bob_local"] = router.evaluateAudio("part-bob").resolvedBy === "local_mute";
 
-  PersonalMediaRouter.restoreAllPersonalViewSettings();
-  const summaryAfter = PersonalMediaRouter.getStateSummary();
-  results["ux_restore_all_clears_drawer"] = summaryAfter.removedFromViewCount === 0 && summaryAfter.assignmentsCount === 0;
+  void HudCommandBus.execute("MEDIA.REMOVE_FROM_MONITOR", { params: { target: DEFAULT_MONITOR_A } });
+  results["alice_unassigned"] = router.getMonitorAssignment(DEFAULT_MONITOR_A) === null;
+  results["alice_identity_remains"] = router.getParticipant("part-alice")?.spatialPodId === "pod-alice";
 
+  void HudCommandBus.execute("MEDIA.REMOVE_FROM_VIEW", { params: { participantId: "part-bob" } });
+  results["my_view_removed_bob"] = router.isRemovedFromView("part-bob");
+
+  void HudCommandBus.execute("MEDIA.RESTORE_ALL");
+  const clean = router.getStateSummary();
+  results["restore_all_clears_my_view"] =
+    clean.assignmentsCount === 0 &&
+    clean.removedFromViewCount === 0 &&
+    clean.pinnedAudioCount === 0 &&
+    clean.mutedAudioCount === 0;
+
+  results["zero_webrtc_reconnects"] = counts.subscribe === 0 && counts.reconnect === 0;
+
+  unbind();
   const allPassed = Object.values(results).every(Boolean);
-
   console.log(`[LOUNGE_CONTEXT_RING_INTEGRATION_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
 
-if (require.main === module) {
-  runLoungeContextRingIntegrationTest();
+declare const require: { main: unknown };
+declare const module: { exports: unknown };
+
+if (typeof require !== "undefined" && require.main === module) {
+  const outcome = runLoungeContextRingIntegrationTest();
+  if (!outcome.allPassed) process.exitCode = 1;
 }
