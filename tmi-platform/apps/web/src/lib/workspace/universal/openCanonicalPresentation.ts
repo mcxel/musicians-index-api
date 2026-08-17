@@ -14,6 +14,27 @@ import {
 import { universalWorkspaceRuntime } from "./UniversalWorkspaceRuntime";
 import type { UniversalWorkspaceId } from "./types";
 
+function isProofDiagnosticsEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("proof") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function tracePresenter(action: string, payload?: unknown): void {
+  if (process.env.NODE_ENV !== "development" && !isProofDiagnosticsEnabled()) return;
+  if (typeof window !== "undefined") {
+    const w = window as Window & { __TMI_PRESENTER_TRACE__?: Array<unknown> };
+    const current = w.__TMI_PRESENTER_TRACE__ ?? [];
+    current.push({ action, payload, timestamp: performance.now() });
+    if (current.length > 200) current.shift();
+    w.__TMI_PRESENTER_TRACE__ = current;
+  }
+  console.debug("[TMI:PRESENTER]", { action, payload });
+}
+
 function resolveWorkspaceId(
   moduleId: CommandCenterPanelId | "appearance" | "settings",
 ): UniversalWorkspaceId | null {
@@ -33,6 +54,10 @@ function suppressFloatingForCanonical(wsId: UniversalWorkspaceId): void {
   }
 }
 
+function isPhoneViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
+}
+
 /**
  * Open a workspace by UniversalWorkspaceId into the correct presentation surface.
  * Used by command-bus wire + hub quick launch (single authority path).
@@ -42,7 +67,19 @@ export function presentCanonicalWorkspace(
   surfaceOverride?: WorkspaceSurface,
 ): WorkspaceSurface {
   const config = WORKSPACE_PRESENTATION_MAP[wsId];
-  const surface = surfaceOverride ?? config?.preferredSurface ?? "DRAWER";
+  const preferred = surfaceOverride ?? config?.preferredSurface ?? "DRAWER";
+  // Phone Command Center: all HQ tools go DRAWER → WORK. Side panels only exist on desktop.
+  const surface =
+    isPhoneViewport() && preferred !== "FLOATING"
+      ? "DRAWER"
+      : preferred;
+  tracePresenter("CALL_CANONICAL_PRESENTER", {
+    workspaceId: wsId,
+    surfaceOverride: surfaceOverride ?? null,
+    resolvedSurface: surface,
+    mobileShellMode: config?.mobileShellMode ?? null,
+    phoneViewport: isPhoneViewport(),
+  });
 
   // Omni Rolodex: never open the floating Live Lobby overlay for HQ workspaces.
   // DISCOVERY_WALL callers converge into the in-place bottom drawer.

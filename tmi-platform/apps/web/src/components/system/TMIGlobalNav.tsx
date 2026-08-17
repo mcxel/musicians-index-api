@@ -75,7 +75,9 @@ export default function TMIGlobalNav() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const isHubPath =
-    pathname.startsWith("/hub/") || pathname.startsWith("/dashboard");
+    pathname === "/hub" ||
+    pathname.startsWith("/hub/") ||
+    pathname.startsWith("/dashboard");
 
   useEffect(() => {
     setMounted(true);
@@ -141,6 +143,12 @@ export default function TMIGlobalNav() {
   const dashboardHref = isAuthenticated ? ROLE_DASHBOARD[role] ?? "/hub/fan" : "/home/1";
   const safeBottomInset = "max(8px, env(safe-area-inset-bottom, 0px))";
 
+  // Command Center owns MONITORS / GPS / CHAT. Unmount this dock on hub —
+  // do not leave a competing Discover / Live Now / Lobby bar or empty spacer.
+  if (isFlightDeck || isHubPath) {
+    return null;
+  }
+
   if (!mounted) {
     return (
       <nav
@@ -165,11 +173,6 @@ export default function TMIGlobalNav() {
         aria-label="Global navigation"
       />
     );
-  }
-
-  // Overseer / Observatory own the dock — unmount global GO LIVE / nav floater bar.
-  if (isFlightDeck) {
-    return null;
   }
 
   return (

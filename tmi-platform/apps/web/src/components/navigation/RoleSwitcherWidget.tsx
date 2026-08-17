@@ -221,8 +221,7 @@ export default function RoleSwitcherWidget({
   const currentDef = getRoleDef(currentRole);
   // Hub phone: never brand the permanent trigger as ADMIN DECK — that label
   // belongs in Overseer, not as Fan/Performer Command Center chrome.
-  const hubTriggerLabel =
-    onHub && isNarrow ? "SWITCH ROLES" : undefined;
+  const hubTriggerLabel = onHub ? "SWITCH ROLES" : undefined;
   const resolvedTriggerLabel = buttonLabel ?? hubTriggerLabel ?? currentDef.label;
 
   const triggerStyle: CSSProperties = {

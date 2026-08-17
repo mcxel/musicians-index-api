@@ -18,6 +18,7 @@ import PlaylistStudioContent from "./PlaylistStudioContent";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
 import UniversalWorkspaceStubContent from "./UniversalWorkspaceStubContent";
+import ExperienceControlDeck from "./ExperienceControlDeck";
 
 const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/PerformerBioMagazineDrawer"), {
   ssr: false,
@@ -82,6 +83,8 @@ export default function CanonicalBottomDrawerHost({
 }) {
   const { drawerWorkspace, isDrawerExpanded, mediaConsoleMode, closeSurface, toggleDrawerExpand } =
     useWorkspacePresentationStore();
+  const mobileMode = useWorkspacePresentationStore((s) => s.mobileMode);
+  const activeControlMode = useWorkspacePresentationStore((s) => s.activeControlMode);
 
   const visibleTools = useMemo(() => {
     if (role === "performer") {
@@ -94,6 +97,10 @@ export default function CanonicalBottomDrawerHost({
     if (!drawerWorkspace) return -1;
     return visibleTools.findIndex((t) => t.id === drawerWorkspace);
   }, [drawerWorkspace, visibleTools]);
+
+  if (mobileMode === "CONTROL") {
+    return <ExperienceControlDeck mode={activeControlMode} />;
+  }
 
   if (!drawerWorkspace || !isDrawerExpanded) return null;
 
@@ -113,8 +120,8 @@ export default function CanonicalBottomDrawerHost({
     presentCanonicalWorkspace(visibleTools[i]!.id, "DRAWER");
   };
 
-  const contentMinHeight = stageDeck ? "min(58vh, 640px)" : isLobbyWall ? 480 : 380;
-  const contentMaxHeight = stageDeck ? "min(72vh, 760px)" : isLobbyWall ? "min(72vh, 700px)" : "min(60vh, 620px)";
+  const contentMinHeight = isLobbyWall ? 480 : 380;
+  const contentMaxHeight = isLobbyWall ? "min(72vh, 700px)" : "min(60vh, 620px)";
 
   return (
     <div
@@ -126,8 +133,10 @@ export default function CanonicalBottomDrawerHost({
       style={{
         width: "100%",
         flex: stageDeck ? 1 : undefined,
-        flexShrink: 0,
-        minHeight: stageDeck ? contentMinHeight : undefined,
+        flexShrink: stageDeck ? 1 : 0,
+        minHeight: stageDeck ? 0 : undefined,
+        maxHeight: stageDeck ? "none" : undefined,
+        height: stageDeck ? "100%" : undefined,
         marginTop: 0,
         background: "rgba(6, 9, 24, 0.98)",
         border: "1px solid rgba(0, 229, 255, 0.3)",
@@ -189,7 +198,7 @@ export default function CanonicalBottomDrawerHost({
         {chromeBtn("×", restoreMonitors, { accent: "#FF2DAA", title: "Close workspace" })}
       </div>
 
-      {/* Lateral Rolodex — switch WORKSPACE(A)→WORKSPACE(B) without OPS */}
+      {/* Lateral Rolodex — switch WORKSPACE(A)→WORKSPACE(B) without legacy panel labels */}
       <div
         style={{
           display: "flex",
@@ -237,8 +246,8 @@ export default function CanonicalBottomDrawerHost({
       <div
         style={{
           padding: stageDeck ? 12 : 16,
-          minHeight: contentMinHeight,
-          maxHeight: contentMaxHeight,
+          minHeight: stageDeck ? 0 : contentMinHeight,
+          maxHeight: stageDeck ? "none" : contentMaxHeight,
           overflowY: "auto",
           flex: stageDeck ? 1 : undefined,
         }}

@@ -84,9 +84,9 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   submissions: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   "share-studio": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
 
-  // Live Lobby Wall — full-width grid in bottom dock (not floating side panel)
-  lobby: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "CONTROL", mobileControlMode: "AVATAR_NAVIGATION", mediaConsoleMode: "expanded" },
-  "live-destinations": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "CONTROL", mobileControlMode: "SPATIAL_VIDEO", mediaConsoleMode: "expanded" },
+  // Live Lobby Wall — GPS discovery owns the reclaimed stage (WORK), not one leftover monitor.
+  lobby: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "live-destinations": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
 
   // BOTTOM_DEEP / DrawerDock — Media Console
   "playlist-studio": {
@@ -101,14 +101,14 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   store: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   analytics: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   booking: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  settings: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
-  sponsors: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  settings: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  sponsors: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   "beat-lab": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   "media-locker": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  notifications: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  notifications: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   "achievement-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "room-controls": { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
-  scores: { preferredSurface: "DRAWER", preserveState: true, mediaConsoleMode: "mini" },
+  "room-controls": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  scores: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   marketplace: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   "prize-vault": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   "championship-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
@@ -116,9 +116,9 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   "bio-magazine": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
 
   // Compact quick-HUD variants — open side panels, with deepSurface pointing to full workspace
-  "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mediaConsoleMode: "mini" },
-  "inventory-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mediaConsoleMode: "mini" },
-  "memory-quick": { preferredSurface: "RIGHT_PANEL", deepSurface: "DRAWER", mediaConsoleMode: "mini" },
+  "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "inventory-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "memory-quick": { preferredSurface: "RIGHT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
 };
 
 /** HQ modules that must never open as UniversalWorkspaceWindow FLOATING. */

@@ -23,6 +23,18 @@ import {
   type HouseSponsor,
 } from "@/lib/commerce/DualStreamSponsorshipEngine";
 
+function traceLaunch(action: string, payload?: unknown): void {
+  if (process.env.NODE_ENV !== "development") return;
+  if (typeof window !== "undefined") {
+    const w = window as Window & { __TMI_LAUNCH_TRACE__?: Array<unknown> };
+    const current = w.__TMI_LAUNCH_TRACE__ ?? [];
+    current.push({ action, payload, timestamp: performance.now() });
+    if (current.length > 200) current.shift();
+    w.__TMI_LAUNCH_TRACE__ = current;
+  }
+  console.debug("[TMI:LAUNCH]", { action, payload });
+}
+
 /** @deprecated Shared mega grid removed — per-monitor splits are 1/2/3/4/8 (dual max 16). */
 export type MediaGridMode = 1 | 2 | 3 | 4 | 8;
 
@@ -163,6 +175,14 @@ interface CommandCenterMediaStackProps {
   naturalHeight?: boolean;
   /** Presentation-only layout mode for Stage Deck monitor visibility. */
   monitorLayoutMode?: "dual" | "primary";
+  /** Fan vs performer — Rule 26: avatar-ownership controls never show for performers. */
+  role?: "fan" | "performer";
+  /** Optional dev-only continuity context supplied by the route/runtime layer. */
+  continuityContext?: {
+    venueInstanceId?: string;
+    roomSessionId?: string;
+    rtcSessionId?: string;
+  };
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -431,7 +451,10 @@ export default function CommandCenterMediaStack({
   seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
   naturalHeight = false,
   monitorLayoutMode = "dual",
+  continuityContext,
+  role = "fan",
 }: CommandCenterMediaStackProps) {
+  const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const [swapOrder, setSwapOrder] = useState(false);
   const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
@@ -440,6 +463,12 @@ export default function CommandCenterMediaStack({
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const runtimeInstanceId = useMemo(() => {
+    const roomSeed = continuityContext?.roomSessionId ?? "unknown-room-session";
+    const venueSeed = continuityContext?.venueInstanceId ?? "unknown-venue-instance";
+    const slotSeed = (slots[0]?.id ?? "no-slot").replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `runtime-${roomSeed}-${venueSeed}-${slotSeed}`;
+  }, [continuityContext?.roomSessionId, continuityContext?.venueInstanceId, slots]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -499,9 +528,110 @@ export default function CommandCenterMediaStack({
     [orderedSlots],
   );
 
+  const primarySourceId = topSlots[0]?.id ?? null;
+  const secondarySourceId = monitorLayoutMode === "dual" ? (bottomSlots[0]?.id ?? null) : null;
+  const topSlotIds = useMemo(() => new Set(topSlots.map((s) => s.id)), [topSlots]);
+  const bottomSlotIds = useMemo(() => new Set(bottomSlots.map((s) => s.id)), [bottomSlots]);
+
+  let presentationMode: "DUAL" | "SINGLE_PRIMARY" | "FULLSCREEN_PRIMARY" | "FULLSCREEN_SECONDARY" =
+    monitorLayoutMode === "dual" ? "DUAL" : "SINGLE_PRIMARY";
+  if (fullscreenSlotId) {
+    if (topSlotIds.has(fullscreenSlotId)) {
+      presentationMode = "FULLSCREEN_PRIMARY";
+    } else if (bottomSlotIds.has(fullscreenSlotId)) {
+      presentationMode = "FULLSCREEN_SECONDARY";
+    }
+  }
+
+  const continuitySnapshot = useMemo(
+    () => ({
+      runtimeInstanceId,
+      venueInstanceId: continuityContext?.venueInstanceId ?? "unknown-venue-instance",
+      roomSessionId: continuityContext?.roomSessionId ?? "unknown-room-session",
+      rtcSessionId: continuityContext?.rtcSessionId ?? "unknown-rtc-session",
+      primarySourceId: primarySourceId ?? "unknown-primary-source",
+      secondarySourceId: secondarySourceId ?? "none",
+      presentationMode,
+    }),
+    [
+      continuityContext?.roomSessionId,
+      continuityContext?.rtcSessionId,
+      continuityContext?.venueInstanceId,
+      presentationMode,
+      primarySourceId,
+      runtimeInstanceId,
+      secondarySourceId,
+    ],
+  );
+
   const handleSwap = () => {
     setSwapOrder((prev) => !prev);
   };
+
+  const enterPrimaryFullscreen = useCallback(() => {
+    setFullscreenSlotId(topSlots[0]?.id ?? null);
+  }, [topSlots]);
+
+  const enterSecondaryFullscreen = useCallback(() => {
+    setFullscreenSlotId(bottomSlots[0]?.id ?? null);
+  }, [bottomSlots]);
+
+  const exitMonitorFullscreen = useCallback(() => {
+    setFullscreenSlotId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!isDevDiagnostics) return;
+    (
+      window as typeof window & {
+        __TMI_DEV_CONTINUITY__?: unknown;
+        __TMI_DEV_CONTINUITY_ACTIONS__?: {
+          toggleSwap: () => void;
+          enterPrimaryFullscreen: () => void;
+          enterSecondaryFullscreen: () => void;
+          exitFullscreen: () => void;
+          getSnapshot: () => typeof continuitySnapshot;
+        };
+      }
+    ).__TMI_DEV_CONTINUITY__ = continuitySnapshot;
+    (
+      window as typeof window & {
+        __TMI_DEV_CONTINUITY_ACTIONS__?: {
+          toggleSwap: () => void;
+          enterPrimaryFullscreen: () => void;
+          enterSecondaryFullscreen: () => void;
+          exitFullscreen: () => void;
+          getSnapshot: () => typeof continuitySnapshot;
+        };
+      }
+    ).__TMI_DEV_CONTINUITY_ACTIONS__ = {
+      toggleSwap: handleSwap,
+      enterPrimaryFullscreen,
+      enterSecondaryFullscreen,
+      exitFullscreen: exitMonitorFullscreen,
+      getSnapshot: () => continuitySnapshot,
+    };
+    return () => {
+      delete (
+        window as typeof window & {
+          __TMI_DEV_CONTINUITY__?: unknown;
+          __TMI_DEV_CONTINUITY_ACTIONS__?: unknown;
+        }
+      ).__TMI_DEV_CONTINUITY__;
+      delete (
+        window as typeof window & {
+          __TMI_DEV_CONTINUITY_ACTIONS__?: unknown;
+        }
+      ).__TMI_DEV_CONTINUITY_ACTIONS__;
+    };
+  }, [
+    continuitySnapshot,
+    enterPrimaryFullscreen,
+    enterSecondaryFullscreen,
+    exitMonitorFullscreen,
+    handleSwap,
+    isDevDiagnostics,
+  ]);
 
   const fullscreenSlot =
     fullscreenSlotId
@@ -716,6 +846,7 @@ export default function CommandCenterMediaStack({
 
       {/* Direct-Action Quick Shortcuts: One Tap = Immediate Action */}
       <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+        {role === "fan" ? (
         <button
           type="button"
           onClick={() => openCanonicalWorkspaceQuick("inventory", "DRAWER")}
@@ -735,6 +866,7 @@ export default function CommandCenterMediaStack({
         >
           👤 AVATAR
         </button>
+        ) : null}
 
         <button
           type="button"
@@ -758,7 +890,10 @@ export default function CommandCenterMediaStack({
 
         <button
           type="button"
-          onClick={() => openCanonicalWorkspaceQuick("playlist", "DRAWER")}
+          onClick={() => {
+            traceLaunch("PLAYLIST_CLICK", { source: "media-stack", workspaceId: "playlist-studio" });
+            openCanonicalWorkspaceQuick("playlist", "DRAWER");
+          }}
           title="Open Playlist Library"
           style={{
             fontSize: 8,
@@ -778,7 +913,13 @@ export default function CommandCenterMediaStack({
 
         <button
           type="button"
-          onClick={() => openCanonicalWorkspaceQuick("yopho", "DRAWER")}
+          data-testid="tmi-yopho-media-stack-trigger"
+          data-tmi-action="open-workspace"
+          data-tmi-workspace="yopho"
+          onClick={() => {
+            traceLaunch("YOPHO_CLICK", { source: "media-stack", workspaceId: "yopho" });
+            openCanonicalWorkspaceQuick("yopho", "DRAWER");
+          }}
           title="Open YoPho Studio"
           style={{
             fontSize: 8,
@@ -802,6 +943,13 @@ export default function CommandCenterMediaStack({
   return (
     <div
       ref={containerRef}
+      data-tmi-dev-runtime-instance-id={isDevDiagnostics ? continuitySnapshot.runtimeInstanceId : undefined}
+      data-tmi-dev-venue-instance-id={isDevDiagnostics ? continuitySnapshot.venueInstanceId : undefined}
+      data-tmi-dev-room-session-id={isDevDiagnostics ? continuitySnapshot.roomSessionId : undefined}
+      data-tmi-dev-rtc-session-id={isDevDiagnostics ? continuitySnapshot.rtcSessionId : undefined}
+      data-tmi-dev-primary-source-id={isDevDiagnostics ? continuitySnapshot.primarySourceId : undefined}
+      data-tmi-dev-secondary-source-id={isDevDiagnostics ? continuitySnapshot.secondarySourceId : undefined}
+      data-tmi-dev-presentation-mode={isDevDiagnostics ? continuitySnapshot.presentationMode : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -814,6 +962,37 @@ export default function CommandCenterMediaStack({
         ...(isFullscreen ? { background: "#050510", padding: 16 } : {}),
       }}
     >
+      {isDevDiagnostics ? (
+        <div
+          data-tmi-dev-continuity-overlay="1"
+          style={{
+            position: "fixed",
+            right: 12,
+            bottom: 12,
+            zIndex: 10001,
+            maxWidth: 360,
+            background: "rgba(4,6,14,0.9)",
+            border: "1px solid rgba(0,255,255,0.3)",
+            borderRadius: 10,
+            padding: "8px 10px",
+            fontSize: 10,
+            lineHeight: 1.45,
+            color: "#D8FFFF",
+            fontFamily: "monospace",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ color: "#00FFFF", fontWeight: 800, marginBottom: 4 }}>DEV CONTINUITY</div>
+          <div>runtimeInstanceId: {continuitySnapshot.runtimeInstanceId}</div>
+          <div>venueInstanceId: {continuitySnapshot.venueInstanceId}</div>
+          <div>roomSessionId: {continuitySnapshot.roomSessionId}</div>
+          <div>rtcSessionId: {continuitySnapshot.rtcSessionId}</div>
+          <div>primarySourceId: {continuitySnapshot.primarySourceId}</div>
+          <div>secondarySourceId: {continuitySnapshot.secondarySourceId}</div>
+          <div>presentationMode: {continuitySnapshot.presentationMode}</div>
+        </div>
+      ) : null}
+
       {fullscreenSlot ? (
         <div
           data-tmi-monitor-fullscreen="1"
@@ -846,7 +1025,7 @@ export default function CommandCenterMediaStack({
             </span>
             <button
               type="button"
-              onClick={() => setFullscreenSlotId(null)}
+              onClick={exitMonitorFullscreen}
               style={{
                 fontSize: 10,
                 fontWeight: 900,
@@ -887,7 +1066,7 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   slot={topSlots[0]!}
                   onSwap={handleSwap}
-                  onFullscreen={() => setFullscreenSlotId(topSlots[0]!.id)}
+                  onFullscreen={enterPrimaryFullscreen}
                   sponsorOverlay={activeSponsorOverlay}
                 />
               ),
@@ -915,7 +1094,7 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   slot={bottomSlots[0]!}
                   onSwap={handleSwap}
-                  onFullscreen={() => setFullscreenSlotId(bottomSlots[0]!.id)}
+                  onFullscreen={enterSecondaryFullscreen}
                 />
               ),
             cells: bottomSlots.map((slot, ci) =>
