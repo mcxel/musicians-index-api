@@ -1,46 +1,92 @@
 /**
- * ArtistShareIdentity — one permanent, shareable public identity per account.
+ * Artist & Fan Share Identity Engine — Marcel 1-Tap QR / Share Card Protocol.
  *
- * Deliberately not a new database model. `/profile/[slug]/page.tsx` already
- * resolves any user by their permanent `User.id` (see getMemberById there —
- * it does `prisma.user.findUnique({ where: { id } })`), so that route is
- * already the stable, rename-proof canonical profile resolver every account
- * has today. This just derives a display-friendly public code from the same
- * permanent id and builds the one URL every QR (Command Center, YoPho,
- * future posters/merch) should encode. Never derive this from a mutable
- * displayName, stage name, or slug — only from the permanent id.
+ * Rules:
+ *   1. Scanning or tapping a Fan or Performer QR immediately triggers a 1-tap Follow / Add Friend.
+ *   2. For a Fan: lands on their YoPho Public Fan Card / Profile.
+ *   3. For a Performer: lands on their Performer Profile, Magazine Article, and Store (Beats/Merch).
+ *   4. Identity payload is canonical and permanent — derived from userId + verified slug/username.
  */
 
-export interface ArtistShareIdentity {
-  /** Permanent account id — never shown directly, only used to build the URL. */
-  userId: string;
-  /** Cosmetic, human-readable code derived from the id. Display only. */
-  publicCode: string;
-  /** The one URL every QR for this account encodes. */
-  canonicalUrl: string;
-  /** Relative path form, for internal <Link> use. */
-  canonicalPath: string;
-}
-
-function getBaseUrl(): string {
+export function getShareBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_BASE_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   if (typeof window !== "undefined") return window.location.origin;
   return "https://themusiciansindex.com";
 }
 
-export function getArtistShareIdentity(
-  userId: string,
-  role: "performer" | "fan" | string = "fan",
-): ArtistShareIdentity {
-  const prefix = role === "performer" ? "ART" : "FAN";
-  const codeSource = userId.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || userId.slice(-8);
-  const publicCode = `${prefix}-${codeSource.toUpperCase()}`;
-  const canonicalPath = `/profile/${userId}`;
+export interface UserShareIdentity {
+  userId: string;
+  role: "fan" | "performer" | "artist";
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  slug: string;
+  yophoCardUrl: string;
+  profileUrl: string;
+  performerArticleUrl?: string;
+  storeUrl?: string;
+  qrPayload: string;
+  oneTapActionUrl: string;
+}
+
+export function buildUserShareIdentity(input: {
+  userId: string;
+  role: "fan" | "performer" | "artist";
+  username: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  slug?: string | null;
+}): UserShareIdentity {
+  const canonicalSlug = (input.slug ?? input.username).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const isPerformer = input.role === "performer" || input.role === "artist";
+
+  const profileUrl = isPerformer
+    ? `/profile/artist/${canonicalSlug}`
+    : `/profile/fan/${canonicalSlug}`;
+
+  const yophoCardUrl = `/yopho/card/${canonicalSlug}`;
+  const performerArticleUrl = isPerformer ? `/magazine/article/${canonicalSlug}` : undefined;
+  const storeUrl = isPerformer ? `/commerce/store/${canonicalSlug}` : undefined;
+
+  const qrPayload = JSON.stringify({
+    v: 1,
+    action: "follow",
+    userId: input.userId,
+    role: input.role,
+    slug: canonicalSlug,
+    yophoCardUrl,
+    profileUrl,
+  });
+
+  const oneTapActionUrl = `/api/social/follow?targetUserId=${input.userId}&autoFollow=true`;
+
   return {
-    userId,
-    publicCode,
-    canonicalUrl: `${getBaseUrl()}${canonicalPath}`,
-    canonicalPath,
+    userId: input.userId,
+    role: input.role,
+    username: input.username,
+    displayName: input.displayName,
+    avatarUrl: input.avatarUrl ?? null,
+    slug: canonicalSlug,
+    yophoCardUrl,
+    profileUrl,
+    performerArticleUrl,
+    storeUrl,
+    // Fixed from a hardcoded production URL — was pointing every QR
+    // generated on preview/localhost at production regardless of where it
+    // was actually created.
+    qrPayload: `${getShareBaseUrl()}/share/${canonicalSlug}?action=follow&userId=${input.userId}`,
+    oneTapActionUrl,
   };
+}
+
+export function getArtistShareIdentity(input: {
+  userId: string;
+  role: "fan" | "performer" | "artist";
+  username: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  slug?: string | null;
+}): UserShareIdentity {
+  return buildUserShareIdentity(input);
 }
