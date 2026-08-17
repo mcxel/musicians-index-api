@@ -180,63 +180,75 @@ export async function POST(req: NextRequest) {
   ];
   const slug = `beat-locker-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  const beat = await prisma.beat.create({
-    data: {
-      producerId: auth.user.id,
-      slug,
-      title,
-      genre,
-      bpm,
-      key,
-      tags: mergedTags,
-      previewUrl,
-      taggedUrl: previewUrl,
-      basicPrice: listForSale ? basicPrice : DEFAULT_LICENSE_PRICES.non_exclusive,
-      premiumPrice: DEFAULT_LICENSE_PRICES.stems,
-      exclusivePrice: DEFAULT_LICENSE_PRICES.exclusive,
-      producerName: broadcastTag,
-      status: listForSale ? "published" : "draft",
-      moderationStatus: listForSale ? "APPROVED" : "PENDING",
-      adminSubmitted: false,
-    },
-  });
-
-  let inventoryNote: string | undefined;
-  if (listForSale) {
-    const inv = buildBeatDropInventory(beat.id, {
-      non_exclusive: beat.basicPrice,
-      exclusive: beat.exclusivePrice ?? DEFAULT_LICENSE_PRICES.exclusive,
-      stems: beat.premiumPrice,
-      unlimited: DEFAULT_LICENSE_PRICES.unlimited,
-    });
-    inventoryNote = inv.hasAvailability
-      ? `Marketplace inventory ready at $${(beat.basicPrice / 100).toFixed(2)}.`
-      : "Marketplace inventory unavailable.";
-  }
-
-  return NextResponse.json(
-    {
-      ok: true,
-      beat: {
-        id: beat.id,
-        title: beat.title,
-        genre: beat.genre,
-        bpm: beat.bpm,
-        key: beat.key,
-        tags: beat.tags,
-        producerId: beat.producerId,
-        producerName: beat.producerName,
-        broadcastTag: beat.producerName,
-        status: beat.status,
-        moderationStatus: beat.moderationStatus,
-        basicPrice: beat.basicPrice,
-        premiumPrice: beat.premiumPrice,
-        exclusivePrice: beat.exclusivePrice,
-        previewUrl: beat.previewUrl,
-        createdAt: beat.createdAt.toISOString(),
+  try {
+    const beat = await prisma.beat.create({
+      data: {
+        producerId: auth.user.id,
+        slug,
+        title,
+        genre,
+        bpm,
+        key,
+        tags: mergedTags,
+        previewUrl,
+        taggedUrl: previewUrl,
+        basicPrice: listForSale ? basicPrice : DEFAULT_LICENSE_PRICES.non_exclusive,
+        premiumPrice: DEFAULT_LICENSE_PRICES.stems,
+        exclusivePrice: DEFAULT_LICENSE_PRICES.exclusive,
+        producerName: broadcastTag,
+        status: listForSale ? "published" : "draft",
+        moderationStatus: listForSale ? "APPROVED" : "PENDING",
+        adminSubmitted: false,
       },
-      inventoryNote,
-    },
-    { status: 201 },
-  );
+    });
+
+    let inventoryNote: string | undefined;
+    if (listForSale) {
+      const inv = buildBeatDropInventory(beat.id, {
+        non_exclusive: beat.basicPrice,
+        exclusive: beat.exclusivePrice ?? DEFAULT_LICENSE_PRICES.exclusive,
+        stems: beat.premiumPrice,
+        unlimited: DEFAULT_LICENSE_PRICES.unlimited,
+      });
+      inventoryNote = inv.hasAvailability
+        ? `Marketplace inventory ready at $${(beat.basicPrice / 100).toFixed(2)}.`
+        : "Marketplace inventory unavailable.";
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        beat: {
+          id: beat.id,
+          title: beat.title,
+          genre: beat.genre,
+          bpm: beat.bpm,
+          key: beat.key,
+          tags: beat.tags,
+          producerId: beat.producerId,
+          producerName: beat.producerName,
+          broadcastTag: beat.producerName,
+          status: beat.status,
+          moderationStatus: beat.moderationStatus,
+          basicPrice: beat.basicPrice,
+          premiumPrice: beat.premiumPrice,
+          exclusivePrice: beat.exclusivePrice,
+          previewUrl: beat.previewUrl,
+          createdAt: beat.createdAt.toISOString(),
+        },
+        inventoryNote,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    // Diagnostic guard only — surfaces the real failure in server logs instead
+    // of an opaque, message-less crash. Never send raw Prisma/SQL details to
+    // the client. Root cause still needs to be captured before any behavioral
+    // fix (slug, auth, storage) is authorized.
+    console.error("[beat-locker-submit] prisma.beat.create failed", error);
+    return NextResponse.json(
+      { ok: false, error: "beat_create_failed" },
+      { status: 500 },
+    );
+  }
 }
