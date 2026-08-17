@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 // Mirrors packages/db/prisma/schema.prisma's Role enum. Deliberately not
 // importing the separate lib/auth/roles.ts TMIRole type — that's a legacy,
@@ -23,36 +23,20 @@ interface RoleGateProps {
 
 /**
  * Conditionally renders children based on the signed-in user's role.
- * Fetches /api/auth/session directly rather than trusting a cached client
- * value, since role gates are exactly the kind of check that must not be
- * spoofable/stale (e.g. a Fan momentarily seeing Performer-only avatar
- * controls because of stale local state).
+ * Reads the canonical useAuth() session (single shared fetch/cache backed
+ * by /api/auth/session — see lib/hooks/useAuth.ts) rather than running its
+ * own independent fetch. Role gates are exactly the kind of check that must
+ * not be spoofable/stale, and a second, uncoordinated auth-adjacent fetch
+ * here was itself a source of divergence from whatever the rest of the
+ * shell already resolved (see the Canister Canonical Auth Hydration Fix).
  *
  * Renders nothing while the role is still resolving, to avoid a flash of
  * gated content before the check completes.
  */
 export default function RoleGate({ allow, children, fallback = null }: RoleGateProps) {
-  const [role, setRole] = useState<PlatformRole | null | 'loading'>('loading');
+  const { isLoading, role } = useAuth();
 
-  useEffect(() => {
-    let active = true;
-    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
-      .then((r) => r.json())
-      .then((d: { role?: string | null; user?: { role?: string | null } | null }) => {
-        if (active) {
-          const resolved = (d.user?.role ?? d.role ?? null) as PlatformRole | null;
-          setRole(resolved);
-        }
-      })
-      .catch(() => {
-        if (active) setRole(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (role === 'loading') return null;
-  if (!role || !allow.includes(role)) return <>{fallback}</>;
+  if (isLoading) return null;
+  if (!role || !allow.includes(role as PlatformRole)) return <>{fallback}</>;
   return <>{children}</>;
 }
