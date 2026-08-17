@@ -37,9 +37,8 @@ export function runCommercePurchaseLoopTest(): { allPassed: boolean; results: Re
 
   results["cart_item_added"] = cart.items.length === 1 && cart.subtotalCents === 99;
 
-  // 3. Checkout Session Payload Valid
-  const expectedTax = Math.round(99 * 0.08);
-  results["checkout_session_payload_valid"] = cart.taxCents === expectedTax && cart.totalCents === (99 + expectedTax);
+  // 3. Checkout Session Payload Valid (Tax calculated at Stripe checkout)
+  results["checkout_session_payload_valid"] = cart.totalCents === 99 && cart.subtotalCents === 99;
 
   // 4. Webhook Fulfillment Idempotent
   const orderId = "ord-stripe-tx-555";

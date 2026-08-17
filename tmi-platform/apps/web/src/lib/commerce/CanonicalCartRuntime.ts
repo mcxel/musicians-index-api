@@ -130,9 +130,9 @@ class CanonicalCartRuntimeImpl {
 
   private recalculate(cart: CartState): void {
     cart.subtotalCents = cart.items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
-    // Estimated tax 8% for checkout preview
-    cart.taxCents = Math.round(cart.subtotalCents * 0.08);
-    cart.totalCents = cart.subtotalCents + cart.taxCents;
+    // Tax is calculated at checkout via Stripe Tax / address jurisdiction
+    cart.taxCents = 0;
+    cart.totalCents = cart.subtotalCents;
     cart.updatedAt = Date.now();
   }
 }

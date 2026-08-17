@@ -31,9 +31,9 @@ export default function AccountFinanceHubPage() {
   const [cartState, setCartState] = useState<CartState>(CanonicalCartRuntime.getOrCreateCart("user-cart-default", "user-active-1"));
   const [entitlements, setEntitlements] = useState<UserEntitlement[]>([]);
   const [provenanceFilter, setProvenanceFilter] = useState<string>("ALL");
-  const [pointsBalance] = useState(18450);
-  const [earningsBalance] = useState(0.0);
-  const [payoutStatus] = useState("CONNECT_REQUIRED");
+  const [pointsBalance] = useState<number | null>(null);
+  const [earningsBalance] = useState<number | null>(null);
+  const [payoutStatus] = useState("Setup Required");
 
   // Populate seed items if empty
   useEffect(() => {
@@ -124,8 +124,8 @@ export default function AccountFinanceHubPage() {
 
           <div style={cardStyle}>
             <div style={cardLabel}>TMI POINTS</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: FUCHSIA }}>{pointsBalance.toLocaleString()} PTS</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Available for store</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: FUCHSIA }}>{pointsBalance !== null ? `${(pointsBalance as number).toLocaleString()} PTS` : "—"}</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{pointsBalance !== null ? "Available for store" : "Balance unavailable"}</div>
           </div>
 
           <div style={cardStyle}>
@@ -223,7 +223,7 @@ export default function AccountFinanceHubPage() {
 
                 <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Subtotal: ${(cartState.subtotalCents / 100).toFixed(2)}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Estimated Tax (8%): ${(cartState.taxCents / 100).toFixed(2)}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Tax: Calculated at checkout</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginTop: 4 }}>Total: ${(cartState.totalCents / 100).toFixed(2)}</div>
 
                   <button
@@ -336,12 +336,12 @@ export default function AccountFinanceHubPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ padding: 14, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
                 <div style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}>TMI POINTS LEDGER</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{pointsBalance.toLocaleString()} PTS</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{pointsBalance !== null ? `${pointsBalance.toLocaleString()} PTS` : "—"}</div>
               </div>
 
               <div style={{ padding: 14, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
                 <div style={{ fontSize: 10, color: GREEN, fontWeight: 800 }}>AVAILABLE EARNINGS</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>${earningsBalance.toFixed(2)}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{earningsBalance !== null ? `$${earningsBalance.toFixed(2)}` : "—"}</div>
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Payout status: {payoutStatus}</div>
               </div>
 
