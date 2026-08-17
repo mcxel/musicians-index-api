@@ -284,15 +284,39 @@ export default function YoPhoTripleStageStudio({
     }
   };
 
+  const handleStartOver = () => {
+    if (typeof window !== "undefined" && !window.confirm("Start over? This will reset all layers and effects to initial state.")) {
+      return;
+    }
+    pushUndo();
+    const fresh = clonePortraitBlueprint(master);
+    fresh.portraitEffects = [];
+    setPreview(fresh);
+    onMasterChange(fresh);
+    setStatusLine("Project reset to initial state.");
+  };
+
   const nudgeActive = (dx: number, dy: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to move.");
+      return;
+    }
     setPreview((p) => nudgeLayerPosition(p, activeLayerId, dx, dy));
   };
 
   const scaleActive = (dScale: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to scale.");
+      return;
+    }
     setPreview((p) => nudgeLayerScale(p, activeLayerId, dScale));
   };
 
   const rotateActive = (dRotation: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to rotate.");
+      return;
+    }
     setPreview((p) => nudgeLayerRotation(p, activeLayerId, dRotation));
   };
 
@@ -412,6 +436,9 @@ export default function YoPhoTripleStageStudio({
           </button>
           <button type="button" onClick={handleRedo} title="Redo" style={chipBtn(GOLD)}>
             ↷ REDO
+          </button>
+          <button type="button" onClick={handleStartOver} title="Start Over" style={chipBtn(RED)}>
+            🔄 START OVER
           </button>
           <button type="button" onClick={() => setShowAddModal(true)} style={chipBtn(GREEN)}>
             + ADD LAYER
