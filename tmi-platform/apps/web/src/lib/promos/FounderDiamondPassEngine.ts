@@ -97,6 +97,17 @@ const FOUNDER_PASSES: DiamondPassHolder[] = [
     role: "fan",
     active: true,
   },
+  {
+    email: "bmccurdy530@gmail.com",
+    name: "Brad McCurdy",
+    grantedBy: "Marcel Dickens — BerntoutGlobal Founding Promotion & Sales Representative",
+    grantedAt: new Date("2026-08-16"),
+    code: "DIAMOND-BRADMCCURDY-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
 ];
 
 let initialized = false;

@@ -11,28 +11,37 @@ const UI_TYPE_MAP: Record<string, MediaType> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const contentType = req.headers.get("content-type") ?? "";
-    let title = "", rawType = "song", ownerId = "", simulatedFileName = "", simulatedSizeBytes = 0;
+    // Owner is always from the authenticated cookie — never from the request body.
+    const cookieEmail = req.cookies.get("tmi_user_email")?.value ?? "";
+    const cookieId    = req.cookies.get("tmi_session_id")?.value ?? "";
+    const cookieRole  = req.cookies.get("tmi_role")?.value ?? "fan";
 
-    if (contentType.includes("multipart/form-data")) {
-      const fd = await req.formData();
-      title = (fd.get("title") as string) ?? "";
-      rawType = (fd.get("type") as string) ?? "Audio";
-      const file = fd.get("file") as File | null;
-      simulatedFileName = file?.name ?? "upload";
-      simulatedSizeBytes = file?.size ?? 0;
-    } else {
-      const body = await req.json() as UploadRequest & { rawType?: string };
-      title = body.title ?? "";
-      rawType = body.rawType ?? (body.type as string) ?? "song";
-      simulatedSizeBytes = body.simulatedSizeBytes ?? 0;
-      ownerId = body.ownerId ?? "";
+    if (!cookieEmail && !cookieId) {
+      return NextResponse.json({ ok: false, error: "Sign in to upload", code: "UNAUTHENTICATED" }, { status: 401 });
     }
 
-    // Owner from cookie (client uploads always come from the logged-in user)
-    const cookieEmail = req.cookies.get("tmi_user_email")?.value ?? "";
-    const cookieRole  = req.cookies.get("tmi_role")?.value ?? "fan";
-    if (!ownerId) ownerId = cookieEmail || "guest";
+    const contentType = req.headers.get("content-type") ?? "";
+    let title = "", rawType = "song", simulatedFileName = "", simulatedSizeBytes = 0;
+
+    try {
+      if (contentType.includes("multipart/form-data")) {
+        const fd = await req.formData();
+        title = (fd.get("title") as string) ?? "";
+        rawType = (fd.get("type") as string) ?? "Audio";
+        const file = fd.get("file") as File | null;
+        simulatedFileName = file?.name ?? "upload";
+        simulatedSizeBytes = file?.size ?? 0;
+      } else {
+        const body = await req.json() as UploadRequest & { rawType?: string };
+        title = body.title ?? "";
+        rawType = body.rawType ?? (body.type as string) ?? "song";
+        simulatedSizeBytes = body.simulatedSizeBytes ?? 0;
+      }
+    } catch {
+      return NextResponse.json({ ok: false, error: "Could not read upload request", code: "PARSE_ERROR" }, { status: 400 });
+    }
+
+    const ownerId  = cookieEmail || cookieId;
     const ownerName = cookieEmail ? cookieEmail.split("@")[0] : "user";
 
     if (!title.trim()) {
@@ -50,26 +59,27 @@ export async function POST(req: NextRequest) {
     };
 
     const result = await MediaEngine.upload(uploadReq);
-    if (!result.ok) return NextResponse.json(result, { status: 400 });
+    if (!result.ok) {
+      const code = result.error?.includes("too large") ? "FILE_TOO_LARGE"
+                 : result.error?.includes("not allowed") ? "UNSUPPORTED_FORMAT"
+                 : "UPLOAD_ERROR";
+      return NextResponse.json({ ...result, code }, { status: 400 });
+    }
 
     const resolvedGenre = uploadReq.genre?.trim() || "Other";
     const resolvedBpm = Number.isFinite(uploadReq.bpm) ? Number(uploadReq.bpm) : 120;
 
-    // Persist to DB so CRUD routes (/api/songs/[id], /api/videos/[id], Beat Vault) can manage it
+    // Persist to DB — all DB ops in one try/catch so a connection error never
+    // throws past this block and causes a 500 on an otherwise-successful upload.
     if (result.assetId && result.url) {
-      const resolvedUserId = ownerId || cookieEmail;
-      const dbUser = resolvedUserId
-        ? await prisma.user.findFirst({
-            where: {
-              OR: [{ id: resolvedUserId }, { email: resolvedUserId }],
-            },
-            select: { id: true },
-          })
-        : null;
+      try {
+        const dbUser = await prisma.user.findFirst({
+          where: { OR: [{ id: ownerId }, { email: ownerId }] },
+          select: { id: true },
+        });
 
-      if (dbUser) {
-        const isVideo = mediaType === "video" || mediaType === "interview" || mediaType === "venue_promo";
-        try {
+        if (dbUser) {
+          const isVideo = mediaType === "video" || mediaType === "interview" || mediaType === "venue_promo";
           if (isVideo) {
             await prisma.video.create({
               data: {
@@ -81,7 +91,7 @@ export async function POST(req: NextRequest) {
                 status: 'ACTIVE',
               },
             });
-          } else if (mediaType === "song" || mediaType === "beat") {
+          } else if (mediaType === "song") {
             await prisma.song.create({
               data: {
                 id: result.assetId,
@@ -93,7 +103,20 @@ export async function POST(req: NextRequest) {
                 status: 'ACTIVE',
               },
             });
-            const beatSlug = `media-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          } else if (mediaType === "beat") {
+            // Beat uploads go to both Song (for playback) and Beat (for marketplace).
+            await prisma.song.create({
+              data: {
+                id: result.assetId,
+                uploaderId: dbUser.id,
+                title: uploadReq.title,
+                audioUrl: result.url,
+                genre: resolvedGenre,
+                bpm: resolvedBpm,
+                status: 'ACTIVE',
+              },
+            });
+            const beatSlug = `beat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             await prisma.beat.create({
               data: {
                 id: result.assetId,
@@ -113,18 +136,24 @@ export async function POST(req: NextRequest) {
                 adminSubmitted: false,
                 producerName: ownerName,
               },
-            }).catch(() => null);
+            });
           }
-        } catch (dbErr) {
-          console.error("[media/upload DB error]", dbErr);
         }
+      } catch (dbErr) {
+        // DB write failed but storage succeeded — log for ops, don't 500.
+        // The client gets 201 with a note; the asset exists in the CDN store.
+        console.error("[media/upload DB registration failed]", dbErr);
+        return NextResponse.json(
+          { ...result, dbWarning: "Asset stored but library registration failed — retry or contact support." },
+          { status: 201 }
+        );
       }
     }
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     console.error("[media/upload]", err);
-    return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Upload failed. Please try again.", code: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
 
