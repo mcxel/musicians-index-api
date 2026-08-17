@@ -196,9 +196,16 @@ export default function TmiIdentitySurface({
     <div
       data-tmi-identity-surface
       style={{
+        aspectRatio: "1 / 1",
+        maxHeight: "min(88vw, 420px)",
+        margin: "0 auto",
         border: `1px solid ${accentColor}33`,
         borderRadius: 12,
         background: "rgba(255,255,255,0.02)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "auto",
       }}
     >
       {card}
