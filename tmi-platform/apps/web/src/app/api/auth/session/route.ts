@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import { resolveTierFromDb, computeAuthoritativeTier } from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
@@ -122,6 +122,10 @@ export async function GET(req: NextRequest) {
         dbUser.userProfile?.displayName ??
         dbUser.name ??
         null;
+    } else if (rawEmail) {
+      // DB timed out — apply founder-email check in-memory so founder accounts
+      // never fall back to a stale FREE cookie on a cold-start DB delay.
+      tier = computeAuthoritativeTier(rawEmail, cookieTier).tier;
     }
   } catch {
     // Keep session fallback identity if DB is temporarily unavailable.
