@@ -21,8 +21,18 @@ export type ExperienceType =
   | "CYPHER"
   | "CHALLENGE"
   | "GAME_SHOW"
+  | "STREAM_AND_WIN_RADIO"
   | "LOUNGE"
   | "LISTENING_PARTY";
+
+export type HudFamily = "VENUE_HUD" | "LOUNGE_HUD";
+
+export function resolveCanonicalHudFamily(experienceType: ExperienceType): HudFamily {
+  if (experienceType === "LOUNGE") {
+    return "LOUNGE_HUD";
+  }
+  return "VENUE_HUD";
+}
 
 export type UserRoleCapability = "fan" | "performer" | "host" | "judge" | "admin";
 
