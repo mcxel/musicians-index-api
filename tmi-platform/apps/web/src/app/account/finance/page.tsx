@@ -4,20 +4,54 @@
  * Account Finance Hub — Master Financial, Commerce, & Ownership Dashboard.
  *
  * User-facing Name: Account Settings → Billing & Money
- * Technical Engine: AccountFinanceHub + CanonicalCartRuntime + OwnershipRuntime
+ * Technical Engine: /api/account/purchases (real Prisma-backed ownership —
+ * venue skins, media chassis, season passes, subscription tier, orders) +
+ * CanonicalCartRuntime (real, price-validated, honestly-empty session cart).
+ * Identity comes from the canonical useAuth() session — never a hardcoded
+ * userId. This is the account checkpoint every real Stripe-webhook-fulfilled
+ * purchase must show up in.
  *
  * Sections:
- *   1. OVERVIEW: Key financial metrics (Plan, Cart, Points, Purchases, Earnings)
+ *   1. OVERVIEW: Key financial metrics (Plan, Cart, Purchases)
  *   2. CART: Canonical cart drawer & checkout trigger
  *   3. BILLING: Subscription management & Customer Portal integration
- *   4. PURCHASES: Provenance-filtered inventory & equip controls
+ *   4. PURCHASES: Real, provenance-filtered ownership (Rule 20 — no fake seed items)
  *   5. WALLET & PAYOUTS: TMI Points ledger, earnings balance, & Stripe Connect setup
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CanonicalCartRuntime, type CartState } from "@/lib/commerce/CanonicalCartRuntime";
-import { OwnershipRuntime, type UserEntitlement } from "@/lib/commerce/OwnershipRuntime";
+import { useAuth } from "@/lib/hooks/useAuth";
+
+interface AccountEntitlement {
+  id: string;
+  title: string;
+  category: string;
+  provenance: string;
+  obtainedAt: number | string;
+}
+
+interface AccountOrder {
+  id: string;
+  createdAt: string;
+  provider: string | null;
+  amountCents: number | null;
+  currency: string | null;
+  status: string | null;
+}
+
+interface AccountPurchasesResponse {
+  authenticated: boolean;
+  userId?: string;
+  tier?: string;
+  subscriptionRenewsAt?: string | null;
+  stripeConnected?: boolean;
+  ownedVenueSkins?: { skinId: string; sku: string; priceCents: number; rarity: string; unlockedVia: string | null }[];
+  ownedChassis?: { chassisId: string; unlockedVia: string; purchasedAt: string }[];
+  seasonPasses?: { name: string; tier: string; endDate: string; purchasedAt: string }[];
+  recentOrders?: AccountOrder[];
+}
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -26,53 +60,75 @@ const GREEN = "#00FF88";
 
 export default function AccountFinanceHubPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "cart" | "billing" | "purchases" | "wallet">("overview");
-  const [cartId] = useState("user-cart-default");
-  const [userId] = useState("user-active-1");
-  const [cartState, setCartState] = useState<CartState>(CanonicalCartRuntime.getOrCreateCart("user-cart-default", "user-active-1"));
-  const [entitlements, setEntitlements] = useState<UserEntitlement[]>([]);
+  const { user, isLoading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+  const cartId = userId ? `cart-${userId}` : "cart-guest";
+  const [cartState, setCartState] = useState<CartState | null>(null);
+  const [purchases, setPurchases] = useState<AccountPurchasesResponse | null>(null);
+  const [purchasesLoading, setPurchasesLoading] = useState(true);
   const [provenanceFilter, setProvenanceFilter] = useState<string>("ALL");
-  const [pointsBalance] = useState<number | null>(null);
-  const [earningsBalance] = useState<number | null>(null);
-  const [payoutStatus] = useState("Setup Required");
 
-  // Populate seed items if empty
+  // Cart is a real, price-validated session cart (CanonicalCartRuntime) with
+  // no fake seed data — it starts genuinely empty because no add-to-cart
+  // button anywhere in the app currently feeds it (Rule 20: honest empty
+  // state, not fabricated inventory).
   useEffect(() => {
-    // Add default seed cart item if empty
-    if (cartState.items.length === 0) {
-      CanonicalCartRuntime.addItem("user-cart-default", {
-        id: "item-robot-suit",
-        skuId: "sku-robot-king-suit",
-        title: "Robot King Suit",
-        category: "cosmetic",
-        clientPriceCents: 99,
-        quantity: 1,
-      });
-      setCartState({ ...CanonicalCartRuntime.getOrCreateCart("user-cart-default") });
+    setCartState(CanonicalCartRuntime.getOrCreateCart(cartId, userId ?? undefined));
+  }, [cartId, userId]);
+
+  // Real purchases/ownership, fetched from the canonical account checkpoint —
+  // the same Prisma tables the Stripe webhook actually writes to. No seeding.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!userId) {
+      setPurchases({ authenticated: false });
+      setPurchasesLoading(false);
+      return;
     }
+    let cancelled = false;
+    setPurchasesLoading(true);
+    fetch("/api/account/purchases", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { authenticated: false }))
+      .then((data: AccountPurchasesResponse) => {
+        if (!cancelled) setPurchases(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPurchases({ authenticated: false });
+      })
+      .finally(() => {
+        if (!cancelled) setPurchasesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, userId]);
 
-    // Seed initial entitlements
-    OwnershipRuntime.grantEntitlement({
-      userId,
-      skuId: "sku-submarine-player",
-      title: "Submarine Media Player",
+  const entitlements: AccountEntitlement[] = [
+    ...(purchases?.ownedVenueSkins ?? []).map((s) => ({
+      id: `skin-${s.skinId}`,
+      title: s.skinId.replace(/-/g, " ").toUpperCase(),
+      category: "skin",
+      provenance: s.unlockedVia === "season_pass" ? "SEASON_PASS" : "PURCHASED",
+      obtainedAt: "",
+    })),
+    ...(purchases?.ownedChassis ?? []).map((c) => ({
+      id: `chassis-${c.chassisId}`,
+      title: `${c.chassisId.replace(/-/g, " ")} Media Player`,
       category: "chassis",
-      provenance: "SUBSCRIPTION",
-      pricePaidCents: 0,
-    });
-
-    OwnershipRuntime.grantEntitlement({
-      userId,
-      skuId: "sku-bobby-reaction-pack",
-      title: "Bobby Reaction Pack",
-      category: "cosmetic",
-      provenance: "PURCHASED",
-      pricePaidCents: 99,
-    });
-
-    setEntitlements(OwnershipRuntime.getUserEntitlements(userId));
-  }, [cartState.items.length, userId]);
+      provenance: c.unlockedVia === "purchase" ? "PURCHASED" : c.unlockedVia.toUpperCase(),
+      obtainedAt: c.purchasedAt,
+    })),
+    ...(purchases?.seasonPasses ?? []).map((sp) => ({
+      id: `pass-${sp.name}`,
+      title: sp.name,
+      category: "pass",
+      provenance: "SEASON_PASS",
+      obtainedAt: sp.purchasedAt,
+    })),
+  ];
 
   function handleQuantityChange(skuId: string, delta: number) {
+    if (!cartState) return;
     const item = cartState.items.find((i) => i.skuId === skuId);
     if (!item) return;
     const updated = CanonicalCartRuntime.updateQuantity(cartId, skuId, item.quantity + delta);
@@ -80,12 +136,13 @@ export default function AccountFinanceHubPage() {
   }
 
   function handleRemoveItem(skuId: string) {
+    if (!cartState) return;
     const updated = CanonicalCartRuntime.removeItem(cartId, skuId);
     setCartState({ ...updated });
   }
 
   async function handleProceedToCheckout() {
-    if (cartState.items.length === 0) return;
+    if (!cartState || cartState.items.length === 0) return;
     const skuId = cartState.items[0].skuId;
     window.location.href = `/api/stripe/checkout?priceId=${encodeURIComponent(skuId)}&mode=payment`;
   }
@@ -94,6 +151,10 @@ export default function AccountFinanceHubPage() {
     if (provenanceFilter === "ALL") return true;
     return e.provenance === provenanceFilter;
   });
+
+  const cartItemCount = cartState?.items.length ?? 0;
+  const isSignedIn = Boolean(userId) && purchases?.authenticated;
+  const accountReady = !authLoading && !purchasesLoading;
 
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(160deg,#040412,#06041a)", color: "#fff", paddingBottom: 80, fontFamily: "'Inter', sans-serif" }}>
@@ -104,28 +165,48 @@ export default function AccountFinanceHubPage() {
           <span style={{ color: "rgba(255,255,255,0.2)" }}>·</span>
           <span style={{ fontSize: 11, color: GOLD, fontWeight: 900, letterSpacing: "0.1em" }}>ACCOUNT FINANCE HUB</span>
         </div>
-        <div style={{ fontSize: 11, color: GREEN, fontWeight: 800 }}>● STRIPE CONNECTED</div>
+        <div style={{ fontSize: 11, color: purchases?.stripeConnected ? GREEN : "rgba(255,255,255,0.35)", fontWeight: 800 }}>
+          {purchases?.stripeConnected ? "● STRIPE CONNECTED" : "○ STRIPE NOT CONNECTED"}
+        </div>
       </div>
 
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+        {!accountReady ? (
+          <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>Loading your account…</div>
+        ) : !isSignedIn ? (
+          <div style={panelStyle}>
+            <div style={panelTitle}>SIGN IN REQUIRED</div>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+              Sign in to view your real purchases, subscriptions, and owned items.
+            </p>
+            <Link href="/login" style={{ ...actionBtn(CYAN), display: "inline-block", textDecoration: "none", marginTop: 8 }}>
+              Sign In →
+            </Link>
+          </div>
+        ) : (
+        <>
         {/* TOP METRIC CARDS */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
           <div style={cardStyle}>
             <div style={cardLabel}>CURRENT PLAN</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>PLATINUM</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Renews Sep 1, 2026</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>{purchases?.tier ?? "FREE"}</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
+              {purchases?.subscriptionRenewsAt
+                ? `Renews ${new Date(purchases.subscriptionRenewsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                : "No active subscription renewal"}
+            </div>
           </div>
 
           <div style={cardStyle}>
             <div style={cardLabel}>MY CART</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: CYAN }}>{cartState.items.length} ITEMS</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>${(cartState.totalCents / 100).toFixed(2)} Total</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: CYAN }}>{cartItemCount} ITEMS</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>${((cartState?.totalCents ?? 0) / 100).toFixed(2)} Total</div>
           </div>
 
           <div style={cardStyle}>
             <div style={cardLabel}>TMI POINTS</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: FUCHSIA }}>{pointsBalance !== null ? `${(pointsBalance as number).toLocaleString()} PTS` : "—"}</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{pointsBalance !== null ? "Available for store" : "Balance unavailable"}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: FUCHSIA }}>—</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Balance unavailable</div>
           </div>
 
           <div style={cardStyle}>
@@ -139,7 +220,7 @@ export default function AccountFinanceHubPage() {
         <div style={{ display: "flex", gap: 8, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 12, marginBottom: 24, flexWrap: "wrap" }}>
           {[
             { id: "overview", label: "OVERVIEW", icon: "📊" },
-            { id: "cart", label: `MY CART (${cartState.items.length})`, icon: "🛒" },
+            { id: "cart", label: `MY CART (${cartItemCount})`, icon: "🛒" },
             { id: "billing", label: "BILLING & SUBSCRIPTIONS", icon: "💳" },
             { id: "purchases", label: "PURCHASES & OWNERSHIP", icon: "🎁" },
             { id: "wallet", label: "WALLET & PAYOUTS", icon: "💰" },
@@ -192,9 +273,10 @@ export default function AccountFinanceHubPage() {
         {activeTab === "cart" && (
           <div style={panelStyle}>
             <div style={panelTitle}>CANONICAL SHOPPING CART</div>
-            {cartState.items.length === 0 ? (
+            {!cartState || cartState.items.length === 0 ? (
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", padding: 20, textAlign: "center" }}>
-                Your cart is empty.
+                Your cart is empty. Most TMI purchases (skins, media players, tips) are instant one-tap
+                buys from their store page rather than a multi-item cart.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -256,7 +338,7 @@ export default function AccountFinanceHubPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={panelTitle}>VERIFIED PURCHASES & OWNERSHIP</div>
               <div style={{ display: "flex", gap: 6 }}>
-                {["ALL", "PURCHASED", "SUBSCRIPTION", "WON_DEAL_OR_FEUD"].map((filter) => (
+                {["ALL", "PURCHASED", "SEASON_PASS"].map((filter) => (
                   <button
                     key={filter}
                     type="button"
@@ -278,37 +360,29 @@ export default function AccountFinanceHubPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {filteredEntitlements.map((e) => (
-                <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{e.title}</div>
-                    <div style={{ fontSize: 10, color: GOLD, marginTop: 2 }}>
-                      STATUS: OWNED · PROVENANCE: {e.provenance}
+            {filteredEntitlements.length === 0 ? (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", padding: 20, textAlign: "center" }}>
+                No owned items yet. Browse the{" "}
+                <Link href="/store/venue-skins" style={{ color: GOLD }}>Store</Link> to get started.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {filteredEntitlements.map((e) => (
+                  <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{e.title}</div>
+                      <div style={{ fontSize: 10, color: GOLD, marginTop: 2 }}>
+                        STATUS: OWNED · PROVENANCE: {e.provenance}
+                      </div>
                     </div>
                   </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => OwnershipRuntime.equipItem(userId, e.skuId)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        border: `1px solid ${GREEN}`,
-                        background: `${GREEN}22`,
-                        color: GREEN,
-                        fontSize: 10,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {e.equipped ? "✓ EQUIPPED" : "EQUIP"}
-                    </button>
-                  </div>
+                ))}
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+                  Equip owned items from the{" "}
+                  <Link href="/avatar/studio" style={{ color: CYAN }}>Avatar Studio</Link> or their store page.
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -317,7 +391,7 @@ export default function AccountFinanceHubPage() {
           <div style={panelStyle}>
             <div style={panelTitle}>SUBSCRIPTION & BILLING MANAGEMENT</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginBottom: 16 }}>
-              Current Plan: <strong style={{ color: GOLD }}>PLATINUM TIER</strong>
+              Current Plan: <strong style={{ color: GOLD }}>{purchases?.tier ?? "FREE"} TIER</strong>
             </div>
             <button
               type="button"
@@ -336,13 +410,14 @@ export default function AccountFinanceHubPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ padding: 14, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
                 <div style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}>TMI POINTS LEDGER</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{pointsBalance !== null ? `${pointsBalance.toLocaleString()} PTS` : "—"}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>—</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Balance unavailable</div>
               </div>
 
               <div style={{ padding: 14, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
                 <div style={{ fontSize: 10, color: GREEN, fontWeight: 800 }}>AVAILABLE EARNINGS</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>{earningsBalance !== null ? `$${earningsBalance.toFixed(2)}` : "—"}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Payout status: {payoutStatus}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginTop: 4 }}>—</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Payout status: Setup Required</div>
               </div>
 
               <button
@@ -354,6 +429,8 @@ export default function AccountFinanceHubPage() {
               </button>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </main>
