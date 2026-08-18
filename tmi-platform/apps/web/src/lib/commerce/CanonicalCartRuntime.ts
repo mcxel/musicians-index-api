@@ -54,7 +54,11 @@ class CanonicalCartRuntimeImpl {
 
   /**
    * Server Price Validation Authority
-   * Validates browser item price against canonical catalog price.
+   * Validates browser item price against canonical catalog price. An
+   * unrecognized skuId is never trusted at the client's price — that would
+   * let a malicious client add an unknown SKU with clientPriceCents:1 and
+   * buy anything for a cent, directly contradicting this file's own Law #2
+   * ("browser prices are NEVER trusted"). Unknown SKUs are rejected.
    */
   validatePrice(skuId: string, clientPriceCents?: number): { valid: boolean; canonicalPriceCents: number; title: string } {
     // 1. Check STRIPE_PRODUCTS
@@ -73,9 +77,9 @@ class CanonicalCartRuntimeImpl {
       return { valid: true, canonicalPriceCents: price, title: skin.name };
     }
 
-    // 3. Fallback default digital cosmetic ($0.99)
-    const fallbackPrice = clientPriceCents && clientPriceCents > 0 ? clientPriceCents : 99;
-    return { valid: true, canonicalPriceCents: fallbackPrice, title: `Digital Item (${skuId})` };
+    // 3. Unknown SKU — reject rather than trusting clientPriceCents.
+    void clientPriceCents;
+    return { valid: false, canonicalPriceCents: 0, title: `Unknown item (${skuId})` };
   }
 
   addItem(cartId: string, item: Omit<CartItem, "unitPriceCents"> & { clientPriceCents?: number }, userId?: string): CartState {
