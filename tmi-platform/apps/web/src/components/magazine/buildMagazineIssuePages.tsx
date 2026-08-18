@@ -2,6 +2,13 @@ import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import Link from "next/link";
 import type { MagazinePage } from "@/components/magazine/MagazineShell";
 import { MAGAZINE_ISSUE_1, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
+import MagazineEditorialSpreadEngine from "@/components/magazine/MagazineEditorialSpreadEngine";
+import {
+  buildCanonicalMagazineIssueSlots,
+  issueSlotMonetizationLabel,
+} from "@/lib/magazine/MagazineRotationEngine";
+import type { MagazineIssueSlot } from "@/lib/magazine/MagazineIssueContract";
 
 type TileProps = {
   title: string;
@@ -329,11 +336,11 @@ function BackCoverPage() {
   return (
     <div style={{ display: "grid", gap: 9 }}>
       <div style={{ ...panel("#00FFFF"), textAlign: "center" }}>
-        <div style={{ fontSize: 9, letterSpacing: "0.22em", color: "#FFD700", fontWeight: 900 }}>NEXT ISSUE PREVIEW</div>
+        <div style={{ fontSize: 9, letterSpacing: "0.22em", color: "#00FFFF", fontWeight: 900 }}>NEXT ISSUE PREVIEW</div>
         <div style={{ fontSize: 20, fontWeight: 900, marginTop: 6 }}>SEE YOU NEXT WEEK</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="MAGAZINE LOBBY" href="/magazine" accent="#FF2DAA" />
+        <TextTile title="MAGAZINE LOBBY" href="/magazine/issue/current" accent="#FF2DAA" />
         <TextTile title="ARCHIVE" href="/magazine/archive" accent="#00FFFF" />
       </div>
       <ImageTile src={mediaShots[7]} href="/magazine/issue/current" label="READ AGAIN" ratio="video" />
@@ -342,88 +349,162 @@ function BackCoverPage() {
   );
 }
 
+function ExclusionCta({ href, label, accent }: { href: string; label: string; accent: string }) {
+  return (
+    <Link
+      href={href}
+      data-tmi-exclusion-zone="PLAY-BUY-WATCH"
+      style={{
+        textDecoration: "none",
+        color: "#050510",
+        background: accent,
+        borderRadius: 8,
+        padding: "8px 10px",
+        fontSize: 9,
+        fontWeight: 900,
+        letterSpacing: "0.12em",
+        textAlign: "center",
+      }}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
+  const accent = slot.heroColor ?? "#00FFFF";
+  return (
+    <MagazineEditorialSpreadEngine
+      templateId="ARTIST_SCORECARD"
+      title={slot.title}
+      subtitle={slot.deck}
+      accentColor={accent}
+      category="PERFORMER"
+      heroImage={slot.imageUrl ?? mediaShots[2]}
+      cutShape="ONE_CORNER"
+    />
+  );
+}
+
+function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
+  const accent = slot.heroColor ?? "#00FF88";
+  return (
+    <MagazineEditorialSpreadEngine
+      templateId="HERITAGE_EDITORIAL"
+      title={slot.title}
+      subtitle={slot.deck}
+      accentColor={accent}
+      category="NEWS"
+      cutShape="RECTANGLE"
+    />
+  );
+}
+
+function RandomIssuePage({ slot }: { slot: MagazineIssueSlot }) {
+  const paidLabel = issueSlotMonetizationLabel(slot.monetizationLayer);
+  const accent =
+    slot.monetizationLayer === "TMI_DIRECT_SPONSOR"
+      ? "#FF2DAA"
+      : slot.monetizationLayer === "ADSENSE"
+        ? "#00FFFF"
+        : slot.heroColor ?? "#AA2DFF";
+
+  if (slot.monetizationLayer === "ADSENSE") {
+    return (
+      <div style={{ display: "grid", gap: 8 }}>
+        <TextTile title="ADVERTISEMENT" deck="Google ad unit. This is not a TMI direct sponsor." href="/sponsors/advertise" accent="#00FFFF" />
+        <div style={{ border: "1px dashed rgba(0,255,255,0.35)", borderRadius: 10, padding: 10, minHeight: 160 }}>
+          <AdSenseSlot slot={AD_SLOTS.magazineInline} format="rectangle" label="ADVERTISEMENT" style={{ minHeight: 140 }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (slot.randomSubtype === "COMMUNITY_CORKBOARD") {
+    return (
+      <MagazineEditorialSpreadEngine
+        templateId="COMMUNITY_STORIES"
+        title={slot.title}
+        subtitle={slot.deck}
+        accentColor={accent}
+        category="COMMUNITY"
+        randomSubtype={slot.randomSubtype}
+      />
+    );
+  }
+
+  if (slot.randomSubtype === "FAN_YOPHO_MOSAIC" || slot.randomSubtype === "PERFORMER_YOPHO_MOSAIC") {
+    return (
+      <MagazineEditorialSpreadEngine
+        templateId="EDITORIAL_MOSAIC"
+        title={slot.title}
+        subtitle={slot.deck}
+        accentColor={accent}
+        category="MOSAIC"
+        randomSubtype={slot.randomSubtype}
+      />
+    );
+  }
+
+  return (
+    <MagazineEditorialSpreadEngine
+      templateId="SPONSOR_MARKETPLACE"
+      title={`${paidLabel} · ${slot.randomSubtype ?? "RANDOM"}`}
+      subtitle={slot.deck ?? "Paid pages are labeled. This is not editorial."}
+      accentColor={accent}
+      category="RANDOM"
+      cutShape="TWO_CORNER"
+    />
+  );
+}
+
+function shellTypeForSlot(slot: MagazineIssueSlot): MagazinePage["type"] {
+  if (slot.pageClass === "PERFORMER") return "interview";
+  if (slot.pageClass === "NEWS") return "editorial";
+  if (slot.monetizationLayer === "TMI_DIRECT_SPONSOR" || slot.monetizationLayer === "ADSENSE") return "sponsor";
+  if (slot.randomSubtype === "RANKINGS" || slot.randomSubtype === "CHART") return "chart";
+  return "article";
+}
+
 // ────────────────────────────────────────────────────────────
-// BUILDER
+// BUILDER — maps P/N/R slots onto the canonical MagazineIssueReader
 // ────────────────────────────────────────────────────────────
 
 export function buildMagazineIssuePages(issue: string): MagazinePage[] {
   const issueNum = issue === "current" ? "1" : issue;
-  const a0 = MAGAZINE_ISSUE_1[0];
-  const a1 = MAGAZINE_ISSUE_1[1];
-  const a2 = MAGAZINE_ISSUE_1[2];
-  const a3 = MAGAZINE_ISSUE_1[3];
+  const slots = buildCanonicalMagazineIssueSlots(issue === "current" ? "current" : issue);
+
+  const interior: MagazinePage[] = slots.map((slot) => ({
+    id: slot.id,
+    title: slot.title,
+    type: shellTypeForSlot(slot),
+    pageClass: slot.pageClass,
+    randomSubtype: slot.randomSubtype,
+    xpEligible: slot.xpEligible,
+    content:
+      slot.pageClass === "PERFORMER" ? (
+        <PerformerIssuePage slot={slot} />
+      ) : slot.pageClass === "NEWS" ? (
+        <NewsIssuePage slot={slot} />
+      ) : (
+        <RandomIssuePage slot={slot} />
+      ),
+  }));
 
   return [
     {
       id: "cover",
       title: "Cover",
       type: "cover",
+      xpEligible: false,
       content: <CoverPage issue={issueNum} />,
     },
-    {
-      id: "feature-a",
-      title: "Feature Image",
-      type: "article",
-      content: <FeatureImagePage article={a0} image={mediaShots[2]} artistSlug="ray-journey" artistImage={mediaShots[5]} />,
-    },
-    {
-      id: "article-mix-a",
-      title: "Article Mix",
-      type: "editorial",
-      content: <MixedEditorialPageA article={a1} fallbackNewsSlug="tmi-season-1-standings-week-16" />,
-    },
-    {
-      id: "sponsor-a",
-      title: "Sponsor Mix",
-      type: "sponsor",
-      content: <SponsorCollagePageA />,
-    },
-    {
-      id: "artist-a",
-      title: "Artist Spotlight",
-      type: "interview",
-      content: <ArtistSpotlightPageA />,
-    },
-    {
-      id: "poll-video-a",
-      title: "Poll & Video",
-      type: "editorial",
-      content: <PollVideoArchivePageA />,
-    },
-    {
-      id: "feature-b",
-      title: "Feature Image 2",
-      type: "article",
-      content: <FeatureImagePage article={a2} image={mediaShots[4]} artistSlug="zuri-bloom" artistImage={mediaShots[8]} />,
-    },
-    {
-      id: "article-mix-b",
-      title: "Article Mix 2",
-      type: "article",
-      content: <MixedEditorialPageB article={a3} fallbackNewsSlug="tmi-season-1-standings-week-16" />,
-    },
-    {
-      id: "sponsor-b",
-      title: "Sponsor Mix 2",
-      type: "sponsor",
-      content: <SponsorCollagePageB />,
-    },
-    {
-      id: "artist-b",
-      title: "Artist Spotlight 2",
-      type: "interview",
-      content: <ArtistSpotlightPageB />,
-    },
-    {
-      id: "poll-video-b",
-      title: "Poll & Video 2",
-      type: "editorial",
-      content: <PollVideoArchivePageB />,
-    },
+    ...interior,
     {
       id: "back-cover",
       title: "Back Cover",
       type: "cover",
+      xpEligible: false,
       content: <BackCoverPage />,
     },
   ];

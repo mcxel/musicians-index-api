@@ -593,3 +593,16 @@ export function getRecentArticles(count = 4): MagazineArticle[] {
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, count);
 }
+
+/** PERFORMER pool: articles tied to a registry slug. */
+export function getPerformerPoolArticles(): MagazineArticle[] {
+  return getMagazineIssue1().filter((article) => Boolean(article.performerSlug));
+}
+
+/** NEWS pool: news/editorial/interview that is not a performer feature. */
+export function getNewsPoolArticles(): MagazineArticle[] {
+  return getMagazineIssue1().filter((article) => {
+    if (article.performerSlug) return false;
+    return article.category === "news" || article.category === "editorial" || article.category === "interview";
+  });
+}

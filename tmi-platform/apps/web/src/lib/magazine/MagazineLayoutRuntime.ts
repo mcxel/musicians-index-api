@@ -7,11 +7,28 @@
  */
 
 export type EditorialTemplateId =
+  | "HERITAGE_EDITORIAL"
+  | "ENTERTAINMENT_FEATURE"
+  | "RETRO_POP"
+  | "LIFESTYLE_COLLAGE"
+  | "POLL_FAN_CHOICE"
+  | "SCRAPBOOK_DIARY"
+  | "ARTIST_SCORECARD"
+  | "ARTIST_ALMANAC"
+  | "MULTIMEDIA_INTERVIEW"
+  | "PREMIUM_ARTIST_CATALOG"
+  | "BIOGRAPHY_SPONSOR_RAIL"
+  | "EDITORIAL_MOSAIC"
+  | "SPONSOR_MARKETPLACE"
   | "COVER_HERO"
   | "FEATURE_SPLIT"
   | "INTERVIEW_TWO_COLUMN"
+  | "SPONSOR_FULL_PAGE"
+  | "LONGFORM_EDITORIAL"
   | "ALBUM_REVIEW"
-  | "SPONSOR_FULL_PAGE";
+  | "PHOTO_ESSAY"
+  | "COMMUNITY_STORIES"
+  | "RANDOM_PAGE_POOL";
 
 export interface ArticleBlock {
   headline: string;
@@ -24,11 +41,17 @@ export interface ArticleBlock {
   audioUrl?: string;
 }
 
+export interface IssueArtDirection {
+  dominantFamily: EditorialTemplateId;
+  secondaryFamily: EditorialTemplateId;
+  allowedSpecials: EditorialTemplateId[];
+}
+
 export interface MagazinePageManifest {
   pageNumber: number;
   templateId: EditorialTemplateId;
   title: string;
-  type: "cover" | "editorial" | "article" | "sponsor" | "interview";
+  type: "cover" | "editorial" | "article" | "sponsor" | "interview" | "chart" | "top10";
   accentColor: string;
   block: ArticleBlock;
 }
@@ -45,6 +68,7 @@ export interface IssueManifest {
   title: string;
   coverImage: string;
   publicationDate: string;
+  artDirection?: IssueArtDirection;
   spreads: MagazineSpreadManifest[];
   status: "DRAFT" | "PREVIEW" | "REVIEW" | "APPROVED" | "PUBLISHED";
 }
