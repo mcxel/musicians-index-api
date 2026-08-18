@@ -230,8 +230,13 @@ export type SeatAnchorFacing = "N" | "S" | "E" | "W" | "NE" | "NW" | "SE" | "SW"
 
 export interface SeatAnchor {
   id: string;
+  /** Viewport percentage — LEGACY_UNVERIFIED, not world feet. */
   xPct: number;
   yPct: number;
+  /** Optional Voltron mesh scope. Position xyz stays null until measured. */
+  eventId?: string;
+  clusterId?: string;
+  auditoriumId?: string;
   facing: SeatAnchorFacing;
   /** open = claimable; reserved = decor-only (not assignable) */
   state: "open" | "reserved";

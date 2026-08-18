@@ -3,17 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { listOwnedVenueSkins, hasVenueSkinAccess } from '@/lib/venue/VenueSkinCommerce';
+import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
 
-async function resolveUserId(req: NextRequest): Promise<string | null> {
+async function resolveUser(req: NextRequest): Promise<{ id: string; email: string; tier: string | null } | null> {
   const email = req.cookies.get('tmi_user_email')?.value;
   if (!email) return null;
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  return user?.id ?? null;
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true, tier: true } });
+  if (!user) return null;
+  return { id: user.id, email: user.email ?? email, tier: user.tier };
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await resolveUserId(req);
-
   const skins = Object.values(VENUE_SKINS).map((skin) => ({
     id: skin.id,
     name: skin.name,
@@ -23,19 +24,32 @@ export async function GET(req: NextRequest) {
     tags: skin.tags,
   }));
 
-  if (!userId) {
-    return NextResponse.json({ skins, ownership: {}, authenticated: false });
+  const user = await resolveUser(req);
+  if (!user) {
+    return NextResponse.json({
+      skins,
+      ownership: {},
+      authenticated: false,
+      accountTier: 'FREE',
+      baseSkin: resolveBaseVenueSkin('FREE'),
+    });
   }
 
-  const owned = await listOwnedVenueSkins(userId);
+  const accountTier = resolveTierFromDb(user.email, user.tier);
+  const owned = await listOwnedVenueSkins(user.id);
   const ownership = Object.fromEntries(owned.map((o) => [o.skinId, o]));
-  return NextResponse.json({ skins, ownership, authenticated: true });
+  return NextResponse.json({
+    skins,
+    ownership,
+    authenticated: true,
+    accountTier,
+    baseSkin: resolveBaseVenueSkin(accountTier),
+  });
 }
 
-// Save custom color overrides for an owned skin.
 export async function PATCH(req: NextRequest) {
-  const userId = await resolveUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const user = await resolveUser(req);
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const body = await req.json() as { skinId?: string; customColors?: Record<string, string> };
   const { skinId, customColors } = body;
@@ -44,12 +58,20 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'customColors required' }, { status: 400 });
   }
 
-  const access = await hasVenueSkinAccess(userId, skinId);
+  const access = await hasVenueSkinAccess(user.id, skinId);
   if (!access.owned) return NextResponse.json({ error: 'You do not own this skin' }, { status: 403 });
+  if (access.unlockedVia === 'tier_base') {
+    return NextResponse.json({ error: 'Tier base skins are not recolored here. Equip a purchased skin.' }, { status: 403 });
+  }
 
   const updated = await prisma.venueSkinOwnership.upsert({
-    where: { userId_skinId: { userId, skinId } },
-    create: { userId, skinId, customColors, unlockedVia: access.unlockedVia ?? 'season_pass' },
+    where: { userId_skinId: { userId: user.id, skinId } },
+    create: {
+      userId: user.id,
+      skinId,
+      customColors,
+      unlockedVia: access.unlockedVia === 'purchase' ? 'purchase' : 'season_pass',
+    },
     update: { customColors },
   });
 

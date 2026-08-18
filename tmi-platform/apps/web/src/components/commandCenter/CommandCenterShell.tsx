@@ -279,9 +279,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const isControlMode = mobilePresentation.mode === "CONTROL";
   const effectiveMonitorCount = isWorkMode ? 0 : isControlMode ? 1 : monitorCount;
   const monitorLayoutForStack = isControlMode || monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
+  const isIdentityStageOwner =
+    isMobile && isWatchMode && !stageDeckWork && effectiveMonitorCount === 0;
   const shouldCollapseMonitorRegion =
     isWorkMode ||
-    (isWatchMode && effectiveMonitorCount === 0);
+    (isWatchMode && effectiveMonitorCount === 0 && !isIdentityStageOwner);
   const monitorZeroGeometry: CSSProperties = {
     display: "none",
     height: 0,
@@ -299,6 +301,21 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     pointerEvents: "none",
     visibility: "hidden",
     opacity: 0,
+  };
+  /** WATCH + MONITORS 0: keep a square reserved stage so identity overlays
+   *  monitor geometry instead of inserting extra in-flow height that shoves
+   *  the dock / GPS / drawers. Media stack stays display:none inside this box. */
+  const identityReservedGeometry: CSSProperties = {
+    position: "relative",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    minHeight: 0,
+    aspectRatio: "1 / 1",
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: "auto",
+    overflow: "hidden",
   };
 
   const hideMonitorLayout = shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN" || isWorkMode;
@@ -1056,34 +1073,59 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               overflow: stageDeckWork ? "hidden" : undefined,
             }}
           >
-            {/* WATCH surface — keep mounted when WORK/COLLAPSED so MediaStream survives */}
+            {/* Reserved monitor rectangle. Identity overlays this slot at MONITORS 0.
+                Dock / sponsor / drawers are siblings below — never children of it. */}
             <div
-              aria-hidden={!stageDeckShowMonitors}
-              style={monitorRegionStyle}
+              data-hub-reclaimed-monitor-stage
+              data-identity-stage-owner={isIdentityStageOwner ? "true" : "false"}
+              style={
+                isIdentityStageOwner
+                  ? identityReservedGeometry
+                  : { position: "relative", minWidth: 0, minHeight: 0 }
+              }
             >
-              <GlobalErrorBoundary context="Command Center Monitors">
-                <CommandCenterMediaStack
-                  slots={mediaSlots}
-                  bezelVariant="chrome"
-                  naturalHeight
-                  monitorLayoutMode={monitorLayoutForStack}
-                  role={role === "performer" ? "performer" : "fan"}
-                  seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
-                />
-              </GlobalErrorBoundary>
-            </div>
+              {/* WATCH surface — keep mounted when WORK/COLLAPSED so MediaStream survives */}
+              <div
+                aria-hidden={!stageDeckShowMonitors}
+                style={
+                  isIdentityStageOwner
+                    ? monitorZeroGeometry
+                    : monitorRegionStyle
+                }
+              >
+                <GlobalErrorBoundary context="Command Center Monitors">
+                  <CommandCenterMediaStack
+                    slots={mediaSlots}
+                    bezelVariant="chrome"
+                    naturalHeight
+                    monitorLayoutMode={monitorLayoutForStack}
+                    role={role === "performer" ? "performer" : "fan"}
+                    seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
+                  />
+                </GlobalErrorBoundary>
+              </div>
 
-            {/* WATCH + 0 monitors reclaims the stage for the Identity Surface
-                instead of leaving it empty — same ArtistShareIdentity/QR used
-                everywhere else (YoPho, future posters), never a second identity. */}
-            {isMobile && !stageDeckWork && isWatchMode && effectiveMonitorCount === 0 ? (
-              <TmiIdentitySurface
-                userId={userId}
-                displayName={resolvedDisplayName}
-                role={role === "performer" ? "performer" : "fan"}
-                accentColor={theme.primary}
-              />
-            ) : null}
+              {isIdentityStageOwner ? (
+                <div
+                  data-tmi-identity-stage
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  }}
+                >
+                  <TmiIdentitySurface
+                    userId={userId}
+                    displayName={resolvedDisplayName}
+                    role={role === "performer" ? "performer" : "fan"}
+                    accentColor={theme.primary}
+                  />
+                </div>
+              ) : null}
+            </div>
 
             {stageDeckWork ? (
               <CanonicalBottomDrawerHost
@@ -1092,7 +1134,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 role={role === "performer" ? "performer" : "fan"}
                 stageDeck
               />
-            ) : (
+            ) : null}
+          </div>
+
+          {!stageDeckWork ? (
               <>
                 {monitorLayoutMode !== "HIDDEN" && (
                   <CommandCenterSessionControlStrip
@@ -1222,8 +1267,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   )}
                 </div>
               </>
-            )}
-          </div>
+          ) : null}
           {!isMobile && activePanel && (
             <GlobalErrorBoundary context="Command Center Drawer">
               <CommandCenterDrawer

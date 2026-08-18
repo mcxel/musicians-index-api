@@ -16,6 +16,14 @@ import {
   unmuteAudienceMember,
   assignNextSeat,
 } from "@/lib/live/audienceRuntimeEngine";
+import { isAnchorSlug } from "@/lib/live/AnchorRoomRegistry";
+import {
+  findOccupancySlugForUser,
+  forgetAttendeePlacement,
+  rebalanceParticipants,
+  rememberAttendeePlacement,
+  resolveJoinTarget,
+} from "@/lib/live/ElasticRoomOrchestrator";
 import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
 import { participationEconomyEngine } from "@/lib/economy/ParticipationEconomyEngine";
 import { prisma } from "@/lib/prisma";
@@ -92,18 +100,38 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case "join": {
         if (!member) return NextResponse.json({ error: "member required" }, { status: 400 });
-        // Auto-assign a seat if none requested — every real person gets a specific seat.
-        // groupId (friend cluster) seats this member next to others already in the same group.
-        const assignedSeatId = member.seatId ?? assignNextSeat(venueSlug, member.groupId ?? null);
-        const occupancy = joinAudience(venueSlug, { ...member, seatId: assignedSeatId });
-        syncViewerCountToBroadcastRegistry(venueSlug, occupancy.present);
+        let joinSlug = venueSlug;
+        let meshKey: string | null = null;
+        let isOverflow = false;
+        let parentAnchorSlug: string | null = null;
+        try {
+          const target = resolveJoinTarget(venueSlug);
+          joinSlug = target.slug;
+          meshKey = target.meshKey;
+          isOverflow = target.isOverflow;
+          parentAnchorSlug = target.parentAnchorSlug;
+        } catch {
+          /* keep requested slug if orchestrator cannot resolve */
+        }
+        const assignedSeatId = member.seatId ?? assignNextSeat(joinSlug, member.groupId ?? null);
+        const occupancy = joinAudience(joinSlug, { ...member, seatId: assignedSeatId });
+        syncViewerCountToBroadcastRegistry(joinSlug, occupancy.present);
 
-        // Anchor overflow: spawn only on real human capacity (LivePresence), never fake fill.
+        const placement = rememberAttendeePlacement({
+          userId: member.userId,
+          slug: joinSlug,
+          seatId: assignedSeatId,
+          meshKey,
+          parentAnchorSlug,
+        });
+
+        // Dual overflow systems: Elastic handles AnchorRoomRegistry slugs.
+        // AnchorRoomNetwork still covers its own roomId scheme only.
         try {
           const { maybeSpawnOverflowRoom, isAnchorRoomId } = await import(
             "@/lib/live/AnchorRoomNetwork"
           );
-          if (isAnchorRoomId(venueSlug)) {
+          if (!isAnchorSlug(venueSlug) && isAnchorRoomId(venueSlug)) {
             maybeSpawnOverflowRoom(venueSlug);
           }
         } catch {
@@ -115,29 +143,53 @@ export async function POST(req: NextRequest) {
           const role = (req.cookies.get('tmi_role')?.value ?? '').toLowerCase();
           if (role === 'performer' || role === 'artist') {
             participationEconomyEngine.earn(authedUserId, 'performer', 'audience_engagement', {
-              venueSlug,
+              venueSlug: joinSlug,
               seatId: assignedSeatId,
             });
           } else {
             participationEconomyEngine.earn(authedUserId, 'fan', 'join_live_room', {
-              venueSlug,
+              venueSlug: joinSlug,
               seatId: assignedSeatId,
             });
           }
         }
 
-        return NextResponse.json({ ...occupancy, assignedSeatId });
+        return NextResponse.json({
+          ...occupancy,
+          assignedSeatId,
+          assignedSlug: joinSlug,
+          meshKey,
+          meshSeatId: meshKey ? `${meshKey}:${assignedSeatId}` : assignedSeatId,
+          isOverflow,
+          parentAnchorSlug,
+          attendeeIdentity: {
+            eventId: placement.eventId,
+            meshId: placement.meshId,
+            environmentId: placement.environmentId,
+            clusterId: placement.clusterId,
+            auditoriumId: placement.auditoriumId,
+            sectionOrZone: placement.sectionOrZone,
+            seat: placement.seatId,
+          },
+        });
       }
       case "leave": {
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
-        // Capture role before marking inactive
-        const occupancyBeforeLeave = getVenueOccupancy(venueSlug);
+        const leaveSlug = findOccupancySlugForUser(userId, venueSlug);
+        const occupancyBeforeLeave = getVenueOccupancy(leaveSlug);
         const leavingMember = occupancyBeforeLeave.members.find((m) => m.userId === userId);
         const leavingRole = leavingMember?.role ?? "fan";
 
-        const afterLeave = leaveAudience(venueSlug, userId);
-        syncViewerCountToBroadcastRegistry(venueSlug, afterLeave.present);
+        const afterLeave = leaveAudience(leaveSlug, userId);
+        syncViewerCountToBroadcastRegistry(leaveSlug, afterLeave.present);
+        forgetAttendeePlacement(userId);
+
+        try {
+          rebalanceParticipants();
+        } catch {
+          /* non-fatal */
+        }
 
         try {
           const { coolEmptyOverflowRooms } = await import("@/lib/live/AnchorRoomNetwork");
@@ -153,19 +205,24 @@ export async function POST(req: NextRequest) {
         const performerLeft = leavingRole === "artist" || leavingRole === "host";
         const roomEmpty = realHumansRemaining === 0;
 
+        let sessionEnded = false;
         if (performerLeft || roomEmpty) {
           await ensureHydrated();
           const activeSessions = getActiveSessions();
-          const matchedSession = activeSessions.find((s) => s.roomId === venueSlug);
+          const matchedSession = performerLeft
+            ? activeSessions.find((s) => s.userId === userId)
+            : activeSessions.find((s) => s.roomId === leaveSlug);
           if (matchedSession) {
             endLiveSession(matchedSession.userId);
             await removeSessionNow(matchedSession.userId).catch(() => {});
+            sessionEnded = true;
           }
         }
 
         return NextResponse.json({
           ...afterLeave,
-          sessionEnded: (performerLeft || roomEmpty),
+          sessionEnded,
+          leftSlug: leaveSlug,
         });
       }
       case "message":

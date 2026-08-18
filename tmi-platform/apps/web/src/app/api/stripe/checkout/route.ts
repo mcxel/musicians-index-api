@@ -6,6 +6,7 @@ import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, type StripeProductK
 import type { UserTier } from '@/lib/auth/UserStore';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
+import { venueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
 import { MEDIA_PLAYER_CHASSIS_REGISTRY } from '@/lib/artifacts/PlaylistArtifactEngine';
 import {
   getChassisPriceUsdCents,
@@ -303,6 +304,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           type: 'venue_skin',
           skinId: body.skinId,
+          sku: venueSkinSku(body.skinId),
           buyerId: buyer.id,
           customColors: body.customColors ? JSON.stringify(body.customColors) : '',
         },

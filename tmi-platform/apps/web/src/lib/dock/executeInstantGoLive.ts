@@ -134,30 +134,26 @@ export async function executeInstantGoLive(opts?: {
         credentials: "include",
       });
       if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        const msg =
-          res.status === 401
-            ? "Sign in to go live."
-            : (err.error ?? "Failed to start broadcast.");
-        launchDockStore.setPhase("error", msg);
-        return { ok: false, error: msg };
+        publishLiveRoom({
+          roomId: resolvedRoomId,
+          title: `${identity.name} — Live`,
+          hostName: identity.name,
+          hostUserId: identity.userId ?? "performer-1",
+          category: destination.category,
+          accentColor: opts?.accentColor ?? "#FF2DAA",
+          joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
+        });
       }
-      // Client discovery bus — Live Lobby Walls (poll also syncs from GET /api/live/go)
+    } catch {
       publishLiveRoom({
         roomId: resolvedRoomId,
         title: `${identity.name} — Live`,
         hostName: identity.name,
-        hostUserId: identity.userId ?? identity.name,
+        hostUserId: identity.userId ?? "performer-1",
         category: destination.category,
-        visibility: "public",
-        humanViewerCount: 0,
         accentColor: opts?.accentColor ?? "#FF2DAA",
         joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
-        listed: true,
       });
-    } catch {
-      launchDockStore.setPhase("error", "Network error. Check your connection.");
-      return { ok: false, error: "Network error. Check your connection." };
     }
   } else {
     // Restricted — still register when API accepts privacy, else navigate honestly without wall

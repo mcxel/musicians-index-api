@@ -145,8 +145,9 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
     diamondDirector: DIAMOND_DIRECTOR,
   };
 
-  // ── Fan path (Rule 26) — never concert stage ──────────────────────────────
-  if (!isPerformerLike(role)) {
+  // ── Fan / Performer Live Stage Path — mint live stage room for all GO LIVE launches ──
+  const isExplicitGoLive = !preferred || preferred === "live" || preferred === "concert" || preferred === "world-concert";
+  if (!isPerformerLike(role) && !isExplicitGoLive) {
     if (privacy === "private" || privacy === "friends") {
       // Friend lounge exists at vip-lounge; fall back flag if treated as private fan lobby
       return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { buildUserShareIdentity, getShareBaseUrl } from "@/lib/identity/ArtistShareIdentity";
 
@@ -32,6 +32,22 @@ export default function TmiIdentitySurface({
   const [fullscreen, setFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const qrRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stagePx, setStagePx] = useState(0);
+
+  useLayoutEffect(() => {
+    if (fullscreen) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setStagePx(Math.floor(Math.min(rect.width, rect.height)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fullscreen]);
 
   const identity = useMemo(
     () =>
@@ -87,7 +103,9 @@ export default function TmiIdentitySurface({
     link.click();
   };
 
-  const qrSize = fullscreen ? Math.min(340, typeof window !== "undefined" ? window.innerWidth - 80 : 280) : 148;
+  const qrSize = fullscreen
+    ? Math.min(340, typeof window !== "undefined" ? window.innerWidth - 80 : 280)
+    : Math.max(120, stagePx > 0 ? Math.min(Math.floor(stagePx * 0.52), stagePx - 176) : 148);
 
   const card = (
     <div
@@ -95,9 +113,13 @@ export default function TmiIdentitySurface({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 10,
-        padding: fullscreen ? "24px 20px" : "18px 16px",
+        justifyContent: "center",
+        gap: fullscreen ? 10 : 8,
+        padding: fullscreen ? "24px 20px" : "12px 10px",
         width: "100%",
+        height: fullscreen ? undefined : "100%",
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       <div
@@ -147,9 +169,11 @@ export default function TmiIdentitySurface({
       <div
         style={{
           background: "#fff",
-          padding: fullscreen ? 16 : 10,
+          padding: fullscreen ? 16 : 8,
           borderRadius: 12,
           boxShadow: `0 0 24px ${accentColor}33`,
+          maxWidth: "100%",
+          flexShrink: 0,
         }}
       >
         <QRCodeCanvas
@@ -213,18 +237,23 @@ export default function TmiIdentitySurface({
 
   return (
     <div
+      ref={stageRef}
       data-tmi-identity-surface
       style={{
         aspectRatio: "1 / 1",
-        maxHeight: "min(88vw, 420px)",
-        margin: "0 auto",
+        width: "100%",
+        height: "100%",
+        maxWidth: "100%",
+        maxHeight: "100%",
+        margin: 0,
         border: `1px solid ${accentColor}33`,
         borderRadius: 12,
         background: "rgba(255,255,255,0.02)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "auto",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       {card}
