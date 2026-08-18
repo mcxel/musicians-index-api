@@ -7,9 +7,11 @@ import { TIMING } from "@/lib/motion/timingRegistry";
 import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
-import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 import { ARCHETYPES, type MagazineArchetype, type ArchetypeConfig } from "@/lib/magazine/MagazineDesignEngine";
+import type { MagazinePageClass, RandomPageSubtype } from "@/lib/magazine/MagazineIssueContract";
+import { MAGAZINE_XP_POLICY } from "@/lib/magazine/MagazineIssueContract";
+import { getXpValue } from "@/lib/xp/XpActionRegistry";
 
 // Auto-advance interval in ms (10 seconds per spread)
 const AUTO_ADVANCE_MS = 10_000;
@@ -29,6 +31,9 @@ export interface MagazinePage {
   type: "cover" | "editorial" | "article" | "sponsor" | "chart" | "top10" | "interview";
   content: React.ReactNode;
   audioText?: string;
+  pageClass?: MagazinePageClass;
+  randomSubtype?: RandomPageSubtype;
+  xpEligible?: boolean;
 }
 
 interface MagazineShellProps {
@@ -52,10 +57,18 @@ const TYPE_COLOR: Record<MagazinePage["type"], string> = {
   interview: "#00FFFF",
 };
 
-function TypeBadge({ type, colorOverride }: { type: MagazinePage["type"]; colorOverride?: string }) {
+function TypeBadge({ type, colorOverride, pageClass }: { type: MagazinePage["type"]; colorOverride?: string; pageClass?: MagazinePageClass }) {
   const color = colorOverride || TYPE_COLOR[type];
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {pageClass ? (
+        <span style={{
+          fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase",
+          color, border: `1px solid ${color}40`, borderRadius: 4, padding: "2px 7px", fontWeight: 800,
+        }}>
+          {pageClass}
+        </span>
+      ) : null}
       <span style={{
         fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase",
         color, border: `1px solid ${color}40`, borderRadius: 4, padding: "2px 7px", fontWeight: 800,
@@ -102,7 +115,7 @@ function PagePane({ page, side, archetype }: { page: MagazinePage; side?: "left"
       {/* Tactile Page Sheen/Glow */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%, rgba(0,0,0,0.05) 100%)", pointerEvents: "none", zIndex: 4 }} />
 
-      <TypeBadge type={page.type} colorOverride={archetype.accentColor} />
+      <TypeBadge type={page.type} colorOverride={archetype.accentColor} pageClass={page.pageClass} />
 
       <div style={{ position: "relative", zIndex: 6, height: "100%" }}>
         {page.content}
@@ -188,6 +201,7 @@ export default function MagazineShell({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isDiamond, setIsDiamond] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [hovering, setHovering] = useState(false);
   const [xpToast, setXpToast] = useState<{ amount: number } | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
@@ -196,7 +210,6 @@ export default function MagazineShell({
 
   const archetype = ARCHETYPES[activeArchetype];
   const reduced = prefersReducedMotion();
-  const { trackAction } = useGamificationEngine();
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -205,8 +218,16 @@ export default function MagazineShell({
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const xpToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageEntryTimeRef = useRef<number>(Date.now());
+  const leavingEligibleRef = useRef(false);
+  const leavingPageIdRef = useRef("");
+  const grantedPageIdsRef = useRef(new Set<string>());
   const stateRef = useRef({ currentLeft, flipping, flipPhase, isWide });
   stateRef.current = { currentLeft, flipping, flipPhase, isWide };
+
+  useEffect(() => {
+    leavingEligibleRef.current = Boolean(pages[currentLeft]?.xpEligible);
+    leavingPageIdRef.current = pages[currentLeft]?.id ?? "";
+  }, [pages, currentLeft]);
 
   useEffect(() => {
     setCurrentLeft(normalizeStartIndex(initialLeftIndex));
@@ -249,7 +270,7 @@ export default function MagazineShell({
       .then(r => r.json())
       .then((d: unknown) => {
         if (!active) return;
-        const data = d as { authenticated?: boolean; user?: { role?: string; tier?: string } | null };
+        const data = d as { authenticated?: boolean; user?: { id?: string; role?: string; tier?: string } | null };
         const authed = Boolean(data?.authenticated);
         const role   = data?.user?.role ?? "";
         const tier   = data?.user?.tier ?? "";
@@ -257,6 +278,7 @@ export default function MagazineShell({
                        role === "superadmin" || role === "owner";
         setIsSubscribed(authed && paid);
         setIsDiamond(tier.toLowerCase() === "diamond");
+        setUserId(authed ? (data?.user?.id ?? null) : null);
       })
       .catch(() => { /* stays false — free user path */ });
     return () => { active = false; };
@@ -308,15 +330,39 @@ export default function MagazineShell({
     setAudioPlaying(false);
   }, []);
 
-  // Grant XP only on manual turns AND only if user spent >=5s on the spread (anti-farm)
+  // Grant XP only after dwell on an xpEligible article page (completion proxy, not page-open).
+  // Client-side checks here are a first-pass filter to avoid firing needless
+  // network calls — /api/magazine/read-xp is the real authority (real user,
+  // real once-per-story dedup, real daily cap, all server-persisted).
   const grantReadXP = useCallback(() => {
+    if (MAGAZINE_XP_POLICY.pageOpenDoesNotGrant && !leavingEligibleRef.current) return;
     const elapsed = Date.now() - pageEntryTimeRef.current;
     if (elapsed < MIN_READ_MS) return;
-    trackAction("READ_ARTICLE");
-    if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
-    setXpToast({ amount: 20 });
-    xpToastTimerRef.current = setTimeout(() => setXpToast(null), 3000);
-  }, [trackAction]);
+    const pageId = leavingPageIdRef.current;
+    if (!pageId || grantedPageIdsRef.current.has(pageId)) return;
+    if (!userId) return; // reading without an account earns no XP, same as elsewhere on TMI
+    grantedPageIdsRef.current.add(pageId);
+    void fetch("/api/magazine/read-xp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ pageId }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((result: { ok?: boolean; granted?: number } | null) => {
+        const granted = result?.granted ?? 0;
+        if (!result?.ok || granted <= 0) return;
+        if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
+        setXpToast({ amount: granted });
+        xpToastTimerRef.current = setTimeout(() => setXpToast(null), 3000);
+      })
+      .catch(() => {
+        // Network failure — no toast shown (Rule 20: never claim a grant that
+        // didn't happen). Allow a retry on a future page if this exact page
+        // wasn't actually recorded server-side.
+        grantedPageIdsRef.current.delete(pageId);
+      });
+  }, [userId]);
 
   const goToSpread = useCallback((leftIdx: number, dir: FlipDirection, turnSource: "manual" | "auto" = "manual") => {
     if (stateRef.current.flipping) return;
@@ -677,7 +723,7 @@ export default function MagazineShell({
         }}>
           <span style={{ fontSize: 13 }}>⭐</span>
           <span style={{ fontSize: 9, color: "#00FF88", fontWeight: 800, letterSpacing: "0.06em" }}>
-            +20 XP per spread · use points in the store &amp; competitions
+            +{getXpValue(MAGAZINE_XP_POLICY.xpActionKey)} XP per spread · use points in the store &amp; competitions
           </span>
         </div>
 
@@ -909,7 +955,7 @@ export default function MagazineShell({
           <AdSenseSlot
             slot={AD_SLOTS.magazineLeaderboard}
             format="horizontal"
-            label="SPONSOR COMMERCIAL AD"
+            label="ADVERTISEMENT"
             style={{ minHeight: 60, maxWidth: 900, margin: "0 auto", border: `1px dashed ${archetype.borderColor}55`, padding: 8, borderRadius: 6 }}
           />
         </div>

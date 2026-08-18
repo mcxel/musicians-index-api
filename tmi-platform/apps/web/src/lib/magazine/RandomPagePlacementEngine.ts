@@ -1,3 +1,10 @@
+/**
+ * LEGACY weighted random-page picker (home attraction rail).
+ * Canonical magazine issue rhythm is P → N → R in MagazineIssueContract
+ * + MagazineRotationEngine.buildMagazineIssueSequence — do not treat this
+ * pool as the issue reader source of truth.
+ */
+
 import {
   DEFAULT_RANDOM_PAGE_POOL,
   RandomPageEntry,
