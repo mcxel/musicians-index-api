@@ -39,6 +39,7 @@ import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCaniste
 import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 import InstantGoLiveStage from "@/components/live/InstantGoLiveStage";
 import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
+import GoLiveTransitionClear from "@/components/live/GoLiveTransitionClear";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -162,6 +163,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
       <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
+      <GoLiveTransitionClear />
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
         <h1 style={{ fontSize: "clamp(1.8rem, 5vw, 2.8rem)", margin: "10px 0 6px" }}>Room {id}</h1>

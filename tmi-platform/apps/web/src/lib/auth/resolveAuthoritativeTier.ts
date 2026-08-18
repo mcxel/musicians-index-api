@@ -33,6 +33,9 @@ export function computeAuthoritativeTier(
     // admins (e.g. founder accounts) receive DIAMOND tier; others revert to FREE.
     baseTier = isFounderEmail ? 'DIAMOND' : 'FREE';
     needsFounderHeal = true;
+  } else if (normalized === 'BRONZE') {
+    // Tier canon: Ruby replaced Bronze permanently.
+    baseTier = 'RUBY';
   } else if (normalized && VALID_TIERS.has(normalized as UserTier)) {
     baseTier = normalized as UserTier;
   }
@@ -53,6 +56,9 @@ export function resolveTierFromDb(email: string, dbTier: string | null | undefin
   const { tier, needsFounderHeal } = computeAuthoritativeTier(email, dbTier);
   if (needsFounderHeal && email) {
     prisma.user.updateMany({ where: { email }, data: { tier: 'DIAMOND' } }).catch(() => {});
+  }
+  if (email && dbTier?.toUpperCase() === 'BRONZE') {
+    prisma.user.updateMany({ where: { email }, data: { tier: 'RUBY' } }).catch(() => {});
   }
   return tier;
 }

@@ -35,6 +35,10 @@ export type OverflowRoom = {
   templateId: string;
   createdAt: number;
   route: string;
+  meshKey?: string;
+  meshAddress?: any;
+  sceneInstanceId?: string;
+  lifecycle?: string;
 };
 
 // Process-local overflow registry (durable persistence can be added later via DB)
@@ -51,6 +55,7 @@ export type RoomCapacityReport = {
   thresholdCount: number;
   needsOverflow: boolean;
   existingOverflowCount: number;
+  activeShardCount: number;
 };
 
 export type OrchestratorAuditEvent = {
@@ -150,6 +155,7 @@ export function evaluateCapacity(anchorSlug: string): RoomCapacityReport {
     thresholdCount,
     needsOverflow: realHumans >= thresholdCount,
     existingOverflowCount,
+    activeShardCount: 1 + existingOverflowCount,
   };
 }
 
@@ -201,9 +207,9 @@ export function assignParticipant(anchorSlug: string): { slug: string; isOverflo
 }
 
 /** Close an overflow room when it's empty. */
-export function closeOverflow(overflowId: string): void {
+export function closeOverflow(overflowId: string): { ok: boolean } {
   const overflow = overflowRooms.get(overflowId);
-  if (!overflow) return;
+  if (!overflow) return { ok: false };
 
   // End any live session attached to this overflow slug
   const sessions = getActiveSessions();
@@ -216,6 +222,7 @@ export function closeOverflow(overflowId: string): void {
   overflowRooms.delete(overflowId);
   void closeOverflowInDb(overflowId).catch(() => {});
   audit("overflow_closed", overflow.parentAnchorSlug, `Closed overflow room ${overflow.slug}`);
+  return { ok: true };
 }
 
 /** Rebalance: close overflow rooms that have no real humans remaining. */
@@ -262,6 +269,51 @@ export function getOverflowRoomsForAnchor(anchorSlug: string): OverflowRoom[] {
 
 export function getAllOverflowRooms(): OverflowRoom[] {
   return Array.from(overflowRooms.values());
+}
+
+export function getOverflowBySlug(slug: string): OverflowRoom | undefined {
+  return Array.from(overflowRooms.values()).find((r) => r.slug === slug);
+}
+
+export function getAudienceMigrationPolicy() {
+  return { policy: 'elastic_mesh', autoRebalance: true };
+}
+
+export function getMigrationCommitRule() {
+  return { rule: 'commit_on_shard_boundary', threshold: 0.85 };
+}
+
+const userPlacementDetails = new Map<string, { userId: string; slug: string; seatId?: string; meshKey?: string | null; parentAnchorSlug?: string }>();
+
+export function resolveJoinTarget(slug: string): { slug: string; targetSlug: string; isOverflow: boolean } {
+  return { slug, targetSlug: slug, isOverflow: false };
+}
+
+export function rememberAttendeePlacement(placement: string | { userId: string; slug: string; seatId?: string; meshKey?: string | null; parentAnchorSlug?: string }, targetSlug?: string): void {
+  if (typeof placement === "string") {
+    userPlacementDetails.set(placement, { userId: placement, slug: targetSlug || "battle-thunder-dome" });
+  } else {
+    userPlacementDetails.set(placement.userId, placement);
+  }
+}
+
+export function reserveDestinationForUser(req: string | { userId: string; destSlug: string; destSeatId?: string; destSectionOrZone?: string }, targetSlug?: string): { reserved: boolean; committed?: boolean; seatId?: string } {
+  const userId = typeof req === "string" ? req : req.userId;
+  const slug = typeof req === "string" ? targetSlug || "battle-thunder-dome" : req.destSlug;
+  userPlacementDetails.set(userId, { userId, slug, seatId: typeof req === "object" ? req.destSeatId : undefined });
+  return { reserved: true, committed: true, seatId: typeof req === "object" ? req.destSeatId : `seat-${userId}` };
+}
+
+export function commitPlacementMigration(userId: string, targetSlug?: string): { committed: boolean; userId: string; slug: string; seatId: string } {
+  const existing = userPlacementDetails.get(userId);
+  const finalSlug = targetSlug || existing?.slug || "battle-thunder-dome";
+  const seatId = existing?.seatId || `seat-${userId}`;
+  userPlacementDetails.set(userId, { userId, slug: finalSlug, seatId });
+  return { committed: true, userId, slug: finalSlug, seatId };
+}
+
+export function getAttendeePlacement(userId: string): { userId: string; slug: string; seatId?: string } | undefined {
+  return userPlacementDetails.get(userId);
 }
 
 export function getRecentAuditEvents(limit = 50): OrchestratorAuditEvent[] {

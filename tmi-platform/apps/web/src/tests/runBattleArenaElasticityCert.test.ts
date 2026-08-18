@@ -85,7 +85,7 @@ export async function runBattleArenaElasticityCert(): Promise<{
   let overflowObj: ReturnType<typeof createOverflow> | null = null;
   try {
     overflowObj = createOverflow(anchorSlug);
-    const step3Passed = Boolean(overflowObj && overflowObj.meshKey.includes("battle"));
+    const step3Passed = Boolean(overflowObj && overflowObj.meshKey?.includes("battle"));
     stepResults.push({
       step: 3,
       name: "EXPAND",

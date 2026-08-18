@@ -47,6 +47,8 @@ export type LobbyWallCard = {
   availableSlots: number;
   recruitmentLabel?: string;
   previewAsset?: string;
+  meshKey?: string;
+  auditoriumIndex?: number;
 };
 
 // ── GET handler ───────────────────────────────────────────────────────────────
@@ -132,7 +134,9 @@ export async function GET(): Promise<NextResponse> {
   const overflows = getAllOverflowRooms();
 
   for (const overflow of overflows) {
+    if (overflow.lifecycle === "COLLAPSED" || overflow.lifecycle === "DRAINING") continue;
     const realHumans = readRealOccupancy(overflow.slug);
+    if (realHumans === 0) continue;
     const anchor = anchors.find((a) => a.slug === overflow.parentAnchorSlug);
     const capacity = anchor?.maximumHumans ?? 200;
 
@@ -146,6 +150,8 @@ export async function GET(): Promise<NextResponse> {
       realHumanCount: realHumans,
       capacity,
       availableSlots: Math.max(0, capacity - realHumans),
+      meshKey: overflow.meshKey,
+      auditoriumIndex: overflow.auditoriumIndex,
     });
   }
 

@@ -14,6 +14,7 @@ import YoPhoStudioDrawer from "@/components/studio/YoPhoStudioDrawer";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 export interface CommandCenterSessionControlStripProps {
   role: "fan" | "performer";
@@ -39,7 +40,10 @@ export default function CommandCenterSessionControlStrip({
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [goLivePhase, setGoLivePhase] = useState<"idle" | "launching" | "error">("idle");
+  const [goLiveError, setGoLiveError] = useState("");
   const { open: openWorkspace } = useFloatingWorkspace();
+  const activateWarp = useGoLiveTransition((s) => s.activate);
 
   useEffect(() => {
     launchDockStore.setRole(isPerformer ? "PERFORMER" : "FAN");
@@ -124,22 +128,32 @@ export default function CommandCenterSessionControlStrip({
           />
           <SessionBtn label="📷 CAMERA" onClick={() => setIsCameraOpen(true)} />
           <SessionBtn
-            label="🔴 GO LIVE"
+            label={goLivePhase === "launching" ? "● GOING LIVE…" : "🔴 GO LIVE"}
             gradient="linear-gradient(135deg,#AA2DFF,#FF2DAA)"
             border="#FF2DAA"
+            disabled={goLivePhase === "launching"}
             onClick={() => {
-              const dockRole = isPerformer ? "PERFORMER" : "FAN";
+              if (goLivePhase === "launching") return;
+              const dockRole = "PERFORMER";
               launchDockStore.setRole(dockRole);
-              if (launchDockStore.isReady()) {
-                void executeInstantGoLive({ role: dockRole }).then((r) => {
-                  if (r.ok && r.href) router.push(r.href);
-                  else launchDockStore.open();
-                });
-                return;
-              }
-              launchDockStore.open();
+              setGoLivePhase("launching");
+              setGoLiveError("");
+              // Activate cinematic warp transition before API call so it
+              // fills the network handshake + 3D asset load gap (Rule 18).
+              activateWarp();
+              void executeInstantGoLive({ role: dockRole, preferredExperience: "live" }).then((r) => {
+                if (r.ok && r.href) {
+                  router.push(r.href);
+                  return;
+                }
+                setGoLivePhase("error");
+                setGoLiveError(r.error ?? "Failed to start broadcast.");
+              });
             }}
           />
+          {goLivePhase === "error" && goLiveError && (
+            <span style={{ fontSize: 9, color: "#FF4444", fontWeight: 700 }}>{goLiveError}</span>
+          )}
           <SessionBtn
             label="⭐ STAGE"
             gradient="linear-gradient(135deg,#AA2DFF,#FF2DAA)"
@@ -158,17 +172,20 @@ function SessionBtn({
   accent = "#fff",
   border = "rgba(255,255,255,0.18)",
   gradient,
+  disabled = false,
 }: {
   label: string;
   onClick?: () => void;
   accent?: string;
   border?: string;
   gradient?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       style={{
         padding: "6px 12px",
         borderRadius: 12,
@@ -178,8 +195,9 @@ function SessionBtn({
         fontSize: 9,
         fontWeight: 900,
         letterSpacing: "0.06em",
-        cursor: onClick ? "pointer" : "default",
+        cursor: disabled ? "default" : onClick ? "pointer" : "default",
         fontFamily: "inherit",
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       {label}

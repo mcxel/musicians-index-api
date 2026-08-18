@@ -78,13 +78,17 @@ export async function POST(req: NextRequest) {
     if (!overflowId) {
       return NextResponse.json({ ok: false, error: "overflowId required" }, { status: 400 });
     }
-    closeOverflow(overflowId);
-    return NextResponse.json({ ok: true });
+    const closed = closeOverflow(overflowId);
+    return NextResponse.json(closed);
   }
 
-  if (action === "rebalance") {
-    rebalanceParticipants();
-    return NextResponse.json({ ok: true, overflows: getAllOverflowRooms() });
+  if (action === "rebalance" || action === "compact") {
+    const compact = rebalanceParticipants();
+    return NextResponse.json({
+      ok: true,
+      compact,
+      overflows: getAllOverflowRooms(),
+    });
   }
 
   return NextResponse.json({ ok: false, error: "Unknown action" }, { status: 400 });

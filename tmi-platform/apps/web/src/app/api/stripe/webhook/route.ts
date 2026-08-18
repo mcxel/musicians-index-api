@@ -14,6 +14,8 @@ import {
   isStripeEventProcessed,
   markStripeEventProcessed,
 } from '@/lib/stripe/webhookIdempotency';
+import { fulfillPurchasedVenueSkin } from '@/lib/venue/VenueSkinCommerce';
+import { parseVenueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
 
 /**
  * Canonical Stripe webhook — configure this URL in Stripe Dashboard:
@@ -351,22 +353,20 @@ export async function POST(req: NextRequest) {
       }
 
       // ─── 3B. VENUE SKIN FULFILLMENT ────────────────────────────────────
-      if (metadata.type === 'venue_skin' && metadata.skinId && metadata.buyerId) {
-        let customColors: object | undefined;
-        if (metadata.customColors) {
-          try { customColors = JSON.parse(metadata.customColors); } catch { customColors = undefined; }
-        }
-        await prisma.venueSkinOwnership.upsert({
-          where: { userId_skinId: { userId: metadata.buyerId, skinId: metadata.skinId } },
-          create: {
-            userId: metadata.buyerId,
-            skinId: metadata.skinId,
-            customColors,
-            unlockedVia: 'purchase',
+      {
+        const skinId = metadata.skinId || (metadata.sku ? parseVenueSkinSku(metadata.sku) : null);
+        if (metadata.type === 'venue_skin' && skinId && metadata.buyerId) {
+          let customColors: object | undefined;
+          if (metadata.customColors) {
+            try { customColors = JSON.parse(metadata.customColors); } catch { customColors = undefined; }
+          }
+          await fulfillPurchasedVenueSkin({
+            buyerId: metadata.buyerId,
+            skinId,
             stripePaymentId: session.id,
-          },
-          update: { stripePaymentId: session.id },
-        });
+            customColors,
+          });
+        }
       }
 
       // ─── 3C. MEDIA PLAYER CHASSIS FULFILLMENT ──────────────────────────
