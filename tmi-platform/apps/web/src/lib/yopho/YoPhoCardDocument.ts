@@ -222,6 +222,10 @@ export interface YoPhoCardDocument {
   playback: YoPhoPlaybackConfig;
   brandingFooter: YoPhoBrandingFooterConfig;
   interactions: YoPhoInteractionsStub;
+  /** Lock policy — present only when card has been locked by owner */
+  lockPolicy?: import("./YoCardLockEngine").YoCardLockPolicy;
+  /** Triptych depth config — 2 or 3 flanking portrait images for parallax bg */
+  triptych?: import("./YoPhoTriptychPresets").YoPhoTriptychConfig;
   createdAt: string;
   updatedAt: string;
 }
