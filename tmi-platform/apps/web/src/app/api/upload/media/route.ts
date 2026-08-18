@@ -109,18 +109,39 @@ export async function POST(req: NextRequest) {
       url = blob.url;
       storage = 'blob';
     } else {
-      // Local development fallback: persist file on disk and expose a first-party URL.
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? (isVideo ? 'mp4' : 'mp3');
-      const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload';
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}.${ext}`;
-      const uploadDir = path.join(process.cwd(), '.tmi-data', 'uploads', 'media');
-      const absolutePath = path.join(uploadDir, fileName);
+      // Soft-launch fallback when Vercel Blob is not configured.
+      //
+      // In LOCAL dev: write to /tmp (Vercel-compatible writable dir) and
+      // serve via the /api/upload/media/local/[fileName] route.
+      //
+      // In PRODUCTION (Vercel) without Blob: the project filesystem is
+      // read-only so we convert to a base64 data URL and store it directly
+      // in the DB's audioUrl/videoUrl column.  This keeps uploads working at
+      // soft-launch scale without requiring Blob setup first.  Large files
+      // (>10 MB) are rejected with a clear message — those must use Blob.
       const bytes = Buffer.from(await file.arrayBuffer());
+      const isLocalDev = process.env.NODE_ENV !== 'production';
 
-      await fs.mkdir(uploadDir, { recursive: true });
-      await fs.writeFile(absolutePath, bytes);
-
-      url = `/api/upload/media/local/${encodeURIComponent(fileName)}`;
+      if (isLocalDev) {
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? (isVideo ? 'mp4' : 'mp3');
+        const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload';
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}.${ext}`;
+        const uploadDir = '/tmp/tmi-uploads';
+        const absolutePath = path.join(uploadDir, fileName);
+        await fs.mkdir(uploadDir, { recursive: true });
+        await fs.writeFile(absolutePath, bytes);
+        url = `/api/upload/media/local/${encodeURIComponent(fileName)}`;
+      } else {
+        // Production without Blob: store as base64 data URL.
+        // Cap at 10 MB encoded to avoid oversized DB rows.
+        if (bytes.length > 10 * 1024 * 1024) {
+          return NextResponse.json(
+            { error: 'File storage is not fully configured yet. Files larger than 10 MB cannot be uploaded right now. Please contact support or try a smaller file.' },
+            { status: 503 },
+          );
+        }
+        url = `data:${file.type};base64,${bytes.toString('base64')}`;
+      }
       storage = 'local_disk';
     }
 

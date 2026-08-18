@@ -53,6 +53,33 @@ export async function POST(req: NextRequest) {
     let user = loginUser(email, password);
 
     // Fallback: user registered via /api/auth/register (bcryptjs hash in DB, not in UserStore)
+    //
+    // dbUnavailable tracks whether BOTH DB attempts timed out / threw a
+    // connection error. When true we return 503 "server warming up" rather
+    // than the misleading 401 "invalid credentials" — callers should retry
+    // instead of thinking their password is wrong.
+    let dbUnavailable = false;
+
+    function isDbConnError(err: unknown): boolean {
+      const msg = String((err as any)?.message ?? '').toLowerCase();
+      const code = String((err as any)?.code ?? '').toLowerCase();
+      return (
+        msg.includes('timeout') ||
+        msg.includes('timed out') ||
+        msg.includes("can't reach") ||
+        msg.includes('connection') ||
+        msg.includes('econnreset') ||
+        msg.includes('enotfound') ||
+        /^p1\d{3}$/.test(code) // Prisma P1xxx = DB connection/engine errors
+      );
+    }
+
+    const DB_ROLE_MAP: Record<string, string> = {
+      ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
+      PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
+      VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
+    };
+
     if (!user) {
       try {
         const dbUser = await prisma.user.findUnique({
@@ -60,11 +87,6 @@ export async function POST(req: NextRequest) {
           select: { id: true, email: true, passwordHash: true, displayName: true, tier: true, role: true, userCreatedAt: true },
         });
         if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
-          const DB_ROLE_MAP: Record<string, string> = {
-            ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
-            PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
-            VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
-          };
           user = {
             id: dbUser.id,
             email: dbUser.email ?? '',
@@ -76,6 +98,7 @@ export async function POST(req: NextRequest) {
           };
         }
       } catch (dbErr) {
+        if (isDbConnError(dbErr)) dbUnavailable = true;
         console.warn('[auth/signin] DB lookup notice, triggering schema DDL self-healing:', dbErr);
         await ensureUserDatabaseSchema().catch(() => {});
         try {
@@ -84,11 +107,7 @@ export async function POST(req: NextRequest) {
             select: { id: true, email: true, passwordHash: true, displayName: true, tier: true, role: true, userCreatedAt: true },
           });
           if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
-            const DB_ROLE_MAP: Record<string, string> = {
-              ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
-              PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
-              VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
-            };
+            dbUnavailable = false; // DB came back — we have a real answer
             user = {
               id: dbUser.id,
               email: dbUser.email ?? '',
@@ -98,12 +117,25 @@ export async function POST(req: NextRequest) {
               role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
               createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
             };
+          } else {
+            dbUnavailable = false; // DB responded — user simply not found or wrong password
           }
-        } catch { /* Fallback to UserStore / soft auth */ }
+        } catch (dbErr2) {
+          if (isDbConnError(dbErr2)) dbUnavailable = true;
+          // Both attempts failed — fall through to the check below
+        }
       }
     }
 
     if (!user) {
+      if (dbUnavailable) {
+        // DB is cold-starting or temporarily unreachable — tell the user to
+        // retry instead of making them think their credentials are wrong.
+        return NextResponse.json(
+          { error: 'The server is warming up. Please wait a few seconds and try again.' },
+          { status: 503 }
+        );
+      }
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get("content-type") ?? "";
     let title = "", rawType = "song", ownerId = "", simulatedFileName = "", simulatedSizeBytes = 0;
+    let uploadedFile: File | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const fd = await req.formData();
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
       const file = fd.get("file") as File | null;
       simulatedFileName = file?.name ?? "upload";
       simulatedSizeBytes = file?.size ?? 0;
+      uploadedFile = file;
     } else {
       const body = await req.json() as UploadRequest & { rawType?: string };
       title = body.title ?? "";
@@ -51,6 +53,34 @@ export async function POST(req: NextRequest) {
 
     const result = await MediaEngine.upload(uploadReq);
     if (!result.ok) return NextResponse.json(result, { status: 400 });
+
+    // ── Real file storage ──────────────────────────────────────────────────────
+    // MediaEngine returns a simulated CDN URL.  If the request contained an
+    // actual file, replace it with a real persistent URL so the track can
+    // actually be played back.
+    if (uploadedFile && result.assetId) {
+      try {
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          const { put } = await import("@vercel/blob");
+          const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const blobPath = `tmi-media/${ownerId || "anon"}/${result.assetId}-${safeName}`;
+          const blob = await put(blobPath, uploadedFile, { access: "public" });
+          (result as unknown as Record<string, unknown>).url = blob.url;
+        } else if (uploadedFile.size <= 10 * 1024 * 1024) {
+          // No Blob configured — store as base64 data URL for soft launch
+          // (works for tracks up to ~10 MB; larger tracks need Blob storage).
+          const bytes = Buffer.from(await uploadedFile.arrayBuffer());
+          (result as unknown as Record<string, unknown>).url = `data:${uploadedFile.type};base64,${bytes.toString("base64")}`;
+        }
+        // Files >10 MB without Blob: keep the simulated URL; the track will
+        // not be playable but the metadata is saved.  The UI already warns
+        // users via the 503 from /api/upload/media for the primary upload path.
+      } catch (storageErr) {
+        console.error("[media/upload storage]", storageErr);
+        // Non-fatal: fall back to simulated URL rather than failing the whole request
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────────
 
     const resolvedGenre = uploadReq.genre?.trim() || "Other";
     const resolvedBpm = Number.isFinite(uploadReq.bpm) ? Number(uploadReq.bpm) : 120;
