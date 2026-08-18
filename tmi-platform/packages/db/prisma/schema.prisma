@@ -234,6 +234,9 @@ model User {
 
   // Avatar Long-Term Memory & Evolution relation
   avatarIdentity         AvatarIdentity?
+
+  // Yo Artifact — purchased / gifted digital release ownership records
+  yoArtifactOwnerships   YoArtifactOwnership[] @relation("YoArtifactOwnershipUser")
 }
 
 model Account {
@@ -3945,3 +3948,41 @@ model TrustSafetyProtection {
   @@map("trust_safety_protections")
 }
 
+
+// ==============================================================================
+// YO ARTIFACT OWNERSHIP — digital release ownership records (Rule 23 / Rule 20)
+// Tracks purchases, gifts, promos, and creator copies of YoArtifact releases.
+// PortableArtifactBuilder uses this table to issue and verify entitlements.
+// ==============================================================================
+
+model YoArtifactOwnership {
+  id                       String   @id @default(cuid())
+  /// Matches YoArtifactManifest.artifactId
+  artifactId               String   @map("artifact_id")
+  /// Snapshot of the release version at purchase time
+  releaseVersion           Int      @map("release_version")
+  /// TMI user ID of the owner
+  ownerId                  String   @map("owner_id")
+  owner                    User     @relation("YoArtifactOwnershipUser", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerEmail               String   @map("owner_email")
+  /// PURCHASED | GIFTED | PROMO | CREATOR_COPY
+  ownershipType            String   @map("ownership_type")
+  /// Internal purchase reference (e.g. Stripe checkout session ID)
+  purchaseId               String?  @map("purchase_id")
+  /// Stripe PaymentIntent ID — populated for PURCHASED records
+  stripePaymentIntentId    String?  @map("stripe_payment_intent_id")
+  /// The manifest hash at time of purchase — integrity cross-check
+  manifestHashAtPurchase   String?  @map("manifest_hash_at_purchase")
+  purchasedAt              DateTime @default(now()) @map("purchased_at")
+  /// Buyer's preferred accent colour override (null = use official presentation)
+  buyerAccentOverride      String?  @map("buyer_accent_override")
+  /// Offline license expiry — null = permanent
+  offlineLicenseExpiresAt  DateTime? @map("offline_license_expires_at")
+  /// JSON array of device IDs authorised for offline playback
+  authorizedDeviceIds      String   @default("[]") @map("authorized_device_ids")
+
+  @@unique([ownerId, artifactId])
+  @@index([artifactId])
+  @@index([ownerId])
+  @@map("yo_artifact_ownerships")
+}
