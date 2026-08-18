@@ -69,6 +69,8 @@ export interface PortraitLayer {
   parallaxStrength?: number;
   /** Depth-of-field blur applied to background layers (px). 0 = sharp. */
   depthBlur?: number;
+  locked?: boolean;
+  hidden?: boolean;
 }
 
 /** CSS / motion overlay effects on portrait preview (instant, reversible). */

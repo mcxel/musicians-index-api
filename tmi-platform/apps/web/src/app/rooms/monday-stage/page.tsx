@@ -11,6 +11,8 @@ import ArenaEventShell from "@/components/live/ArenaEventShell";
 import { MondayNightStageEngine } from '@/lib/shows/MondayNightStageEngine';
 import type { MondayNightStageState } from '@/lib/shows/MondayNightStageEngine';
 import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel';
+import FollowButton from '@/components/social/FollowButton';
+import BookmarkButton from '@/components/common/BookmarkButton';
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -26,6 +28,7 @@ interface StageSubmission {
   title: string;
   genre: string | null;
   createdAt: string;
+  userId: string | null;
   user: { name: string | null; displayName: string | null };
 }
 
@@ -36,14 +39,6 @@ const STATUS_STYLES: Record<string, { color: string; label: string }> = {
   UPCOMING: { color: '#555',   label: 'SOON'   },
 };
 
-const CHAT_STUBS = [
-  { user: 'jaylen_fan99', msg: 'JAYLEN IS GOING CRAZY TONIGHT 🔥' },
-  { user: 'r_n_b_queen',  msg: 'Amirah set was perfect 😭💕' },
-  { user: 'marcels_boy',  msg: 'Monday Night never misses!' },
-  { user: 'traxx_stan',   msg: 'Can\'t wait for Traxx at 11 🎹' },
-  { user: 'nova_tribe',   msg: 'Nova is about to eat 🙌' },
-];
-
 type ChatMsg = { user: string; msg: string };
 
 export default function MondayStagePage() {
@@ -53,6 +48,43 @@ export default function MondayStagePage() {
   const [chatInput, setChatInput]     = useState('');
   const [viewers, setViewers]         = useState(0);
   const [tipping, setTipping]         = useState(false);
+
+  // Local session/role read — deliberately not pulled from useTmiSession(),
+  // which doesn't surface role and is shared by other components. HOST here
+  // matches the same ADMIN/STAFF-only boundary used platform-wide for
+  // persona-gated controls.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [sessionUserName, setSessionUserName] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data.user) {
+          setSessionUserId(data.user.id ?? null);
+          setSessionUserName(data.user.name ?? null);
+          setSessionRole(typeof data.user.role === 'string' ? data.user.role.toUpperCase() : null);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const isHost = sessionRole === 'ADMIN' || sessionRole === 'STAFF';
+
+  // HUD hide/recall — clean-stage toggle. Hides chat/reactions/lineup, keeps
+  // the curtain + ArenaEventShell (the actual show) visible underneath.
+  const [hudHidden, setHudHidden] = useState(false);
+
+  // Honest, local-only reaction taps — a real user tap fires a real visible
+  // burst, but there is no persisted/aggregate reaction count anywhere to
+  // read from, so none is displayed or fabricated (Rule 20).
+  const [reactionBursts, setReactionBursts] = useState<{ id: number; emoji: string }[]>([]);
+  const fireReaction = useCallback((emoji: string) => {
+    const id = Date.now() + Math.random();
+    setReactionBursts((b) => [...b.slice(-11), { id, emoji }]);
+    window.setTimeout(() => {
+      setReactionBursts((b) => b.filter((x) => x.id !== id));
+    }, 1400);
+  }, []);
 
   // Real, cross-user submissions — replaces the old hardcoded lineup.
   // Empty is a real, honest state (Rule 20): a Monday with no submissions
@@ -92,7 +124,14 @@ export default function MondayStagePage() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ category: 'MONDAY_NIGHT_STAGE', title: subTitle.trim(), genre: subGenre.trim() || undefined, rightsAttested: true }),
+        body: JSON.stringify({
+          category: 'MONDAY_NIGHT_STAGE',
+          title: subTitle.trim(),
+          genre: subGenre.trim() || undefined,
+          rightsAttested: true,
+          userId: sessionUserId ?? undefined,
+          userName: sessionUserName ?? undefined,
+        }),
       });
       if (r.ok) {
         setSubTitle(''); setSubGenre('');
@@ -120,6 +159,7 @@ export default function MondayStagePage() {
   const lineup = useMemo(
     () => rawLineup.map((s, i) => ({
       id: s.id,
+      userId: s.userId,
       artist: s.user.displayName || s.user.name || 'Performer',
       genre: s.genre || 'Unspecified',
       status:
@@ -133,6 +173,26 @@ export default function MondayStagePage() {
   const currentArtist = lineup.find((l) => l.status === 'LIVE');
   const calledArtist = callState === 'calling' ? lineup[queueIndex] : undefined;
   const secondsLeft = callDeadline ? Math.max(0, Math.ceil((callDeadline - nowTick) / 1000)) : 0;
+
+  // Performer-layer identity: is the signed-in user the specific person
+  // queued/called/live right now? Only real when userId round-trips through
+  // the submission → API → lineup chain above.
+  const myLineupEntry = sessionUserId ? lineup.find((l) => l.userId === sessionUserId) : undefined;
+  const isMeCalled = Boolean(sessionUserId) && calledArtist?.userId === sessionUserId;
+  const isMeLive = Boolean(sessionUserId) && currentArtist?.userId === sessionUserId;
+  const PERFORMER_STATUS_LABEL: Record<string, string> = {
+    DONE: 'Completed',
+    LIVE: 'Performing now',
+    NEXT: 'Up next — get ready',
+    UPCOMING: 'Queued / backstage',
+  };
+  const BEBO_CUE_LABEL: Record<string, string> = {
+    OFFSTAGE: '🟢 Crowd is with you',
+    PEEK: '🟡 Bebo is peeking — crowd sentiment is turning',
+    ON_STAGE_WARNING: '🟠 Bebo is on stage — win the crowd back',
+    RECOVERY_EXIT: '✅ Crowd brought you back',
+    REMOVAL: '🔴 Hooked off — set ended',
+  };
 
   const callNext = useCallback(() => {
     if (queueIndex >= rawLineup.length) return; // queue exhausted - honest, not faked
@@ -298,6 +358,13 @@ export default function MondayStagePage() {
               <div style={{ fontSize: 11, color: '#888' }}>
                 👁 {viewers.toLocaleString()} watching
               </div>
+              <button
+                onClick={() => setHudHidden((h) => !h)}
+                title={hudHidden ? 'Recall HUD' : 'Hide HUD — clean stage view'}
+                style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #ffffff22', background: '#ffffff0a', color: '#aaa', fontSize: 9, fontWeight: 800, letterSpacing: 2, cursor: 'pointer' }}
+              >
+                {hudHidden ? '⟲ RECALL HUD' : '⤢ HIDE HUD'}
+              </button>
             </div>
           </div>
 
@@ -326,6 +393,11 @@ export default function MondayStagePage() {
             rubricVotingOpen={stageState === "LIVE" && Boolean(currentArtist)}
             rubricEventId={currentArtist ? `monday-${currentArtist.id}` : "monday-stage"}
           />
+          {hudHidden ? (
+            <div style={{ padding: '24px 32px 0' }}>
+              <StageCurtain state={stageState} showTitle={SHOW_TITLE} artistName={currentArtist?.artist} />
+            </div>
+          ) : (
           <div style={{ padding: '24px 32px 0', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24 }}>
 
             {/* LEFT — Stage + Controls */}
@@ -337,39 +409,89 @@ export default function MondayStagePage() {
                 artistName={currentArtist?.artist}
               />
 
-              {/* Host Controls (demo — in prod gated by role) */}
-              <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  onClick={openCurtain}
-                  disabled={stageState === 'LIVE' || stageState === 'CURTAIN_OPENING'}
-                  style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #AA2DFF44', background: '#AA2DFF22', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer', opacity: stageState === 'LIVE' ? 0.4 : 1 }}
-                >
-                  OPEN CURTAIN
-                </button>
-                <button
-                  onClick={closeCurtain}
-                  disabled={stageState !== 'LIVE'}
-                  style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #FF2DAA44', background: '#FF2DAA22', color: '#FF2DAA', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer', opacity: stageState !== 'LIVE' ? 0.4 : 1 }}
-                >
-                  CLOSE CURTAIN
-                </button>
-              </div>
+              {/* Host Controls — ADMIN/STAFF only, matching the platform-wide
+                  persona-gate boundary (never fan/performer self-service). */}
+              {isHost && (
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={openCurtain}
+                    disabled={stageState === 'LIVE' || stageState === 'CURTAIN_OPENING'}
+                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #AA2DFF44', background: '#AA2DFF22', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer', opacity: stageState === 'LIVE' ? 0.4 : 1 }}
+                  >
+                    OPEN CURTAIN
+                  </button>
+                  <button
+                    onClick={closeCurtain}
+                    disabled={stageState !== 'LIVE'}
+                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #FF2DAA44', background: '#FF2DAA22', color: '#FF2DAA', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer', opacity: stageState !== 'LIVE' ? 0.4 : 1 }}
+                  >
+                    CLOSE CURTAIN
+                  </button>
+                </div>
+              )}
 
-              {/* Reaction + Tip row */}
-              <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Fan reactions — real local taps (honest visual-only burst,
+                  no fabricated aggregate reaction count) */}
+              <div style={{ marginTop: 16, position: 'relative', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {['🔥', '🎤', '👑', '💜', '🎶'].map((emoji) => (
-                  <motion.button key={emoji} whileTap={{ scale: 1.3 }}
+                  <motion.button key={emoji} whileTap={{ scale: 1.3 }} onClick={() => fireReaction(emoji)}
                     style={{ fontSize: 22, background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
                   >
                     {emoji}
                   </motion.button>
                 ))}
+                <AnimatePresence>
+                  {reactionBursts.map((b, i) => (
+                    <motion.div key={b.id}
+                      initial={{ opacity: 1, y: 0, x: 20 + (i % 6) * 30 }}
+                      animate={{ opacity: 0, y: -50 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 1.3 }}
+                      style={{ position: 'absolute', bottom: '100%', fontSize: 20, pointerEvents: 'none' }}
+                    >
+                      {b.emoji}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
                 <div style={{ flex: 1 }} />
                 <button onClick={() => setTipping((t) => !t)}
                   style={{ padding: '7px 18px', borderRadius: 20, border: '1px solid #FFD70044', background: '#FFD70018', color: '#FFD700', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer' }}>
                   TIP 💰
                 </button>
               </div>
+
+              {/* Fan crowd vote — real Yay/Boo, wired directly to the same
+                  ShowRuntimeEngine.recordCrowdVote() the host panel uses.
+                  Only meaningful while a confirmed performer is live. */}
+              {gameStarted && callState === 'confirmed' && currentArtist && (
+                <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: '#888', fontWeight: 800 }}>RATE THIS SET</div>
+                  <button onClick={() => handleCrowdVote('yay')}
+                    style={{ padding: '8px 18px', borderRadius: 20, border: '1px solid #00FF8844', background: '#00FF8818', color: '#00FF88', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                    👍 YAY ({gameState.show.crowdYayCount})
+                  </button>
+                  <button onClick={() => handleCrowdVote('boo')}
+                    style={{ padding: '8px 18px', borderRadius: 20, border: '1px solid #FF444444', background: '#FF444418', color: '#FF4444', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                    👎 BOO ({gameState.show.crowdBooCount})
+                  </button>
+                  {currentArtist.userId && currentArtist.userId !== sessionUserId && (
+                    <FollowButton targetUserId={currentArtist.userId} targetName={currentArtist.artist} variant="pill" accent="#FF2DAA" />
+                  )}
+                  <BookmarkButton itemId={ROOM_ID} itemType="show" compact />
+                  <button
+                    onClick={() => {
+                      const url = typeof window !== 'undefined' ? window.location.href : '';
+                      if (navigator.share) {
+                        navigator.share({ title: SHOW_TITLE, text: `Watch ${currentArtist.artist} live on Monday Night Stage`, url }).catch(() => {});
+                      } else if (url) {
+                        navigator.clipboard?.writeText(url).catch(() => {});
+                      }
+                    }}
+                    style={{ padding: '7px 14px', borderRadius: 20, border: '1px solid #ffffff22', background: '#ffffff0a', color: '#aaa', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                    SHARE
+                  </button>
+                </div>
+              )}
 
               {/* Tip modal */}
               <AnimatePresence>
@@ -393,14 +515,20 @@ export default function MondayStagePage() {
               {gameStarted && callState === 'calling' && calledArtist && (
                 <div style={{ marginTop: 24, padding: '16px 18px', borderRadius: 10, background: '#FFD70010', border: '1px solid #FFD70044', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontSize: 9, letterSpacing: 2, color: '#FFD700', fontWeight: 800, marginBottom: 4 }}>YOU'RE UP — CONFIRM YOU'RE HERE</div>
+                    <div style={{ fontSize: 9, letterSpacing: 2, color: '#FFD700', fontWeight: 800, marginBottom: 4 }}>
+                      {isMeCalled ? "YOU'RE UP — CONFIRM YOU'RE HERE" : `${calledArtist.artist.toUpperCase()} IS BEING CALLED TO THE STAGE`}
+                    </div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{calledArtist.artist}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ fontSize: 20, fontWeight: 900, color: secondsLeft <= 5 ? '#FF4444' : '#FFD700' }}>{secondsLeft}s</div>
-                    <button onClick={confirmJoin} style={{ padding: '10px 22px', borderRadius: 20, border: '1px solid #00FF88', background: '#00FF8822', color: '#00FF88', fontSize: 11, fontWeight: 900, letterSpacing: 2, cursor: 'pointer' }}>
-                      JOIN NOW
-                    </button>
+                    {isMeCalled ? (
+                      <button onClick={confirmJoin} style={{ padding: '10px 22px', borderRadius: 20, border: '1px solid #00FF88', background: '#00FF8822', color: '#00FF88', fontSize: 11, fontWeight: 900, letterSpacing: 2, cursor: 'pointer' }}>
+                        JOIN NOW
+                      </button>
+                    ) : (
+                      <div style={{ fontSize: 10, color: '#666', fontWeight: 700 }}>Waiting for confirmation…</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -410,9 +538,40 @@ export default function MondayStagePage() {
                 </div>
               )}
 
+              {/* Performer HUD — shown only to the confirmed, currently-live
+                  performer. Real lifecycle status + real Bebo stage as the
+                  host cue + END SET wired to the same advanceQueueAfterPerformance
+                  the host's "NEXT PERFORMER" button already uses. No mic/camera
+                  controls: no canonical live-media authority is wired at this
+                  integration point, so those stay honestly absent rather than
+                  simulated. */}
+              {isMeLive && myLineupEntry && (
+                <div style={{ marginTop: 24, padding: '16px 18px', borderRadius: 10, background: '#AA2DFF0A', border: '1px solid #AA2DFF33' }}>
+                  <div style={{ fontSize: 9, letterSpacing: 4, color: '#AA2DFF', fontWeight: 800, marginBottom: 10 }}>YOUR PERFORMER VIEW</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                    {PERFORMER_STATUS_LABEL[myLineupEntry.status] ?? myLineupEntry.status}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#ccc', marginBottom: 12 }}>
+                    {BEBO_CUE_LABEL[gameState.bebo.stage] ?? gameState.bebo.stage}
+                  </div>
+                  <button onClick={advanceQueueAfterPerformance}
+                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #AA2DFF44', background: '#AA2DFF18', color: '#AA2DFF', fontSize: 10, fontWeight: 800, letterSpacing: 2, cursor: 'pointer' }}>
+                    END MY SET
+                  </button>
+                </div>
+              )}
+              {myLineupEntry && !isMeLive && myLineupEntry.status !== 'DONE' && (
+                <div style={{ marginTop: 24, padding: '14px 16px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e' }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: '#888', fontWeight: 800, marginBottom: 4 }}>YOUR PERFORMER VIEW</div>
+                  <div style={{ fontSize: 12, color: '#ccc' }}>{PERFORMER_STATUS_LABEL[myLineupEntry.status] ?? myLineupEntry.status}</div>
+                </div>
+              )}
+
               {/* Bebo hook/cane game panel — crowd boos hook a performer off,
-                  crowd yays bring them back. Live once the curtain opens. */}
-              {gameStarted && callState === 'confirmed' && (
+                  crowd yays bring them back. Live once the curtain opens.
+                  Host/producer authority only — MondayNightStagePanel stays
+                  the single producer control surface, not reimplemented here. */}
+              {isHost && gameStarted && callState === 'confirmed' && (
                 <div style={{ marginTop: 24 }}>
                   <div style={{ fontSize: 9, letterSpacing: 4, color: '#FFD700', fontWeight: 800, marginBottom: 16 }}>
                     CROWD CONTROL — BOO = HOOK, YAY = RECOVER
@@ -521,6 +680,7 @@ export default function MondayStagePage() {
               </Link>
             </div>
           </div>
+          )}
         </div>
       </HUDFrame>
       <FooterHUD />

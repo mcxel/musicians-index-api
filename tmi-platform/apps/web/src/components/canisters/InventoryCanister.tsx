@@ -3,6 +3,8 @@
 /**
  * InventoryCanister — Fan gear vault bound to /api/avatar/inventory + /api/avatar/equip.
  * Honest empty state when unauthenticated or empty (Rule 20). Fake points removed.
+ * Auth state comes from the canonical useAuth() session (see lib/hooks/useAuth.ts) —
+ * never a second, local /api/auth/session fetch (Canister Canonical Auth Hydration Fix).
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -12,6 +14,7 @@ import { InventoryPanel } from "@/components/InventoryPanel";
 import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
 import { getFanCosmetic } from "@/lib/avatars/FanCosmeticCatalog";
 import type { AvatarSlot } from "@/lib/avatar/avatarPersistence";
+import { useAuth, resolveAuthPhase } from "@/lib/hooks/useAuth";
 
 interface InventoryCanisterProps {
   accentColor?: string;
@@ -46,6 +49,15 @@ function toRow(item: AvatarInventoryItem): Row {
 }
 
 export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: InventoryCanisterProps) {
+  // Canonical session authority — the same useAuth() cache RoleGate and any
+  // other consumer on the page reads, instead of this component running its
+  // own independent /api/auth/session fetch. That second, uncoordinated
+  // fetch was the actual bug: an authenticated shell could resolve true
+  // while this component's own separate check raced/failed and got stuck
+  // showing "Log in" with nothing to reconcile it afterward.
+  const { isLoading: authLoading, isAuthenticated, refresh: refreshAuth } = useAuth();
+  const authPhase = resolveAuthPhase(authLoading, isAuthenticated);
+
   const [items, setItems] = useState<Row[]>([]);
   const [points, setPoints] = useState<number | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "auth" | "error">("loading");
@@ -56,7 +68,12 @@ export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: Inventor
     try {
       const res = await fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" });
       if (res.status === 401 || res.status === 403) {
+        // The canonical session says authenticated but the inventory
+        // endpoint disagrees — re-resolve the canonical session rather than
+        // trusting a possibly-stale local read, then reflect whatever it
+        // finds instead of silently retrying forever.
         setItems([]);
+        refreshAuth();
         setStatus("auth");
         return;
       }
@@ -83,34 +100,26 @@ export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: Inventor
     } catch {
       /* points optional */
     }
-  }, []);
+  }, [refreshAuth]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const sessionRes = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
-        if (cancelled) return;
-        if (!sessionRes.ok) {
-          setStatus("auth");
-          return;
-        }
-        const session = (await sessionRes.json()) as { authenticated?: boolean };
-        if (!session.authenticated) {
-          setStatus("auth");
-          return;
-        }
-        await refresh();
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
+    // Three real states, not two: while the canonical session is still
+    // hydrating, stay on "loading" — never render the login fallback for a
+    // session that simply hasn't resolved yet. On sign-out (authenticated
+    // flips true → false), clear any previously-loaded inventory so a
+    // signed-out view never shows the prior user's items.
+    if (authPhase === "AUTH_LOADING") {
+      setStatus("loading");
+      return;
+    }
+    if (authPhase === "UNAUTHENTICATED") {
+      setItems([]);
+      setPoints(null);
+      setStatus("auth");
+      return;
+    }
+    void refresh();
+  }, [authPhase, refresh]);
 
   const toggleEquip = async (row: Row) => {
     if (busyId) return;

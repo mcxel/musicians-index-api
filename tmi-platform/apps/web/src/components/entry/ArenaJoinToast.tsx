@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ArenaJoinToast() {
+function ArenaJoinToastInner() {
   const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);

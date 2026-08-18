@@ -22,7 +22,12 @@ export type YoPhoStudioStyleId =
   | "mask_oval"
   | "twin_split"
   | "minilab_warm"
-  | "light_leak";
+  | "light_leak"
+  | "industrial_creator"
+  | "diamond_prestige"
+  | "underground_cypher"
+  | "concert_hero"
+  | "magazine_editorial";
 
 export type StudioOverlayKind =
   | "none"
@@ -41,7 +46,12 @@ export type StudioOverlayKind =
   | "mask_oval"
   | "twin_split"
   | "minilab"
-  | "light_leak";
+  | "light_leak"
+  | "industrial_creator"
+  | "diamond_prestige"
+  | "underground_cypher"
+  | "concert_hero"
+  | "magazine_editorial";
 
 export interface YoPhoStudioStylePreset {
   id: YoPhoStudioStyleId;
@@ -194,6 +204,51 @@ export const YOPHO_STUDIO_STYLE_PRESETS: YoPhoStudioStylePreset[] = [
     pack: "color",
     overlay: "light_leak",
     textureHint: "film_texture",
+  },
+  {
+    id: "industrial_creator",
+    label: "Industrial Creator",
+    tagline: "Workshop · Wires · CRT Monitors · Sparks & Lightning",
+    pack: "neon",
+    overlay: "industrial_creator",
+    textureHint: "grain",
+    accentHint: "#00FFFF",
+  },
+  {
+    id: "diamond_prestige",
+    label: "Diamond Prestige",
+    tagline: "Glass & Crystal · Prism Effects · Floating Dust",
+    pack: "color",
+    overlay: "diamond_prestige",
+    textureHint: "gold_foil",
+    accentHint: "#FFD700",
+  },
+  {
+    id: "underground_cypher",
+    label: "Underground Cypher",
+    tagline: "Concrete · Graffiti · Neon Tubes · Equalizer Haze",
+    pack: "neon",
+    overlay: "underground_cypher",
+    textureHint: "cyber_glow",
+    accentHint: "#FF2DAA",
+  },
+  {
+    id: "concert_hero",
+    label: "Concert Hero",
+    tagline: "Stage Lights · Laser Beams · Crowd Smoke · Tour Marquee",
+    pack: "classic",
+    overlay: "concert_hero",
+    textureHint: "glow",
+    accentHint: "#00FF88",
+  },
+  {
+    id: "magazine_editorial",
+    label: "Magazine Editorial",
+    tagline: "Publication Typography · Clean Geometry · Studio Framing",
+    pack: "borders",
+    overlay: "magazine_editorial",
+    textureHint: "none",
+    accentHint: "#FFFFFF",
   },
 ];
 

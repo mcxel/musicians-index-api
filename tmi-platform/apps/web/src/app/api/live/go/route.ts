@@ -185,15 +185,16 @@ export async function GET() {
     const count = getActiveRoomTruthCount(sessions);
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
     const live = sessions.map((s) => ({
-      userId:      s.userId,
-      displayName: s.displayName,
-      genre:       s.category,
-      role:        'performer' as const,
-      viewerCount: s.viewerCount,
-      roomId:      s.roomId,
-      avatarUrl:   s.avatarUrl ?? undefined,
-      accentColor: s.accentColor,
-      privacy:     s.privacy,
+      userId:        s.userId,
+      displayName:   s.displayName,
+      genre:         s.category,
+      role:          'performer' as const,
+      viewerCount:   s.viewerCount,
+      roomId:        s.roomId,
+      avatarUrl:     s.avatarUrl ?? undefined,
+      accentColor:   s.accentColor,
+      privacy:       s.privacy,
+      performerTier: s.performerTier,
     }));
     return NextResponse.json({
       sessions,

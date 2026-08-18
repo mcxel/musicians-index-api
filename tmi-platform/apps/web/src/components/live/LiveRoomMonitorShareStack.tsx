@@ -9,6 +9,8 @@
 import { useMemo, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
+import CanonicalMonitorAssignmentOverlay from "@/components/personal-media/CanonicalMonitorAssignmentOverlay";
+import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
@@ -213,7 +215,11 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
           {
             id: "live-mon-a",
             label: "MONITOR A",
-            children: renderShareOrStandby(0, -1, "MON A", topStandbyFull),
+            children: (
+              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_A}>
+                {renderShareOrStandby(0, -1, "MON A", topStandbyFull)}
+              </CanonicalMonitorAssignmentOverlay>
+            ),
             cells: topCells.map((standby, ci) =>
               renderShareOrStandby(0, ci, `A${ci + 1}`, standby),
             ),
@@ -221,7 +227,11 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
           {
             id: "live-mon-b",
             label: "MONITOR B",
-            children: renderShareOrStandby(1, -1, "MON B", bottomStandbyFull),
+            children: (
+              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_B}>
+                {renderShareOrStandby(1, -1, "MON B", bottomStandbyFull)}
+              </CanonicalMonitorAssignmentOverlay>
+            ),
             cells: bottomCells.map((standby, ci) =>
               renderShareOrStandby(1, ci, `B${ci + 1}`, standby),
             ),

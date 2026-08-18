@@ -66,6 +66,7 @@ import CanonicalBottomDrawerHost from "@/components/workspace/universal/Canonica
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 import PerformerCreatorControlCluster from "./PerformerCreatorControlCluster";
+import TmiIdentitySurface from "./TmiIdentitySurface";
 
 interface LiveApiSession {
   userId: string;
@@ -1071,6 +1072,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 />
               </GlobalErrorBoundary>
             </div>
+
+            {/* WATCH + 0 monitors reclaims the stage for the Identity Surface
+                instead of leaving it empty — same ArtistShareIdentity/QR used
+                everywhere else (YoPho, future posters), never a second identity. */}
+            {isMobile && !stageDeckWork && isWatchMode && effectiveMonitorCount === 0 ? (
+              <TmiIdentitySurface
+                userId={userId}
+                displayName={resolvedDisplayName}
+                role={role === "performer" ? "performer" : "fan"}
+                accentColor={theme.primary}
+              />
+            ) : null}
 
             {stageDeckWork ? (
               <CanonicalBottomDrawerHost

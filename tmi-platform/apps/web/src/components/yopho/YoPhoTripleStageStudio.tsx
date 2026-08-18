@@ -1,14 +1,23 @@
 "use client";
 
 /**
- * YoPho Triple-Stage Studio — Master (center) + Preview + Preview 2.
- * Multi-image / dimensional z-layers gated by tier capacity (YoPhoImageCapacity).
- * Filters apply to preview first; Apply to Master commits. No fake stock images.
+ * YoPho Triple-Stage Studio — Master Composite + Source Only + Active Ingredient.
+ *
+ * LAYOUT SPEC:
+ *   PREVIEW 1: SOURCE IMAGE ONLY
+ *   PREVIEW 2: SELECTED EFFECT / INGREDIENT ONLY
+ *   PREVIEW 3: LIVE MASTER COMPOSITE (continuous animation loop)
+ *   CONTROLLER: Position / Scale / Rotate / Depth / Opacity / Timeline directly under Preview 3
+ *   DOCK: Fixed-height internally scrollable Layer Inspector Dock (Layers | FX | Style | Color | Motion)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import type { YoPhoPortraitBlueprint, YoPhoPortraitOverlayEffectId } from "@/lib/yopho/YoPhoPortraitEngine";
+import type {
+  YoPhoPortraitBlueprint,
+  YoPhoPortraitOverlayEffectId,
+  BlendMode,
+} from "@/lib/yopho/YoPhoPortraitEngine";
 import { clonePortraitBlueprint } from "@/lib/yopho/YoPhoPortraitEngine";
 import {
   YOPHO_PORTRAIT_CONTROLS,
@@ -16,7 +25,6 @@ import {
   getActiveOverlayParams,
   getPortraitControl,
   patchOverlayParams,
-  resetPreviewEffects,
 } from "@/lib/yopho/YoPhoPortraitEffectCatalog";
 import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
 import {
@@ -27,33 +35,31 @@ import {
   listStackLayers,
   nudgeLayerPosition,
   nudgeLayerScale,
+  nudgeLayerRotation,
   removeStackLayer,
   reorderStackLayer,
   resetLayerTransform,
   sendLayerToBack,
   setActiveLayerImage,
-  nudgeLayerRotation,
+  updateLayerById,
   YOPHO_NUDGE_ROTATION_STEP,
   YOPHO_NUDGE_SCALE_STEP,
   YOPHO_NUDGE_XY_STEP,
 } from "@/lib/yopho/YoPhoLayerStack";
+import {
+  YOPHO_STUDIO_STYLE_PRESETS,
+  type YoPhoStudioStyleId,
+} from "@/lib/yopho/YoPhoStudioStylePresets";
 import YoPhoPortraitStageCanvas from "./YoPhoPortraitStageCanvas";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
 const GOLD = "#FFD700";
-/** Green = positive / confirm nudge direction; red = opposite */
 const GREEN = "#00FF88";
 const RED = "#FF4466";
-/**
- * Stage Deck mobile fix: these were fixed-pixel (360/380) desktop sizes that, once the
- * 4-col grid collapses to a 1-col stack under 900px, made three full-height canvases
- * stack inside the drawer's ~58-72vh cap — previews read as squeezed at the bottom
- * instead of actually filling the space the monitors vacated. clamp() keeps desktop
- * near-identical while letting mobile shrink to what the viewport can actually show.
- */
-const STAGE_CANVAS_HEIGHT = "clamp(200px, 34vh, 360px)";
-const WORKING_CARD_CANVAS_HEIGHT = "clamp(220px, 36vh, 380px)";
+
+const STAGE_CANVAS_HEIGHT = "clamp(180px, 30vh, 320px)";
+const MASTER_CANVAS_HEIGHT = "clamp(240px, 42vh, 440px)";
 
 function formatTime(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
@@ -62,11 +68,18 @@ function formatTime(sec: number): string {
   return `${mm}:${ss}`;
 }
 
-function stageLabel(title: string, sub: string) {
+function stageLabel(title: string, sub: string, badge?: string) {
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: CYAN }}>{title}</div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{sub}</div>
+    <div style={{ marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div>
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: CYAN }}>{title}</div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{sub}</div>
+      </div>
+      {badge ? (
+        <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: `${CYAN}22`, color: CYAN, border: `1px solid ${CYAN}55` }}>
+          {badge}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -76,7 +89,6 @@ export interface YoPhoTripleStageStudioProps {
   onMasterChange: (next: YoPhoPortraitBlueprint) => void;
   onSaveEdition?: (bp: YoPhoPortraitBlueprint) => void;
   storageKey?: string;
-  /** Membership tier or BAND role — drives image/layer capacity */
   tierOrRole?: string;
 }
 
@@ -89,18 +101,24 @@ export default function YoPhoTripleStageStudio({
 }: YoPhoTripleStageStudioProps) {
   const capacity = useMemo(() => getYoPhoImageCapacity(tierOrRole), [tierOrRole]);
   const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() => clonePortraitBlueprint(master));
-  const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+  const [selectedControlId, setSelectedControlId] = useState<string | null>("smoke");
   const [activeLayerId, setActiveLayerId] = useState<string>(master.primaryLayer.id);
+  const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion">("layers");
+  const [dockExpanded, setDockExpanded] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [timelineSec, setTimelineSec] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [loopTimeline, setLoopTimeline] = useState(true);
+  const [motionSpeed, setMotionSpeed] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const [compareHold, setCompareHold] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
-  const [aiMessage, setAiMessage] = useState<string | null>(null);
+
+  // Undo / Redo stacks
   const undoStack = useRef<YoPhoPortraitBlueprint[]>([]);
+  const redoStack = useRef<YoPhoPortraitBlueprint[]>([]);
   const rafRef = useRef<number | null>(null);
   const lastTick = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -108,7 +126,6 @@ export default function YoPhoTripleStageStudio({
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const durationSec = preview.previewDurationSec ?? master.previewDurationSec ?? 6;
   const stackLayers = useMemo(() => listStackLayers(preview), [preview]);
@@ -125,6 +142,7 @@ export default function YoPhoTripleStageStudio({
     });
   }, [master.id, master.updatedAt]);
 
+  // Continuous animation loop ticker
   useEffect(() => {
     if (!isPlaying) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -134,7 +152,7 @@ export default function YoPhoTripleStageStudio({
     }
     const tick = (ts: number) => {
       if (lastTick.current != null) {
-        const delta = (ts - lastTick.current) / 1000;
+        const delta = ((ts - lastTick.current) / 1000) * motionSpeed;
         setTimelineSec((t) => {
           let next = t + delta;
           if (next >= durationSec) {
@@ -154,7 +172,7 @@ export default function YoPhoTripleStageStudio({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isPlaying, durationSec, loopTimeline]);
+  }, [isPlaying, durationSec, loopTimeline, motionSpeed]);
 
   const selectedOverlayId = useMemo((): YoPhoPortraitOverlayEffectId | null => {
     const def = selectedControlId ? getPortraitControl(selectedControlId) : null;
@@ -167,25 +185,55 @@ export default function YoPhoTripleStageStudio({
   }, [preview, selectedOverlayId]);
 
   const pushUndo = useCallback(() => {
-    undoStack.current = [...undoStack.current.slice(-24), clonePortraitBlueprint(master)];
-  }, [master]);
+    undoStack.current = [...undoStack.current.slice(-24), clonePortraitBlueprint(preview)];
+    redoStack.current = [];
+  }, [preview]);
+
+  const handleUndo = () => {
+    if (undoStack.current.length === 0) {
+      setStatusLine("Nothing to undo.");
+      return;
+    }
+    const prev = undoStack.current.pop()!;
+    redoStack.current.push(clonePortraitBlueprint(preview));
+    setPreview(clonePortraitBlueprint(prev));
+    setStatusLine("Undid last change.");
+  };
+
+  const handleRedo = () => {
+    if (redoStack.current.length === 0) {
+      setStatusLine("Nothing to redo.");
+      return;
+    }
+    const next = redoStack.current.pop()!;
+    undoStack.current.push(clonePortraitBlueprint(preview));
+    setPreview(clonePortraitBlueprint(next));
+    setStatusLine("Redid change.");
+  };
+
+  const onPickImage = () => fileInputRef.current?.click();
+
+  const onFileChosen = (file: File | null) => {
+    if (!file || !file.type.startsWith("image/")) {
+      setStatusLine("Choose a valid image file.");
+      return;
+    }
+    pushUndo();
+    const url = URL.createObjectURL(file);
+    const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
+    setPreview(next);
+    onMasterChange(next);
+    setStatusLine(`Image loaded into layer: ${file.name}`);
+  };
 
   const handleControlClick = (controlId: string) => {
     const def = getPortraitControl(controlId);
     if (!def) return;
-    if (def.status === "coming_soon") {
-      setStatusLine(`${def.label} — Coming Soon (not wired).`);
-      setSelectedControlId(controlId);
-      if (controlId === "ai_magic") {
-        setAiMessage("AI Magic preview is not connected yet. No generative pipeline on this build.");
-      }
-      return;
-    }
+    pushUndo();
     setSelectedControlId(controlId);
-    setAiMessage(null);
     const next = applyPortraitControl(preview, controlId);
     setPreview(next);
-    setStatusLine(`${def.label} → Preview / Preview 2 (not on Master until Apply).`);
+    setStatusLine(`Applied effect: ${def.label}`);
     if (!isPlaying) setIsPlaying(true);
   };
 
@@ -194,653 +242,743 @@ export default function YoPhoTripleStageStudio({
     setPreview((p) => patchOverlayParams(p, selectedOverlayId, partial));
   };
 
-  const handleResetPreview = () => {
-    setPreview(resetPreviewEffects(clonePortraitBlueprint(master)));
-    setTimelineSec(0);
-    setStatusLine("Preview reset to master (effects cleared).");
-  };
-
-  const handleApplyToMaster = () => {
+  const handleApplyStylePreset = (styleId: YoPhoStudioStyleId) => {
+    const preset = YOPHO_STUDIO_STYLE_PRESETS.find((s) => s.id === styleId);
+    if (!preset) return;
     pushUndo();
-    const applied = clonePortraitBlueprint(preview);
-    onMasterChange(applied);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({ master: applied, savedAt: new Date().toISOString() }));
-    } catch {
-      /* quota */
+    const next = clonePortraitBlueprint(preview);
+    if (preset.compositionHint) next.mode = preset.compositionHint;
+    if (preset.objectMaskHint) next.objectMask = preset.objectMaskHint;
+    if (preset.textureHint) next.texturePreset = preset.textureHint;
+    if (preset.accentHint) {
+      next.colorPalette = {
+        primaryAccent: preset.accentHint,
+        secondaryAccent: preset.accentHint,
+        ambientGlow: preset.accentHint,
+      };
     }
-    onSaveEdition?.(applied);
-    setPreview(clonePortraitBlueprint(applied));
-    setStatusLine("Applied to Master (center working card).");
-  };
-
-  const handleUndo = () => {
-    const prev = undoStack.current.pop();
-    if (!prev) {
-      setStatusLine("Nothing to undo.");
-      return;
-    }
-    onMasterChange(prev);
-    setPreview(clonePortraitBlueprint(prev));
-    setStatusLine("Undid last apply.");
-  };
-
-  const onPickImage = () => fileInputRef.current?.click();
-
-  const onFileChosen = (file: File | null) => {
-    if (!file || !file.type.startsWith("image/")) {
-      setStatusLine("Choose a real image file.");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
     setPreview(next);
-    setStatusLine(`Image set on active layer — Apply to Master to commit.`);
+    onMasterChange(next);
+    setStatusLine(`Style applied: ${preset.label}`);
   };
 
-  const handleAddLayer = () => {
+  const handleAddLayerItem = (kind: string) => {
+    pushUndo();
+    setShowAddModal(false);
     const next = addStackLayer(preview, capacity.maxImages);
     if (!next) {
-      setStatusLine(`Layer limit reached (${capacity.maxImages}). Upgrade to add more.`);
+      setStatusLine(`Layer limit reached (${capacity.maxImages}). Upgrade for unlimited layers.`);
       return;
     }
     setPreview(next);
     const added = listStackLayers(next).at(-1);
-    if (added) setActiveLayerId(added.id);
-    setStatusLine("Empty layer added — Put your image here.");
+    if (added) {
+      setActiveLayerId(added.id);
+      const label = `${kind.charAt(0).toUpperCase() + kind.slice(1)} ${added.layer.zIndex}`;
+      setPreview((p) => updateLayerById(p, added.id, { label }));
+    }
+    if (kind === "photo") {
+      onPickImage();
+    } else {
+      setStatusLine(`New ${kind} layer created.`);
+    }
+  };
+
+  const handleStartOver = () => {
+    if (typeof window !== "undefined" && !window.confirm("Start over? This will reset all layers and effects to initial state.")) {
+      return;
+    }
+    pushUndo();
+    const fresh = clonePortraitBlueprint(master);
+    fresh.portraitEffects = [];
+    setPreview(fresh);
+    onMasterChange(fresh);
+    setStatusLine("Project reset to initial state.");
   };
 
   const nudgeActive = (dx: number, dy: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to move.");
+      return;
+    }
     setPreview((p) => nudgeLayerPosition(p, activeLayerId, dx, dy));
-    setStatusLine("Layer moved — Apply to Master to commit.");
   };
 
   const scaleActive = (dScale: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to scale.");
+      return;
+    }
     setPreview((p) => nudgeLayerScale(p, activeLayerId, dScale));
-    setStatusLine("Layer scaled — Apply to Master to commit.");
   };
 
   const rotateActive = (dRotation: number) => {
+    if (activeLayer.locked) {
+      setStatusLine("Layer is locked. Unlock to rotate.");
+      return;
+    }
     setPreview((p) => nudgeLayerRotation(p, activeLayerId, dRotation));
-    setStatusLine("Layer rotated — Apply to Master to commit.");
   };
 
   const resetActiveTransform = () => {
+    pushUndo();
     setPreview((p) => resetLayerTransform(p, activeLayerId));
-    setStatusLine("Layer position/scale reset — Apply to Master to commit.");
+    setStatusLine("Reset transform for active layer.");
   };
 
-  const effectPreviewBlueprint = useMemo(() => {
-    if (!selectedControlId) return preview;
-    const def = getPortraitControl(selectedControlId);
-    if (!def || def.status === "coming_soon") return preview;
-    return applyPortraitControl(preview, selectedControlId);
+  // PREVIEW 1: SOURCE IMAGE ONLY (no pending effects/overlays)
+  const sourceOnlyBlueprint = useMemo(() => {
+    const bp = clonePortraitBlueprint(preview);
+    bp.portraitEffects = [];
+    return bp;
+  }, [preview]);
+
+  // PREVIEW 2: ACTIVE INGREDIENT ONLY (isolated effect or isolated layer)
+  const activeIngredientBlueprint = useMemo(() => {
+    const bp = clonePortraitBlueprint(preview);
+    if (selectedControlId) {
+      const def = getPortraitControl(selectedControlId);
+      if (def && def.status !== "coming_soon") {
+        return applyPortraitControl(bp, selectedControlId);
+      }
+    }
+    return bp;
   }, [preview, selectedControlId]);
 
-  const workingStage = (
+  // PREVIEW 1: SOURCE ONLY
+  const preview1Stage = (
     <div>
-      {stageLabel("WORKING CARD", "Live layout · Put your image here · Apply commits to Master")}
-      <YoPhoPortraitStageCanvas
-        blueprint={preview}
-        height={isMobile ? "clamp(260px, 46vh, 420px)" : WORKING_CARD_CANVAS_HEIGHT}
-        interactive={false}
-        timelineSec={timelineSec}
-        playbackPaused
-        suppressOverlays
-        emptyLabel="Put your image here"
-      />
-      <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), marginTop: 8, width: "100%" }}>
-        SET IMAGE ON ACTIVE LAYER
-      </button>
+      {stageLabel("PREVIEW 1", "Source image only", "SOURCE")}
+      <div
+        onClick={() => {
+          if (!activeLayer.imageUrl) onPickImage();
+        }}
+        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+      >
+        <YoPhoPortraitStageCanvas
+          blueprint={sourceOnlyBlueprint}
+          height={isMobile ? "clamp(150px, 22vh, 220px)" : STAGE_CANVAS_HEIGHT}
+          interactive={false}
+          timelineSec={timelineSec}
+          playbackPaused={true}
+          suppressOverlays={true}
+          emptyLabel="Tap to upload image"
+        />
+      </div>
     </div>
   );
 
-  const previewStage = (
+  // PREVIEW 2: ACTIVE INGREDIENT ONLY
+  const preview2Stage = (
     <div>
-      {stageLabel("PREVIEW 1", "Effect path · tap a filter and watch the canvas react")}
+      {stageLabel("PREVIEW 2", "Active effect / ingredient isolated", selectedControlId?.toUpperCase() ?? "INGREDIENT")}
       <YoPhoPortraitStageCanvas
-        blueprint={effectPreviewBlueprint}
-        height={isMobile ? "clamp(156px, 22vh, 220px)" : STAGE_CANVAS_HEIGHT}
+        blueprint={activeIngredientBlueprint}
+        height={isMobile ? "clamp(150px, 22vh, 220px)" : STAGE_CANVAS_HEIGHT}
         interactive={false}
         timelineSec={timelineSec}
         playbackPaused={!isPlaying}
-        emptyLabel="Preview"
+        emptyLabel="Select an effect or layer"
       />
     </div>
   );
 
-  const compareStage = (
-    <div
-      onPointerDown={() => setCompareHold(true)}
-      onPointerUp={() => setCompareHold(false)}
-      onPointerLeave={() => setCompareHold(false)}
-    >
-      {stageLabel("PREVIEW 2", "Hold to compare against master · release for pending effects")}
-      <YoPhoPortraitStageCanvas
-        blueprint={compareHold ? master : preview}
-        height={isMobile ? "clamp(156px, 22vh, 220px)" : STAGE_CANVAS_HEIGHT}
-        interactive={false}
-        timelineSec={timelineSec}
-        playbackPaused={!isPlaying}
-        suppressOverlays={compareHold}
-        emptyLabel="Preview 2"
-      />
-      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-        {compareHold ? "Showing Master (before)" : "Showing pending preview stack"}
+  // PREVIEW 3: LIVE MASTER COMPOSITE
+  const preview3Stage = (
+    <div>
+      {stageLabel("PREVIEW 3", "Live Master Composite · Continuous animation", "MASTER")}
+      <div
+        onClick={() => {
+          if (!activeLayer.imageUrl) onPickImage();
+        }}
+        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+      >
+        <YoPhoPortraitStageCanvas
+          blueprint={preview}
+          height={isMobile ? "clamp(240px, 44vh, 420px)" : MASTER_CANVAS_HEIGHT}
+          interactive={true}
+          timelineSec={timelineSec}
+          playbackPaused={!isPlaying}
+          emptyLabel="Put your image here — Tap to upload"
+        />
       </div>
     </div>
   );
 
-  const filtersPanel = (
+  // PRECISION CONTROLLER DIRECTLY UNDER PREVIEW 3
+  const precisionControllerBar = (
     <div
-      style={{
-        padding: 12,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.1)",
-        background: "rgba(8,5,20,0.95)",
-        maxHeight: isMobile ? 380 : 520,
-        overflowY: "auto",
-      }}
-    >
-      <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA, marginBottom: 10 }}>
-        FILTERS & EFFECTS
-      </div>
-      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8, lineHeight: 1.4 }}>
-        Click → live on Preview 1 / Preview 2. Master unchanged until Apply.
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {YOPHO_PORTRAIT_CONTROLS.map((c) => {
-          const selected = selectedControlId === c.id;
-          const soon = c.status === "coming_soon";
-          return (
-            <button
-              key={c.id}
-              type="button"
-              title={c.description}
-              onClick={() => handleControlClick(c.id)}
-              style={{
-                textAlign: "left",
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: selected ? `2px solid ${CYAN}` : "1px solid rgba(255,255,255,0.12)",
-                background: soon ? "rgba(255,255,255,0.03)" : selected ? `${CYAN}18` : "rgba(255,255,255,0.04)",
-                color: soon ? "rgba(255,255,255,0.35)" : "#fff",
-                fontSize: 10,
-                fontWeight: 800,
-                cursor: "pointer",
-                opacity: soon ? 0.75 : 1,
-              }}
-            >
-              {c.label}
-              {soon ? <span style={{ marginLeft: 6, fontSize: 8, color: GOLD }}>SOON</span> : null}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  const positionPad = (
-    <div
-      data-yopho-position-pad
       style={{
         padding: "10px 12px",
-        borderRadius: 10,
-        border: `1px solid ${CYAN}33`,
-        background: "rgba(0,255,255,0.04)",
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 14,
-        alignItems: "center",
-      }}
-    >
-      <div style={{ minWidth: 120 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: CYAN }}>
-          POSITION · ACTIVE LAYER
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
-          {activeLayer.label || "Layer"} · x{activeLayer.xOffset} y{activeLayer.yOffset} · ×
-          {activeLayer.scale.toFixed(2)} · {activeLayer.rotation}deg
-        </div>
-        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-          Green = + / Front · Red = − / Back · Free drag = Coming Soon
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "28px 28px 28px",
-          gridTemplateRows: "28px 28px 28px",
-          gap: 4,
-          placeItems: "center",
-        }}
-        aria-label="Nudge layer on canvas"
-      >
-        <span />
-        <button
-          type="button"
-          title="Nudge up"
-          onClick={() => nudgeActive(0, -YOPHO_NUDGE_XY_STEP)}
-          style={padBtn(GREEN)}
-        >
-          ↑
-        </button>
-        <span />
-        <button
-          type="button"
-          title="Nudge left"
-          onClick={() => nudgeActive(-YOPHO_NUDGE_XY_STEP, 0)}
-          style={padBtn(RED)}
-        >
-          ←
-        </button>
-        <button
-          type="button"
-          title="Reset position & scale"
-          onClick={resetActiveTransform}
-          style={{ ...padBtn("rgba(255,255,255,0.55)"), fontSize: 8 }}
-        >
-          ●
-        </button>
-        <button
-          type="button"
-          title="Nudge right"
-          onClick={() => nudgeActive(YOPHO_NUDGE_XY_STEP, 0)}
-          style={padBtn(GREEN)}
-        >
-          →
-        </button>
-        <span />
-        <button
-          type="button"
-          title="Nudge down"
-          onClick={() => nudgeActive(0, YOPHO_NUDGE_XY_STEP)}
-          style={padBtn(RED)}
-        >
-          ↓
-        </button>
-        <span />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
-          DEPTH
-        </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          <button
-            type="button"
-            title="Bring forward"
-            disabled={stackLayers.length < 2}
-            onClick={() => {
-              setPreview((p) => reorderStackLayer(p, activeLayerId, "forward"));
-              setStatusLine("Brought forward — Apply to Master to commit.");
-            }}
-            style={{
-              ...padBtn(GREEN),
-              opacity: stackLayers.length < 2 ? 0.35 : 1,
-              cursor: stackLayers.length < 2 ? "not-allowed" : "pointer",
-            }}
-          >
-            Front
-          </button>
-          <button
-            type="button"
-            title="Send back"
-            disabled={stackLayers.length < 2}
-            onClick={() => {
-              setPreview((p) => reorderStackLayer(p, activeLayerId, "back"));
-              setStatusLine("Sent back — Apply to Master to commit.");
-            }}
-            style={{
-              ...padBtn(RED),
-              opacity: stackLayers.length < 2 ? 0.35 : 1,
-              cursor: stackLayers.length < 2 ? "not-allowed" : "pointer",
-            }}
-          >
-            Back
-          </button>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
-          SCALE
-        </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          <button
-            type="button"
-            title="Scale up"
-            onClick={() => scaleActive(YOPHO_NUDGE_SCALE_STEP)}
-            style={padBtn(GREEN)}
-          >
-            +
-          </button>
-          <button
-            type="button"
-            title="Scale down"
-            onClick={() => scaleActive(-YOPHO_NUDGE_SCALE_STEP)}
-            style={padBtn(RED)}
-          >
-            −
-          </button>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
-          ROTATE
-        </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          <button
-            type="button"
-            title="Rotate counter-clockwise"
-            onClick={() => rotateActive(-YOPHO_NUDGE_ROTATION_STEP)}
-            style={padBtn(RED)}
-          >
-            ↺
-          </button>
-          <button
-            type="button"
-            title="Rotate clockwise"
-            onClick={() => rotateActive(YOPHO_NUDGE_ROTATION_STEP)}
-            style={padBtn(GREEN)}
-          >
-            ↻
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const layerPanel = (
-    <div
-      style={{
-        padding: "10px 14px",
         borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(5,5,16,0.92)",
+        border: `1px solid ${CYAN}44`,
+        background: "rgba(8,8,24,0.95)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
       }}
     >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: FUCHSIA }}>
-          LAYERS · Z-DEPTH · {capacity.tierKey}
-        </span>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-          {countStackLayers(preview)} / {capacity.maxImages} images
-        </span>
-        <button type="button" onClick={onPickImage} style={chipBtn(CYAN)}>
-          UPLOAD TO ACTIVE LAYER
-        </button>
-        {capacity.multiImageEnabled ? (
-          <button type="button" onClick={handleAddLayer} style={chipBtn(GOLD)}>
+      {/* Top Header: Active Layer Name & Quick Tools */}
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: CYAN }}>
+            ACTIVE LAYER:
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>
+            {activeLayer.label || "Layer"} (z{activeLayer.zIndex})
+          </span>
+          {activeLayer.locked ? <span style={{ fontSize: 10, color: GOLD }}>🔒 Locked</span> : null}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button type="button" onClick={handleUndo} title="Undo" style={chipBtn(GOLD)}>
+            ↶ UNDO
+          </button>
+          <button type="button" onClick={handleRedo} title="Redo" style={chipBtn(GOLD)}>
+            ↷ REDO
+          </button>
+          <button type="button" onClick={handleStartOver} title="Start Over" style={chipBtn(RED)}>
+            🔄 START OVER
+          </button>
+          <button type="button" onClick={() => setShowAddModal(true)} style={chipBtn(GREEN)}>
             + ADD LAYER
           </button>
-        ) : (
-          <Link href={capacity.upgradeHref} style={{ ...chipBtn(GOLD), textDecoration: "none" }}>
-            UPGRADE FOR MULTI-LAYER
-          </Link>
-        )}
+          <button type="button" onClick={onPickImage} style={chipBtn(FUCHSIA)}>
+            📷 REPLACE IMAGE
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {[...stackLayers].reverse().map((ref, frontIndex) => {
-          const selected = ref.id === activeLayerId;
-          const empty = !ref.layer.imageUrl?.trim();
-          const multi = stackLayers.length > 1;
-          return (
-            <div
-              key={ref.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 8px",
-                borderRadius: 8,
-                border: selected ? `1px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
-                background: selected ? `${CYAN}14` : "rgba(255,255,255,0.03)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveLayerId(ref.id)}
-                style={{
-                  flex: 1,
-                  textAlign: "left",
-                  background: "transparent",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: 10,
-                  fontWeight: 800,
-                }}
-              >
-                z{ref.layer.zIndex} · {empty ? "Put your image here" : ref.layer.label}{" "}
-                <span style={{ color: "rgba(255,255,255,0.35)" }}>
-                  (
-                  {multi
-                    ? frontIndex === 0
-                      ? "front"
-                      : frontIndex === stackLayers.length - 1
-                        ? "back"
-                        : "mid"
-                    : "solo"}
-                  )
-                </span>
-              </button>
-              {multi ? (
-                <>
-                  <button
-                    type="button"
-                    title="Bring forward"
-                    onClick={() => setPreview(reorderStackLayer(preview, ref.id, "forward"))}
-                    style={{ ...tinyBtn, color: GREEN, borderColor: `${GREEN}66` }}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    title="Send back"
-                    onClick={() => setPreview(reorderStackLayer(preview, ref.id, "back"))}
-                    style={{ ...tinyBtn, color: RED, borderColor: `${RED}66` }}
-                  >
-                    ▼
-                  </button>
-                  <button
-                    type="button"
-                    title="Bring to front"
-                    onClick={() => setPreview(bringLayerToFront(preview, ref.id))}
-                    style={{ ...tinyBtn, color: GREEN, borderColor: `${GREEN}66` }}
-                  >
-                    ⇈
-                  </button>
-                  <button
-                    type="button"
-                    title="Send to back"
-                    onClick={() => setPreview(sendLayerToBack(preview, ref.id))}
-                    style={{ ...tinyBtn, color: RED, borderColor: `${RED}66` }}
-                  >
-                    ⇊
-                  </button>
-                </>
-              ) : null}
-              {capacity.maxImages > 1 && stackLayers.length > 1 ? (
-                <button
-                  type="button"
-                  title="Remove layer"
-                  onClick={() => {
-                    const next = removeStackLayer(preview, ref.id);
-                    setPreview(next);
-                    setActiveLayerId(next.primaryLayer.id);
-                  }}
-                  style={{ ...tinyBtn, color: RED }}
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
-          );
-        })}
-        {!capacity.multiImageEnabled ? (
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
-            FREE = one image — still reposition / scale below. Upgrade unlocks multi-layer z-depth
-            (car in front of person).
-          </div>
-        ) : null}
-        {countStackLayers(preview) >= capacity.maxImages && capacity.multiImageEnabled ? (
-          <div style={{ fontSize: 10, color: GOLD }}>
-            At capacity.{" "}
-            <Link href={capacity.upgradeHref} style={{ color: CYAN, fontWeight: 800 }}>
-              Upgrade to add more images
-            </Link>
-          </div>
-        ) : null}
+      {/* Controller Nudge & Scale Controls */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        {/* Directional Pad */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginRight: 4 }}>POS</span>
+          <button type="button" title="Move left" onClick={() => nudgeActive(-YOPHO_NUDGE_XY_STEP, 0)} style={padBtn(RED)}>←</button>
+          <button type="button" title="Move up" onClick={() => nudgeActive(0, -YOPHO_NUDGE_XY_STEP)} style={padBtn(GREEN)}>↑</button>
+          <button type="button" title="Move down" onClick={() => nudgeActive(0, YOPHO_NUDGE_XY_STEP)} style={padBtn(RED)}>↓</button>
+          <button type="button" title="Move right" onClick={() => nudgeActive(YOPHO_NUDGE_XY_STEP, 0)} style={padBtn(GREEN)}>→</button>
+          <button type="button" title="Reset transform" onClick={resetActiveTransform} style={{ ...padBtn("rgba(255,255,255,0.5)"), fontSize: 8 }}>●</button>
+        </div>
+
+        {/* Scale Controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginRight: 4 }}>SCALE</span>
+          <button type="button" onClick={() => scaleActive(-YOPHO_NUDGE_SCALE_STEP)} style={padBtn(RED)}>−</button>
+          <input
+            type="range"
+            min={0.2}
+            max={3.0}
+            step={0.05}
+            value={activeLayer.scale}
+            onChange={(e) => setPreview((p) => updateLayerById(p, activeLayerId, { scale: Number(e.target.value) }))}
+            style={{ width: 80 }}
+          />
+          <button type="button" onClick={() => scaleActive(YOPHO_NUDGE_SCALE_STEP)} style={padBtn(GREEN)}>+</button>
+          <span style={{ fontSize: 9, color: GOLD, minWidth: 32 }}>{activeLayer.scale.toFixed(2)}x</span>
+        </div>
+
+        {/* Rotate Controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginRight: 4 }}>ROT</span>
+          <button type="button" onClick={() => rotateActive(-YOPHO_NUDGE_ROTATION_STEP)} style={padBtn(RED)}>↶</button>
+          <button type="button" onClick={() => rotateActive(YOPHO_NUDGE_ROTATION_STEP)} style={padBtn(GREEN)}>↷</button>
+          <span style={{ fontSize: 9, color: CYAN, minWidth: 36 }}>{activeLayer.rotation}°</span>
+        </div>
+
+        {/* Depth Controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginRight: 4 }}>DEPTH</span>
+          <button
+            type="button"
+            onClick={() => setPreview((p) => reorderStackLayer(p, activeLayerId, "forward"))}
+            style={padBtn(GREEN)}
+            title="Bring forward"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreview((p) => reorderStackLayer(p, activeLayerId, "back"))}
+            style={padBtn(RED)}
+            title="Send back"
+          >
+            ▼
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreview((p) => bringLayerToFront(p, activeLayerId))}
+            style={padBtn(GREEN)}
+            title="Bring to front"
+          >
+            ⇈
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreview((p) => sendLayerToBack(p, activeLayerId))}
+            style={padBtn(RED)}
+            title="Send to back"
+          >
+            ⇊
+          </button>
+        </div>
+
+        {/* Opacity Control */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginRight: 4 }}>OPACITY</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={activeLayer.opacity}
+            onChange={(e) => setPreview((p) => updateLayerById(p, activeLayerId, { opacity: Number(e.target.value) }))}
+            style={{ width: 80 }}
+          />
+          <span style={{ fontSize: 9, color: FUCHSIA, minWidth: 32 }}>{Math.round(activeLayer.opacity * 100)}%</span>
+        </div>
+      </div>
+
+      {/* Timeline Controls & Scrubber */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <button
+          type="button"
+          onClick={() => {
+            setTimelineSec(0);
+            setIsPlaying(true);
+          }}
+          style={chipBtn(GOLD)}
+          title="Rewind to start"
+        >
+          ⏮ REWIND
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsPlaying((p) => !p)}
+          style={chipBtn(CYAN)}
+        >
+          {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={durationSec}
+          step={0.05}
+          value={timelineSec}
+          onChange={(e) => {
+            setTimelineSec(Number(e.target.value));
+            setIsPlaying(false);
+          }}
+          style={{ flex: "1 1 180px", minWidth: 120 }}
+        />
+        <span style={{ fontSize: 10, fontWeight: 800, color: GOLD, fontFamily: "monospace" }}>
+          {formatTime(timelineSec)} / {formatTime(durationSec)}
+        </span>
+        <label style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 4 }}>
+          <input type="checkbox" checked={loopTimeline} onChange={(e) => setLoopTimeline(e.target.checked)} />
+          Loop
+        </label>
       </div>
     </div>
   );
 
-  const timelinePanel = (
+  // LAYER INSPECTOR DOCK (MODELED AFTER AFFINITY PHOTO)
+  const layerInspectorDock = (
     <div
       style={{
-        padding: "12px 16px",
-        borderRadius: 12,
+        borderRadius: 14,
         border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(5,5,16,0.92)",
+        background: "rgba(6,6,18,0.96)",
+        overflow: "hidden",
         display: "flex",
-        flexWrap: "wrap",
-        gap: 12,
-        alignItems: "center",
+        flexDirection: "column",
       }}
     >
-      <button
-        type="button"
-        onClick={() => setIsPlaying((p) => !p)}
+      {/* Dock Header & Category Tabs */}
+      <div
         style={{
-          padding: "8px 14px",
-          borderRadius: 8,
-          border: `1px solid ${CYAN}`,
-          background: `${CYAN}22`,
-          color: CYAN,
-          fontWeight: 900,
-          fontSize: 11,
-          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "8px 12px",
+          background: "rgba(0,0,0,0.4)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
-      </button>
-      <label style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 6 }}>
-        <input type="checkbox" checked={loopTimeline} onChange={(e) => setLoopTimeline(e.target.checked)} />
-        Loop
-      </label>
-      <input
-        type="range"
-        min={0}
-        max={durationSec}
-        step={0.05}
-        value={timelineSec}
-        onChange={(e) => {
-          setTimelineSec(Number(e.target.value));
-          setIsPlaying(false);
-        }}
-        style={{ flex: "1 1 200px", minWidth: 160 }}
-      />
-      <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, fontFamily: "monospace" }}>
-        {formatTime(timelineSec)} / {formatTime(durationSec)}
-      </span>
-    </div>
-  );
+        <div style={{ display: "flex", gap: 4 }}>
+          {(["layers", "fx", "style", "color", "motion"] as const).map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: active ? `1px solid ${CYAN}` : "1px solid transparent",
+                  background: active ? `${CYAN}22` : "transparent",
+                  color: active ? CYAN : "rgba(255,255,255,0.6)",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                }}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
 
-  const parameterPanel = (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
-        gap: 16,
-        padding: 14,
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.1)",
-        background: "rgba(5,5,16,0.9)",
-      }}
-    >
-      <div>
-        {selectedOverlayId && activeParams ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 900, color: CYAN, letterSpacing: "0.1em" }}>
-              PARAMETERS · {selectedOverlayId.replace(/_/g, " ").toUpperCase()}
-            </div>
-            {(
-              [
-                ["intensity", "Intensity", 0, 100],
-                ["speed", "Speed", 0.25, 2],
-              ] as const
-            ).map(([key, label, min, max]) => (
-              <div key={key}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
-                  {label}: {activeParams[key].toFixed(key === "speed" ? 2 : 0)}
+        <button
+          type="button"
+          onClick={() => setDockExpanded((e) => !e)}
+          style={{ ...chipBtn("rgba(255,255,255,0.5)"), fontSize: 9 }}
+        >
+          {dockExpanded ? "MINIMIZE ─" : "EXPAND ⤢"}
+        </button>
+      </div>
+
+      {/* Dock Content Body — Fixed height with internal scroll */}
+      {dockExpanded && (
+        <div
+          style={{
+            height: isMobile ? 260 : 340,
+            overflowY: "auto",
+            padding: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          {/* TAB 1: LAYERS */}
+          {activeTab === "layers" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Opacity & Blend Mode Bar */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", paddingBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Opacity:</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={activeLayer.opacity}
+                    onChange={(e) => setPreview((p) => updateLayerById(p, activeLayerId, { opacity: Number(e.target.value) }))}
+                    style={{ width: 90 }}
+                  />
+                  <span style={{ fontSize: 9, color: CYAN, fontWeight: 800 }}>{Math.round(activeLayer.opacity * 100)}%</span>
                 </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Blend:</span>
+                  <select
+                    value={activeLayer.blendMode}
+                    onChange={(e) => setPreview((p) => updateLayerById(p, activeLayerId, { blendMode: e.target.value as BlendMode }))}
+                    style={{
+                      background: "rgba(0,0,0,0.6)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 4,
+                      fontSize: 10,
+                      padding: "2px 6px",
+                    }}
+                  >
+                    {(["normal", "screen", "overlay", "multiply", "color-dodge", "soft-light", "luminosity"] as const).map((b) => (
+                      <option key={b} value={b}>
+                        {b.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Layer Stack Items */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {[...stackLayers].reverse().map((ref) => {
+                  const selected = ref.id === activeLayerId;
+                  const empty = !ref.layer.imageUrl?.trim();
+                  return (
+                    <div
+                      key={ref.id}
+                      onClick={() => setActiveLayerId(ref.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 8px",
+                        borderRadius: 8,
+                        border: selected ? `1.5px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
+                        background: selected ? `${CYAN}16` : "rgba(255,255,255,0.03)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {/* Thumbnail Placeholder */}
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 4,
+                          background: ref.layer.imageUrl ? `url(${ref.layer.imageUrl}) center/cover` : "rgba(255,255,255,0.1)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 10,
+                        }}
+                      >
+                        {!ref.layer.imageUrl ? "🖼" : null}
+                      </div>
+
+                      {/* Layer Label & Rename Input */}
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          value={ref.layer.label || `Layer ${ref.layer.zIndex}`}
+                          onChange={(e) => setPreview((p) => updateLayerById(p, ref.id, { label: e.target.value }))}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#fff",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            width: "100%",
+                          }}
+                        />
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
+                          z{ref.layer.zIndex} · {empty ? "Empty Image" : "Image Set"}
+                        </div>
+                      </div>
+
+                      {/* Layer Action Controls */}
+                      <button
+                        type="button"
+                        title={ref.layer.locked ? "Unlock" : "Lock"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreview((p) => updateLayerById(p, ref.id, { locked: !ref.layer.locked }));
+                        }}
+                        style={tinyBtn}
+                      >
+                        {ref.layer.locked ? "🔒" : "🔓"}
+                      </button>
+
+                      {stackLayers.length > 1 && (
+                        <button
+                          type="button"
+                          title="Remove layer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = removeStackLayer(preview, ref.id);
+                            setPreview(next);
+                            setActiveLayerId(next.primaryLayer.id);
+                          }}
+                          style={{ ...tinyBtn, color: RED }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Action Rail */}
+              <div style={{ display: "flex", gap: 6, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <button type="button" onClick={() => setShowAddModal(true)} style={chipBtn(GREEN)}>
+                  + ADD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = addStackLayer(preview, capacity.maxImages);
+                    if (next) {
+                      setPreview(next);
+                      const added = listStackLayers(next).at(-1);
+                      if (added) setActiveLayerId(added.id);
+                    }
+                  }}
+                  style={chipBtn(CYAN)}
+                >
+                  DUPLICATE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview((p) => updateLayerById(p, activeLayerId, { locked: !activeLayer.locked }))}
+                  style={chipBtn(GOLD)}
+                >
+                  {activeLayer.locked ? "UNLOCK" : "LOCK"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: FX */}
+          {activeTab === "fx" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: FUCHSIA, marginBottom: 4 }}>
+                OVERLAY EFFECTS & ANIMATIONS
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 6 }}>
+                {YOPHO_PORTRAIT_CONTROLS.map((c) => {
+                  const selected = selectedControlId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleControlClick(c.id)}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: selected ? `2px solid ${CYAN}` : "1px solid rgba(255,255,255,0.1)",
+                        background: selected ? `${CYAN}22` : "rgba(255,255,255,0.04)",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {activeParams && selectedOverlayId && (
+                <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: CYAN, marginBottom: 8 }}>
+                    {selectedOverlayId.replace(/_/g, " ").toUpperCase()} PARAMETERS
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Intensity: {activeParams.intensity}</div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={activeParams.intensity}
+                        onChange={(e) => patchSelectedParams({ intensity: Number(e.target.value) })}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Speed: {activeParams.speed.toFixed(2)}x</div>
+                      <input
+                        type="range"
+                        min={0.25}
+                        max={2}
+                        step={0.05}
+                        value={activeParams.speed}
+                        onChange={(e) => patchSelectedParams({ speed: Number(e.target.value) })}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: STYLE */}
+          {activeTab === "style" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: GOLD, marginBottom: 4 }}>
+                REUSABLE STYLE PACKS
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+                {YOPHO_STUDIO_STYLE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleApplyStylePreset(preset.id)}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${preset.accentHint ?? CYAN}55`,
+                      background: "rgba(255,255,255,0.04)",
+                      color: "#fff",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ color: preset.accentHint ?? CYAN }}>{preset.label}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{preset.tagline}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: COLOR */}
+          {activeTab === "color" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: CYAN, marginBottom: 4 }}>
+                COLOR PALETTE & ACCENTS
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {["#00FFFF", "#FF2DAA", "#FFD700", "#00FF88", "#9D00FF", "#FFFFFF"].map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    onClick={() => {
+                      const next = {
+                        ...preview,
+                        colorPalette: {
+                          primaryAccent: hex,
+                          secondaryAccent: hex,
+                          ambientGlow: hex,
+                        },
+                      };
+                      setPreview(next);
+                      onMasterChange(next);
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: hex,
+                      border: preview.colorPalette.primaryAccent === hex ? "2.5px solid #fff" : "1px solid rgba(255,255,255,0.2)",
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: MOTION */}
+          {activeTab === "motion" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: GREEN, marginBottom: 4 }}>
+                CONTINUOUS MOTION TIMELINE
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Motion Speed:</span>
                 <input
                   type="range"
-                  min={min}
-                  max={max}
-                  step={key === "speed" ? 0.05 : 1}
-                  value={activeParams[key]}
-                  onChange={(e) => patchSelectedParams({ [key]: Number(e.target.value) })}
-                  style={{ width: "100%", maxWidth: 420 }}
+                  min={0.25}
+                  max={3.0}
+                  step={0.1}
+                  value={motionSpeed}
+                  onChange={(e) => setMotionSpeed(Number(e.target.value))}
+                  style={{ flex: 1 }}
                 />
+                <span style={{ fontSize: 10, color: GREEN, fontWeight: 800 }}>{motionSpeed.toFixed(1)}x</span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-            Nudge the active layer with the controller above, then refine filters here. Apply to Master commits the working card. Free drag and advanced era presets remain staged for later wiring.
-          </div>
-        )}
-        {aiMessage ? (
-          <div
-            style={{
-              marginTop: 10,
-              padding: 10,
-              borderRadius: 8,
-              border: "1px solid rgba(255,215,0,0.4)",
-              color: GOLD,
-              fontSize: 11,
-            }}
-          >
-            {aiMessage}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", flexWrap: isMobile ? "wrap" : "nowrap", gap: 8, minWidth: isMobile ? 0 : 160 }}>
-        <button type="button" onClick={handleResetPreview} style={actionBtn("rgba(255,255,255,0.15)", "#fff")}>
-          RESET PREVIEW
-        </button>
-        <button type="button" onClick={() => setIsPlaying(true)} style={actionBtn(`${CYAN}44`, CYAN)}>
-          PREVIEW PLAY
-        </button>
-        <button type="button" onClick={handleApplyToMaster} style={actionBtn(`${FUCHSIA}55`, FUCHSIA)}>
-          APPLY TO MASTER
-        </button>
-        <button type="button" onClick={handleUndo} style={actionBtn(`${GOLD}33`, GOLD)}>
-          UNDO APPLY
-        </button>
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <style>{`
-        @media (max-width: 900px) {
-          [data-yopho-triple-grid] {
-            grid-template-columns: 1fr !important;
-          }
-          [data-yopho-position-pad] {
-            flex-direction: column !important;
-            align-items: stretch !important;
-          }
-        }
-      `}</style>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -852,79 +990,118 @@ export default function YoPhoTripleStageStudio({
         }}
       />
 
-      {isMobile ? null : layerPanel}
+      {/* ADD LAYER MODAL */}
+      {showAddModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              background: "rgba(10,10,28,0.98)",
+              border: `1px solid ${CYAN}`,
+              borderRadius: 16,
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: CYAN, letterSpacing: "0.1em" }}>
+                + ADD NEW LAYER ITEM
+              </span>
+              <button type="button" onClick={() => setShowAddModal(false)} style={tinyBtn}>
+                ✕
+              </button>
+            </div>
 
-      {isMobile ? null : timelinePanel}
-
-      {isMobile && (
-        <div style={{ marginBottom: 2 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: CYAN, marginBottom: 8 }}>
-            YOPHO MOBILE STAGE
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginBottom: 12 }}>
-            Preview first, working canvas second, controller directly underneath.
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[
+                ["📷 Photo", "photo"],
+                ["🎥 Video", "video"],
+                ["🔤 Text", "text"],
+                ["⚡ Effect", "effect"],
+                ["🖼 Frame", "frame"],
+                ["🌆 Background", "background"],
+                ["✨ Prop / Sticker", "prop"],
+                ["🏷 Logo", "logo"],
+                ["🎆 Particle", "particle"],
+                ["🎬 Animation", "animation"],
+              ].map(([label, kind]) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => handleAddLayerItem(kind)}
+                  style={{
+                    padding: "10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
+      {/* MAIN YOPHO TRIPLE-STAGE DISPLAY GRID */}
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "start" }}>
-            {previewStage}
-            {compareStage}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {preview1Stage}
+            {preview2Stage}
           </div>
-          {workingStage}
-          {positionPad}
-          {parameterPanel}
-          {timelinePanel}
-          {layerPanel}
-          {filtersPanel}
+          {preview3Stage}
+          {precisionControllerBar}
+          {layerInspectorDock}
         </div>
       ) : (
-        <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div
-            data-yopho-triple-grid
             style={{
               display: "grid",
-              gridTemplateColumns: "1.15fr 1fr 1fr minmax(180px, 220px)",
-              gap: 14,
+              gridTemplateColumns: "1fr 1fr 1.3fr",
+              gap: 12,
               alignItems: "start",
             }}
           >
-            {workingStage}
-            {previewStage}
-            {compareStage}
-            {filtersPanel}
+            {preview1Stage}
+            {preview2Stage}
+            {preview3Stage}
           </div>
-          {positionPad}
-          {parameterPanel}
-        </>
+          {precisionControllerBar}
+          {layerInspectorDock}
+        </div>
       )}
 
       {statusLine ? (
-        <div style={{ fontSize: 11, color: CYAN, fontWeight: 700 }}>{statusLine}</div>
+        <div style={{ fontSize: 10, color: CYAN, fontWeight: 700, textAlign: "center" }}>{statusLine}</div>
       ) : null}
     </div>
   );
 }
 
-function actionBtn(bg: string, color: string) {
-  return {
-    padding: "10px 14px",
-    borderRadius: 8,
-    border: `1px solid ${color}66`,
-    background: bg,
-    color,
-    fontSize: 10,
-    fontWeight: 900,
-    letterSpacing: "0.08em",
-    cursor: "pointer",
-  } as const;
-}
-
 function chipBtn(color: string): CSSProperties {
   return {
-    padding: "6px 10px",
+    padding: "5px 9px",
     borderRadius: 6,
     border: `1px solid ${color}66`,
     background: `${color}18`,
@@ -943,21 +1120,21 @@ const tinyBtn: CSSProperties = {
   color: "#fff",
   borderRadius: 4,
   fontSize: 10,
-  width: 26,
+  width: 24,
   height: 24,
   cursor: "pointer",
 };
 
 function padBtn(color: string): CSSProperties {
   return {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     padding: 0,
     borderRadius: 6,
     border: `1px solid ${color}88`,
     background: `${color}22`,
     color,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 900,
     cursor: "pointer",
     fontFamily: "inherit",

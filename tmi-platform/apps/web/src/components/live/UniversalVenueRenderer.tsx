@@ -48,6 +48,9 @@ import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
+import TMIInteractiveLoungeHud from "@/components/venue-hud/TMIInteractiveLoungeHud";
+import { registerAndAdaptParticipant } from "@/lib/personal-media";
+import { loungeHudMountsForRoom } from "@/lib/venue-hud/loungeContainer";
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 import { AttentionDebugOverlay } from '@/components/live/AttentionDebugOverlay';
@@ -55,6 +58,7 @@ import { RoomBubbleRail } from '@/components/chat/RoomBubbleRail';
 import { useVenueSpeechBubbles, audienceMessageToRoomChat } from '@/components/messaging/useVenueSpeechBubbles';
 import VenueInRoomMessagingPanel from '@/components/messaging/VenueInRoomMessagingPanel';
 import { RoomBubbleChatEngine } from '@/lib/chat/RoomBubbleChatEngine';
+import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
 
 const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
 import {
@@ -142,6 +146,7 @@ type LiveSession = {
   stageState: string;
   accentColor: string;
   userId: string;
+  performerTier?: string;
 };
 
 type FloatingReaction = { id: string; emoji: string; x: number };
@@ -241,7 +246,30 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       : snapshot
         ? realOccupancyRatio
         : 0.08;
+  const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
+  const tierSkin = resolveBaseVenueSkin(liveSession?.performerTier ?? 'FREE');
   const watchingCount = snapshot?.present ?? 0;
+  const loungeContextParticipantId = snapshot?.activeMembers?.[0]?.userId;
+
+  useEffect(() => {
+    if (!canonicalHudFamilyIsLounge) return;
+    const members = snapshot?.activeMembers ?? [];
+    const localVideoTrack = stream?.getVideoTracks?.()[0] ?? null;
+    const localAudioTrack = stream?.getAudioTracks?.()[0] ?? null;
+    for (const member of members) {
+      const isLocalCapture = member.userId === userId && Boolean(stream);
+      registerAndAdaptParticipant({
+        participantId: member.userId,
+        canonicalIdentityId: member.userId,
+        roomId,
+        displayName: member.displayName,
+        videoTrackRef: isLocalCapture ? localVideoTrack : null,
+        audioTrackRef: isLocalCapture ? localAudioTrack : null,
+        spatialPodId: null,
+      });
+    }
+  }, [canonicalHudFamilyIsLounge, snapshot?.activeMembers, roomId, stream, userId]);
+
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   useEffect(() => {
@@ -464,12 +492,28 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   }
 
   return (
-    <section style={{ border: '1px solid rgba(0,255,255,0.25)', borderRadius: 14, padding: 12, background: 'rgba(5,5,16,0.22)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', marginTop: 14 }}>
+    <section
+      style={{
+        border: `1px solid ${tierSkin.accent}40`,
+        borderRadius: 14,
+        padding: 12,
+        background: `radial-gradient(ellipse at 50% 0%, ${tierSkin.accent}0a 0%, rgba(5,5,16,0.22) 60%)`,
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        marginTop: 14,
+        ['--tier-accent' as string]: tierSkin.accent,
+        ['--tier-trim' as string]: tierSkin.trim,
+        ['--tier-lighting-layers' as string]: String(tierSkin.lightingLayers),
+        ['--tier-prestige-fx' as string]: tierSkin.prestigeFx ? '1' : '0',
+      } as React.CSSProperties
+    }>
       <style>{`@keyframes universalReactionFloat{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-90px) scale(1.4);}}`}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#00FFFF', fontWeight: 800 }}>TMI VENUE</div>
+          <div style={{ fontSize: 10, letterSpacing: '0.14em', color: tierSkin.accent, fontWeight: 800 }}>
+            TMI VENUE · {tierSkin.label.toUpperCase()}
+          </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{snapshot?.present ?? 0} inside · {roomId}</div>
         </div>
         {mode === 'audience' ? (
@@ -489,6 +533,17 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
       {/* ── Stage + 3D ambient crowd ─────────────────────────────────────── */}
       <div style={{ position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 12 }}>
+        {canonicalHudFamilyIsLounge ? (
+          <TMIInteractiveLoungeHud
+            loungeId={roomId}
+            loungeTitle={`Lounge ${roomId}`}
+            loungeMode={roomId.toLowerCase().includes("playlist") ? "PLAYLIST_LOUNGE" : "CHILL_LOUNGE"}
+            userRole={mode === "performer" ? "performer" : "fan"}
+            contextParticipantId={loungeContextParticipantId}
+            occupancyPresent={snapshot?.present ?? 0}
+            occupancyCapacity={snapshot?.capacity}
+          />
+        ) : null}
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000' }}>
           <LiveRecoveryOverlay status={recoveryStatus} />
           {(liveSession || instantEmptyStage) && (

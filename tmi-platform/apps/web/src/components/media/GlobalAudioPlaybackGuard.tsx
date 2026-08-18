@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 function pauseAllAudioExcept(active: HTMLAudioElement | null): void {
@@ -18,7 +18,7 @@ function pauseAllAudioExcept(active: HTMLAudioElement | null): void {
   });
 }
 
-export default function GlobalAudioPlaybackGuard() {
+function GlobalAudioPlaybackGuardInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -74,3 +74,12 @@ export default function GlobalAudioPlaybackGuard() {
 
   return null;
 }
+
+export default function GlobalAudioPlaybackGuard() {
+  return (
+    <Suspense fallback={null}>
+      <GlobalAudioPlaybackGuardInner />
+    </Suspense>
+  );
+}
+

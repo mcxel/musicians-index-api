@@ -113,3 +113,36 @@ export async function getAuthState(): Promise<{ authenticated: boolean; user: Au
     return { authenticated: false, user: null, role: null, tier: null };
   }
 }
+
+/**
+ * Three real states, not two. Any consumer that gates a login prompt on
+ * auth state (Canister/Inventory Vault, role-gated panels, etc.) must derive
+ * it through here — never from "not yet authenticated" alone, which is
+ * indistinguishable from "still loading" and is exactly the mobile-Safari
+ * false-login-flash bug this exists to prevent. Authentication and role are
+ * deliberately separate inputs: a role check (e.g. "is this a Fan") must
+ * never substitute for "does an authenticated session exist."
+ */
+export type AuthPhase = "AUTH_LOADING" | "AUTHENTICATED" | "UNAUTHENTICATED";
+
+export function resolveAuthPhase(isLoading: boolean, isAuthenticated: boolean): AuthPhase {
+  if (isLoading) return "AUTH_LOADING";
+  return isAuthenticated ? "AUTHENTICATED" : "UNAUTHENTICATED";
+}
+
+// ── Test-only accessors ──────────────────────────────────────────────────
+// Exercise the real module-level cache/fetch mechanics (the actual thing
+// that makes every useAuth() consumer on a page share one session — the
+// "shell and Canister share identity" guarantee) without requiring a React
+// render harness, matching this repo's plain-function test convention.
+export function __resetAuthCacheForTest(): void {
+  cachedState = null;
+  fetchPromise = null;
+}
+export function __triggerFetchForTest(): Promise<void> {
+  triggerFetch();
+  return fetchPromise ?? Promise.resolve();
+}
+export function __peekAuthCacheForTest() {
+  return cachedState;
+}

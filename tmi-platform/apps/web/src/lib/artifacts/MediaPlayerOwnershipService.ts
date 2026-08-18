@@ -64,17 +64,35 @@ export async function provisionDefaultMediaPlayer(
     owned.add(chassisId);
   }
 
+  // Platinum and Diamond subscription tiers receive Submarine Media Player automatically for free
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tier: true, role: true },
+  });
+  if (user?.tier === "PLATINUM" || user?.tier === "DIAMOND" || user?.role === "ADMIN") {
+    if (!owned.has("submarine")) {
+      await prisma.mediaPlayerChassisOwnership.upsert({
+        where: { userId_chassisId: { userId, chassisId: "submarine" } },
+        create: { userId, chassisId: "submarine", unlockedVia: "tier" },
+        update: {},
+      });
+      owned.add("submarine");
+    }
+  }
+
+
   let pref = await prisma.mediaPlayerPreference.findUnique({ where: { userId } });
   let equipped = (pref?.equippedChassisId ?? FREE_DEFAULT_CHASSIS_ID) as MediaPlayerChassisId;
 
   if (
     equipped === "fish" ||
-    equipped === "submarine" ||
+    (equipped === "submarine" && !owned.has("submarine")) ||
     !isChassisId(equipped) ||
     !owned.has(equipped)
   ) {
     equipped = FREE_DEFAULT_CHASSIS_ID;
   }
+
 
   pref = await prisma.mediaPlayerPreference.upsert({
     where: { userId },

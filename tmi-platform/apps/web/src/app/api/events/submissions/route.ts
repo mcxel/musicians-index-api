@@ -18,7 +18,19 @@ export async function GET(req: NextRequest) {
       take: 20,
     });
 
-    return NextResponse.json({ ok: true, submissions });
+    // Reshape flat Prisma fields (actTitle, userName) into the nested
+    // {title, user:{name,displayName}} shape consumers expect — the raw
+    // row shape doesn't match any consumer's interface.
+    const shaped = submissions.map((s) => ({
+      id: s.id,
+      title: s.actTitle,
+      genre: s.genre,
+      createdAt: s.createdAt,
+      userId: s.userId,
+      user: { name: s.userName, displayName: s.userName },
+    }));
+
+    return NextResponse.json({ ok: true, submissions: shaped });
   } catch (err: any) {
     console.warn('[Submissions API] Database query warning (falling back to memory):', err?.message);
     return NextResponse.json({ ok: true, submissions: [] });
