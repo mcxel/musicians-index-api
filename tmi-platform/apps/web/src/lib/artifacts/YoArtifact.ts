@@ -33,25 +33,42 @@ export type YoRawExportPolicy =
   | "MP4_VIDEO"            // video export included
   | "FULL_MEDIA";          // all formats buyer can legally receive
 
-// ── Track / media entries ──────────────────────────────────────────────────────
+// ── Media entries (generalized — AUDIO and VIDEO in one release) ──────────────
 
-export type YoArtifactTrackKind = "AUDIO" | "VIDEO" | "AUDIO_VIDEO" | "VISUAL_ONLY";
+/** Discriminated media type — one release can mix songs and music videos */
+export type YoMediaType = "AUDIO" | "VIDEO" | "AUDIO_VIDEO" | "VISUAL_ONLY";
 
-export interface YoArtifactTrack {
+/** @deprecated Use YoMediaType */
+export type YoArtifactTrackKind = YoMediaType;
+
+export interface YoMediaEntry {
   id: string;
-  position: number;
+  /** Position in release sequence (1-based) */
+  sequencePosition: number;
   title: string;
   artistDisplay: string;
-  kind: YoArtifactTrackKind;
+  /** Discriminated media type */
+  mediaType: YoMediaType;
   durationMs: number;
   /** Internal asset pointer — resolved by PortableArtifactBuilder at download time */
-  assetRef: string;
+  assetReference: string;
+  /** Codec/profile hint for the player runtime */
+  codecProfile?: string;
+  /** Per-entry artwork (e.g. music video thumbnail distinct from album cover) */
+  artworkUrl?: string;
   isExplicit?: boolean;
   /** Producer credit */
   producedBy?: string;
   /** Feat. artists */
   features?: string[];
 }
+
+/** @deprecated Use YoMediaEntry */
+export type YoArtifactTrack = Omit<YoMediaEntry, "sequencePosition" | "assetReference" | "mediaType"> & {
+  position: number;
+  assetRef: string;
+  kind: YoMediaType;
+};
 
 // ── Release manifest ───────────────────────────────────────────────────────────
 
@@ -67,7 +84,8 @@ export interface YoArtifactManifest {
   /** TMI artist slug for back-link to platform profile */
   artistSlug?: string;
   releaseDate: string;
-  tracks: YoArtifactTrack[];
+  /** Ordered media entries — mix of AUDIO and VIDEO allowed in one release */
+  entries: YoMediaEntry[];
   /** Primary cover art URL (must be accessible offline if bundled) */
   coverArtUrl: string;
   /** YoPho card document ID linked to this release for artwork/triptych/skin */
