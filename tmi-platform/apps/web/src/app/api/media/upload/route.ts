@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
 
     const contentType = req.headers.get("content-type") ?? "";
     let title = "", rawType = "song", simulatedFileName = "", simulatedSizeBytes = 0;
+    let uploadedFile: File | null = null;
 
     try {
       if (contentType.includes("multipart/form-data")) {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
         const file = fd.get("file") as File | null;
         simulatedFileName = file?.name ?? "upload";
         simulatedSizeBytes = file?.size ?? 0;
+        uploadedFile = file;
       } else {
         const body = await req.json() as UploadRequest & { rawType?: string };
         title = body.title ?? "";
@@ -64,6 +66,24 @@ export async function POST(req: NextRequest) {
                  : result.error?.includes("not allowed") ? "UNSUPPORTED_FORMAT"
                  : "UPLOAD_ERROR";
       return NextResponse.json({ ...result, code }, { status: 400 });
+    }
+
+    // Replace simulated CDN URL with a real stored URL when an actual file was sent.
+    if (uploadedFile && result.assetId) {
+      try {
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          const { put } = await import("@vercel/blob");
+          const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const blob = await put(`tmi-media/${ownerId}/${result.assetId}-${safeName}`, uploadedFile, { access: "public" });
+          (result as unknown as Record<string, unknown>).url = blob.url;
+        } else if (uploadedFile.size <= 10 * 1024 * 1024) {
+          const bytes = Buffer.from(await uploadedFile.arrayBuffer());
+          (result as unknown as Record<string, unknown>).url = `data:${uploadedFile.type};base64,${bytes.toString("base64")}`;
+        }
+        // >10 MB without Blob: keep simulated URL; track metadata saves but audio won't play.
+      } catch (storageErr) {
+        console.error("[media/upload storage]", storageErr);
+      }
     }
 
     const resolvedGenre = uploadReq.genre?.trim() || "Other";

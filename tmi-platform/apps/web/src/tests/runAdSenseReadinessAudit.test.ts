@@ -27,13 +27,23 @@ export function runAdSenseReadinessAuditTest(): { allPassed: boolean; results: R
   const pubId = getAdSensePublisherId();
   results["publisher_id_configured"] = pubId === "ca-pub-4088577529436039";
 
-  // 3. Route Policy Excludes Protected Surfaces
+  // 3. Route Policy Excludes Protected Surfaces (Real Mounted Routes)
   const checkoutCheck = resolveRouteAdEligibility("/checkout");
   const financeCheck = resolveRouteAdEligibility("/account/finance");
   const loginCheck = resolveRouteAdEligibility("/login");
   const stageCheck = resolveRouteAdEligibility("/stage");
+  const mondayStageCheck = resolveRouteAdEligibility("/rooms/monday-stage");
+  const liveRoomCheck = resolveRouteAdEligibility("/live/rooms/room-123");
+  const arenaCheck = resolveRouteAdEligibility("/arena/battle-1");
+
   results["route_policy_excludes_protected_surfaces"] =
-    !checkoutCheck.eligible && !financeCheck.eligible && !loginCheck.eligible && !stageCheck.eligible;
+    !checkoutCheck.eligible &&
+    !financeCheck.eligible &&
+    !loginCheck.eligible &&
+    !stageCheck.eligible &&
+    !mondayStageCheck.eligible &&
+    !liveRoomCheck.eligible &&
+    !arenaCheck.eligible;
 
   // 4. Public Editorial Pages Eligible
   const homeCheck = resolveRouteAdEligibility("/");
