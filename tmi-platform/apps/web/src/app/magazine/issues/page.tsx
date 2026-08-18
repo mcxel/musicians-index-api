@@ -3,6 +3,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 
+// LEGACY: article directory / list+READ cards. MAGAZINE nav goes to /magazine → /magazine/issue/current.
+
 const CURRENT_ISSUE = {
   id: "1",
   title: "The Musician's Index — Issue 01",
@@ -150,7 +152,7 @@ export default function MagazineIssuesPage() {
           </div>
         </motion.div>
 
-        {/* Articles in this issue */}
+        {/* LEGACY article directory (list + READ cards) — not the MAGAZINE button destination */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} style={{ marginBottom: 48 }}>
           <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#FF2DAA", fontWeight: 800, marginBottom: 18 }}>
             INSIDE ISSUE 01 · {MAGAZINE_ISSUE_1.length} ARTICLES

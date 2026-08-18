@@ -1,7 +1,10 @@
 /**
  * Commerce catalog identity for digital goods.
  * Prices come from existing server catalogs — never from the client.
+ * This module wraps STRIPE_PRODUCTS + venue-skin SKU identity. Do not add a second catalog.
  */
+
+import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
 
 export type CommerceProductType =
   | "VENUE_SKIN"
@@ -36,6 +39,14 @@ export type CommerceProduct = {
 
 export type CommerceOrderState = "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "CANCELED";
 
+export type CommerceCatalogPrice = {
+  sku: string;
+  title: string;
+  priceCents: number;
+  stripePriceId: string | null;
+  type: CommerceProductType;
+};
+
 export function venueSkinSku(skinId: string): string {
   return `VENUE_SKIN:${skinId}`;
 }
@@ -43,4 +54,44 @@ export function venueSkinSku(skinId: string): string {
 export function parseVenueSkinSku(sku: string): string | null {
   if (!sku.startsWith("VENUE_SKIN:")) return null;
   return sku.slice("VENUE_SKIN:".length);
+}
+
+export function mediaPlayerChassisSku(chassisId: string): string {
+  return `MEDIA_PLAYER_CHASSIS:${chassisId}`;
+}
+
+export function parseMediaPlayerChassisSku(sku: string): string | null {
+  if (!sku.startsWith("MEDIA_PLAYER_CHASSIS:")) return null;
+  return sku.slice("MEDIA_PLAYER_CHASSIS:".length);
+}
+
+type StripeCatalogEntry = (typeof STRIPE_PRODUCTS)[keyof typeof STRIPE_PRODUCTS];
+
+function asStripeEntry(value: unknown): StripeCatalogEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const entry = value as Partial<StripeCatalogEntry>;
+  if (typeof entry.priceId !== "string" || typeof entry.name !== "string" || typeof entry.price !== "number") {
+    return null;
+  }
+  return entry as StripeCatalogEntry;
+}
+
+/** Lookup against the existing STRIPE_PRODUCTS table only — no parallel price list. */
+export function lookupStripeCatalogPrice(skuId: string): CommerceCatalogPrice | null {
+  for (const [key, raw] of Object.entries(STRIPE_PRODUCTS)) {
+    const product = asStripeEntry(raw);
+    if (!product) continue;
+    const productId = "productId" in product && typeof product.productId === "string" ? product.productId : "";
+    if (product.priceId === skuId || productId === skuId || key === skuId) {
+      const recurring = "interval" in product && product.interval != null;
+      return {
+        sku: skuId,
+        title: product.name,
+        priceCents: product.price,
+        stripePriceId: product.priceId,
+        type: recurring ? "SUBSCRIPTION_TIER" : "LIMITED_DROP",
+      };
+    }
+  }
+  return null;
 }

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import ViralShareButton from '@/components/share/ViralShareButton';
+import { uploadCanonicalMediaFile } from '@/lib/media/clientMediaUpload';
+import { isDurablePlayableMediaUrl } from '@/lib/media/durablePlayableUrl';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MediaKind = 'song' | 'video' | 'live' | 'podcast';
@@ -263,55 +265,45 @@ export default function ProfilePlaylist({
   }
 
   // ── File upload ────────────────────────────────────────────────────────────
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
     setUploading(true);
-    setUploadPct(0);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
-    };
-    xhr.onload = () => {
-      setUploading(false);
-      if (xhr.status === 200) {
-        const data = JSON.parse(xhr.responseText) as { url: string; isVideo?: boolean; error?: string };
-        if (data.error) { setUploadError(data.error); return; }
-        const kind: MediaKind = data.isVideo ? 'video' : 'song';
-        const platform = data.isVideo ? 'Video File' : 'Audio File';
-        const entry: PlaylistEntry = {
-          id: `${writerId}-${Date.now()}`,
-          kind,
-          url: data.url,
-          title: file.name.replace(/\.[^.]+$/, ''),
-          platform,
-          addedAt: new Date().toISOString(),
-        };
-        setEntries(prev => [entry, ...prev]);
-        setAdding(false);
-        setAddMode('url');
-        setUploadPct(0);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      } else {
-        try {
-          const err = JSON.parse(xhr.responseText) as { error?: string };
-          setUploadError(err.error ?? 'Upload failed');
-        } catch {
-          setUploadError('Upload failed — check BLOB_READ_WRITE_TOKEN in Vercel environment variables.');
-        }
-      }
-    };
-    xhr.onerror = () => { setUploading(false); setUploadError('Upload failed. Check your connection.'); };
-    xhr.open('POST', '/api/upload/media');
-    xhr.send(formData);
-
-    // Reset input so the same file can be re-selected after an error
+    setUploadPct(20);
     e.target.value = '';
+
+    try {
+      const result = await uploadCanonicalMediaFile(file, { persistVia: '/api/upload/media' });
+      setUploadPct(90);
+      if (!result.ok) {
+        setUploadError(result.error);
+        return;
+      }
+      if (!isDurablePlayableMediaUrl(result.url)) {
+        setUploadError('Upload did not return a playable URL.');
+        return;
+      }
+      const kind: MediaKind = file.type.startsWith('video/') ? 'video' : 'song';
+      const platform = kind === 'video' ? 'Video File' : 'Audio File';
+      const entry: PlaylistEntry = {
+        id: result.id,
+        kind,
+        url: result.url,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        platform,
+        addedAt: new Date().toISOString(),
+      };
+      setEntries(prev => [entry, ...prev]);
+      setAdding(false);
+      setAddMode('url');
+      setUploadPct(100);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch {
+      setUploadError('Upload failed. Check your connection.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   // ── Skin selector ──────────────────────────────────────────────────────────

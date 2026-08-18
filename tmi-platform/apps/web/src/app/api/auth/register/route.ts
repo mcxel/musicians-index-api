@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { ageYearsFromDateOfBirthIso } from '@/lib/trustSafety/YouthSocialGuard';
 import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
@@ -156,6 +157,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, errorCode: 'WEAK_PASSWORD', error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
+  const registerAgeYears = parsed.dateOfBirth ? ageYearsFromDateOfBirthIso(parsed.dateOfBirth) : null;
+  if (registerAgeYears != null && registerAgeYears < 16) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'AGE_RESTRICTED',
+        error: 'You must be 16 years of age or older to create an account.',
+      },
+      { status: 403 },
+    );
+  }
+
 async function ensureUserDatabaseSchema() {
   try {
     await prisma.$executeRawUnsafe(`
@@ -218,13 +231,26 @@ async function ensureUserDatabaseSchema() {
 
     // Create user with first role as primary (legacy compatibility)
     stage = 'USER_CREATED';
+    const signupAgeYears = parsed.dateOfBirth
+      ? ageYearsFromDateOfBirthIso(parsed.dateOfBirth)
+      : null;
+    const signupDob = parsed.dateOfBirth ? new Date(parsed.dateOfBirth) : null;
+    const hasSignupDob = Boolean(signupDob && !Number.isNaN(signupDob.getTime()) && signupAgeYears != null);
+
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         displayName: displayName || email.split('@')[0],
         role: platformRoles[0].toUpperCase() as any,
-        tier: resolvedTier
+        tier: resolvedTier,
+        ...(hasSignupDob
+          ? {
+              dateOfBirth: signupDob!,
+              age: signupAgeYears!,
+              isMinor: signupAgeYears! < 18,
+            }
+          : {}),
       }
     });
 

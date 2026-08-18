@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getTmiAuth } from '@/lib/auth/getTmiAuth';
+import { toClientPlayableMediaUrl } from '@/lib/media/blobStorage';
 
 // GET /api/media/locker
 // Returns the authenticated user's uploaded songs and videos.
@@ -39,14 +40,14 @@ export async function GET(_req: NextRequest) {
         id: s.id,
         title: s.title,
         type: 'songs' as const,
-        url: s.audioUrl,
+        url: toClientPlayableMediaUrl(s.audioUrl),
         addedAt: s.createdAt.toISOString().slice(0, 10),
       })),
       ...videos.map((v) => ({
         id: v.id,
         title: v.title,
         type: 'videos' as const,
-        url: v.videoUrl,
+        url: toClientPlayableMediaUrl(v.videoUrl),
         addedAt: v.createdAt.toISOString().slice(0, 10),
       })),
     ].sort((a, b) => b.addedAt.localeCompare(a.addedAt));

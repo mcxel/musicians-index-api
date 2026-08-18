@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
  */
 
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { persistUploadedMediaFile } from "@/lib/media/persistUploadedMedia";
 import { createHash, randomBytes } from "crypto";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import prisma from "@/lib/prisma";
@@ -147,16 +147,19 @@ export async function POST(req: Request) {
     }, { status: 409 });
   }
 
-  // 7. Upload to Vercel Blob
+  // 7. Upload via canonical persist (Blob OIDC/private, or local/dev fallback)
   const canonicalId = generateBeatCanonicalId();
   let audioAssetUrl: string;
   try {
-    const blob = await put(`beats/${auth.user.id}/${canonicalId}${ext}`, buf, {
-      access: "public",
-      contentType: audioFile.type || "audio/mpeg",
-      addRandomSuffix: false,
+    const stored = await persistUploadedMediaFile({
+      file: audioFile,
+      ownerId: auth.user.id,
+      fallbackExt: ext.replace(".", "") || "mp3",
     });
-    audioAssetUrl = blob.url;
+    if (!stored.ok) {
+      return NextResponse.json({ error: "upload_failed", details: stored.error }, { status: stored.status });
+    }
+    audioAssetUrl = stored.url;
   } catch (err) {
     console.error("[beat/submit] blob upload failed:", err);
     return NextResponse.json({ error: "upload_failed", details: "Storage unavailable. Retry." }, { status: 502 });

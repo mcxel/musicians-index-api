@@ -6,8 +6,6 @@ import { LobbyState } from '@/lib/lobby/LobbyStateEngine';
 import { LobbyVideoPresenceEngine } from '@/lib/lobby/LobbyVideoPresenceEngine';
 import { LobbySpeakingPopup } from './LobbySpeakingPopup';
 import { useVoiceActivity } from '@/lib/audio/useVoiceActivity';
-import { enforceAdultTeenContactBlock } from '@/lib/safety/AdultTeenContactBlocker';
-import type { SafetyAgeClass } from '@/lib/safety/TeenMessagingPolicyEngine';
 import {
   getLobbyFeedSnapshot,
   subscribeLobbyFeed,
@@ -35,25 +33,16 @@ export const LobbyVideoFeedBubble = ({
   state,
   userId = 'lobby-camera-user',
   isSpeaking,
-  actorAgeClass = 'unknown',
-  targetAgeClass = 'unknown',
 }: {
   state: LobbyState;
   userId?: string;
   isSpeaking?: boolean;
-  actorAgeClass?: SafetyAgeClass;
-  targetAgeClass?: SafetyAgeClass;
+  actorAgeClass?: string;
+  targetAgeClass?: string;
 }) => {
   const visibility = LobbyVideoPresenceEngine.getVisibility(state);
   const voiceFromMic = useVoiceActivity(userId);
   const speaking = typeof isSpeaking === "boolean" ? isSpeaking : voiceFromMic;
-
-  const decision = enforceAdultTeenContactBlock({
-    source: 'lobby:video-feed',
-    channel: 'video_presence',
-    actor: { userId, ageClass: actorAgeClass, familyVerified: false, guardianApproved: false },
-    target: { userId: 'lobby-video-audience', ageClass: targetAgeClass },
-  });
 
   // B2: Subscribe to LobbyFeedBus — real monitor rotation
   const [feed, setFeed] = useState(() => getLobbyFeedSnapshot());
@@ -69,14 +58,6 @@ export const LobbyVideoFeedBubble = ({
     }, 8000);
     return () => window.clearInterval(id);
   }, [feed]);
-
-  if (!decision.allowed) {
-    return (
-      <div className="absolute top-24 left-6 z-40 rounded-xl border border-red-500/40 bg-red-950/70 px-3 py-2 text-[10px] font-semibold tracking-wide text-red-200">
-        VIDEO BLOCKED: {decision.reason}
-      </div>
-    );
-  }
 
   if (visibility === 'hidden') return null;
 

@@ -8,6 +8,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import MessagePersistenceEngine from '@/lib/social/MessagePersistenceEngine';
+import { assertOneToOneSocialForUserIds, youthSocialBlockPayload } from '@/lib/trustSafety/resolveYouthSocialSubject';
 
 export async function GET(req: NextRequest) {
   const userId = req.cookies.get('tmi_session_id')?.value?.substring(0, 16);
@@ -45,6 +46,14 @@ export async function POST(req: NextRequest) {
 
   if (!toUserId || !text) {
     return NextResponse.json({ error: 'toUserId and text required' }, { status: 400 });
+  }
+
+  try {
+    await assertOneToOneSocialForUserIds(fromUserId, toUserId as string);
+  } catch (err) {
+    const blocked = youthSocialBlockPayload(err);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
+    return NextResponse.json({ error: 'Unable to send message' }, { status: 500 });
   }
 
   const msg = await MessagePersistenceEngine.sendMessage(fromUserId, toUserId as string, text as string);

@@ -9,6 +9,8 @@ import {
   getAnchorNetworkControlSnapshot,
   listAnchorCapacityMatrix,
 } from '@/lib/live/AnchorRoomNetwork';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
+import { filterDatingExperiencesForUserId } from '@/lib/trustSafety/datingExperienceGuard';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -20,10 +22,17 @@ export async function GET(req: NextRequest) {
   ensureAnchorRoomsSeeded();
   getAnchorDiscoveryRecords();
 
+  const auth = await getTmiAuth();
+  const userId = auth?.user?.id ?? null;
+
   if (anchorsOnly) {
+    const rooms = await filterDatingExperiencesForUserId(userId, listAnchorLiveRoomRecords(), (r) => ({
+      roomId: r.roomId,
+      title: r.title,
+    }));
     return NextResponse.json({
       ok: true,
-      rooms: listAnchorLiveRoomRecords(),
+      rooms,
       controls: getAnchorNetworkControlSnapshot(),
       capacityMatrix: listAnchorCapacityMatrix(),
     });
@@ -33,21 +42,49 @@ export async function GET(req: NextRequest) {
     const active = getActiveLiveRooms();
     const anchors = listAnchorLiveRoomRecords();
     const anchorIds = new Set(anchors.map((r) => r.roomId));
+    const filteredAnchors = await filterDatingExperiencesForUserId(userId, anchors, (r) => ({
+      roomId: r.roomId,
+      title: r.title,
+      roomType: r.roomType,
+    }));
+    const filteredActive = await filterDatingExperiencesForUserId(
+      userId,
+      active.filter((r) => !anchorIds.has(r.roomId)),
+      (r) => ({
+        roomId: r.roomId,
+        title: r.title,
+        roomType: r.roomType,
+        tags: r.tags,
+        experienceClass: r.experienceClass,
+        minimumAge: r.minimumAge,
+        ageVerificationRequired: r.ageVerificationRequired,
+      }),
+    );
     const rooms = [
-      ...anchors,
-      ...active
-        .filter((r) => !anchorIds.has(r.roomId))
-        .map((r) => ({
-          roomId: r.roomId,
-          roomType: r.roomType,
-          title: r.title,
-          status: r.status,
-          genre: r.genre,
-        })),
+      ...filteredAnchors,
+      ...filteredActive.map((r) => ({
+        roomId: r.roomId,
+        roomType: r.roomType,
+        title: r.title,
+        status: r.status,
+        genre: r.genre,
+      })),
     ];
     return NextResponse.json({ ok: true, rooms });
   }
 
-  const rooms = listLiveRooms(type ? { roomType: type } : undefined);
+  const rooms = await filterDatingExperiencesForUserId(
+    userId,
+    listLiveRooms(type ? { roomType: type } : undefined),
+    (r) => ({
+      roomId: r.roomId,
+      title: r.title,
+      roomType: r.roomType,
+      tags: r.tags,
+      experienceClass: r.experienceClass,
+      minimumAge: r.minimumAge,
+      ageVerificationRequired: r.ageVerificationRequired,
+    }),
+  );
   return NextResponse.json({ ok: true, rooms });
 }

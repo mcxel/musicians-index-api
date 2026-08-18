@@ -3,7 +3,6 @@
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
 
 const SYSTEM_CONTACTS = [
   { id: "tmi-support", name: "TMI Support",   role: "SUPPORT", icon: "🛡️", color: "#00FFFF" },
@@ -66,18 +65,9 @@ function NewMessageInner() {
     : systemFiltered;
 
   async function handleSend(recipientId: string, recipientName: string) {
-    const decision = enforceAdultTeenContactBlock({
-      source: "messages:new",
-      channel: "dm",
-      actor:  { userId: "local-user", ageClass: "unknown", familyVerified: true, guardianApproved: true },
-      target: { userId: recipientId,  ageClass: "unknown", familyMember: true,   guardianLink: true    },
-    });
-
-    if (!decision.allowed) { setBlocked(decision.reason); return; }
     setBlocked(null);
 
     if (!message.trim()) {
-      // No body — just navigate to thread (or create empty thread)
       setSelected({ id: recipientId, name: recipientName });
       return;
     }
@@ -94,10 +84,11 @@ function NewMessageInner() {
         const data = await res.json() as { threadId?: string };
         router.push(`/messages/${data.threadId ?? recipientId}`);
       } else {
-        router.push(`/messages/${recipientId}`);
+        const data = await res.json().catch(() => ({})) as { error?: string; reason?: string };
+        setBlocked(data.reason ?? data.error ?? "Message blocked.");
       }
     } catch {
-      router.push(`/messages/${recipientId}`);
+      setBlocked("Unable to send message.");
     } finally {
       setSending(false);
     }

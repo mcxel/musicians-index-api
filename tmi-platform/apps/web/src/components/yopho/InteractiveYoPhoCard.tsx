@@ -17,6 +17,7 @@ import type { PublishedYoPhoCard } from "@/lib/yopho/YoPhoCardRegistry";
 import { defaultMotionClip } from "@/lib/yopho/YoPhoCardComposition";
 import { DEFAULT_BRANDING_FOOTER, getActiveMagicEffects } from "@/lib/yopho/YoPhoCardDocument";
 import { getPlaylist, getTrack } from "@/lib/playlists/PlaylistEngine";
+import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
 import {
   castPlaylistToMonitor,
   publishPlaylistNowPlaying,
@@ -141,11 +142,16 @@ export default function InteractiveYoPhoCard({ card }: Props) {
   }, [playlistTracks, trackIndex, card.nowPlaying, card.displayName]);
 
   const audioUrl = useMemo(() => {
-    if (!currentTrack) return null;
-    if ("audioUrl" in currentTrack && currentTrack.audioUrl) return currentTrack.audioUrl as string;
-    const t = currentTrack as ReturnType<typeof getTrack>;
-    if (t && "platforms" in t) return t.platforms?.tmi ?? null;
-    return card.nowPlaying?.audioUrl ?? null;
+    let raw: string | null = null;
+    if (currentTrack) {
+      if ("audioUrl" in currentTrack && currentTrack.audioUrl) raw = currentTrack.audioUrl as string;
+      else {
+        const t = currentTrack as ReturnType<typeof getTrack>;
+        if (t && "platforms" in t) raw = t.platforms?.tmi ?? null;
+      }
+    }
+    if (!raw) raw = card.nowPlaying?.audioUrl ?? null;
+    return resolveDurablePlayableSrc(raw);
   }, [currentTrack, card.nowPlaying?.audioUrl]);
 
   // Hook loop: seek to hookStart and restart when past hookStart+duration

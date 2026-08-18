@@ -10,6 +10,7 @@ import {
   resolveMessagingUser,
   resolveRecipientId,
 } from "@/lib/messaging/resolveMessagingUser";
+import { youthSocialBlockPayload } from "@/lib/trustSafety/resolveYouthSocialSubject";
 
 export async function GET(req: NextRequest) {
   const user = await resolveMessagingUser(req);
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, threadId: convo.id, conversation: { id: convo.id } });
   } catch (err) {
+    const blocked = youthSocialBlockPayload(err);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
     console.error("[api/messages/conversations POST]", err);
     return NextResponse.json({ error: "Unable to create conversation" }, { status: 500 });
   }

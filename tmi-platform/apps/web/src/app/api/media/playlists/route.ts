@@ -69,6 +69,12 @@ export async function POST(req: NextRequest) {
       const title = typeof tr.title === "string" ? tr.title : `Track ${i + 1}`;
       const artist = typeof tr.artist === "string" ? tr.artist : "Unknown Artist";
       const audioUrl = typeof tr.audioUrl === "string" ? tr.audioUrl : sourceUrl;
+      if (audioUrl.startsWith("blob:") || audioUrl.includes("cdn.themusiciansindex.com/media/")) {
+        return NextResponse.json(
+          { ok: false, error: "Track source must be a refresh-safe URL, not a temporary blob: link." },
+          { status: 400 },
+        );
+      }
 
       const song = await prisma.song.create({
         data: {

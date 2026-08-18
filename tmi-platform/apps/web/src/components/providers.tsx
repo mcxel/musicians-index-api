@@ -6,12 +6,14 @@ import { ActiveGenreProvider } from "@/lib/context/ActiveGenreContext";
 import BotProvider from "@/components/providers/BotProvider";
 import GlobalUiSoundRuntime from "@/components/sound/GlobalUiSoundRuntime";
 import IncomingMessageBubbleHost from "@/components/messaging/IncomingMessageBubbleHost";
+import GlobalAudioPlaybackGuard from "@/components/media/GlobalAudioPlaybackGuard";
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <AudioProvider>
       <ActiveGenreProvider>
         <BotProvider>
+          <GlobalAudioPlaybackGuard />
           <GlobalUiSoundRuntime />
           <IncomingMessageBubbleHost />
           {children}

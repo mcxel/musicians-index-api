@@ -57,8 +57,18 @@ export async function GET(req: NextRequest) {
   checks.push(envCheck('GOOGLE_CLIENT_ID', 'Google OAuth Client ID', false));
   checks.push(envCheck('GOOGLE_CLIENT_SECRET', 'Google OAuth Secret', false));
 
-  // ── Storage ──────────────────────────────────────────────────────────────────
-  checks.push(envCheck('BLOB_READ_WRITE_TOKEN', 'Vercel Blob Storage', false));
+  // ── Storage (OIDC store id on Vercel is enough; token is optional/legacy)
+  const blobOk = Boolean(process.env.BLOB_STORE_ID) || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  checks.push({
+    name: 'Vercel Blob Storage',
+    status: blobOk ? 'ok' : 'warn',
+    value: blobOk,
+    note: process.env.BLOB_STORE_ID
+      ? 'OIDC (BLOB_STORE_ID)'
+      : process.env.BLOB_READ_WRITE_TOKEN
+        ? 'legacy token'
+        : 'not configured',
+  });
 
   // ── AdSense ──────────────────────────────────────────────────────────────────
   const adSlots = [

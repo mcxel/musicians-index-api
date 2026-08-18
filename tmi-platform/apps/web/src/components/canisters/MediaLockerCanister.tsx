@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import CollapsibleCanister from "./CollapsibleCanister";
+import { useAudio } from "@/components/AudioProvider";
+import { isDurablePlayableMediaUrl } from "@/lib/media/durablePlayableUrl";
+import { uploadCanonicalMediaFile } from "@/lib/media/clientMediaUpload";
 export type MediaLockerTab = "songs" | "videos" | "images" | "documents";
 
 interface MediaItem {
@@ -35,6 +38,7 @@ export default function MediaLockerCanister({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { play, addToPlaylist } = useAudio();
 
   const reloadLocker = async () => {
     const r = await fetch("/api/media/locker", { credentials: "include" });
@@ -91,21 +95,23 @@ export default function MediaLockerCanister({
         return;
       }
 
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload/media", { method: "POST", body: fd, credentials: "include" });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        url?: string;
-        id?: string;
-        error?: string;
-      };
-      if (!res.ok || !data.ok || !data.id) {
-        setUploadError(data.error ?? "Upload failed. Track was not saved.");
+      const result = await uploadCanonicalMediaFile(file, { persistVia: "/api/upload/media" });
+      if (!result.ok) {
+        setUploadError(result.error);
         return;
       }
-      // Reconstruct list from server truth — never keep optimistic local-only IDs.
+      if (!isDurablePlayableMediaUrl(result.url)) {
+        setUploadError("Upload did not return a playable URL. Track was not queued.");
+        return;
+      }
       await reloadLocker();
+      await play({
+        id: result.id,
+        title: file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+        artist: "You",
+        duration: 0,
+        url: result.url,
+      });
     } catch {
       setUploadError("Upload failed. Check connection and try again.");
     } finally {
@@ -198,8 +204,44 @@ export default function MediaLockerCanister({
                     <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{item.addedAt} • {item.size}</span>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button style={{ padding: "4px 8px", fontSize: 9, fontWeight: 800, background: "transparent", color: accentColor, border: `1px solid ${accentColor}55`, borderRadius: 4, cursor: "pointer" }}>+ PLAYLIST</button>
-                    <button style={{ padding: "4px 8px", fontSize: 9, fontWeight: 800, background: "transparent", color: "#FFD700", border: `1px solid #FFD70055`, borderRadius: 4, cursor: "pointer" }}>+ MEMORY</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isDurablePlayableMediaUrl(item.url)) {
+                          setUploadError("This track has no playable source. Re-upload it.");
+                          return;
+                        }
+                        void play({
+                          id: item.id,
+                          title: item.title,
+                          artist: "You",
+                          duration: 0,
+                          url: item.url,
+                        });
+                      }}
+                      style={{ padding: "4px 8px", fontSize: 9, fontWeight: 800, background: "transparent", color: accentColor, border: `1px solid ${accentColor}55`, borderRadius: 4, cursor: "pointer" }}
+                    >
+                      ▶ PLAY
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isDurablePlayableMediaUrl(item.url)) {
+                          setUploadError("Cannot queue a track with no playable source.");
+                          return;
+                        }
+                        addToPlaylist({
+                          id: item.id,
+                          title: item.title,
+                          artist: "You",
+                          duration: 0,
+                          url: item.url,
+                        });
+                      }}
+                      style={{ padding: "4px 8px", fontSize: 9, fontWeight: 800, background: "transparent", color: accentColor, border: `1px solid ${accentColor}55`, borderRadius: 4, cursor: "pointer" }}
+                    >
+                      + QUEUE
+                    </button>
                   </div>
                 </div>
               ))}

@@ -202,6 +202,39 @@ export function runPersonalMediaRouterTest(): { allPassed: boolean; results: Rec
   results["context_has_profile_only_with_href"] = menu.some((item) => item.id === "PROFILE");
   results["context_omits_private_talk_without_handler"] = !menu.some((item) => item.id === "PRIVATE_TALK");
 
+  const publicWatch = router.assignToMonitor("part-b", DEFAULT_MONITOR_B);
+  results["public_watch_on_does_not_require_age_gate"] = publicWatch.ok === true;
+
+  const deniedPrivate = router.assignPrivateSocialRoute("part-b", DEFAULT_MONITOR_A);
+  results["private_monitor_denied_without_gate"] = deniedPrivate.ok === false && Boolean(deniedPrivate.reason);
+  results["private_monitor_deny_reason_honest"] = (deniedPrivate.reason ?? "").startsWith("blocked:");
+
+  const gatedRouter = createPersonalMediaRouter({
+    userId: "adult-1",
+    privateInteractGate: () => ({
+      allowed: false,
+      reason: "blocked: 16–17 accounts cannot have private contact with 18+ adults except a verified family relationship",
+      code: "NO_FAMILY_LINK",
+    }),
+  });
+  gatedRouter.registerParticipant(pB);
+  const gatedDeny = gatedRouter.assignPrivateSocialRoute("part-b", DEFAULT_MONITOR_A);
+  results["private_monitor_gate_deny"] = gatedDeny.ok === false;
+  results["private_talk_gate_deny"] = gatedRouter.beginPrivateTalk("part-b").ok === false;
+
+  const allowedRouter = createPersonalMediaRouter({
+    userId: "teen-1",
+    privateInteractGate: () => ({
+      allowed: true,
+      reason: "allowed: protected-teen peers (16–17)",
+      code: "YOUTH_PEERS",
+    }),
+  });
+  allowedRouter.registerParticipant(pB);
+  const allowedPrivate = allowedRouter.assignPrivateSocialRoute("part-b", DEFAULT_MONITOR_A);
+  results["private_monitor_gate_allow"] = allowedPrivate.ok === true;
+  results["zero_webrtc_after_private_gate"] = counts.reconnect === 0 && counts.subscribe === 0;
+
   const allPassed = Object.values(results).every(Boolean);
   console.log(`[PERSONAL_MEDIA_ROUTER_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };

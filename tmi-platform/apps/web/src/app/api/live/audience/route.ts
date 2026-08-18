@@ -30,6 +30,8 @@ import { prisma } from "@/lib/prisma";
 import { getActiveSessions, updateViewerCount, endLiveSession } from "@/lib/broadcast/globalLiveSessionStore";
 import { removeSessionNow, ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
+import { datingAccessPayload, isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
+import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
 
 // Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),
 // but GlobalLiveSessionRegistry — the source every discovery surface (Home 1/3,
@@ -100,6 +102,14 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case "join": {
         if (!member) return NextResponse.json({ error: "member required" }, { status: 400 });
+        const datingRef = { slug: venueSlug, id: venueSlug, roomId: venueSlug };
+        if (isDatingExperience(datingRef)) {
+          const datingUserId = await resolveAuthedUserId(req);
+          const decision = await evaluateDatingJoinForUserId(datingUserId ?? "", datingRef);
+          if (!decision.allowed) {
+            return NextResponse.json(datingAccessPayload(decision), { status: 403 });
+          }
+        }
         let joinSlug = venueSlug;
         let meshKey: string | null = null;
         let isOverflow = false;

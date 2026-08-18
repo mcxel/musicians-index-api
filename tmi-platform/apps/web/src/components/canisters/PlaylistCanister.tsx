@@ -13,7 +13,7 @@
  * states when the user has no playlists or a selected playlist is empty.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { sanitizePublicDisplayLabel } from "@/lib/auth/resolveSessionIdentity";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
 import {
@@ -27,6 +27,8 @@ import {
   sharePlaylistToThread,
   type MessageThreadOption,
 } from "@/lib/playlists/sharePlaylistToThread";
+import { useAudio } from "@/components/AudioProvider";
+import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
 
 interface ApiPlaylistSummary {
   id: string;
@@ -92,7 +94,7 @@ export function PlaylistCanister({
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [savingDisplayName, setSavingDisplayName] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { play: playGlobal, pause: pauseGlobal } = useAudio();
 
   const selectedPlaylist = useMemo(
     () => playlists.find((p) => p.id === selectedId) ?? null,
@@ -176,18 +178,45 @@ export function PlaylistCanister({
   };
 
   const activeTrack = tracks[currentTrackIndex] ?? null;
+  const playableUrl = resolveDurablePlayableSrc(activeTrack?.audioUrl ?? null);
+
+  useEffect(() => {
+    if (!activeTrack || !playableUrl) {
+      if (isPlaying) setIsPlaying(false);
+      return;
+    }
+    if (isPlaying) {
+      void playGlobal({
+        id: activeTrack.id,
+        title: activeTrack.title,
+        artist: libraryHeader,
+        duration: 0,
+        url: playableUrl,
+      });
+    }
+  }, [isPlaying, playableUrl, activeTrack, libraryHeader, playGlobal]);
+
+  const togglePlayback = useCallback(() => {
+    setIsPlaying((p) => {
+      if (p) pauseGlobal();
+      return !p;
+    });
+  }, [pauseGlobal]);
 
   useEffect(() => {
     return subscribePlaybackCommands((command) => {
-      if (command === "toggle") setIsPlaying((p) => !p);
+      if (command === "toggle") togglePlayback();
       else if (command === "play") setIsPlaying(true);
-      else if (command === "pause") setIsPlaying(false);
+      else if (command === "pause") {
+        pauseGlobal();
+        setIsPlaying(false);
+      }
       else if (command === "prev") setCurrentTrackIndex((prev) => Math.max(0, prev - 1));
       else if (command === "next") {
         setCurrentTrackIndex((prev) => Math.min(Math.max(tracks.length - 1, 0), prev + 1));
       }
     });
-  }, [tracks.length]);
+  }, [tracks.length, togglePlayback, pauseGlobal]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -206,7 +235,7 @@ export function PlaylistCanister({
       title: activeTrack.title,
       artist: libraryHeader,
       coverUrl: activeTrack.coverUrl,
-      audioUrl: activeTrack.audioUrl,
+      audioUrl: playableUrl,
       isPlaying,
     });
     castPlaylistToMonitor({
@@ -215,36 +244,10 @@ export function PlaylistCanister({
       title: activeTrack.title,
       artist: libraryHeader,
       coverUrl: activeTrack.coverUrl,
-      audioUrl: activeTrack.audioUrl,
+      audioUrl: playableUrl,
       targetMonitorId: "mon-a",
     });
-  }, [selectedId, activeTrack, isPlaying, libraryHeader]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !selectedId || !activeTrack) return;
-    const publishProgress = () => {
-      if (!el.duration || !Number.isFinite(el.duration)) return;
-      syncNowPlaying({
-        playlistId: selectedId,
-        trackId: activeTrack.id,
-        title: activeTrack.title,
-        artist: libraryHeader,
-        coverUrl: activeTrack.coverUrl,
-        audioUrl: activeTrack.audioUrl,
-        isPlaying: !el.paused,
-        progress: el.currentTime / el.duration,
-      });
-    };
-    el.addEventListener("timeupdate", publishProgress);
-    el.addEventListener("play", publishProgress);
-    el.addEventListener("pause", publishProgress);
-    return () => {
-      el.removeEventListener("timeupdate", publishProgress);
-      el.removeEventListener("play", publishProgress);
-      el.removeEventListener("pause", publishProgress);
-    };
-  }, [selectedId, activeTrack, libraryHeader]);
+  }, [selectedId, activeTrack, isPlaying, libraryHeader, playableUrl]);
 
   // ── Load real playlists ────────────────────────────────────────────────
   const loadPlaylists = useCallback(async () => {
@@ -461,16 +464,10 @@ export function PlaylistCanister({
             ))
           )}
         </div>
-        {activeTrack?.audioUrl ? (
-          <audio
-            ref={audioRef}
-            key={activeTrack.audioUrl}
-            src={activeTrack.audioUrl}
-            data-audio-owner="playlist-canister"
-            controls={false}
-            autoPlay={isPlaying}
-            style={{ display: "none" }}
-          />
+        {activeTrack && !playableUrl ? (
+          <div style={{ fontSize: 9, color: "rgba(255,180,180,0.8)", padding: "4px 0" }}>
+            No playable audio for this track.
+          </div>
         ) : null}
       </div>
     );
@@ -679,7 +676,7 @@ export function PlaylistCanister({
             <button
               type="button"
               disabled={!activeTrack}
-              onClick={() => setIsPlaying((p) => !p)}
+              onClick={togglePlayback}
               style={transportMainBtn()}
             >
               {isPlaying ? "⏸" : "▶"}
@@ -693,16 +690,10 @@ export function PlaylistCanister({
               ⏭
             </button>
           </div>
-          {activeTrack?.audioUrl ? (
-            <audio
-              ref={audioRef}
-              key={activeTrack.audioUrl}
-              src={activeTrack.audioUrl}
-              data-audio-owner="playlist-canister"
-              controls={false}
-              autoPlay={isPlaying}
-              style={{ display: "none" }}
-            />
+          {activeTrack && !playableUrl ? (
+            <div style={{ fontSize: 9, color: "rgba(255,180,180,0.8)" }}>
+              No playable audio for this track.
+            </div>
           ) : null}
         </div>
 

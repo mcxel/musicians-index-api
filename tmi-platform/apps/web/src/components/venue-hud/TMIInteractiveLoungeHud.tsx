@@ -15,10 +15,11 @@
  *   6. Clean Stage state preserves permanent HUD Recall Control ([ ◰ SHOW HUD ]) in top-right.
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import MyViewDrawer from "@/components/personal-media/MyViewDrawer";
 import ParticipantMediaContextMenu from "@/components/personal-media/ParticipantMediaContextMenu";
-import { defaultPersonalMediaCommandBus } from "@/lib/personal-media";
+import { defaultPersonalMediaCommandBus, defaultPersonalMediaRouter } from "@/lib/personal-media";
+import { requestOneToOneSocial } from "@/lib/trustSafety/requestOneToOneSocial";
 import { HudCommandBus } from "@/lib/venue-hud/TMIExperienceHudRuntime";
 import {
   resolveLoungeProximityActions,
@@ -59,6 +60,11 @@ export default function TMIInteractiveLoungeHud({
   const [showChevron, setShowChevron] = useState(false);
   const [myViewOpen, setMyViewOpen] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const contextIdRef = useRef(contextParticipantId);
+  contextIdRef.current = contextParticipantId;
+  const proximityRef = useRef(proximityTarget);
+  proximityRef.current = proximityTarget;
+  const privateTalkingRef = useRef(false);
 
   useEffect(() => {
     const unbindMedia = defaultPersonalMediaCommandBus.bindToHudBus(
@@ -83,12 +89,30 @@ export default function TMIInteractiveLoungeHud({
         return true;
       }),
 
-      HudCommandBus.register("LOUNGE_PRIVATE_TALK", () => {
-        setIsPrivateTalking((p) => {
-          const next = !p;
-          setStatusLine(next ? "Private talk session active" : "Ended private talk");
-          return next;
-        });
+      HudCommandBus.register("LOUNGE_PRIVATE_TALK", async () => {
+        if (privateTalkingRef.current) {
+          privateTalkingRef.current = false;
+          setIsPrivateTalking(false);
+          setStatusLine("Ended private talk");
+          return true;
+        }
+        const participantId =
+          contextIdRef.current ||
+          (proximityRef.current?.type === "AVATAR" ? proximityRef.current.id : undefined);
+        if (!participantId) {
+          setStatusLine("blocked: no person selected for 1:1");
+          return false;
+        }
+        const identity = defaultPersonalMediaRouter.getParticipant(participantId);
+        const targetUserId = identity?.canonicalIdentityId || participantId;
+        const decision = await requestOneToOneSocial(targetUserId);
+        if (!decision.allowed) {
+          setStatusLine(decision.reason);
+          return false;
+        }
+        privateTalkingRef.current = true;
+        setIsPrivateTalking(true);
+        setStatusLine("Private talk session active");
         return true;
       }),
 

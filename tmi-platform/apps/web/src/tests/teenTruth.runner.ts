@@ -4,6 +4,9 @@
  */
 
 import type { TeenRestrictions } from "@/lib/devices/DeviceSessionBridge";
+import { canOneToOneSocial } from "@/lib/trustSafety/YouthSocialGuard";
+import { runYouthSocialGuardTest } from "./runYouthSocialGuard.test";
+import { runDatingExperiencePolicyTest } from "./runDatingExperiencePolicy.test";
 
 export interface TeenCheck {
   system: string;
@@ -139,6 +142,33 @@ export function runTeenTruth(): TeenTruthReport {
       true,
       "TeenRoomAccessEngine.ts must exist"),
   ];
+
+  const youthGuard = runYouthSocialGuardTest();
+  for (const [name, pass] of Object.entries(youthGuard)) {
+    checks.push(
+      check("YouthSocialGuard", name.replace(/_/g, " "), pass, `${name} failed`),
+    );
+  }
+
+  const datingGate = runDatingExperiencePolicyTest();
+  for (const [name, pass] of Object.entries(datingGate)) {
+    checks.push(
+      check("DatingExperiencePolicy", name.replace(/_/g, " "), pass, `${name} failed`),
+    );
+  }
+
+  const unknownDeny = canOneToOneSocial(
+    { userId: "a", ageYears: null },
+    { userId: "b", ageYears: 19 },
+  );
+  checks.push(
+    check(
+      "YouthSocialGuard",
+      "unknown age fail closed without fake family",
+      !unknownDeny.allowed && unknownDeny.code === "UNKNOWN_AGE",
+      "unknown age must deny 1:1",
+    ),
+  );
 
   const passed = checks.filter((c) => c.pass).length;
   const failed = checks.length - passed;

@@ -8,9 +8,18 @@
  *   4. Generates validated Checkout Session payloads for /api/stripe/checkout.
  */
 
-import { STRIPE_PRODUCTS, type StripeProductKey } from "../stripe/products";
+import {
+  lookupStripeCatalogPrice,
+  parseMediaPlayerChassisSku,
+  parseVenueSkinSku,
+} from "./CommerceCatalogContract";
 import { VENUE_SKINS } from "../venue/venueSkinEngine";
 import { getSkinPriceCents } from "../venue/VenueSkinCommerce";
+import {
+  MEDIA_PLAYER_CHASSIS_REGISTRY,
+  MEDIA_PLAYER_STORE_SKUS,
+  type MediaPlayerChassisId,
+} from "../artifacts/PlaylistArtifactEngine";
 
 export interface CartItem {
   id: string;
@@ -61,23 +70,27 @@ class CanonicalCartRuntimeImpl {
    * ("browser prices are NEVER trusted"). Unknown SKUs are rejected.
    */
   validatePrice(skuId: string, clientPriceCents?: number): { valid: boolean; canonicalPriceCents: number; title: string } {
-    // 1. Check STRIPE_PRODUCTS
-    const productKey = Object.keys(STRIPE_PRODUCTS).find(
-      (key) => (STRIPE_PRODUCTS as any)[key]?.skuId === skuId || (STRIPE_PRODUCTS as any)[key]?.priceId === skuId,
-    );
-    if (productKey) {
-      const p = (STRIPE_PRODUCTS as any)[productKey];
-      return { valid: true, canonicalPriceCents: p.price, title: p.name };
+    const stripeHit = lookupStripeCatalogPrice(skuId);
+    if (stripeHit) {
+      return { valid: true, canonicalPriceCents: stripeHit.priceCents, title: stripeHit.title };
     }
 
-    // 2. Check VENUE_SKINS
-    if (VENUE_SKINS[skuId as keyof typeof VENUE_SKINS]) {
-      const skin = VENUE_SKINS[skuId as keyof typeof VENUE_SKINS];
-      const price = getSkinPriceCents(skuId as any);
-      return { valid: true, canonicalPriceCents: price, title: skin.name };
+    const skinId = parseVenueSkinSku(skuId) ?? (skuId in VENUE_SKINS ? skuId : null);
+    if (skinId && VENUE_SKINS[skinId as keyof typeof VENUE_SKINS]) {
+      const skin = VENUE_SKINS[skinId as keyof typeof VENUE_SKINS];
+      return { valid: true, canonicalPriceCents: getSkinPriceCents(skinId), title: skin.name };
     }
 
-    // 3. Unknown SKU — reject rather than trusting clientPriceCents.
+    const chassisId = (parseMediaPlayerChassisSku(skuId) ?? skuId) as MediaPlayerChassisId;
+    if (MEDIA_PLAYER_STORE_SKUS.includes(chassisId) && MEDIA_PLAYER_CHASSIS_REGISTRY[chassisId]) {
+      const chassis = MEDIA_PLAYER_CHASSIS_REGISTRY[chassisId];
+      return {
+        valid: true,
+        canonicalPriceCents: chassis.priceUsdCents ?? 0,
+        title: chassis.label,
+      };
+    }
+
     void clientPriceCents;
     return { valid: false, canonicalPriceCents: 0, title: `Unknown item (${skuId})` };
   }
