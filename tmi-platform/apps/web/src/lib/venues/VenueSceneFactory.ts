@@ -209,6 +209,20 @@ export function releaseVenueSceneInstance(instanceId: string): {
   return { ok: true, gpuTeardown: false, lifecycle: "CACHED" };
 }
 
+export function activateVenueSceneInstance(instanceId: string): { ok: boolean; lifecycle: SceneInstanceLifecycle | "not_found" } {
+  const inst = instances.get(instanceId);
+  if (!inst) return { ok: false, lifecycle: "not_found" };
+  inst.lifecycle = "ACTIVE";
+  return { ok: true, lifecycle: "ACTIVE" };
+}
+
+export function drainVenueSceneInstance(instanceId: string): { ok: boolean; lifecycle: SceneInstanceLifecycle | "not_found" } {
+  const inst = instances.get(instanceId);
+  if (!inst) return { ok: false, lifecycle: "not_found" };
+  inst.lifecycle = "DRAINING";
+  return { ok: true, lifecycle: "DRAINING" };
+}
+
 export function getVenueSceneInstance(id: string): VenueSceneInstance | undefined {
   return instances.get(id) ?? [...cache.values()].find((i) => i.id === id);
 }

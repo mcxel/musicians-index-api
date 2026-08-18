@@ -32,6 +32,20 @@ export const VENUE_SKIN_RARITY: Record<keyof typeof VENUE_SKINS, SkinRarity> = {
   'concert-hall': 'epic',
 };
 
+export const SEASON_PASS_INCLUDED_SKINS = new Set([
+  'neon-club',
+  'red-theater',
+]);
+
+export function listCatalogProducts() {
+  return Object.keys(VENUE_SKINS).map((skinId) => ({
+    id: skinId,
+    name: skinId.replace(/-/g, ' ').toUpperCase(),
+    priceCents: getSkinPriceCents(skinId),
+    rarity: VENUE_SKIN_RARITY[skinId as keyof typeof VENUE_SKIN_RARITY] ?? 'common',
+  }));
+}
+
 export function getSkinPriceCents(skinId: string): number {
   const rarity = VENUE_SKIN_RARITY[skinId as keyof typeof VENUE_SKIN_RARITY];
   return rarity ? SKIN_RARITY_PRICE_CENTS[rarity] : SKIN_RARITY_PRICE_CENTS.common;
