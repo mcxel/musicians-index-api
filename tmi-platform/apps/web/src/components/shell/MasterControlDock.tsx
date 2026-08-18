@@ -84,6 +84,8 @@ export default function MasterControlDock({
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [goLivePhase, setGoLivePhase] = useState<'idle' | 'launching' | 'error'>('idle');
+  const [goLiveError, setGoLiveError] = useState('');
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace, setRole } =
     useFloatingWorkspace();
@@ -321,17 +323,27 @@ export default function MasterControlDock({
           </button>
 
           <button
+            disabled={goLivePhase === 'launching'}
             onClick={() => {
+              if (goLivePhase === 'launching') return;
               const dockRole = isPerformer ? 'PERFORMER' : 'FAN';
               launchDockStore.setRole(dockRole);
-              if (launchDockStore.isReady()) {
-                void executeInstantGoLive({ role: dockRole }).then((r) => {
-                  if (r.ok && r.href) router.push(r.href);
-                  else launchDockStore.open();
-                });
-                return;
-              }
-              launchDockStore.open();
+              setGoLivePhase('launching');
+              setGoLiveError('');
+              // Instant Go Live — calls executeInstantGoLive() directly, same
+              // as QuickLiveButton/InstantGoLiveLauncher. Previously gated on
+              // launchDockStore.isReady() and fell back to
+              // launchDockStore.open(), but LaunchDock never mounts on
+              // /admin, /hub, or /dashboard routes — that fallback silently
+              // flipped a store flag nothing on screen could render.
+              void executeInstantGoLive({ role: dockRole }).then((r) => {
+                if (r.ok && r.href) {
+                  router.push(r.href);
+                  return;
+                }
+                setGoLivePhase('error');
+                setGoLiveError(r.error ?? 'Failed to start broadcast.');
+              });
             }}
             style={{
               padding: '6px 16px',
@@ -342,15 +354,19 @@ export default function MasterControlDock({
               fontSize: 9,
               fontWeight: 900,
               letterSpacing: '0.08em',
-              cursor: 'pointer',
+              cursor: goLivePhase === 'launching' ? 'default' : 'pointer',
+              opacity: goLivePhase === 'launching' ? 0.6 : 1,
               display: 'flex',
               alignItems: 'center',
               gap: 5,
               boxShadow: '0 0 15px rgba(170,45,255,0.5)',
             }}
           >
-            🔴 GO LIVE
+            {goLivePhase === 'launching' ? '● GOING LIVE…' : '🔴 GO LIVE'}
           </button>
+          {goLivePhase === 'error' && goLiveError && (
+            <span style={{ fontSize: 9, color: '#FF4444', fontWeight: 700 }}>{goLiveError}</span>
+          )}
 
           <button
             onClick={onEnterStage}

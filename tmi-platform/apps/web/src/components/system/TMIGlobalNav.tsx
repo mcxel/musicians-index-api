@@ -73,6 +73,8 @@ export default function TMIGlobalNav() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [goLivePhase, setGoLivePhase] = useState<"idle" | "launching" | "error">("idle");
+  const [goLiveError, setGoLiveError] = useState("");
 
   const isHubPath =
     pathname === "/hub" ||
@@ -338,16 +340,27 @@ export default function TMIGlobalNav() {
       {canGoLive && (
         <button
           title="Go Live"
+          disabled={goLivePhase === "launching"}
           onClick={() => {
-            if (launchDockStore.isReady()) {
-              void executeInstantGoLive({ role: (role || "performer").toUpperCase() }).then((r) => {
-                if (r.ok && r.href) router.push(r.href);
-                else launchDockStore.open();
-              });
-              return;
-            }
-            launchDockStore.setRole((role || "performer").toUpperCase());
-            launchDockStore.open();
+            if (goLivePhase === "launching") return;
+            const dockRole = (role || "performer").toUpperCase();
+            launchDockStore.setRole(dockRole);
+            setGoLivePhase("launching");
+            setGoLiveError("");
+            // Instant Go Live — calls executeInstantGoLive() directly, same
+            // as QuickLiveButton/InstantGoLiveLauncher. Previously gated on
+            // launchDockStore.isReady() and fell back to
+            // launchDockStore.open(), which is a dead end wherever
+            // LaunchDock excludes itself (/admin, /hub, /dashboard) — the
+            // store flag flipped but nothing on screen could render it.
+            void executeInstantGoLive({ role: dockRole }).then((r) => {
+              if (r.ok && r.href) {
+                router.push(r.href);
+                return;
+              }
+              setGoLivePhase("error");
+              setGoLiveError(r.error ?? "Failed to start broadcast.");
+            });
           }}
           style={{
             padding: "0 12px",
@@ -360,7 +373,8 @@ export default function TMIGlobalNav() {
             background: pathname.startsWith("/live/go")
               ? "rgba(255,45,170,0.22)"
               : "rgba(255,45,170,0.1)",
-            cursor: "pointer",
+            cursor: goLivePhase === "launching" ? "default" : "pointer",
+            opacity: goLivePhase === "launching" ? 0.6 : 1,
             fontSize: 10,
             fontWeight: 900,
             color: "#FF2DAA",
@@ -382,8 +396,13 @@ export default function TMIGlobalNav() {
               display: "inline-block",
             }}
           />
-          <span>LIVE</span>
+          <span>{goLivePhase === "launching" ? "GOING LIVE…" : "LIVE"}</span>
         </button>
+      )}
+      {goLivePhase === "error" && goLiveError && (
+        <span style={{ fontSize: 9, color: "#FF4444", fontWeight: 700, whiteSpace: "nowrap" }}>
+          {goLiveError}
+        </span>
       )}
 
       {/* Logout */}
