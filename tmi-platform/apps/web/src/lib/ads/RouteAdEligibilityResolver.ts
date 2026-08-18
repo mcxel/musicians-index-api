@@ -26,13 +26,23 @@ const PROTECTED_PREFIXES = [
   "/checkout",
   "/billing",
   "/account/finance",
+  "/account",
   "/login",
   "/signup",
   "/password-reset",
   "/stage",
+  "/rooms/monday-stage",
+  "/rooms",
+  "/live/rooms",
   "/live/room",
+  "/arena",
   "/video/call",
   "/admin",
+  "/administration",
+  "/games",
+  "/competitions",
+  "/battles",
+  "/cyphers",
 ];
 
 const PUBLIC_EDITORIAL_PREFIXES = [
