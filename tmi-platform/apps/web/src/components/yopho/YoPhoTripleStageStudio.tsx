@@ -27,6 +27,7 @@ import {
   patchOverlayParams,
 } from "@/lib/yopho/YoPhoPortraitEffectCatalog";
 import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   addStackLayer,
   bringLayerToFront,
@@ -213,13 +214,15 @@ export default function YoPhoTripleStageStudio({
 
   const onPickImage = () => fileInputRef.current?.click();
 
-  const onFileChosen = (file: File | null) => {
+  const onFileChosen = async (file: File | null) => {
     if (!file || !file.type.startsWith("image/")) {
       setStatusLine("Choose a valid image file.");
       return;
     }
+    setStatusLine("Preparing image…");
+    const { blob } = await downscaleImageFile(file);
     pushUndo();
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(blob);
     const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
     setPreview(next);
     onMasterChange(next);

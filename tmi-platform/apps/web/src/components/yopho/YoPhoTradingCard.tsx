@@ -22,6 +22,7 @@ import {
   type YoPhoStudioStyleId,
 } from "@/lib/yopho/YoPhoStudioStylePresets";
 import { YOPHO_SCENE_PACKS, getScenePack, type YoPhoSceneId } from "@/lib/yopho/YoPhoScenePack";
+import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   loadCardComposition,
   saveCardComposition,
@@ -303,11 +304,12 @@ export default function YoPhoTradingCard({
     }
     setBgStatus("Loading preview…");
     try {
+      const { blob } = await downscaleImageFile(file);
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
         reader.onerror = () => reject(new Error("read failed"));
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(blob);
       });
       // Prefer persisting data URL locally; try profile banner update as optional durable path
       patch({ customBgUrl: dataUrl });

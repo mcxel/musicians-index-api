@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { BattleFormatType } from "@/lib/competition/BattleFormatRulesEngine";
+import { useAuth, resolveAuthPhase } from "@/lib/hooks/useAuth";
 
 // Rule 21 amendment (2026-07-24): this is a Mini Battle - the same real
 // EventOrchestrator/LobbyEvent pipeline the World events use, created by a
@@ -30,6 +31,8 @@ type SubmitState = "idle" | "submitting" | "auth_required" | "tier_gate" | "sess
 
 export default function CreateBattlePage() {
   const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const authPhase = resolveAuthPhase(authLoading, isAuthenticated);
   const [form, setForm] = useState({ title: "", battleType: "", genre: "" });
   const [state, setState] = useState<SubmitState>("idle");
   const [gateMessage, setGateMessage] = useState<string | null>(null);
@@ -79,13 +82,27 @@ export default function CreateBattlePage() {
   };
   const label: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 };
 
-  if (state === "auth_required" || state === "tier_gate" || state === "session_limit" || state === "error") {
+  // Gate before the form ever renders — an unauthenticated visitor should
+  // never be able to fill out battle type/genre/title only to be told
+  // "sign in" after clicking submit (Rule 20). AUTH_LOADING renders neither
+  // the form nor the sign-in prompt, avoiding a false-flash of either state.
+  if (authPhase === "AUTH_LOADING") {
+    return (
+      <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "grid", placeItems: "center" }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>Loading…</div>
+      </main>
+    );
+  }
+
+  const gatedState: SubmitState = authPhase === "UNAUTHENTICATED" ? "auth_required" : state;
+
+  if (gatedState === "auth_required" || gatedState === "tier_gate" || gatedState === "session_limit" || gatedState === "error") {
     const copy = {
       auth_required: { icon: "🔒", title: "Sign In Required", body: "Sign in to create a Mini Battle.", cta: "Sign In", href: "/login" },
       tier_gate: { icon: "⭐", title: "Gold Membership Required", body: gateMessage || "Mini Battle creation requires Gold membership.", cta: "Upgrade", href: "/pricing" },
       session_limit: { icon: "⏳", title: "Session Limit Reached", body: gateMessage || "You've reached your concurrent Mini Battle limit.", cta: "View Your Battles", href: "/battles" },
       error: { icon: "⚠️", title: "Couldn't Create Battle", body: "Something went wrong creating your Mini Battle. Try again.", cta: "Retry", href: "" },
-    }[state];
+    }[gatedState];
     return (
       <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "grid", placeItems: "center" }}>
         <div style={{ textAlign: "center", maxWidth: 420, padding: 24 }}>
