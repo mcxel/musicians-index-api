@@ -37,6 +37,7 @@ import {
   DEFAULT_SIDE_BATTLE_WINDOW_SECONDS,
   resolveGauntletTurnSeconds,
 } from "@/lib/gauntlet/GauntletClockConfig";
+import { runCompetitionRestartLoop } from "@/lib/live/CompetitionRestartLoop";
 
 export type GauntletRunPhase =
   | "REGISTRATION"
@@ -369,6 +370,12 @@ export function completeRunCeremony(runId: string): GauntletRunState | null {
   run.phase = "WHOS_ENTERING_NEXT";
   run.updatedAt = Date.now();
   setGauntletCurrentRun(run.roomId, null);
+  // After champion ending: RESET → SHUFFLE → RECRUITING (same room).
+  runCompetitionRestartLoop({
+    venueSlug: run.roomId,
+    roomKind: "gauntlet",
+    afterResultReveal: true,
+  });
   return run;
 }
 

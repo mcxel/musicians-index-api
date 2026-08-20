@@ -78,6 +78,10 @@ export default function EosArenaEventShell({ config }: EosArenaEventShellProps) 
           roomId={config.roomId}
           format={format}
           accentColor="#00FFFF"
+          featureFlags={experience.featureFlags}
+          cypherKing={experience.featureFlags?.some((f) =>
+            f.toLowerCase().includes("cypher_king") || f.toLowerCase().includes("cypher-king"),
+          )}
         />
       </div>
     </FlightDeckBezel>

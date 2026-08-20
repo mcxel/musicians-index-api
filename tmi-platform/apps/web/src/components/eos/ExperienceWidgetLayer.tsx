@@ -14,19 +14,30 @@ import CompetitionHUD from "@/components/competition/presentation/CompetitionHUD
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import AudienceReactionBar from "@/components/live/AudienceReactionBar";
-import CypherQueuePanel from "@/components/eos/widgets/CypherQueuePanel";
 import CypherMicControl from "@/components/eos/widgets/CypherMicControl";
 import CypherBeatPlayer from "@/components/eos/widgets/CypherBeatPlayer";
 import CypherStatusHUD from "@/components/eos/widgets/CypherStatusHUD";
 import CypherRoundTimer from "@/components/eos/widgets/CypherRoundTimer";
+import CanonicalQueueDrawer from "@/components/live/CanonicalQueueDrawer";
 import type { CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import { getGuestId } from "@/lib/identity/getGuestId";
+import type { ExperiencePersonality } from "@/lib/live/ExperiencePersonality";
+import {
+  allowsVsUi,
+  allowsWinnerUi,
+  allowsVoting,
+  resolveExperiencePersonality,
+} from "@/lib/live/ExperiencePersonality";
 
 export interface ExperienceWidgetLayerProps {
   widgets: WidgetDefinition[];
   roomId: string;
   format?: CompetitionFormat;
   accentColor?: string;
+  /** Optional override — defaults from format (Cypher King via featureFlags upstream). */
+  personality?: ExperiencePersonality | null;
+  featureFlags?: readonly string[] | null;
+  cypherKing?: boolean;
 }
 
 const LAYER_Z: Record<WidgetDefinition["layer"], number> = {
@@ -86,12 +97,16 @@ function renderWidget(
   widget: WidgetDefinition,
   roomId: string,
   format: CompetitionFormat,
-  accentColor: string
+  accentColor: string,
+  personality: ExperiencePersonality,
 ) {
   switch (widget.id) {
     case "voting_panel":
+      // Cypher STATS_ONLY keeps vote UI; competitive stack for battle/challenge/king.
+      if (!allowsVoting(personality)) return null;
       return <EosVotingStack roomId={roomId} />;
     case "leaderboard":
+      if (personality.competitionMode === "NONE" && !allowsWinnerUi(personality)) return null;
       return (
         <CompetitionScoreboard
           format={format}
@@ -124,6 +139,7 @@ function renderWidget(
         <CompetitionTimer format={format} remainingSeconds={null} />
       );
     case "vs_overlay":
+      if (!allowsVsUi(personality)) return null;
       return (
         <CompetitionVSOverlay
           format={format}
@@ -134,6 +150,7 @@ function renderWidget(
     case "round_banner":
       return <CompetitionRoundBanner format={format} phase="WAITING" roundLabel={null} />;
     case "results_overlay":
+      if (!allowsWinnerUi(personality)) return null;
       return (
         <CompetitionResultsOverlay
           format={format}
@@ -144,11 +161,18 @@ function renderWidget(
         />
       );
     case "battle_status":
+      if (!allowsWinnerUi(personality) && personality.competitionMode === "NONE") return null;
       return <CompetitionHUD format={format} roomId={roomId} roundLabel={null} />;
     case "cypher_status":
       return <CypherStatusHUD roomId={roomId} />;
     case "queue_system":
-      return <CypherQueuePanel />;
+      return (
+        <CanonicalQueueDrawer
+          personality={personality}
+          useCypherRuntimePanel={personality.queueMode === "PERSISTENT"}
+          accentColor={accentColor}
+        />
+      );
     case "mic_control":
       return <CypherMicControl />;
     case "beat_player":
@@ -217,6 +241,7 @@ function renderWidget(
         </div>
       );
     case "prize_panel":
+      if (!allowsWinnerUi(personality)) return null;
       return (
         <div
           style={{
@@ -269,6 +294,13 @@ function renderWidget(
         </div>
       );
     default:
+      // Strip accidental FINAL VOTE / winner widgets if registered on non-winner personalities
+      if (
+        (widget.id.includes("final_vote") || widget.id.includes("winner")) &&
+        (!personality.allowsFinalVoteOverlay || !allowsWinnerUi(personality))
+      ) {
+        return null;
+      }
       return (
         <div
           style={{
@@ -293,7 +325,18 @@ export default function ExperienceWidgetLayer({
   roomId,
   format = "BATTLE",
   accentColor = "#00FFFF",
+  personality: personalityProp,
+  featureFlags,
+  cypherKing,
 }: ExperienceWidgetLayerProps) {
+  const personality =
+    personalityProp ??
+    resolveExperiencePersonality({
+      format,
+      featureFlags,
+      cypherKing,
+      eventType: format.toLowerCase(),
+    });
   const layers = groupWidgetsByLayer(widgets);
 
   return (
@@ -315,7 +358,7 @@ export default function ExperienceWidgetLayer({
           }}
         >
           {layers.panel.map((widget) => (
-            <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor)}</div>
+            <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor, personality)}</div>
           ))}
         </div>
       )}
@@ -336,7 +379,7 @@ export default function ExperienceWidgetLayer({
           {layers.hud.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {layers.hud.map((widget) => (
-                <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor)}</div>
+                <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor, personality)}</div>
               ))}
             </div>
           )}
@@ -352,7 +395,7 @@ export default function ExperienceWidgetLayer({
             >
               {layers.overlay.map((widget) => (
                 <div key={widget.id} style={{ pointerEvents: "auto" }}>
-                  {renderWidget(widget, roomId, format, accentColor)}
+                  {renderWidget(widget, roomId, format, accentColor, personality)}
                 </div>
               ))}
             </div>
@@ -370,7 +413,7 @@ export default function ExperienceWidgetLayer({
           }}
         >
           {layers.ambient.map((widget) => (
-            <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor)}</div>
+            <div key={widget.id}>{renderWidget(widget, roomId, format, accentColor, personality)}</div>
           ))}
         </div>
       )}

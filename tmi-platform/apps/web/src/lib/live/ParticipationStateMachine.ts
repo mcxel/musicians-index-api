@@ -369,7 +369,7 @@ export function resolveVenueHudActions(ctx: ParticipationContext): VenueHudActio
   if (competition && isPerformerCapable(ctx.role) && !onStage && !ctx.isRoomOwner) {
     actions.push({
       id: "join_queue",
-      label: "Join Queue",
+      label: personality.restartOnEmpty ? "Join Queue / Next Set" : "Join Queue",
       icon: "📋",
       enabled: ctx.queueEngineAvailable && !queued,
       reason: !ctx.queueEngineAvailable

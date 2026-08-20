@@ -163,3 +163,46 @@ export function getQueueSnapshot(venueSlug: string) {
     slots: activeSlots,
   };
 }
+
+/** Honest: any waiting / next-up / staging / on-stage performer. */
+export function hasActiveQueueParticipants(venueSlug: string): boolean {
+  return getQueueSnapshot(venueSlug).count > 0;
+}
+
+/**
+ * RESET step (must run before shuffle):
+ * Clear stage, next-up, staging, and completed slots. Honest empty.
+ * Keeps the same venueSlug — discovery tile stays alive.
+ */
+export function resetQueueForRecruiting(venueSlug: string): VenueQueue {
+  const queue = getVenueQueue(venueSlug);
+  queue.slots = [];
+  queue.paused = false;
+  return queue;
+}
+
+/**
+ * SHUFFLE step — reorder waiting-only pool for next-up presentation.
+ * Refuses if any on-stage / staging / next-up slot still exists (match still live).
+ */
+export function shuffleWaitingSlots(venueSlug: string): VenueQueue | null {
+  const queue = getVenueQueue(venueSlug);
+  const live = queue.slots.some(
+    (s) => s.status === "on-stage" || s.status === "staging" || s.status === "next-up",
+  );
+  if (live) return null;
+
+  const waiting = queue.slots.filter((s) => s.status === "waiting");
+  for (let i = waiting.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = waiting[i]!;
+    waiting[i] = waiting[j]!;
+    waiting[j] = tmp;
+  }
+  waiting.forEach((s, idx) => {
+    s.priority = idx + 1;
+  });
+  queue.slots = waiting;
+  if (waiting[0]) waiting[0].status = "next-up";
+  return queue;
+}
