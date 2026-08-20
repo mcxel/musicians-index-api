@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * CompactQuickPanelHost — mounts active floating quick panels (LOBBIES, AVATAR, MEMORY, YOPHO, REMOTE).
+ * CompactQuickPanelHost — mounts active floating quick panels (LOBBIES, STREAM & WIN lounge, AVATAR, etc.).
+ * LOBBIES → LiveLobbyWallHost mosaic; stream-win → radio lounge panel (not lobby wall).
  * One panel at a time; preserves roomId / player / WebRTC (no router.push).
  */
 

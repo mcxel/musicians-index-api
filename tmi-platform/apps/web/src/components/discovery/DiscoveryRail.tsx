@@ -32,7 +32,7 @@ interface Props {
 const GAMES = [
   { slug: 'weekly-cypher',   name: 'Weekly Cypher',      icon: '🎙️', href: '/live/rooms/cypher-arena',     desc: 'Freestyle battle — all genres'  },
   { slug: 'monday-stage',    name: 'Monday Night Stage', icon: '🎭', href: '/games/monday-night',            desc: 'Live performance competition'    },
-  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/lobby?filter=stream-win', desc: 'Listen, win real cash & XP'     },
+  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/rooms/stream-win', desc: 'Listen, win real cash & XP'     },
   { slug: 'battle-stage',    name: 'Battle Stage',       icon: '⚔️', href: '/live/rooms/battle-stage',      desc: 'Song-for-song battles'          },
   { slug: 'comedy-night',    name: 'Comedy Night',       icon: '😂', href: '/games/comedy-night',           desc: 'Stand-up + audience voting'     },
   { slug: 'deal-or-feud',    name: 'Deal or Feud 1000',  icon: '🎮', href: '/games/deal-or-feud',           desc: 'Game show — win platform cash'  },
