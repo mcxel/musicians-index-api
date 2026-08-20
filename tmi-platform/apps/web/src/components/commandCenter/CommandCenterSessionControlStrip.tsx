@@ -148,8 +148,8 @@ export default function CommandCenterSessionControlStrip({
     else openPanel("snips", "bottom-right");
   };
 
-  const handleStreamWin = () => {
-    togglePanel("stream-win", "bottom-left");
+  const handleLobbies = () => {
+    togglePanel("lobbies", "bottom-left");
   };
 
   const primaryStrip = getPrimarySessionStrip();
@@ -206,14 +206,14 @@ export default function CommandCenterSessionControlStrip({
             onClick={handleVideoShuffle}
           />
         );
-      case "stream-win":
+      case "lobbies":
         return (
           <SessionBtn
             key={id}
-            label="📻 STREAM & WIN"
-            accent={activePanel === "stream-win" ? GOLD : "rgba(255,255,255,0.85)"}
-            border={activePanel === "stream-win" ? GOLD : "rgba(255,255,255,0.18)"}
-            onClick={handleStreamWin}
+            label="🏠 LOBBIES"
+            accent={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.85)"}
+            border={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.18)"}
+            onClick={handleLobbies}
           />
         );
       case "go-live":

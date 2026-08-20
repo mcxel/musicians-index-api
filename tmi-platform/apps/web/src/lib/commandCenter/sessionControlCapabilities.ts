@@ -24,7 +24,7 @@ export const PRIMARY_SESSION_STRIP: SessionControlButtonDef[] = [
   { id: "camera", label: "📷 CAMERA" },
   { id: "snips", label: "📱 SNIPS" },
   { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE" },
-  { id: "stream-win", label: "📻 STREAM & WIN" },
+  { id: "lobbies", label: "🏠 LOBBIES" },
   { id: "go-live", label: "🔴 GO LIVE" },
 ];
 
