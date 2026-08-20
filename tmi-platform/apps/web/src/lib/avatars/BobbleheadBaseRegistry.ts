@@ -4,10 +4,14 @@
  * Source folder (gitignored, on-disk only):
  *   `BobbleHead Avatar Bases/` (17 concept files — see BOBBLEHEAD_SOURCE_INVENTORY)
  *
+ * Marcel lock — digital world citizens:
+ * - World presence = AvatarRig / BobbleheadRuntimeCharacter (R3F primitives + sockets)
+ * - Same FanLobbyVenue seats / FREE_ROAM floor as venues (not CSS cutouts)
+ * - previewImageUrl = catalog concept reference ONLY — never the seated avatar
+ *
  * Honesty (Rules 18 / 20):
- * - previewImageUrl values are **2D concept previews**, not rigged 3D GLBs.
- * - Runtime label: "Base preview — 3D runtime pending"
- * - Face-scan → morph → lip-sync → LOD is NOT implemented here.
+ * - Runtime today: procedural bobblehead mesh (oversized head capsule), not photoreal GLB
+ * - Face-scan → morph → lip-sync → LOD is NOT implemented here
  *
  * Ownership (Rule 26): Fan-only. Never surface in Performer ownership UI.
  *
@@ -16,7 +20,6 @@
  * - glbRigUrl: Shared TMI humanoid rig (walk/sit/dance/emote)
  * - lipSyncDriver: Voice → viseme weights
  * - lodLadder: full → simplified → billboard → point-cloud
- * - seatingBinding: VenueRuntime seat sockets + reclaim-on-return
  * - evolutionRuntime: Observe/Measure/Recommend only (Rule 22) — never silent rewrite
  */
 
@@ -88,10 +91,10 @@ export interface BobbleheadBase {
   outfitSummary: string;
   accessoriesVisible: string[];
   environmentCue: "studio" | "indoor" | "outdoor" | "mixed";
-  /** Public web path — 2D concept preview only. */
+  /** Public web path — catalog concept reference only (not world citizen). */
   previewImageUrl: string;
-  /** Honest UI copy — never claim 3D runtime. */
-  previewHonestyLabel: "Base preview — 3D runtime pending";
+  /** Catalog honesty — world citizen uses AvatarRig, not this image. */
+  previewHonestyLabel: "Concept catalog ref — world avatar is AvatarRig 3D";
   /** Path under gitignored BobbleHead folder (or sheet id). */
   sourceRefPath: string;
   sourceAssetIds: string[];
@@ -108,12 +111,11 @@ export interface BobbleheadBase {
   glbRigUrl?: never;
   lipSyncDriver?: never;
   lodLadder?: never;
-  seatingBinding?: never;
 }
 
 const REF_ROOT = "BobbleHead Avatar Bases";
 const PREVIEW = "/avatars/bobblehead-bases";
-const HONEST = "Base preview — 3D runtime pending" as const;
+const HONEST = "Concept catalog ref — world avatar is AvatarRig 3D" as const;
 
 export const BOBBLEHEAD_SOURCE_INVENTORY: BobbleheadSourceAsset[] = [
   {
@@ -604,25 +606,24 @@ export function getBobbleheadSourceInventoryStats() {
 /** Gap ledger for assembly directors — EXISTS vs MISSING (blocking soft-launch vs future). */
 export const BOBBLEHEAD_PIPELINE_GAP = {
   exists: [
-    { piece: "Canonical 12 archetypes (placeholder thumbs)", path: "apps/web/src/lib/avatars/CanonicalAvatarRegistry.ts" },
+    { piece: "AvatarRig + sockets (R3F Primitive3D v0)", path: "apps/web/src/components/3d/AvatarLobbyCanvas.tsx" },
+    { piece: "BobbleheadRuntimeCharacter → venue/lobby seating", path: "apps/web/src/lib/avatars/BobbleheadRuntimeCharacter.ts" },
+    { piece: "Fan lobby FREE_ROAM + seat sit/stand", path: "apps/web/src/components/lobbies/LobbyFreeRoamAvatars.tsx" },
     { piece: "Fan cosmetic SKUs + sockets", path: "apps/web/src/lib/avatars/FanCosmeticCatalog.ts" },
-    { piece: "Avatar inventory engine", path: "apps/web/src/lib/avatar/avatarInventoryEngine.ts" },
-    { piece: "AvatarCreationCenter canister (wraps AvatarCreator)", path: "apps/web/src/components/canisters/AvatarCreationCenter.tsx" },
-    { piece: "AvatarWorkspaceCanister (2D color bobble preview)", path: "apps/web/src/components/canisters/AvatarWorkspaceCanister.tsx" },
-    { piece: "Fan-only RoleGate + avatar quick panel", path: "apps/web/src/components/hud/CompactQuickPanelHost.tsx" },
-    { piece: "Avatar config API (bobbleheadConfig JSON)", path: "apps/web/src/app/api/avatar/config/route.ts" },
-    { piece: "This base registry + concept previews", path: "apps/web/src/lib/avatars/BobbleheadBaseRegistry.ts" },
+    { piece: "AvatarCreationCenter + Workspace (Fan RoleGate)", path: "apps/web/src/components/canisters/AvatarCreationCenter.tsx" },
+    { piece: "This base registry + concept catalog refs", path: "apps/web/src/lib/avatars/BobbleheadBaseRegistry.ts" },
+    { piece: "ArenaEventShell → UniversalVenueRenderer audience world", path: "apps/web/src/components/live/UniversalVenueRenderer.tsx" },
   ],
   missingBlocking: [
-    { piece: "Real face-scan → mesh pipeline", note: "Rule 18 unbuilt; Capture/Upload buttons are shells" },
-    { piece: "Shared GLB body + head rig", note: "No production GLB; certifiedGlb stays false" },
-    { piece: "Honest empty state when no avatar saved", note: "Prefer empty over fake Diamond/viewer counts (Rule 20)" },
+    { piece: "Photoreal GLB body + head from concept sheets", note: "Procedural AvatarRig stands in — certifiedGlb false" },
+    { piece: "Real face-scan → mesh pipeline", note: "Rule 18 unbuilt; Capture/Upload remain shells" },
+    { piece: "AudienceScene canvas seats using BobbleheadRuntimeCharacter", note: "Fan lobby wired; Arena 2D crowd canvas still entity-driven without full R3F bobbleheads" },
   ],
   missingFuture: [
-    { piece: "Lip sync / facial animation", note: "FUTURE field on registry — do not stub" },
-    { piece: "LOD ladder for crowd", note: "After real avatar exists" },
-    { piece: "Venue seating binding for bobbleheads", note: "Depends on AudienceRuntime convergence" },
-    { piece: "Evolution observe→recommend loop", note: "Rule 22 — never silent rewrite; evolutionGeneration is a counter only" },
-    { piece: "Procedural accessory AI generator", note: "Templates only — no fake generation API" },
+    { piece: "Lip sync / facial animation", note: "FUTURE — do not stub" },
+    { piece: "LOD ladder for crowd", note: "After real GLB avatar exists" },
+    { piece: "Full FREE_ROAM_3D collision mesh shared with UniversalVenueRenderer", note: "Lobby anchors + sit pose exist; full physics collision pending" },
+    { piece: "Evolution observe→recommend loop", note: "Rule 22 — evolutionGeneration is a counter only" },
+    { piece: "Procedural accessory AI generator", note: "Templates + socket attach only — no fake generation API" },
   ],
 } as const;

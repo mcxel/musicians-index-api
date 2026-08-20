@@ -25,6 +25,11 @@ import {
   resolveOutfitTint,
 } from "@/lib/avatars/fanAvatarLoadout";
 import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
+import {
+  bobbleheadRuntimeToRigProps,
+  readPersistedBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -135,6 +140,23 @@ export function LobbyFreeRoamAvatars({
     [attachmentIds, self.propTrigger],
   );
   const outfitTint = resolveOutfitTint(attachmentIds);
+
+  const bobbleCharacter = useMemo(
+    () => resolveBobbleheadRuntimeCharacter(readPersistedBobbleheadBaseId()),
+    // Re-resolve when loadout changes so session base stays fresh after picker
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadoutIds, self.isSeated],
+  );
+  const bobbleRig = useMemo(
+    () =>
+      bobbleheadRuntimeToRigProps(bobbleCharacter, {
+        isSeated: Boolean(self.isSeated),
+        isPlaying: (self.navigationState ?? self.locomotion) === "WALKING",
+        extraAccessoryIds: attachmentIds,
+        activePropId: self.propTrigger !== "none" ? self.propTrigger : undefined,
+      }),
+    [bobbleCharacter, self.isSeated, self.navigationState, self.locomotion, attachmentIds, self.propTrigger],
+  );
 
   return (
     <div
@@ -266,14 +288,10 @@ export function LobbyFreeRoamAvatars({
           }}
         >
           <AvatarViewer
-            active
-            color={self.skinColor ?? "#AA2DFF"}
-            isSeated={Boolean(self.isSeated)}
-            isPlaying={(self.navigationState ?? self.locomotion) === "WALKING"}
-            attachments={attachments}
-            outfitTint={outfitTint}
-            activePropId={self.propTrigger !== "none" ? self.propTrigger : undefined}
-            crown={attachments.some((a) => a.id === "crown")}
+            {...bobbleRig}
+            color={bobbleRig.color ?? self.skinColor ?? "#AA2DFF"}
+            outfitTint={bobbleRig.outfitTint ?? outfitTint}
+            attachments={bobbleRig.attachments?.length ? bobbleRig.attachments : attachments}
             size={self.isSeated ? 72 : 88}
             enableOrbit={false}
           />
@@ -293,7 +311,7 @@ export function LobbyFreeRoamAvatars({
           {self.isSeated ? `🪑 ${self.userName} (you)` : `${self.userName} (you)`}
         </div>
         <div style={{ fontSize: 7, color: "#00FFFF99", letterSpacing: "0.08em", fontWeight: 800 }}>
-          3D AVATAR RUNTIME v0
+          {bobbleCharacter.displayName.toUpperCase()} · 3D WORLD CITIZEN
         </div>
       </motion.div>
 

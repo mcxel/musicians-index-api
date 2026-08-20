@@ -16,9 +16,14 @@ import {
 } from "@/lib/avatars/FanCosmeticCatalog";
 import {
   BOBBLEHEAD_DEFAULT_BASE_ID,
-  getBobbleheadBaseById,
   listFanSelectableBases,
 } from "@/lib/avatars/BobbleheadBaseRegistry";
+import {
+  bobbleheadRuntimeToRigProps,
+  persistBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+  BOBBLEHEAD_RUNTIME_LABEL,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
@@ -134,7 +139,11 @@ function AvatarQuickPanel({
   const [baseId, setBaseId] = useState(BOBBLEHEAD_DEFAULT_BASE_ID);
   const [expression, setExpression] = useState<"neutral" | "smile" | "hype">("neutral");
   const isFan = role === "fan";
-  const selectedBase = getBobbleheadBaseById(baseId);
+  const character = resolveBobbleheadRuntimeCharacter(baseId);
+  const rig = bobbleheadRuntimeToRigProps(character, {
+    isPlaying: expression === "hype",
+    extraAccessoryIds: activeOutfit ? [activeOutfit] : [],
+  });
 
   if (!isFan) {
     return null;
@@ -151,17 +160,10 @@ function AvatarQuickPanel({
             background: "radial-gradient(ellipse at center, rgba(0,229,255,0.08) 0%, transparent 70%)",
             borderRadius: 8,
             border: "1px solid rgba(0,229,255,0.2)",
-            backgroundImage: selectedBase
-              ? `linear-gradient(180deg, rgba(5,5,16,0.15), rgba(5,5,16,0.55)), url(${selectedBase.previewImageUrl})`
-              : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
             position: "relative",
           }}
         >
-          {!selectedBase && (
-            <AvatarViewer active color={accentColor} visorColor={accentColor} isPlaying={expression === "hype"} size={120} />
-          )}
+          <AvatarViewer {...rig} size={140} enableOrbit={false} />
           <div
             style={{
               position: "absolute",
@@ -173,7 +175,7 @@ function AvatarQuickPanel({
               letterSpacing: "0.06em",
             }}
           >
-            Base preview — 3D runtime pending
+            {BOBBLEHEAD_RUNTIME_LABEL}
           </div>
         </div>
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>BASES</div>
@@ -184,11 +186,7 @@ function AvatarQuickPanel({
               type="button"
               onClick={() => {
                 setBaseId(b.id);
-                try {
-                  sessionStorage.setItem("tmi_bobblehead_base_id", b.id);
-                } catch {
-                  /* ignore */
-                }
+                persistBobbleheadBaseId(b.id);
               }}
               style={{
                 fontSize: 8,

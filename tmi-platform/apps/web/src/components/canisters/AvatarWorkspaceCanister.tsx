@@ -8,6 +8,17 @@ import {
   getAccessoriesForBase,
   getBobbleheadBaseById,
 } from "@/lib/avatars/BobbleheadBaseRegistry";
+import {
+  bobbleheadRuntimeToRigProps,
+  persistBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import dynamic from "next/dynamic";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
 
 export interface AvatarBobbleheadConfig {
   skinTone: string;
@@ -198,33 +209,43 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
         <div style={{ padding: "16px 18px 24px" }}>
           <BobbleheadBasePicker
             selectedBaseId={baseId}
-            onSelect={(b) => set("baseId", b.id)}
+            onSelect={(b) => {
+              persistBobbleheadBaseId(b.id);
+              set("baseId", b.id);
+            }}
             accentColor={accentColor}
             compact
           />
 
           <div style={{ display: "flex", gap: 24, marginTop: 16, flexWrap: "wrap" }}>
-          {/* Preview column */}
+          {/* Preview column — spatial AvatarRig, not cutout image */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            {selectedBase ? (
-              <div
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: 12,
-                  backgroundImage: `url(${selectedBase.previewImageUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  border: `1px solid ${accentColor}44`,
-                }}
-                title={selectedBase.previewHonestyLabel}
-              />
-            ) : (
-              <AvatarPreview config={config} size={96} />
-            )}
+            {(() => {
+              const character = resolveBobbleheadRuntimeCharacter(baseId);
+              const skinHex = SKIN_TONES.find((s) => s.id === config.skinTone)?.hex;
+              const hairHex = HAIR_COLORS.find((h) => h.id === config.hairColor)?.hex;
+              const outfitHex = OUTFIT_COLORS.find((o) => o.id === config.outfitColor)?.hex;
+              const rig = bobbleheadRuntimeToRigProps(character);
+              return (
+                <AvatarViewer
+                  {...rig}
+                  color={skinHex ?? rig.color}
+                  hairColor={hairHex ?? rig.hairColor}
+                  outfitTint={outfitHex ?? rig.outfitTint}
+                  size={120}
+                  enableOrbit
+                  isPlaying={false}
+                />
+              );
+            })()}
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em" }}>
-              BASE PREVIEW — 3D PENDING
+              3D WORLD CITIZEN · PROCEDURAL RIG
             </div>
+            {selectedBase && (
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.25)", textAlign: "center", maxWidth: 140 }}>
+                Concept ref catalog only — not pasted as avatar
+              </div>
+            )}
             {saved?.isComplete && (
               <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>
                 Last saved<br />{new Date(saved.updatedAt).toLocaleDateString()}

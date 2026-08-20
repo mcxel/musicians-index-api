@@ -164,7 +164,11 @@ export type AvatarRigProps = {
   isPlaying?: boolean;
   /** Synced to FanLobbyVenue seat anchors — sit lean vs stand idle. */
   isSeated?: boolean;
-  /** Optional portrait plate on head — 3D Avatar Runtime v0, not a finished mesh. */
+  /**
+   * Optional portrait plate on head — host/legacy only.
+   * Fan bobblehead bases must NOT use this (Marcel lock: no cutout world citizens).
+   * Prefer bobbleheadRatio + material palette from BobbleheadRuntimeCharacter.
+   */
   portraitUrl?: string;
   /** Socket plane/sprite props from FanCosmeticCatalog / LobbyPropRegistry. */
   attachments?: SocketAttachmentDef[];
@@ -176,6 +180,11 @@ export type AvatarRigProps = {
   /** 0–100 height / mass from Avatar Forge — scales the capsule rig, not a body mesh. */
   bodyHeight?: number;
   bodyMass?: number;
+  /**
+   * TMI bobblehead head-over-body scale (1.0 = human; ~1.35 = signature).
+   * When set, head sphere grows and cutout portraitUrl is ignored (spatial mesh only).
+   */
+  bobbleheadRatio?: number;
 };
 
 export function AvatarRig({
@@ -192,6 +201,7 @@ export function AvatarRig({
   activePropId,
   bodyHeight = 50,
   bodyMass = 50,
+  bobbleheadRatio,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -200,6 +210,14 @@ export function AvatarRig({
   const headColor = hairColor ?? color ?? bodyColor;
   const heightScale = 0.86 + (Math.min(100, Math.max(0, bodyHeight)) / 100) * 0.3;
   const massScale = 0.86 + (Math.min(100, Math.max(0, bodyMass)) / 100) * 0.3;
+  const bobble = Math.min(1.55, Math.max(1, bobbleheadRatio ?? 1));
+  const isBobblehead = bobble > 1.05;
+  /** Cutouts forbidden for bobblehead spatial citizens — mesh materials only. */
+  const usePortraitPlate = Boolean(portraitUrl) && !isBobblehead;
+  const headRadius = 0.28 * (isBobblehead ? bobble : 1);
+  const headY = isBobblehead ? 0.95 + headRadius * 0.35 : 1.05;
+  const bodyCapsuleRadius = isBobblehead ? 0.26 : 0.3;
+  const bodyCapsuleLen = isBobblehead ? (isSeated ? 0.32 : 0.48) : (isSeated ? 0.4 : 0.6);
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
@@ -248,9 +266,9 @@ export function AvatarRig({
       position={[0, isSeated ? -0.55 : -0.4, 0]}
       scale={[massScale, heightScale, massScale]}
     >
-      {/* Body capsule — Primitive3D / 3D_MESH v0 */}
-      <mesh position={[0, isSeated ? 0.32 : 0.45, 0]} castShadow receiveShadow>
-        <capsuleGeometry args={[0.3, isSeated ? 0.4 : 0.6, 12, 24]} />
+      {/* Body capsule — Primitive3D / 3D_MESH v0 (stockier when bobblehead) */}
+      <mesh position={[0, isSeated ? 0.28 : 0.4, 0]} castShadow receiveShadow>
+        <capsuleGeometry args={[bodyCapsuleRadius, bodyCapsuleLen, 12, 24]} />
         <meshStandardMaterial
           color={bodyColor}
           roughness={0.15}
@@ -260,13 +278,24 @@ export function AvatarRig({
         />
       </mesh>
 
-      {/* Head sphere + optional portrait plate */}
-      <mesh position={[0, 1.05, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[0.28, 24, 24]} />
-        <meshStandardMaterial color={headColor} roughness={0.35} metalness={0.4} />
+      {/* Head sphere — oversized when bobbleheadRatio set (spatial citizen, not cutout) */}
+      <mesh position={[0, headY, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[headRadius, 28, 28]} />
+        <meshStandardMaterial
+          color={isBobblehead ? (color ?? headColor) : headColor}
+          roughness={0.35}
+          metalness={0.4}
+        />
       </mesh>
-      {portraitUrl ? (
-        <Html position={[0, 1.05, 0.29]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
+      {/* Hair cap disc for bobblehead bases */}
+      {isBobblehead && (
+        <mesh position={[0, headY + headRadius * 0.45, 0]} castShadow>
+          <sphereGeometry args={[headRadius * 0.92, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.45]} />
+          <meshStandardMaterial color={headColor} roughness={0.55} metalness={0.2} />
+        </mesh>
+      )}
+      {usePortraitPlate ? (
+        <Html position={[0, headY, headRadius + 0.01]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={portraitUrl}
@@ -281,8 +310,13 @@ export function AvatarRig({
           />
         </Html>
       ) : (
-        <mesh ref={visorRef} position={[0, 0.98, 0.22]} rotation={[0.15, 0, 0]} castShadow>
-          <boxGeometry args={[0.36, 0.08, 0.1]} />
+        <mesh
+          ref={visorRef}
+          position={[0, headY - headRadius * 0.15, headRadius * 0.75]}
+          rotation={[0.15, 0, 0]}
+          castShadow
+        >
+          <boxGeometry args={[headRadius * 1.25, headRadius * 0.28, headRadius * 0.35]} />
           <meshStandardMaterial
             color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
             roughness={0.05}
@@ -294,8 +328,8 @@ export function AvatarRig({
       )}
 
       {showCrown && (
-        <mesh ref={crownRef} position={[0, 1.35, 0]} castShadow>
-          <torusGeometry args={[0.22, 0.04, 8, 16]} />
+        <mesh ref={crownRef} position={[0, headY + headRadius + 0.08, 0]} castShadow>
+          <torusGeometry args={[headRadius * 0.75, 0.04, 8, 16]} />
           <meshStandardMaterial
             color="#FFD700"
             roughness={0.08}
@@ -340,6 +374,7 @@ export function AvatarViewer({
   activePropId,
   bodyHeight,
   bodyMass,
+  bobbleheadRatio,
   enableOrbit = true,
   fill = false,
   cameraFocus = "body",
@@ -367,6 +402,7 @@ export function AvatarViewer({
           <spotLight position={[5, 5, 5]} intensity={1.5} color="#fff" />
 
           <AvatarRig
+            bobbleheadRatio={bobbleheadRatio}
             active={active}
             color={color}
             visorColor={visorColor}

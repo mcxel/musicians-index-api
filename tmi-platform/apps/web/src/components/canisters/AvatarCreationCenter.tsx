@@ -14,6 +14,7 @@ import {
   getBobbleheadBaseById,
   type BobbleheadBase,
 } from "@/lib/avatars/BobbleheadBaseRegistry";
+import { persistBobbleheadBaseId } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import { useCallback, useState } from "react";
 
 interface AvatarCreationCenterProps {
@@ -26,11 +27,7 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
 
   const onSelect = useCallback((base: BobbleheadBase) => {
     setBaseId(base.id);
-    try {
-      sessionStorage.setItem("tmi_bobblehead_base_id", base.id);
-    } catch {
-      /* ignore */
-    }
+    persistBobbleheadBaseId(base.id);
   }, []);
 
   return (
@@ -69,7 +66,7 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
             👤 AVATAR CREATION CENTER
           </div>
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>
-            Pick a bobblehead base, then customize — 3D face-scan runtime is still pending.
+            Pick a bobblehead base — you become a 3D AvatarRig in Fan lobbies / venues (not a cutout).
           </div>
         </div>
 

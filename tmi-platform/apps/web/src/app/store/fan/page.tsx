@@ -31,7 +31,7 @@ export default function FanStorePage() {
             BOBBLEHEAD ACCESSORIES
           </div>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 16, lineHeight: 1.5 }}>
-            Fan-only fit templates for bobblehead bases. Previews are 2D — 3D runtime pending. No fake AI generator.
+            Fan-only fit templates → AvatarRig socket attachments in lobbies/venues. Procedural 3D — not sticker cutouts. Photoreal GLB pending.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
             {BOBBLEHEAD_ACCESSORY_TEMPLATES.map((acc) => (

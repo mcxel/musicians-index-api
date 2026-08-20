@@ -1,14 +1,24 @@
 "use client";
 
 /**
- * BobbleheadBasePicker — Fan-only base selection grid.
- * Shows 2D concept previews with honest "3D runtime pending" label (Rules 18/20).
+ * BobbleheadBasePicker — Fan-only base selection.
+ * Each tile is a live AvatarRig (procedural 3D) styled from the scanned base —
+ * NOT a CSS cutout / background image (Marcel lock).
  */
 
+import dynamic from "next/dynamic";
+import { listFanSelectableBases, type BobbleheadBase } from "@/lib/avatars/BobbleheadBaseRegistry";
 import {
-  listFanSelectableBases,
-  type BobbleheadBase,
-} from "@/lib/avatars/BobbleheadBaseRegistry";
+  BOBBLEHEAD_RUNTIME_LABEL,
+  bobbleheadRuntimeToRigProps,
+  persistBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
 
 interface BobbleheadBasePickerProps {
   selectedBaseId?: string;
@@ -38,7 +48,7 @@ export function BobbleheadBasePicker({
           marginBottom: 8,
         }}
       >
-        BOBBLEHEAD BASES
+        BOBBLEHEAD BASES · 3D WORLD
       </div>
       <div
         style={{
@@ -48,25 +58,30 @@ export function BobbleheadBasePicker({
           lineHeight: 1.4,
         }}
       >
-        Base preview — 3D runtime pending. Fan-only. Concept looks, not rigged GLBs.
+        {BOBBLEHEAD_RUNTIME_LABEL}. Same AvatarRig that seats in Fan lobbies / venues.
       </div>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: compact
-            ? "repeat(auto-fill, minmax(72px, 1fr))"
-            : "repeat(auto-fill, minmax(100px, 1fr))",
+            ? "repeat(auto-fill, minmax(88px, 1fr))"
+            : "repeat(auto-fill, minmax(120px, 1fr))",
           gap: compact ? 8 : 10,
         }}
       >
         {bases.map((base) => {
           const selected = base.id === selectedBaseId;
+          const character = resolveBobbleheadRuntimeCharacter(base.id);
+          const rig = bobbleheadRuntimeToRigProps(character);
           return (
             <button
               key={base.id}
               type="button"
-              onClick={() => onSelect(base)}
-              title={`${base.displayName} · ${base.previewHonestyLabel}`}
+              onClick={() => {
+                persistBobbleheadBaseId(base.id);
+                onSelect(base);
+              }}
+              title={`${base.displayName} · ${BOBBLEHEAD_RUNTIME_LABEL}`}
               style={{
                 padding: 0,
                 borderRadius: 10,
@@ -80,13 +95,20 @@ export function BobbleheadBasePicker({
             >
               <div
                 style={{
-                  aspectRatio: "1",
-                  background: "#0a0614",
-                  backgroundImage: `url(${base.previewImageUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  height: compact ? 72 : 96,
+                  background: "radial-gradient(ellipse at center, rgba(0,229,255,0.1), #050510)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-              />
+              >
+                <AvatarViewer
+                  {...rig}
+                  size={compact ? 68 : 90}
+                  enableOrbit={false}
+                  isPlaying={selected}
+                />
+              </div>
               <div style={{ padding: compact ? "4px 6px 6px" : "6px 8px 8px" }}>
                 <div
                   style={{
@@ -100,7 +122,7 @@ export function BobbleheadBasePicker({
                 </div>
                 {!compact && (
                   <div style={{ fontSize: 7, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-                    {base.unlock === "free" ? "FREE" : base.unlock.toUpperCase()} · gen {base.evolutionGeneration}
+                    R3F · gen {base.evolutionGeneration}
                   </div>
                 )}
               </div>
