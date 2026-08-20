@@ -4,12 +4,16 @@ import Link from 'next/link';
 import { FAN_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
 import BuyPointsSection from '@/components/store/BuyPointsSection';
+import { listFanStoreItems } from '@/lib/xp/FanStoreEngine';
+import { BOBBLEHEAD_ACCESSORY_TEMPLATES } from '@/lib/avatars/BobbleheadBaseRegistry';
 
 const BADGE_COLORS: Record<string, string> = {
   HOT: '#FF2DAA', NEW: '#00FF88', LIMITED: '#FFD700', LAUNCH: '#AA2DFF',
 };
 
 export default function FanStorePage() {
+  const bobbleheadStoreItems = listFanStoreItems().filter((i) => i.itemType === 'avatar-item' || i.itemType === 'emote');
+
   return (
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
       <section style={{ maxWidth: 900, margin: '0 auto', padding: '52px 24px 40px' }}>
@@ -22,7 +26,42 @@ export default function FanStorePage() {
 
         <BuyPointsSection role="FAN" accent="#00FFFF" showSpendCatalog />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+        <div id="bobblehead-accessories" style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: '#AA2DFF', fontWeight: 800, marginBottom: 8 }}>
+            BOBBLEHEAD ACCESSORIES
+          </div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 16, lineHeight: 1.5 }}>
+            Fan-only fit templates for bobblehead bases. Previews are 2D — 3D runtime pending. No fake AI generator.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+            {BOBBLEHEAD_ACCESSORY_TEMPLATES.map((acc) => (
+              <div
+                key={acc.id}
+                style={{
+                  background: 'rgba(170,45,255,0.06)',
+                  border: '1px solid rgba(170,45,255,0.25)',
+                  borderRadius: 12,
+                  padding: '14px 14px',
+                }}
+              >
+                <div style={{ fontSize: 22, marginBottom: 6 }}>{acc.icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>{acc.label}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4, lineHeight: 1.4 }}>{acc.description}</div>
+                <div style={{ fontSize: 11, color: '#00FFFF', marginTop: 8, fontWeight: 700 }}>
+                  {acc.pointsCost === 0 ? 'FREE' : `${acc.pointsCost} pts`}
+                  {acc.cosmeticSkuId ? ` · SKU ${acc.cosmeticSkuId}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+          {bobbleheadStoreItems.length > 0 && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+              Store engine seeded {bobbleheadStoreItems.length} avatar/emote rows for Fan inventory.
+            </div>
+          )}
+        </div>
+
+        <div id="cosmetics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {FAN_ITEMS.map((item, i) => (
             <motion.div
               key={item.id}

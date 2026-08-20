@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type CSSProperties } from "react";
+import RoleGate from "@/components/auth/RoleGate";
+import BobbleheadBasePicker from "@/components/avatar/BobbleheadBasePicker";
+import {
+  BOBBLEHEAD_DEFAULT_BASE_ID,
+  getAccessoriesForBase,
+  getBobbleheadBaseById,
+} from "@/lib/avatars/BobbleheadBaseRegistry";
 
 export interface AvatarBobbleheadConfig {
   skinTone: string;
@@ -8,6 +15,8 @@ export interface AvatarBobbleheadConfig {
   outfitColor: string;
   accessory: string;
   headSize?: number;
+  /** Fan bobblehead base id from BobbleheadBaseRegistry */
+  baseId?: string;
 }
 
 interface SavedConfig {
@@ -87,12 +96,20 @@ function AvatarPreview({ config, size = 96 }: { config: AvatarBobbleheadConfig; 
 
 export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentColor?: string }) {
   const [config, setConfig] = useState<AvatarBobbleheadConfig>({
-    skinTone: "medium", hairColor: "black", outfitColor: "purple", accessory: "none",
+    skinTone: "medium",
+    hairColor: "black",
+    outfitColor: "purple",
+    accessory: "none",
+    baseId: BOBBLEHEAD_DEFAULT_BASE_ID,
   });
   const [saved, setSaved] = useState<SavedConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+
+  const baseId = config.baseId ?? BOBBLEHEAD_DEFAULT_BASE_ID;
+  const selectedBase = getBobbleheadBaseById(baseId);
+  const fitAccessories = getAccessoriesForBase(baseId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,7 +119,12 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
         const { config: cfg } = await res.json() as { config: SavedConfig & { bobbleheadConfig?: AvatarBobbleheadConfig } | null };
         if (cfg) {
           setSaved(cfg);
-          if (cfg.bobbleheadConfig) setConfig(cfg.bobbleheadConfig);
+          if (cfg.bobbleheadConfig) {
+            setConfig({
+              ...cfg.bobbleheadConfig,
+              baseId: cfg.bobbleheadConfig.baseId ?? BOBBLEHEAD_DEFAULT_BASE_ID,
+            });
+          }
         }
       }
     } finally {
@@ -116,6 +138,7 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
     setSaving(true);
     setMsg("");
     try {
+      const previewFromBase = selectedBase?.previewImageUrl;
       const res = await fetch("/api/avatar/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,7 +146,9 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
         body: JSON.stringify({
           bobbleheadConfig: config,
           isComplete: true,
-          previewImageUrl: `/api/avatar/preview?skin=${config.skinTone}&hair=${config.hairColor}&outfit=${config.outfitColor}&acc=${config.accessory}`,
+          previewImageUrl:
+            previewFromBase ??
+            `/api/avatar/preview?skin=${config.skinTone}&hair=${config.hairColor}&outfit=${config.outfitColor}&acc=${config.accessory}`,
         }),
       });
       if (res.ok) {
@@ -140,7 +165,7 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
   }
 
   function set(k: keyof AvatarBobbleheadConfig, v: string) {
-    setConfig(prev => ({ ...prev, [k]: v }));
+    setConfig((prev) => ({ ...prev, [k]: v }));
   }
 
   const swatch = (hex: string, selected: boolean, onClick: () => void) => (
@@ -149,10 +174,18 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
     />
   );
 
-  const label: React.CSSProperties = { fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 8, marginTop: 14 };
-  const row: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+  const label: CSSProperties = { fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 8, marginTop: 14 };
+  const row: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
 
   return (
+    <RoleGate
+      allow={["FAN", "USER", "ADMIN", "STAFF"]}
+      fallback={
+        <div style={{ padding: 18, borderRadius: 16, border: `1px solid ${accentColor}22`, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+          Avatar workspace is Fan-only (Rule 26).
+        </div>
+      }
+    >
     <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${accentColor}22`, borderRadius: 16, overflow: "hidden" }}>
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}18`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.3em", color: accentColor, fontWeight: 800 }}>MY AVATAR</div>
@@ -162,11 +195,36 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
       {loading ? (
         <div style={{ padding: 32, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 12 }}>Loading avatar…</div>
       ) : (
-        <div style={{ display: "flex", gap: 24, padding: "20px 20px 24px", flexWrap: "wrap" }}>
+        <div style={{ padding: "16px 18px 24px" }}>
+          <BobbleheadBasePicker
+            selectedBaseId={baseId}
+            onSelect={(b) => set("baseId", b.id)}
+            accentColor={accentColor}
+            compact
+          />
+
+          <div style={{ display: "flex", gap: 24, marginTop: 16, flexWrap: "wrap" }}>
           {/* Preview column */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <AvatarPreview config={config} size={96} />
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em" }}>PREVIEW</div>
+            {selectedBase ? (
+              <div
+                style={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: 12,
+                  backgroundImage: `url(${selectedBase.previewImageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  border: `1px solid ${accentColor}44`,
+                }}
+                title={selectedBase.previewHonestyLabel}
+              />
+            ) : (
+              <AvatarPreview config={config} size={96} />
+            )}
+            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em" }}>
+              BASE PREVIEW — 3D PENDING
+            </div>
             {saved?.isComplete && (
               <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>
                 Last saved<br />{new Date(saved.updatedAt).toLocaleDateString()}
@@ -201,6 +259,30 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
               ))}
             </div>
 
+            {fitAccessories.length > 0 && (
+              <>
+                <div style={label}>BASE FIT ACCESSORIES</div>
+                <div style={{ ...row, gap: 6 }}>
+                  {fitAccessories.map((a) => (
+                    <span
+                      key={a.id}
+                      title={a.description}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        fontSize: 10,
+                        color: "rgba(255,255,255,0.75)",
+                      }}
+                    >
+                      {a.icon} {a.label}
+                      {a.cosmeticSkuId ? ` → ${a.cosmeticSkuId}` : ""}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+
             <div style={{ display: "flex", gap: 10, marginTop: 18, alignItems: "center" }}>
               <button onClick={() => void save()} disabled={saving}
                 style={{ padding: "10px 22px", borderRadius: 9, border: "none", background: accentColor, color: "#000", fontSize: 10, fontWeight: 900, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1, letterSpacing: "0.1em" }}>
@@ -209,9 +291,11 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
               {msg && <span style={{ fontSize: 11, color: msg.includes("saved") ? "#00FF88" : "#FF4444" }}>{msg}</span>}
             </div>
           </div>
+          </div>
         </div>
       )}
     </div>
+    </RoleGate>
   );
 }
 

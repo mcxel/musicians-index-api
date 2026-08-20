@@ -15,6 +15,11 @@ import {
   listEquippableProps,
 } from "@/lib/avatars/FanCosmeticCatalog";
 import {
+  BOBBLEHEAD_DEFAULT_BASE_ID,
+  getBobbleheadBaseById,
+  listFanSelectableBases,
+} from "@/lib/avatars/BobbleheadBaseRegistry";
+import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
   type PlaylistNowPlayingPayload,
@@ -124,9 +129,12 @@ function AvatarQuickPanel({
 }: Omit<CanonicalQuickPanelContentProps, "workspaceId">) {
   const outfits = useMemo(() => listEquippableCostumes().slice(0, 5), []);
   const props = useMemo(() => listEquippableProps().slice(0, 4), []);
+  const bases = useMemo(() => listFanSelectableBases().slice(0, 6), []);
   const [activeOutfit, setActiveOutfit] = useState(outfits[0]?.id ?? "");
+  const [baseId, setBaseId] = useState(BOBBLEHEAD_DEFAULT_BASE_ID);
   const [expression, setExpression] = useState<"neutral" | "smile" | "hype">("neutral");
   const isFan = role === "fan";
+  const selectedBase = getBobbleheadBaseById(baseId);
 
   if (!isFan) {
     return null;
@@ -143,9 +151,59 @@ function AvatarQuickPanel({
             background: "radial-gradient(ellipse at center, rgba(0,229,255,0.08) 0%, transparent 70%)",
             borderRadius: 8,
             border: "1px solid rgba(0,229,255,0.2)",
+            backgroundImage: selectedBase
+              ? `linear-gradient(180deg, rgba(5,5,16,0.15), rgba(5,5,16,0.55)), url(${selectedBase.previewImageUrl})`
+              : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            position: "relative",
           }}
         >
-          <AvatarViewer active color={accentColor} visorColor={accentColor} isPlaying={expression === "hype"} size={120} />
+          {!selectedBase && (
+            <AvatarViewer active color={accentColor} visorColor={accentColor} isPlaying={expression === "hype"} size={120} />
+          )}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: 8,
+              right: 8,
+              fontSize: 7,
+              color: "rgba(255,255,255,0.55)",
+              letterSpacing: "0.06em",
+            }}
+          >
+            Base preview — 3D runtime pending
+          </div>
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>BASES</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {bases.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                setBaseId(b.id);
+                try {
+                  sessionStorage.setItem("tmi_bobblehead_base_id", b.id);
+                } catch {
+                  /* ignore */
+                }
+              }}
+              style={{
+                fontSize: 8,
+                fontWeight: 800,
+                padding: "4px 8px",
+                borderRadius: 6,
+                border: `1px solid ${baseId === b.id ? accentColor : "rgba(255,255,255,0.15)"}`,
+                background: baseId === b.id ? `${accentColor}22` : "rgba(255,255,255,0.04)",
+                color: baseId === b.id ? accentColor : "rgba(255,255,255,0.7)",
+                cursor: "pointer",
+              }}
+            >
+              {b.displayName}
+            </button>
+          ))}
         </div>
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>OUTFITS</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -208,6 +266,12 @@ function AvatarQuickPanel({
             </button>
           ))}
         </div>
+        <Link
+          href="/settings/avatar"
+          style={{ fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700 }}
+        >
+          Open Avatar Settings →
+        </Link>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
           {displayName} · {userId.slice(0, 8)}
         </div>
@@ -218,7 +282,7 @@ function AvatarQuickPanel({
 
   return (
     <QuickPanelShell
-      title="AVATAR QUICK · LIVE 3D"
+      title="AVATAR QUICK · FAN BASES"
       accentColor={accentColor}
       onClose={onClose}
       onOpenDeep={() => openCanonicalDeepStudio("inventory")}

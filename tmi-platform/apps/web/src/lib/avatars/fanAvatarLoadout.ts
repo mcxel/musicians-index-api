@@ -131,6 +131,9 @@ const SEED_IDS = [
   "glow_stick",
   "diamond-shades-vip",
   "holographic-sneakers-gold",
+  "backwards_cap",
+  "street_beanie",
+  "neck_headphones",
 ];
 
 export function fanCosmeticStarterItems(): AvatarInventoryItem[] {

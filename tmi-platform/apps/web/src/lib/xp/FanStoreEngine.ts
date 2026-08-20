@@ -172,3 +172,64 @@ export function getFanStoreReport(): {
     mostPopularItem: mostPopular,
   };
 }
+
+/** Seed bobblehead accessory fit SKUs once (idempotent by name). */
+let bobbleheadSeeded = false;
+export function seedBobbleheadAccessoryStoreItems(): void {
+  if (bobbleheadSeeded) return;
+  const seeds: Array<{
+    itemType: FanStoreItem["itemType"];
+    name: string;
+    description: string;
+    pointsCost: number;
+    rarity: FanStoreItem["rarity"];
+    featured?: boolean;
+  }> = [
+    {
+      itemType: "avatar-item",
+      name: "Backwards Cap (Bobblehead)",
+      description: "Free headwear fit for urban/skater bases — concept plate until 3D GLB.",
+      pointsCost: 0,
+      rarity: "common",
+      featured: true,
+    },
+    {
+      itemType: "avatar-item",
+      name: "Street Beanie (Bobblehead)",
+      description: "Youth/skater beanie slot — Fan-only.",
+      pointsCost: 0,
+      rarity: "common",
+    },
+    {
+      itemType: "avatar-item",
+      name: "Neck Headphones (Bobblehead)",
+      description: "Music-fan neck accessory template. Points path via FanCosmeticCatalog.",
+      pointsCost: 150,
+      rarity: "rare",
+      featured: true,
+    },
+    {
+      itemType: "avatar-item",
+      name: "Studio Shades (Bobblehead)",
+      description: "Eyewear fit linked to sunglasses SKU.",
+      pointsCost: 200,
+      rarity: "rare",
+    },
+    {
+      itemType: "emote",
+      name: "Dance Burst Emote",
+      description: "Starter emote for Fan bobblehead bases.",
+      pointsCost: 0,
+      rarity: "common",
+    },
+  ];
+  const existingNames = new Set([...fanStoreInventory.values()].map((i) => i.name));
+  for (const s of seeds) {
+    if (existingNames.has(s.name)) continue;
+    addToFanStore(s);
+  }
+  bobbleheadSeeded = true;
+}
+
+// Auto-seed on module load so Fan store surfaces real accessory rows.
+seedBobbleheadAccessoryStoreItems();
