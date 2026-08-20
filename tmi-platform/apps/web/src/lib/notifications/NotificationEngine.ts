@@ -155,6 +155,25 @@ class NotificationEngineClass {
     });
   }
 
+  /** Merge server notifications into the client store once (dedupe by id). */
+  async hydrateFromApi(): Promise<void> {
+    if (typeof window === "undefined") return;
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { notifications?: TMINotification[] };
+      for (const n of data.notifications ?? []) {
+        if (!this.store.some((x) => x.id === n.id)) {
+          this.store.push(n);
+        }
+      }
+      this.store.sort((a, b) => b.ts - a.ts);
+      if (this.store.length > 200) this.store.length = 200;
+    } catch {
+      /* keep in-memory store */
+    }
+  }
+
   private defaultEmoji(type: NotificationType): string {
     const map: Record<NotificationType, string> = {
       system: "🔔", room_joined: "🚪", room_started: "🎬",

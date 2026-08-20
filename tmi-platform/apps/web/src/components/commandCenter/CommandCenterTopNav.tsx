@@ -13,6 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
 import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
 import { useTheme } from "@/lib/design/ThemeEngine";
+import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
 import { presentCanonicalWorkspace, openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
@@ -76,27 +77,31 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
 
   useEffect(() => {
     let cancelled = false;
-    async function poll() {
+    void NotificationEngine.hydrateFromApi().then(() => {
+      if (!cancelled) setUnreadNotifications(NotificationEngine.getUnreadCount());
+    });
+    const refresh = () => setUnreadNotifications(NotificationEngine.getUnreadCount());
+    const unsub = NotificationEngine.subscribe(refresh);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pollMessages() {
       try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch("/api/notifications", { cache: "no-store" }),
-          fetch("/api/messages", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-        if (notifRes.ok) {
-          const d = await notifRes.json();
-          setUnreadNotifications(typeof d.unreadCount === "number" ? d.unreadCount : 0);
-        }
-        if (msgRes.ok) {
-          const d = await msgRes.json();
-          setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
-        }
+        const msgRes = await fetch("/api/messages", { cache: "no-store" });
+        if (cancelled || !msgRes.ok) return;
+        const d = await msgRes.json();
+        setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
       } catch {
         /* leave counts at last-known value */
       }
     }
-    void poll();
-    const id = setInterval(poll, 30_000);
+    void pollMessages();
+    const id = setInterval(pollMessages, 30_000);
     return () => {
       cancelled = true;
       clearInterval(id);

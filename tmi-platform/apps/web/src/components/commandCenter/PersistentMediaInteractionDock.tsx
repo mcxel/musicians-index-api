@@ -7,7 +7,6 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import MemoryWallPanelOverlay from "@/components/panels/MemoryWallPanelOverlay";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
@@ -17,7 +16,6 @@ import { useTheme } from "@/lib/design/ThemeEngine";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import {
-  openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import {
@@ -58,27 +56,19 @@ export default function PersistentMediaInteractionDock({
   const [nowPlaying, setNowPlaying] = useState<PlaylistNowPlayingPayload | null>(null);
   const [waveTick, setWaveTick] = useState(0);
   const [online, setOnline] = useState(true);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
-  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 900px)");
-    const sync = () => {
-      const mobile = mql.matches;
-      setIsMobile(mobile);
-      if (!mobile) setNavDrawerOpen(false);
-    };
+    const sync = () => setIsMobile(mql.matches);
     sync();
     mql.addEventListener("change", sync);
     return () => mql.removeEventListener("change", sync);
   }, []);
 
-  const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace } =
-    useFloatingWorkspace();
+  const { open: openWorkspace } = useFloatingWorkspace();
   const { screenStream, startScreenShare, stopScreenShare } = useMonitorScreenShare({
     openPickerOnStart: true,
   });
@@ -124,35 +114,6 @@ export default function PersistentMediaInteractionDock({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function poll() {
-      try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch("/api/notifications", { cache: "no-store" }),
-          fetch("/api/messages", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-        if (notifRes.ok) {
-          const d = await notifRes.json();
-          setUnreadNotifications(typeof d.unreadCount === "number" ? d.unreadCount : 0);
-        }
-        if (msgRes.ok) {
-          const d = await msgRes.json();
-          setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
-        }
-      } catch {
-        /* keep last counts */
-      }
-    }
-    void poll();
-    const id = setInterval(poll, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
-
   const openShareStudio = () => {
     presentCanonicalWorkspace("share-studio", "DRAWER");
   };
@@ -165,53 +126,8 @@ export default function PersistentMediaInteractionDock({
     return `${current} / —:—`;
   })();
 
-  const openNavModule = (moduleId: "lobby" | "messaging" | "notifications") => {
-    openCanonicalWorkspaceQuick(moduleId, "DRAWER");
-    setNavDrawerOpen(false);
-  };
-
   return (
     <>
-      {isMobile && navDrawerOpen ? (
-        <div
-          role="presentation"
-          onClick={() => setNavDrawerOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.65)",
-            zIndex: 8800,
-          }}
-        />
-      ) : null}
-      {isMobile && navDrawerOpen ? (
-        <div
-          style={{
-            position: "fixed",
-            right: 12,
-            bottom: "calc(120px + env(safe-area-inset-bottom, 0px))",
-            width: "min(88vw, 280px)",
-            zIndex: 8900,
-            background: "rgba(5,5,20,0.97)",
-            border: "1px solid rgba(0,255,255,0.25)",
-            borderRadius: 12,
-            padding: "10px 12px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.75)",
-          }}
-        >
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
-            NAVIGATION
-          </div>
-          <NavHome workspaceOpen={workspaceOpen} onToggleWorkspace={() => { toggleWorkspace(); setNavDrawerOpen(false); }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-            <NavButton label="DISCOVER" icon="🧭" onClick={() => openNavModule("lobby")} />
-            <NavButton label="LIVE NOW" icon="📹" onClick={() => openNavModule("lobby")} />
-            <NavButton label="LOBBY" icon="👥" onClick={() => openNavModule("lobby")} />
-            <NavButton label="MESSAGES" icon="💬" onClick={() => openNavModule("messaging")} badge={unreadMessages} />
-            <NavButton label="NOTIFICATIONS" icon="🔔" onClick={() => openNavModule("notifications")} badge={unreadNotifications} />
-          </div>
-        </div>
-      ) : null}
       <MemoryWallPanelOverlay
         isOpen={isMemoryWallOpen}
         onClose={() => setIsMemoryWallOpen(false)}
@@ -385,41 +301,6 @@ export default function PersistentMediaInteractionDock({
 
             {isMobile ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                <button
-                  type="button"
-                  data-testid="tmi-mobile-nav-trigger"
-                  onClick={() => setNavDrawerOpen((v) => !v)}
-                  style={{
-                    ...toolBtn,
-                    position: "relative",
-                    border: navDrawerOpen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
-                    borderRadius: 8,
-                    padding: "6px 10px",
-                    color: navDrawerOpen ? "#00FFFF" : "rgba(255,255,255,0.75)",
-                  }}
-                  aria-expanded={navDrawerOpen}
-                >
-                  🧭 NAV {navDrawerOpen ? "▾" : "▴"}
-                  {unreadNotifications > 0 ? (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: -4,
-                        right: -4,
-                        background: "#FF3B5C",
-                        color: "#fff",
-                        fontSize: 7,
-                        fontWeight: 900,
-                        borderRadius: 999,
-                        padding: "1px 4px",
-                        minWidth: 12,
-                        textAlign: "center",
-                      }}
-                    >
-                      {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                    </span>
-                  ) : null}
-                </button>
                 <div
                   style={{
                     fontSize: 9,
@@ -442,32 +323,7 @@ export default function PersistentMediaInteractionDock({
                 </div>
               </div>
             ) : (
-              <>
-            {/* CENTER — Global Navigation */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 16,
-                flex: 1,
-                minWidth: 0,
-                flexWrap: "wrap",
-                paddingRight: 14,
-                marginRight: 14,
-                borderRight: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              <NavHome workspaceOpen={workspaceOpen} onToggleWorkspace={toggleWorkspace} />
-              <NavButton label="DISCOVER" icon="🧭" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="LIVE NOW" icon="📹" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="LOBBY" icon="👥" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="MESSAGES" icon="💬" onClick={() => openCanonicalWorkspaceQuick("messaging", "DRAWER")} badge={unreadMessages} />
-              <NavButton label="NOTIFICATIONS" icon="🔔" onClick={() => openCanonicalWorkspaceQuick("notifications", "DRAWER")} badge={unreadNotifications} />
-            </div>
-
-            {/* RIGHT — Live / Media controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
               {/* Avatar/Inventory ownership is Fan-only (Rule 26 Identity Policy) — never expose the chrome to Performers. */}
               {!isPerformer && (
                 <>
@@ -545,7 +401,6 @@ export default function PersistentMediaInteractionDock({
                 🧠 MEMORY
               </button>
             </div>
-              </>
             )}
           </div>
         </div>
@@ -594,143 +449,3 @@ const toolBtn: React.CSSProperties = {
   whiteSpace: "nowrap",
   fontFamily: "inherit",
 };
-
-function NavLink({
-  label,
-  icon,
-  href,
-  badge,
-}: {
-  label: string;
-  icon: string;
-  href: string;
-  badge?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: "0.05em",
-        color: "rgba(255,255,255,0.85)",
-        textDecoration: "none",
-        position: "relative",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-      {badge != null && badge > 0 ? <Badge count={badge} /> : null}
-    </Link>
-  );
-}
-
-function NavButton({
-  label,
-  icon,
-  onClick,
-  badge,
-}: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-  badge?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: "0.05em",
-        color: "rgba(255,255,255,0.85)",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        fontFamily: "inherit",
-        whiteSpace: "nowrap",
-        position: "relative",
-      }}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-      {badge != null && badge > 0 ? <Badge count={badge} /> : null}
-    </button>
-  );
-}
-
-function NavHome({
-  workspaceOpen,
-  onToggleWorkspace,
-}: {
-  workspaceOpen: boolean;
-  onToggleWorkspace: () => void;
-}) {
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-      <Link
-        href="/"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: "0.05em",
-          color: "rgba(255,255,255,0.85)",
-          textDecoration: "none",
-        }}
-      >
-        <span>🏠</span>
-        <span>HOME</span>
-      </Link>
-      <button
-        type="button"
-        aria-label={workspaceOpen ? "Close workspace panel" : "Open workspace panel"}
-        onClick={onToggleWorkspace}
-        style={{
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "rgba(255,255,255,0.05)",
-          color: "#d6b5ff",
-          borderRadius: 6,
-          fontSize: 10,
-          fontWeight: 900,
-          cursor: "pointer",
-          padding: "1px 6px",
-        }}
-      >
-        {workspaceOpen ? "▼" : "▲"}
-      </button>
-    </div>
-  );
-}
-
-function Badge({ count }: { count: number }) {
-  return (
-    <span
-      style={{
-        position: "absolute",
-        top: -6,
-        right: -8,
-        background: "#FF0055",
-        color: "#fff",
-        fontSize: 7,
-        fontWeight: 900,
-        padding: "1px 4px",
-        borderRadius: 4,
-        minWidth: 14,
-        textAlign: "center",
-      }}
-    >
-      {count > 99 ? "99+" : count}
-    </span>
-  );
-}
