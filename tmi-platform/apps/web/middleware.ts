@@ -27,6 +27,9 @@ const PROTECTED_PATHS = [
   '/api/visuals',
   '/api/promos',
   '/api/stripe',
+  // Venue Preview & Certification Runtime — performer/admin only (Rule 26).
+  '/venue/preview',
+  '/live/venue-preview',
 ];
 
 const AUTH_WHITELIST = [
@@ -443,8 +446,33 @@ export function middleware(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       const signin = new URL('/auth', req.url);
-      signin.searchParams.set('next', pathname);
+      // Preserve query (skin/cert/occ/roomId) so PREVIEW VENUE return does not flicker.
+      signin.searchParams.set('next', pathname + (search || ''));
       return NextResponse.redirect(signin, 307);
+    }
+
+    // Venue Preview — performer / venue / admin only (Rule 26). Fans never land here.
+    const isVenuePreviewPath =
+      pathname === '/venue/preview' ||
+      pathname.startsWith('/venue/preview/') ||
+      pathname === '/live/venue-preview' ||
+      pathname.startsWith('/live/venue-preview/');
+    if (isVenuePreviewPath) {
+      const allowed = hasAnyRole(userRoles, [
+        'PERFORMER',
+        'ARTIST',
+        'BAND',
+        'VENUE',
+        'ADMIN',
+        'STAFF',
+      ]);
+      if (!allowed) {
+        const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/hub/fan';
+        if (redirectPath === pathname) {
+          return NextResponse.next();
+        }
+        return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+      }
     }
 
     // Onboarding Enforcer Gate — Disabled to prevent locking users into the onboarding flow.

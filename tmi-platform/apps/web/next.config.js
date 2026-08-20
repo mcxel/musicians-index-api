@@ -189,6 +189,14 @@ const nextConfig = {
       // ── Challenges ────────────────────────────────────────────────────────
       { source: '/challenges/submit', destination: '/challenges/create', permanent: false },
 
+      // ── Canonical PREVIEW VENUE (kill parallel /live/venue-preview path) ───
+      { source: '/live/venue-preview', destination: '/venue/preview', permanent: false },
+      {
+        source: '/live/venue-preview/:venueId',
+        destination: '/venue/preview?skin=:venueId',
+        permanent: false,
+      },
+
       // ── Favicon ───────────────────────────────────────────────────────────
       { source: '/favicon.ico', destination: '/icon.svg', permanent: false },
     ];

@@ -109,8 +109,15 @@ export default function LaunchDock() {
     }
   }, [dock, requestMedia, router]);
 
-  // Never mount GO LIVE floater on admin, Command Center /hub, or /dashboard pages
-  if (onAdminRoute || pathname.startsWith("/hub") || pathname.startsWith("/dashboard")) {
+  // Never mount GO LIVE floater on admin, Command Center /hub, /dashboard,
+  // or immersive venue preview (ArenaEventShell owns the surface).
+  if (
+    onAdminRoute ||
+    pathname.startsWith("/hub") ||
+    pathname.startsWith("/dashboard") ||
+    pathname === "/venue/preview" ||
+    pathname.startsWith("/venue/preview/")
+  ) {
     return null;
   }
 

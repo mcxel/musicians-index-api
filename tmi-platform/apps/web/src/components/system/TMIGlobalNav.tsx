@@ -83,6 +83,9 @@ export default function TMIGlobalNav() {
     pathname === "/hub" ||
     pathname.startsWith("/hub/") ||
     pathname.startsWith("/dashboard");
+  // Immersive PREVIEW VENUE — no legacy bottom dock over ArenaEventShell.
+  const isVenuePreviewPath =
+    pathname === "/venue/preview" || pathname.startsWith("/venue/preview/");
 
   useEffect(() => {
     setMounted(true);
@@ -150,7 +153,8 @@ export default function TMIGlobalNav() {
 
   // Command Center owns MONITORS / GPS / CHAT. Unmount this dock on hub —
   // do not leave a competing Discover / Live Now / Lobby bar or empty spacer.
-  if (isFlightDeck || isHubPath) {
+  // Venue preview is immersive (ArenaEventShell + Venue HUD) — same rule.
+  if (isFlightDeck || isHubPath || isVenuePreviewPath) {
     return null;
   }
 

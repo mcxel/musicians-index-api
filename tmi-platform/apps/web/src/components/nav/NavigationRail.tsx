@@ -47,6 +47,8 @@ const EXCLUDED_PREFIXES = [
   "/hub",
   "/dashboard/",
   "/dashboard",
+  // Immersive venue preview — ArenaEventShell owns the viewport.
+  "/venue/preview",
 ];
 
 // ── Menu items — all real routes ─────────────────────────────────────────────

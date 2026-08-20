@@ -67,6 +67,7 @@ export default function PlatformFooter() {
     "/fan/",
     "/performer/",
     "/live/",
+    "/venue/",
     "/admin",
     "/preview/",
     "/arena",
