@@ -15,6 +15,11 @@ import {
 } from "@/lib/commandCenter/mobileCommandCenterCapabilities";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import {
+  startStreamWin,
+  exitStreamWin,
+  isStreamWinActive,
+} from "@/lib/radio/StreamWinModeRuntime";
+import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
@@ -41,7 +46,7 @@ export default function MobileQuickPanelBar({
   const router = useRouter();
   const { primary, more } = getMobileQuickPanelCapabilities(role);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { activePanel, togglePanel } = useCompactQuickPanelStore();
+  const { activePanel, togglePanel, openPanel, closePanel } = useCompactQuickPanelStore();
 
   const runAction = (id: MobileQuickPanelActionId) => {
     switch (id) {
@@ -62,6 +67,16 @@ export default function MobileQuickPanelBar({
         break;
       case "lobbies":
         togglePanel("lobbies", "bottom-left");
+        break;
+      case "stream-win":
+        if (activePanel === "stream-win" || isStreamWinActive()) {
+          exitStreamWin();
+          closePanel();
+        } else {
+          void startStreamWin().then((started) => {
+            if (started) openPanel("stream-win", "bottom-left");
+          });
+        }
         break;
       case "remote":
         togglePanel("remote", "bottom-right");
@@ -91,6 +106,7 @@ export default function MobileQuickPanelBar({
 
   const isActive = (id: MobileQuickPanelActionId): boolean => {
     if (id === "lobbies") return activePanel === "lobbies";
+    if (id === "stream-win") return activePanel === "stream-win" || isStreamWinActive();
     if (id === "remote") return activePanel === "remote";
     if (id === "yopho") return activePanel === "yopho";
     if (id === "avatar") return activePanel === "avatar";

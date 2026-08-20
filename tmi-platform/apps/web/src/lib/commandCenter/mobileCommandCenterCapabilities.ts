@@ -2,13 +2,15 @@
  * Shared mobile quick-panel capability resolver — Fan vs Performer buttons only.
  * Geometry is identical; capabilities differ by role (Rule 26).
  *
- * Lower row (QP-10): MAGAZINE | YOPHO | PLAYLIST | REMOTE | AVATAR | MEMORY | MORE (LOBBIES moved to primary strip)
+ * Primary strip (QP-10): MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE
+ * Lower row (QP-10): MAGAZINE | YOPHO | PLAYLIST | REMOTE | AVATAR | MEMORY | MORE (STREAM & WIN in MORE)
  */
 
 export type MobileQuickPanelActionId =
   | "avatar"
   | "inventory"
   | "lobbies"
+  | "stream-win"
   | "remote"
   | "yopho"
   | "playlist"
@@ -44,6 +46,7 @@ const LOWER_ROW_FAN: MobileQuickPanelButtonDef[] = [
 const LOWER_ROW_PERFORMER: MobileQuickPanelButtonDef[] = [...LOWER_ROW_COMMON];
 
 const MORE_COMMON: MobileQuickPanelButtonDef[] = [
+  { id: "stream-win", label: "📻 STREAM & WIN", tier: "more" },
   { id: "share-screen", label: "🖥 SHARE SCREEN", tier: "more" },
   { id: "record", label: "⏺ RECORD", tier: "more" },
   { id: "share", label: "↗ SHARE", tier: "more" },

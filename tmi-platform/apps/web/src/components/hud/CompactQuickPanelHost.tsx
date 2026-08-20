@@ -13,6 +13,7 @@ import RemoteQuickPanel from "@/components/hud/panels/RemoteQuickPanel";
 import CanonicalQuickPanelContent from "@/components/workspace/universal/CanonicalQuickPanelContent";
 import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonicalPresentation";
 import SnipsSwipeOverlay from "@/components/hud/panels/SnipsSwipeOverlay";
+import StreamWinMosaicPanel from "@/components/commandCenter/StreamWinMosaicPanel";
 
 export interface CompactQuickPanelHostProps {
   userId: string;
@@ -35,6 +36,15 @@ export default function CompactQuickPanelHost({
 
   if (activePanel === "remote") {
     return <RemoteQuickPanel onClose={closePanel} />;
+  }
+
+  if (activePanel === "stream-win") {
+    return (
+      <StreamWinMosaicPanel
+        isOpen
+        onClose={closePanel}
+      />
+    );
   }
 
   const workspaceMap = {
