@@ -55,6 +55,11 @@ export async function executeInstantGoLive(opts?: {
    * Dock/QuickLive may pass false to pre-warm devices before navigate.
    */
   deferMedia?: boolean;
+  /**
+   * When false (hub in-place STAGE / prepare), mint room only — do NOT POST
+   * /api/live/go or list on the lobby wall until explicit GO LIVE publish.
+   */
+  publishSession?: boolean;
 }): Promise<InstantGoLiveResult> {
   launchDockStore.setPhase("launching");
 
@@ -62,6 +67,7 @@ export async function executeInstantGoLive(opts?: {
   const privacy = opts?.privacy ?? dock.privacy;
   const preferredExperience = opts?.preferredExperience ?? dock.preferredExperience;
   const deferMedia = opts?.deferMedia !== false;
+  const publishSession = opts?.publishSession !== false;
 
   // Optional pre-warm only — never block venue open on permission dialog
   if (!deferMedia) {
@@ -115,25 +121,37 @@ export async function executeInstantGoLive(opts?: {
     /* registry-only */
   }
 
-  // Publish to lobby wall when public (honest listing hook)
-  if (!destination.flags.restrictedAudience) {
-    try {
-      const res = await fetch("/api/live/go", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: identity.name,
-          genre: destination.label,
-          category: destination.category,
-          eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
-          roomId: resolvedRoomId,
-          accentColor: opts?.accentColor ?? "#FF2DAA",
-          privacy,
-          ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
-        }),
-        credentials: "include",
-      });
-      if (!res.ok) {
+  // Publication to GlobalLiveSessionRegistry — ONLY when publishSession is true (explicit GO LIVE).
+  if (publishSession) {
+    if (!destination.flags.restrictedAudience) {
+      try {
+        const res = await fetch("/api/live/go", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: identity.name,
+            genre: destination.label,
+            category: destination.category,
+            eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
+            roomId: resolvedRoomId,
+            accentColor: opts?.accentColor ?? "#FF2DAA",
+            privacy,
+            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+          }),
+          credentials: "include",
+        });
+        if (!res.ok) {
+          publishLiveRoom({
+            roomId: resolvedRoomId,
+            title: `${identity.name} — Live`,
+            hostName: identity.name,
+            hostUserId: identity.userId ?? "performer-1",
+            category: destination.category,
+            accentColor: opts?.accentColor ?? "#FF2DAA",
+            joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
+          });
+        }
+      } catch {
         publishLiveRoom({
           roomId: resolvedRoomId,
           title: `${identity.name} — Live`,
@@ -144,38 +162,27 @@ export async function executeInstantGoLive(opts?: {
           joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
         });
       }
-    } catch {
-      publishLiveRoom({
-        roomId: resolvedRoomId,
-        title: `${identity.name} — Live`,
-        hostName: identity.name,
-        hostUserId: identity.userId ?? "performer-1",
-        category: destination.category,
-        accentColor: opts?.accentColor ?? "#FF2DAA",
-        joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
-      });
-    }
-  } else {
-    // Restricted — still register when API accepts privacy, else navigate honestly without wall
-    try {
-      await fetch("/api/live/go", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: identity.name,
-          genre: destination.label,
-          category: destination.category,
-          eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
-          roomId: resolvedRoomId,
-          accentColor: opts?.accentColor ?? "#AA2DFF",
-          privacy,
-          listed: false,
-          ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
-        }),
-        credentials: "include",
-      });
-    } catch {
-      /* navigate anyway — private stage still opens */
+    } else {
+      try {
+        await fetch("/api/live/go", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: identity.name,
+            genre: destination.label,
+            category: destination.category,
+            eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
+            roomId: resolvedRoomId,
+            accentColor: opts?.accentColor ?? "#AA2DFF",
+            privacy,
+            listed: false,
+            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+          }),
+          credentials: "include",
+        });
+      } catch {
+        /* private stage still opens */
+      }
     }
   }
 
@@ -193,4 +200,47 @@ export async function executeInstantGoLive(opts?: {
   launchDockStore.setPhase("idle");
   launchDockStore.close();
   return { ok: true, href, roomId: resolvedRoomId };
+}
+
+/** Registry publish only — call after hub stage is bound (explicit GO LIVE). */
+export async function publishInstantGoLiveSession(opts: {
+  roomId: string;
+  role?: string;
+  privacy?: LivePrivacy;
+  preferredExperience?: string;
+  displayName?: string;
+  accentColor?: string;
+}): Promise<InstantGoLiveResult> {
+  const identity = await resolveDisplayName(opts.displayName ?? "Performer");
+  const role = (opts.role ?? "PERFORMER").toUpperCase();
+  const privacy = opts.privacy ?? "public";
+  const destination = resolveLiveDestination({
+    role,
+    privacy,
+    preferredExperience: opts.preferredExperience ?? "live",
+  });
+
+  try {
+    const res = await fetch("/api/live/go", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: identity.name,
+        genre: destination.label,
+        category: destination.category,
+        eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
+        roomId: opts.roomId,
+        accentColor: opts.accentColor ?? "#FF2DAA",
+        privacy,
+        listed: !destination.flags.restrictedAudience,
+      }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      return { ok: false, error: "Could not publish to live registry." };
+    }
+    return { ok: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
+  } catch {
+    return { ok: false, error: "Network error publishing live session." };
+  }
 }
