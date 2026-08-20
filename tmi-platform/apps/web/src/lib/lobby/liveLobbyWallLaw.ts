@@ -15,33 +15,59 @@ import {
 import { LOUNGE_VIDEO_PRESENCE_LAW } from "@/lib/live/loungeVideoPresenceLaw";
 import { isPublicPerformerLobbyDiscovery } from "@/lib/venue-hud/loungeContainer";
 
-/** Primary in-shell category switch — Battles | Challenges | Cyphers | Lounges | Performer Lobbies */
+/** Primary in-shell category switch — QP-10 LOBBIES mosaic lens order (locked 2026-08-19). */
 export type LobbyWallCoreCategoryId =
-  | "battles"
-  | "challenges"
   | "cyphers"
+  | "challenges"
+  | "lives"
+  | "battles"
   | "lounges"
-  | "performer_lobbies";
+  | "performer_lobbies"
+  | "fan_avatar_lobbies";
 
 export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
-  { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
-  { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
   { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
+  { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
+  { id: "lives", label: "Lives", icon: "🔴", accentColor: "#FF3B5C" },
+  { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
   { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#00FFFF" },
   { id: "performer_lobbies", label: "Performer Lobbies", icon: "🎤", accentColor: "#FFD700" },
+  { id: "fan_avatar_lobbies", label: "Fan Avatar Lobbies", icon: "👥", accentColor: "#00E5FF" },
 ] as const;
 
+const ARENA_DISCOVERY_CATEGORIES = new Set<LiveDiscoveryCategory>([
+  "battles",
+  "challenges",
+  "cyphers",
+]);
+
+const LIVE_GENERAL_CATEGORIES = new Set<LiveDiscoveryCategory>([
+  "live_now",
+  "concerts",
+  "dance",
+  "games",
+  "comedy",
+  "djs",
+  "videos",
+  "worldwide",
+]);
+
 /** Maps wall tab → LiveDiscoveryCategory (GlobalLiveSessionRegistry / DiscoveryBus). */
-export const WALL_TAB_TO_DISCOVERY: Record<LobbyWallCoreCategoryId, LiveDiscoveryCategory> = {
+export const WALL_TAB_TO_DISCOVERY: Record<
+  Exclude<LobbyWallCoreCategoryId, "lives" | "performer_lobbies" | "fan_avatar_lobbies">,
+  LiveDiscoveryCategory
+> = {
   battles: "battles",
   challenges: "challenges",
   cyphers: "cyphers",
   lounges: "lounges",
-  performer_lobbies: "lounges",
 };
 
 /** Maps wall tab → ExperienceRoomRegistry experience classes (canonical mill). */
 export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly ExperienceClass[]> = {
+  cyphers: ["CIPHER"],
+  challenges: ["CHALLENGE"],
+  lives: ["MAIN_AUDITORIUM"],
   battles: [
     "BATTLE_SONG",
     "BATTLE_DANCE_OFF",
@@ -52,11 +78,28 @@ export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly Ex
     "BATTLE_DJ",
     "BATTLE_PRODUCER",
   ],
-  challenges: ["CHALLENGE"],
-  cyphers: ["CIPHER"],
   lounges: ["LOUNGE_SIDE_ROOM"],
   performer_lobbies: ["PERFORMER_LOBBY"],
+  fan_avatar_lobbies: ["FAN_AVATAR_LOBBY"],
 };
+
+function recordHasArenaCategory(r: LiveDiscoveryRecord): boolean {
+  return (
+    ARENA_DISCOVERY_CATEGORIES.has(r.category) ||
+    r.categories.some((c) => ARENA_DISCOVERY_CATEGORIES.has(c))
+  );
+}
+
+function recordHasLiveGeneralCategory(r: LiveDiscoveryRecord): boolean {
+  return (
+    LIVE_GENERAL_CATEGORIES.has(r.category) ||
+    r.categories.some((c) => LIVE_GENERAL_CATEGORIES.has(c))
+  );
+}
+
+function isListeningLoungeRecord(r: LiveDiscoveryRecord): boolean {
+  return r.category === "listening" || r.categories.includes("listening");
+}
 
 export const LOBBY_WALL_MOBILE_ROAM_LAW = {
   enabled: true,
@@ -108,12 +151,51 @@ export function filterDiscoveryByWallCategory(
   if (categoryId === "performer_lobbies") {
     return records.filter((r) => isPerformerLobbyRecord(r));
   }
+  if (categoryId === "fan_avatar_lobbies") {
+    return records.filter((r) => isFanAvatarLobbyRecord(r) && !isLoungeSideRoomRecord(r));
+  }
+  if (categoryId === "lives") {
+    return records.filter((r) => {
+      if (
+        isFanAvatarLobbyRecord(r) ||
+        isPerformerLobbyRecord(r) ||
+        isLoungeSideRoomRecord(r) ||
+        isListeningLoungeRecord(r)
+      ) {
+        return false;
+      }
+      if (recordHasArenaCategory(r)) return false;
+      return recordHasLiveGeneralCategory(r) || (r.isLive && !recordHasArenaCategory(r));
+    });
+  }
+  if (categoryId === "lounges") {
+    return records.filter((r) => {
+      if (isPerformerLobbyRecord(r) || isFanAvatarLobbyRecord(r)) return false;
+      return isLoungeSideRoomRecord(r) || isListeningLoungeRecord(r);
+    });
+  }
   const target = WALL_TAB_TO_DISCOVERY[categoryId];
   return records.filter(
     (r) =>
       (r.category === target || r.categories.includes(target)) &&
-      !isPerformerLobbyRecord(r),
+      !isPerformerLobbyRecord(r) &&
+      !isFanAvatarLobbyRecord(r),
   );
+}
+
+/** Advance category tab — used by horizontal swipe on mobile mosaic. */
+export function advanceLobbyWallCategory(
+  current: LobbyWallCoreCategoryId,
+  direction: "next" | "prev",
+): LobbyWallCoreCategoryId {
+  const tabs = LOBBY_WALL_CORE_CATEGORY_TABS;
+  const idx = tabs.findIndex((t) => t.id === current);
+  const base = idx >= 0 ? idx : 0;
+  const next =
+    direction === "next"
+      ? (base + 1) % tabs.length
+      : (base - 1 + tabs.length) % tabs.length;
+  return tabs[next]!.id as LobbyWallCoreCategoryId;
 }
 
 export function filterFanAvatarLobbySearch(
@@ -131,15 +213,17 @@ export function filterFanAvatarLobbySearch(
   });
 }
 
-/** Map overlay / discovery category → core wall tab (defaults battles). */
+/** Map overlay / discovery category → core wall tab (defaults lives). */
 export function mapDiscoveryToWallCategory(
   category: LiveDiscoveryCategory | null | undefined,
 ): LobbyWallCoreCategoryId {
   if (category === "challenges") return "challenges";
   if (category === "cyphers") return "cyphers";
-  if (category === "lounges") return "lounges";
-  if (category === "fan_lobbies") return "lounges";
-  return "battles";
+  if (category === "lounges" || category === "listening") return "lounges";
+  if (category === "fan_lobbies") return "fan_avatar_lobbies";
+  if (category === "live_now" || category === "concerts" || category === "worldwide") return "lives";
+  if (category === "battles") return "battles";
+  return "lives";
 }
 
 /** Fan | Performer side tabs for 30-room genre baseline (Marcel lock 2026-08-19). */

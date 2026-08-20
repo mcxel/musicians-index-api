@@ -20,6 +20,7 @@ import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
   GENRE_LOBBY_WALL_GENRE_PILLS,
   GENRE_LOBBY_WALL_SIDE_TABS,
+  advanceLobbyWallCategory,
   canSearchFanAvatarLobbies,
   filterDiscoveryByGenreId,
   filterDiscoveryByGenreLobbySide,
@@ -58,7 +59,7 @@ export default function LiveLobbyWallHost({
   viewerUserId = null,
   viewerRole: viewerRoleProp,
   onRoomJoin,
-  defaultCategory = "battles",
+  defaultCategory = "lives",
   showFanLobbySearch = true,
   showGenreLobbyTabs = false,
   enableMobileRoam = true,
@@ -139,6 +140,14 @@ export default function LiveLobbyWallHost({
     [onRoomJoin, displayRecords, viewerRole, accentColor],
   );
 
+  const advanceCategory = useCallback(
+    (direction: "next" | "prev") => {
+      setActiveCategory((cur) => advanceLobbyWallCategory(cur, direction));
+      setFanSearchQuery("");
+    },
+    [],
+  );
+
   const fanSearchActive = fanSearchQuery.trim().length > 0;
 
   const sideTabPills = showGenreLobbyTabs && !fanSearchActive
@@ -165,6 +174,7 @@ export default function LiveLobbyWallHost({
           items: [...LOBBY_WALL_CORE_CATEGORY_TABS],
           activeId: activeCategory,
           onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
+          onAdvance: advanceCategory,
         };
 
   return (
@@ -236,7 +246,7 @@ export default function LiveLobbyWallHost({
         typeLabel={typeLabel}
         variant={variant}
         onRoomJoin={handleRoomJoin}
-        enableMobileRoam={enableMobileRoam}
+        enableMobileRoam={enableMobileRoam && variant !== "quick"}
         categoryPills={categoryPills}
       />
 

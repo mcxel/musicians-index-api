@@ -25,6 +25,7 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
     <div
       role="tablist"
       aria-label="Lobby content categories"
+      data-lobby-category-tabs
       style={{
         display: 'flex',
         gap: 8,
@@ -33,6 +34,8 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
         padding: '4px 2px 10px',
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-x',
+        scrollSnapType: 'x proximity',
       }}
     >
       {items.map((pill) => {
@@ -61,6 +64,8 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'all 150ms ease',
+              scrollSnapAlign: 'start',
+              touchAction: 'manipulation',
             }}
           >
             {pill.icon && <span aria-hidden="true">{pill.icon}</span>}

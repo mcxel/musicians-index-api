@@ -248,14 +248,32 @@ function LiveDestinationsQuickPanel({
     (room: LobbyRoom) => {
       const record = records.find((r) => r.roomId === room.id || r.id === room.id);
       if (record) {
-        setJoinDecision(resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" }));
+        const decision = resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" });
+        if (decision.instant && decision.gateReason === "none") {
+          if (typeof window !== "undefined") {
+            window.location.assign(decision.href);
+            return;
+          }
+        }
+        setJoinDecision(decision);
         return;
       }
       const dest = resolveLobbyDestination({
         roomId: room.id,
-        kind: room.type === "battle" || room.type === "cypher" || room.type === "challenge" ? room.type : "live",
+        kind:
+          room.type === "battle" || room.type === "cypher" || room.type === "challenge"
+            ? room.type
+            : room.type === "lounge"
+              ? "lounge"
+              : room.type === "performer-lobby"
+                ? "performer-lobby"
+                : "live",
         href: room.href,
       });
+      if (typeof window !== "undefined") {
+        window.location.assign(dest.href);
+        return;
+      }
       setJoinDecision({
         instant: true,
         gateReason: "none",
@@ -281,14 +299,14 @@ function LiveDestinationsQuickPanel({
     <div style={{ padding: 8, minHeight: embedded ? 120 : 220 }}>
       <LiveLobbyWallHost
         accentColor={accentColor}
-        title="Tap tile → watch · JOIN enters room"
+        title="Tap tile → join room instantly"
         typeLabel="LOBBIES"
         variant="quick"
         viewerUserId={userId}
         viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
         onRoomJoin={handleRoomJoin}
-        showFanLobbySearch
-        enableMobileRoam
+        showFanLobbySearch={role === "fan"}
+        enableMobileRoam={false}
       />
       {joinDecision ? (
         <LobbyEntryFlow room={joinDecision.room} instant onClose={() => setJoinDecision(null)} />

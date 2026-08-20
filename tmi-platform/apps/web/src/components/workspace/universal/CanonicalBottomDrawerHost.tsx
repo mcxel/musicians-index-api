@@ -269,7 +269,7 @@ export default function CanonicalBottomDrawerHost({
           <LiveLobbyWallHost
             variant="embedded"
             title="Live Lobby Wall"
-            defaultCategory="battles"
+            defaultCategory="lives"
             showFanLobbySearch={role === "fan"}
             viewerUserId={uid}
             viewerRole={role}

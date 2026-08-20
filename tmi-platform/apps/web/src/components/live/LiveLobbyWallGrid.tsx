@@ -81,7 +81,7 @@ export type LobbyRoom = {
   id: string;
   name: string;
   performerName: string;
-  type: 'battle' | 'cypher' | 'mini-cypher' | 'challenge' | 'game' | 'live' | 'gauntlet' | 'lounge' | 'dance' | 'concert';
+  type: 'battle' | 'cypher' | 'mini-cypher' | 'challenge' | 'game' | 'live' | 'gauntlet' | 'lounge' | 'performer-lobby' | 'dance' | 'concert';
   href: string;
   viewerCount: number;
   status: 'live' | 'starting' | 'ended';
@@ -116,6 +116,8 @@ type LiveLobbyWallGridProps = {
     items: LobbyCategoryPill[];
     activeId: string;
     onSelect: (id: string) => void;
+    /** Horizontal swipe on mosaic → next/prev category tab (mobile). */
+    onAdvance?: (direction: "next" | "prev") => void;
   };
   /**
    * When provided, replaces the room grid/empty-state section entirely —
@@ -123,12 +125,19 @@ type LiveLobbyWallGridProps = {
    * LobbyRoom-shaped data and shouldn't be forced through LobbyCell.
    */
   overrideContent?: ReactNode;
+  /**
+   * Phone free-roam: touch-drag pans the mosaic surface without restarting
+   * WebRTC preview binds (loungeVideoPresenceLaw — skin ≠ stream restart).
+   * Collision mesh not live-certified.
+   */
+  enableMobileRoam?: boolean;
 };
 
 function toWallKind(type: LobbyRoom['type']): LobbyWallKind {
   if (type === 'mini-cypher') return 'cypher';
   if (type === 'gauntlet') return 'gauntlet';
   if (type === 'lounge') return 'lounge';
+  if (type === 'performer-lobby') return 'performer-lobby';
   if (type === 'dance') return 'dance';
   if (type === 'concert') return 'concert';
   if (type === 'battle' || type === 'cypher' || type === 'challenge' || type === 'game' || type === 'live') {
@@ -194,6 +203,7 @@ function LobbyCell({
   return (
     <motion.div
       ref={cellRef}
+      data-lobby-room-id={room.id}
       layout
       layoutId={`mosaic-tile-${room.id}`}
       initial={{ opacity: 0, scale: 0.94 }}
@@ -225,6 +235,7 @@ function LobbyCell({
         cursor: 'pointer',
         overflow: 'hidden',
         minHeight: 0,
+        touchAction: 'manipulation',
       }}
     >
       {/* Canonical preview transport (WebRTC / URL video / composed motion) — never static LIVE photo */}
@@ -314,6 +325,7 @@ export default function LiveLobbyWallGrid({
   onRoomFocus,
   categoryPills,
   overrideContent,
+  enableMobileRoam = false,
 }: LiveLobbyWallGridProps) {
   const router = useRouter();
   useAdaptiveWorldRuntime(LIVE_LOBBY_WALL_CONTRACT_ID);
@@ -321,6 +333,9 @@ export default function LiveLobbyWallGrid({
   const [focusTick, setFocusTick] = useState(0);
   const [focusedRoomId, setFocusedRoomId] = useState<string | null>(null);
   const [promotedRoomId, setPromotedRoomId] = useState<string | null>(null);
+  const [mosaicPan, setMosaicPan] = useState({ x: 0, y: 0 });
+  const [roamDrag, setRoamDrag] = useState<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   // Public wall: only discoverable active/starting sessions — ended never stay as dead cards.
   const liveRooms = rooms.filter((r) => r.status === 'live' || r.status === 'starting');
   const embedded = variant === 'embedded' || variant === 'quick';
@@ -460,9 +475,14 @@ export default function LiveLobbyWallGrid({
             {typeLabel} · {quick ? 'QUICK WALL' : 'LOBBY WALL'}
           </div>
           <h1 style={{ margin: 0, fontSize: quick ? 13 : embedded ? 16 : 20, color: '#fff' }}>{title}</h1>
-          {embedded && (
+          {embedded && !onRoomJoin && (
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 700 }}>
               Tap a tile to watch in place · JOIN enters that exact room
+            </div>
+          )}
+          {quick && onRoomJoin && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 700 }}>
+              Swipe ← → categories · scroll ↕ tiles · tap to join
             </div>
           )}
         </div>
@@ -533,16 +553,54 @@ export default function LiveLobbyWallGrid({
           flex: embedded ? 1 : undefined,
           minHeight: 0,
           overflowY: embedded ? 'auto' : undefined,
+          overflowX: enableMobileRoam ? 'hidden' : undefined,
+          touchAction: quick ? 'pan-y' : enableMobileRoam ? 'none' : undefined,
+          WebkitOverflowScrolling: embedded ? 'touch' : undefined,
         }}
         onTouchStart={(e) => {
           const t = e.changedTouches[0];
-          if (t) (e.currentTarget as HTMLDivElement).dataset.swipeX = String(t.clientX);
+          if (!t) return;
+          setTouchStart({ x: t.clientX, y: t.clientY });
+          (e.currentTarget as HTMLDivElement).dataset.swipeX = String(t.clientX);
+          if (enableMobileRoam) {
+            setRoamDrag({
+              startX: t.clientX,
+              startY: t.clientY,
+              originX: mosaicPan.x,
+              originY: mosaicPan.y,
+            });
+          }
+        }}
+        onTouchMove={(e) => {
+          if (!enableMobileRoam || !roamDrag) return;
+          const t = e.changedTouches[0];
+          if (!t) return;
+          setMosaicPan({
+            x: roamDrag.originX + (t.clientX - roamDrag.startX),
+            y: roamDrag.originY + (t.clientY - roamDrag.startY),
+          });
         }}
         onTouchEnd={(e) => {
-          const start = Number((e.currentTarget as HTMLDivElement).dataset.swipeX ?? 0);
-          const end = e.changedTouches[0]?.clientX ?? start;
-          const dx = end - start;
-          if (Math.abs(dx) > 48) onSwipe(dx < 0 ? 'next' : 'prev');
+          const start = touchStart ?? { x: Number((e.currentTarget as HTMLDivElement).dataset.swipeX ?? 0), y: 0 };
+          const endTouch = e.changedTouches[0];
+          const endX = endTouch?.clientX ?? start.x;
+          const endY = endTouch?.clientY ?? start.y;
+          const dx = endX - start.x;
+          const dy = endY - start.y;
+          setTouchStart(null);
+          if (enableMobileRoam) {
+            setRoamDrag(null);
+          }
+          const horizontal = Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 48;
+          if (horizontal && categoryPills?.onAdvance) {
+            categoryPills.onAdvance(dx < 0 ? 'next' : 'prev');
+            return;
+          }
+          if (enableMobileRoam && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) return;
+          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) {
+            if (promotedRoom) promoteAdjacent(dx < 0 ? 'next' : 'prev');
+            else onSwipe(dx < 0 ? 'next' : 'prev');
+          }
         }}
       >
         {!embedded && (
@@ -562,17 +620,27 @@ export default function LiveLobbyWallGrid({
             <div style={{ fontSize: 13, marginTop: 6 }}>Switch lenses or check back when creators are broadcasting</div>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: quick
-              ? 'repeat(2, minmax(0, 1fr))'
-              : embedded
+          <div
+            data-live-lobby-wall-grid
+            data-lobby-wall-mosaic-roam={enableMobileRoam ? 'true' : undefined}
+            data-collision-certified="false"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: quick
                 ? 'repeat(2, minmax(0, 1fr))'
-                : 'repeat(auto-fill, minmax(140px, 1fr))',
-            gridAutoRows: quick ? '110px' : embedded ? '120px' : '140px',
-            gap: quick ? 8 : embedded ? 10 : 12,
-            gridAutoFlow: 'dense',
-          }}>
+                : embedded
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : 'repeat(auto-fill, minmax(140px, 1fr))',
+              gridAutoRows: quick ? '110px' : embedded ? '120px' : '140px',
+              gap: quick ? 8 : embedded ? 10 : 12,
+              gridAutoFlow: 'dense',
+              transform: enableMobileRoam
+                ? `translate(${mosaicPan.x}px, ${mosaicPan.y}px)`
+                : undefined,
+              transition: roamDrag ? 'none' : 'transform 120ms ease-out',
+              willChange: enableMobileRoam ? 'transform' : undefined,
+            }}
+          >
             <AnimatePresence>
               {liveRooms.map((room) => {
                 const preview = buildLobbyPreviewTile({
@@ -596,7 +664,7 @@ export default function LiveLobbyWallGrid({
                       focused: focusedRoomId === room.id || preview.focused,
                     }}
                     selected={promotedRoomId === room.id}
-                    onSelect={selectRoom}
+                    onSelect={onRoomJoin ? joinRoom : selectRoom}
                     onPrewarm={prewarmRoom}
                     onFocusAudio={onFocusAudio}
                   />
@@ -609,7 +677,7 @@ export default function LiveLobbyWallGrid({
 
       {/* In-place Watch monitor — mosaic stays; JOIN is the only exact-room navigation */}
       <AnimatePresence>
-        {promotedRoom && (
+        {promotedRoom && !onRoomJoin && (
           <InPlaceWatchMonitor
             room={promotedRoom}
             index={promotedIndex}
