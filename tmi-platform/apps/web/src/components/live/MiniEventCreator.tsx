@@ -147,16 +147,17 @@ const MINI_EVENTS: MiniEventDef[] = [
     accent: "#AA2DFF",
     description: "Open freestyle cypher",
     endpoint: "/api/live/go",
-    buildBody: (name, genre) => ({
+    buildBody: (name, genre, venueEnvironment) => ({
       displayName: name,
       category: "cypher",
       genreName: genre ?? "Hip-Hop",
       title: `${name}'s Mini Cypher`,
       isMini: true,
+      venueEnvironment: venueEnvironment ?? "indoor",
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=cypher&auto=true`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=cypher&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "indoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/cypher-arena",
   },
   {
@@ -166,16 +167,17 @@ const MINI_EVENTS: MiniEventDef[] = [
     accent: "#FFD700",
     description: "Issue a direct challenge",
     endpoint: "/api/live/go",
-    buildBody: (name, genre) => ({
+    buildBody: (name, genre, venueEnvironment) => ({
       displayName: name,
       category: "challenge",
       genreName: genre ?? "Hip-Hop",
       title: `${name}'s Challenge`,
       isMini: true,
+      venueEnvironment: venueEnvironment ?? "outdoor",
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=challenge&auto=true`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=challenge&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/challenge-arena",
   },
   {
@@ -185,16 +187,17 @@ const MINI_EVENTS: MiniEventDef[] = [
     accent: "#00FFFF",
     description: "Live performance, instant",
     endpoint: "/api/live/go",
-    buildBody: (name, genre) => ({
+    buildBody: (name, genre, venueEnvironment) => ({
       displayName: name,
       category: "concert",
       genreName: genre ?? "General",
       title: `${name}'s Mini Concert`,
       isMini: true,
+      venueEnvironment: venueEnvironment ?? "indoor",
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=concert&auto=true`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=concert&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "indoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/world-concert",
   },
   {
@@ -204,16 +207,17 @@ const MINI_EVENTS: MiniEventDef[] = [
     accent: "#FF8C00",
     description: "Drop a new release live",
     endpoint: "/api/live/go",
-    buildBody: (name, genre) => ({
+    buildBody: (name, genre, venueEnvironment) => ({
       displayName: name,
       category: "release-party",
       genreName: genre ?? "General",
       title: `${name}'s Release Party`,
       isMini: true,
+      venueEnvironment: venueEnvironment ?? "indoor",
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=release-party&auto=true`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=release-party&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "indoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/new-release",
   },
   {
@@ -251,7 +255,7 @@ const MINI_EVENTS: MiniEventDef[] = [
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=dance-party&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=dance-party&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/world-dance-party",
   },
   {
@@ -271,7 +275,7 @@ const MINI_EVENTS: MiniEventDef[] = [
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=listening&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=listening&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}${typeof (r as { venueSkinId?: string }).venueSkinId === "string" && (r as { venueSkinId?: string }).venueSkinId ? `&venueSkin=${encodeURIComponent(String((r as { venueSkinId?: string }).venueSkinId))}` : ""}`
         : "/rooms/slow-jams",
   },
 ];
@@ -351,7 +355,11 @@ export function MiniEventCreator({
         return;
       }
 
-      const joinUrl = def.extractJoinUrl({ ...data, venueEnvironment: env });
+      const joinUrl = def.extractJoinUrl({
+        ...data,
+        venueEnvironment: (data.venueEnvironment as string | undefined) ?? env,
+        venueSkinId: (data.venueSkinId as string | undefined) ?? (data.session as { venueSkinId?: string } | undefined)?.venueSkinId,
+      });
       onCreated?.(def.type, joinUrl);
       router.push(joinUrl);
     } catch {

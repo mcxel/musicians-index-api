@@ -357,6 +357,8 @@ interface GoLiveRuntimeProps {
   contained?: boolean;
   /** When false, suppress hardcoded LIVE chrome (hub privacy path). */
   showLiveChrome?: boolean;
+  /** Optional EventVenueEnvironment-resolved index override. */
+  venueIndex?: 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 export default function GoLiveRuntime({
@@ -369,6 +371,7 @@ export default function GoLiveRuntime({
   instantEmptyStage = false,
   contained = false,
   showLiveChrome = true,
+  venueIndex: venueIndexProp,
 }: GoLiveRuntimeProps) {
   // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
   const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
@@ -380,7 +383,7 @@ export default function GoLiveRuntime({
   const enterDash    = useCallback(() => setViewMode('DASHBOARD'), []);
 
   const isVenueShrunk = viewMode !== 'FULL_VENUE';
-
+  const resolvedVenueIndex = venueIndexProp ?? 1;
   return (
     <AudiencePresenceProvider>
     <RoomEnvironmentLayer
@@ -472,7 +475,7 @@ export default function GoLiveRuntime({
         <UniversalVenueRenderer
           roomId={roomId}
           mode="performer"
-          venueIndex={1}
+          venueIndex={resolvedVenueIndex}
           instantEmptyStage={instantEmptyStage}
         />
         {/* Stage banner overlay — renders StageDirectorEngine announcements */}

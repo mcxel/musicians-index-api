@@ -53,6 +53,9 @@ import {
 import { isLoungeExperience, isPerformerLobbyExperience } from "@/lib/venue-hud/loungeContainer";
 import { isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
 import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
+import { ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
+import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
+import type { VenueEnvironmentKind } from "@/lib/venues/EventVenueEnvironment";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -107,6 +110,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const autoParam = typeof sp['auto'] === 'string' ? sp['auto'] : Array.isArray(sp['auto']) ? sp['auto'][0] : '';
   const categoryParam = typeof sp['category'] === 'string' ? sp['category'] : Array.isArray(sp['category']) ? sp['category'][0] : 'live';
   const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : 'public';
+  const venueEnvParam = typeof sp['venueEnv'] === 'string' ? sp['venueEnv'] : Array.isArray(sp['venueEnv']) ? sp['venueEnv'][0] : '';
+  const venueSkinParam = typeof sp['venueSkin'] === 'string' ? sp['venueSkin'] : Array.isArray(sp['venueSkin']) ? sp['venueSkin'][0] : '';
   const isInstantPerformer =
     modeParam === 'performer' && (autoParam === 'true' || autoParam === '1' || fromValue === 'launch-dock');
   const zoneParam = typeof sp['zone'] === 'string' ? sp['zone'] : Array.isArray(sp['zone']) ? sp['zone'][0] : '';
@@ -166,11 +171,25 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   // Instant Go Live — full-bleed empty stage + command panel (no marketing chrome)
   if (isInstantPerformer) {
+    await ensureHydrated();
+    const liveSession = getSessionByRoomId(id);
+    const envFromUrl =
+      venueEnvParam === "indoor" || venueEnvParam === "outdoor"
+        ? (venueEnvParam as VenueEnvironmentKind)
+        : null;
+    const envFromSession =
+      liveSession?.venueEnvironment === "indoor" || liveSession?.venueEnvironment === "outdoor"
+        ? liveSession.venueEnvironment
+        : null;
+    const skinFromUrl = venueSkinParam.trim() || null;
+    const skinFromSession = liveSession?.venueSkinId?.trim() || null;
     return (
       <InstantGoLiveStage
         roomId={id}
         category={categoryParam || 'live'}
         privacy={privacyParam || 'public'}
+        venueEnvironment={envFromUrl ?? envFromSession}
+        venueSkinId={skinFromUrl ?? skinFromSession}
       />
     );
   }
@@ -213,6 +232,22 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   // Rule 12: No Empty Inventory
   const roomAd = getAdSlotForZone(`live-room-${id}`);
 
+  await ensureHydrated();
+  const audienceLiveSession = getSessionByRoomId(id);
+  const audienceEnvFromUrl =
+    venueEnvParam === "indoor" || venueEnvParam === "outdoor"
+      ? (venueEnvParam as VenueEnvironmentKind)
+      : null;
+  const audienceEnvFromSession =
+    audienceLiveSession?.venueEnvironment === "indoor" ||
+    audienceLiveSession?.venueEnvironment === "outdoor"
+      ? audienceLiveSession.venueEnvironment
+      : null;
+  const audienceVenueEnvironment = audienceEnvFromUrl ?? audienceEnvFromSession;
+  const audienceVenueSkinId =
+    (venueSkinParam.trim() || null) ??
+    (audienceLiveSession?.venueSkinId?.trim() || null);
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
       <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
@@ -249,6 +284,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             }}
             rubricVotingOpen
             rubricEventId={battleId ?? id}
+            venueEnvironment={audienceVenueEnvironment}
+            venueSkinId={audienceVenueSkinId}
           />
         ) : millArenaEventType && millArenaEventType !== "lounge" && millArenaEventType !== "live-show" ? (
           <ArenaEventShell
@@ -256,6 +293,8 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             eventType={millArenaEventType}
             mode={performerSlug ? "performer" : "audience"}
             liveState="live"
+            venueEnvironment={audienceVenueEnvironment}
+            venueSkinId={audienceVenueSkinId}
           />
         ) : (
           /* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —

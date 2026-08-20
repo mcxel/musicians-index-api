@@ -34,6 +34,10 @@ import {
   persistDevicesFromStream,
 } from "@/lib/live/liveDevicePersistence";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from "@/lib/venues/EventVenueEnvironment";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -51,17 +55,21 @@ interface InstantGoLiveStageProps {
   privacy?: string;
   /** Fill the assigned media player instead of taking over the viewport. */
   contained?: boolean;
+  /** Persisted / URL indoor|outdoor — fed into EventVenueEnvironment on join. */
+  venueEnvironment?: VenueEnvironmentKind | null;
+  venueSkinId?: string | null;
 }
 
 function categoryToEventType(
   category: string,
-): "concert" | "battle" | "cypher" | "challenge" | "live-show" | "lounge" | "world-dance-party" {
+): "concert" | "battle" | "cypher" | "challenge" | "live-show" | "lounge" | "world-dance-party" | "slow-jams" {
   const c = category.toLowerCase();
   if (c === "battle") return "battle";
   if (c === "cypher") return "cypher";
   if (c === "challenge") return "challenge";
-  if (c === "concert") return "concert";
+  if (c === "concert" || c === "release-party") return "concert";
   if (c === "dance-party" || c === "world-dance-party") return "world-dance-party";
+  if (c === "listening" || c.includes("slow-jam")) return "slow-jams";
   if (c === "lounge") return "lounge";
   return "live-show";
 }
@@ -71,6 +79,8 @@ export default function InstantGoLiveStage({
   category = "live",
   privacy = "public",
   contained = false,
+  venueEnvironment = null,
+  venueSkinId = null,
 }: InstantGoLiveStageProps) {
   const [metrics, setMetrics] = useState<VenuePresenceMetrics>(EMPTY_VENUE_PRESENCE_METRICS);
   const [envVerified, setEnvVerified] = useState(false);
@@ -284,11 +294,23 @@ export default function InstantGoLiveStage({
   }, []);
 
   const eventType = categoryToEventType(category);
+  const envResolution = resolveEventVenueEnvironment({
+    kind:
+      eventType === "world-dance-party"
+        ? "mini-dance-party"
+        : eventType === "slow-jams"
+          ? "mini-slow-jam"
+          : eventType,
+    environment: venueEnvironment,
+    skinId: venueSkinId,
+  });
   const useArenaShell =
     eventType === "battle" ||
     eventType === "cypher" ||
     eventType === "challenge" ||
-    eventType === "concert";
+    eventType === "concert" ||
+    eventType === "world-dance-party" ||
+    eventType === "slow-jams";
 
   const watching = metrics.humanViewers;
   const RootTag = contained ? "div" : "main";
@@ -404,6 +426,8 @@ export default function InstantGoLiveStage({
             liveState="soon"
             watcherCount={watching}
             instantEmptyStage
+            venueEnvironment={envResolution.environment}
+            venueSkinId={envResolution.skinId}
           />
         ) : (
           <GoLiveRuntime
@@ -412,6 +436,7 @@ export default function InstantGoLiveStage({
             instantEmptyStage
             contained={contained}
             showLiveChrome={false}
+            venueIndex={envResolution.policy === "exempt" ? 1 : envResolution.venueIndex}
           />
         )}
       </div>

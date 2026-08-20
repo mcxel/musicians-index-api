@@ -44,6 +44,13 @@ function normalizeSession(raw: LiveSession): LiveSession {
     audienceCountries: Array.isArray(raw.audienceCountries) ? raw.audienceCountries : [],
     recentAudienceEntries: Array.isArray(raw.recentAudienceEntries) ? raw.recentAudienceEntries : [],
     lastAudienceEntryAt: raw.lastAudienceEntryAt ?? null,
+    venueEnvironment:
+      raw.venueEnvironment === "indoor" || raw.venueEnvironment === "outdoor"
+        ? raw.venueEnvironment
+        : null,
+    venueSkinId: typeof raw.venueSkinId === "string" && raw.venueSkinId.trim()
+      ? raw.venueSkinId.trim()
+      : null,
   };
 }
 
@@ -91,7 +98,7 @@ function sessionFromUserRow(u: {
 
 export async function persistLiveSession(session: LiveSession): Promise<void> {
   const normalized = normalizeSession(session);
-  await prisma.user.updateMany({
+  const updated = await prisma.user.updateMany({
     where: { OR: [{ id: normalized.userId }, { userRef: normalized.userId }] },
     data: {
       isLive: true,
@@ -100,6 +107,13 @@ export async function persistLiveSession(session: LiveSession): Promise<void> {
       liveStartedAt: new Date(normalized.startedAt),
     },
   });
+  // Fail loud if the host id does not map to a User row — otherwise Worker B
+  // hydrates empty (isLive never set) while Worker A still serves memory count.
+  if (updated.count === 0) {
+    throw new Error(
+      `[liveSessionPersistence] persistLiveSession: no User row for userId=${normalized.userId}`,
+    );
+  }
   const existing = await prisma.feedItem.findFirst({
     where: { userId: normalized.userId, type: LIVE_FEED_TYPE },
     orderBy: { createdAt: "desc" },

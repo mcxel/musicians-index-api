@@ -30,8 +30,23 @@ import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoo
 import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 import { canCreateBattle, canCreateCypher } from '@/lib/subscriptions/BattleCreationGate';
 import type { SubscriptionTier } from '@/lib/subscriptions/SubscriptionPricingEngine';
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from '@/lib/venues/EventVenueEnvironment';
 
 export const dynamic = 'force-dynamic';
+
+function parseVenueEnvironment(raw: unknown): VenueEnvironmentKind | null {
+  const s = String(raw ?? '').toLowerCase().trim();
+  if (s === 'indoor' || s === 'outdoor') return s;
+  return null;
+}
+
+function parseVenueSkinId(raw: unknown): string | null {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  return s.length > 0 ? s : null;
+}
 
 async function sessionUserId(req: NextRequest): Promise<string | null> {
   const email = req.cookies.get('tmi_user_email')?.value;
@@ -133,6 +148,36 @@ export async function POST(req: NextRequest) {
       ? ("concert" as const)
       : ((body.category ?? "live") as import("@/lib/broadcast/globalLiveSessionStore").StreamCategory);
 
+  // Persist indoor|outdoor (+ skin) on the session so joiners without URL params resolve correctly.
+  const bodyEnv = parseVenueEnvironment((body as { venueEnvironment?: unknown }).venueEnvironment);
+  const bodySkinId = parseVenueSkinId((body as { venueSkinId?: unknown }).venueSkinId);
+  const isMini = (body as { isMini?: boolean }).isMini === true;
+  let venueEnvironment: VenueEnvironmentKind | null = bodyEnv;
+  let venueSkinId: string | null = bodySkinId;
+  if (bodyEnv) {
+    const kindHint =
+      isMini && (rawCategory === "dance-party" || rawCategory === "world-dance-party")
+        ? "mini-dance-party"
+        : isMini && (rawCategory === "listening" || rawCategory.includes("slow-jam"))
+          ? "mini-slow-jam"
+          : isMini && rawCategory === "release-party"
+            ? "mini-release"
+            : isMini && rawCategory === "concert"
+              ? "mini-concert"
+              : rawCategory === "dance-party"
+                ? "world-dance-party"
+                : rawCategory === "listening"
+                  ? "slow-jams"
+                  : rawCategory;
+    const resolved = resolveEventVenueEnvironment({
+      kind: kindHint,
+      environment: bodyEnv,
+      skinId: bodySkinId,
+    });
+    venueEnvironment = resolved.environment;
+    venueSkinId = resolved.skinId;
+  }
+
   const session = registerLiveSession({
     userId,
     displayName,
@@ -146,6 +191,8 @@ export async function POST(req: NextRequest) {
     entryPriceUsd: body.entryPriceUsd,
     accentColor:   body.accentColor,
     performerTier: body.performerTier,
+    venueEnvironment,
+    venueSkinId,
   });
 
   // ── Atomic Discovery Emitter (Rule: Session Exists AND Discovery Tile Exists = PUBLIC) ──
@@ -193,6 +240,8 @@ export async function POST(req: NextRequest) {
     ok: true,
     session,
     roomId: session.roomId,
+    venueEnvironment: session.venueEnvironment ?? null,
+    venueSkinId: session.venueSkinId ?? null,
     href: `/live/rooms/${encodeURIComponent(session.roomId)}?from=live-lobby`,
   }, { status: 200 });
 }
@@ -245,36 +294,50 @@ export async function GET() {
       privacy:       s.privacy,
       performerTier: s.performerTier,
     }));
-    return NextResponse.json({
-      sessions,
-      live,
-      count,
-      anchors: listAnchorLiveRoomRecords(),
-      anchorDiscovery: anchorRecords,
-      genreDiscovery: genreRecords,
-      activeDefinition: {
-        source: 'GlobalLiveSessionRegistry.getActiveSessions',
-        staleEvictionMs: 120_000,
-        publicCountExcludes: ['INVITE_ONLY'],
-        dedupeKey: 'roomId',
-        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+    return NextResponse.json(
+      {
+        sessions,
+        live,
+        count,
+        anchors: listAnchorLiveRoomRecords(),
+        anchorDiscovery: anchorRecords,
+        genreDiscovery: genreRecords,
+        activeDefinition: {
+          source: 'GlobalLiveSessionRegistry.getActiveSessions',
+          staleEvictionMs: 120_000,
+          publicCountExcludes: ['INVITE_ONLY'],
+          dedupeKey: 'roomId',
+          neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   } catch (err) {
     console.error('[api/live/go] GET error:', err);
-    return NextResponse.json({
-      sessions: [],
-      live: [],
-      count: 0,
-      anchors: [],
-      anchorDiscovery: [],
-      activeDefinition: {
-        source: 'GlobalLiveSessionRegistry.getActiveSessions',
-        staleEvictionMs: 120_000,
-        publicCountExcludes: ['INVITE_ONLY'],
-        dedupeKey: 'roomId',
-        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+    return NextResponse.json(
+      {
+        sessions: [],
+        live: [],
+        count: 0,
+        anchors: [],
+        anchorDiscovery: [],
+        activeDefinition: {
+          source: 'GlobalLiveSessionRegistry.getActiveSessions',
+          staleEvictionMs: 120_000,
+          publicCountExcludes: ['INVITE_ONLY'],
+          dedupeKey: 'roomId',
+          neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   }
 }
