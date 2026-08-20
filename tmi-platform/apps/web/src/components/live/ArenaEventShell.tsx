@@ -173,6 +173,17 @@ interface ArenaEventShellProps {
   readonly venueEnvironment?: VenueEnvironmentKind | null;
   readonly venueSkinId?: string | null;
   readonly specialYearlyOutdoor?: boolean;
+  /**
+   * PREVIEW VENUE / VENUE TEST — same UniversalVenueRenderer path as GO LIVE.
+   * Never published as real viewers (Rule 20).
+   */
+  readonly isPreview?: boolean;
+  readonly isCertification?: boolean;
+  /** 0–1 TEST occupancy when isPreview. */
+  readonly testOccupancyRatio?: number | null;
+  readonly testCapacity?: number;
+  /** Labeled TEST counter for HUD (e.g. "TEST: 250 / 1,000 OCCUPANCY"). */
+  readonly testOccupancyLabel?: string | null;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -219,6 +230,11 @@ export default function ArenaEventShell({
   venueEnvironment = null,
   venueSkinId = null,
   specialYearlyOutdoor = false,
+  isPreview = false,
+  isCertification = false,
+  testOccupancyRatio = null,
+  testCapacity = 1000,
+  testOccupancyLabel = null,
 }: ArenaEventShellProps) {
   const venueKindForEnv =
     eventType === "monday-stage"
@@ -313,7 +329,11 @@ export default function ArenaEventShell({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveState]);   // intentionally omit eventType/roomId — fires once on end
 
-  const liveStateLabel = LIVE_STATE_LABEL[liveState];
+  const liveStateLabel = isPreview
+    ? isCertification
+      ? "VENUE CERT"
+      : "VENUE TEST"
+    : LIVE_STATE_LABEL[liveState];
 
   return (
     <RoomEnvironmentLayer
@@ -329,13 +349,16 @@ export default function ArenaEventShell({
         background: "rgba(5,5,16,0.88)", borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}>
         <span style={{
-          width: 7, height: 7, borderRadius: "50%", background: liveColor, flexShrink: 0,
-          animation: "tmiArenaBlink 1s step-end infinite",
-          boxShadow: `0 0 6px ${liveColor}`,
+          width: 7, height: 7, borderRadius: "50%",
+          background: isPreview ? "#FFD700" : liveColor,
+          flexShrink: 0,
+          animation: isPreview ? undefined : "tmiArenaBlink 1s step-end infinite",
+          boxShadow: `0 0 6px ${isPreview ? "#FFD700" : liveColor}`,
         }} />
         <style>{`@keyframes tmiArenaBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
         <span style={{
-          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: liveColor,
+          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em",
+          color: isPreview ? "#FFD700" : liveColor,
         }}>
           {liveStateLabel}
         </span>
@@ -345,11 +368,15 @@ export default function ArenaEventShell({
         }}>
           {label}
         </span>
-        {watcherCount !== undefined && (
+        {isPreview && testOccupancyLabel ? (
+          <span style={{ marginLeft: "auto", fontSize: 9, color: "#FFD700", fontWeight: 700 }}>
+            {testOccupancyLabel}
+          </span>
+        ) : watcherCount !== undefined ? (
           <span style={{ marginLeft: "auto", fontSize: 9, color: watchingColor, fontWeight: 700 }}>
             {watcherCount.toLocaleString()} watching
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* ── Hero overlay sits above the renderer's own AudienceScene ──
@@ -371,7 +398,10 @@ export default function ArenaEventShell({
           roomId={roomId}
           mode={mode}
           venueIndex={venueIndex}
-          instantEmptyStage={instantEmptyStage}
+          instantEmptyStage={instantEmptyStage && !isPreview}
+          isPreview={isPreview}
+          forcedOccupancyRatio={isPreview ? (testOccupancyRatio ?? 0) : null}
+          previewCapacity={testCapacity}
         />
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
@@ -421,7 +451,9 @@ export default function ArenaEventShell({
               : "human_owned"
           }
           battleId={roomId.startsWith("battle-") ? roomId.replace(/^battle-/, "") : roomId}
-          humanViewerCount={typeof watcherCount === "number" ? watcherCount : 0}
+          humanViewerCount={isPreview ? 0 : typeof watcherCount === "number" ? watcherCount : 0}
+          isPreview={isPreview}
+          testOccupancyLabel={isPreview ? testOccupancyLabel : null}
         />
       </div>
 

@@ -10,6 +10,8 @@ import { getActiveSessions } from '@/lib/broadcast/globalLiveSessionStore';
 
 export type VenueTier = 'RUBY' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 export type VenueCategory = 'Club' | 'Arena' | 'Stadium' | 'Studio' | 'Lounge' | 'Outdoor' | 'Theater' | 'Virtual';
+/** Skin/venue cert gate — mirrors VenueSkinCertificationStatus. */
+export type VenueRegistryCertStatus = 'DRAFT' | 'PREVIEW' | 'CERTIFIED' | 'PRODUCTION';
 
 export interface VenueIdentity {
   id: string;
@@ -41,6 +43,9 @@ export interface VenueIdentity {
   liveRoomRoute: string;
 
   upcomingEventIds: string[];
+
+  /** Certification before production promotion. Defaults DRAFT when absent. */
+  certificationStatus?: VenueRegistryCertStatus;
 }
 
 export const VENUE_REGISTRY: VenueIdentity[] = [

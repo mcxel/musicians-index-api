@@ -202,6 +202,15 @@ interface Props {
   canonicalZone?: CanonicalWorldZone;
   /** Force-disable AudienceScene / BotCrowdFill / avatar seating (lounge law). */
   suppressAvatars?: boolean;
+  /**
+   * PREVIEW VENUE / VENUE TEST — same renderer as GO LIVE, never published as live.
+   * When set, occupancy uses forcedOccupancyRatio and HUD must label TEST (Rule 20).
+   */
+  isPreview?: boolean;
+  /** 0–1 TEST occupancy override. Ignored unless isPreview. */
+  forcedOccupancyRatio?: number | null;
+  /** Capacity for TEST occupancy math / labeling. */
+  previewCapacity?: number;
 }
 
 function publicName(name: string): string {
@@ -221,7 +230,7 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
@@ -286,7 +295,9 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
     1,
     (snapshot?.present ?? 0) / Math.max(1, snapshot?.capacity ?? 100),
   );
-  const occupancyForScene = isVideoPanelRoom
+  const occupancyForScene = isPreview && forcedOccupancyRatio != null
+    ? Math.min(1, Math.max(0, forcedOccupancyRatio))
+    : isVideoPanelRoom
     ? realOccupancyRatio
     : instantEmptyStage
       ? realOccupancyRatio
@@ -296,7 +307,12 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           ? realOccupancyRatio
           : 0.08;
   const tierSkin = resolveBaseVenueSkin(liveSession?.performerTier ?? 'FREE');
-  const watchingCount = snapshot?.present ?? 0;
+  const watchingCount = isPreview
+    ? Math.round(
+        (forcedOccupancyRatio ?? 0) *
+          Math.max(1, previewCapacity ?? snapshot?.capacity ?? 1000),
+      )
+    : snapshot?.present ?? 0;
   const loungeContextParticipantId = snapshot?.activeMembers?.[0]?.userId;
 
   useEffect(() => {
@@ -695,7 +711,16 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             pointerEvents: "none",
           }}
         >
-          {liveSession ? (
+          {isPreview ? (
+            <>
+              <span style={{ background: "rgba(255,215,0,0.25)", color: "#FFD700", border: "1px solid rgba(255,215,0,0.55)", borderRadius: 4, padding: "2px 6px", fontSize: 7, fontWeight: 900, letterSpacing: "0.1em" }}>
+                ● VENUE TEST
+              </span>
+              <span style={{ fontSize: 8, color: "#FFD700", fontWeight: 800 }}>
+                TEST: {watchingCount.toLocaleString()} / {(previewCapacity ?? snapshot?.capacity ?? 1000).toLocaleString()} OCCUPANCY
+              </span>
+            </>
+          ) : liveSession ? (
             <>
               <span style={{ background: "#FF0000", color: "#fff", borderRadius: 4, padding: "2px 6px", fontSize: 7, fontWeight: 900, letterSpacing: "0.1em" }}>
                 ● LIVE
@@ -812,7 +837,14 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         ) : null}
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000' }}>
           <LiveRecoveryOverlay status={recoveryStatus} />
-          {liveSession ? (
+          {isPreview ? (
+            <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ background: 'rgba(255,215,0,0.25)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.55)', borderRadius: 4, padding: '2px 8px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em' }}>● VENUE TEST</span>
+              <span style={{ fontSize: 11, color: '#FFD700', fontWeight: 800 }}>
+                TEST: {watchingCount.toLocaleString()} / {(previewCapacity ?? snapshot?.capacity ?? 1000).toLocaleString()} OCCUPANCY
+              </span>
+            </div>
+          ) : liveSession ? (
             <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ background: '#FF0000', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em' }}>● LIVE</span>
               <span style={{ fontSize: 11, color: '#00FFFF', fontWeight: 800 }}>
@@ -877,7 +909,9 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         ) : (
         <div style={{ position: 'relative', marginTop: 4 }}>
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', margin: '8px 0 6px', fontWeight: 800, textAlign: 'center' }}>
-            {mode === 'audience' && mySeatId
+            {isPreview
+              ? `VENUE TEST · TEST: ${watchingCount.toLocaleString()} / ${(previewCapacity ?? 1000).toLocaleString()} OCCUPANCY · same runtime as GO LIVE`
+              : mode === 'audience' && mySeatId
               ? `YOUR SEAT: ${mySeatId.toUpperCase()} · ${audience.filter((m) => m.seatId).length} seated`
               : mode === 'performer' && instantEmptyStage
                 ? `LIVE VENUE · ${watchingCount} watching · empty seats until real fans arrive`

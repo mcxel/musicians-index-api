@@ -60,6 +60,10 @@ export interface TMIInteractiveVenueHudProps {
   battleId?: string;
   /** Real human viewer count from live registry — 0 when unknown (Rule 20). */
   humanViewerCount?: number;
+  /** PREVIEW / VENUE TEST — never show as real viewers. */
+  isPreview?: boolean;
+  /** e.g. "TEST: 250 / 1,000 OCCUPANCY" */
+  testOccupancyLabel?: string | null;
 }
 
 export default function TMIInteractiveVenueHud({
@@ -75,6 +79,8 @@ export default function TMIInteractiveVenueHud({
   ownership = "platform",
   battleId,
   humanViewerCount = 0,
+  isPreview = false,
+  testOccupancyLabel = null,
 }: TMIInteractiveVenueHudProps) {
   const [hudState, setHudState] = useState<HudPresentationState>("PRE_LIVE");
   const [broadcastState, setBroadcastState] = useState<BroadcastState>("IDLE");
@@ -611,7 +617,7 @@ export default function TMIInteractiveVenueHud({
                 style={{
                   fontSize: 10,
                   fontWeight: 900,
-                  color: RED,
+                  color: isPreview ? GOLD : RED,
                   display: "flex",
                   alignItems: "center",
                   gap: 4,
@@ -622,11 +628,11 @@ export default function TMIInteractiveVenueHud({
                     width: 8,
                     height: 8,
                     borderRadius: "50%",
-                    background: RED,
-                    boxShadow: `0 0 8px ${RED}`,
+                    background: isPreview ? GOLD : RED,
+                    boxShadow: `0 0 8px ${isPreview ? GOLD : RED}`,
                   }}
                 />
-                LIVE
+                {isPreview ? "VENUE TEST" : "LIVE"}
               </span>
               <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, fontFamily: "monospace" }}>
                 {formatClock(sessionSec)}
@@ -635,8 +641,10 @@ export default function TMIInteractiveVenueHud({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 10, color: CYAN, fontWeight: 800 }}>
-                👁 {humanViewerCount > 0 ? humanViewerCount.toLocaleString() : "—"}
+              <span style={{ fontSize: 10, color: isPreview ? GOLD : CYAN, fontWeight: 800 }}>
+                {isPreview && testOccupancyLabel
+                  ? testOccupancyLabel
+                  : `👁 ${humanViewerCount > 0 ? humanViewerCount.toLocaleString() : "—"}`}
               </span>
               <span style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}>
                 ♥ {reactionCount.toLocaleString()}
