@@ -25,6 +25,7 @@ export type VenueType =
   | "fan-lobby"
   | "lounge"
   | "monday-night-stage"
+  | "slow-jams"
   | "world-dance-party"
   | "concert"
   | "world-concert"
@@ -502,6 +503,31 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     },
     hosts: {
       primaryHostId: "kira",
+    },
+    venueIndex: 2,
+  },
+
+  "slow-jams": {
+    type: "slow-jams",
+    label: "Sunday Slow Jams",
+    tagline: "Smooth energy. Intimate audience. Music in the air.",
+    accentColor: "#AA2DFF",
+    secondaryColor: "#FFD700",
+    ambientVideoUrl: "/assets/videos/rooms/lounge.mp4",
+    geometry: {
+      hasElevatedStage: false,
+      seatTiers: 1,
+      displayCapacity: 300,
+      ledWalls: ["ceiling"],
+      sponsorZones: ["side-rail"],
+      lightingRig: "club-ceiling",
+      controlBooth: "none",
+      entranceTunnel: "none",
+      hasVipSection: false,
+      audienceLayout: "lounge-tables",
+    },
+    hosts: {
+      primaryHostId: "julius",
     },
     venueIndex: 2,
   },

@@ -201,7 +201,9 @@ export default function PlaylistStudioContent({
   };
 
   const col: CSSProperties = {
-    flex: 1,
+    ...(isMobile
+      ? { flexShrink: 0, width: "100%", boxSizing: "border-box" }
+      : { flex: 1 }),
     minWidth: 0,
     display: "flex",
     flexDirection: "column",
@@ -718,7 +720,22 @@ export default function PlaylistStudioContent({
         </div>
       </div>
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0, padding: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            flex: 1,
+            minHeight: 0,
+            padding: 10,
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {playerSection}
           {librarySection}
           {queueSection}
