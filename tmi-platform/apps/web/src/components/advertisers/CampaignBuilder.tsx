@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type CampaignFormat = "banner" | "billboard" | "pre-roll" | "sponsored-post" | "venue-wrap";
-type CampaignStatus = "draft" | "active" | "paused" | "completed";
+type CampaignStatus = "draft" | "active" | "paused" | "completed" | "pending_review";
 
 type Campaign = {
   id: string;
@@ -19,17 +19,12 @@ type Campaign = {
   venueSlug?: string;
 };
 
-const SEED_CAMPAIGNS: Campaign[] = [
-  { id: "c1", name: "Crown Stage Summer Push", format: "billboard",     budget: 4000, spent: 1840, impressions: 28400, clicks: 1192, startDate: "2026-05-01", endDate: "2026-06-30", status: "active",    venueSlug: "crown-stage"   },
-  { id: "c2", name: "Artist Spotlight Week",   format: "sponsored-post",budget: 1200, spent: 880,  impressions: 14200, clicks: 604,  startDate: "2026-04-15", endDate: "2026-04-30", status: "completed", venueSlug: undefined       },
-  { id: "c3", name: "Pulse Arena Venue Wrap",  format: "venue-wrap",    budget: 8000, spent: 0,    impressions: 0,     clicks: 0,    startDate: "2026-06-01", endDate: "2026-07-31", status: "draft",     venueSlug: "pulse-arena"   },
-];
-
 const STATUS_COLOR: Record<CampaignStatus, string> = {
   draft:     "#64748b",
   active:    "#22c55e",
   paused:    "#f59e0b",
   completed: "#94a3b8",
+  pending_review: "#38bdf8",
 };
 
 const FORMAT_OPTIONS: CampaignFormat[] = ["banner", "billboard", "pre-roll", "sponsored-post", "venue-wrap"];
@@ -39,35 +34,96 @@ type CampaignBuilderProps = {
 };
 
 export default function CampaignBuilder({ advertiserSlug }: CampaignBuilderProps) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(SEED_CAMPAIGNS);
-  const [creating, setCreating] = useState(false);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", format: "billboard" as CampaignFormat, budget: "", venueSlug: "", startDate: "", endDate: "" });
 
-  function handleCreate() {
+  const loadCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/campaigns", { credentials: "include", cache: "no-store" });
+      const data = await res.json() as {
+        campaigns?: Array<{
+          id: string;
+          name: string;
+          slot?: string;
+          budget?: number;
+          spent?: number;
+          impressions?: number;
+          clicks?: number;
+          startDate?: string;
+          endDate?: string;
+          status?: string;
+          targeting?: { venueSlug?: string };
+        }>;
+      };
+      setCampaigns(
+        (data.campaigns ?? []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          format: (c.slot ?? "billboard") as CampaignFormat,
+          budget: c.budget ?? 0,
+          spent: c.spent ?? 0,
+          impressions: c.impressions ?? 0,
+          clicks: c.clicks ?? 0,
+          startDate: c.startDate ?? "",
+          endDate: c.endDate ?? "",
+          status: (c.status ?? "draft") as CampaignStatus,
+          venueSlug: c.targeting?.venueSlug,
+        })),
+      );
+    } catch {
+      setCampaigns([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
+
+  async function handleCreate() {
     if (!form.name || !form.budget) return;
-    const newCampaign: Campaign = {
-      id: `c${Date.now()}`,
-      name: form.name,
-      format: form.format,
-      budget: Number(form.budget),
-      spent: 0,
-      impressions: 0,
-      clicks: 0,
-      startDate: form.startDate || new Date().toISOString().slice(0, 10),
-      endDate: form.endDate || "",
-      status: "draft",
-      venueSlug: form.venueSlug || undefined,
-    };
-    setCampaigns((prev) => [newCampaign, ...prev]);
-    setCreating(false);
-    setForm({ name: "", format: "billboard", budget: "", venueSlug: "", startDate: "", endDate: "" });
+    setSaving(true);
+    try {
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: form.name,
+          slot: form.format,
+          budget: Number(form.budget),
+          startDate: form.startDate || undefined,
+          endDate: form.endDate || undefined,
+          targeting: form.venueSlug ? { venueSlug: form.venueSlug } : {},
+          launch: false,
+        }),
+      });
+      if (res.ok) {
+        setForm({ name: "", format: "billboard", budget: "", venueSlug: "", startDate: "", endDate: "" });
+        setShowForm(false);
+        await loadCampaigns();
+      }
+    } catch {
+      /* ignore */
+    }
+    setSaving(false);
   }
 
-  function toggleStatus(id: string) {
-    setCampaigns((prev) => prev.map((c) => {
-      if (c.id !== id) return c;
-      return { ...c, status: c.status === "active" ? "paused" : c.status === "paused" ? "active" : c.status };
-    }));
+  async function toggleStatus(id: string) {
+    const current = campaigns.find((c) => c.id === id);
+    if (!current) return;
+    const action = current.status === "active" ? "pause" : "resume";
+    await fetch("/api/campaigns", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ id, action }),
+    });
+    await loadCampaigns();
   }
 
   void advertiserSlug;
@@ -78,14 +134,22 @@ export default function CampaignBuilder({ advertiserSlug }: CampaignBuilderProps
         <strong style={{ color: "#fcd34d", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", flex: 1 }}>CAMPAIGN BUILDER</strong>
         <button
           type="button"
-          onClick={() => setCreating((v) => !v)}
-          style={{ borderRadius: 6, border: "1px solid rgba(251,191,36,0.5)", background: creating ? "rgba(251,191,36,0.15)" : "rgba(251,191,36,0.07)", color: "#fde68a", fontSize: 10, fontWeight: 700, padding: "5px 12px", cursor: "pointer", letterSpacing: "0.08em" }}
+          onClick={() => setShowForm((v) => !v)}
+          style={{ borderRadius: 6, border: "1px solid rgba(251,191,36,0.5)", background: showForm ? "rgba(251,191,36,0.15)" : "rgba(251,191,36,0.07)", color: "#fde68a", fontSize: 10, fontWeight: 700, padding: "5px 12px", cursor: "pointer", letterSpacing: "0.08em" }}
         >
-          {creating ? "CANCEL" : "+ NEW CAMPAIGN"}
+          {showForm ? "CANCEL" : "+ NEW CAMPAIGN"}
         </button>
       </div>
 
-      {creating && (
+      {loading && (
+        <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>Loading campaigns…</p>
+      )}
+
+      {!loading && campaigns.length === 0 && !showForm && (
+        <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>No campaigns yet. Create your first campaign.</p>
+      )}
+
+      {showForm && (
         <div style={{ border: "1px solid rgba(251,191,36,0.35)", borderRadius: 12, background: "rgba(40,20,5,0.6)", padding: 14, display: "grid", gap: 10 }}>
           <p style={{ margin: 0, fontSize: 10, color: "#fcd34d", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>New Campaign</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -114,8 +178,8 @@ export default function CampaignBuilder({ advertiserSlug }: CampaignBuilderProps
               </select>
             </label>
           </div>
-          <button type="button" onClick={handleCreate} style={{ borderRadius: 8, border: "1px solid rgba(34,197,94,0.5)", background: "rgba(5,46,22,0.4)", color: "#86efac", fontSize: 11, fontWeight: 700, padding: "8px 0", cursor: "pointer", letterSpacing: "0.1em" }}>
-            CREATE CAMPAIGN
+          <button type="button" onClick={() => void handleCreate()} disabled={saving} style={{ borderRadius: 8, border: "1px solid rgba(34,197,94,0.5)", background: "rgba(5,46,22,0.4)", color: "#86efac", fontSize: 11, fontWeight: 700, padding: "8px 0", cursor: "pointer", letterSpacing: "0.1em" }}>
+            {saving ? "SAVING…" : "CREATE CAMPAIGN"}
           </button>
         </div>
       )}
@@ -133,7 +197,7 @@ export default function CampaignBuilder({ advertiserSlug }: CampaignBuilderProps
                 {c.venueSlug && <p style={{ margin: 0, fontSize: 9, color: "#475569" }}>Venue: {c.venueSlug}</p>}
               </div>
               {(c.status === "active" || c.status === "paused") && (
-                <button type="button" onClick={() => toggleStatus(c.id)} style={{ borderRadius: 5, border: `1px solid ${STATUS_COLOR[c.status]}55`, background: "rgba(0,0,0,0.3)", color: STATUS_COLOR[c.status], fontSize: 9, fontWeight: 700, padding: "3px 9px", cursor: "pointer" }}>
+                <button type="button" onClick={() => void toggleStatus(c.id)} style={{ borderRadius: 5, border: `1px solid ${STATUS_COLOR[c.status]}55`, background: "rgba(0,0,0,0.3)", color: STATUS_COLOR[c.status], fontSize: 9, fontWeight: 700, padding: "3px 9px", cursor: "pointer" }}>
                   {c.status === "active" ? "PAUSE" : "RESUME"}
                 </button>
               )}

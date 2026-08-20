@@ -56,9 +56,38 @@ export default function NewSponsorCampaignPage() {
   async function handleLaunch(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1400));
+    try {
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          placement: form.placement,
+          budget: Number(form.budget) || 0,
+          durationDays: Number(form.duration) || 30,
+          creativeUrl: form.creativeUrl,
+          creativeType: form.creativeType,
+          objective: form.objective,
+          targeting: {
+            genres: form.targetGenres,
+            regions: form.targetRegions,
+            ages: form.targetAges,
+          },
+          launch: true,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setSubmitting(false);
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      /* stay on form — user can retry */
+    }
     setSubmitting(false);
-    setSubmitted(true);
   }
 
   if (submitted) {
