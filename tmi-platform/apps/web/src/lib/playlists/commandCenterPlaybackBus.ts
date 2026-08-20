@@ -64,12 +64,12 @@ export function sendPlaybackCommand(
 }
 
 export function subscribePlaybackCommands(
-  handler: (command: PlaybackCommand) => void,
+  handler: (payload: PlaybackCommandPayload) => void,
 ): () => void {
   if (typeof window === "undefined") return () => {};
   const listener = (e: Event) => {
     const detail = (e as CustomEvent<PlaybackCommandPayload>).detail;
-    if (detail?.command) handler(detail.command);
+    if (detail?.command) handler(detail);
   };
   window.addEventListener(PLAYBACK_COMMAND_EVENT, listener);
   return () => window.removeEventListener(PLAYBACK_COMMAND_EVENT, listener);

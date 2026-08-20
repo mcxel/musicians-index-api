@@ -49,12 +49,17 @@ async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
 }
 
 async function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): Promise<PerformerIdentity[]> {
-  const liveSessions = await getActiveSessionsDurable();
-  const liveUserIds = new Set(liveSessions.map((s: LiveSession) => s.userId));
-  return performers.map(p => ({
-    ...p,
-    isLive: liveUserIds.has(p.id),
-  }));
+  const noLiveness = performers.map(p => ({ ...p, isLive: false }));
+  try {
+    const liveSessions = await Promise.race([
+      getActiveSessionsDurable(),
+      new Promise<LiveSession[]>((resolve) => setTimeout(() => resolve([]), 3500)),
+    ]);
+    const liveUserIds = new Set(liveSessions.map((s: LiveSession) => s.userId));
+    return performers.map(p => ({ ...p, isLive: liveUserIds.has(p.id) }));
+  } catch {
+    return noLiveness;
+  }
 }
 
 import GlobalTmiHeader from '@/components/shell/GlobalTmiHeader';

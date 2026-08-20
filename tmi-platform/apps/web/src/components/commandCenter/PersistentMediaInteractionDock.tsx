@@ -91,7 +91,7 @@ export default function PersistentMediaInteractionDock({
   }, [onOpenModule, isPerformer]);
 
   useEffect(() => {
-    return subscribePlaybackCommands((command) => {
+    return subscribePlaybackCommands(({ command }) => {
       if (command === "open-full") openPlaylistStudio();
     });
   }, [openPlaylistStudio]);
