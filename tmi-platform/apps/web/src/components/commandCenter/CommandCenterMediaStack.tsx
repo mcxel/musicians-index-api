@@ -1,7 +1,6 @@
 "use client";
 
 import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
-import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.
@@ -13,11 +12,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import IdleMonitorFallbackRuntime from "@/components/admin/overseer/IdleMonitorFallbackRuntime";
-import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
-import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
-import HubMonitorVenuePlayer from "@/components/live/HubMonitorVenuePlayer";
-import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
-import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
@@ -140,7 +134,11 @@ function SponsorOverlayBanner({ overlay }: { overlay: ActiveSponsorOverlay }) {
   );
 }
 
-/** Hub monitors use honest idle states — no stock singer / Big Buck Bunny fallback. */
+// Ambient standby loop shown on panels with no live/uploaded source
+const ROSE_FALLBACK_URL =
+  process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
+  process.env.NEXT_PUBLIC_OBSERVATORY_ROSE_VIDEO_URL?.trim() ||
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
 export interface CommandCenterPlaylistCast {
   playlistId: string;
@@ -222,9 +220,6 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
             objectFit: "cover",
             zIndex: 0,
           }}
-          onError={() => {
-            // Keep UI honest: PlaylistCastBody remains as "title projected only".
-          }}
         />
       ) : null}
       <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "#AA2DFF" }}>
@@ -301,42 +296,13 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
   );
 }
 
-function MonitorMediaBody({
-  slot,
-  sponsorOverlay,
-  hubLiveRoomId,
-  hubLiveMonitor,
-  cellIndex,
-}: {
-  slot: CommandCenterMediaSlot;
-  sponsorOverlay?: ActiveSponsorOverlay | null;
-  hubLiveRoomId?: string | null;
-  hubLiveMonitor?: "A" | "B" | null;
-  cellIndex?: number;
-}) {
-  const videoSrc = slot.videoUrl?.trim() || "";
+function MonitorMediaBody({ slot, sponsorOverlay }: { slot: CommandCenterMediaSlot; sponsorOverlay?: ActiveSponsorOverlay | null }) {
+  const videoSrc = slot.videoUrl || ROSE_FALLBACK_URL;
   const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     setVideoFailed(false);
   }, [videoSrc]);
-
-  if (hubLiveRoomId && hubLiveMonitor === "A") {
-    return (
-      <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
-        {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
-        <HubMonitorCameraPlayer />
-      </div>
-    );
-  }
-
-  if (hubLiveRoomId && hubLiveMonitor === "B") {
-    return (
-      <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
-        <HubMonitorVenuePlayer roomId={hubLiveRoomId} />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -352,7 +318,9 @@ function MonitorMediaBody({
       {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
       {slot.kind === "playlist" && slot.playlistCast ? (
         <PlaylistCastBody cast={slot.playlistCast} />
-      ) : videoSrc && !videoFailed ? (
+      ) : videoFailed || !videoSrc ? (
+        <IdleMonitorFallbackRuntime monitorId={slot.id} seedIndex={slot.id.length} />
+      ) : videoSrc ? (
         <video
           key={videoSrc}
           autoPlay
@@ -371,7 +339,23 @@ function MonitorMediaBody({
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
       ) : (
-        <IdleMonitorFallbackRuntime monitorId={slot.id} seedIndex={slot.id.length} cellIndex={cellIndex} />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 6,
+            background: "radial-gradient(circle at 50% 30%, rgba(255,45,170,0.08), #010308 70%)",
+          }}
+        >
+          <span style={{ fontSize: 22, opacity: 0.35 }}>📡</span>
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)" }}>
+            NO MEDIA
+          </span>
+        </div>
       )}
     </div>
   );
@@ -380,53 +364,22 @@ function MonitorMediaBody({
 function MonitorChrome({
   slot,
   onSwap,
+  onFullscreen,
   sponsorOverlay,
-  overlayTarget,
-  hubLiveRoomId,
-  hubLiveMonitor,
-  cellIndex,
 }: {
   slot: CommandCenterMediaSlot;
   onSwap?: () => void;
+  onFullscreen?: () => void;
   sponsorOverlay?: ActiveSponsorOverlay | null;
-  overlayTarget?: typeof DEFAULT_MONITOR_A;
-  hubLiveRoomId?: string | null;
-  hubLiveMonitor?: "A" | "B" | null;
-  cellIndex?: number;
 }) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  const handleFullscreen = () => {
-    const el = rootRef.current;
-    if (!el) return;
-    if (document.fullscreenElement === el) {
-      void document.exitFullscreen().catch(() => undefined);
-      return;
-    }
-    void el.requestFullscreen().catch(() => undefined);
-  };
-
-  const mediaBody = (
-    <MonitorMediaBody
-      slot={slot}
-      sponsorOverlay={sponsorOverlay}
-      hubLiveRoomId={hubLiveRoomId}
-      hubLiveMonitor={hubLiveMonitor}
-      cellIndex={cellIndex}
-    />
-  );
-
   return (
     <div
-      ref={rootRef}
-      data-monitor-chrome-id={slot.id}
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
         minHeight: 0,
         background: "#010308",
-        position: "relative",
       }}
     >
       <div
@@ -476,10 +429,11 @@ function MonitorChrome({
               <span>SWAP</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={handleFullscreen}
-            title="Expand this same monitor — same player instance"
+          {onFullscreen ? (
+            <button
+              type="button"
+              onClick={onFullscreen}
+              title="Expand monitor full screen"
               style={{
                 background: "rgba(0,255,255,0.15)",
                 border: "1px solid rgba(0,255,255,0.4)",
@@ -496,14 +450,11 @@ function MonitorChrome({
             >
               <span>⛶</span>
               <span>FULLSCREEN</span>
-          </button>
+            </button>
+          ) : null}
         </div>
       </div>
-      {overlayTarget ? (
-        <InPlaceGoLiveMonitorLayer target={overlayTarget}>{mediaBody}</InPlaceGoLiveMonitorLayer>
-      ) : (
-        mediaBody
-      )}
+      <MonitorMediaBody slot={slot} sponsorOverlay={sponsorOverlay} />
     </div>
   );
 }
@@ -527,13 +478,10 @@ export default function CommandCenterMediaStack({
   role = "fan",
 }: CommandCenterMediaStackProps) {
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
-  const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const [swapOrder, setSwapOrder] = useState(false);
+  const [fullscreenSlotId, setFullscreenSlotId] = useState<string | null>(null);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
-
-  const toggleRemotePanel = useCompactQuickPanelStore((s) => s.togglePanel);
-  const remoteActive = useCompactQuickPanelStore((s) => s.activePanel === "remote");
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -605,13 +553,17 @@ export default function CommandCenterMediaStack({
 
   const primarySourceId = topSlots[0]?.id ?? null;
   const secondarySourceId = monitorLayoutMode === "dual" ? (bottomSlots[0]?.id ?? null) : null;
+  const topSlotIds = useMemo(() => new Set(topSlots.map((s) => s.id)), [topSlots]);
+  const bottomSlotIds = useMemo(() => new Set(bottomSlots.map((s) => s.id)), [bottomSlots]);
 
   let presentationMode: "DUAL" | "SINGLE_PRIMARY" | "FULLSCREEN_PRIMARY" | "FULLSCREEN_SECONDARY" =
     monitorLayoutMode === "dual" ? "DUAL" : "SINGLE_PRIMARY";
-  if (typeof document !== "undefined" && document.fullscreenElement) {
-    const fsId = document.fullscreenElement.getAttribute?.("data-monitor-chrome-id");
-    if (fsId && topSlots.some((s) => s.id === fsId)) presentationMode = "FULLSCREEN_PRIMARY";
-    else if (fsId && bottomSlots.some((s) => s.id === fsId)) presentationMode = "FULLSCREEN_SECONDARY";
+  if (fullscreenSlotId) {
+    if (topSlotIds.has(fullscreenSlotId)) {
+      presentationMode = "FULLSCREEN_PRIMARY";
+    } else if (bottomSlotIds.has(fullscreenSlotId)) {
+      presentationMode = "FULLSCREEN_SECONDARY";
+    }
   }
 
   const continuitySnapshot = useMemo(
@@ -640,17 +592,15 @@ export default function CommandCenterMediaStack({
   };
 
   const enterPrimaryFullscreen = useCallback(() => {
-    const el = document.querySelector(`[data-monitor-chrome-id="${topSlots[0]?.id ?? ""}"]`);
-    if (el instanceof HTMLElement) void el.requestFullscreen().catch(() => undefined);
+    setFullscreenSlotId(topSlots[0]?.id ?? null);
   }, [topSlots]);
 
   const enterSecondaryFullscreen = useCallback(() => {
-    const el = document.querySelector(`[data-monitor-chrome-id="${bottomSlots[0]?.id ?? ""}"]`);
-    if (el instanceof HTMLElement) void el.requestFullscreen().catch(() => undefined);
+    setFullscreenSlotId(bottomSlots[0]?.id ?? null);
   }, [bottomSlots]);
 
   const exitMonitorFullscreen = useCallback(() => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    setFullscreenSlotId(null);
   }, []);
 
   useEffect(() => {
@@ -706,6 +656,11 @@ export default function CommandCenterMediaStack({
     isDevDiagnostics,
   ]);
 
+  const fullscreenSlot =
+    fullscreenSlotId
+      ? [...topSlots, ...bottomSlots, ...slots].find((s) => s.id === fullscreenSlotId) ?? null
+      : null;
+
   const toolbar = (
     <div
       style={{
@@ -760,7 +715,7 @@ export default function CommandCenterMediaStack({
               position: "absolute",
               top: "calc(100% + 8px)",
               left: 0,
-              zIndex: 12,
+              zIndex: 40,
               width: 220,
               background: "#0d1117",
               border: "1px solid rgba(255,215,0,0.4)",
@@ -770,9 +725,7 @@ export default function CommandCenterMediaStack({
               display: "flex",
               flexDirection: "column",
               gap: 6,
-              pointerEvents: "auto",
             }}
-            onClick={(e) => e.stopPropagation()}
           >
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
               OFFICIAL TMI SPONSORS
@@ -983,26 +936,6 @@ export default function CommandCenterMediaStack({
 
         <button
           type="button"
-          onClick={() => toggleRemotePanel("remote", "bottom-right")}
-          title="Open Remote — quick playlist + player controller"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: remoteActive ? "1px solid #FF2DAA" : "1px solid rgba(255,45,170,0.45)",
-            background: remoteActive ? "rgba(255,45,170,0.2)" : "rgba(255,45,170,0.14)",
-            color: "#FF2DAA",
-            fontFamily: "inherit",
-          }}
-        >
-          🎚️ REMOTE
-        </button>
-
-        <button
-          type="button"
           data-testid="tmi-yopho-media-stack-trigger"
           data-tmi-action="open-workspace"
           data-tmi-workspace="yopho"
@@ -1083,6 +1016,63 @@ export default function CommandCenterMediaStack({
         </div>
       ) : null}
 
+      {fullscreenSlot ? (
+        <div
+          data-tmi-monitor-fullscreen="1"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#000",
+            display: "flex",
+            flexDirection: "column",
+            width: "100vw",
+            height: "100dvh",
+            maxHeight: "100dvh",
+          }}
+        >
+          <div
+            style={{
+              flexShrink: 0,
+              padding: "10px 16px",
+              background: "rgba(10,10,25,0.95)",
+              borderBottom: "1px solid rgba(0,255,255,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+              FULLSCREEN MONITOR · {fullscreenSlot.label}
+            </span>
+            <button
+              type="button"
+              onClick={exitMonitorFullscreen}
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "8px 14px",
+                borderRadius: 6,
+                border: "1px solid #FFD700",
+                background: "rgba(255,215,0,0.2)",
+                color: "#FFD700",
+                cursor: "pointer",
+              }}
+            >
+              EXIT FULLSCREEN ✕
+            </button>
+          </div>
+          {/* Absolute fill — MonitorMediaBody uses height:100%; flex:1 alone on a
+              non-flex parent previously collapsed to 0px → black viewport. */}
+          <div style={{ flex: 1, minHeight: 0, position: "relative", width: "100%" }}>
+            <div style={{ position: "absolute", inset: 0 }}>
+              <MonitorMediaBody slot={fullscreenSlot} sponsorOverlay={activeSponsorOverlay} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <CanonicalDualMonitorStack
         variant={bezelVariant}
         seriesLabel={seriesLabel}
@@ -1099,10 +1089,8 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   slot={topSlots[0]!}
                   onSwap={handleSwap}
-                  overlayTarget={DEFAULT_MONITOR_A}
+                  onFullscreen={enterPrimaryFullscreen}
                   sponsorOverlay={activeSponsorOverlay}
-                  hubLiveRoomId={hubInPlaceRoomId}
-                  hubLiveMonitor="A"
                 />
               ),
             cells: topSlots.map((slot, ci) =>
@@ -1112,8 +1100,8 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   key={slot.id}
                   slot={slot}
+                  onFullscreen={() => setFullscreenSlotId(slot.id)}
                   sponsorOverlay={activeSponsorOverlay}
-                  cellIndex={ci}
                 />
               ),
             ),
@@ -1129,9 +1117,7 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   slot={bottomSlots[0]!}
                   onSwap={handleSwap}
-                  overlayTarget={DEFAULT_MONITOR_B}
-                  hubLiveRoomId={hubInPlaceRoomId}
-                  hubLiveMonitor="B"
+                  onFullscreen={enterSecondaryFullscreen}
                 />
               ),
             cells: bottomSlots.map((slot, ci) =>
@@ -1141,7 +1127,7 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   key={slot.id}
                   slot={slot}
-                  cellIndex={ci}
+                  onFullscreen={() => setFullscreenSlotId(slot.id)}
                 />
               ),
             ),
