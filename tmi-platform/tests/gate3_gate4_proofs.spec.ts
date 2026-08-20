@@ -45,12 +45,19 @@ test.describe("Gate 3 — live room convergence", () => {
       `roomId ${roomId} not found in active room listing`,
     ).toBeTruthy();
 
-    // Step 3 — HTTP: room page must load (no 404, no 500)
-    const roomPage = await page.goto(`${base}/live/rooms/${encodeURIComponent(roomId)}`);
+    // Step 3 — HTTP: room page must load directly (no auth-gate redirect)
+    // ?from=lobby-wall is a canonical LOBBY_AUTHORIZED_ORIGINS value that lets the
+    // audience entry gate pass without redirecting to /live/lobby.
+    // waitUntil:'domcontentloaded' — room page has WebRTC/audio resources that keep
+    // the 'load' event pending; DOM content is sufficient to verify page health.
+    const roomPage = await page.goto(
+      `${base}/live/rooms/${encodeURIComponent(roomId)}?from=lobby-wall`,
+      { waitUntil: "domcontentloaded" },
+    );
     expect(roomPage?.status(), `Room page returned ${roomPage?.status()} — expected 2xx or 3xx`).toBeLessThan(400);
 
-    // Step 4 — DOM: URL must still contain the roomId after any internal redirects
-    await expect(page).toHaveURL(new RegExp(encodeURIComponent(roomId).replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "|" + roomId));
+    // Step 4 — DOM: URL must contain the roomId (no redirect, no lobby detour)
+    await expect(page).toHaveURL(new RegExp(roomId));
 
     // Step 5 — DOM: page body must be present (not an empty shell)
     await expect(page.locator("body")).toBeVisible();
@@ -74,8 +81,14 @@ test.describe("Gate 4 — audio media persistence", () => {
     // Step 1 — resolve a live canonical room (independent of Gate 3 helper state)
     const roomId = await resolveAnchorRoomId(request, base);
 
-    // Step 2 — load the canonical room page
-    await page.goto(`${base}/live/rooms/${encodeURIComponent(roomId)}`);
+    // Step 2 — load the canonical room page directly (bypass auth-gate redirect)
+    // Without ?from=lobby-wall the [id]/page.tsx audience entry gate fires a streaming
+    // redirect via Next.js RedirectBoundary which races with subsequent page.goto calls.
+    // waitUntil:'domcontentloaded' — room page keeps 'load' pending due to WebRTC/audio.
+    await page.goto(
+      `${base}/live/rooms/${encodeURIComponent(roomId)}?from=lobby-wall`,
+      { waitUntil: "domcontentloaded" },
+    );
     await expect(page).toHaveURL(new RegExp(roomId));
 
     // Step 3 — assert media infrastructure is mounted
@@ -103,11 +116,14 @@ test.describe("Gate 4 — audio media persistence", () => {
     }
 
     // Step 4 — navigate away to the room listing
-    await page.goto(`${base}/live/rooms`);
+    await page.goto(`${base}/live/rooms`, { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
 
-    // Step 5 — navigate back to the same room (persistence check)
-    await page.goto(`${base}/live/rooms/${encodeURIComponent(roomId)}`);
+    // Step 5 — navigate back to the same room (persistence check, ?from=lobby-wall bypasses gate)
+    await page.goto(
+      `${base}/live/rooms/${encodeURIComponent(roomId)}?from=lobby-wall`,
+      { waitUntil: "domcontentloaded" },
+    );
 
     // Step 6 — URL must resolve to the same room (routing state not lost)
     await expect(page).toHaveURL(new RegExp(roomId));

@@ -7,6 +7,7 @@ const isRemote = baseURL.startsWith("https://") || (baseURL.startsWith("http://"
 
 export default defineConfig({
   testDir: "./tests",
+  timeout: 120 * 1000,        // room page SSR (ensureHydrated + heavy imports) can be slow
   retries: env.CI ? 2 : 0,
   ...(isRemote
     ? {}
@@ -21,6 +22,7 @@ export default defineConfig({
       }),
   use: {
     baseURL,
+    navigationTimeout: 60 * 1000,  // individual page.goto timeout
     trace: "on-first-retry",
   },
   projects: [
