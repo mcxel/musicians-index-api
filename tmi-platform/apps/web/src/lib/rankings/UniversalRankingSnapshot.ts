@@ -21,7 +21,12 @@ import {
   type RankKind,
 } from './compareRank';
 import { rankingEvents } from './RankingEvents';
-import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import {
+  PERFORMER_REGISTRY,
+  getPerformerHonorTitle,
+  isRankedEligible,
+  isVerifiedRankedPerformer,
+} from '@/lib/performers/PerformerRegistry';
 import { getActiveBots } from '@/lib/bots/BotAccountRegistry';
 
 export const ORBITAL_TOP_N = 12;
@@ -34,6 +39,9 @@ export interface RankCandidate extends RankComparable {
   genre?: string;
   isLive?: boolean;
   motionUrl?: string;
+  verified?: boolean;
+  honorTitle?: string;
+  voteCount?: number | null;
 }
 
 export interface RankSlot extends RankCandidate {
@@ -111,7 +119,7 @@ function botScoreReachedAt(createdAt: string): number {
 export function collectRankCandidates(): RankCandidate[] {
   const registryIds = new Set<string>();
 
-  const registryHumans: RankCandidate[] = PERFORMER_REGISTRY.map((p) => {
+  const registryHumans: RankCandidate[] = PERFORMER_REGISTRY.filter(isRankedEligible).map((p) => {
     registryIds.add(p.id);
     if (p.slug) registryIds.add(p.slug);
 
@@ -133,6 +141,9 @@ export function collectRankCandidates(): RankCandidate[] {
       genre: p.category,
       isLive: Boolean(p.isLive),
       motionUrl: p.introVideoUrl ?? p.motionPosterUrl,
+      verified: isVerifiedRankedPerformer(p),
+      honorTitle: getPerformerHonorTitle(p),
+      voteCount: null,
     };
   });
 
