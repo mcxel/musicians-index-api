@@ -20,6 +20,11 @@ import {
 import { cosmeticIdsToAttachments } from "@/lib/avatars/fanAvatarLoadout";
 import type { SocketAttachmentDef } from "@/components/3d/AvatarSocketAttachment";
 import type { AvatarRigProps } from "@/components/3d/AvatarLobbyCanvas";
+import {
+  getFanCosmetic,
+  readPersistedFanSkinT,
+  sampleFanSkinTone,
+} from "@/lib/avatars/FanCosmeticCatalog";
 
 export const BOBBLEHEAD_RUNTIME_LABEL =
   "3D Avatar Runtime v0 — procedural bobblehead (not photoreal GLB)" as const;
@@ -200,6 +205,8 @@ export function bobbleheadRuntimeToRigProps(
     isPlaying?: boolean;
     extraAccessoryIds?: string[];
     activePropId?: string;
+    /** Override continuum t; default reads session skin slider. */
+    skinT?: number;
   },
 ): AvatarRigProps & { bobbleheadRatio: number } {
   const skuIds = [
@@ -210,11 +217,20 @@ export function bobbleheadRuntimeToRigProps(
     activePropId: opts?.activePropId,
   });
 
+  const skin = sampleFanSkinTone(opts?.skinT ?? readPersistedFanSkinT());
+  let hairHex = character.palette.hairHex;
+  let outfitTint = character.palette.outfitTint;
+  for (const id of skuIds) {
+    const def = getFanCosmetic(id);
+    if (def?.hairTint) hairHex = def.hairTint;
+    if (def?.bodyTint) outfitTint = def.bodyTint;
+  }
+
   return {
     active: true,
-    color: character.palette.skinHex,
-    hairColor: character.palette.hairHex,
-    outfitTint: character.palette.outfitTint,
+    color: skin.hex,
+    hairColor: hairHex,
+    outfitTint,
     visorColor: character.palette.visorHex,
     bobbleheadRatio: character.palette.bobbleheadRatio,
     bodyHeight: character.palette.bodyHeight,
@@ -224,7 +240,6 @@ export function bobbleheadRuntimeToRigProps(
     attachments,
     activePropId: opts?.activePropId,
     crown: attachments.some((a) => a.id === "crown"),
-    // Explicitly omit portraitUrl — spatial mesh only
   };
 }
 

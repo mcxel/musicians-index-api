@@ -5,6 +5,8 @@
  * Purpose: Catalog of purchasable items for fan engagement.
  */
 
+import { getUnifiedFanCosmeticCatalog } from "@/lib/avatars/FanCosmeticCatalog";
+
 export interface FanStoreItem {
   itemId: string;
   itemType: 'avatar-item' | 'emote' | 'profile-frame' | 'season-pass' | 'collectible' | 'title';
@@ -173,6 +175,42 @@ export function getFanStoreReport(): {
   };
 }
 
+/** Seed Fan cosmetic economy from FanCosmeticCatalog (idempotent by name). */
+let cosmeticCatalogSeeded = false;
+export function seedFanCosmeticCatalogStoreItems(): void {
+  if (cosmeticCatalogSeeded) return;
+  const existingNames = new Set([...fanStoreInventory.values()].map((i) => i.name));
+  for (const c of getUnifiedFanCosmeticCatalog()) {
+    if (existingNames.has(c.label)) continue;
+    const itemType: FanStoreItem["itemType"] =
+      c.equipSlot === "emote" || c.slot === "emote" ? "emote" : "avatar-item";
+    const rarity: FanStoreItem["rarity"] =
+      c.rarity === "free"
+        ? "common"
+        : c.rarity === "legendary"
+          ? "legendary"
+          : c.rarity === "epic"
+            ? "epic"
+            : c.rarity === "rare"
+              ? "rare"
+              : "common";
+    addToFanStore({
+      itemType,
+      name: c.label,
+      description: `${c.description}${c.stripeProductId ? "" : " · Points path (Stripe product not wired — Rule 20)"}`,
+      pointsCost: c.pointsCost,
+      rarity,
+      featured:
+        c.inventoryCategory === "instruments" ||
+        c.inventoryCategory === "vfx" ||
+        c.inventoryCategory === "hair" ||
+        Boolean(c.colorwayOf),
+    });
+    existingNames.add(c.label);
+  }
+  cosmeticCatalogSeeded = true;
+}
+
 /** Seed bobblehead accessory fit SKUs once (idempotent by name). */
 let bobbleheadSeeded = false;
 export function seedBobbleheadAccessoryStoreItems(): void {
@@ -229,7 +267,8 @@ export function seedBobbleheadAccessoryStoreItems(): void {
     addToFanStore(s);
   }
   bobbleheadSeeded = true;
+  seedFanCosmeticCatalogStoreItems();
 }
 
-// Auto-seed on module load so Fan store surfaces real accessory rows.
+// Auto-seed on module load so Fan store surfaces real accessory + catalog rows.
 seedBobbleheadAccessoryStoreItems();

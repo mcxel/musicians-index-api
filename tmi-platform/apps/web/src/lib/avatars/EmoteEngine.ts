@@ -26,13 +26,20 @@ export type AvatarEmote =
   | 'wave'
   | 'clap'
   | 'dance'
+  | 'dance_hiphop'
+  | 'dance_wave'
+  | 'dance_robot'
+  | 'dance_shuffle'
+  | 'dance_spin'
   | 'jump'
   | 'point'
   | 'heart'
   | 'rose'
   | 'encore'
   | 'lighter'
-  | 'glowstick';
+  | 'glowstick'
+  | 'headbang'
+  | 'cheer';
 
 // ─── Emote spec ───────────────────────────────────────────────────────────────
 
@@ -65,6 +72,36 @@ export const EMOTE_SPECS: Record<AvatarEmote, EmoteSpec> = {
     emote: 'dance', label: 'Dance', emoji: '💃',
     animState: 'dancing',
     defaultDurationMs: 6000, energyBoost: 6, xpAward: 12,
+    soundKey: undefined,
+  },
+  dance_hiphop: {
+    emote: 'dance_hiphop', label: 'Hip-Hop', emoji: '🕺',
+    animState: 'dancing',
+    defaultDurationMs: 7000, energyBoost: 7, xpAward: 14,
+    soundKey: undefined,
+  },
+  dance_wave: {
+    emote: 'dance_wave', label: 'Wave Dance', emoji: '🌊',
+    animState: 'dancing',
+    defaultDurationMs: 6500, energyBoost: 6, xpAward: 13,
+    soundKey: undefined,
+  },
+  dance_robot: {
+    emote: 'dance_robot', label: 'Robot', emoji: '🤖',
+    animState: 'dancing',
+    defaultDurationMs: 6500, energyBoost: 7, xpAward: 14,
+    soundKey: undefined,
+  },
+  dance_shuffle: {
+    emote: 'dance_shuffle', label: 'Shuffle', emoji: '👟',
+    animState: 'dancing',
+    defaultDurationMs: 6500, energyBoost: 7, xpAward: 14,
+    soundKey: undefined,
+  },
+  dance_spin: {
+    emote: 'dance_spin', label: 'Spin Out', emoji: '🌀',
+    animState: 'dancing',
+    defaultDurationMs: 5500, energyBoost: 8, xpAward: 15,
     soundKey: undefined,
   },
   jump: {
@@ -108,6 +145,18 @@ export const EMOTE_SPECS: Record<AvatarEmote, EmoteSpec> = {
     animState: 'dancing',
     defaultDurationMs: 5000, energyBoost: 6, xpAward: 12,
     soundKey: undefined,
+  },
+  headbang: {
+    emote: 'headbang', label: 'Headbang', emoji: '🤘',
+    animState: 'dancing',
+    defaultDurationMs: 5000, energyBoost: 7, xpAward: 12,
+    soundKey: undefined,
+  },
+  cheer: {
+    emote: 'cheer', label: 'Cheer', emoji: '📣',
+    animState: 'cheering',
+    defaultDurationMs: 4000, energyBoost: 6, xpAward: 10,
+    soundKey: 'crowd_cheer_small',
   },
 };
 
@@ -210,6 +259,10 @@ export function onEmoteChange(
 /** All emote specs in display order for the AvatarActionWheel. */
 export function getEmoteSpecList(): EmoteSpec[] {
   return (
-    ['wave', 'clap', 'dance', 'jump', 'point', 'heart', 'rose', 'encore'] as AvatarEmote[]
+    [
+      'wave', 'clap', 'dance', 'dance_hiphop', 'dance_wave', 'dance_robot',
+      'dance_shuffle', 'dance_spin', 'jump', 'point', 'heart', 'rose',
+      'encore', 'headbang', 'cheer',
+    ] as AvatarEmote[]
   ).map(e => EMOTE_SPECS[e]);
 }

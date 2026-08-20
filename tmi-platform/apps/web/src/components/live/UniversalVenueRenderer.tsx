@@ -46,7 +46,12 @@ import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
-import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
+import AudienceScene, {
+  type VenueIndex,
+  type AudienceBobbleheadSeating,
+  FAN_TOTAL_SEATS,
+  PERF_TOTAL_SEATS,
+} from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import TMIInteractiveLoungeHud from "@/components/venue-hud/TMIInteractiveLoungeHud";
 import LoungeVideoPresenceFloor from "@/components/live/LoungeVideoPresenceFloor";
@@ -220,6 +225,25 @@ function publicName(name: string): string {
   return local.length <= 2 ? `${local[0] ?? 'u'}*` : `${local.slice(0, 2)}***`;
 }
 
+/** Map seat id → AudienceScene fill index for local Fan AvatarRig (never Performer). */
+function seatIdToBobblePinIndex(
+  seatId: string | null,
+  view: "fan" | "performer",
+  occupiedCount: number,
+): number | null {
+  if (!seatId || occupiedCount <= 0) return null;
+  const total = view === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS;
+  let h = 5381;
+  for (let i = 0; i < seatId.length; i++) h = ((h << 5) + h) ^ seatId.charCodeAt(i);
+  h = Math.abs(h);
+  if (view === "performer") {
+    const start = Math.max(0, total - occupiedCount);
+    return start + (h % Math.max(1, occupiedCount));
+  }
+  const frontStart = Math.max(0, occupiedCount - Math.min(occupiedCount, 18));
+  return frontStart + (h % Math.max(1, occupiedCount - frontStart));
+}
+
 const securityBot = new SystemSecurityBot();
 
 const SHOWTIME_SPONSORS: BubbleSponsor[] = [
@@ -314,6 +338,37 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       )
     : snapshot?.present ?? 0;
   const loungeContextParticipantId = snapshot?.activeMembers?.[0]?.userId;
+
+  /** Fan AvatarRig seating — same BobbleheadRuntimeCharacter as Fan lobby. Rule 26: no Performer rig. */
+  const audienceSceneView: "fan" | "performer" = mode === "audience" ? "fan" : "performer";
+  const bobbleOccupiedCount = Math.floor(
+    (audienceSceneView === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS) *
+      Math.min(1, Math.max(0, occupancyForScene)),
+  );
+  const bobbleheadSeating = useMemo((): AudienceBobbleheadSeating | undefined => {
+    if (isVideoPanelRoom) return undefined;
+    // Performer mode: still show Fan/[TEST] audience bobbleheads — never a performer-owned AvatarRig
+    const localFanSeatIndex =
+      mode === "audience" && mySeatId && bobbleOccupiedCount > 0
+        ? seatIdToBobblePinIndex(mySeatId, audienceSceneView, bobbleOccupiedCount)
+        : mode === "audience" && mySeatId
+          ? seatIdToBobblePinIndex(mySeatId, audienceSceneView, 1)
+          : null;
+    return {
+      localFanSeatIndex,
+      localFanLabel: mode === "audience" ? `${publicName(displayName)} (you)` : undefined,
+      testOccupancy: Boolean(isPreview),
+      maxRigInstances: isPreview ? 12 : 8,
+    };
+  }, [
+    isVideoPanelRoom,
+    mode,
+    mySeatId,
+    audienceSceneView,
+    bobbleOccupiedCount,
+    displayName,
+    isPreview,
+  ]);
 
   useEffect(() => {
     if (!isLoungeSideRoom) return;
@@ -668,6 +723,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
               onReaction={sendReaction}
               hideControls
               accentColor={accentCol}
+              bobbleheadSeating={bobbleheadSeating}
             />
           )}
         </div>
@@ -928,6 +984,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             onReaction={sendReaction}
             hideControls
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
+            bobbleheadSeating={bobbleheadSeating}
           />
           {/* Comic speech bubbles over the crowd */}
           <RoomBubbleRail bubbles={[...speechBubbles, ...whisperBubbles]} variant="comic" maxVisible={14} />

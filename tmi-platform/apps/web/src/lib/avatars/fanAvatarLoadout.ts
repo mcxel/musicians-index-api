@@ -85,16 +85,25 @@ export function catalogItemToInventorySeed(def: FanCosmeticDef): AvatarInventory
         : def.rarity === "epic"
           ? "epic"
           : "rare";
+  const categoryMap: Record<string, AvatarInventoryItem["category"]> = {
+    hair: "hair",
+    headphones: "headphones",
+    clothing: "clothing",
+    shoes: "shoes",
+    instruments: "instruments",
+    vfx: "vfx",
+    skin: "skins",
+  };
   return {
     itemId: def.id,
     id: def.id,
     avatarId: "",
-    type: "cosmetics",
-    category: def.inventoryCategory,
+    type: def.equipSlot === "instrument" ? "instruments" : "cosmetics",
+    category: categoryMap[def.inventoryCategory] ?? (def.inventoryCategory as AvatarInventoryItem["category"]),
     name: def.label,
     rarity,
     owned: def.pointsCost === 0,
-    equipped: def.id === "mic" || def.id === "street_fit",
+    equipped: def.id === "mic" || def.id === "street_fit" || def.id === "hair_fade_short",
     mintable: false,
     tradeable: false,
     xpRequired: 0,
@@ -107,6 +116,7 @@ export function catalogItemToInventorySeed(def: FanCosmeticDef): AvatarInventory
       certifiedGlb: false,
       animKind: def.animKind,
       bodyTint: def.bodyTint,
+      hairTint: def.hairTint,
       runtime: "3d_avatar_runtime_v0",
     },
     createdAt: now,
@@ -134,6 +144,16 @@ const SEED_IDS = [
   "backwards_cap",
   "street_beanie",
   "neck_headphones",
+  "hair_fade_short",
+  "hair_buzz",
+  "glasses_black",
+  "tee_basic_black",
+  "pants_fit_black",
+  "kicks_white",
+  "emote_wave",
+  "emote_dance",
+  "heart_prop",
+  "inst_ukulele",
 ];
 
 export function fanCosmeticStarterItems(): AvatarInventoryItem[] {

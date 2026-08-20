@@ -613,15 +613,15 @@ export const BOBBLEHEAD_PIPELINE_GAP = {
     { piece: "AvatarCreationCenter + Workspace (Fan RoleGate)", path: "apps/web/src/components/canisters/AvatarCreationCenter.tsx" },
     { piece: "This base registry + concept catalog refs", path: "apps/web/src/lib/avatars/BobbleheadBaseRegistry.ts" },
     { piece: "ArenaEventShell → UniversalVenueRenderer audience world", path: "apps/web/src/components/live/UniversalVenueRenderer.tsx" },
+    { piece: "AudienceScene seat pins + AvatarRig Fan/[TEST] overlay", path: "apps/web/src/components/live/AudienceScene.tsx" },
   ],
   missingBlocking: [
     { piece: "Photoreal GLB body + head from concept sheets", note: "Procedural AvatarRig stands in — certifiedGlb false" },
     { piece: "Real face-scan → mesh pipeline", note: "Rule 18 unbuilt; Capture/Upload remain shells" },
-    { piece: "AudienceScene canvas seats using BobbleheadRuntimeCharacter", note: "Fan lobby wired; Arena 2D crowd canvas still entity-driven without full R3F bobbleheads" },
   ],
   missingFuture: [
     { piece: "Lip sync / facial animation", note: "FUTURE — do not stub" },
-    { piece: "LOD ladder for crowd", note: "After real GLB avatar exists" },
+    { piece: "LOD ladder for crowd", note: "After real GLB avatar exists; near seats use AvatarRig, far seats stay canvas" },
     { piece: "Full FREE_ROAM_3D collision mesh shared with UniversalVenueRenderer", note: "Lobby anchors + sit pose exist; full physics collision pending" },
     { piece: "Evolution observe→recommend loop", note: "Rule 22 — evolutionGeneration is a counter only" },
     { piece: "Procedural accessory AI generator", note: "Templates + socket attach only — no fake generation API" },

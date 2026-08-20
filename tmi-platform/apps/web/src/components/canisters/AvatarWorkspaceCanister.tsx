@@ -13,6 +13,12 @@ import {
   persistBobbleheadBaseId,
   resolveBobbleheadRuntimeCharacter,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import {
+  FAN_SKIN_TONE_CONTINUUM,
+  persistFanSkinT,
+  readPersistedFanSkinT,
+  sampleFanSkinTone,
+} from "@/lib/avatars/FanCosmeticCatalog";
 import dynamic from "next/dynamic";
 
 const AvatarViewer = dynamic(
@@ -38,14 +44,13 @@ interface SavedConfig {
   bobbleheadConfig?: AvatarBobbleheadConfig;
 }
 
-const SKIN_TONES = [
-  { id: "ivory",    label: "Ivory",     hex: "#FDDBB4" },
-  { id: "light",    label: "Light",     hex: "#F0C895" },
-  { id: "medium",   label: "Medium",    hex: "#C68642" },
-  { id: "tan",      label: "Tan",       hex: "#A0613A" },
-  { id: "brown",    label: "Brown",     hex: "#7C4019" },
-  { id: "dark",     label: "Dark",      hex: "#4A2010" },
-];
+/** Prefer global continuum; keep legacy ids for saved configs. */
+const SKIN_TONES = FAN_SKIN_TONE_CONTINUUM.map((s) => ({
+  id: s.id,
+  label: s.label,
+  hex: s.hex,
+  t: s.t,
+}));
 const HAIR_COLORS = [
   { id: "black",    hex: "#111111" },
   { id: "brown",    hex: "#6B3A2A" },
@@ -255,9 +260,40 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
 
           {/* Builder column */}
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={label}>SKIN TONE</div>
+            <div style={label}>SKIN TONE · GLOBAL CONTINUUM</div>
+            <div
+              style={{
+                height: 14,
+                borderRadius: 7,
+                marginBottom: 8,
+                background: `linear-gradient(90deg, ${FAN_SKIN_TONE_CONTINUUM.map((s) => s.hex).join(", ")})`,
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              defaultValue={readPersistedFanSkinT()}
+              onChange={(e) => {
+                const t = Number(e.target.value);
+                persistFanSkinT(t);
+                const sampled = sampleFanSkinTone(t);
+                const nearest = SKIN_TONES.reduce((best, s) =>
+                  Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best,
+                );
+                set("skinTone", nearest.id);
+                void sampled;
+              }}
+              aria-label="Skin tone continuum"
+              style={{ width: "100%", accentColor: "#C68642", marginBottom: 8 }}
+            />
             <div style={row}>
-              {SKIN_TONES.map(s => swatch(s.hex, config.skinTone === s.id, () => set("skinTone", s.id)))}
+              {SKIN_TONES.map(s => swatch(s.hex, config.skinTone === s.id, () => {
+                set("skinTone", s.id);
+                persistFanSkinT(s.t);
+              }))}
             </div>
 
             <div style={label}>HAIR COLOR</div>
