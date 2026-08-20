@@ -76,6 +76,8 @@ export interface LiveDiscoveryRecord {
   anchorFamily?: string;
   /** Idle-rotating featured category (locked when queue forms). */
   featuredCategory?: string;
+  /** Up to 3 eligible like-vs-like types while recruiting (not collapsed to first). */
+  calloutSlots?: string[];
   categoryLocked?: boolean;
   /** Honest recruiting — room stays on wall; overlay is LOOKING FOR, not fake LIVE crowd. */
   recruiting?: boolean;

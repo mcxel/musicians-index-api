@@ -27,6 +27,9 @@ import { prisma } from '@/lib/prisma';
 import { ensureAnchorRoomsSeeded, getAnchorDiscoveryRecords, listAnchorLiveRoomRecords } from '@/lib/live/AnchorRoomNetwork';
 import { ensureGenreRoomsSeeded, getAllGenreDiscoveryRecords } from '@/lib/live/performerGenreRoomNetwork';
 import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoomEntitlement';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
+import { canCreateBattle, canCreateCypher } from '@/lib/subscriptions/BattleCreationGate';
+import type { SubscriptionTier } from '@/lib/subscriptions/SubscriptionPricingEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +64,23 @@ export async function POST(req: NextRequest) {
   const isCreateRoomIntent =
     body.intent === 'create-room' || body.createRoom === true;
 
+  const miniBody = body as { isMini?: boolean };
+  if (miniBody.isMini === true) {
+    const cat = String(body.category ?? "").toLowerCase();
+    if (cat === "cypher" || cat === "challenge" || cat === "battle") {
+      const auth = await getTmiAuth();
+      if (!auth) {
+        return NextResponse.json({ error: "authentication_required" }, { status: 401 });
+      }
+      const rawTier = (auth.user.tier || "free").toUpperCase();
+      const tier = (rawTier === "RUBY" ? "RUBY" : rawTier.toLowerCase()) as SubscriptionTier;
+      const gate = cat === "cypher" ? canCreateCypher(tier) : canCreateBattle(tier);
+      if (!gate.allowed) {
+        return NextResponse.json({ error: "tier_gate", ...gate }, { status: 403 });
+      }
+    }
+  }
+
   let userId: string;
   let displayName: string;
 
@@ -90,6 +110,18 @@ export async function POST(req: NextRequest) {
   // Normalize show/release categories onto StreamCategory "concert" so discovery
   // + getSessionsByCategory verification succeed (SHOWS & RELEASES wall).
   const rawCategory = String(body.category ?? "live").toLowerCase().replace(/_/g, "-");
+
+  // Rule 21: World Dance Party + Monday Night Stage are bot/platform-only flagship events.
+  if (rawCategory === "world-dance-party" || rawCategory === "monday-night-stage") {
+    const mini = (body as { isMini?: boolean }).isMini === true;
+    if (!mini) {
+      return NextResponse.json(
+        { error: "flagship_bot_only", message: "Official World/Monday events cannot be created by humans." },
+        { status: 403 },
+      );
+    }
+  }
+
   const category =
     rawCategory === "release-party" ||
     rawCategory === "mini-release" ||

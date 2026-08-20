@@ -1,7 +1,7 @@
 /**
  * VideoShuffleModeRuntime — passive randomized video watching (instant mode).
- * Uses public performer intro/motion videos when available; otherwise falls
- * back to in-memory public video assets (soft launch) — one canonical player cast.
+ * Pool: approved video submissions (MediaRegistry) + performer intro/motion + MediaEngine fallback.
+ * Lifecycle mirrors competition rooms where it fits: empty → RESET → SHUFFLE → keep casting.
  */
 
 import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
@@ -20,10 +20,17 @@ export interface ShuffleVideoItem {
 
 const SHUFFLE_EVENT = "tmi:video-shuffle:state";
 
-export type VideoShuffleState = "idle" | "active" | "paused";
+export type VideoShuffleState = "idle" | "recruiting" | "active" | "paused";
 
-function buildPool(recentIds: string[]): ShuffleVideoItem[] {
-  const performerItems = PERFORMER_REGISTRY.filter(
+function emitState(state: VideoShuffleState, item?: ShuffleVideoItem | null) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(SHUFFLE_EVENT, { detail: { state, item: item ?? null } }),
+  );
+}
+
+function buildPerformerPool(): ShuffleVideoItem[] {
+  return PERFORMER_REGISTRY.filter(
     (p) => (p.introVideoUrl || p.motionPosterUrl) && p.lineupType !== undefined,
   ).map((p) => ({
     id: `shuffle-${p.slug}`,
@@ -34,9 +41,10 @@ function buildPool(recentIds: string[]): ShuffleVideoItem[] {
     performerSlug: p.slug,
     coverUrl: p.profileImageUrl,
   }));
+}
 
-  // Soft-launch fallback: use ready in-memory videos when performer intro/motion data isn't present.
-  const mediaItems = MediaEngine.getByType("video").map((m) => ({
+function buildMediaEnginePool(): ShuffleVideoItem[] {
+  return MediaEngine.getByType("video").map((m) => ({
     id: `shuffle-media-${m.id}`,
     title: m.title,
     artist: m.ownerName,
@@ -44,9 +52,37 @@ function buildPool(recentIds: string[]): ShuffleVideoItem[] {
     genre: m.genre ?? "Media",
     coverUrl: m.thumbnailUrl,
   }));
+}
 
-  const items = [...performerItems, ...mediaItems];
+async function fetchApprovedBroadcastPool(): Promise<ShuffleVideoItem[]> {
+  try {
+    const res = await fetch("/api/media/approved-broadcast", { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      videos?: Array<{
+        id: string;
+        title: string;
+        ownerId: string;
+        videoUrl: string;
+        thumbnailUrl: string | null;
+      }>;
+    };
+    return (data.videos ?? [])
+      .filter((v) => Boolean(v.videoUrl))
+      .map((v) => ({
+        id: `approved-${v.id}`,
+        title: v.title,
+        artist: v.ownerId,
+        videoUrl: v.videoUrl,
+        genre: "Approved",
+        coverUrl: v.thumbnailUrl ?? undefined,
+      }));
+  } catch {
+    return [];
+  }
+}
 
+function shufflePool(items: ShuffleVideoItem[], recentIds: string[]): ShuffleVideoItem[] {
   const recent = new Set(recentIds.slice(-6));
   const fresh = items.filter((i) => !recent.has(i.id));
   const pool = (fresh.length >= 2 ? fresh : items).slice();
@@ -57,54 +93,81 @@ function buildPool(recentIds: string[]): ShuffleVideoItem[] {
   return pool;
 }
 
-function emitState(state: VideoShuffleState, item?: ShuffleVideoItem | null) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent(SHUFFLE_EVENT, { detail: { state, item: item ?? null } }),
-  );
+async function buildPool(recentIds: string[]): Promise<ShuffleVideoItem[]> {
+  const approved = await fetchApprovedBroadcastPool();
+  const performerItems = buildPerformerPool();
+  const mediaItems = buildMediaEnginePool();
+  const merged = [...approved, ...performerItems, ...mediaItems];
+  const seen = new Set<string>();
+  const unique = merged.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+  return shufflePool(unique, recentIds);
+}
+
+function castItem(item: ShuffleVideoItem): void {
+  castPlaylistToMonitor({
+    playlistId: "video-shuffle",
+    trackId: item.id,
+    title: item.title,
+    artist: item.artist,
+    coverUrl: item.coverUrl ?? null,
+    videoUrl: item.videoUrl,
+    targetMonitorId: "mon-a",
+  });
 }
 
 let active = false;
 let recentIds: string[] = [];
 let current: ShuffleVideoItem | null = null;
 
-export function startVideoShuffle(): ShuffleVideoItem | null {
-  const pool = buildPool(recentIds);
+/** RESET → SHUFFLE → recruiting cast (honest empty when no approved inventory). */
+export async function restartVideoShuffle(): Promise<ShuffleVideoItem | null> {
+  recentIds = [];
+  current = null;
+  active = true;
+  emitState("recruiting", null);
+  const pool = await buildPool([]);
   if (pool.length === 0) {
+    active = false;
     emitState("idle", null);
+    return null;
+  }
+  current = pool[0]!;
+  recentIds = [current.id];
+  castItem(current);
+  emitState("active", current);
+  return current;
+}
+
+export async function startVideoShuffle(): Promise<ShuffleVideoItem | null> {
+  const pool = await buildPool(recentIds);
+  if (pool.length === 0) {
+    active = false;
+    current = null;
+    emitState("recruiting", null);
     return null;
   }
   current = pool[0]!;
   recentIds = [...recentIds, current.id].slice(-10);
   active = true;
-  castPlaylistToMonitor({
-    playlistId: "video-shuffle",
-    trackId: current.id,
-    title: current.title,
-    artist: current.artist,
-    coverUrl: current.coverUrl ?? null,
-    videoUrl: current.videoUrl,
-    targetMonitorId: "mon-a",
-  });
+  castItem(current);
   emitState("active", current);
   return current;
 }
 
-export function shuffleNextVideo(): ShuffleVideoItem | null {
+export async function shuffleNextVideo(): Promise<ShuffleVideoItem | null> {
   if (!active) return startVideoShuffle();
-  const pool = buildPool(recentIds);
-  if (pool.length === 0) return null;
+  const pool = await buildPool(recentIds);
+  if (pool.length === 0) {
+    emitState("recruiting", null);
+    return null;
+  }
   current = pool[0]!;
   recentIds = [...recentIds, current.id].slice(-10);
-  castPlaylistToMonitor({
-    playlistId: "video-shuffle",
-    trackId: current.id,
-    title: current.title,
-    artist: current.artist,
-    coverUrl: current.coverUrl ?? null,
-    videoUrl: current.videoUrl,
-    targetMonitorId: "mon-a",
-  });
+  castItem(current);
   emitState("active", current);
   return current;
 }
@@ -114,9 +177,10 @@ export function pauseVideoShuffle(): void {
   emitState("paused", current);
 }
 
-export function resumeVideoShuffle(): ShuffleVideoItem | null {
+export async function resumeVideoShuffle(): Promise<ShuffleVideoItem | null> {
   if (current) {
     active = true;
+    castItem(current);
     emitState("active", current);
     return current;
   }

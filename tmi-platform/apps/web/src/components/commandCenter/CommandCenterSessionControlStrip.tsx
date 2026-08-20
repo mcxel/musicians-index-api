@@ -137,8 +137,7 @@ export default function CommandCenterSessionControlStrip({
       exitVideoShuffle();
       setShuffleActive(false);
     } else {
-      const started = startVideoShuffle();
-      setShuffleActive(Boolean(started));
+      void startVideoShuffle().then((started) => setShuffleActive(Boolean(started)));
     }
   };
 

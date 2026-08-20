@@ -18,9 +18,11 @@ const BATTLE_TYPES: { id: string; label: string; format: BattleFormatType }[] = 
   { id: "piano", label: "Piano Battle", format: "instrumentalist-vs-instrumentalist" },
   { id: "drums", label: "Drum Battle", format: "instrumentalist-vs-instrumentalist" },
   { id: "producer", label: "Producer vs Producer", format: "producer-vs-producer" },
+  { id: "dj", label: "DJ vs DJ", format: "dj-vs-dj" },
   { id: "band", label: "Band vs Band", format: "band-vs-band" },
   { id: "dance", label: "Dance-Off", format: "dance-off" },
   { id: "comedy", label: "Comedian vs Comedian", format: "comedian-vs-comedian" },
+  { id: "joke-off", label: "Joke-Off", format: "joke-off" },
   { id: "dirty-dozens", label: "Dirty Dozens", format: "dirty-dozens" },
   { id: "open", label: "Open Cypher (any # of performers)", format: "open-performer-challenge" },
 ];

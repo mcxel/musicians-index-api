@@ -45,6 +45,7 @@ export interface PublishLiveRoomInput {
   isAnchor?: boolean;
   anchorFamily?: string;
   featuredCategory?: string;
+  calloutSlots?: string[];
   categoryLocked?: boolean;
   recruiting?: boolean;
   castOverlay?: string;
@@ -133,6 +134,7 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     isAnchor: input.isAnchor === true,
     anchorFamily: input.anchorFamily,
     featuredCategory: input.featuredCategory,
+    calloutSlots: input.calloutSlots?.length ? [...input.calloutSlots] : undefined,
     categoryLocked: input.categoryLocked === true,
     recruiting: input.recruiting === true,
     castOverlay: input.castOverlay?.trim() || undefined,

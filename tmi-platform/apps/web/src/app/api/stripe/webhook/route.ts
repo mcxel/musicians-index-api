@@ -376,6 +376,37 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // ─── 2b. LOBBY WALL / WDP VISIBILITY BOOST ─────────────────────────
+      if (metadata.type === 'boost_lobby_wall' || metadata.type === 'wdp_submission_boost') {
+        const { recordLobbyWallBoost } = await import('@/lib/lobby/LobbyWallBoostEngine');
+        const roomId = metadata.roomId || 'unknown';
+        const performerId = metadata.performerId || session.customer_email || 'unknown';
+        const category = (metadata.category || 'all') as import('@/lib/lobby/liveLobbyWallLaw').LobbyWallCoreCategoryId | 'all';
+        const kind = metadata.type === 'wdp_submission_boost' ? 'wdp_submission' : 'lobby_wall';
+        recordLobbyWallBoost({
+          roomId,
+          performerId,
+          category,
+          kind,
+          wdpEntryId: metadata.wdpEntryId || null,
+          stripeSessionId: session.id,
+        });
+        if (metadata.wdpEntryId) {
+          const { applyWdpSubmissionBoost } = await import('@/lib/dance/WorldDancePartyRotationPool');
+          applyWdpSubmissionBoost(metadata.wdpEntryId);
+        }
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'boost',
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          type: metadata.type,
+          simulated: false,
+        });
+      }
+
       // ─── 3. LIVE TIP FULFILLMENT ──────────────────────────────────────
       if (metadata.type === 'tip') {
         const amount = session.amount_total || 0;

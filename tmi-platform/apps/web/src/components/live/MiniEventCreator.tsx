@@ -24,7 +24,12 @@ export type MiniEventType =
   | "concert"
   | "release-party"
   | "lounge"
-  | "dance-party";
+  | "dance-party"
+  | "joke-off"
+  | "dance-off"
+  | "dirty-dozens"
+  | "producer-battle"
+  | "dj-battle";
 
 interface MiniEventDef {
   type: MiniEventType;
@@ -56,6 +61,76 @@ const MINI_EVENTS: MiniEventDef[] = [
     extractJoinUrl: (r) => (r.joinUrl as string) ?? "/rooms/battle-arena",
   },
   {
+    type: "joke-off",
+    emoji: "😂",
+    label: "Mini Joke-Off",
+    accent: "#FF6B35",
+    description: "Comedy battle — real votes, real winner",
+    endpoint: "/api/battles/mini",
+    buildBody: (name, genre) => ({
+      format: "joke-off",
+      genreName: genre ?? "Comedy",
+      title: `${name}'s Mini Joke-Off`,
+    }),
+    extractJoinUrl: (r) => (r.joinUrl as string) ?? "/games/joke-offs",
+  },
+  {
+    type: "dance-off",
+    emoji: "💃",
+    label: "Mini Dance-Off",
+    accent: "#AA2DFF",
+    description: "Dance battle — real votes, real winner",
+    endpoint: "/api/battles/mini",
+    buildBody: (name, genre) => ({
+      format: "dance-off",
+      genreName: genre ?? "Dance",
+      title: `${name}'s Mini Dance-Off`,
+    }),
+    extractJoinUrl: (r) => (r.joinUrl as string) ?? "/games/dance-offs",
+  },
+  {
+    type: "dirty-dozens",
+    emoji: "🔥",
+    label: "Mini Dirty Dozens",
+    accent: "#AA2DFF",
+    description: "Roast battle — real votes, real winner",
+    endpoint: "/api/battles/mini",
+    buildBody: (name, genre) => ({
+      format: "dirty-dozens",
+      genreName: genre ?? "Hip-Hop",
+      title: `${name}'s Mini Dirty Dozens`,
+    }),
+    extractJoinUrl: (r) => (r.joinUrl as string) ?? "/games/dirty-dozens",
+  },
+  {
+    type: "producer-battle",
+    emoji: "🎛️",
+    label: "Mini Producer Battle",
+    accent: "#C0A0FF",
+    description: "Producer vs producer — real votes, real winner",
+    endpoint: "/api/battles/mini",
+    buildBody: (name, genre) => ({
+      format: "producer-vs-producer",
+      genreName: genre ?? "Hip-Hop",
+      title: `${name}'s Producer Battle`,
+    }),
+    extractJoinUrl: (r) => (r.joinUrl as string) ?? "/battles/create",
+  },
+  {
+    type: "dj-battle",
+    emoji: "🎧",
+    label: "Mini DJ Battle",
+    accent: "#00FFFF",
+    description: "DJ vs DJ — real votes, real winner",
+    endpoint: "/api/battles/mini",
+    buildBody: (name, genre) => ({
+      format: "dj-vs-dj",
+      genreName: genre ?? "EDM",
+      title: `${name}'s DJ Battle`,
+    }),
+    extractJoinUrl: (r) => (r.joinUrl as string) ?? "/battles/create",
+  },
+  {
     type: "cypher",
     emoji: "🎤",
     label: "Mini Cypher",
@@ -80,16 +155,17 @@ const MINI_EVENTS: MiniEventDef[] = [
     label: "Mini Challenge",
     accent: "#FFD700",
     description: "Issue a direct challenge",
-    endpoint: "/api/challenges/create",
+    endpoint: "/api/live/go",
     buildBody: (name, genre) => ({
-      type: "quick",
-      genre: genre ?? "Hip-Hop",
-      entryModel: "free",
+      displayName: name,
+      category: "challenge",
+      genreName: genre ?? "Hip-Hop",
       title: `${name}'s Challenge`,
+      isMini: true,
     }),
     extractJoinUrl: (r) =>
-      r.roomSlug
-        ? `/rooms/challenge-arena?room=${encodeURIComponent(r.roomSlug as string)}`
+      r.roomId
+        ? `/live/rooms/${r.roomId}?mode=performer&category=challenge&auto=true`
         : "/rooms/challenge-arena",
   },
   {

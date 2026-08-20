@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { SubmissionType } from '@/lib/submissions/SubmissionEngine';
 import BeatLockerCompactSubmit from '@/components/beats/BeatLockerCompactSubmit';
 
@@ -129,6 +130,24 @@ export default function SubmitPage() {
             <div style={{ position: 'absolute', bottom: 14, right: 16, fontSize: 18, color: lane.accent, opacity: 0.5 }}>→</div>
           </button>
         ))}
+        <Link
+          href="/dance-party/submit"
+          style={{
+            background: 'rgba(0,255,136,0.06)',
+            border: '1.5px solid rgba(0,255,136,0.35)',
+            padding: '28px 20px',
+            textDecoration: 'none',
+            textAlign: 'left',
+            display: 'block',
+          }}
+        >
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🌍</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00FF88', marginBottom: 6 }}>World Dance Party</div>
+          <div style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 22, color: '#fff', letterSpacing: '0.04em', marginBottom: 6 }}>Friday Official Pool</div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, margin: 0 }}>
+            DJ Record Ralph · weekly rotation · 50 coins reserved, charged only when your track plays
+          </p>
+        </Link>
       </div>
 
       {/* How the Loop Works */}

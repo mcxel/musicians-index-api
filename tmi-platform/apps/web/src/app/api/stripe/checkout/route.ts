@@ -90,6 +90,68 @@ export async function GET(req: NextRequest) {
   const creativeUrl  = searchParams.get('creativeUrl') ?? '';
   const placementStartDate = searchParams.get('startDate') ?? '';
 
+  // Lobby wall / WDP submission visibility boost
+  const boostRoomId = searchParams.get('roomId') ?? '';
+  const boostCategory = searchParams.get('category') ?? 'all';
+  const wdpEntryId = searchParams.get('wdpEntryId') ?? '';
+
+  if (
+    purchaseType === 'boost_lobby_wall' ||
+    purchaseType === 'wdp_submission_boost'
+  ) {
+    if (isStripePaused()) {
+      return NextResponse.redirect(new URL('/home/1?notice=stripe-paused', req.url));
+    }
+    if (!boostRoomId) {
+      return NextResponse.redirect(new URL('/home/1?notice=boost-room-required', req.url));
+    }
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.redirect(new URL('/home/1?notice=stripe-pending', req.url));
+    }
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    if (!userEmail) {
+      return NextResponse.redirect(new URL('/login?next=/home/1', req.url));
+    }
+    try {
+      const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
+      const performerId = buyer?.id ?? userEmail;
+      const catalog = STRIPE_PRODUCTS.LOBBY_WALL_BOOST_24H;
+      const isRealBoostPrice = /^price_[A-Za-z0-9]{16,}$/.test(catalog.priceId);
+      const lineItem = isRealBoostPrice
+        ? { price: catalog.priceId, quantity: 1 as const }
+        : {
+            quantity: 1 as const,
+            price_data: {
+              currency: 'usd' as const,
+              unit_amount: catalog.price,
+              product_data: { name: catalog.name },
+            },
+          };
+      const boostKind = purchaseType === 'wdp_submission_boost' ? 'wdp_submission' : 'lobby_wall';
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [lineItem],
+        success_url: `${origin}/payment-success?type=${encodeURIComponent(purchaseType)}&roomId=${encodeURIComponent(boostRoomId)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/home/1?notice=boost-cancelled`,
+        customer_email: userEmail,
+        metadata: {
+          type: purchaseType,
+          roomId: boostRoomId,
+          performerId,
+          category: boostCategory,
+          boostKind,
+          ...(wdpEntryId ? { wdpEntryId } : {}),
+        },
+      });
+      if (!session.url) throw new Error('No session URL returned');
+      return NextResponse.redirect(session.url, 303);
+    } catch (err) {
+      console.error('[stripe/checkout:GET boost]', err);
+      return NextResponse.redirect(new URL('/home/1?notice=boost-checkout-error', req.url));
+    }
+  }
+
   // For placeholders, build inline price_data from URL params
   const amountStr   = searchParams.get('amount');
   const productName = searchParams.get('productName') ?? 'TMI Pass';

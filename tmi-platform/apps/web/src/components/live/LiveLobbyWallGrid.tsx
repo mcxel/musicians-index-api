@@ -18,6 +18,7 @@ import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/Destina
 import { sanitizeWallHostLabel } from '@/lib/lobby/wallPublicIdentity';
 import LobbyCategoryPillRow, { type LobbyCategoryPill } from '@/components/lobby/LobbyCategoryPillRow';
 import { isoCountryToFlag } from '@/lib/discovery/LiveDiscoveryRecord';
+import { styleVsCallout, type PerformerStyleSlot } from '@/lib/competition/PerformerStyleSlots';
 import {
   LIVE_LOBBY_WALL_CONTRACT_ID,
   useAdaptiveWorldRuntime,
@@ -124,6 +125,13 @@ export type LobbyRoom = {
   hostUserId?: string;
   /** Cast onto the tile itself (LIVE / LOOKING FOR). Never viewer counts. */
   overlayLine?: string;
+  /** Recruiting 3-callout batch — join keeps all unless selectedCallout is set. */
+  calloutSlots?: string[];
+  selectedCallout?: string;
+  /** Paid visibility boost — honest PROMOTED badge (Rule 20). */
+  isBoosted?: boolean;
+  boostExpiresAt?: number;
+  boostKind?: 'lobby_wall' | 'wdp_submission';
 };
 
 type LiveLobbyWallGridProps = {
@@ -189,6 +197,7 @@ function LobbyCell({
   preview,
   selected,
   onSelect,
+  onJoinMatchup,
   onPrewarm,
   onFocusAudio,
 }: {
@@ -198,6 +207,7 @@ function LobbyCell({
   preview: LobbyPreviewTileState;
   selected: boolean;
   onSelect: (room: LobbyRoom) => void;
+  onJoinMatchup?: (room: LobbyRoom, style: string) => void;
   onPrewarm: (room: LobbyRoom) => void;
   onFocusAudio: (roomId: string) => void;
 }) {
@@ -243,7 +253,7 @@ function LobbyCell({
       layoutId={`mosaic-tile-${room.id}`}
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.28 }}
+      transition={{ duration: 0.28, layout: { duration: 0.35, ease: 'easeInOut' } }}
       whileTap={{ scale: 0.98 }}
       onClick={() => onSelect(room)}
       onMouseEnter={() => {
@@ -309,6 +319,28 @@ function LobbyCell({
             ) : null}
             {mosaicCastOverlay(room)}
           </span>
+          {isRecruiting && (room.calloutSlots?.length ?? 0) > 1 ? (
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 3, pointerEvents: 'auto' }}>
+              {room.calloutSlots!.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onJoinMatchup) onJoinMatchup(room, slot);
+                    else onSelect({ ...room, selectedCallout: slot });
+                  }}
+                  style={{
+                    fontSize: 7, fontWeight: 800, letterSpacing: '0.04em',
+                    color: '#050510', background: '#FFD700',
+                    border: 'none', borderRadius: 999, padding: '2px 6px', cursor: 'pointer',
+                  }}
+                >
+                  {styleVsCallout(slot as PerformerStyleSlot)}
+                </button>
+              ))}
+            </span>
+          ) : null}
           <span
             title={room.countryCode && room.countryCode !== 'ZZ' ? room.countryCode : 'Country unknown'}
             style={{
@@ -318,6 +350,22 @@ function LobbyCell({
           >
             {mosaicFlag(room)}
           </span>
+          {room.isBoosted ? (
+            <span
+              title="Paid visibility boost — not organic popularity"
+              style={{
+                fontSize: 7,
+                fontWeight: 900,
+                letterSpacing: '0.1em',
+                color: '#050510',
+                background: 'linear-gradient(90deg, #FFD700, #FF2DAA)',
+                padding: '2px 6px',
+                borderRadius: 999,
+              }}
+            >
+              PROMOTED
+            </span>
+          ) : null}
         </div>
         <span style={{
           fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
@@ -712,6 +760,7 @@ export default function LiveLobbyWallGrid({
                     }}
                     selected={promotedRoomId === room.id}
                     onSelect={onRoomJoin ? joinRoom : selectRoom}
+                    onJoinMatchup={(r, style) => joinRoom({ ...r, selectedCallout: style })}
                     onPrewarm={prewarmRoom}
                     onFocusAudio={onFocusAudio}
                   />

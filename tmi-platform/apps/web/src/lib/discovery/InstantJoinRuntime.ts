@@ -26,6 +26,7 @@ import {
   type ParticipationRoomKind,
   type ParticipationState,
 } from "@/lib/live/ParticipationStateMachine";
+import { parseCalloutBatch } from "@/lib/competition/PerformerStyleSlots";
 
 export type InstantJoinRole =
   | "FAN"
@@ -122,7 +123,7 @@ export function discoveryRecordToUniversalRoom(
  */
 export function resolveInstantJoin(
   record: LiveDiscoveryRecord,
-  opts?: { role?: string | null; isRoomOwner?: boolean },
+  opts?: { role?: string | null; isRoomOwner?: boolean; selectedStyle?: string | null },
 ): InstantJoinDecision {
   const role = normalizeRole(opts?.role);
   const roomKind = resolveRoomKindFromDiscovery(record);
@@ -162,7 +163,7 @@ export function resolveInstantJoin(
     room.roomRoute = href;
   }
 
-  // Append participation query hints for room shells (honest mode, not fake state)
+  href = appendRecruitingJoinParams(href, record, opts?.selectedStyle);
   const sep = href.includes("?") ? "&" : "?";
   href = `${href}${sep}entryMode=${encodeURIComponent(resolution.entryMode)}&roomKind=${encodeURIComponent(resolution.roomKind)}`;
   room.roomRoute = href;
@@ -191,6 +192,35 @@ export function resolveInstantJoin(
     initialState: resolution.initialState,
     claimFanSeat: resolution.claimFanSeat,
   };
+}
+
+function appendRecruitingJoinParams(
+  href: string,
+  record: LiveDiscoveryRecord,
+  selectedStyle?: string | null,
+): string {
+  const fromRecord = (record.calloutSlots ?? []).map((s) => s.trim()).filter(Boolean);
+  const fromQuery = parseCalloutBatch(
+    (() => {
+      try {
+        return new URL(href, "https://themusiciansindex.com").searchParams.get("eligibleStyles") ?? "";
+      } catch {
+        return "";
+      }
+    })(),
+  );
+  const slots = fromRecord.length > 0 ? fromRecord : fromQuery;
+  const picked = (selectedStyle ?? "").trim();
+  const params: string[] = [];
+  if (picked && (slots.length === 0 || slots.includes(picked))) {
+    params.push(`featuredCategory=${encodeURIComponent(picked)}`);
+  } else if (record.recruiting && slots.length > 0) {
+    params.push(`eligibleStyles=${encodeURIComponent(slots.join(","))}`);
+    params.push("recruiting=open");
+  }
+  if (params.length === 0) return href;
+  const sep = href.includes("?") ? "&" : "?";
+  return `${href}${sep}${params.join("&")}`;
 }
 
 /** True when the overlay should open LobbyEntryFlow instead of a landing page. */

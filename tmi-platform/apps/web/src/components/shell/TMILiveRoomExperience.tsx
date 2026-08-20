@@ -994,7 +994,7 @@ export default function TMILiveRoomExperience({
             onClick={() => { const next = !camOn; setCamOn(next); onCamToggle?.(next); }}
           />
           <HudButton icon="📱" label="SNIPS" accentColor="#FFD700" onClick={() => useCompactQuickPanelStore.getState().openPanel("snips", "bottom-right")} />
-          <HudButton icon="🔀" label="VIDEO SHUFFLE" accentColor="#AA2DFF" onClick={() => { if (isVideoShuffleActive()) exitVideoShuffle(); else startVideoShuffle(); }} />
+          <HudButton icon="🔀" label="VIDEO SHUFFLE" accentColor="#AA2DFF" onClick={() => { if (isVideoShuffleActive()) exitVideoShuffle(); else void startVideoShuffle(); }} />
           <HudButton
             icon="🏠"
             label="LOBBIES"

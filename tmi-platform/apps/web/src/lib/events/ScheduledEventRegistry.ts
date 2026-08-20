@@ -5,6 +5,7 @@
  */
 
 import { getMondayNightStageWindow, type MondayNightStageWindow } from "@/lib/shows/MondayShowtime";
+import { getWorldDancePartyWindow, type WorldDancePartyWindow } from "@/lib/dance/WorldDancePartyShowtime";
 import { getShowHosts } from "@/lib/hosts/HostShowAssignmentEngine";
 
 export type ScheduledEventPhase = MondayNightStageWindow["phase"];
@@ -28,8 +29,19 @@ const MONDAY_NIGHT_STAGE: ScheduledEventDefinition = {
   hostShowId: "monday-night-stage",
 };
 
+/** 🌍 Official World Dance Party — all-day Friday ET, bot-only create (Rule 21). */
+const WORLD_DANCE_PARTY: ScheduledEventDefinition = {
+  eventId: "world-dance-party",
+  title: "World Dance Party",
+  timezone: "America/New_York",
+  recurrence: "FREQ=WEEKLY;BYDAY=FR",
+  entryRoute: "/rooms/world-dance-party",
+  hostShowId: "world-dance-party",
+};
+
 const REGISTRY: Record<string, ScheduledEventDefinition> = {
   "monday-night-stage": MONDAY_NIGHT_STAGE,
+  "world-dance-party": WORLD_DANCE_PARTY,
 };
 
 export function getScheduledEventDefinition(eventId: string): ScheduledEventDefinition | undefined {
@@ -58,6 +70,13 @@ export function getEventScheduleStatus(eventId: string, from: Date = new Date())
   if (eventId === "monday-night-stage") {
     return getMondayNightStageWindow(from).phase;
   }
+  if (eventId === "world-dance-party") {
+    const phase = getWorldDancePartyWindow(from).phase;
+    if (phase === "LIVE") return "LIVE";
+    if (phase === "SUBMIT_OPEN") return "PRESHOW";
+    if (phase === "ARCHIVE") return "ARCHIVE";
+    return "CLOSED";
+  }
   return "CLOSED";
 }
 
@@ -66,7 +85,19 @@ export function getEventNextLabel(eventId: string, from: Date = new Date()): str
   if (eventId === "monday-night-stage") {
     return getMondayNightStageWindow(from).label;
   }
+  if (eventId === "world-dance-party") {
+    return getWorldDancePartyWindow(from).label;
+  }
   return "Check back soon";
+}
+
+export function getWorldDancePartySchedule(from: Date = new Date()): WorldDancePartyWindow & {
+  definition: ScheduledEventDefinition;
+} {
+  return {
+    ...getWorldDancePartyWindow(from),
+    definition: WORLD_DANCE_PARTY,
+  };
 }
 
 /** True when the event is live or in preshow (access should be granted). */

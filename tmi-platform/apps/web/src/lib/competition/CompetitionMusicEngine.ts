@@ -352,6 +352,11 @@ export function styleSlotToBeatGenre(slot: string | null | undefined): string {
     comedy: "Comedy",
     open_genre: "Hip-Hop",
     ai_music: "EDM",
+    gibberish: "Comedy",
+    scat: "Jazz",
+    joke_off: "Comedy",
+    dance_off: "EDM",
+    dirty_dozens: "Hip-Hop",
   };
   if (!slot) return "Hip-Hop";
   return map[slot] ?? slot.replace(/_/g, " ");

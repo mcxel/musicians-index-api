@@ -19,13 +19,16 @@ import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
   advanceLobbyWallCategory,
+  attachLobbyBoostFlags,
   canSearchFanAvatarLobbies,
   filterDiscoveryByWallCategory,
   filterFanAvatarLobbySearch,
+  sortLobbyTilesByViewRank,
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
 import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import type { ShowsReleasePublicCard } from "@/lib/events/ScheduledEventRegistry";
+import { getWorldDancePartySchedule } from "@/lib/events/ScheduledEventRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
 
 function catalogCardToLobbyRoom(card: ShowsReleasePublicCard): LobbyRoom {
@@ -81,6 +84,35 @@ export default function LiveLobbyWallHost({
   const [fanSearchQuery, setFanSearchQuery] = useState("");
   const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
   const [showCatalog, setShowCatalog] = useState<ShowsReleasePublicCard[]>([]);
+  const [boostMap, setBoostMap] = useState<Map<string, { expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>>(
+    () => new Map(),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadBoosts = async () => {
+      try {
+        const res = await fetch("/api/lobby-wall/boosts", { cache: "no-store" });
+        const data = (await res.json()) as {
+          boosts?: Array<{ roomId: string; expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>;
+        };
+        if (cancelled) return;
+        const next = new Map<string, { expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>();
+        for (const b of data.boosts ?? []) {
+          next.set(b.roomId, { expiresAtMs: b.expiresAtMs, kind: b.kind });
+        }
+        setBoostMap(next);
+      } catch {
+        if (!cancelled) setBoostMap(new Map());
+      }
+    };
+    void loadBoosts();
+    const t = setInterval(loadBoosts, 12_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeCategory !== "shows_and_releases") return;
@@ -113,6 +145,7 @@ export default function LiveLobbyWallHost({
   const displayRecords = fanSearchResults.length > 0 ? fanSearchResults : categoryRecords;
 
   const rooms = useMemo(() => {
+    let base: LobbyRoom[];
     if (activeCategory === "shows_and_releases" && fanSearchResults.length === 0) {
       const liveRooms = displayRecords.map(discoveryToLobbyRoom);
       const liveIds = new Set(liveRooms.map((r) => r.id));
@@ -120,10 +153,30 @@ export default function LiveLobbyWallHost({
         .filter((c) => c.publishStatus === "PUBLISHED")
         .map(catalogCardToLobbyRoom)
         .filter((r) => !liveIds.has(r.id));
-      return [...liveRooms, ...catalogRooms];
+      base = [...liveRooms, ...catalogRooms];
+    } else {
+      const mapped = displayRecords.map(discoveryToLobbyRoom);
+      if (activeCategory === "world_dance_party" && fanSearchResults.length === 0) {
+        const wdp = getWorldDancePartySchedule();
+        const pinned: LobbyRoom = {
+          id: "world-dance-party",
+          name: wdp.phase === "LIVE" ? "🌍 WORLD Dance Party" : "🌍 WORLD Dance Party — Friday",
+          performerName: "DJ Record Ralph",
+          hostUserId: "record-ralph",
+          type: "dance",
+          href: "/rooms/world-dance-party",
+          viewerCount: 0,
+          status: wdp.phase === "LIVE" ? "live" : wdp.phase === "SUBMIT_OPEN" ? "starting" : "recruiting",
+          genre: "Official · All-day Friday ET",
+          overlayLine: wdp.label,
+        };
+        base = mapped.some((r) => r.id === pinned.id) ? mapped : [pinned, ...mapped];
+      } else {
+        base = mapped;
+      }
     }
-    return displayRecords.map(discoveryToLobbyRoom);
-  }, [activeCategory, displayRecords, showCatalog, fanSearchResults.length]);
+    return sortLobbyTilesByViewRank(attachLobbyBoostFlags(base, boostMap));
+  }, [activeCategory, displayRecords, showCatalog, fanSearchResults.length, boostMap]);
 
   const handleRoomJoin = useCallback(
     (room: LobbyRoom) => {
@@ -134,7 +187,7 @@ export default function LiveLobbyWallHost({
       const record =
         displayRecords.find((r) => r.roomId === room.id || r.id === room.id) ?? null;
       if (record) {
-        setJoinDecision(resolveInstantJoin(record, { role: viewerRole }));
+        setJoinDecision(resolveInstantJoin(record, { role: viewerRole, selectedStyle: room.selectedCallout }));
         return;
       }
       const catalog = showCatalog.find((c) => c.roomId === room.id || c.eventId === room.id);
@@ -307,7 +360,7 @@ export default function LiveLobbyWallHost({
         categoryPills={categoryPills}
       />
 
-      {joinDecision && !onRoomJoin ? (
+      {joinDecision ? (
         <LobbyEntryFlow
           room={joinDecision.room}
           instant={joinDecision.instant}

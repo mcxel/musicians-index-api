@@ -324,6 +324,15 @@ export const STRIPE_PRODUCTS = {
   // ── DJ / event submissions ────────────────────────────────────────────────
   DJ_SUBMISSION:       { productId:"prod_dj_sub",   priceId: process.env.STRIPE_PRICE_DJ_SUBMISSION ?? "price_dj_submission",       name:"DJ Track Submission",     price:499,  interval:"one_time" as const },
 
+  /** Lobby wall + WDP submission visibility boost — low price, high volume (Marcel lock). */
+  LOBBY_WALL_BOOST_24H: {
+    productId: "prod_lobby_wall_boost",
+    priceId:   process.env.STRIPE_PRICE_LOBBY_WALL_BOOST ?? "price_lobby_wall_boost_24h",
+    name:      "Lobby Wall Visibility Boost (24h)",
+    price:     199, // $1.99 — paid promotion, honest PROMOTED badge
+    interval:  "one_time" as const,
+  },
+
   // ── Media Player chassis (Stage 2 store Rare SKUs ~$2.99) ─────────────────
   // Checkout uses product type MEDIA_PLAYER_CHASSIS + price_data fallback when
   // placeholder price IDs are not yet live in Stripe Dashboard.

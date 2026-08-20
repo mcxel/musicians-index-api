@@ -73,7 +73,7 @@ export default function MagazineControlStrip({ role, onArtistId }: MagazineContr
     if (isVideoShuffleActive()) {
       exitVideoShuffle();
     } else {
-      startVideoShuffle();
+      void startVideoShuffle();
     }
   };
 
@@ -86,8 +86,8 @@ export default function MagazineControlStrip({ role, onArtistId }: MagazineContr
   };
 
   const skipShuffle = () => {
-    if (isVideoShuffleActive()) shuffleNextVideo();
-    else startVideoShuffle();
+    if (isVideoShuffleActive()) void shuffleNextVideo();
+    else void startVideoShuffle();
   };
 
   return (

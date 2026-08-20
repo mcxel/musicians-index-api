@@ -79,5 +79,6 @@ export function discoveryToLobbyRoom(r: LiveDiscoveryRecord): LobbyRoom {
     countryCode: r.countryCode,
     previewUrl: r.previewUrl,
     overlayLine: r.castOverlay?.trim() || fallbackCastOverlay(r, type),
+    calloutSlots: r.calloutSlots?.length ? [...r.calloutSlots] : undefined,
   };
 }

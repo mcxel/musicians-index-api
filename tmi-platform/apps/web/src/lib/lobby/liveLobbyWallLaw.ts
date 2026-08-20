@@ -25,6 +25,7 @@ export type LobbyWallCoreCategoryId =
   | "challenges"
   | "battles"
   | "cyphers"
+  | "world_dance_party"
   | "performer_lobbies"
   | "fan_avatar_lobbies"
   | "lounges"
@@ -32,11 +33,12 @@ export type LobbyWallCoreCategoryId =
   | "lives"
   | "shows_and_releases";
 
-/** Canonical order: Challenges → Battles → Cyphers → Performer Lobbies → Fan Lobbies → Lounges → Games → Live → Shows & Releases */
+/** Canonical order: Challenges → Battles → Cyphers → World Dance → Performer Lobbies → … */
 export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
   { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
   { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
   { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
+  { id: "world_dance_party", label: "World Dance", icon: "🌍", accentColor: "#00FF88" },
   { id: "performer_lobbies", label: "Performer Lobbies", icon: "🎸", accentColor: "#FFD700" },
   { id: "fan_avatar_lobbies", label: "Fan Lobbies", icon: "👥", accentColor: "#00FFFF" },
   { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#00FFFF" },
@@ -73,6 +75,7 @@ export const WALL_TAB_TO_DISCOVERY: Record<
   challenges: "challenges",
   battles: "battles",
   cyphers: "cyphers",
+  world_dance_party: "dance",
   lounges: "lounges",
   games: "games",
 };
@@ -91,6 +94,7 @@ export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly Ex
     "BATTLE_PRODUCER",
   ],
   cyphers: ["CIPHER"],
+  world_dance_party: ["MAIN_AUDITORIUM"],
   performer_lobbies: ["PERFORMER_LOBBY"],
   fan_avatar_lobbies: ["FAN_AVATAR_LOBBY"],
   lounges: ["LOUNGE_SIDE_ROOM"],
@@ -160,10 +164,25 @@ export function isPerformerLobbyRecord(r: LiveDiscoveryRecord): boolean {
   });
 }
 
+function isWorldDanceRecord(r: LiveDiscoveryRecord): boolean {
+  const fam = (r.anchorFamily ?? "").toLowerCase();
+  return (
+    r.category === "dance" ||
+    r.categories.includes("dance") ||
+    fam === "dance" ||
+    r.roomId.includes("world-dance") ||
+    r.roomId === "anchor-world-dance-room" ||
+    (r.experienceId ?? "").includes("world-dance")
+  );
+}
+
 export function filterDiscoveryByWallCategory(
   records: LiveDiscoveryRecord[],
   categoryId: LobbyWallCoreCategoryId,
 ): LiveDiscoveryRecord[] {
+  if (categoryId === "world_dance_party") {
+    return records.filter((r) => isWorldDanceRecord(r));
+  }
   if (categoryId === "performer_lobbies") {
     return records.filter((r) => isPerformerLobbyRecord(r));
   }
@@ -254,6 +273,7 @@ export function mapDiscoveryToWallCategory(
   if (category === "challenges") return "challenges";
   if (category === "battles") return "battles";
   if (category === "cyphers") return "cyphers";
+  if (category === "dance") return "world_dance_party";
   if (category === "fan_lobbies") return "fan_avatar_lobbies";
   if (category === "lounges" || category === "listening") return "lounges";
   if (category === "games") return "games";
@@ -316,4 +336,65 @@ export function filterDiscoveryByGenreId(
     if (def) return def.genreId === genreId;
     return r.featuredCategory === genreId;
   });
+}
+
+/** Minimal tile shape for mosaic sort — mirrors LiveLobbyWallGrid.LobbyRoom. */
+export type LobbyWallSortableTile = {
+  id: string;
+  viewerCount: number;
+  status: "live" | "starting" | "recruiting" | "ended";
+  isBoosted?: boolean;
+  boostExpiresAt?: number;
+  boostKind?: "lobby_wall" | "wdp_submission";
+};
+
+const LOBBY_STATUS_RANK: Record<LobbyWallSortableTile["status"], number> = {
+  live: 0,
+  starting: 1,
+  recruiting: 2,
+  ended: 3,
+};
+
+/**
+ * Marcel lock — organic: fewer views = top, more views = bottom.
+ * Boost band: PROMOTED tiles rank above organic peers within the same status tier.
+ * LIVE always beats starting/recruiting regardless of boost.
+ */
+export function sortLobbyTilesByViewRank<T extends LobbyWallSortableTile>(rooms: T[]): T[] {
+  return [...rooms].sort((a, b) => {
+    const statusDelta = LOBBY_STATUS_RANK[a.status] - LOBBY_STATUS_RANK[b.status];
+    if (statusDelta !== 0) return statusDelta;
+    const boostDelta = (a.isBoosted ? 0 : 1) - (b.isBoosted ? 0 : 1);
+    if (boostDelta !== 0) return boostDelta;
+    return a.viewerCount - b.viewerCount;
+  });
+}
+
+export function attachLobbyBoostFlags<T extends LobbyWallSortableTile>(
+  rooms: T[],
+  boosts: Map<string, { expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>,
+): T[] {
+  return rooms.map((room) => {
+    const boost = boosts.get(room.id);
+    if (!boost) return room;
+    return {
+      ...room,
+      isBoosted: true,
+      boostExpiresAt: boost.expiresAtMs,
+      boostKind: boost.kind,
+    };
+  });
+}
+
+export function boostLobbyWallCheckoutUrl(
+  origin: string,
+  params: { roomId: string; category: LobbyWallCoreCategoryId | "all"; wdpEntryId?: string },
+): string {
+  const q = new URLSearchParams({
+    type: params.wdpEntryId ? "wdp_submission_boost" : "boost_lobby_wall",
+    roomId: params.roomId,
+    category: params.category,
+  });
+  if (params.wdpEntryId) q.set("wdpEntryId", params.wdpEntryId);
+  return `${origin}/api/stripe/checkout?${q.toString()}`;
 }

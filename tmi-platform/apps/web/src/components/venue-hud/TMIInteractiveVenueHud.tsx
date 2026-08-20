@@ -884,6 +884,7 @@ export default function TMIInteractiveVenueHud({
                 </button>
               )}
               {role === "fan" && (
+                <>
                 <button
                   type="button"
                   title={liveVotingOpen ? "Vote" : "Voting closed"}
@@ -902,6 +903,27 @@ export default function TMIInteractiveVenueHud({
                 >
                   🗳️ VOTE
                 </button>
+                <button
+                  type="button"
+                  title="Tip performer / DJ"
+                  onClick={() => {
+                    const tipUrl = `/api/stripe/checkout?priceId=price_tip&amount=500&mode=payment&type=tip&roomId=${encodeURIComponent(roomId)}&productName=${encodeURIComponent(`Tip · ${roomTitle}`)}`;
+                    window.location.href = tipUrl;
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 14,
+                    border: `1px solid ${FUCHSIA}`,
+                    background: `${FUCHSIA}22`,
+                    color: FUCHSIA,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  💎 TIP
+                </button>
+                </>
               )}
               {(isRoomOwner || role === "host" || role === "admin") && (
                 <>

@@ -50,6 +50,8 @@ export type SpendAction =
   | 'featured_campaign'
   | 'magazine_submission_credit'
   | 'digital_asset_pack'
+  | 'wdp_track_play'
+  | 'wdp_vote_down'
   | 'ranking_boost';
 
 export interface EconomyWallet {
@@ -125,6 +127,8 @@ const SPEND_TABLE: Record<Exclude<SpendAction, 'ranking_boost'>, number> = {
   featured_campaign: 350,
   magazine_submission_credit: 240,
   digital_asset_pack: 175,
+  wdp_track_play: 50,
+  wdp_vote_down: 5,
 };
 
 function nowIso(): string {
