@@ -43,6 +43,29 @@ function mosaicGenreLabel(room: LobbyRoom): string {
   return raw.length > 0 ? raw : 'Live';
 }
 
+function mosaicCastOverlay(room: LobbyRoom): string {
+  if (room.overlayLine?.trim()) return room.overlayLine.trim();
+  const genre = mosaicGenreLabel(room);
+  const kind =
+    room.type === 'cypher' || room.type === 'mini-cypher'
+      ? 'Cypher'
+      : room.type === 'battle'
+        ? 'Battle'
+        : room.type === 'challenge'
+          ? 'Challenge'
+          : room.type === 'gauntlet'
+            ? 'Gauntlet'
+            : room.type.replace(/-/g, ' ');
+  if (room.status === 'recruiting') {
+    return room.type === 'cypher' || room.type === 'mini-cypher'
+      ? `LOOKING FOR PERFORMERS · ${genre} Cypher`
+      : `LOOKING FOR PERFORMERS · ${genre} ${kind}`;
+  }
+  if (room.status === 'starting') return `STARTING SOON · ${genre} ${kind}`;
+  if (room.type === 'cypher' || room.type === 'mini-cypher') return `LIVE · ${genre} Cypher`;
+  return `LIVE · ${genre} ${kind}`;
+}
+
 function mosaicFlag(room: LobbyRoom): string {
   return isoCountryToFlag(room.countryCode ?? 'ZZ');
 }
@@ -91,7 +114,7 @@ export type LobbyRoom = {
   href: string;
   /** Kept for join/energy engines — never shown on mosaic tiles (Rule 20 + mosaic lock). */
   viewerCount: number;
-  status: 'live' | 'starting' | 'ended';
+  status: 'live' | 'starting' | 'ended' | 'recruiting';
   genre?: string;
   /** ISO 3166-1 alpha-2; ZZ / missing → unknown flag. */
   countryCode?: string;
@@ -99,6 +122,8 @@ export type LobbyRoom = {
   /** Optional discovery low-res preview URL (HTML video) — not a frozen LIVE photo. */
   previewUrl?: string | null;
   hostUserId?: string;
+  /** Cast onto the tile itself (LIVE / LOOKING FOR). Never viewer counts. */
+  overlayLine?: string;
 };
 
 type LiveLobbyWallGridProps = {
@@ -179,6 +204,7 @@ function LobbyCell({
   const bg = color;
   const cellRef = useRef<HTMLDivElement | null>(null);
   const isLive = room.status === 'live';
+  const isRecruiting = room.status === 'recruiting';
   const previewLive = isLive && preview.isLive;
   const hostLabel = sanitizeWallHostLabel(room.performerName, {
     hostUserId: room.hostUserId,
@@ -269,26 +295,20 @@ function LobbyCell({
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
         gap: 6, zIndex: 5, pointerEvents: 'none',
       }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-          {isLive ? (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 8, fontWeight: 900, letterSpacing: '0.08em',
-              color: '#fff', background: 'rgba(230,48,0,0.92)',
-              padding: '3px 7px', borderRadius: 999,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-              LIVE
-            </span>
-          ) : (
-            <span style={{
-              fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
-              color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.55)',
-              padding: '3px 7px', borderRadius: 999, textTransform: 'uppercase',
-            }}>
-              {room.status === 'starting' ? 'Starting' : room.status}
-            </span>
-          )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', maxWidth: '72%' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 8, fontWeight: 900, letterSpacing: '0.06em',
+            color: '#fff',
+            background: isLive ? 'rgba(230,48,0,0.92)' : isRecruiting ? 'rgba(255,215,0,0.88)' : 'rgba(0,0,0,0.55)',
+            padding: '3px 7px', borderRadius: 999,
+            lineHeight: 1.25,
+          }}>
+            {isLive ? (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', flexShrink: 0 }} />
+            ) : null}
+            {mosaicCastOverlay(room)}
+          </span>
           <span
             title={room.countryCode && room.countryCode !== 'ZZ' ? room.countryCode : 'Country unknown'}
             style={{
@@ -327,7 +347,12 @@ function LobbyCell({
           {!mediaStream && isLive && (
             <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>Connecting preview…</span>
           )}
-          <span style={{ fontSize: 8, color: '#00E5FF', fontWeight: 800, marginLeft: 'auto' }}>Watch →</span>
+          {isRecruiting && (
+            <span style={{ fontSize: 8, color: '#FFD700', fontWeight: 800 }}>JOIN QUEUE</span>
+          )}
+          <span style={{ fontSize: 8, color: '#00E5FF', fontWeight: 800, marginLeft: 'auto' }}>
+            {isRecruiting ? 'Join →' : 'Watch →'}
+          </span>
         </div>
       </div>
     </motion.div>
@@ -358,7 +383,7 @@ export default function LiveLobbyWallGrid({
   const [roamDrag, setRoamDrag] = useState<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   // Public wall: only discoverable active/starting sessions — ended never stay as dead cards.
-  const liveRooms = rooms.filter((r) => r.status === 'live' || r.status === 'starting');
+  const liveRooms = rooms.filter((r) => r.status === 'live' || r.status === 'starting' || r.status === 'recruiting');
   const embedded = variant === 'embedded' || variant === 'quick';
   const quick = variant === 'quick';
   const promotedIndex = promotedRoomId
@@ -387,7 +412,7 @@ export default function LiveLobbyWallGrid({
       genre:       room.genre,
       viewers:     room.viewerCount,
       seatsOpen:   undefined,
-      status:      room.status === 'live' ? 'live' : room.status === 'starting' ? 'starting-soon' : 'upcoming',
+      status:      room.status === 'live' ? 'live' : room.status === 'starting' ? 'starting-soon' : room.status === 'recruiting' ? 'starting-soon' : 'upcoming',
       access:      'free',
       accentColor: roomColor(0),
       prizeLabel:  room.prizePool,
@@ -511,6 +536,7 @@ export default function LiveLobbyWallGrid({
           <span style={{ fontSize: 11, color: '#00FF88' }}>
             <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>●</motion.span>
             {' '}{liveRooms.filter((r) => r.status === 'live').length} LIVE
+            {' · '}{liveRooms.filter((r) => r.status === 'recruiting').length} LOOKING
           </span>
           <button
             type="button"
@@ -778,8 +804,8 @@ function InPlaceWatchMonitor({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isLive && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E63000' }} />}
-          <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', color: isLive ? '#FF6B6B' : 'rgba(255,255,255,0.6)' }}>
-            IN-PLACE MONITOR
+          <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', color: isLive ? '#FF6B6B' : room.status === 'recruiting' ? '#FFD700' : 'rgba(255,255,255,0.6)' }}>
+            {mosaicCastOverlay(room)}
           </span>
           <span style={{ fontSize: 12 }} title={room.countryCode ?? 'ZZ'}>{mosaicFlag(room)}</span>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>

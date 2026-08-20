@@ -59,6 +59,69 @@ export function styleLabel(slot: PerformerStyleSlot | null | undefined): string 
   return PERFORMER_STYLE_LABEL[slot] ?? slot.replace(/_/g, " ");
 }
 
+/**
+ * Like-with-like battle/challenge role (existing slots only — not a new taxonomy).
+ * Mosaic: "Country Singer vs Country Singer" / "Pianist vs Pianist".
+ */
+export const PERFORMER_STYLE_VS_ROLE: Record<PerformerStyleSlot, string> = {
+  hip_hop: "Hip-Hop Artist",
+  rap: "Hip-Hop Artist",
+  rnb: "R&B Singer",
+  gospel: "Gospel Singer",
+  pop: "Pop Singer",
+  country: "Country Singer",
+  rock: "Rock Artist",
+  jazz: "Jazz Artist",
+  latin: "Latin Artist",
+  edm: "EDM Artist",
+  dj: "DJ",
+  producer: "Producer",
+  band: "Band",
+  drums: "Drums",
+  guitar: "Guitar",
+  horns: "Horns",
+  keys: "Pianist",
+  instrumental: "Instrumentalist",
+  spoken_word: "Spoken Word",
+  dance: "Dancer",
+  comedy: "Comedian",
+  open_genre: "Open Genre",
+  ai_music: "AI Music",
+};
+
+export function styleVsRole(slot: PerformerStyleSlot | null | undefined): string {
+  if (!slot) return PERFORMER_STYLE_VS_ROLE.open_genre;
+  return PERFORMER_STYLE_VS_ROLE[slot] ?? styleLabel(slot);
+}
+
+/** Matchup pair from one canonical slot — never mixed styles. */
+export function styleVsCallout(slot: PerformerStyleSlot | null | undefined): string {
+  const role = styleVsRole(slot);
+  return `${role} vs ${role}`;
+}
+
+/** Recruiting batches: 3 matchup types at a time. */
+export const CALLOUT_BATCH_SIZE = 3;
+
+export function pickStyleBatch(
+  pool: readonly PerformerStyleSlot[],
+  cursor: number,
+  size: number = CALLOUT_BATCH_SIZE,
+): { slots: PerformerStyleSlot[]; nextCursor: number } {
+  if (!pool.length) return { slots: [], nextCursor: 0 };
+  const n = Math.min(Math.max(1, size), pool.length);
+  const start = ((cursor % pool.length) + pool.length) % pool.length;
+  const slots: PerformerStyleSlot[] = [];
+  for (let i = 0; i < n; i++) {
+    slots.push(pool[(start + i) % pool.length]!);
+  }
+  return { slots, nextCursor: (start + n) % pool.length };
+}
+
+export function formatVsTripleCallout(slots: readonly PerformerStyleSlot[]): string {
+  return slots.map((s) => styleVsCallout(s)).join(" · ");
+}
+
 /** Advance one slot in a pool (idle rotation). Never repeats the same index. */
 export function nextStyleInPool(
   pool: readonly PerformerStyleSlot[],

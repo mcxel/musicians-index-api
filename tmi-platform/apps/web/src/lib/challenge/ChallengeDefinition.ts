@@ -8,6 +8,7 @@ import {
   FULL_STYLE_ROTATION_POOL,
   type PerformerStyleSlot,
   styleLabel,
+  styleVsCallout,
 } from "@/lib/competition/PerformerStyleSlots";
 
 export type ChallengeWorkType =
@@ -350,6 +351,11 @@ export function buildChallengeOpenCallCopy(input: {
   const lock = input.locked ? "LOCKED · " : "";
   const badge = input.aiLane ? "AI MUSIC CHALLENGE · " : "";
   return `${lock}${badge}Need ${need} ${role} · ${style}`;
+}
+
+/** Like-with-like challenge call-out from existing style slots (not a new taxonomy). */
+export function challengeVsCallout(slot: PerformerStyleSlot | null | undefined): string {
+  return styleVsCallout(slot);
 }
 
 export function listChallengeFormats(): readonly ChallengeDefinition[] {

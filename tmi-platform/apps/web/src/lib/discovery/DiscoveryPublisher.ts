@@ -46,6 +46,8 @@ export interface PublishLiveRoomInput {
   anchorFamily?: string;
   featuredCategory?: string;
   categoryLocked?: boolean;
+  recruiting?: boolean;
+  castOverlay?: string;
 }
 
 function normalizeVisibility(
@@ -132,6 +134,8 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     anchorFamily: input.anchorFamily,
     featuredCategory: input.featuredCategory,
     categoryLocked: input.categoryLocked === true,
+    recruiting: input.recruiting === true,
+    castOverlay: input.castOverlay?.trim() || undefined,
   };
 }
 

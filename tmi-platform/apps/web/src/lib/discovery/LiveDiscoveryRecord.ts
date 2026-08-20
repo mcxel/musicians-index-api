@@ -77,6 +77,10 @@ export interface LiveDiscoveryRecord {
   /** Idle-rotating featured category (locked when queue forms). */
   featuredCategory?: string;
   categoryLocked?: boolean;
+  /** Honest recruiting — room stays on wall; overlay is LOOKING FOR, not fake LIVE crowd. */
+  recruiting?: boolean;
+  /** Mosaic / panel cast line (LIVE · … / LOOKING FOR · …). Never includes viewer counts. */
+  castOverlay?: string;
 }
 
 export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, string> = {

@@ -34,6 +34,52 @@ export const COMPETITION_RESTART_SEQUENCE: readonly CompetitionRestartPhase[] = 
   "RECRUITING",
 ] as const;
 
+/**
+ * Canonical automated event window (UTC instants — not device-local clock).
+ * Stagger: hash(roomId) → 15 one-minute slots so rooms do not share one expiry.
+ */
+export const COMPETITION_EVENT_WINDOW_MS = 15 * 60 * 1000;
+export const COMPETITION_STAGGER_SLOTS = 15;
+
+export function hashRoomId(roomId: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < roomId.length; i++) {
+    h ^= roomId.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export function competitionStaggerOffsetMs(roomId: string): number {
+  const slotMs = COMPETITION_EVENT_WINDOW_MS / COMPETITION_STAGGER_SLOTS;
+  return (hashRoomId(roomId) % COMPETITION_STAGGER_SLOTS) * slotMs;
+}
+
+export type CompetitionEventWindow = {
+  index: number;
+  startMs: number;
+  endMs: number;
+  offsetMs: number;
+  remainingMs: number;
+};
+
+export function getCompetitionEventWindow(
+  roomId: string,
+  nowMs: number = Date.now(),
+): CompetitionEventWindow {
+  const offsetMs = competitionStaggerOffsetMs(roomId);
+  const index = Math.floor((nowMs - offsetMs) / COMPETITION_EVENT_WINDOW_MS);
+  const startMs = index * COMPETITION_EVENT_WINDOW_MS + offsetMs;
+  const endMs = startMs + COMPETITION_EVENT_WINDOW_MS;
+  return {
+    index,
+    startMs,
+    endMs,
+    offsetMs,
+    remainingMs: Math.max(0, endMs - nowMs),
+  };
+}
+
 export type CompetitionRestartResult = {
   ok: boolean;
   reason?: string;
@@ -53,7 +99,7 @@ export type CompetitionRestartInput = {
   afterResultReveal?: boolean;
 };
 
-function recruitingLabel(personality: ExperiencePersonality): string {
+export function recruitingLabel(personality: ExperiencePersonality): string {
   if (personality.id === "CYPHER" || personality.id === "CYPHER_KING") {
     return "Looking for performers";
   }

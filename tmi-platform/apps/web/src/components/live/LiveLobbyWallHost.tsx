@@ -40,6 +40,7 @@ function catalogCardToLobbyRoom(card: ShowsReleasePublicCard): LobbyRoom {
     status: card.phase === "LIVE" ? "live" : card.phase === "POSTSHOW" ? "ended" : "starting",
     genre: card.publicTypeLabel,
     previewUrl: card.previewUrl,
+    overlayLine: card.phase === "LIVE" ? `LIVE · ${card.publicTypeLabel}` : `STARTING SOON · ${card.publicTypeLabel}`,
   };
 }
 
