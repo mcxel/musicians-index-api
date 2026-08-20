@@ -929,6 +929,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             <button
               type="button"
               onClick={() => {
+                if (featured.route) {
+                  router.push(featured.route);
+                  return;
+                }
                 if (featured.performerId) {
                   setActivePerformer({
                     id: featured.performerId,
@@ -1385,7 +1389,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
                 <button
                   type="button"
-                  onClick={() => presentCanonicalWorkspace("lobby", "DRAWER")}
+                  onClick={() =>
+                    presentCanonicalWorkspace(
+                      role === "performer" ? "live-destinations" : "lobby",
+                      "DRAWER",
+                    )
+                  }
                   style={{
                     display: "block",
                     width: "100%",
@@ -1498,6 +1507,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       )}
       {isMobile && mobileLeftOpen && (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
             top: 0,
@@ -1512,6 +1522,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             flexDirection: "column",
             gap: 5,
             overflowY: "auto",
+            touchAction: "manipulation",
           }}
         >
           <button
@@ -1590,12 +1601,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               })}
             </>
           ) : null}
-          {railBtn({
-            key: "avatar-lobby",
-            label: "🏟️ FAN LOBBY",
-            info: "Social hangout before the show",
-            onClick: () => { presentCanonicalWorkspace("lobby", "DRAWER"); setMobileLeftOpen(false); },
-          })}
+          {role === "fan"
+            ? railBtn({
+                key: "avatar-lobby",
+                label: "🏟️ FAN LOBBY",
+                info: "Social hangout before the show",
+                onClick: () => { presentCanonicalWorkspace("lobby", "DRAWER"); setMobileLeftOpen(false); },
+              })
+            : null}
           {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
           {role === "performer"
             ? railBtn({
@@ -1626,6 +1639,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       )}
       {isMobile && mobileRightOpen && (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
             top: 0,
@@ -1640,6 +1654,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             flexDirection: "column",
             gap: 10,
             overflowY: "auto",
+            touchAction: "manipulation",
           }}
         >
           <button

@@ -87,8 +87,8 @@ class BotAutomationEngineService {
           botState.isApplauseActive = true;
         } else if (actionType === 'raise_hand') {
           botState.isHandRaised = !botState.isHandRaised;
-        } else if (actionType === 'tip_pump') {
-          botState.totalTipsSent += 50;
+        }         else if (actionType === 'tip_pump') {
+          // Rule 20 — bots never simulate monetary tips.
         }
         botState.lastActionTimestamp = Date.now();
       }

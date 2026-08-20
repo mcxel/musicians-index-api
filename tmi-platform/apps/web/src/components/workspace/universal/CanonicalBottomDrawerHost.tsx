@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
-import { LiveLobbyWallContent } from "@/components/lobby/LiveLobbyDrawer";
+import LiveLobbyWallHost from "@/components/live/LiveLobbyWallHost";
 import PlaylistStudioContent from "./PlaylistStudioContent";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
@@ -88,7 +88,10 @@ export default function CanonicalBottomDrawerHost({
 
   const visibleTools = useMemo(() => {
     if (role === "performer") {
-      return ROLODEX_TOOLS.filter((t) => t.id !== "avatar-quick" && t.id !== "inventory");
+      // Rule 26 — no avatar ownership / Fan Lobby on performer hub.
+      return ROLODEX_TOOLS.filter(
+        (t) => t.id !== "avatar-quick" && t.id !== "inventory" && t.id !== "lobby",
+      );
     }
     return ROLODEX_TOOLS;
   }, [role]);
@@ -263,7 +266,14 @@ export default function CanonicalBottomDrawerHost({
         ) : drawerWorkspace === "bio-magazine" && role === "performer" ? (
           <PerformerBioMagazineDrawer userId={uid} displayName={name} />
         ) : isLobbyWall ? (
-          <LiveLobbyWallContent />
+          <LiveLobbyWallHost
+            variant="embedded"
+            title="Live Lobby Wall"
+            defaultCategory="battles"
+            showFanLobbySearch={role === "fan"}
+            viewerUserId={uid}
+            viewerRole={role}
+          />
         ) : (
           <UniversalWorkspaceStubContent
             workspaceId={drawerWorkspace}

@@ -391,6 +391,7 @@ export default function PersistentMediaInteractionDock({
                   onClick={() => setNavDrawerOpen((v) => !v)}
                   style={{
                     ...toolBtn,
+                    position: "relative",
                     border: navDrawerOpen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
                     borderRadius: 8,
                     padding: "6px 10px",
@@ -399,6 +400,25 @@ export default function PersistentMediaInteractionDock({
                   aria-expanded={navDrawerOpen}
                 >
                   🧭 NAV {navDrawerOpen ? "▾" : "▴"}
+                  {unreadNotifications > 0 ? (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -4,
+                        background: "#FF3B5C",
+                        color: "#fff",
+                        fontSize: 7,
+                        fontWeight: 900,
+                        borderRadius: 999,
+                        padding: "1px 4px",
+                        minWidth: 12,
+                        textAlign: "center",
+                      }}
+                    >
+                      {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                    </span>
+                  ) : null}
                 </button>
                 <div
                   style={{

@@ -9,11 +9,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
 import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
 import { useTheme } from "@/lib/design/ThemeEngine";
-import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { presentCanonicalWorkspace, openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
   userId: string;
@@ -47,6 +47,7 @@ function mapSessionTier(raw: string | null | undefined): TierLevel {
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [tier, setTier] = useState<TierLevel>("free");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -117,6 +118,23 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   };
 
   const initial = displayName?.trim()?.[0]?.toUpperCase() ?? "?";
+  const onHub = pathname.startsWith("/hub/");
+
+  const openNotifications = () => {
+    if (onHub) {
+      openCanonicalWorkspaceQuick("notifications", "DRAWER");
+      return;
+    }
+    router.push("/notifications");
+  };
+
+  const openMessages = () => {
+    if (onHub) {
+      openCanonicalWorkspaceQuick("messaging", "DRAWER");
+      return;
+    }
+    router.push("/messages");
+  };
 
   return (
     <div
@@ -231,10 +249,11 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       </div>
 
       {/* Notifications */}
-      <Link
-        href="/notifications"
+      <button
+        type="button"
+        onClick={openNotifications}
         aria-label={`Notifications${unreadNotifications > 0 ? `, ${unreadNotifications} unread` : ""}`}
-        style={{ position: "relative", flexShrink: 0, fontSize: 16, textDecoration: "none", lineHeight: 1 }}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         🔔
         {unreadNotifications > 0 ? (
@@ -256,13 +275,14 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             {unreadNotifications > 99 ? "99+" : unreadNotifications}
           </span>
         ) : null}
-      </Link>
+      </button>
 
       {/* Messages */}
-      <Link
-        href="/messages"
+      <button
+        type="button"
+        onClick={openMessages}
         aria-label={`Messages${unreadMessages > 0 ? `, ${unreadMessages} unread` : ""}`}
-        style={{ position: "relative", flexShrink: 0, fontSize: 16, textDecoration: "none", lineHeight: 1 }}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         ✉️
         {unreadMessages > 0 ? (
@@ -284,7 +304,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             {unreadMessages > 99 ? "99+" : unreadMessages}
           </span>
         ) : null}
-      </Link>
+      </button>
 
       {/* Profile */}
       <div style={{ position: "relative", flexShrink: 0 }}>

@@ -222,8 +222,9 @@ export default function Home3LiveWorldSurface() {
           <button
             onClick={() => featuredPerformer
               ? openRoom(featuredPerformer.roomId, featuredPerformer.name, '#00FFFF')
-              : openRoom('monthly-idol', 'Main Lobby', '#00FFFF')}
-            style={{ textDecoration: 'none', color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%', textAlign: 'left' }}
+              : undefined}
+            disabled={!featuredPerformer}
+            style={{ textDecoration: 'none', color: '#fff', background: 'none', border: 'none', cursor: featuredPerformer ? 'pointer' : 'default', padding: 0, width: '100%', textAlign: 'left', opacity: featuredPerformer ? 1 : 0.92 }}
           >
             <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', position: 'relative' }}>
               {/* Discovery surface — performer/host video first, never an audience grid (Audience Visibility Rule) */}
@@ -240,13 +241,13 @@ export default function Home3LiveWorldSurface() {
               />
               {/* Overlay text */}
               <div style={{ position: 'absolute', inset: 0, zIndex: 1, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 220, background: 'linear-gradient(to top, rgba(5,5,16,0.82) 0%, transparent 60%)', pointerEvents: 'none' }}>
-                <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content', background: 'rgba(5,5,16,0.6)' }}>🔴 {featuredPerformer ? `${featuredPerformer.name.toUpperCase()} · LIVE` : 'JOIN ROOM RUNTIME'}</div>
+                <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content', background: 'rgba(5,5,16,0.6)' }}>{featuredPerformer ? `🔴 ${featuredPerformer.name.toUpperCase()} · LIVE` : 'NO LIVE FEATURE YET'}</div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem,2.5vw,1.8rem)', fontWeight: 900, textShadow: '0 2px 12px rgba(0,255,255,0.4)' }}>
-                    {featuredPerformer ? `${featuredPerformer.name} is live` : 'Enter Live Venue World'}
+                    {featuredPerformer ? `${featuredPerformer.name} is live` : 'Waiting for the next live room'}
                   </h2>
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.78)' }}>
-                    {featuredPerformer ? `${featuredPerformer.audienceCount.toLocaleString()} watching · join the room and seat yourself.` : 'Join room, interact, tip, and return in one continuous flow.'}
+                    {featuredPerformer ? `${featuredPerformer.audienceCount.toLocaleString()} watching · join the room and seat yourself.` : 'Browse the Live Lobby Wall for real WebRTC previews.'}
                   </p>
                 </div>
               </div>

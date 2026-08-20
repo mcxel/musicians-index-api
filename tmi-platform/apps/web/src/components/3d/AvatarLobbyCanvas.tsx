@@ -154,6 +154,8 @@ const POSITIONS: [number, number, number][] = [
   [-4.8, 0, 0.8], [4.8, 0, 0.8], [-2.2, 0, 2.6], [2.2, 0, 2.6],
 ];
 
+export type AvatarCameraFocus = "face" | "body" | "feet";
+
 export type AvatarRigProps = {
   active?: boolean;
   color?: string;
@@ -171,6 +173,9 @@ export type AvatarRigProps = {
   outfitTint?: string;
   /** Active hand prop id — drives flame/sparkler animation intensity. */
   activePropId?: string;
+  /** 0–100 height / mass from Avatar Forge — scales the capsule rig, not a body mesh. */
+  bodyHeight?: number;
+  bodyMass?: number;
 };
 
 export function AvatarRig({
@@ -185,12 +190,16 @@ export function AvatarRig({
   hairColor,
   outfitTint,
   activePropId,
+  bodyHeight = 50,
+  bodyMass = 50,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
   const crownRef = useRef<THREE.Mesh>(null);
   const bodyColor = outfitTint ?? color ?? (active ? '#00FFFF' : '#AA2DFF');
   const headColor = hairColor ?? color ?? bodyColor;
+  const heightScale = 0.86 + (Math.min(100, Math.max(0, bodyHeight)) / 100) * 0.3;
+  const massScale = 0.86 + (Math.min(100, Math.max(0, bodyMass)) / 100) * 0.3;
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
@@ -234,7 +243,11 @@ export function AvatarRig({
   );
 
   return (
-    <group ref={groupRef} position={[0, isSeated ? -0.55 : -0.4, 0]}>
+    <group
+      ref={groupRef}
+      position={[0, isSeated ? -0.55 : -0.4, 0]}
+      scale={[massScale, heightScale, massScale]}
+    >
       {/* Body capsule — Primitive3D / 3D_MESH v0 */}
       <mesh position={[0, isSeated ? 0.32 : 0.45, 0]} castShadow receiveShadow>
         <capsuleGeometry args={[0.3, isSeated ? 0.4 : 0.6, 12, 24]} />
@@ -306,6 +319,12 @@ export function AvatarRig({
   );
 }
 
+const CAMERA_BY_FOCUS: Record<AvatarCameraFocus, { position: [number, number, number]; target: [number, number, number] }> = {
+  face: { position: [0, 1.05, 1.45], target: [0, 1.05, 0] },
+  body: { position: [0, 0.35, 2.55], target: [0, 0.45, 0] },
+  feet: { position: [0.2, -0.4, 1.75], target: [0, -0.2, 0] },
+};
+
 export function AvatarViewer({
   active = true,
   color,
@@ -319,23 +338,34 @@ export function AvatarViewer({
   hairColor,
   outfitTint,
   activePropId,
+  bodyHeight,
+  bodyMass,
   enableOrbit = true,
-}: AvatarRigProps & { size?: number; enableOrbit?: boolean }) {
+  fill = false,
+  cameraFocus = "body",
+}: AvatarRigProps & {
+  size?: number;
+  enableOrbit?: boolean;
+  fill?: boolean;
+  cameraFocus?: AvatarCameraFocus;
+}) {
+  const cam = CAMERA_BY_FOCUS[cameraFocus] ?? CAMERA_BY_FOCUS.body;
+  const seatedCam: [number, number, number] = isSeated ? [0, 0.15, 2.5] : cam.position;
   return (
-    <div style={{ width: size, height: size, position: 'relative' }}>
+    <div style={{ width: fill ? "100%" : size, height: fill ? "100%" : size, minHeight: fill ? 280 : undefined, position: "relative" }}>
       <SafeReactThreeCanvas
         faultContext="Avatar Viewer"
         fallbackLabel="Avatar 3D unavailable"
         shadows
-        camera={{ position: [0, isSeated ? 0.15 : 0.3, 2.5], fov: 42 }}
-        gl={{ powerPreference: 'high-performance', antialias: true, alpha: true }}
-        style={{ background: 'transparent', width: '100%', height: '100%' }}
+        camera={{ position: seatedCam, fov: cameraFocus === "face" ? 32 : 42 }}
+        gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
+        style={{ background: "transparent", width: "100%", height: "100%" }}
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.55} />
           <hemisphereLight intensity={0.35} groundColor="#12002b" color="#88ccff" />
           <spotLight position={[5, 5, 5]} intensity={1.5} color="#fff" />
-          
+
           <AvatarRig
             active={active}
             color={color}
@@ -348,16 +378,21 @@ export function AvatarViewer({
             hairColor={hairColor}
             outfitTint={outfitTint}
             activePropId={activePropId}
+            bodyHeight={bodyHeight}
+            bodyMass={bodyMass}
           />
+          <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={8} blur={2.5} far={4} />
 
           {enableOrbit && (
             <OrbitControls
+              key={cameraFocus}
+              target={cam.target}
               enableZoom={true}
               enablePan={false}
               enableDamping={true}
               dampingFactor={0.05}
-              minPolarAngle={Math.PI / 3}
-              maxPolarAngle={Math.PI / 1.8}
+              minPolarAngle={cameraFocus === "feet" ? Math.PI / 2.4 : Math.PI / 3.4}
+              maxPolarAngle={cameraFocus === "face" ? Math.PI / 1.7 : Math.PI / 1.45}
             />
           )}
         </Suspense>
