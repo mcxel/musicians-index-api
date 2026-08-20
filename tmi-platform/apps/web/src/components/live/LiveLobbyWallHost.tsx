@@ -24,6 +24,7 @@ import {
   filterFanAvatarLobbySearch,
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
+import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import type { ShowsReleasePublicCard } from "@/lib/events/ScheduledEventRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
 
@@ -142,6 +143,10 @@ export default function LiveLobbyWallHost({
           instant: !ticketed && catalog.phase === "LIVE",
           gateReason: ticketed ? "ticket" : "none",
           href: catalog.joinHref,
+          entryMode: "SPECTATOR",
+          roomKind: "show_release",
+          initialState: "SPECTATOR",
+          claimFanSeat: true,
           room: {
             id: catalog.roomId,
             title: catalog.title,
@@ -156,6 +161,9 @@ export default function LiveLobbyWallHost({
             roomRoute: catalog.joinHref,
             venueIndex: 0,
             thumbnailUrl: catalog.artworkUrl ?? undefined,
+            participationEntryMode: "SPECTATOR",
+            participationRoomKind: "show_release",
+            claimFanSeat: true,
           },
         });
         return;
@@ -172,10 +180,30 @@ export default function LiveLobbyWallHost({
                 : "live",
         href: room.href,
       });
+      const fallbackKind =
+        room.type === "battle"
+          ? "battle"
+          : room.type === "cypher"
+            ? "cypher"
+            : room.type === "challenge"
+              ? "challenge"
+              : room.type === "lounge"
+                ? "lounge"
+                : room.type === "performer-lobby"
+                  ? "performer_lobby"
+                  : "live";
+      const resolution = resolveParticipationEntry({
+        role: viewerRole,
+        roomKind: fallbackKind,
+      });
       setJoinDecision({
         instant: true,
         gateReason: "none",
         href: dest.href,
+        entryMode: resolution.entryMode,
+        roomKind: resolution.roomKind,
+        initialState: resolution.initialState,
+        claimFanSeat: resolution.claimFanSeat,
         room: {
           id: room.id,
           title: room.name,
@@ -187,6 +215,9 @@ export default function LiveLobbyWallHost({
           accentColor,
           roomRoute: dest.href,
           venueIndex: 0,
+          participationEntryMode: resolution.entryMode,
+          participationRoomKind: resolution.roomKind,
+          claimFanSeat: resolution.claimFanSeat,
         },
       });
     },

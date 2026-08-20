@@ -28,6 +28,7 @@ import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWa
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
+import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import {
   digitalQuickPanelFrameStyle,
   resolveHubQuickPanelPosition,
@@ -139,10 +140,29 @@ function LiveWallPanel({
             : "live",
         href: room.href,
       });
+      const roomKind =
+        room.type === "battle"
+          ? "battle"
+          : room.type === "cypher"
+            ? "cypher"
+            : room.type === "challenge"
+              ? "challenge"
+              : room.type === "game"
+                ? "game"
+                : room.type === "lounge"
+                  ? "lounge"
+                  : room.type === "concert"
+                    ? "show_release"
+                    : "live";
+      const resolution = resolveParticipationEntry({ roomKind });
       setJoinDecision({
         instant: true,
         gateReason: "none",
         href: dest.href,
+        entryMode: resolution.entryMode,
+        roomKind: resolution.roomKind,
+        initialState: resolution.initialState,
+        claimFanSeat: resolution.claimFanSeat,
         room: {
           id: room.id,
           title: room.name,
@@ -154,6 +174,9 @@ function LiveWallPanel({
           accentColor: "#FF4444",
           roomRoute: dest.href,
           venueIndex: 0,
+          participationEntryMode: resolution.entryMode,
+          participationRoomKind: resolution.roomKind,
+          claimFanSeat: resolution.claimFanSeat,
         },
       });
     },

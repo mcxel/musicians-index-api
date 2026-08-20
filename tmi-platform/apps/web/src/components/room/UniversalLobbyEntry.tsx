@@ -26,6 +26,7 @@ import { getGuestId } from "@/lib/identity/getGuestId";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
+import RoleGate from "@/components/auth/RoleGate";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
 type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
@@ -67,6 +68,19 @@ export interface UniversalRoom {
   roomRoute: string;       // navigate here on confirmed entry
   venueIndex?: VenueIndex; // AudienceScene venue (0=Theater default)
   shape?: CardShape;
+  /** Participation Law — from resolveInstantJoin / ParticipationStateMachine */
+  participationEntryMode?:
+    | "SPECTATOR"
+    | "QUEUE"
+    | "FAN_SEAT"
+    | "PERFORMER_LOBBY"
+    | "FAN_AVATAR_LOBBY"
+    | "LOUNGE_PANEL"
+    | "GAME_PLAY"
+    | "HOST_CONTROL";
+  participationRoomKind?: string;
+  /** false → skip /api/live/audience fan seat claim (queued performers, lounges, host) */
+  claimFanSeat?: boolean;
 }
 
 // ── Step enum ─────────────────────────────────────────────────────────────────
@@ -234,11 +248,38 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   /**
    * Seat claim starts immediately on seat step — runs UNDER hyperspace so when
    * stars clear the user is already seated (Marcel: buy render time).
+   * Participation Law: QUEUE / PERFORMER_LOBBY / LOUNGE_PANEL / HOST_CONTROL
+   * skip fan audience seat claim — performers watch as queued participants.
    */
+  const shouldClaimFanSeat =
+    room.claimFanSeat !== false &&
+    room.participationEntryMode !== "QUEUE" &&
+    room.participationEntryMode !== "PERFORMER_LOBBY" &&
+    room.participationEntryMode !== "LOUNGE_PANEL" &&
+    room.participationEntryMode !== "HOST_CONTROL";
+
   useEffect(() => {
     if (step !== "seat") return;
     let cancelled = false;
     (async () => {
+      if (!shouldClaimFanSeat) {
+        if (!cancelled) {
+          const mode = room.participationEntryMode ?? "SPECTATOR";
+          setSeatId(null);
+          setSeatRow(
+            mode === "QUEUE"
+              ? "Queued participant · watching match"
+              : mode === "PERFORMER_LOBBY"
+                ? "Performer lobby · video presence"
+                : mode === "LOUNGE_PANEL"
+                  ? "Lounge panel · no avatar seat"
+                  : "Participant view",
+          );
+          setSeatReady(true);
+          if (!instant) advance("audience", 900);
+        }
+        return;
+      }
       try {
         const res = await fetch("/api/live/audience", {
           method: "POST",
@@ -268,7 +309,7 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
       }
     })();
     return () => { cancelled = true; };
-  }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim]);
+  }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim, shouldClaimFanSeat, room.participationEntryMode]);
 
   /** Hyperspace complete → reveal seated audience, then enter room */
   const onHyperspaceComplete = useCallback(() => {
@@ -566,13 +607,27 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
             </div>
           )}
 
-          {/* ── STEP: SEAT ASSIGNMENT ── */}
+          {/* ── STEP: SEAT / PARTICIPANT ASSIGNMENT ── */}
           {step === "seat" && (
             <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "24px 0" })}>
-              <AvatarMiniDisplayLazy size={64} fallback={<div style={{ fontSize: 32 }}>🎭</div>} showLabel />
+              {shouldClaimFanSeat ? (
+                <RoleGate allow={["FAN", "BAND", "USER"]}>
+                  <AvatarMiniDisplayLazy size={64} fallback={<div style={{ fontSize: 32 }}>🎭</div>} showLabel />
+                </RoleGate>
+              ) : (
+                <div style={{ fontSize: 32 }} aria-hidden>
+                  {room.participationEntryMode === "QUEUE" ? "⚔️" : room.participationEntryMode === "LOUNGE_PANEL" ? "🛋️" : "🎸"}
+                </div>
+              )}
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-              <div style={s({ fontSize: 13, fontWeight: 900, color: "#fff" })}>Finding Your Seat…</div>
-              {seatRow && <div style={s({ fontSize: 11, color: ac, fontWeight: 800, letterSpacing: "0.1em" })}>Assigned: {seatRow}</div>}
+              <div style={s({ fontSize: 13, fontWeight: 900, color: "#fff" })}>
+                {shouldClaimFanSeat
+                  ? "Finding Your Seat…"
+                  : room.participationEntryMode === "QUEUE"
+                    ? "Entering as queued participant…"
+                    : "Entering room…"}
+              </div>
+              {seatRow && <div style={s({ fontSize: 11, color: ac, fontWeight: 800, letterSpacing: "0.1em" })}>{shouldClaimFanSeat ? `Assigned: ${seatRow}` : seatRow}</div>}
               <div style={s({ width: "100%", maxWidth: 300, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" })}>
                 <div style={s({ height: 4, background: ac, borderRadius: 2, animation: "fillBar 1.5s ease-out forwards", width: "0%" })} />
                 <style>{`@keyframes fillBar{to{width:100%}}`}</style>

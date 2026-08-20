@@ -14,7 +14,7 @@
  *   4. Zero document layout mutation (Δx=0, Δy=0, Δwidth=0, Δheight=0 for venue viewport).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   HudCommandBus,
   resolveHudCapabilities,
@@ -23,6 +23,14 @@ import {
   type HudPresentationState,
   type UserRoleCapability,
 } from "@/lib/venue-hud/TMIExperienceHudRuntime";
+import { resolveParticipationHudActions } from "@/lib/venue-hud/HudActionRegistry";
+import {
+  joinQueue as joinQueueEngine,
+  advanceQueue,
+  getQueueSnapshot,
+} from "@/lib/live/queueEngine";
+import type { ParticipationState } from "@/lib/live/ParticipationStateMachine";
+import { directorTick } from "@/lib/live/BotQueueDirector";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -37,6 +45,16 @@ export interface TMIInteractiveVenueHudProps {
   role?: UserRoleCapability;
   tier?: "FREE" | "PRO" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
   onBroadcastStateChange?: (state: BroadcastState) => void;
+  /** True when signed-in user owns this room (host controls). */
+  isRoomOwner?: boolean;
+  /** Honest voting gate from battle/cypher engines — never fabricate open voting. */
+  votingOpen?: boolean;
+  participationState?: ParticipationState;
+  /** Bot/system room → Queue Director auto-advance; human-owned → host approve. */
+  ownership?: "human_owned" | "bot_operated" | "platform";
+  battleId?: string;
+  /** Real human viewer count from live registry — 0 when unknown (Rule 20). */
+  humanViewerCount?: number;
 }
 
 export default function TMIInteractiveVenueHud({
@@ -46,18 +64,55 @@ export default function TMIInteractiveVenueHud({
   role = "performer",
   tier = "FREE",
   onBroadcastStateChange,
+  isRoomOwner = false,
+  votingOpen = false,
+  participationState = "SPECTATOR",
+  ownership = "platform",
+  battleId,
+  humanViewerCount = 0,
 }: TMIInteractiveVenueHudProps) {
   const [hudState, setHudState] = useState<HudPresentationState>("PRE_LIVE");
   const [broadcastState, setBroadcastState] = useState<BroadcastState>("IDLE");
   const [micMuted, setMicMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [sessionSec, setSessionSec] = useState(0);
-  const [viewerCount, setViewerCount] = useState(0);
   const [reactionCount, setReactionCount] = useState(0);
   const [activeReactions, setActiveReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const [queueCount, setQueueCount] = useState(0);
+  const [localParticipation, setLocalParticipation] = useState<ParticipationState>(participationState);
 
   const capabilities = useMemo(() => resolveHudCapabilities(role), [role]);
+
+  const competition =
+    experienceType === "BATTLE" || experienceType === "CYPHER" || experienceType === "CHALLENGE";
+
+  const hudActions = useMemo(
+    () =>
+      resolveParticipationHudActions({
+        role: isRoomOwner ? "host" : role,
+        experienceType,
+        isRoomOwner,
+        votingOpen,
+        participationState: localParticipation,
+        queueEngineAvailable: true,
+        hostControlsAvailable: isRoomOwner || role === "host" || role === "admin",
+      }),
+    [role, experienceType, isRoomOwner, votingOpen, localParticipation],
+  );
+
+  const syncQueueCount = useCallback(() => {
+    const snap = getQueueSnapshot(roomId);
+    setQueueCount(snap.count);
+  }, [roomId]);
+
+  useEffect(() => {
+    syncQueueCount();
+  }, [syncQueueCount]);
+
+  useEffect(() => {
+    setLocalParticipation(participationState);
+  }, [participationState]);
 
   // Register command handlers
   useEffect(() => {
@@ -113,12 +168,76 @@ export default function TMIInteractiveVenueHud({
         }, 1200);
         return true;
       }),
+
+      HudCommandBus.register("JOIN_QUEUE", () => {
+        const slot = joinQueueEngine(roomId, payloadUserId(), "Performer", 5);
+        setLocalParticipation("QUEUED");
+        syncQueueCount();
+        setStatusLine(`Queued · position tracked (${slot.status})`);
+        return true;
+      }),
+
+      HudCommandBus.register("APPROVE_NEXT", () => {
+        if (!isRoomOwner && role !== "host" && role !== "admin") {
+          setStatusLine("Host only");
+          return false;
+        }
+        if (ownership === "bot_operated" || ownership === "platform") {
+          const result = directorTick({
+            venueSlug: roomId,
+            battleId,
+            ownership,
+            policy: battleId ? "winner_stays" : "fifo",
+          });
+          setStatusLine(result.ok ? "Queue Director advanced next" : result.reason ?? "Queue empty");
+          if (result.participationState) setLocalParticipation(result.participationState);
+          syncQueueCount();
+          return result.ok;
+        }
+        const next = advanceQueue(roomId);
+        syncQueueCount();
+        if (!next) {
+          setStatusLine("No one waiting in queue");
+          return false;
+        }
+        setStatusLine(`${next.performerName} → on stage`);
+        return true;
+      }),
+
+      HudCommandBus.register("VOTE", () => {
+        if (!votingOpen) {
+          setStatusLine("Voting closed");
+          return false;
+        }
+        setStatusLine("Vote cast");
+        return true;
+      }),
     ];
 
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
-  }, [micMuted, cameraOff, onBroadcastStateChange]);
+  }, [
+    micMuted,
+    cameraOff,
+    onBroadcastStateChange,
+    roomId,
+    isRoomOwner,
+    role,
+    ownership,
+    battleId,
+    votingOpen,
+    syncQueueCount,
+  ]);
+
+  function payloadUserId(): string {
+    if (typeof window === "undefined") return `user-${roomId}`;
+    try {
+      return sessionStorage.getItem("tmi_user_id") ?? `guest-${roomId}`;
+    } catch {
+      return `guest-${roomId}`;
+    }
+  }
 
   // Live session timer
   useEffect(() => {
@@ -277,14 +396,45 @@ export default function TMIInteractiveVenueHud({
             >
               {cameraOff ? "🚫 CAM OFF" : "🎥 CAM ACTIVE"}
             </button>
-
-            <button type="button" style={iconChip(GOLD)}>
-              👥 GUESTS
-            </button>
-            <button type="button" style={iconChip(FUCHSIA)}>
-              ⚡ EFFECTS
-            </button>
           </div>
+
+          {/* Participation Law actions — role × room (no dead no-ops) */}
+          {hudActions.filter((a) => ["join_queue", "challenge_winner", "vote", "approve_next", "bring_on_stage"].includes(a.id)).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, width: "100%" }}>
+              {hudActions
+                .filter((a) =>
+                  ["join_queue", "challenge_winner", "vote", "approve_next", "bring_on_stage"].includes(a.id),
+                )
+                .map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    disabled={!action.enabled}
+                    title={action.reason ?? action.label}
+                    onClick={() => {
+                      if (!action.enabled) {
+                        setStatusLine(action.reason ?? "Unavailable");
+                        return;
+                      }
+                      if (action.id === "join_queue" || action.id === "challenge_winner") {
+                        void HudCommandBus.execute("JOIN_QUEUE");
+                      } else if (action.id === "approve_next" || action.id === "bring_on_stage") {
+                        void HudCommandBus.execute("APPROVE_NEXT");
+                      } else if (action.id === "vote") {
+                        void HudCommandBus.execute("VOTE");
+                      }
+                    }}
+                    style={{
+                      ...iconChip(action.enabled ? GOLD : "rgba(255,255,255,0.35)"),
+                      opacity: action.enabled ? 1 : 0.45,
+                      cursor: action.enabled ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {action.icon} {action.label}
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -339,10 +489,15 @@ export default function TMIInteractiveVenueHud({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 10, color: CYAN, fontWeight: 800 }}>👁 {viewerCount.toLocaleString()}</span>
+              <span style={{ fontSize: 10, color: CYAN, fontWeight: 800 }}>
+                👁 {humanViewerCount > 0 ? humanViewerCount.toLocaleString() : "—"}
+              </span>
               <span style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}>
                 ♥ {reactionCount.toLocaleString()}
               </span>
+              {queueCount > 0 && (
+                <span style={{ fontSize: 10, color: GOLD, fontWeight: 800 }}>Q {queueCount}</span>
+              )}
             </div>
           </div>
 
@@ -380,12 +535,16 @@ export default function TMIInteractiveVenueHud({
             >
               {cameraOff ? "🚫" : "🎥"}
             </button>
-            <button type="button" title="Source / Media" style={sideIconBtn(GOLD)}>
-              ▣
-            </button>
-            <button type="button" title="Guests" style={sideIconBtn(GREEN)}>
-              👥
-            </button>
+            {(isRoomOwner || role === "host" || role === "admin") && (
+              <button
+                type="button"
+                title="Approve next in queue"
+                onClick={() => HudCommandBus.execute("APPROVE_NEXT")}
+                style={sideIconBtn(GREEN)}
+              >
+                ✅
+              </button>
+            )}
           </div>
 
           {/* RIGHT EXPERIENCE CONTEXT MODULE RAIL */}
@@ -410,32 +569,49 @@ export default function TMIInteractiveVenueHud({
               {experienceType} MODULE
             </div>
 
-            {experienceType === "BATTLE" && (
+            {competition && (
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ color: GOLD, fontWeight: 800 }}>ROUND 2</div>
-                <div>A: 62% | B: 38%</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>Time: 01:26</div>
+                <div style={{ color: GOLD, fontWeight: 800 }}>
+                  {localParticipation === "QUEUED" || localParticipation === "READY"
+                    ? "IN QUEUE · WATCHING"
+                    : localParticipation === "ON_STAGE" || localParticipation === "ACTIVE"
+                      ? "ON STAGE"
+                      : "SPECTATING"}
+                </div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
+                  Queue: {queueCount > 0 ? `${queueCount} waiting` : "Empty"}
+                </div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
+                  Vote: {votingOpen ? "Open" : "Closed"}
+                </div>
               </div>
             )}
 
             {experienceType === "WORLD_CONCERT" && (
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ color: GREEN, fontWeight: 800 }}>SETLIST: SONG 04</div>
-                <div>Crowd Energy: HIGH</div>
+                <div style={{ color: GREEN, fontWeight: 800 }}>CONCERT MODE</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Setlist from room runtime</div>
               </div>
             )}
 
             {experienceType === "WORLD_RELEASE" && (
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ color: FUCHSIA, fontWeight: 800 }}>NEW SINGLE REVEAL</div>
-                <div style={{ fontSize: 8, color: GOLD }}>STORE ACTIVE</div>
+                <div style={{ color: FUCHSIA, fontWeight: 800 }}>RELEASE MODE</div>
+                <div style={{ fontSize: 8, color: GOLD }}>Store when catalog wired</div>
               </div>
             )}
 
             {experienceType === "LIVE" && (
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
                 <div>Audience Active</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Shard: Main Bowl A1</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Participation: {localParticipation}</div>
+              </div>
+            )}
+
+            {experienceType === "GAME_SHOW" && (
+              <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ color: GREEN, fontWeight: 800 }}>GAME MODE</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Watch · Play · Next round</div>
               </div>
             )}
           </div>
@@ -460,7 +636,7 @@ export default function TMIInteractiveVenueHud({
             }}
           >
             {/* Reaction Trigger Bar */}
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               {["🔥", "❤️", "👏", "💎"].map((emoji) => (
                 <button
                   key={emoji}
@@ -482,6 +658,46 @@ export default function TMIInteractiveVenueHud({
                   {emoji}
                 </button>
               ))}
+              {competition && (role === "performer" || role === "admin") && !isRoomOwner && (
+                <button
+                  type="button"
+                  title="Join Queue"
+                  disabled={localParticipation === "QUEUED" || localParticipation === "READY" || localParticipation === "ON_STAGE"}
+                  onClick={() => HudCommandBus.execute("JOIN_QUEUE")}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 14,
+                    border: `1px solid ${FUCHSIA}`,
+                    background: `${FUCHSIA}22`,
+                    color: FUCHSIA,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  📋 QUEUE
+                </button>
+              )}
+              {role === "fan" && (
+                <button
+                  type="button"
+                  title={votingOpen ? "Vote" : "Voting closed"}
+                  disabled={!votingOpen}
+                  onClick={() => HudCommandBus.execute("VOTE")}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 14,
+                    border: `1px solid ${votingOpen ? GOLD : "rgba(255,255,255,0.2)"}`,
+                    background: votingOpen ? `${GOLD}22` : "rgba(255,255,255,0.04)",
+                    color: votingOpen ? GOLD : "rgba(255,255,255,0.35)",
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: votingOpen ? "pointer" : "not-allowed",
+                  }}
+                >
+                  🗳️ VOTE
+                </button>
+              )}
             </div>
 
             {/* Performer Action Button */}

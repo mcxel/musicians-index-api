@@ -9,6 +9,7 @@ import type { LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
+import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import {
   listEquippableCostumes,
   listEquippableProps,
@@ -274,10 +275,30 @@ function LiveDestinationsQuickPanel({
         window.location.assign(dest.href);
         return;
       }
+      const fallbackKind =
+        room.type === "battle"
+          ? "battle"
+          : room.type === "cypher"
+            ? "cypher"
+            : room.type === "challenge"
+              ? "challenge"
+              : room.type === "lounge"
+                ? "lounge"
+                : room.type === "performer-lobby"
+                  ? "performer_lobby"
+                  : "live";
+      const resolution = resolveParticipationEntry({
+        role: role === "performer" ? "PERFORMER" : "FAN",
+        roomKind: fallbackKind,
+      });
       setJoinDecision({
         instant: true,
         gateReason: "none",
         href: dest.href,
+        entryMode: resolution.entryMode,
+        roomKind: resolution.roomKind,
+        initialState: resolution.initialState,
+        claimFanSeat: resolution.claimFanSeat,
         room: {
           id: room.id,
           title: room.name,
@@ -289,6 +310,9 @@ function LiveDestinationsQuickPanel({
           accentColor: accentColor,
           roomRoute: dest.href,
           venueIndex: 0,
+          participationEntryMode: resolution.entryMode,
+          participationRoomKind: resolution.roomKind,
+          claimFanSeat: resolution.claimFanSeat,
         },
       });
     },

@@ -1,12 +1,10 @@
 'use client';
 
 /**
- * LobbyCategoryPillRow — horizontal category filter matching the Lobbies wall
- * reference design (Live Now / Games / Challenges / Cypher / Lounges / Avatars /
- * Playlists). Purely presentational — the parent owns what each pill means and
- * what data backs it. No fake counts, no hardcoded categories baked in here.
+ * LobbyCategoryPillRow — horizontal category filter for the Lobbies wall.
+ * Parent owns categories (see LOBBY_WALL_CORE_CATEGORY_TABS in liveLobbyWallLaw).
+ * Purely presentational — icons + brand accent colors on pills.
  */
-
 export type LobbyCategoryPill = {
   id: string;
   label: string;

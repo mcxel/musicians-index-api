@@ -2,6 +2,8 @@
  * InstantJoinRuntime — wraps existing LobbyEntryFlow / seat join patterns.
  * Tap → instant join unless ticket / invite / age gate requires a step.
  * Does not invent a parallel live engine (assembles 5cd926f0 Instant Go Live paths).
+ *
+ * Participation Law: role × room type → QUEUE | SPECTATOR | FAN_SEAT (etc).
  */
 
 import type { UniversalRoom } from "@/components/room/UniversalLobbyEntry";
@@ -16,6 +18,14 @@ import {
   resolvePerformerLobbyJoinHref,
   resolvePlaylistLoungeJoinHref,
 } from "@/lib/venue-hud/loungeContainer";
+import {
+  resolveOwnershipModel,
+  resolveParticipationEntry,
+  resolveRoomKindFromDiscovery,
+  type ParticipationEntryMode,
+  type ParticipationRoomKind,
+  type ParticipationState,
+} from "@/lib/live/ParticipationStateMachine";
 
 export type InstantJoinRole =
   | "FAN"
@@ -33,6 +43,11 @@ export interface InstantJoinDecision {
   room: UniversalRoom;
   /** Final navigation target if bypassing overlay (rare) */
   href: string;
+  /** Participation Law resolution */
+  entryMode: ParticipationEntryMode;
+  roomKind: ParticipationRoomKind;
+  initialState: ParticipationState;
+  claimFanSeat: boolean;
 }
 
 function normalizeRole(role?: string | null): InstantJoinRole {
@@ -57,6 +72,11 @@ function isPerformerLike(role: InstantJoinRole): boolean {
  */
 export function discoveryRecordToUniversalRoom(
   record: LiveDiscoveryRecord,
+  participation?: {
+    entryMode: ParticipationEntryMode;
+    roomKind: ParticipationRoomKind;
+    claimFanSeat: boolean;
+  },
 ): UniversalRoom {
   const status: UniversalRoom["status"] =
     record.joinGate === "paid" || record.joinGate === "ticket"
@@ -89,37 +109,76 @@ export function discoveryRecordToUniversalRoom(
     thumbnailUrl: record.posterUrl ?? undefined,
     roomRoute: record.joinRoute,
     shape: "cinema",
+    participationEntryMode: participation?.entryMode,
+    participationRoomKind: participation?.roomKind,
+    claimFanSeat: participation?.claimFanSeat,
   };
 }
 
 /**
  * Decide instant vs gated join for a discovery card tap.
  * Instant when gate is none; otherwise LobbyEntryFlow runs access step.
+ * Competition performers → QUEUE path (no fan seat claim).
  */
 export function resolveInstantJoin(
   record: LiveDiscoveryRecord,
-  opts?: { role?: string | null },
+  opts?: { role?: string | null; isRoomOwner?: boolean },
 ): InstantJoinDecision {
   const role = normalizeRole(opts?.role);
-  const room = discoveryRecordToUniversalRoom(record);
+  const roomKind = resolveRoomKindFromDiscovery(record);
+  const ownership = resolveOwnershipModel(record);
+  const resolution = resolveParticipationEntry({
+    role,
+    roomKind,
+    ownership,
+    isRoomOwner: opts?.isRoomOwner,
+    queueEngineAvailable: true,
+    hostControlsAvailable: ownership === "human_owned" || Boolean(opts?.isRoomOwner),
+  });
+
+  const room = discoveryRecordToUniversalRoom(record, {
+    entryMode: resolution.entryMode,
+    roomKind: resolution.roomKind,
+    claimFanSeat: resolution.claimFanSeat,
+  });
 
   // Playlist / mixed-genre listening → LOUNGE_SIDE_ROOM (video panels, no avatars).
-  // Other fan joins → FAN_AVATAR_LOBBY of the same roomId as performer STAGE / GO LIVE.
+  // Competition QUEUE path keeps competition joinRoute (do not force fan avatar lobby).
   let href = record.joinRoute;
-  if (isPlaylistLoungeDiscovery(record)) {
+  if (resolution.entryMode === "QUEUE") {
+    href = record.joinRoute;
+    room.roomRoute = href;
+  } else if (isPlaylistLoungeDiscovery(record) || resolution.entryMode === "LOUNGE_PANEL") {
     href = resolvePlaylistLoungeJoinHref(record.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
-  } else if (isPublicPerformerLobbyDiscovery(record) && isPerformerLike(role)) {
+  } else if (
+    (isPublicPerformerLobbyDiscovery(record) || resolution.entryMode === "PERFORMER_LOBBY") &&
+    isPerformerLike(role)
+  ) {
     href = resolvePerformerLobbyJoinHref(record.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
-  } else if (!isPerformerLike(role)) {
+  } else if (resolution.entryMode === "FAN_AVATAR_LOBBY" || !isPerformerLike(role)) {
     href = fanAvatarLobbyEntryHref(record.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
   }
 
+  // Append participation query hints for room shells (honest mode, not fake state)
+  const sep = href.includes("?") ? "&" : "?";
+  href = `${href}${sep}entryMode=${encodeURIComponent(resolution.entryMode)}&roomKind=${encodeURIComponent(resolution.roomKind)}`;
+  room.roomRoute = href;
+
   const gate = record.joinGate;
   if (gate === "none") {
-    return { instant: true, gateReason: "none", room, href };
+    return {
+      instant: true,
+      gateReason: "none",
+      room,
+      href,
+      entryMode: resolution.entryMode,
+      roomKind: resolution.roomKind,
+      initialState: resolution.initialState,
+      claimFanSeat: resolution.claimFanSeat,
+    };
   }
 
   return {
@@ -127,6 +186,10 @@ export function resolveInstantJoin(
     gateReason: gate,
     room,
     href,
+    entryMode: resolution.entryMode,
+    roomKind: resolution.roomKind,
+    initialState: resolution.initialState,
+    claimFanSeat: resolution.claimFanSeat,
   };
 }
 
@@ -173,21 +236,58 @@ export function resolveInstantJoinFromSurface(
   card: LiveSurfaceCard,
   opts?: { role?: string | null },
 ): InstantJoinDecision {
-  // Reuse discovery join semantics via a minimal record bridge when possible
   const room = liveSurfaceCardToUniversalRoom(card);
   const role = normalizeRole(opts?.role);
+  const roomKind = resolveRoomKindFromDiscovery({
+    category: (card.runtimeType as LiveDiscoveryRecord["category"]) || "live_now",
+    categories: [],
+    roomId: card.roomId,
+  });
+  const resolution = resolveParticipationEntry({
+    role,
+    roomKind,
+    ownership: "platform",
+  });
+
+  room.participationEntryMode = resolution.entryMode;
+  room.participationRoomKind = resolution.roomKind;
+  room.claimFanSeat = resolution.claimFanSeat;
 
   let href = card.joinAction.href;
-  if (!isPerformerLike(role)) {
+  if (resolution.entryMode === "QUEUE") {
+    // keep competition href
+  } else if (!isPerformerLike(role)) {
     href = fanAvatarLobbyEntryHref(card.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
   }
 
+  const sep = href.includes("?") ? "&" : "?";
+  href = `${href}${sep}entryMode=${encodeURIComponent(resolution.entryMode)}&roomKind=${encodeURIComponent(resolution.roomKind)}`;
+  room.roomRoute = href;
+
   if (card.joinAction.kind === "gated") {
-    return { instant: false, gateReason: "paid", room, href };
+    return {
+      instant: false,
+      gateReason: "paid",
+      room,
+      href,
+      entryMode: resolution.entryMode,
+      roomKind: resolution.roomKind,
+      initialState: resolution.initialState,
+      claimFanSeat: resolution.claimFanSeat,
+    };
   }
 
-  return { instant: true, gateReason: "none", room, href };
+  return {
+    instant: true,
+    gateReason: "none",
+    room,
+    href,
+    entryMode: resolution.entryMode,
+    roomKind: resolution.roomKind,
+    initialState: resolution.initialState,
+    claimFanSeat: resolution.claimFanSeat,
+  };
 }
 
 /** Bridge: discovery record → surface → instant join (same LobbyEntryFlow path). */

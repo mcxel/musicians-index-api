@@ -32,17 +32,17 @@ export type LobbyWallCoreCategoryId =
   | "lives"
   | "shows_and_releases";
 
-/** Canonical order: Challenges → Battles → Cyphers → Performer Lobbies → Fan Avatar Lobbies → Lounges → Games → Live → Shows & Releases */
+/** Canonical order: Challenges → Battles → Cyphers → Performer Lobbies → Fan Lobbies → Lounges → Games → Live → Shows & Releases */
 export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
   { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
   { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
   { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
   { id: "performer_lobbies", label: "Performer Lobbies", icon: "🎸", accentColor: "#FFD700" },
-  { id: "fan_avatar_lobbies", label: "Fan Lobbies", icon: "👥", accentColor: "#00E5FF" },
+  { id: "fan_avatar_lobbies", label: "Fan Lobbies", icon: "👥", accentColor: "#00FFFF" },
   { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#00FFFF" },
   { id: "games", label: "Games", icon: "🎮", accentColor: "#22c55e" },
   { id: "lives", label: "Live", icon: "🔴", accentColor: "#FF3B5C" },
-  { id: "shows_and_releases", label: "Shows & Releases", icon: "🎸", accentColor: "#FFD700" },
+  { id: "shows_and_releases", label: "Shows & Releases", icon: "📺", accentColor: "#FFD700" },
 ] as const;
 
 const ARENA_DISCOVERY_CATEGORIES = new Set<LiveDiscoveryCategory>([
