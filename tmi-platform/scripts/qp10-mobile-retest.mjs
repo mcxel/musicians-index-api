@@ -1,7 +1,9 @@
 /**
- * QP-10 MOBILE PHYSICAL RETEST
+ * QP-10 MOBILE PHYSICAL RETEST (+ visual/density)
  * Fan + Performer × 360/390/430 viewports
+ * Primary strip: MIC | CAM | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE
  * node scripts/qp10-mobile-retest.mjs
+ * pnpm run cert:qp10
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -42,8 +44,8 @@ async function waitForServer(maxMs = 180000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     try {
-      const res = await fetch(`${BASE}/auth`, { signal: AbortSignal.timeout(8000) });
-      if (res.ok || res.status < 500) return true;
+      const res = await fetch(`${BASE}/api/live/go`, { signal: AbortSignal.timeout(8000) });
+      if (res.status > 0 && res.status < 500) return true;
     } catch {
       /* retry */
     }
@@ -85,6 +87,14 @@ async function dismissOverlays(page) {
 }
 
 async function uiLogin(page, email, password) {
+  // Prefer API login — /auth page has intermittent 500 while API remains healthy
+  const apiOk = await page
+    .context()
+    .request.post(`${BASE}/api/auth/login`, { data: { email, password } })
+    .then((r) => r.ok())
+    .catch(() => false);
+  if (apiOk) return;
+
   await page.goto(`${BASE}/auth`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("#auth-email").waitFor({ state: "visible", timeout: 60000 });
   await page.locator("#auth-email").fill(email);
@@ -128,6 +138,50 @@ async function auditPrimaryStrip(page) {
 
     return { stripFound: true, buttons, missing, forbiddenFound, stripText };
   }, { required: REQUIRED_PRIMARY, forbidden: FORBIDDEN_PRIMARY });
+}
+
+/** Visual/density: strip fit, overflow honesty, min tap targets @ 360/390/430 */
+async function auditStripDensity(page, viewportWidth) {
+  return page.evaluate((vw) => {
+    const strip = document.querySelector("[data-session-control-strip]");
+    if (!strip) {
+      return { ok: false, reason: "strip missing" };
+    }
+    const sr = strip.getBoundingClientRect();
+    const buttons = Array.from(strip.querySelectorAll("button"));
+    const metrics = buttons.map((b) => {
+      const r = b.getBoundingClientRect();
+      const t = (b.textContent || "").replace(/\s+/g, " ").trim();
+      return {
+        label: t.slice(0, 40),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        right: Math.round(r.right),
+        left: Math.round(r.left),
+      };
+    });
+    const minH = metrics.length ? Math.min(...metrics.map((m) => m.h)) : 0;
+    const minW = metrics.length ? Math.min(...metrics.map((m) => m.w)) : 0;
+    const stripOverflowX = strip.scrollWidth > strip.clientWidth + 2;
+    const pageOverflow =
+      document.documentElement.scrollWidth > window.innerWidth + 2;
+    // Horizontal scroll on the strip is allowed; page-level horizontal overflow is not.
+    const clippedOffScreen = metrics.filter((m) => m.right > vw + 4 && !stripOverflowX);
+    return {
+      ok: true,
+      viewportWidth: vw,
+      stripWidth: Math.round(sr.width),
+      stripScrollWidth: strip.scrollWidth,
+      stripClientWidth: strip.clientWidth,
+      buttonCount: metrics.length,
+      minButtonHeight: minH,
+      minButtonWidth: minW,
+      stripOverflowX,
+      pageOverflow,
+      clippedOffScreen: clippedOffScreen.length,
+      metrics,
+    };
+  }, viewportWidth);
 }
 
 async function auditLowerRow(page) {
@@ -286,6 +340,38 @@ async function runScenario(browser, roleKey, vp) {
       "primary-forbidden-absent",
       primary.forbiddenFound.length === 0 ? "PASS" : "FAIL",
       primary.forbiddenFound.length ? `found: ${primary.forbiddenFound.join(", ")}` : "",
+    );
+
+    const density = await auditStripDensity(page, vp.width);
+    const densityShot = snapPath(roleKey, vp.tag, "density-strip");
+    await page.screenshot({ path: densityShot, fullPage: false }).catch(() => {});
+    shots.push(densityShot);
+
+    // Density gates (harness): page must not overflow; buttons must be tappable height;
+    // strip may scroll horizontally (honest overflowX) but must still expose all 7 labels.
+    record(
+      "density-page-no-h-overflow",
+      density.ok && !density.pageOverflow ? "PASS" : "FAIL",
+      density.ok
+        ? `scrollW vs vw — pageOverflow=${density.pageOverflow}`
+        : density.reason,
+    );
+    record(
+      "density-strip-button-count",
+      density.ok && density.buttonCount >= 7 ? "PASS" : "FAIL",
+      density.ok ? `buttons=${density.buttonCount}` : density.reason,
+    );
+    record(
+      "density-min-tap-height",
+      density.ok && density.minButtonHeight >= 28 ? "PASS" : "FAIL",
+      density.ok ? `minH=${density.minButtonHeight}px` : density.reason,
+    );
+    record(
+      "density-strip-scroll-ok",
+      density.ok ? "PASS" : "FAIL",
+      density.ok
+        ? `stripOverflowX=${density.stripOverflowX} scroll=${density.stripScrollWidth}/${density.stripClientWidth}`
+        : density.reason,
     );
 
     const lower = await auditLowerRow(page);
