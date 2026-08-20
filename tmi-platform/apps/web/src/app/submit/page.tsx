@@ -148,6 +148,24 @@ export default function SubmitPage() {
             DJ Record Ralph · weekly rotation · 50 coins reserved, charged only when your track plays
           </p>
         </Link>
+        <Link
+          href="/slow-jams/submit"
+          style={{
+            background: 'rgba(170,45,255,0.06)',
+            border: '1.5px solid rgba(170,45,255,0.35)',
+            padding: '28px 20px',
+            textDecoration: 'none',
+            textAlign: 'left',
+            display: 'block',
+          }}
+        >
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🌙</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#AA2DFF', marginBottom: 6 }}>Sunday Slow Jams</div>
+          <div style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 22, color: '#fff', letterSpacing: '0.04em', marginBottom: 6 }}>Chill Sunday Pool</div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, margin: 0 }}>
+            Slow songs only · all-day Sunday ET · separate from World Dance Party
+          </p>
+        </Link>
       </div>
 
       {/* How the Loop Works */}

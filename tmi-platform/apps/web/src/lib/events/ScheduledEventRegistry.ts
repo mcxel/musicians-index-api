@@ -6,6 +6,7 @@
 
 import { getMondayNightStageWindow, type MondayNightStageWindow } from "@/lib/shows/MondayShowtime";
 import { getWorldDancePartyWindow, type WorldDancePartyWindow } from "@/lib/dance/WorldDancePartyShowtime";
+import { getSlowJamsWindow, type SlowJamsWindow } from "@/lib/radio/SlowJamsShowtime";
 import { getShowHosts } from "@/lib/hosts/HostShowAssignmentEngine";
 
 export type ScheduledEventPhase = MondayNightStageWindow["phase"];
@@ -39,9 +40,20 @@ const WORLD_DANCE_PARTY: ScheduledEventDefinition = {
   hostShowId: "world-dance-party",
 };
 
+/** Sunday Slow Jams — all-day Sunday ET Stream & Win lounge (Rule 25). */
+const SUNDAY_SLOW_JAMS: ScheduledEventDefinition = {
+  eventId: "sunday-slow-jams",
+  title: "Sunday Slow Jams",
+  timezone: "America/New_York",
+  recurrence: "FREQ=WEEKLY;BYDAY=SU",
+  entryRoute: "/rooms/slow-jams",
+  hostShowId: "sunday-slow-jams",
+};
+
 const REGISTRY: Record<string, ScheduledEventDefinition> = {
   "monday-night-stage": MONDAY_NIGHT_STAGE,
   "world-dance-party": WORLD_DANCE_PARTY,
+  "sunday-slow-jams": SUNDAY_SLOW_JAMS,
 };
 
 export function getScheduledEventDefinition(eventId: string): ScheduledEventDefinition | undefined {
@@ -77,6 +89,13 @@ export function getEventScheduleStatus(eventId: string, from: Date = new Date())
     if (phase === "ARCHIVE") return "ARCHIVE";
     return "CLOSED";
   }
+  if (eventId === "sunday-slow-jams") {
+    const phase = getSlowJamsWindow(from).phase;
+    if (phase === "LIVE") return "LIVE";
+    if (phase === "SUBMIT_OPEN") return "PRESHOW";
+    if (phase === "ARCHIVE") return "ARCHIVE";
+    return "CLOSED";
+  }
   return "CLOSED";
 }
 
@@ -88,6 +107,9 @@ export function getEventNextLabel(eventId: string, from: Date = new Date()): str
   if (eventId === "world-dance-party") {
     return getWorldDancePartyWindow(from).label;
   }
+  if (eventId === "sunday-slow-jams") {
+    return getSlowJamsWindow(from).label;
+  }
   return "Check back soon";
 }
 
@@ -97,6 +119,15 @@ export function getWorldDancePartySchedule(from: Date = new Date()): WorldDanceP
   return {
     ...getWorldDancePartyWindow(from),
     definition: WORLD_DANCE_PARTY,
+  };
+}
+
+export function getSlowJamsSchedule(from: Date = new Date()): SlowJamsWindow & {
+  definition: ScheduledEventDefinition;
+} {
+  return {
+    ...getSlowJamsWindow(from),
+    definition: SUNDAY_SLOW_JAMS,
   };
 }
 

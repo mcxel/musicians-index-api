@@ -25,7 +25,8 @@ export type ExperiencePersonalityId =
   | "CHALLENGE"
   | "GAUNTLET"
   | "GAME"
-  | "LIVE_GUEST_QUEUE";
+  | "LIVE_GUEST_QUEUE"
+  | "SLOW_JAM";
 
 export type ExperiencePersonality = {
   id: ExperiencePersonalityId;
@@ -47,6 +48,21 @@ export type ExperiencePersonality = {
    */
   restartOnEmpty: boolean;
 };
+
+/** Sunday Slow Jams motion / energy — sultry lounge, not EDM drop. */
+export const SLOW_JAM_MOTION = {
+  crossfadeMs: 8_000,
+  ambientPulseMs: 6_000,
+  transitionMs: 1_200,
+  glowOpacity: 0.35,
+  accentCyan: "rgba(0,255,255,0.35)",
+  accentFuchsia: "rgba(255,45,170,0.28)",
+  accentGold: "rgba(255,215,0,0.4)",
+  accentPurple: "rgba(170,45,255,0.45)",
+  copyJoin: "Enter the lounge",
+  copyLive: "Sunday Slow Jams · soft rotation",
+  copyClosed: "Closed · next Sunday ET",
+} as const;
 
 const CYPHER_BASE = {
   queueMode: "PERSISTENT" as const,
@@ -151,6 +167,21 @@ export const EXPERIENCE_PERSONALITY: Record<ExperiencePersonalityId, ExperienceP
     allowsElimination: false,
     restartOnEmpty: true,
   },
+  SLOW_JAM: {
+    id: "SLOW_JAM",
+    queueMode: "PERSISTENT",
+    competitionMode: "NONE",
+    votingMode: "OFF",
+    winnerState: "DISABLED",
+    participantVisibility: "HIGH",
+    collaborationMode: true,
+    upNextCardMs: 0,
+    allowsWinnerStays: false,
+    allowsVsOverlay: false,
+    allowsFinalVoteOverlay: false,
+    allowsElimination: false,
+    restartOnEmpty: false,
+  },
 };
 
 export type ExperiencePersonalityResolveInput = {
@@ -234,6 +265,14 @@ export function resolveExperiencePersonality(
   }
   if (kind.includes("game") || kind.includes("deal-or-feud")) {
     return EXPERIENCE_PERSONALITY.GAME;
+  }
+  if (
+    kind.includes("slow-jam") ||
+    kind.includes("slow_jam") ||
+    expId.includes("slow-jam") ||
+    expId.includes("slow_jam")
+  ) {
+    return EXPERIENCE_PERSONALITY.SLOW_JAM;
   }
 
   return EXPERIENCE_PERSONALITY.LIVE_GUEST_QUEUE;

@@ -236,6 +236,27 @@ export const EXPERIENCE_REGISTRY: Record<string, ExperienceDefinition> = {
     entryRoute: "/rooms/world-dance-party",
   },
 
+  "slow-jams": {
+    id: "slow-jams",
+    title: "Sunday Slow Jams",
+    category: "LOUNGE",
+    venueId: "slow-jams",
+    environmentId: "under_the_stars_v1",
+    lightingId: "soft_night_glow",
+    cameraPackId: "lounge_intimate",
+    audienceId: "lounge_scattered",
+    avatarMode: "interactive",
+    widgetIds: ["discovery_rail", "audience_reaction_bar"],
+    overlayIds: [],
+    animationPackId: "lounge_transitions",
+    themeId: "tmi-theater",
+    networkMode: "WebRTC",
+    permissions: DEFAULT_PERMS,
+    featureFlags: ["venue_skin_picker", "slow_jam_energy"],
+    version: "1.0.0",
+    entryRoute: "/rooms/slow-jams",
+  },
+
   "fan-lobby": {
     id: "fan-lobby",
     title: "Fan Avatar Lobby",

@@ -16,6 +16,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { WorldMiniBadge } from "./WorldMiniBadge";
+import {
+  isOutdoorSelectable,
+  normalizeEventVenueKind,
+  type VenueEnvironmentKind,
+} from "@/lib/venues/EventVenueEnvironment";
 
 export type MiniEventType =
   | "battle"
@@ -25,6 +30,7 @@ export type MiniEventType =
   | "release-party"
   | "lounge"
   | "dance-party"
+  | "slow-jam"
   | "joke-off"
   | "dance-off"
   | "dirty-dozens"
@@ -40,7 +46,11 @@ interface MiniEventDef {
   /** Which API endpoint to POST to */
   endpoint: string;
   /** Build the POST body */
-  buildBody: (displayName: string, genre?: string) => object;
+  buildBody: (
+    displayName: string,
+    genre?: string,
+    venueEnvironment?: VenueEnvironmentKind,
+  ) => object;
   /** Extract the joinUrl from the API response */
   extractJoinUrl: (res: Record<string, unknown>) => string;
 }
@@ -231,17 +241,38 @@ const MINI_EVENTS: MiniEventDef[] = [
     accent: "#00FF88",
     description: "Fan dance floor, you DJ",
     endpoint: "/api/live/go",
-    buildBody: (name, genre) => ({
+    buildBody: (name, genre, venueEnvironment) => ({
       displayName: name,
       category: "dance-party",
       genreName: genre ?? "EDM",
       title: `${name}'s Dance Party`,
       isMini: true,
+      venueEnvironment: venueEnvironment ?? "outdoor",
     }),
     extractJoinUrl: (r) =>
       r.roomId
-        ? `/live/rooms/${r.roomId}?mode=performer&category=dance-party&auto=true`
+        ? `/live/rooms/${r.roomId}?mode=performer&category=dance-party&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}`
         : "/rooms/world-dance-party",
+  },
+  {
+    type: "slow-jam",
+    emoji: "🌙",
+    label: "Mini Slow Jam",
+    accent: "#AA2DFF",
+    description: "Chill listening lounge",
+    endpoint: "/api/live/go",
+    buildBody: (name, genre, venueEnvironment) => ({
+      displayName: name,
+      category: "listening",
+      genreName: genre ?? "R&B",
+      title: `${name}'s Slow Jam Lounge`,
+      isMini: true,
+      venueEnvironment: venueEnvironment ?? "outdoor",
+    }),
+    extractJoinUrl: (r) =>
+      r.roomId
+        ? `/live/rooms/${r.roomId}?mode=performer&category=listening&auto=true&venueEnv=${encodeURIComponent(String((r as { venueEnvironment?: string }).venueEnvironment ?? "outdoor"))}`
+        : "/rooms/slow-jams",
   },
 ];
 
@@ -275,22 +306,38 @@ export function MiniEventCreator({
   const router = useRouter();
   const [creating, setCreating] = useState<CreatingState>(null);
   const [error, setError] = useState<ErrorState>(null);
+  const [venueEnvironment, setVenueEnvironment] = useState<VenueEnvironmentKind>("indoor");
 
   const events = show
     ? MINI_EVENTS.filter((e) => show.includes(e.type))
     : MINI_EVENTS;
+
+  function kindForMini(type: MiniEventType) {
+    if (type === "dance-party") return "mini-dance-party" as const;
+    if (type === "slow-jam") return "mini-slow-jam" as const;
+    if (type === "lounge") return "lounge" as const;
+    if (type === "dirty-dozens") return "dirty-dozens" as const;
+    return (
+      normalizeEventVenueKind(type) ??
+      (type === "release-party" ? ("mini-release" as const) : ("battle" as const))
+    );
+  }
 
   async function handleCreate(def: MiniEventDef) {
     if (creating) return;
     setCreating({ type: def.type });
     setError(null);
 
+    const kind = kindForMini(def.type);
+    const outdoorOk = isOutdoorSelectable(kind);
+    const env: VenueEnvironmentKind = outdoorOk ? venueEnvironment : "indoor";
+
     try {
       const res = await fetch(def.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(def.buildBody(displayName, genre)),
+        body: JSON.stringify(def.buildBody(displayName, genre, env)),
       });
 
       const data = (await res.json()) as Record<string, unknown>;
@@ -304,7 +351,7 @@ export function MiniEventCreator({
         return;
       }
 
-      const joinUrl = def.extractJoinUrl(data);
+      const joinUrl = def.extractJoinUrl({ ...data, venueEnvironment: env });
       onCreated?.(def.type, joinUrl);
       router.push(joinUrl);
     } catch {
@@ -316,6 +363,7 @@ export function MiniEventCreator({
 
   const isCompact = layout === "compact";
   const isList = layout === "list";
+  const showVenueToggle = events.some((e) => isOutdoorSelectable(kindForMini(e.type)));
 
   return (
     <div
@@ -348,6 +396,37 @@ export function MiniEventCreator({
           Create Instant Event
         </span>
       </div>
+
+      {showVenueToggle ? (
+        <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+          {(["indoor", "outdoor"] as const).map((env) => (
+            <button
+              key={env}
+              type="button"
+              onClick={() => setVenueEnvironment(env)}
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                borderRadius: 6,
+                border:
+                  venueEnvironment === env
+                    ? "1px solid rgba(0,255,255,0.55)"
+                    : "1px solid rgba(255,255,255,0.12)",
+                background:
+                  venueEnvironment === env ? "rgba(0,255,255,0.12)" : "rgba(255,255,255,0.04)",
+                color: venueEnvironment === env ? "#00FFFF" : "rgba(255,255,255,0.55)",
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              {env === "indoor" ? "🏠 Indoor" : "🌳 Outdoor"}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Button grid/list */}
       <div

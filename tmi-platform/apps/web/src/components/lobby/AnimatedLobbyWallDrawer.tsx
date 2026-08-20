@@ -108,9 +108,9 @@ const ALL_ROOMS: LobbyRoom[] = [
     href: "/live/rooms/game-show",     viewers: 0, isLive: false,
   },
   {
-    id: "slow-jam",      title: "Slow Jam Room", subtitle: "R&B · Neo-Soul · Meet & Greet",
-    type: "radio",       accent: "#FF2DAA",      glyph: "🌙",
-    href: "/live/rooms/slow-jam",      viewers: 0, isLive: false,
+    id: "slow-jam",      title: "Sunday Slow Jams", subtitle: "R&B · Neo-Soul · All-day Sunday ET",
+    type: "radio",       accent: "#AA2DFF",      glyph: "🌙",
+    href: "/rooms/slow-jams",      viewers: 0, isLive: false,
   },
 ];
 

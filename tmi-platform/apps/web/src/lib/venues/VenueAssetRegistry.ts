@@ -547,7 +547,7 @@ export function getAllVenueTypes(): VenueType[] {
 
 /** Maps ArenaEventShell event types to VenueType */
 export function arenaEventTypeToVenueType(
-  eventType: "concert" | "battle" | "cypher" | "challenge" | "song-challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party"
+  eventType: "concert" | "battle" | "cypher" | "challenge" | "song-challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party" | "slow-jams"
 ): VenueType {
   const map: Record<string, VenueType> = {
     concert:             "concert",
@@ -560,6 +560,7 @@ export function arenaEventTypeToVenueType(
     "deal-or-feud":      "deal-or-feud",
     "lounge":            "lounge",
     "world-dance-party": "world-dance-party",
+    "slow-jams":         "listening-party",
   };
   return map[eventType] ?? "concert";
 }
@@ -582,6 +583,7 @@ export function slugToVenueType(slug: string): VenueType {
   if (s.includes("challenge"))      return "challenge";
   if (s.includes("deal") || s.includes("feud")) return "deal-or-feud";
   if (s.includes("dance-party") || s.includes("world-dance")) return "world-dance-party";
+  if (s.includes("slow-jam")) return "listening-party";
   if (s.includes("fan-lobby") || s.includes("avatar-lobby")) return "fan-lobby";
   if (s.includes("lounge") || s.includes("vip")) return "lounge";
   return "concert"; // default for live shows

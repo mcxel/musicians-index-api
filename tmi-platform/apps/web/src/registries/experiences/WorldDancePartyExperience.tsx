@@ -4,11 +4,13 @@
  * WorldDancePartyExperience — canonical world-dance-party module (Branch B).
  * Configures EosArenaEventShell for full-body dance floor mode.
  * Official Friday pool overlay wired via WorldDancePartyNowPlayingOverlay.
+ * Default outdoor festival amphitheater (selectable indoor neon-club).
  */
 
 import EosArenaEventShell from "@/components/eos/ArenaEventShell";
 import { useExperienceRuntime } from "@/components/eos/ExperienceRuntimeContext";
 import WorldDancePartyNowPlayingOverlay from "@/components/dance/WorldDancePartyNowPlayingOverlay";
+import { resolveFlagshipVenueAtmosphere } from "@/lib/events/FlagshipVenueAtmosphere";
 
 export interface WorldDancePartyExperienceProps {
   roomId?: string;
@@ -21,6 +23,7 @@ export default function WorldDancePartyExperience({
 }: WorldDancePartyExperienceProps) {
   const manifest = useExperienceRuntime();
   const resolvedRoom = venueId ? `${roomId}-${venueId}` : roomId;
+  const atmosphere = resolveFlagshipVenueAtmosphere({ experience: "world-dance-party" });
 
   if (manifest.experience.id !== "world-dance-party") {
     return (
@@ -38,6 +41,8 @@ export default function WorldDancePartyExperience({
           eventType: "world-dance-party",
           mode: "audience",
           liveState: "live",
+          venueEnvironment: atmosphere.environment,
+          venueSkinId: atmosphere.skinId,
         }}
       />
       <WorldDancePartyNowPlayingOverlay />

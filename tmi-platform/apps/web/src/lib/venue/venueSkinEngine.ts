@@ -281,6 +281,32 @@ export const VENUE_SKINS: Record<string, VenueSkin> = {
     ambientSound: 'concert-hall-reverb',
     tags: ['concert', 'grand', 'premiere', 'classical'],
   },
+
+  /** Sunday Slow Jams default outdoor — cool night amphitheater / stars. */
+  'under-the-stars': {
+    id: 'under-the-stars',
+    name: 'Under the Stars',
+    description: 'Outdoor night lounge under soft starlight — sultry Slow Jam energy',
+    backgroundImage: '/venue-skins/under-the-stars/background.png',
+    colorPalette: {
+      primary: '#6B5CFF',
+      accent: '#FFD700',
+      floor: '#050510',
+      crowd: '#0a0614',
+      ui: '#AA2DFF',
+      glow: '#00FFFF',
+      text: '#E8E0FF',
+    },
+    lightingPreset: 'IDLE',
+    stageLayout: 'corner',
+    crowdLayout: 'scattered',
+    sponsorWallPlacement: 'none',
+    cameraAngles: ['wide-night', 'intimate-close', 'stars-up'],
+    particleEffects: ['star-dust', 'soft-haze'],
+    floorPattern: 'open-air',
+    ambientSound: 'night-crickets',
+    tags: ['outdoor', 'chill', 'slow-jam', 'night', 'lounge'],
+  },
 };
 
 export function getVenueSkin(id: string): VenueSkin {

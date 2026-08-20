@@ -28,8 +28,9 @@ import {
 } from "@/lib/lobby/liveLobbyWallLaw";
 import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import type { ShowsReleasePublicCard } from "@/lib/events/ScheduledEventRegistry";
-import { getWorldDancePartySchedule } from "@/lib/events/ScheduledEventRegistry";
+import { getWorldDancePartySchedule, getSlowJamsSchedule } from "@/lib/events/ScheduledEventRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { SLOW_JAM_MOTION } from "@/lib/live/ExperiencePersonality";
 
 function catalogCardToLobbyRoom(card: ShowsReleasePublicCard): LobbyRoom {
   return {
@@ -169,6 +170,36 @@ export default function LiveLobbyWallHost({
           status: wdp.phase === "LIVE" ? "live" : wdp.phase === "SUBMIT_OPEN" ? "starting" : "recruiting",
           genre: "Official · All-day Friday ET",
           overlayLine: wdp.label,
+        };
+        base = mapped.some((r) => r.id === pinned.id) ? mapped : [pinned, ...mapped];
+      } else if (activeCategory === "lounges" && fanSearchResults.length === 0) {
+        const sj = getSlowJamsSchedule();
+        const pinned: LobbyRoom = {
+          id: "slow-jams",
+          name:
+            sj.phase === "LIVE"
+              ? "🌙 Sunday Slow Jams"
+              : sj.phase === "SUBMIT_OPEN"
+                ? "🌙 Slow Jams — recruiting"
+                : "🌙 Slow Jams — next Sunday",
+          performerName: "Wave.Cast",
+          hostUserId: "bot-dj-2",
+          type: "lounge",
+          href: "/rooms/slow-jams",
+          viewerCount: 0,
+          status:
+            sj.phase === "LIVE"
+              ? "live"
+              : sj.phase === "SUBMIT_OPEN"
+                ? "starting"
+                : "recruiting",
+          genre: "Official · All-day Sunday ET",
+          overlayLine:
+            sj.phase === "LIVE"
+              ? SLOW_JAM_MOTION.copyLive
+              : sj.phase === "SUBMIT_OPEN"
+                ? sj.label
+                : SLOW_JAM_MOTION.copyClosed,
         };
         base = mapped.some((r) => r.id === pinned.id) ? mapped : [pinned, ...mapped];
       } else {

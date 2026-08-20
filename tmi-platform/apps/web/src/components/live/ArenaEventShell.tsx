@@ -35,6 +35,10 @@ import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import { getGuestId } from "@/lib/identity/getGuestId";
 import { resolveExperiencePersonality } from "@/lib/live/ExperiencePersonality";
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from "@/lib/venues/EventVenueEnvironment";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -73,7 +77,8 @@ export type ArenaEventType =
   | "monday-stage"
   | "deal-or-feud"
   | "lounge"
-  | "world-dance-party";
+  | "world-dance-party"
+  | "slow-jams";
 
 export type ArenaLiveState = "soon" | "live" | "ended";
 
@@ -88,6 +93,7 @@ const VENUE_MAP: Record<ArenaEventType, VenueIndex> = {
   "deal-or-feud":      3,
   "lounge":            0,
   "world-dance-party": 1,
+  "slow-jams":         3,
 };
 
 const EVENT_LABELS: Record<ArenaEventType, string> = {
@@ -98,9 +104,10 @@ const EVENT_LABELS: Record<ArenaEventType, string> = {
   "song-challenge":    "SONG CHALLENGE STAGE",
   "live-show":         "LIVE STAGE",
   "monday-stage":      "MONDAY NIGHT STAGE",
-  "deal-or-feud":      "DEAL OR FEUD",
+  "deal-or-feud":      "DEAL OR FEUD 1000",
   "lounge":            "VIP LOUNGE",
   "world-dance-party": "WORLD DANCE PARTY",
+  "slow-jams":         "SUNDAY SLOW JAMS",
 };
 
 // Maps ArenaEventType → venueSlug used by HeroPresenceRegistry
@@ -115,6 +122,7 @@ const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
   "deal-or-feud":      "deal-or-feud",
   "lounge":            "vip-lounge",
   "world-dance-party": "world-dance-party",
+  "slow-jams":         "slow-jams",
 };
 
 // Only battle/cypher/challenge are competition formats with a themeable
@@ -158,6 +166,13 @@ interface ArenaEventShellProps {
   readonly rubricPerformerLabels?: Record<string, string>;
   readonly rubricEventId?: string;
   readonly rubricVoterId?: string | null;
+  /**
+   * Indoor | outdoor venue mode (Marcel lock). Lounges ignore.
+   * Monday Night Stage + official game shows force indoor unless specialYearlyOutdoor.
+   */
+  readonly venueEnvironment?: VenueEnvironmentKind | null;
+  readonly venueSkinId?: string | null;
+  readonly specialYearlyOutdoor?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -201,8 +216,32 @@ export default function ArenaEventShell({
   rubricPerformerLabels,
   rubricEventId,
   rubricVoterId,
+  venueEnvironment = null,
+  venueSkinId = null,
+  specialYearlyOutdoor = false,
 }: ArenaEventShellProps) {
-  const venueIndex = VENUE_MAP[eventType] ?? 0;
+  const venueKindForEnv =
+    eventType === "monday-stage"
+      ? "monday-night-stage"
+      : eventType === "slow-jams"
+        ? "slow-jams"
+        : eventType === "world-dance-party"
+          ? "world-dance-party"
+          : eventType === "lounge"
+            ? "lounge"
+            : eventType === "deal-or-feud"
+              ? "deal-or-feud"
+              : eventType;
+  const envResolution = resolveEventVenueEnvironment({
+    kind: venueKindForEnv,
+    environment: venueEnvironment,
+    skinId: venueSkinId,
+    specialYearlyOutdoor,
+  });
+  const venueIndex =
+    envResolution.policy === "exempt"
+      ? (VENUE_MAP[eventType] ?? 0)
+      : envResolution.venueIndex;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
   const venueSlug = VENUE_SLUG_MAP[eventType];
   const showHeroes = liveState === "live";
@@ -219,6 +258,14 @@ export default function ArenaEventShell({
 
   const venueType = arenaEventTypeToVenueType(eventType);
   const isLive = liveState === "live";
+  const energyLevel =
+    envResolution.policy === "exempt"
+      ? isLive
+        ? 0.75
+        : 0.3
+      : isLive
+        ? envResolution.ambientEnergy
+        : envResolution.ambientEnergy * 0.45;
 
   const rubricIds = useMemo(() => {
     if (rubricPerformerIds && rubricPerformerIds.length > 0) return rubricPerformerIds;
@@ -272,7 +319,7 @@ export default function ArenaEventShell({
     <RoomEnvironmentLayer
       venueType={venueType}
       mode={mode}
-      energyLevel={isLive ? 0.75 : 0.3}
+      energyLevel={energyLevel}
       showSponsorZones={false}
     >
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>

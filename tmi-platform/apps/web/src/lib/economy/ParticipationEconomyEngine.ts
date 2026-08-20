@@ -52,6 +52,7 @@ export type SpendAction =
   | 'digital_asset_pack'
   | 'wdp_track_play'
   | 'wdp_vote_down'
+  | 'sj_track_play'
   | 'ranking_boost';
 
 export interface EconomyWallet {
@@ -129,6 +130,7 @@ const SPEND_TABLE: Record<Exclude<SpendAction, 'ranking_boost'>, number> = {
   digital_asset_pack: 175,
   wdp_track_play: 50,
   wdp_vote_down: 5,
+  sj_track_play: 50,
 };
 
 function nowIso(): string {

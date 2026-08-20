@@ -58,6 +58,8 @@ export const EXPERIENCE_COMPONENT_REGISTRY: Record<string, ExperienceComponent> 
   "deal-or-feud": loadDefault(() => import("./DealOrFeudExperience")),
   lounge: loadDefault(() => import("./LoungeExperience")),
   "world-dance-party": loadDefault(() => import("./WorldDancePartyExperience")),
+  "slow-jams": loadDefault(() => import("./SlowJamsExperience")),
+  "sunday-slow-jams": loadDefault(() => import("./SlowJamsExperience")),
   "jazz-scat-battle": loadDefault(() => import("./VocalImprovExperiences")),
   "gibberish-battle": dynamic(
     () =>
