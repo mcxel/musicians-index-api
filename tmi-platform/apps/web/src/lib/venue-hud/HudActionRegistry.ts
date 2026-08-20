@@ -148,6 +148,8 @@ export function resolveParticipationHudActions(input: {
   participationState?: ParticipationState;
   queueEngineAvailable?: boolean;
   hostControlsAvailable?: boolean;
+  hostActionCapabilities?: Parameters<typeof resolveParticipationEntry>[0]["hostActionCapabilities"];
+  gameActionsAvailable?: boolean;
 }): VenueHudAction[] {
   const roomKind = experienceToRoomKind(input.experienceType);
   return resolveParticipationEntry({
@@ -159,5 +161,7 @@ export function resolveParticipationHudActions(input: {
     participationState: input.participationState,
     queueEngineAvailable: input.queueEngineAvailable,
     hostControlsAvailable: input.hostControlsAvailable,
+    hostActionCapabilities: input.hostActionCapabilities,
+    gameActionsAvailable: input.gameActionsAvailable,
   }).hudActions;
 }

@@ -8,6 +8,12 @@
  */
 
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
+import {
+  allowsVoting,
+  allowsWinnerUi,
+  resolveExperiencePersonality,
+  type ExperiencePersonality,
+} from "@/lib/live/ExperiencePersonality";
 
 /** Canonical participation states — ONE shared machine for all room types. */
 export type ParticipationState =
@@ -62,6 +68,8 @@ export type VenueHudActionId =
   | "bring_on_stage"
   | "remove_from_stage"
   | "broadcast_spotlight"
+  | "audience_audio"
+  | "participant_mic"
   | "audience_mute"
   | "toggle_qa"
   | "allow_reactions"
@@ -95,6 +103,14 @@ export type ParticipationContext = {
   votingOpen: boolean;
   queueEngineAvailable: boolean;
   hostControlsAvailable: boolean;
+  /** Per-action engine availability — missing engine → honest disable. */
+  hostActionCapabilities?: Partial<
+    Record<VenueHudActionId, { available: boolean; reason?: string }>
+  >;
+  /** Game room exposes real PLAY / JOIN NEXT / SPECTATE handlers. */
+  gameActionsAvailable?: boolean;
+  /** Shell personality — gates challenge_winner / confrontation HUD. */
+  personality?: ExperiencePersonality;
 };
 
 export type ParticipationResolution = {
@@ -227,6 +243,11 @@ export function resolveParticipationEntry(input: {
   queueEngineAvailable?: boolean;
   hostControlsAvailable?: boolean;
   participationState?: ParticipationState;
+  hostActionCapabilities?: ParticipationContext["hostActionCapabilities"];
+  gameActionsAvailable?: boolean;
+  personality?: ExperiencePersonality;
+  cypherKing?: boolean;
+  featureFlags?: readonly string[] | null;
 }): ParticipationResolution {
   const role = normalizeParticipationRole(input.role);
   const ownership = input.ownership ?? "platform";
@@ -235,6 +256,13 @@ export function resolveParticipationEntry(input: {
   const votingOpen = Boolean(input.votingOpen);
   const queueEngineAvailable = input.queueEngineAvailable !== false;
   const hostControlsAvailable = input.hostControlsAvailable !== false;
+  const personality =
+    input.personality ??
+    resolveExperiencePersonality({
+      roomKind: input.roomKind,
+      cypherKing: input.cypherKing,
+      featureFlags: input.featureFlags,
+    });
 
   let entryMode: ParticipationEntryMode = "SPECTATOR";
   let initialState: ParticipationState = "SPECTATOR";
@@ -290,6 +318,9 @@ export function resolveParticipationEntry(input: {
     votingOpen,
     queueEngineAvailable,
     hostControlsAvailable,
+    hostActionCapabilities: input.hostActionCapabilities,
+    gameActionsAvailable: input.gameActionsAvailable,
+    personality,
   };
 
   return {
@@ -305,6 +336,10 @@ export function resolveParticipationEntry(input: {
 export function resolveVenueHudActions(ctx: ParticipationContext): VenueHudAction[] {
   const actions: VenueHudAction[] = [];
   const competition = COMPETITION_KINDS.has(ctx.roomKind);
+  const personality =
+    ctx.personality ?? resolveExperiencePersonality({ roomKind: ctx.roomKind });
+  const votingAllowed = allowsVoting(personality);
+  const winnerAllowed = allowsWinnerUi(personality);
   const onStage =
     ctx.participationState === "ON_STAGE" || ctx.participationState === "ACTIVE";
   const queued =
@@ -312,21 +347,25 @@ export function resolveVenueHudActions(ctx: ParticipationContext): VenueHudActio
     ctx.participationState === "REQUESTED" ||
     ctx.participationState === "READY";
 
-  // Fan affordances
+  // Fan affordances — Cypher STATS_ONLY still gets Vote (feeds metrics, not winner UI).
   if (ctx.role === "FAN" || !isPerformerCapable(ctx.role)) {
     actions.push({ id: "react", label: "React", icon: "🔥", enabled: true });
     actions.push({ id: "chat", label: "Chat", icon: "💬", enabled: true });
     actions.push({ id: "tip", label: "Tip", icon: "💎", enabled: true });
     actions.push({
       id: "vote",
-      label: "Vote",
+      label: personality.votingMode === "STATS_ONLY" ? "Vote (Stats)" : "Vote",
       icon: "🗳️",
-      enabled: ctx.votingOpen && competition,
-      reason: ctx.votingOpen ? undefined : "Voting closed",
+      enabled: ctx.votingOpen && votingAllowed,
+      reason: !votingAllowed
+        ? "Voting not available for this room"
+        : ctx.votingOpen
+          ? undefined
+          : "Voting closed",
     });
   }
 
-  // Competition performer — challenge / queue (not on stage yet)
+  // Competition performer — join queue always; challenge winner only when winner-stays allowed
   if (competition && isPerformerCapable(ctx.role) && !onStage && !ctx.isRoomOwner) {
     actions.push({
       id: "join_queue",
@@ -339,28 +378,34 @@ export function resolveVenueHudActions(ctx: ParticipationContext): VenueHudActio
           ? "Already queued"
           : undefined,
     });
-    actions.push({
-      id: "challenge_winner",
-      label: "Challenge Winner",
-      icon: "⚔️",
-      enabled: ctx.queueEngineAvailable && !queued,
-      reason: !ctx.queueEngineAvailable ? "Challenge engine unavailable" : undefined,
-    });
+    if (winnerAllowed && personality.allowsWinnerStays) {
+      actions.push({
+        id: "challenge_winner",
+        label: "Challenge Winner",
+        icon: "⚔️",
+        enabled: ctx.queueEngineAvailable && !queued,
+        reason: !ctx.queueEngineAvailable ? "Challenge engine unavailable" : undefined,
+      });
+    }
   }
 
-  // Games
+  // Games — only enable PLAY / JOIN NEXT when a real game surface exposes them
   if (ctx.roomKind === "game") {
+    const gameOk = Boolean(ctx.gameActionsAvailable);
+    const gameDefer = gameOk ? undefined : "Game round engine not mounted for this room";
     actions.push({
       id: "play_game",
       label: "Play",
       icon: "🎮",
-      enabled: true,
+      enabled: gameOk,
+      reason: gameDefer,
     });
     actions.push({
       id: "join_next_round",
       label: "Join Next Round",
       icon: "⏭️",
-      enabled: !onStage,
+      enabled: gameOk && !onStage,
+      reason: gameOk ? undefined : gameDefer,
     });
     actions.push({
       id: "spectate_game",
@@ -370,22 +415,57 @@ export function resolveVenueHudActions(ctx: ParticipationContext): VenueHudActio
     });
   }
 
-  // Room owner / host controls (human-owned) — wire only when hostControlsAvailable
+  // Room owner / host controls (human-owned) — per-engine availability
   if (ctx.isRoomOwner || ctx.role === "HOST" || ctx.role === "ADMIN") {
     const hostEnabled = ctx.hostControlsAvailable;
-    const defer = hostEnabled ? undefined : "Host controls not mounted for this room";
+    const caps = ctx.hostActionCapabilities;
+    const hostAction = (
+      id: VenueHudActionId,
+      label: string,
+      icon: string,
+      extraEnabled = true,
+    ): VenueHudAction => {
+      const cap = caps?.[id];
+      if (!hostEnabled) {
+        return {
+          id,
+          label,
+          icon,
+          enabled: false,
+          reason: "Host controls not mounted for this room",
+        };
+      }
+      if (cap && !cap.available) {
+        return { id, label, icon, enabled: false, reason: cap.reason ?? "Engine unavailable" };
+      }
+      return {
+        id,
+        label,
+        icon,
+        enabled: extraEnabled,
+        reason: extraEnabled ? undefined : "Unavailable in this room type",
+      };
+    };
+
     actions.push(
-      { id: "approve_next", label: "Approve Next", icon: "✅", enabled: hostEnabled, reason: defer },
-      { id: "reject_participant", label: "Reject", icon: "⛔", enabled: hostEnabled, reason: defer },
-      { id: "reorder_queue", label: "Reorder Queue", icon: "⇅", enabled: hostEnabled, reason: defer },
-      { id: "bring_on_stage", label: "Bring On Stage", icon: "🎤", enabled: hostEnabled, reason: defer },
-      { id: "remove_from_stage", label: "Remove From Stage", icon: "🚪", enabled: hostEnabled, reason: defer },
-      { id: "broadcast_spotlight", label: "Spotlight", icon: "💡", enabled: hostEnabled, reason: defer },
-      { id: "audience_mute", label: "Mute Audience", icon: "🔇", enabled: hostEnabled, reason: defer },
-      { id: "toggle_qa", label: "Q&A", icon: "❓", enabled: hostEnabled, reason: defer },
-      { id: "allow_reactions", label: "Reactions", icon: "👏", enabled: hostEnabled, reason: defer },
-      { id: "allow_voting", label: "Voting", icon: "🗳️", enabled: hostEnabled && competition, reason: defer },
-      { id: "lock_entry", label: "Lock Entry", icon: "🔒", enabled: hostEnabled, reason: defer },
+      hostAction("approve_next", "Approve Next", "✅"),
+      hostAction("reject_participant", "Reject", "⛔"),
+      hostAction("reorder_queue", "Reorder Queue", "⇅"),
+      hostAction("bring_on_stage", "Bring On Stage", "🎤"),
+      hostAction("remove_from_stage", "Remove From Stage", "🚪"),
+      hostAction("broadcast_spotlight", "Spotlight", "💡"),
+      hostAction("audience_audio", "Audience Audio", "🔊"),
+      hostAction("participant_mic", "Participant Mic", "🎙️"),
+      hostAction("audience_mute", "Mute Audience", "🔇"),
+      hostAction("toggle_qa", "Q&A", "❓"),
+      hostAction("allow_reactions", "Reactions", "👏"),
+      hostAction(
+        "allow_voting",
+        personality.votingMode === "STATS_ONLY" ? "Stats Voting" : "Voting",
+        "🗳️",
+        votingAllowed,
+      ),
+      hostAction("lock_entry", "Lock Entry", "🔒"),
     );
   }
 

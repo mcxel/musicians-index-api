@@ -26,11 +26,16 @@ import {
 import { resolveParticipationHudActions } from "@/lib/venue-hud/HudActionRegistry";
 import {
   joinQueue as joinQueueEngine,
-  advanceQueue,
+  getQueuePosition,
   getQueueSnapshot,
 } from "@/lib/live/queueEngine";
-import type { ParticipationState } from "@/lib/live/ParticipationStateMachine";
+import type { ParticipationState, VenueHudActionId } from "@/lib/live/ParticipationStateMachine";
 import { directorTick } from "@/lib/live/BotQueueDirector";
+import {
+  executeHostControl,
+  resolveHostControlCapabilities,
+} from "@/lib/live/HostRoomControlBridge";
+import { resolveVotingOpen } from "@/lib/live/ParticipationVotingBridge";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -80,12 +85,27 @@ export default function TMIInteractiveVenueHud({
   const [activeReactions, setActiveReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [queueCount, setQueueCount] = useState(0);
+  const [myQueuePos, setMyQueuePos] = useState<number | null>(null);
   const [localParticipation, setLocalParticipation] = useState<ParticipationState>(participationState);
+  const [liveVotingOpen, setLiveVotingOpen] = useState(votingOpen);
+  const [spotlightOn, setSpotlightOn] = useState(false);
+  const [audienceAudioOn, setAudienceAudioOn] = useState(true);
 
   const capabilities = useMemo(() => resolveHudCapabilities(role), [role]);
 
   const competition =
     experienceType === "BATTLE" || experienceType === "CYPHER" || experienceType === "CHALLENGE";
+
+  const hostCaps = useMemo(() => resolveHostControlCapabilities(roomId), [roomId]);
+
+  const syncVotingOpen = useCallback(() => {
+    const resolved = resolveVotingOpen({
+      roomId,
+      battleId,
+      propVotingOpen: votingOpen || undefined,
+    });
+    setLiveVotingOpen(resolved.votingOpen);
+  }, [roomId, battleId, votingOpen]);
 
   const hudActions = useMemo(
     () =>
@@ -93,17 +113,21 @@ export default function TMIInteractiveVenueHud({
         role: isRoomOwner ? "host" : role,
         experienceType,
         isRoomOwner,
-        votingOpen,
+        votingOpen: liveVotingOpen,
         participationState: localParticipation,
         queueEngineAvailable: true,
         hostControlsAvailable: isRoomOwner || role === "host" || role === "admin",
+        hostActionCapabilities: hostCaps,
+        gameActionsAvailable: false,
       }),
-    [role, experienceType, isRoomOwner, votingOpen, localParticipation],
+    [role, experienceType, isRoomOwner, liveVotingOpen, localParticipation, hostCaps],
   );
 
   const syncQueueCount = useCallback(() => {
     const snap = getQueueSnapshot(roomId);
     setQueueCount(snap.count);
+    const uid = payloadUserId();
+    setMyQueuePos(getQueuePosition(roomId, uid));
   }, [roomId]);
 
   useEffect(() => {
@@ -113,6 +137,48 @@ export default function TMIInteractiveVenueHud({
   useEffect(() => {
     setLocalParticipation(participationState);
   }, [participationState]);
+
+  useEffect(() => {
+    syncVotingOpen();
+    const onOpen = () => syncVotingOpen();
+    const onClose = () => syncVotingOpen();
+    if (typeof window !== "undefined") {
+      window.addEventListener("tmi:voting:open", onOpen);
+      window.addEventListener("tmi:voting:close", onClose);
+    }
+    const t = setInterval(syncVotingOpen, 2000);
+    return () => {
+      clearInterval(t);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("tmi:voting:open", onOpen);
+        window.removeEventListener("tmi:voting:close", onClose);
+      }
+    };
+  }, [syncVotingOpen]);
+
+  function payloadUserId(): string {
+    if (typeof window === "undefined") return `user-${roomId}`;
+    try {
+      return sessionStorage.getItem("tmi_user_id") ?? `guest-${roomId}`;
+    } catch {
+      return `guest-${roomId}`;
+    }
+  }
+
+  const runHostAction = useCallback(
+    (actionId: VenueHudActionId, params?: Record<string, unknown>) => {
+      if (!isRoomOwner && role !== "host" && role !== "admin") {
+        setStatusLine("Host only");
+        return false;
+      }
+      const result = executeHostControl(actionId, roomId, params);
+      setStatusLine(result.message);
+      syncQueueCount();
+      syncVotingOpen();
+      return result.ok;
+    },
+    [isRoomOwner, role, roomId, syncQueueCount, syncVotingOpen],
+  );
 
   // Register command handlers
   useEffect(() => {
@@ -173,7 +239,12 @@ export default function TMIInteractiveVenueHud({
         const slot = joinQueueEngine(roomId, payloadUserId(), "Performer", 5);
         setLocalParticipation("QUEUED");
         syncQueueCount();
-        setStatusLine(`Queued · position tracked (${slot.status})`);
+        const pos = getQueuePosition(roomId, payloadUserId());
+        setStatusLine(
+          pos != null
+            ? `Queued · #${pos} of ${getQueueSnapshot(roomId).count} · watching`
+            : `Queued · ${slot.status}`,
+        );
         return true;
       }),
 
@@ -194,23 +265,60 @@ export default function TMIInteractiveVenueHud({
           syncQueueCount();
           return result.ok;
         }
-        const next = advanceQueue(roomId);
-        syncQueueCount();
-        if (!next) {
-          setStatusLine("No one waiting in queue");
-          return false;
-        }
-        setStatusLine(`${next.performerName} → on stage`);
-        return true;
+        return runHostAction("approve_next");
       }),
 
+      HudCommandBus.register("REJECT_PARTICIPANT", () => runHostAction("reject_participant")),
+      HudCommandBus.register("REORDER_QUEUE", (payload) =>
+        runHostAction("reorder_queue", payload.params),
+      ),
+      HudCommandBus.register("BRING_ON_STAGE", () => runHostAction("bring_on_stage")),
+      HudCommandBus.register("REMOVE_FROM_STAGE", () => runHostAction("remove_from_stage")),
+      HudCommandBus.register("BROADCAST_SPOTLIGHT", () => {
+        const next = !spotlightOn;
+        setSpotlightOn(next);
+        return runHostAction("broadcast_spotlight", { active: next });
+      }),
+      HudCommandBus.register("AUDIENCE_AUDIO", () => {
+        const next = !audienceAudioOn;
+        setAudienceAudioOn(next);
+        return runHostAction("audience_audio", { enabled: next });
+      }),
+      HudCommandBus.register("PARTICIPANT_MIC", (payload) =>
+        runHostAction("participant_mic", payload.params ?? { allowed: true }),
+      ),
+      HudCommandBus.register("AUDIENCE_MUTE", () => runHostAction("audience_mute")),
+      HudCommandBus.register("TOGGLE_QA", () => runHostAction("toggle_qa")),
+      HudCommandBus.register("ALLOW_REACTIONS", () => runHostAction("allow_reactions")),
+      HudCommandBus.register("ALLOW_VOTING", () => runHostAction("allow_voting", { eventId: roomId })),
+      HudCommandBus.register("LOCK_ENTRY", () => runHostAction("lock_entry")),
+
       HudCommandBus.register("VOTE", () => {
-        if (!votingOpen) {
+        if (!liveVotingOpen) {
           setStatusLine("Voting closed");
           return false;
         }
-        setStatusLine("Vote cast");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("tmi:vote:focus", { detail: { roomId, battleId } }),
+          );
+        }
+        setStatusLine("Voting open — use rubric dock");
         return true;
+      }),
+
+      HudCommandBus.register("SPECTATE_GAME", () => {
+        setLocalParticipation("SPECTATOR");
+        setStatusLine("Spectating");
+        return true;
+      }),
+      HudCommandBus.register("PLAY_GAME", () => {
+        setStatusLine("Game round engine not mounted for this room");
+        return false;
+      }),
+      HudCommandBus.register("JOIN_NEXT_ROUND", () => {
+        setStatusLine("Game round engine not mounted for this room");
+        return false;
       }),
     ];
 
@@ -226,18 +334,12 @@ export default function TMIInteractiveVenueHud({
     role,
     ownership,
     battleId,
-    votingOpen,
+    liveVotingOpen,
     syncQueueCount,
+    runHostAction,
+    spotlightOn,
+    audienceAudioOn,
   ]);
-
-  function payloadUserId(): string {
-    if (typeof window === "undefined") return `user-${roomId}`;
-    try {
-      return sessionStorage.getItem("tmi_user_id") ?? `guest-${roomId}`;
-    } catch {
-      return `guest-${roomId}`;
-    }
-  }
 
   // Live session timer
   useEffect(() => {
@@ -250,6 +352,32 @@ export default function TMIInteractiveVenueHud({
     const mm = String(Math.floor(sec / 60)).padStart(2, "0");
     const ss = String(sec % 60).padStart(2, "0");
     return `${mm}:${ss}`;
+  };
+
+  const executeParticipationAction = (id: VenueHudActionId) => {
+    const map: Partial<Record<VenueHudActionId, string>> = {
+      join_queue: "JOIN_QUEUE",
+      challenge_winner: "JOIN_QUEUE",
+      vote: "VOTE",
+      approve_next: "APPROVE_NEXT",
+      reject_participant: "REJECT_PARTICIPANT",
+      reorder_queue: "REORDER_QUEUE",
+      bring_on_stage: "BRING_ON_STAGE",
+      remove_from_stage: "REMOVE_FROM_STAGE",
+      broadcast_spotlight: "BROADCAST_SPOTLIGHT",
+      audience_audio: "AUDIENCE_AUDIO",
+      participant_mic: "PARTICIPANT_MIC",
+      audience_mute: "AUDIENCE_MUTE",
+      toggle_qa: "TOGGLE_QA",
+      allow_reactions: "ALLOW_REACTIONS",
+      allow_voting: "ALLOW_VOTING",
+      lock_entry: "LOCK_ENTRY",
+      play_game: "PLAY_GAME",
+      join_next_round: "JOIN_NEXT_ROUND",
+      spectate_game: "SPECTATE_GAME",
+    };
+    const cmd = map[id];
+    if (cmd) void HudCommandBus.execute(cmd);
   };
 
   const handleGoLive = () => {
@@ -399,11 +527,35 @@ export default function TMIInteractiveVenueHud({
           </div>
 
           {/* Participation Law actions — role × room (no dead no-ops) */}
-          {hudActions.filter((a) => ["join_queue", "challenge_winner", "vote", "approve_next", "bring_on_stage"].includes(a.id)).length > 0 && (
+          {hudActions.filter((a) =>
+            [
+              "join_queue",
+              "challenge_winner",
+              "vote",
+              "approve_next",
+              "reject_participant",
+              "bring_on_stage",
+              "remove_from_stage",
+              "play_game",
+              "join_next_round",
+              "spectate_game",
+            ].includes(a.id),
+          ).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, width: "100%" }}>
               {hudActions
                 .filter((a) =>
-                  ["join_queue", "challenge_winner", "vote", "approve_next", "bring_on_stage"].includes(a.id),
+                  [
+                    "join_queue",
+                    "challenge_winner",
+                    "vote",
+                    "approve_next",
+                    "reject_participant",
+                    "bring_on_stage",
+                    "remove_from_stage",
+                    "play_game",
+                    "join_next_round",
+                    "spectate_game",
+                  ].includes(a.id),
                 )
                 .map((action) => (
                   <button
@@ -416,13 +568,7 @@ export default function TMIInteractiveVenueHud({
                         setStatusLine(action.reason ?? "Unavailable");
                         return;
                       }
-                      if (action.id === "join_queue" || action.id === "challenge_winner") {
-                        void HudCommandBus.execute("JOIN_QUEUE");
-                      } else if (action.id === "approve_next" || action.id === "bring_on_stage") {
-                        void HudCommandBus.execute("APPROVE_NEXT");
-                      } else if (action.id === "vote") {
-                        void HudCommandBus.execute("VOTE");
-                      }
+                      void executeParticipationAction(action.id);
                     }}
                     style={{
                       ...iconChip(action.enabled ? GOLD : "rgba(255,255,255,0.35)"),
@@ -536,14 +682,40 @@ export default function TMIInteractiveVenueHud({
               {cameraOff ? "🚫" : "🎥"}
             </button>
             {(isRoomOwner || role === "host" || role === "admin") && (
-              <button
-                type="button"
-                title="Approve next in queue"
-                onClick={() => HudCommandBus.execute("APPROVE_NEXT")}
-                style={sideIconBtn(GREEN)}
-              >
-                ✅
-              </button>
+              <>
+                <button
+                  type="button"
+                  title="Approve next in queue"
+                  onClick={() => HudCommandBus.execute("APPROVE_NEXT")}
+                  style={sideIconBtn(GREEN)}
+                >
+                  ✅
+                </button>
+                <button
+                  type="button"
+                  title="Reject next request"
+                  onClick={() => HudCommandBus.execute("REJECT_PARTICIPANT")}
+                  style={sideIconBtn(RED)}
+                >
+                  ⛔
+                </button>
+                <button
+                  type="button"
+                  title="Remove from stage"
+                  onClick={() => HudCommandBus.execute("REMOVE_FROM_STAGE")}
+                  style={sideIconBtn(FUCHSIA)}
+                >
+                  🚪
+                </button>
+                <button
+                  type="button"
+                  title="Spotlight"
+                  onClick={() => HudCommandBus.execute("BROADCAST_SPOTLIGHT")}
+                  style={sideIconBtn(spotlightOn ? GOLD : CYAN)}
+                >
+                  💡
+                </button>
+              </>
             )}
           </div>
 
@@ -573,16 +745,19 @@ export default function TMIInteractiveVenueHud({
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{ color: GOLD, fontWeight: 800 }}>
                   {localParticipation === "QUEUED" || localParticipation === "READY"
-                    ? "IN QUEUE · WATCHING"
+                    ? myQueuePos != null
+                      ? `IN QUEUE #${myQueuePos} · WATCHING`
+                      : "IN QUEUE · WATCHING"
                     : localParticipation === "ON_STAGE" || localParticipation === "ACTIVE"
                       ? "ON STAGE"
                       : "SPECTATING"}
                 </div>
                 <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
                   Queue: {queueCount > 0 ? `${queueCount} waiting` : "Empty"}
+                  {myQueuePos != null ? ` · you #${myQueuePos}` : ""}
                 </div>
                 <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
-                  Vote: {votingOpen ? "Open" : "Closed"}
+                  Vote: {liveVotingOpen ? "Open" : "Closed"}
                 </div>
               </div>
             )}
@@ -611,7 +786,37 @@ export default function TMIInteractiveVenueHud({
             {experienceType === "GAME_SHOW" && (
               <div style={{ fontSize: 10, color: "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{ color: GREEN, fontWeight: 800 }}>GAME MODE</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Watch · Play · Next round</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
+                  Spectate available · Play/Next round pending engine
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {hudActions
+                    .filter((a) => ["spectate_game", "play_game", "join_next_round"].includes(a.id))
+                    .map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        disabled={!a.enabled}
+                        title={a.reason ?? a.label}
+                        onClick={() => {
+                          if (!a.enabled) {
+                            setStatusLine(a.reason ?? "Unavailable");
+                            return;
+                          }
+                          executeParticipationAction(a.id);
+                        }}
+                        style={{
+                          ...iconChip(a.enabled ? GREEN : "rgba(255,255,255,0.35)"),
+                          fontSize: 8,
+                          padding: "4px 6px",
+                          opacity: a.enabled ? 1 : 0.45,
+                          cursor: a.enabled ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        {a.icon} {a.label}
+                      </button>
+                    ))}
+                </div>
               </div>
             )}
           </div>
@@ -681,22 +886,82 @@ export default function TMIInteractiveVenueHud({
               {role === "fan" && (
                 <button
                   type="button"
-                  title={votingOpen ? "Vote" : "Voting closed"}
-                  disabled={!votingOpen}
+                  title={liveVotingOpen ? "Vote" : "Voting closed"}
+                  disabled={!liveVotingOpen}
                   onClick={() => HudCommandBus.execute("VOTE")}
                   style={{
                     padding: "6px 10px",
                     borderRadius: 14,
-                    border: `1px solid ${votingOpen ? GOLD : "rgba(255,255,255,0.2)"}`,
-                    background: votingOpen ? `${GOLD}22` : "rgba(255,255,255,0.04)",
-                    color: votingOpen ? GOLD : "rgba(255,255,255,0.35)",
+                    border: `1px solid ${liveVotingOpen ? GOLD : "rgba(255,255,255,0.2)"}`,
+                    background: liveVotingOpen ? `${GOLD}22` : "rgba(255,255,255,0.04)",
+                    color: liveVotingOpen ? GOLD : "rgba(255,255,255,0.35)",
                     fontSize: 10,
                     fontWeight: 900,
-                    cursor: votingOpen ? "pointer" : "not-allowed",
+                    cursor: liveVotingOpen ? "pointer" : "not-allowed",
                   }}
                 >
                   🗳️ VOTE
                 </button>
+              )}
+              {(isRoomOwner || role === "host" || role === "admin") && (
+                <>
+                  {hudActions
+                    .filter((a) =>
+                      [
+                        "reorder_queue",
+                        "audience_mute",
+                        "audience_audio",
+                        "participant_mic",
+                        "allow_reactions",
+                        "allow_voting",
+                        "lock_entry",
+                        "toggle_qa",
+                      ].includes(a.id),
+                    )
+                    .map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        title={a.reason ?? a.label}
+                        disabled={!a.enabled}
+                        onClick={() => {
+                          if (!a.enabled) {
+                            setStatusLine(a.reason ?? "Unavailable");
+                            return;
+                          }
+                          executeParticipationAction(a.id);
+                        }}
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: 14,
+                          border: `1px solid ${a.enabled ? CYAN : "rgba(255,255,255,0.2)"}`,
+                          background: a.enabled ? `${CYAN}18` : "rgba(255,255,255,0.04)",
+                          color: a.enabled ? CYAN : "rgba(255,255,255,0.35)",
+                          fontSize: 9,
+                          fontWeight: 900,
+                          cursor: a.enabled ? "pointer" : "not-allowed",
+                          opacity: a.enabled ? 1 : 0.45,
+                        }}
+                      >
+                        {a.icon} {a.label}
+                      </button>
+                    ))}
+                </>
+              )}
+              {(localParticipation === "QUEUED" || localParticipation === "READY") && myQueuePos != null && (
+                <span
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 14,
+                    border: `1px solid ${GOLD}66`,
+                    background: `${GOLD}14`,
+                    color: GOLD,
+                    fontSize: 10,
+                    fontWeight: 900,
+                  }}
+                >
+                  📋 #{myQueuePos} · watching
+                </span>
               )}
             </div>
 

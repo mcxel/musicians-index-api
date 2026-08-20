@@ -34,15 +34,21 @@ import { MemoryLedger } from "@/core/eos/memoryLedger";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import { getGuestId } from "@/lib/identity/getGuestId";
+import { resolveExperiencePersonality } from "@/lib/live/ExperiencePersonality";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
-  { ssr: false }
+  { ssr: false },
+);
+
+const TMIInteractiveVenueHud = dynamic(
+  () => import("@/components/venue-hud/TMIInteractiveVenueHud"),
+  { ssr: false },
 );
 
 const AvatarVenueAnchor = dynamic(
   () => import("@/components/avatar/AvatarVenueAnchor"),
-  { ssr: false }
+  { ssr: false },
 );
 
 // NOTE (2026-07-23): components/competition/CompetitionAudienceViewport is
@@ -331,8 +337,45 @@ export default function ArenaEventShell({
             rightParticipant={rightParticipant}
             crowdEnergy={crowdEnergy}
             winnerParticipantId={winnerParticipantId}
+            personality={resolveExperiencePersonality({
+              format: competitionFormat,
+              eventType,
+              roomKind:
+                eventType === "cypher"
+                  ? "cypher"
+                  : eventType === "battle"
+                    ? "battle"
+                    : eventType === "challenge" || eventType === "song-challenge"
+                      ? "challenge"
+                      : undefined,
+            })}
           />
         )}
+        {/* Participation Law HUD — votingOpen from real rubric/phase signals only */}
+        <TMIInteractiveVenueHud
+          roomId={roomId}
+          roomTitle={label}
+          experienceType={
+            eventType === "battle"
+              ? "BATTLE"
+              : eventType === "cypher"
+                ? "CYPHER"
+                : eventType === "challenge" || eventType === "song-challenge"
+                  ? "CHALLENGE"
+                  : eventType === "deal-or-feud"
+                    ? "GAME_SHOW"
+                    : "LIVE"
+          }
+          role={mode === "performer" ? "performer" : "fan"}
+          votingOpen={showRubric}
+          ownership={
+            eventType === "monday-stage" || eventType === "deal-or-feud"
+              ? "bot_operated"
+              : "human_owned"
+          }
+          battleId={roomId.startsWith("battle-") ? roomId.replace(/^battle-/, "") : roomId}
+          humanViewerCount={typeof watcherCount === "number" ? watcherCount : 0}
+        />
       </div>
 
       {/* Fan rubric dock — shared wire for battle / challenge / monday-stage /

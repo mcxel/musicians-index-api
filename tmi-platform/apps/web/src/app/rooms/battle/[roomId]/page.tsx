@@ -8,6 +8,7 @@ import WinnerStaysChallengerHUD from "@/components/battles/WinnerStaysChallenger
 import ChallengeThisPerformanceButton from "@/components/battles/ChallengeThisPerformanceButton";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
+import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
 import {
   winnerStaysLifecycleEngine,
   type WinnerStaysSession,
@@ -143,6 +144,16 @@ export default function BattleRoomByIdPage() {
       <div style={{ position: "relative", minHeight: 420 }}>
         <UniversalVenueRenderer roomId={roomId} mode="audience" venueIndex={0} instantEmptyStage />
         <WinnerStaysChallengerHUD battleId={battleId} actor={actor} />
+        <TMIInteractiveVenueHud
+          roomId={roomId}
+          roomTitle="Battle Room"
+          experienceType="BATTLE"
+          role="performer"
+          votingOpen={rubricOpen}
+          ownership="human_owned"
+          battleId={battleId}
+          isRoomOwner
+        />
       </div>
 
       {rubricOpen && (
