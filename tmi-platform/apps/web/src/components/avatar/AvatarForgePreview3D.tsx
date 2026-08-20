@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { AvatarCameraFocus } from "@/components/3d/AvatarLobbyCanvas";
 import {
   forgeSelectionToCosmeticIds,
   cosmeticIdsToAttachments,
@@ -27,6 +28,8 @@ export type AvatarForgePreview3DProps = {
   bodyMass?: number;
   equippedCosmeticIds?: string[];
   portraitUrl?: string;
+  hero?: boolean;
+  cameraFocus?: AvatarCameraFocus;
 };
 
 const HAIR_TINT: Record<string, string> = {
@@ -56,6 +59,8 @@ export default function AvatarForgePreview3D({
   bodyMass = 50,
   equippedCosmeticIds = [],
   portraitUrl,
+  hero = false,
+  cameraFocus = "body",
 }: AvatarForgePreview3DProps) {
   const ids = forgeSelectionToCosmeticIds({
     outfit,
@@ -74,6 +79,88 @@ export default function AvatarForgePreview3D({
   const activeProp =
     attachments.find((a) => a.socketId === "socket_primary_hand")?.id ?? undefined;
 
+  const viewer = (
+    <AvatarViewer
+      active
+      color={skin}
+      hairColor={HAIR_TINT[hair] ?? skin}
+      visorColor={
+        eyes.includes("Neon") ? "#00FFFF" : eyes.includes("Emerald") ? "#00FF88" : "#FFD700"
+      }
+      crown={crown}
+      isPlaying={isPlaying}
+      isSeated={isSeated || pose === "Sit"}
+      attachments={attachments}
+      outfitTint={outfitTint}
+      activePropId={activeProp}
+      portraitUrl={portraitUrl}
+      bodyHeight={bodyHeight}
+      bodyMass={bodyMass}
+      size={hero ? 420 : 280}
+      fill={hero}
+      cameraFocus={cameraFocus}
+      enableOrbit
+    />
+  );
+
+  if (hero) {
+    return (
+      <section
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          minHeight: 320,
+          background: "radial-gradient(ellipse at 50% 28%, #3a1a62 0%, #12081c 48%, #07050f 100%)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {viewer}
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 12,
+            right: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            pointerEvents: "none",
+          }}
+        >
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", color: "#00FFFF99" }}>
+            3D AVATAR RUNTIME v0 — EVOLVING
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>
+            {profileName || "Fan avatar"} · {heightLabel} · {massLabel}
+          </span>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 10,
+            left: 12,
+            right: 12,
+            fontSize: 9,
+            color: "rgba(255,255,255,0.4)",
+            pointerEvents: "none",
+          }}
+        >
+          Capsule + socket costumes · drag to orbit · not a photoreal mesh
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       style={{
@@ -90,54 +177,24 @@ export default function AvatarForgePreview3D({
           3D AVATAR RUNTIME v0 — EVOLVING
         </span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 14 }}>
-        <div
-          style={{
-            borderRadius: 16,
-            border: "1px solid #7e61a5",
-            background: "#170f24",
-            height: 300,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
-        >
-          <AvatarViewer
-            active
-            color={skin}
-            hairColor={HAIR_TINT[hair] ?? skin}
-            visorColor={
-              eyes.includes("Neon") ? "#00FFFF" : eyes.includes("Emerald") ? "#00FF88" : "#FFD700"
-            }
-            crown={crown}
-            isPlaying={isPlaying}
-            isSeated={isSeated || pose === "Sit"}
-            attachments={attachments}
-            outfitTint={outfitTint}
-            activePropId={activeProp}
-            portraitUrl={portraitUrl}
-            size={280}
-            enableOrbit
-          />
-        </div>
-        <div style={{ color: "#ddc8fa", fontSize: 12, lineHeight: 1.8 }}>
-          <div style={{ fontWeight: 800, color: "#fff", marginBottom: 4 }}>{profileName || "Unnamed"}</div>
-          <div>Hair: {hair}</div>
-          <div>Eyes: {eyes}</div>
-          <div>Outfit / costume: {outfit}</div>
-          <div>Prop: {propName}</div>
-          <div>Accessories: {accessories.join(", ") || "None"}</div>
-          <div>Loadout SKUs: {ids.join(", ") || "—"}</div>
-          <div>Background: {background}</div>
-          <div>Lighting: {lighting}</div>
-          <div>
-            Pose: {pose} · {heightLabel} · {massLabel}
-          </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
-            Capsule + socket costumes/props — not a finished mesh pipeline.
-          </div>
-        </div>
+      <div
+        style={{
+          borderRadius: 16,
+          border: "1px solid #7e61a5",
+          background: "#170f24",
+          height: 300,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        {viewer}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
+        {profileName || "Unnamed"} · {outfit} · {pose} · capsule + sockets — not a finished mesh pipeline.
+        {background ? ` · ${background}` : ""}
+        {lighting ? ` · ${lighting}` : ""}
       </div>
     </section>
   );

@@ -291,7 +291,7 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
       const res = await fetch("/api/stream-win/react", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ songId, userId: userId.current, reaction, listenPct, isActive }),
+        body: JSON.stringify({ songId, userId: userId.current, reaction, listenPct, isActive, role: sessionRole }),
       });
       const data = await res.json().catch(() => ({}));
       if (data.xpAwarded) setSessionXP(x => x + (data.xpAmount ?? 10));

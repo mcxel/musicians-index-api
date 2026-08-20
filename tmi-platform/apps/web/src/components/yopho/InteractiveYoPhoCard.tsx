@@ -16,12 +16,9 @@ import { getStudioStylePreset } from "@/lib/yopho/YoPhoStudioStylePresets";
 import type { PublishedYoPhoCard } from "@/lib/yopho/YoPhoCardRegistry";
 import { defaultMotionClip } from "@/lib/yopho/YoPhoCardComposition";
 import { DEFAULT_BRANDING_FOOTER, getActiveMagicEffects } from "@/lib/yopho/YoPhoCardDocument";
-import { getPlaylist, getTrack } from "@/lib/playlists/PlaylistEngine";
-import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
-import {
-  castPlaylistToMonitor,
-  publishPlaylistNowPlaying,
-} from "@/lib/playlists/PlaylistMonitorCast";
+import { resolveCardMediaModules } from "@/lib/yopho/YoPhoMediaModule";
+import YoPhoCardMediaPlayer from "@/components/yopho/YoPhoCardMediaPlayer";
+import { useAudio } from "@/components/AudioProvider";
 import {
   getActiveSessions,
   onSessionsChanged,
@@ -100,59 +97,22 @@ export default function InteractiveYoPhoCard({ card }: Props) {
 
   const [enlarged, setEnlarged] = useState(false);
   const [phase, setPhase] = useState<MotorPhase>("playing");
-  const [trackIndex, setTrackIndex] = useState(0);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const { currentTrack, isPlaying: audioPlaying, pause: pauseGlobal, play: playGlobal, next } = useAudio();
 
   const [sessions, setSessions] = useState<LiveSession[]>(() => getActiveSessions());
   useEffect(() => onSessionsChanged(setSessions), []);
   const live = findLive(sessions, card.slug, card.displayName);
 
-  const playlist = useMemo(() => {
-    const id = card.nowPlaying?.playlistId ?? card.playlistId;
-    return id ? getPlaylist(id) ?? null : null;
-  }, [card.nowPlaying?.playlistId, card.playlistId]);
-
-  const playlistTracks = useMemo(() => {
-    if (!playlist) return [];
-    return playlist.entries
-      .slice()
-      .sort((a, b) => a.position - b.position)
-      .map((e) => getTrack(e.trackId))
-      .filter((t): t is NonNullable<typeof t> => Boolean(t));
-  }, [playlist]);
-
-  const currentTrack = useMemo(() => {
-    if (playlistTracks.length > 0) {
-      return playlistTracks[trackIndex % playlistTracks.length]!;
-    }
-    const np = card.nowPlaying;
-    if (np?.audioUrl || np?.title) {
-      return {
-        id: np.trackId ?? "now",
-        title: np.title ?? "My song right now",
-        artistName: np.artist ?? card.displayName,
-        audioUrl: np.audioUrl ?? null,
-        coverUrl: np.coverUrl ?? null,
-      };
-    }
-    return null;
-  }, [playlistTracks, trackIndex, card.nowPlaying, card.displayName]);
-
-  const audioUrl = useMemo(() => {
-    let raw: string | null = null;
-    if (currentTrack) {
-      if ("audioUrl" in currentTrack && currentTrack.audioUrl) raw = currentTrack.audioUrl as string;
-      else {
-        const t = currentTrack as ReturnType<typeof getTrack>;
-        if (t && "platforms" in t) raw = t.platforms?.tmi ?? null;
-      }
-    }
-    if (!raw) raw = card.nowPlaying?.audioUrl ?? null;
-    return resolveDurablePlayableSrc(raw);
-  }, [currentTrack, card.nowPlaying?.audioUrl]);
+  const cardMediaModules = useMemo(
+    () =>
+      resolveCardMediaModules({
+        mediaModules: card.mediaModules ?? card.documentJson?.mediaModules,
+        nowPlaying: card.nowPlaying,
+        playlistId: card.playlistId,
+      }),
+    [card.mediaModules, card.documentJson?.mediaModules, card.nowPlaying, card.playlistId],
+  );
 
   // Hook loop: seek to hookStart and restart when past hookStart+duration
   useEffect(() => {
@@ -184,43 +144,15 @@ export default function InteractiveYoPhoCard({ card }: Props) {
     };
   }, [hasMotion, motion.sourceUrl, motion.hookStartSec, motion.durationSec, phase]);
 
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !audioUrl) return;
-    el.loop = !playlistTracks.length;
-    el.src = audioUrl;
-    if (phase === "playing") {
-      void el.play().then(() => setAudioPlaying(true)).catch(() => {
-        setAudioError("Tap ▶ to start song (browser blocked autoplay)");
-        setAudioPlaying(false);
-      });
-    }
-  }, [audioUrl, playlistTracks.length, phase]);
-
-  const onAudioEnded = useCallback(() => {
-    if (playlistTracks.length > 1) {
-      setTrackIndex((i) => (i + 1) % playlistTracks.length);
-    }
-  }, [playlistTracks.length]);
-
   const nextTrack = useCallback(() => {
-    if (playlistTracks.length === 0) {
-      setAudioError(card.nowPlaying?.title ? "Single song — looping" : "No playlist attached");
-      return;
-    }
-    setTrackIndex((i) => (i + 1) % playlistTracks.length);
-    setAudioError(null);
-  }, [playlistTracks.length, card.nowPlaying?.title]);
+    next();
+  }, [next]);
 
   const enterPauseReaction = useCallback(() => {
     setPhase("paused_react");
     const v = videoRef.current;
     if (v) v.pause();
-    // Soft: keep song playing unless user paused audio; advance playlist beat on pause
-    if (playlistTracks.length > 1) {
-      setTrackIndex((i) => (i + 1) % playlistTracks.length);
-    }
-  }, [playlistTracks.length]);
+  }, []);
 
   const resumeMotor = useCallback(() => {
     setPhase("playing");
@@ -232,28 +164,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
       }
       void v.play().catch(() => {});
     }
-    const a = audioRef.current;
-    if (a && audioUrl) {
-      void a.play().then(() => setAudioPlaying(true)).catch(() => {});
-    }
-  }, [hasMotion, motion.hookStartSec, motion.durationSec, audioUrl]);
-
-  useEffect(() => {
-    if (!currentTrack) return;
-    const payload = {
-      playlistId: card.nowPlaying?.playlistId ?? card.playlistId ?? "yopho-card",
-      trackId: "id" in currentTrack ? String(currentTrack.id) : undefined,
-      title: "title" in currentTrack ? String(currentTrack.title) : "Track",
-      artist:
-        "artistName" in currentTrack
-          ? String((currentTrack as { artistName?: string }).artistName)
-          : card.displayName,
-      audioUrl,
-      coverUrl: card.nowPlaying?.coverUrl ?? card.subjectUrl,
-    };
-    castPlaylistToMonitor(payload);
-    publishPlaylistNowPlaying({ ...payload, isPlaying: audioPlaying && phase === "playing" });
-  }, [currentTrack, audioUrl, audioPlaying, phase, card]);
+  }, [hasMotion, motion.hookStartSec, motion.durationSec]);
 
   const tipHref = card.slug ? `/tip/${card.slug}` : null;
   const profileHref =
@@ -569,6 +480,8 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         </div>
       ) : null}
 
+      <YoPhoCardMediaPlayer modules={cardMediaModules} displayName={card.displayName} interactive />
+
       <div
         style={{
           position: "absolute",
@@ -578,6 +491,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
           zIndex: 12,
           padding: "16px 14px 10px",
           background: "linear-gradient(transparent, rgba(5,5,16,0.92))",
+          pointerEvents: "none",
         }}
       >
         <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 900, color: "#fff", textShadow: "0 2px 8px #000" }}>
@@ -590,10 +504,8 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         )}
         {currentTrack ? (
           <div style={{ fontSize: 11, color: "#00E5FF", marginTop: 6, fontWeight: 700 }}>
-            ♪ {String((currentTrack as { title?: string }).title ?? "Now playing")}
-            {"artistName" in currentTrack && (currentTrack as { artistName?: string }).artistName
-              ? ` — ${(currentTrack as { artistName?: string }).artistName}`
-              : ""}
+            ♪ {currentTrack.title}
+            {currentTrack.artist ? ` — ${currentTrack.artist}` : ""}
           </div>
         ) : (
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>No song attached</div>
@@ -612,7 +524,6 @@ export default function InteractiveYoPhoCard({ card }: Props) {
   return (
     <div style={{ width: "100%", color: "#fff" }}>
       <style>{LOOP_CSS}</style>
-      <audio ref={audioRef} onEnded={onAudioEnded} preload="auto" />
 
       {enlarged ? (
         <div
@@ -652,20 +563,8 @@ export default function InteractiveYoPhoCard({ card }: Props) {
           <button
             type="button"
             onClick={() => {
-              const el = audioRef.current;
-              if (!el || !audioUrl) {
-                setAudioError("No audio URL on this song yet");
-                return;
-              }
-              if (el.paused) {
-                void el.play().then(() => {
-                  setAudioPlaying(true);
-                  setAudioError(null);
-                });
-              } else {
-                el.pause();
-                setAudioPlaying(false);
-              }
+              if (audioPlaying) pauseGlobal();
+              else void playGlobal();
             }}
             style={btn("#00E5FF")}
           >
@@ -678,9 +577,6 @@ export default function InteractiveYoPhoCard({ card }: Props) {
             🔍 ENLARGE
           </button>
         </div>
-        {audioError ? (
-          <div style={{ textAlign: "center", fontSize: 11, color: "#FFD700" }}>{audioError}</div>
-        ) : null}
         {!hasMotion ? (
           <div style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
             No motion clip — still + ken-burns. Upload a motion hook in the editor.

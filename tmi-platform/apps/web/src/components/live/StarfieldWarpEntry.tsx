@@ -56,10 +56,14 @@ export default function StarfieldWarpEntry() {
 
     function resize() {
       if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const parent = canvas.parentElement;
+      canvas.width = parent?.clientWidth || window.innerWidth;
+      canvas.height = parent?.clientHeight || window.innerHeight;
     }
     resize();
+    const host = canvas.parentElement;
+    const ro = host ? new ResizeObserver(resize) : null;
+    if (host && ro) ro.observe(host);
     window.addEventListener("resize", resize);
 
     function frame(now: number) {
@@ -130,6 +134,7 @@ export default function StarfieldWarpEntry() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
+      ro?.disconnect();
     };
   }, [isActive, clear]);
 
@@ -138,11 +143,14 @@ export default function StarfieldWarpEntry() {
   return (
     <canvas
       ref={canvasRef}
+      data-starfield-player-overlay="true"
       style={{
-        position: "fixed",
+        position: "absolute",
         inset: 0,
-        zIndex: 9998,
+        zIndex: 90,
         display: "block",
+        width: "100%",
+        height: "100%",
         pointerEvents: "none",
         background: "transparent",
       }}

@@ -10,7 +10,6 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import YoPhoStudioDrawer from '../studio/YoPhoStudioDrawer';
 import InventoryPanelOverlay from '../panels/InventoryPanelOverlay';
 import MemoryWallPanelOverlay from '../panels/MemoryWallPanelOverlay';
 import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
@@ -20,11 +19,13 @@ import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
+import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from '@/lib/dock/presentInstantGoLiveInPlace';
 import { livingOsCommandBus } from '@/lib/os/livingOsCommandBus';
 import type { PlatformRole } from '@/lib/os/universalPermissionRegistry';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/lib/design/ThemeEngine';
 import { openCanonicalWorkspaceQuick, presentCanonicalWorkspace } from '@/lib/workspace/universal/openCanonicalPresentation';
+import { useCompactQuickPanelStore } from '@/lib/hud/compactQuickPanelStore';
 
 export type DockModuleId = 'lobby' | 'yopho' | 'playlist' | 'memory';
 
@@ -53,6 +54,7 @@ export default function MasterControlDock({
   onOpenModule,
 }: MasterControlDockProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const theme = useTheme();
   const [isMicActive, setIsMicActive] = useState(true);
   const [isCamActive, setIsCamActive] = useState(true);
@@ -80,15 +82,24 @@ export default function MasterControlDock({
     return () => window.clearInterval(id);
   }, [isPlayingAudio]);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check, { passive: true });
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
-  const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [goLivePhase, setGoLivePhase] = useState<'idle' | 'launching' | 'error'>('idle');
   const [goLiveError, setGoLiveError] = useState('');
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace, setRole } =
     useFloatingWorkspace();
+  const togglePanel = useCompactQuickPanelStore((s) => s.togglePanel);
 
   const isPerformer = role === 'performer' || role === 'artist';
 
@@ -150,7 +161,7 @@ export default function MasterControlDock({
           onClose={() => setIsInventoryOpen(false)}
           onOpenAvatarStudio={() => {
             setIsInventoryOpen(false);
-            setIsStudioOpen(true);
+            router.push('/avatar/studio');
           }}
           onViewAll={() => {
             setIsInventoryOpen(false);
@@ -166,11 +177,6 @@ export default function MasterControlDock({
           setIsMemoryWallOpen(false);
           openWorkspace('memory_wall');
         }}
-      />
-      <YoPhoStudioDrawer
-        isOpen={isStudioOpen}
-        onClose={() => setIsStudioOpen(false)}
-        role={role === 'admin' ? 'performer' : role}
       />
       <CameraCaptureOverlay
         isOpen={isCameraOpen}
@@ -265,62 +271,50 @@ export default function MasterControlDock({
             📹 {isCamActive ? 'CAM ON' : 'CAM OFF'}
           </button>
 
-          <button
-            onClick={() => setIsHandRaised(!isHandRaised)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 12,
-              background: isHandRaised ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.05)',
-              border: isHandRaised ? '1px solid #FFD700' : '1px solid rgba(255,255,255,0.18)',
-              color: isHandRaised ? '#FFD700' : '#fff',
-              fontSize: 9,
-              fontWeight: 900,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            ✋ HAND
-          </button>
+          {!isMobile && (
+            <>
+              <button
+                onClick={() => setIsCameraOpen(true)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  color: '#fff',
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                📷 CAMERA
+              </button>
+            </>
+          )}
 
-          <button
-            onClick={openPrimaryQuickPanel}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 900,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            {isPerformer ? '🗺️ CONCIERGE' : '😃 EMOTES'}
-          </button>
-
-          <button
-            onClick={() => setIsCameraOpen(true)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 900,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            📷 CAMERA
-          </button>
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setMoreOpen((v) => !v)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 12,
+                background: moreOpen ? 'rgba(0, 255, 255, 0.15)' : 'rgba(255,255,255,0.05)',
+                border: moreOpen ? '1px solid #00FFFF' : '1px solid rgba(255,255,255,0.18)',
+                color: moreOpen ? '#00FFFF' : '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              {moreOpen ? '✕ CLOSE' : '⋯ MORE'}
+            </button>
+          )}
 
           <button
             disabled={goLivePhase === 'launching'}
@@ -336,6 +330,17 @@ export default function MasterControlDock({
               // launchDockStore.open(), but LaunchDock never mounts on
               // /admin, /hub, or /dashboard routes — that fallback silently
               // flipped a store flag nothing on screen could render.
+              if (shouldPresentGoLiveInPlace(pathname)) {
+                void presentInstantGoLiveInPlace({ role: dockRole, preferredExperience: 'live' }).then((r) => {
+                  if (r.ok && r.roomId) {
+                    setGoLivePhase('idle');
+                    return;
+                  }
+                  setGoLivePhase('error');
+                  setGoLiveError(r.error ?? 'Failed to start broadcast.');
+                });
+                return;
+              }
               void executeInstantGoLive({ role: dockRole }).then((r) => {
                 if (r.ok && r.href) {
                   router.push(r.href);
@@ -369,7 +374,7 @@ export default function MasterControlDock({
           )}
 
           <button
-            onClick={onEnterStage}
+            onClick={() => onLobbyNav?.() ?? togglePanel("lobbies", "bottom-left")}
             style={{
               padding: '6px 16px',
               borderRadius: 12,
@@ -386,10 +391,63 @@ export default function MasterControlDock({
               boxShadow: '0 0 15px rgba(170,45,255,0.5)',
             }}
           >
-            ⭐ STAGE
+            🏠 LOBBIES
           </button>
         </div>
       </div>
+
+      {/* MORE tray — mobile secondary controls, floats above Row A */}
+      {isMobile && moreOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '160px',
+            left: '16px',
+            right: '16px',
+            zIndex: 9001,
+            display: 'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            fontFamily: "'Inter', sans-serif",
+          }}
+        >
+          <div
+            style={{
+              pointerEvents: 'auto',
+              background: 'rgba(5, 5, 20, 0.96)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(0, 255, 255, 0.3)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.9)',
+              borderRadius: '16px',
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setIsCameraOpen(true); setMoreOpen(false); }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              📷 CAMERA
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Row B: one continuous Now Playing + Nav + Tools bar (no gaps between sections) */}
       <div
@@ -399,7 +457,7 @@ export default function MasterControlDock({
           left: '16px',
           right: '16px',
           zIndex: 9000,
-          display: 'flex',
+          display: isMobile ? 'none' : 'flex',
           justifyContent: 'center',
           pointerEvents: 'none',
           fontFamily: "'Inter', sans-serif",

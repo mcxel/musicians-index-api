@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 import ImageUploader from "@/components/media/ImageUploader";
+import TMIMailboxProvisioner from "@/components/account/TMIMailboxProvisioner";
 import { useTmiSession } from "@/hooks/SessionContext";
 
 type Section = "profile" | "appearance" | "notifications" | "privacy" | "password" | "linked" | "danger";
@@ -306,6 +307,13 @@ export default function SettingsPage() {
                     <input type="email" value={profile.email} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: "default" }} title="Email cannot be changed here" />
                   </div>
                 </div>
+
+                {/* TMI Official Mailbox Provisioning Widget */}
+                <TMIMailboxProvisioner
+                  currentEmail={profile.email}
+                  accentColor="#00FFFF"
+                  onMailboxCreated={(email) => setProfile((p) => ({ ...p, email }))}
+                />
                 <div style={{ marginBottom: 14 }}>
                   <label style={labelStyle}>BIO</label>
                   <textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} rows={3} style={{ ...inputStyle, resize: "vertical" }} />

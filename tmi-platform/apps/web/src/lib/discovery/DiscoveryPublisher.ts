@@ -192,7 +192,8 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
   }
   // Permanent anchors always merge in — poll must never wipe the 24/7 wall
   const { getAnchorDiscoveryRecords } = require("@/lib/live/AnchorRoomNetwork") as typeof import("@/lib/live/AnchorRoomNetwork");
-  for (const anchor of getAnchorDiscoveryRecords()) {
+  const { getAllGenreDiscoveryRecords } = require("@/lib/live/performerGenreRoomNetwork") as typeof import("@/lib/live/performerGenreRoomNetwork");
+  for (const anchor of [...getAnchorDiscoveryRecords(), ...getAllGenreDiscoveryRecords()]) {
     const existing = byId.get(anchor.id);
     if (existing) {
       byId.set(anchor.id, {

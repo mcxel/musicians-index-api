@@ -14,6 +14,7 @@ import {
 } from "@/lib/live/CanonicalGenreRegistry";
 import { LOUNGE_VIDEO_PRESENCE_LAW } from "@/lib/live/loungeVideoPresenceLaw";
 import { isPublicPerformerLobbyDiscovery } from "@/lib/venue-hud/loungeContainer";
+import { isShowsOrReleaseDiscoveryCategory } from "@/lib/events/ScheduledEventRegistry";
 
 /**
  * Primary in-shell category switch — QP-10 LOBBIES mosaic (locked 2026-08-19).
@@ -21,22 +22,27 @@ import { isPublicPerformerLobbyDiscovery } from "@/lib/venue-hud/loungeContainer
  * one room can mix performers; tiles show country + genre + name so users pick visually.
  */
 export type LobbyWallCoreCategoryId =
-  | "cyphers"
   | "challenges"
-  | "lives"
   | "battles"
-  | "lounges"
+  | "cyphers"
   | "performer_lobbies"
-  | "fan_avatar_lobbies";
+  | "fan_avatar_lobbies"
+  | "lounges"
+  | "games"
+  | "lives"
+  | "shows_and_releases";
 
+/** Canonical order: Challenges → Battles → Cyphers → Performer Lobbies → Fan Avatar Lobbies → Lounges → Games → Live → Shows & Releases */
 export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
-  { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
   { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
-  { id: "lives", label: "Lives", icon: "🔴", accentColor: "#FF3B5C" },
   { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
+  { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
+  { id: "performer_lobbies", label: "Performer Lobbies", icon: "🎸", accentColor: "#FFD700" },
+  { id: "fan_avatar_lobbies", label: "Fan Lobbies", icon: "👥", accentColor: "#00E5FF" },
   { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#00FFFF" },
-  { id: "performer_lobbies", label: "Performer Lobbies", icon: "🎤", accentColor: "#FFD700" },
-  { id: "fan_avatar_lobbies", label: "Fan Avatar Lobbies", icon: "👥", accentColor: "#00E5FF" },
+  { id: "games", label: "Games", icon: "🎮", accentColor: "#22c55e" },
+  { id: "lives", label: "Live", icon: "🔴", accentColor: "#FF3B5C" },
+  { id: "shows_and_releases", label: "Shows & Releases", icon: "🎸", accentColor: "#FFD700" },
 ] as const;
 
 const ARENA_DISCOVERY_CATEGORIES = new Set<LiveDiscoveryCategory>([
@@ -58,20 +64,22 @@ const LIVE_GENERAL_CATEGORIES = new Set<LiveDiscoveryCategory>([
 
 /** Maps wall tab → LiveDiscoveryCategory (GlobalLiveSessionRegistry / DiscoveryBus). */
 export const WALL_TAB_TO_DISCOVERY: Record<
-  Exclude<LobbyWallCoreCategoryId, "lives" | "performer_lobbies" | "fan_avatar_lobbies">,
+  Exclude<
+    LobbyWallCoreCategoryId,
+    "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases"
+  >,
   LiveDiscoveryCategory
 > = {
-  battles: "battles",
   challenges: "challenges",
+  battles: "battles",
   cyphers: "cyphers",
   lounges: "lounges",
+  games: "games",
 };
 
 /** Maps wall tab → ExperienceRoomRegistry experience classes (canonical mill). */
 export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly ExperienceClass[]> = {
-  cyphers: ["CIPHER"],
   challenges: ["CHALLENGE"],
-  lives: ["MAIN_AUDITORIUM"],
   battles: [
     "BATTLE_SONG",
     "BATTLE_DANCE_OFF",
@@ -82,9 +90,13 @@ export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly Ex
     "BATTLE_DJ",
     "BATTLE_PRODUCER",
   ],
-  lounges: ["LOUNGE_SIDE_ROOM"],
+  cyphers: ["CIPHER"],
   performer_lobbies: ["PERFORMER_LOBBY"],
   fan_avatar_lobbies: ["FAN_AVATAR_LOBBY"],
+  lounges: ["LOUNGE_SIDE_ROOM"],
+  games: ["DEALERS_CHOICE", "DEAL_OR_FEUD_1000", "CIRCLE_OF_SQUARES", "NAME_THAT_TUNE", "DIRTY_DOZENS", "MONDAY_NIGHT_STAGE", "MONTHLY_IDOL", "CHAMPIONSHIP"],
+  lives: ["MAIN_AUDITORIUM"],
+  shows_and_releases: ["MAIN_AUDITORIUM"],
 };
 
 function recordHasArenaCategory(r: LiveDiscoveryRecord): boolean {
@@ -158,6 +170,16 @@ export function filterDiscoveryByWallCategory(
   if (categoryId === "fan_avatar_lobbies") {
     return records.filter((r) => isFanAvatarLobbyRecord(r) && !isLoungeSideRoomRecord(r));
   }
+  if (categoryId === "shows_and_releases") {
+    // Concerts + world/mini releases only — no sub-genre chips (locked).
+    return records.filter(
+      (r) =>
+        isShowsOrReleaseDiscoveryCategory(r.category, r.categories) &&
+        !isFanAvatarLobbyRecord(r) &&
+        !isPerformerLobbyRecord(r) &&
+        !isLoungeSideRoomRecord(r),
+    );
+  }
   if (categoryId === "lives") {
     return records.filter((r) => {
       if (
@@ -168,6 +190,8 @@ export function filterDiscoveryByWallCategory(
       ) {
         return false;
       }
+      // Shows & Releases owns concerts/releases — keep Live tab free of that category.
+      if (isShowsOrReleaseDiscoveryCategory(r.category, r.categories)) return false;
       if (recordHasArenaCategory(r)) return false;
       return recordHasLiveGeneralCategory(r) || (r.isLive && !recordHasArenaCategory(r));
     });
@@ -178,7 +202,13 @@ export function filterDiscoveryByWallCategory(
       return isLoungeSideRoomRecord(r) || isListeningLoungeRecord(r);
     });
   }
-  const target = WALL_TAB_TO_DISCOVERY[categoryId];
+  const target =
+    WALL_TAB_TO_DISCOVERY[
+      categoryId as Exclude<
+        LobbyWallCoreCategoryId,
+        "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases"
+      >
+    ];
   return records.filter(
     (r) =>
       (r.category === target || r.categories.includes(target)) &&
@@ -222,11 +252,13 @@ export function mapDiscoveryToWallCategory(
   category: LiveDiscoveryCategory | null | undefined,
 ): LobbyWallCoreCategoryId {
   if (category === "challenges") return "challenges";
-  if (category === "cyphers") return "cyphers";
-  if (category === "lounges" || category === "listening") return "lounges";
-  if (category === "fan_lobbies") return "fan_avatar_lobbies";
-  if (category === "live_now" || category === "concerts" || category === "worldwide") return "lives";
   if (category === "battles") return "battles";
+  if (category === "cyphers") return "cyphers";
+  if (category === "fan_lobbies") return "fan_avatar_lobbies";
+  if (category === "lounges" || category === "listening") return "lounges";
+  if (category === "games") return "games";
+  if (category === "concerts") return "shows_and_releases";
+  if (category === "live_now" || category === "worldwide") return "lives";
   return "lives";
 }
 

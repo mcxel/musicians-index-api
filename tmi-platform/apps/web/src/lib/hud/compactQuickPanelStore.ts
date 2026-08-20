@@ -5,6 +5,7 @@ import { create } from "zustand";
 /** Compact floating quick-panel ids — in-place overlays, never routes. */
 export type CompactQuickPanelId =
   | "lobbies"
+  | "stream-win"
   | "avatar"
   | "memory-wall"
   | "yopho"

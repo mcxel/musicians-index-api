@@ -1,4 +1,5 @@
 import { grantXP, XP_VALUES } from "@/lib/xp/xpEngine";
+import { getListenLoungeXp } from "@/lib/xp/XpActionRegistry";
 
 export type FeedbackReaction = "hard" | "replay" | "original" | "skip";
 export type SongState = "active" | "decaying" | "expired";
@@ -53,10 +54,14 @@ function getUserActivity(userId: string) {
   return rec;
 }
 
-function tryGrantXP(userId: string, source: "stream_listen" | "stream_react" | "stream_vote"): boolean {
+function tryGrantXP(
+  userId: string,
+  source: "stream_listen" | "stream_react" | "stream_vote",
+  role?: string | null,
+): boolean {
   const rec = getUserActivity(userId);
   if (rec.skipCount > SKIP_BLOCK_THRESHOLD) return false;
-  let amount = XP_VALUES[source];
+  let amount = source === "stream_listen" ? getListenLoungeXp(role) : XP_VALUES[source];
   // Streak bonus: consecutive non-skip listens
   if (source === "stream_listen") {
     if (rec.noSkipStreak >= 5) amount = Math.round(amount * 2);
@@ -109,7 +114,7 @@ export const StreamAndWinEngine = {
     return { ok: true, song };
   },
 
-  recordListen(songId: string, userId: string, listenPct: number, isActive = true): boolean {
+  recordListen(songId: string, userId: string, listenPct: number, isActive = true, role?: string | null): boolean {
     const song = songs.get(songId);
     if (!song || song.state === "expired") return false;
 
@@ -131,11 +136,11 @@ export const StreamAndWinEngine = {
     song.visibilityScore = recomputeScore(song);
 
     rec.noSkipStreak += 1;
-    tryGrantXP(userId, "stream_listen");
+    tryGrantXP(userId, "stream_listen", role);
     return true;
   },
 
-  recordReaction(songId: string, userId: string, reaction: FeedbackReaction): boolean {
+  recordReaction(songId: string, userId: string, reaction: FeedbackReaction, role?: string | null): boolean {
     const song = songs.get(songId);
     if (!song || song.state === "expired") return false;
 
@@ -151,11 +156,11 @@ export const StreamAndWinEngine = {
       return false;
     }
 
-    tryGrantXP(userId, "stream_react");
+    tryGrantXP(userId, "stream_react", role);
     return true;
   },
 
-  recordVote(songId: string, userId: string): boolean {
+  recordVote(songId: string, userId: string, role?: string | null): boolean {
     const song = songs.get(songId);
     if (!song || song.state === "expired") return false;
 
@@ -163,7 +168,7 @@ export const StreamAndWinEngine = {
     song.lastActivityAt = Date.now();
     song.visibilityScore = recomputeScore(song);
 
-    tryGrantXP(userId, "stream_vote");
+    tryGrantXP(userId, "stream_vote", role);
     return true;
   },
 

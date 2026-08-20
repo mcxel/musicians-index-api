@@ -37,6 +37,8 @@ interface GoLiveStatusPillProps {
   errorMsg?: string;
   onOpenDevices?: () => void;
   style?: CSSProperties;
+  /** Stay inside the assigned player instead of covering the TMI shell. */
+  contained?: boolean;
 }
 
 export default function GoLiveStatusPill({
@@ -44,6 +46,7 @@ export default function GoLiveStatusPill({
   errorMsg,
   onOpenDevices,
   style,
+  contained = false,
 }: GoLiveStatusPillProps) {
   if (phase === "live") return null;
 
@@ -56,11 +59,12 @@ export default function GoLiveStatusPill({
       aria-live="polite"
       data-golive-status={phase}
       style={{
-        position: "fixed",
-        top: 56,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 9600,
+        position: contained ? "absolute" : "fixed",
+        top: contained ? 8 : 56,
+        left: contained ? 8 : "50%",
+        right: contained ? 8 : undefined,
+        transform: contained ? "none" : "translateX(-50%)",
+        zIndex: contained ? 70 : 9600,
         display: "flex",
         alignItems: "center",
         gap: 10,

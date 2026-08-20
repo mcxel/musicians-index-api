@@ -12,6 +12,7 @@
  */
 
 import { routeLivePlacement, type RoutedLivePlacement } from "@/lib/live/LiveRoutingEngine";
+import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 export type LivePrivacy = "public" | "friends" | "invite" | "private";
 
@@ -167,7 +168,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
     }
     return {
       experienceId: "fan-lobby",
-      route: `/rooms/fan-lobby?privacy=${privacy}&from=launch-dock`,
+      route: fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "launch-dock", privacy }),
       label: "Fan Avatar Lobby",
       category: "fan-lobby",
       flags: {

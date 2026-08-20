@@ -13,6 +13,7 @@ import type { MondayNightStageState } from '@/lib/shows/MondayNightStageEngine';
 import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel';
 import FollowButton from '@/components/social/FollowButton';
 import BookmarkButton from '@/components/common/BookmarkButton';
+import { getMondayNightStageSchedule } from '@/lib/events/ScheduledEventRegistry';
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -43,6 +44,51 @@ type ChatMsg = { user: string; msg: string };
 
 export default function MondayStagePage() {
   const router = useRouter();
+
+  // ── Calendar gate — Rule 21: Monday Night Stage is bot-only and schedule-locked ──
+  const scheduleWindow = getMondayNightStageSchedule();
+  if (scheduleWindow.phase === 'CLOSED' || scheduleWindow.phase === 'ARCHIVE') {
+    const hoursAway = Math.ceil(scheduleWindow.countdownMs / 3_600_000);
+    return (
+      <PageShell>
+        <div style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'linear-gradient(160deg,#050510,#0a0614)',
+          flexDirection: 'column', gap: 20, padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 40 }}>🌙</div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#00FFFF', letterSpacing: '0.08em', margin: 0 }}>
+            MONDAY NIGHT STAGE
+          </h1>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: 320, lineHeight: 1.5 }}>
+            {scheduleWindow.phase === 'ARCHIVE'
+              ? `Tonight's show has ended. ${scheduleWindow.label}.`
+              : `The show runs every Monday at 8 PM ET. ${scheduleWindow.label}.`
+            }
+          </p>
+          {hoursAway > 0 && (
+            <div style={{
+              background: 'rgba(0,255,255,0.08)', border: '1px solid rgba(0,255,255,0.25)',
+              borderRadius: 10, padding: '10px 20px',
+              fontSize: 12, fontWeight: 800, color: '#00FFFF', letterSpacing: '0.1em',
+            }}>
+              ⏱ Opens in ~{hoursAway}h
+            </div>
+          )}
+          <Link href="/home/5" style={{ textDecoration: 'none' }}>
+            <button style={{
+              padding: '10px 24px', borderRadius: 8,
+              background: 'rgba(255,45,170,0.18)', border: '1px solid #FF2DAA',
+              color: '#FF2DAA', fontWeight: 900, fontSize: 11, letterSpacing: '0.1em', cursor: 'pointer',
+            }}>
+              ← BROWSE COMPETITION ROOMS
+            </button>
+          </Link>
+        </div>
+      </PageShell>
+    );
+  }
+
   const [stageState, setStageState]   = useState<StageState>('CURTAIN_CLOSED');
   const [chatMsgs, setChatMsgs]       = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput]     = useState('');

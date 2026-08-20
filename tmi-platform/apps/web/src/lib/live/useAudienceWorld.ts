@@ -89,7 +89,9 @@ export function useAudienceWorld(
   rows = 8,
   cols = 12,
   performerId?: string,
+  options?: { enabled?: boolean },
 ): AudienceWorldState & AudienceWorldHandlers {
+  const enabled = options?.enabled ?? true;
   const [seats, setSeats] = useState<SeatPosition[]>([]);
   const [avatars, setAvatars] = useState<AudienceAvatar[]>([]);
   const [entities, setEntities] = useState<AvatarEntity[]>([]);
@@ -138,6 +140,14 @@ export function useAudienceWorld(
   }, [roomId, performerId]);
 
   useEffect(() => {
+    if (!enabled) {
+      setSeats([]);
+      setAvatars([]);
+      setEntities([]);
+      setEnergy(null);
+      setAttentionVectors([]);
+      return;
+    }
     // Initialize the seat grid and energy tracker
     audienceVisibilityEngine.initGrid(roomId, rows, cols);
     roomEnergyEngine.initRoom(roomId);
@@ -198,7 +208,7 @@ export function useAudienceWorld(
       unsubscribeAttention();
       botCrowdFillEngine.stopActivity(roomId);
     };
-  }, [roomId, rows, cols, snapshot]);
+  }, [roomId, rows, cols, snapshot, enabled]);
 
   // ── Signal handlers ─────────────────────────────────────────────────────────
 

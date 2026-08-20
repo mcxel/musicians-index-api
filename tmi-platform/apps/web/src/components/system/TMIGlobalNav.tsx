@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import {
   openCanonicalWorkspaceQuick,
@@ -75,6 +76,8 @@ export default function TMIGlobalNav() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [goLivePhase, setGoLivePhase] = useState<"idle" | "launching" | "error">("idle");
   const [goLiveError, setGoLiveError] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isHubPath =
     pathname === "/hub" ||
@@ -282,6 +285,10 @@ export default function TMIGlobalNav() {
                 liveDiscoveryOverlayStore.open();
                 return;
               }
+              if (label === "Search") {
+                setSearchOpen(true);
+                return;
+              }
               router.push(targetHref);
             }}
             className={styles.dockItem}
@@ -353,6 +360,17 @@ export default function TMIGlobalNav() {
             // launchDockStore.open(), which is a dead end wherever
             // LaunchDock excludes itself (/admin, /hub, /dashboard) — the
             // store flag flipped but nothing on screen could render it.
+            if (shouldPresentGoLiveInPlace(pathname)) {
+              void presentInstantGoLiveInPlace({ role: dockRole, preferredExperience: "live" }).then((r) => {
+                if (r.ok && r.roomId) {
+                  setGoLivePhase("idle");
+                  return;
+                }
+                setGoLivePhase("error");
+                setGoLiveError(r.error ?? "Failed to start broadcast.");
+              });
+              return;
+            }
             void executeInstantGoLive({ role: dockRole }).then((r) => {
               if (r.ok && r.href) {
                 router.push(r.href);
@@ -431,6 +449,78 @@ export default function TMIGlobalNav() {
         >
           ⏻
         </button>
+      )}
+
+      {/* ── Global search modal ─────────────────────────────────────── */}
+      {searchOpen && (
+        <div
+          role="dialog"
+          aria-label="Search TMI"
+          style={{
+            position: "fixed", inset: 0, zIndex: 200000,
+            background: "rgba(5,5,16,0.92)", backdropFilter: "blur(18px)",
+            display: "flex", flexDirection: "column", alignItems: "center",
+            padding: "env(safe-area-inset-top, 0px) 16px 120px",
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setSearchOpen(false); }}
+        >
+          {/* Search input bar */}
+          <div style={{ width: "100%", maxWidth: 580, marginTop: 52, position: "relative" }}>
+            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 18, pointerEvents: "none" }}>🔎</span>
+            <input
+              autoFocus
+              type="search"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
+                if (e.key === "Enter" && searchQuery.trim()) {
+                  router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                  setSearchOpen(false); setSearchQuery("");
+                }
+              }}
+              placeholder="Search artists, tracks, venues, magazine…"
+              style={{
+                width: "100%", padding: "14px 44px 14px 44px", fontSize: 15,
+                background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(0,255,255,0.35)",
+                borderRadius: 12, color: "#fff", outline: "none", boxSizing: "border-box",
+                boxShadow: "0 0 24px rgba(0,255,255,0.15)",
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 18 }}
+                aria-label="Clear"
+              >✕</button>
+            )}
+          </div>
+
+          {/* Quick category chips */}
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 580 }}>
+            {[["🎤","Artists","/performers"],["🎵","Tracks","/discover"],["🏟️","Venues","/venues"],["📰","Magazine","/magazine"],["🔴","Live Now","/live"],["🏆","Rankings","/rankings"]].map(([icon,label,href]) => (
+              <button key={label} onClick={() => { router.push(href); setSearchOpen(false); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Go button when query entered */}
+          {searchQuery.trim() && (
+            <button
+              onClick={() => { router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`); setSearchOpen(false); setSearchQuery(""); }}
+              style={{ marginTop: 20, padding: "12px 32px", background: "#00FFFF", color: "#050510", fontWeight: 900, fontSize: 12, letterSpacing: "0.12em", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              SEARCH TMI →
+            </button>
+          )}
+
+          <button onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+            style={{ position: "absolute", top: 16, right: 20, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 22, cursor: "pointer", padding: "4px 8px" }}
+            aria-label="Close search"
+          >✕</button>
+        </div>
       )}
     </nav>
   );

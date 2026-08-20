@@ -52,8 +52,8 @@ export default function AvatarScanVerifyPage() {
 
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 20px" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-          {(["SCAN", "VERIFY", "BUILD", "WARDROBE"] as const).map((step, i) => {
-            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/scan/wardrobe"];
+          {(["SCAN", "VERIFY", "BUILD", "STUDIO"] as const).map((step, i) => {
+            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/studio"];
             const active = i === 1;
             return (
               <Link key={step} href={routes[i]} style={{ flex: 1, textAlign: "center", padding: "6px 0", borderRadius: 6, border: `1px solid ${active ? "#FF2DAA" : "#334155"}`, background: active ? "rgba(255,45,170,0.12)" : "transparent", color: active ? "#f9a8d4" : "#475569", fontSize: 9, fontWeight: 700, textDecoration: "none", letterSpacing: "0.1em" }}>

@@ -69,6 +69,14 @@ import {
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import YoPhoMagicEffectOverlay from "@/components/yopho/YoPhoMagicEffectOverlay";
 import YoPhoBrandingFooter from "@/components/yopho/YoPhoBrandingFooter";
+import YoPhoMediaModuleComposer from "@/components/yopho/YoPhoMediaModuleComposer";
+import YoPhoCardMediaPlayer from "@/components/yopho/YoPhoCardMediaPlayer";
+import { useAuth } from "@/lib/hooks/useAuth";
+import {
+  mediaModuleToNowPlaying,
+  resolveCardMediaModules,
+} from "@/lib/yopho/YoPhoMediaModule";
+import { normalizeYoPhoTier } from "@/lib/yopho/YoPhoImageCapacity";
 
 type EditorTab = "identity" | "scene" | "effects" | "music" | "motion" | "share" | "editions";
 
@@ -166,6 +174,8 @@ export default function YoPhoTradingCard({
   const performer = useMemo(() => (slug ? getPerformerBySlug(slug) : null), [slug]);
   const resolvedName = performer?.name ?? displayName;
   const resolvedSlug = performer?.slug ?? slug;
+  const { tier: membershipTier } = useAuth();
+  const accountTier = normalizeYoPhoTier(membershipTier);
   // Rule 20 — no fake/stock placeholder presented as user content; empty string → honest empty card art
   const subjectUrl = (imageUrl ?? performer?.profileImageUrl ?? "").trim();
 
@@ -257,6 +267,13 @@ export default function YoPhoTradingCard({
   const portraitH = compact ? 210 : 268;
 
   const nowPlaying: YoPhoNowPlaying | null = useMemo(() => {
+    const modules = resolveCardMediaModules({
+      mediaModules: comp.mediaModules,
+      nowPlaying: null,
+      playlistId: playlistIdInput.trim() || comp.playlistId,
+    });
+    const fromModule = mediaModuleToNowPlaying(modules[0] ?? null);
+    if (fromModule) return fromModule;
     if (!songTitle.trim() && !songAudioUrl.trim() && !playlistIdInput.trim()) return null;
     return {
       playlistId: playlistIdInput.trim() || null,
@@ -264,7 +281,17 @@ export default function YoPhoTradingCard({
       artist: songArtist.trim() || null,
       audioUrl: songAudioUrl.trim() || null,
     };
-  }, [songTitle, songArtist, songAudioUrl, playlistIdInput]);
+  }, [comp.mediaModules, comp.playlistId, songTitle, songArtist, songAudioUrl, playlistIdInput]);
+
+  const cardMediaModules = useMemo(
+    () =>
+      resolveCardMediaModules({
+        mediaModules: comp.mediaModules,
+        nowPlaying,
+        playlistId: playlistIdInput.trim() || comp.playlistId,
+      }),
+    [comp.mediaModules, nowPlaying, playlistIdInput, comp.playlistId],
+  );
 
   const shareArtifact = useMemo(
     () => ({
@@ -441,6 +468,7 @@ export default function YoPhoTradingCard({
     let working = {
       ...comp,
       playlistId: playlistIdInput.trim() || null,
+      mediaModules: cardMediaModules,
       motion,
       editionTitle: editionTitleInput.trim() || comp.editionTitle || null,
       magicEffects,
@@ -461,6 +489,7 @@ export default function YoPhoTradingCard({
         (role === "fan" && fanFavorite.trim() ? fanFavorite.trim() : "") ||
         null,
       nowPlaying,
+      mediaModules: cardMediaModules,
       motion,
       isCanonical: forceCanonical && !asEdition,
       rarity: working.rarity ?? "STANDARD",
@@ -560,6 +589,7 @@ export default function YoPhoTradingCard({
     patch({
       cardId: res.cardId,
       playlistId: playlistIdInput.trim() || null,
+      mediaModules: cardMediaModules,
       documentJson: draft.documentJson ?? null,
       isCanonical: Boolean(draft.isCanonical),
       kind: draft.kind,
@@ -1021,6 +1051,12 @@ export default function YoPhoTradingCard({
                   </span>
                 </div>
               ) : null}
+
+              <YoPhoCardMediaPlayer
+                modules={cardMediaModules}
+                displayName={resolvedName}
+                interactive
+              />
             </div>
 
             {/* Name plate */}
@@ -1564,42 +1600,30 @@ export default function YoPhoTradingCard({
           ) : null}
 
           {editorTab === "music" ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA" }}>
-                {role === "performer" ? "FEATURED SONG · RIGHT NOW" : "NOW PLAYING · MY SONG RIGHT NOW"}
-              </div>
-              <input
-                value={songTitle}
-                onChange={(e) => setSongTitle(e.target.value.slice(0, 80))}
-                placeholder={role === "performer" ? "Featured song title" : "Song title"}
-                style={{ ...inputStyle, marginBottom: 0 }}
-              />
-              <input
-                value={songArtist}
-                onChange={(e) => setSongArtist(e.target.value.slice(0, 80))}
-                placeholder="Artist (optional)"
-                style={inputStyle}
-              />
-              <input
-                value={songAudioUrl}
-                onChange={(e) => setSongAudioUrl(e.target.value.trim())}
-                placeholder="Audio URL (https://… mp3/stream) — required to hear on card"
-                style={inputStyle}
-              />
-              <input
-                value={playlistIdInput}
-                onChange={(e) => setPlaylistIdInput(e.target.value.trim())}
-                placeholder={
-                  role === "fan"
-                    ? "Optional playlistId (fan playlist module)"
-                    : "Optional playlistId for Next Track"
-                }
-                style={inputStyle}
-              />
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
-                Song loops with the interactive card. Light pulse only — no FFT particle farm this pass.
-              </div>
-            </div>
+            <YoPhoMediaModuleComposer
+              role={role}
+              userKey={userKey}
+              accountTier={accountTier}
+              modules={cardMediaModules}
+              onChange={(next) => {
+                const primary = next[0];
+                setPlaylistIdInput(
+                  primary && (primary.type === "playlist" || primary.type === "album")
+                    ? primary.sourceId ?? ""
+                    : "",
+                );
+                setSongTitle(primary?.title ?? "");
+                setSongArtist(primary?.artist ?? "");
+                setSongAudioUrl(primary?.audioUrl ?? "");
+                patch({
+                  mediaModules: next,
+                  playlistId:
+                    primary && (primary.type === "playlist" || primary.type === "album")
+                      ? primary.sourceId
+                      : null,
+                });
+              }}
+            />
           ) : null}
 
           {editorTab === "motion" ? (

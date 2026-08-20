@@ -40,6 +40,19 @@ import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 import InstantGoLiveStage from "@/components/live/InstantGoLiveStage";
 import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
 import GoLiveTransitionClear from "@/components/live/GoLiveTransitionClear";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
+import {
+  CANONICAL_WORLD_ZONE,
+  isLoungeZone,
+  parseCanonicalWorldZone,
+} from "@/lib/live/canonicalWorldViewport";
+import {
+  arenaEventTypeForExperience,
+  parseExperienceClass,
+} from "@/lib/live/ExperienceRoomRegistry";
+import { isLoungeExperience, isPerformerLobbyExperience } from "@/lib/venue-hud/loungeContainer";
+import { isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
+import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -53,6 +66,12 @@ const LOBBY_AUTHORIZED_ORIGINS = new Set([
   "billboard-wall",
   "home-3",
   "launch-dock",
+  "playlist-lounge",
+  "lounge-side-room",
+  "fan-avatar-lobby",
+  "anchor-network",
+  "stream-win",
+  "profile",
 ]);
 
 interface LiveRoomPageProps {
@@ -90,6 +109,23 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : 'public';
   const isInstantPerformer =
     modeParam === 'performer' && (autoParam === 'true' || autoParam === '1' || fromValue === 'launch-dock');
+  const zoneParam = typeof sp['zone'] === 'string' ? sp['zone'] : Array.isArray(sp['zone']) ? sp['zone'][0] : '';
+  const canonicalZone = parseCanonicalWorldZone(zoneParam);
+  const _lobbyModeParam = typeof sp['lobbyMode'] === 'string' ? sp['lobbyMode'] : Array.isArray(sp['lobbyMode']) ? sp['lobbyMode'][0] : '';
+  const experienceClassParam = typeof sp['experienceClass'] === 'string' ? sp['experienceClass'] : Array.isArray(sp['experienceClass']) ? sp['experienceClass'][0] : '';
+  const experienceClass = parseExperienceClass(experienceClassParam);
+  const millArenaEventType = experienceClass ? arenaEventTypeForExperience(experienceClass) : null;
+  const performerLobby =
+    isPerformerLobbyExperience(id, canonicalZone) ||
+    modeParam === "performer-lobby" ||
+    experienceClass === "PERFORMER_LOBBY";
+  const loungeSideRoom =
+    !performerLobby &&
+    (isLoungeExperience(id, canonicalZone) ||
+      isLoungeZone(zoneParam) ||
+      modeParam === "lounge" ||
+      experienceClass === "LOUNGE_SIDE_ROOM");
+  const videoPanelRoom = loungeSideRoom || performerLobby;
   const returnHref = performerSlug && performerSid
     ? `/performers/${encodeURIComponent(performerSlug)}/dashboard?returnedFrom=${encodeURIComponent(id)}&sid=${encodeURIComponent(performerSid)}`
     : fanSlug
@@ -106,9 +142,26 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   // Performers arriving with ?performer= OR Instant Go Live (?mode=performer&auto=true)
   // bypass the gate — venue must paint empty immediately (never wait on audience).
   const isPerformerEntry = Boolean(performerSlug && performerSid) || isInstantPerformer;
-  const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby');
+  const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby') || fromValue.includes('lounge');
   if (!isPerformerEntry && !hasLobbyAuthorization) {
     redirect(`/live/lobby?room=${encodeURIComponent(id)}&seat=1`);
+  }
+
+  if (isDatingExperience(id) || isDatingExperience({ slug: id, roomId: id })) {
+    const auth = await getTmiAuth();
+    const decision = await evaluateDatingJoinForUserId(auth?.user.id ?? "", id);
+    if (!decision.allowed) {
+      return (
+        <main style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "#050510", color: "#fff", padding: 32, textAlign: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>DATING · 21+</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginTop: 10 }}>Dating lounge blocked</h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 8, maxWidth: 420 }}>{decision.reason}</p>
+            <Link href="/live/lobby" style={{ display: "inline-block", marginTop: 16, color: "#00FFFF", fontWeight: 800 }}>← Live Lobby</Link>
+          </div>
+        </main>
+      );
+    }
   }
 
   // Instant Go Live — full-bleed empty stage + command panel (no marketing chrome)
@@ -197,6 +250,13 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             rubricVotingOpen
             rubricEventId={battleId ?? id}
           />
+        ) : millArenaEventType && millArenaEventType !== "lounge" && millArenaEventType !== "live-show" ? (
+          <ArenaEventShell
+            roomId={id}
+            eventType={millArenaEventType}
+            mode={performerSlug ? "performer" : "audience"}
+            liveState="live"
+          />
         ) : (
           /* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —
               fallback for non-battle events. fanIdOverride and TmiAudiencePerspectiveShell's
@@ -205,6 +265,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             roomId={id}
             mode={performerSlug ? "performer" : "audience"}
             fanIdOverride={fanSlug ?? sessionId ?? undefined}
+            canonicalZone={
+              performerLobby
+                ? CANONICAL_WORLD_ZONE.PERFORMER_LOBBY
+                : loungeSideRoom
+                  ? CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM
+                  : canonicalZone ?? undefined
+            }
+            suppressAvatars={videoPanelRoom}
           />
         )}
 
@@ -228,14 +296,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         {/* Real seat-bound audience view — assignSeatForFan()/joinAudienceSeat()
             engines already existed in lib/audience/ but were never wired into
             a route. Every seat here is a real fanId, never a fabricated count. */}
-        {!performerSlug && (
+        {!performerSlug && !videoPanelRoom && (
           <div style={{ marginTop: 16 }}>
             <AudienceEntryBeacon roomId={id} viewerId={fanSlug ?? sessionId ?? undefined} source={fromValue || "live-room"} />
             <TmiAudiencePerspectiveShell roomId={id} fanId={fanSlug ?? sessionId ?? undefined} />
           </div>
         )}
 
-        <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} />
+        {!videoPanelRoom ? <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} /> : null}
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 
         {/* Unified Audience Shell — Messages/Playlist/Memory Wall/Avatar/
@@ -266,7 +334,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         </div>
 
         {/* Rule 12: No Empty Inventory — platform promo between room and discovery */}
-        {roomAd.type === 'platform' && roomAd.platformPromo && (
+        {!videoPanelRoom && roomAd.type === 'platform' && roomAd.platformPromo && (
           <div style={{ margin: "20px 0", background: `${roomAd.platformPromo.accentColor}0a`, border: `1px solid ${roomAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 900, color: roomAd.platformPromo.accentColor }}>{roomAd.platformPromo.headline}</div>
@@ -277,7 +345,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             </a>
           </div>
         )}
-        {roomAd.type === 'advertise-cta' && (
+        {!videoPanelRoom && roomAd.type === 'advertise-cta' && (
           <div style={{ margin: "16px 0", textAlign: "center" }}>
             <a href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
               ADVERTISE ON TMI · FROM $25
@@ -308,11 +376,13 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           {/* Avatar Creation Center / Workspace / Inventory — Fan-only per the
               Identity Policy (CLAUDE.md Rule 26, added 2026-07-18). Performers
               are represented by real photo/video, not an owned avatar. */}
+          {!loungeSideRoom ? (
           <RoleGate allow={['FAN']}>
             <AvatarCreationCenter accentColor="#AA2DFF" />
             <AvatarWorkspaceCanister accentColor="#00FFFF" />
             <InventoryCanister accentColor="#FF6B35" />
           </RoleGate>
+          ) : null}
           {/* Private Lobby */}
           {performerSlug && (
             <PrivateLobbyCanister entityId={performerSlug} accentColor="#AA2DFF" />

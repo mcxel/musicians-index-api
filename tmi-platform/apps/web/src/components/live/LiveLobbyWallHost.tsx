@@ -50,7 +50,7 @@ export default function LiveLobbyWallHost({
   viewerUserId = null,
   viewerRole: viewerRoleProp,
   onRoomJoin,
-  defaultCategory = "lives",
+  defaultCategory = "challenges",
   showFanLobbySearch = true,
   enableMobileRoam = true,
 }: LiveLobbyWallHostProps) {

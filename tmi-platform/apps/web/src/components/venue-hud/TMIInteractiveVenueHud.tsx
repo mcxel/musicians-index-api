@@ -52,8 +52,8 @@ export default function TMIInteractiveVenueHud({
   const [micMuted, setMicMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [sessionSec, setSessionSec] = useState(0);
-  const [viewerCount, setViewerCount] = useState(12450);
-  const [reactionCount, setReactionCount] = useState(8230);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [reactionCount, setReactionCount] = useState(0);
   const [activeReactions, setActiveReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
   const [statusLine, setStatusLine] = useState<string | null>(null);
 

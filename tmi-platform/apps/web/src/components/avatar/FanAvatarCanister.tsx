@@ -139,7 +139,7 @@ export default function FanAvatarCanister({
           href="/avatar/studio"
           className="text-[8px] font-black uppercase px-3 py-1.5 rounded-lg text-black bg-gradient-to-r from-cyan-400 to-emerald-400"
         >
-          Avatar Studio →
+          Decorate / Customize →
         </Link>
       </div>
     </div>

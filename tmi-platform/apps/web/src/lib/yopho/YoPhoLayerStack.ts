@@ -5,6 +5,17 @@
 
 import type { PortraitLayer, YoPhoPortraitBlueprint } from "./YoPhoPortraitEngine";
 import { clonePortraitBlueprint } from "./YoPhoPortraitEngine";
+import { countYoPhoImageSlots, countYoPhoTotalLayers } from "./YoPhoImageCapacity";
+
+export type YoPhoStackBudgetKind = NonNullable<PortraitLayer["budgetKind"]>;
+
+export function layerConsumesImageSlot(layer: PortraitLayer): boolean {
+  return (layer.budgetKind ?? "image") === "image";
+}
+
+export function countImageSlotLayers(bp: YoPhoPortraitBlueprint): number {
+  return [bp.primaryLayer, ...bp.secondaryLayers].filter(layerConsumesImageSlot).length;
+}
 
 export interface YoPhoStackLayerRef {
   id: string;
@@ -28,12 +39,17 @@ export function listStackLayers(bp: YoPhoPortraitBlueprint): YoPhoStackLayerRef[
   return refs.sort((a, b) => a.layer.zIndex - b.layer.zIndex);
 }
 
-export function createEmptyStackLayer(zIndex: number, label?: string): PortraitLayer {
+export function createEmptyStackLayer(
+  zIndex: number,
+  label?: string,
+  options?: { budgetKind?: YoPhoStackBudgetKind; role?: PortraitLayer["role"] },
+): PortraitLayer {
+  const budgetKind = options?.budgetKind ?? "image";
   return {
     id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     imageUrl: "",
     label: label ?? `Layer ${zIndex}`,
-    role: zIndex <= 1 ? "primary" : "secondary",
+    role: options?.role ?? (zIndex <= 1 ? "primary" : "secondary"),
     facing: "center",
     scale: 1,
     xOffset: 0,
@@ -44,10 +60,11 @@ export function createEmptyStackLayer(zIndex: number, label?: string): PortraitL
     edgeSoftness: 4,
     preserveHairEdges: true,
     zIndex,
+    budgetKind,
   };
 }
 
-/** Total image/layer slots currently on the card (including empty placeholders). */
+/** Total stack items currently on the card (images + non-image stack entries). */
 export function countStackLayers(bp: YoPhoPortraitBlueprint): number {
   return 1 + bp.secondaryLayers.length;
 }
@@ -107,24 +124,39 @@ export function sendLayerToBack(bp: YoPhoPortraitBlueprint, layerId: string): Yo
   return updateLayerById(bp, layerId, { zIndex: minZ - 1 });
 }
 
-/** Add a new empty layer if under capacity. Returns null if at limit. */
+/**
+ * Add a new stack item if under capacity.
+ * Image kinds must pass IMAGE SLOT cap. Every kind must pass TOTAL LAYER cap.
+ * Returns null if at either relevant limit.
+ */
 export function addStackLayer(
   bp: YoPhoPortraitBlueprint,
   maxImages: number,
+  maxTotalLayers: number = Number.POSITIVE_INFINITY,
+  budgetKind: YoPhoStackBudgetKind = "image",
 ): YoPhoPortraitBlueprint | null {
-  if (countStackLayers(bp) >= maxImages) return null;
+  if (countYoPhoTotalLayers(bp) >= maxTotalLayers) return null;
+  if (budgetKind === "image" && countYoPhoImageSlots(bp) >= maxImages) return null;
   const maxZ = Math.max(
     bp.primaryLayer.zIndex,
     ...bp.secondaryLayers.map((l) => l.zIndex),
     0,
   );
-  const layer = createEmptyStackLayer(maxZ + 1, `Layer ${countStackLayers(bp) + 1}`);
+  const role: PortraitLayer["role"] = budgetKind === "image" && countStackLayers(bp) === 0 ? "primary" : "secondary";
+  const layer = createEmptyStackLayer(maxZ + 1, `Layer ${countStackLayers(bp) + 1}`, {
+    budgetKind,
+    role,
+  });
   const next = clonePortraitBlueprint(bp);
-  // Keep first slot as primary; additional slots are secondary (stacked by zIndex)
-  if (!next.primaryLayer.imageUrl?.trim() && next.secondaryLayers.length === 0) {
-    next.primaryLayer = { ...layer, role: "primary", zIndex: 1 };
+  // Keep first IMAGE slot as primary; non-image items never steal the picture slot.
+  if (
+    budgetKind === "image" &&
+    !next.primaryLayer.imageUrl?.trim() &&
+    next.secondaryLayers.length === 0
+  ) {
+    next.primaryLayer = { ...layer, role: "primary", zIndex: 1, budgetKind: "image" };
   } else {
-    next.secondaryLayers = [...next.secondaryLayers, { ...layer, role: "secondary" }];
+    next.secondaryLayers = [...next.secondaryLayers, { ...layer, role: "secondary", budgetKind }];
   }
   next.updatedAt = new Date().toISOString();
   return next;

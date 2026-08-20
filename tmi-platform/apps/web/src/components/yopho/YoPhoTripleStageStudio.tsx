@@ -26,12 +26,21 @@ import {
   getPortraitControl,
   patchOverlayParams,
 } from "@/lib/yopho/YoPhoPortraitEffectCatalog";
-import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import {
+  canApplyYoPhoOwnedEffect,
+  countYoPhoImageSlots,
+  countYoPhoTotalLayers,
+  evaluateYoPhoAdd,
+  getYoPhoImageCapacity,
+  yoPhoAddKindConsumesImageSlot,
+  yoPhoBudgetKindForAddLayer,
+  yoPhoImageCapMessage,
+  yoPhoTotalLayerCapMessage,
+} from "@/lib/yopho/YoPhoImageCapacity";
 import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   addStackLayer,
   bringLayerToFront,
-  countStackLayers,
   getLayerById,
   listStackLayers,
   nudgeLayerPosition,
@@ -52,6 +61,11 @@ import {
   type YoPhoStudioStyleId,
 } from "@/lib/yopho/YoPhoStudioStylePresets";
 import YoPhoPortraitStageCanvas from "./YoPhoPortraitStageCanvas";
+import YoPhoMediaModuleComposer from "./YoPhoMediaModuleComposer";
+import {
+  loadCardComposition,
+  saveCardComposition,
+} from "@/lib/yopho/YoPhoCardComposition";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -91,6 +105,8 @@ export interface YoPhoTripleStageStudioProps {
   onSaveEdition?: (bp: YoPhoPortraitBlueprint) => void;
   storageKey?: string;
   tierOrRole?: string;
+  cardRole?: "fan" | "performer";
+  userKey?: string;
 }
 
 export default function YoPhoTripleStageStudio({
@@ -99,12 +115,14 @@ export default function YoPhoTripleStageStudio({
   onSaveEdition,
   storageKey = "tmi_yopho_triple_stage",
   tierOrRole = "FREE",
+  cardRole = "fan",
+  userKey = "local",
 }: YoPhoTripleStageStudioProps) {
   const capacity = useMemo(() => getYoPhoImageCapacity(tierOrRole), [tierOrRole]);
   const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() => clonePortraitBlueprint(master));
   const [selectedControlId, setSelectedControlId] = useState<string | null>("smoke");
   const [activeLayerId, setActiveLayerId] = useState<string>(master.primaryLayer.id);
-  const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion">("layers");
+  const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion" | "media">("layers");
   const [dockExpanded, setDockExpanded] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [timelineSec, setTimelineSec] = useState(0);
@@ -113,6 +131,8 @@ export default function YoPhoTripleStageStudio({
   const [motionSpeed, setMotionSpeed] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const [showUpgradeCta, setShowUpgradeCta] = useState(false);
+  const [cardComp, setCardComp] = useState(() => loadCardComposition(cardRole, userKey));
 
   // Undo / Redo stacks
   const undoStack = useRef<YoPhoPortraitBlueprint[]>([]);
@@ -142,6 +162,10 @@ export default function YoPhoTripleStageStudio({
       return ids.has(prev) ? prev : master.primaryLayer.id;
     });
   }, [master.id, master.updatedAt]);
+
+  useEffect(() => {
+    setCardComp(loadCardComposition(cardRole, userKey));
+  }, [cardRole, userKey]);
 
   // Continuous animation loop ticker
   useEffect(() => {
@@ -232,11 +256,38 @@ export default function YoPhoTripleStageStudio({
   const handleControlClick = (controlId: string) => {
     const def = getPortraitControl(controlId);
     if (!def) return;
+
+    let alreadyOnStack = false;
+    if (def.overlayId) {
+      alreadyOnStack = Boolean(
+        (preview.portraitEffects ?? []).find((effect) => effect.effectId === def.overlayId && effect.enabled),
+      );
+    } else if (controlId === "black_white" || controlId === "vintage") {
+      alreadyOnStack = preview.texturePreset !== "none";
+    } else if (controlId === "motion") {
+      alreadyOnStack = Boolean(
+        (preview.portraitEffects ?? []).find((effect) => effect.effectId === "drift" && effect.enabled),
+      );
+    }
+
+    const burnsNewTotalLayer =
+      Boolean(def.overlayId) || controlId === "black_white" || controlId === "vintage" || controlId === "motion";
+    if (burnsNewTotalLayer && !canApplyYoPhoOwnedEffect(preview, alreadyOnStack, tierOrRole)) {
+      setShowUpgradeCta(true);
+      setStatusLine(yoPhoTotalLayerCapMessage(tierOrRole));
+      return;
+    }
+
     pushUndo();
     setSelectedControlId(controlId);
     const next = applyPortraitControl(preview, controlId);
     setPreview(next);
-    setStatusLine(`Applied effect: ${def.label}`);
+    setShowUpgradeCta(false);
+    setStatusLine(
+      burnsNewTotalLayer
+        ? `Applied effect: ${def.label} (counts as a total layer, not an extra image slot).`
+        : `Applied effect: ${def.label}`,
+    );
     if (!isPlaying) setIsPlaying(true);
   };
 
@@ -248,6 +299,16 @@ export default function YoPhoTripleStageStudio({
   const handleApplyStylePreset = (styleId: YoPhoStudioStyleId) => {
     const preset = YOPHO_STUDIO_STYLE_PRESETS.find((s) => s.id === styleId);
     if (!preset) return;
+    let projected = countYoPhoTotalLayers(preview);
+    if (preset.objectMaskHint && !preview.objectMask) projected += 1;
+    if (preset.textureHint && preset.textureHint !== "none" && preview.texturePreset === "none") {
+      projected += 1;
+    }
+    if (projected > capacity.maxTotalLayers) {
+      setShowUpgradeCta(true);
+      setStatusLine(yoPhoTotalLayerCapMessage(tierOrRole));
+      return;
+    }
     pushUndo();
     const next = clonePortraitBlueprint(preview);
     if (preset.compositionHint) next.mode = preset.compositionHint;
@@ -266,24 +327,47 @@ export default function YoPhoTripleStageStudio({
   };
 
   const handleAddLayerItem = (kind: string) => {
-    pushUndo();
     setShowAddModal(false);
-    const next = addStackLayer(preview, capacity.maxImages);
-    if (!next) {
-      setStatusLine(`Layer limit reached (${capacity.maxImages}). Upgrade for unlimited layers.`);
+    const verdict = evaluateYoPhoAdd(preview, kind, tierOrRole);
+    if (!verdict.ok) {
+      setShowUpgradeCta(verdict.reason !== "unsupported");
+      setStatusLine(verdict.message);
       return;
     }
+
+    if (kind === "effect" || kind === "particle" || kind === "animation") {
+      setShowUpgradeCta(false);
+      setActiveTab("fx");
+      setStatusLine(
+        "Owned effects apply onto the existing image — no extra image slot. A new overlay still counts as one total layer. Apply from FX.",
+      );
+      return;
+    }
+
+    const budgetKind = yoPhoBudgetKindForAddLayer(kind);
+    if (budgetKind === "unsupported" || budgetKind === "media") return;
+
+    pushUndo();
+    const next = addStackLayer(preview, capacity.maxImages, capacity.maxTotalLayers, budgetKind);
+    if (!next) {
+      setShowUpgradeCta(true);
+      setStatusLine(
+        yoPhoAddKindConsumesImageSlot(kind) ? yoPhoImageCapMessage(tierOrRole) : yoPhoTotalLayerCapMessage(tierOrRole),
+      );
+      return;
+    }
+    setShowUpgradeCta(false);
     setPreview(next);
     const added = listStackLayers(next).at(-1);
     if (added) {
       setActiveLayerId(added.id);
       const label = `${kind.charAt(0).toUpperCase() + kind.slice(1)} ${added.layer.zIndex}`;
-      setPreview((p) => updateLayerById(p, added.id, { label }));
+      setPreview((p) => updateLayerById(p, added.id, { label, budgetKind }));
     }
-    if (kind === "photo") {
+    if (kind === "photo" || kind === "background" || kind === "cutout") {
       onPickImage();
     } else {
-      setStatusLine(`New ${kind} layer created.`);
+      setStatusLine(`New ${kind} layer created — total layer used, image slot unchanged.`);
     }
   };
 
@@ -609,7 +693,7 @@ export default function YoPhoTripleStageStudio({
         }}
       >
         <div style={{ display: "flex", gap: 4 }}>
-          {(["layers", "fx", "style", "color", "motion"] as const).map((tab) => {
+          {(["layers", "fx", "style", "color", "motion", "media"] as const).map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -659,6 +743,11 @@ export default function YoPhoTripleStageStudio({
           {/* TAB 1: LAYERS */}
           {activeTab === "layers" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
+                Image slots {countYoPhoImageSlots(preview)}/{capacity.maxImages} · Total layers{" "}
+                {countYoPhoTotalLayers(preview)}/{capacity.maxTotalLayers} on {capacity.tierKey} · Diamond is not
+                unlimited. Effects on an existing image do not burn an extra image slot.
+              </div>
               {/* Opacity & Blend Mode Bar */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", paddingBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -751,7 +840,7 @@ export default function YoPhoTripleStageStudio({
                           }}
                         />
                         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
-                          z{ref.layer.zIndex} · {empty ? "Empty Image" : "Image Set"}
+                          z{ref.layer.zIndex} · {(ref.layer.budgetKind ?? "image") === "image" ? (empty ? "Empty image slot" : "Image slot") : `${ref.layer.budgetKind} layer`}
                         </div>
                       </div>
 
@@ -796,11 +885,24 @@ export default function YoPhoTripleStageStudio({
                 <button
                   type="button"
                   onClick={() => {
-                    const next = addStackLayer(preview, capacity.maxImages);
+                    const next = addStackLayer(
+                      preview,
+                      capacity.maxImages,
+                      capacity.maxTotalLayers,
+                      activeLayer.budgetKind ?? "image",
+                    );
                     if (next) {
                       setPreview(next);
                       const added = listStackLayers(next).at(-1);
                       if (added) setActiveLayerId(added.id);
+                      setShowUpgradeCta(false);
+                    } else {
+                      setShowUpgradeCta(true);
+                      setStatusLine(
+                        (activeLayer.budgetKind ?? "image") === "image"
+                          ? yoPhoImageCapMessage(tierOrRole)
+                          : yoPhoTotalLayerCapMessage(tierOrRole),
+                      );
                     }
                   }}
                   style={chipBtn(CYAN)}
@@ -975,6 +1077,20 @@ export default function YoPhoTripleStageStudio({
               </div>
             </div>
           )}
+
+          {activeTab === "media" && (
+            <YoPhoMediaModuleComposer
+              role={cardRole}
+              userKey={userKey}
+              accountTier={tierOrRole}
+              modules={cardComp.mediaModules ?? []}
+              onChange={(next) => {
+                const updated = { ...cardComp, mediaModules: next, updatedAt: new Date().toISOString() };
+                setCardComp(updated);
+                saveCardComposition(cardRole, userKey, updated);
+              }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -1032,11 +1148,12 @@ export default function YoPhoTripleStageStudio({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {[
                 ["📷 Photo", "photo"],
+                ["🌆 Background", "background"],
+                ["✂ Cutout", "cutout"],
                 ["🎥 Video", "video"],
                 ["🔤 Text", "text"],
                 ["⚡ Effect", "effect"],
                 ["🖼 Frame", "frame"],
-                ["🌆 Background", "background"],
                 ["✨ Prop / Sticker", "prop"],
                 ["🏷 Logo", "logo"],
                 ["🎆 Particle", "particle"],
@@ -1096,7 +1213,17 @@ export default function YoPhoTripleStageStudio({
       )}
 
       {statusLine ? (
-        <div style={{ fontSize: 10, color: CYAN, fontWeight: 700, textAlign: "center" }}>{statusLine}</div>
+        <div style={{ fontSize: 10, color: CYAN, fontWeight: 700, textAlign: "center" }}>
+          {statusLine}
+          {showUpgradeCta ? (
+            <>
+              {" "}
+              <Link href={capacity.upgradeHref} style={{ color: GOLD }}>
+                Upgrade
+              </Link>
+            </>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

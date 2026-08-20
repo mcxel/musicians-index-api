@@ -60,8 +60,6 @@ export default function FanControlDock(props: RoleDockCommonProps) {
     { id: "leave", label: "LEAVE", icon: "🚪", onClick: props.onLeave, disabled: true },
     { id: "mic", label: props.isMicActive ? "MIC ON" : "MIC OFF", icon: "🎙️", onClick: props.onToggleMic, active: props.isMicActive },
     { id: "cam", label: props.isCamActive ? "CAM ON" : "CAM OFF", icon: "📹", onClick: props.onToggleCam, active: props.isCamActive },
-    { id: "hand", label: "HAND", icon: "✋", onClick: props.onToggleHand, active: props.isHandRaised },
-    { id: "emotes", label: "EMOTES", icon: "😃", onClick: props.onToggleEmotes },
     { id: "camera", label: "CAMERA", icon: "📷", onClick: props.onCameraCapture },
   ];
 

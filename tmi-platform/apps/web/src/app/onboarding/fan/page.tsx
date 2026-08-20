@@ -450,7 +450,7 @@ export default function OnboardingFanPage() {
           <button
             type="button"
             onClick={() => {
-              router.push("/hub/fan");
+              router.replace("/hub/fan");
             }}
             style={{
               padding: "14px 28px",

@@ -25,6 +25,7 @@ import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
 import { ensureAnchorRoomsSeeded, getAnchorDiscoveryRecords, listAnchorLiveRoomRecords } from '@/lib/live/AnchorRoomNetwork';
+import { ensureGenreRoomsSeeded, getAllGenreDiscoveryRecords } from '@/lib/live/performerGenreRoomNetwork';
 import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoomEntitlement';
 
 export const dynamic = 'force-dynamic';
@@ -180,7 +181,9 @@ export async function DELETE(req: NextRequest) {
 export async function GET() {
   try {
     ensureAnchorRoomsSeeded();
+    ensureGenreRoomsSeeded();
     const anchorRecords = getAnchorDiscoveryRecords();
+    const genreRecords = getAllGenreDiscoveryRecords();
     const sessions = await getActiveSessionsDurable();
     const count = getActiveRoomTruthCount(sessions);
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
@@ -202,6 +205,7 @@ export async function GET() {
       count,
       anchors: listAnchorLiveRoomRecords(),
       anchorDiscovery: anchorRecords,
+      genreDiscovery: genreRecords,
       activeDefinition: {
         source: 'GlobalLiveSessionRegistry.getActiveSessions',
         staleEvictionMs: 120_000,

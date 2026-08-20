@@ -39,9 +39,7 @@ export default function PerformerControlDock(props: PerformerDockProps) {
     { id: "leave", label: "LEAVE", icon: "🚪", onClick: props.onLeave, disabled: true },
     { id: "mic", label: props.isMicActive ? "MIC ON" : "MIC OFF", icon: "🎙️", onClick: props.onToggleMic, active: props.isMicActive },
     { id: "cam", label: props.isCamActive ? "CAM ON" : "CAM OFF", icon: "📹", onClick: props.onToggleCam, active: props.isCamActive },
-    { id: "hand", label: "HAND", icon: "✋", onClick: props.onToggleHand, active: props.isHandRaised },
-    { id: "overlays", label: "OVERLAYS", icon: "🎭", onClick: props.onToggleEmotes },
-    { id: "go-live", label: "STAGE / GO LIVE", icon: "🔴", onClick: props.onGoLive, emphasis: true },
+    { id: "go-live", label: "GO LIVE", icon: "🔴", onClick: props.onGoLive, emphasis: true },
   ];
 
   const quickActions: WorkspaceDockButton[] = [

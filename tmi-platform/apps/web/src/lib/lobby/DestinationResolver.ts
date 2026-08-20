@@ -2,11 +2,14 @@
  * DestinationResolver — lobby wall tile click → THAT exact room (no generic list detour).
  */
 
+import { fanAvatarLobbyEntryHref, performerLobbyEntryHref } from "@/lib/live/canonicalWorldViewport";
+
 export type LobbyWallKind =
   | "battle"
   | "cypher"
   | "challenge"
   | "lounge"
+  | "performer-lobby"
   | "fan-avatar"
   | "dance"
   | "concert"
@@ -54,8 +57,9 @@ export function resolveLobbyDestination(input: DestinationInput): ResolvedDestin
     challenge: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=challenge`,
     dance: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=dance`,
     concert: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=concert`,
-    lounge: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=lounge`,
-    "fan-avatar": `/live/rooms/${encodeURIComponent(input.roomId)}?mode=fan-lobby`,
+    lounge: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=lounge&zone=LOUNGE_SIDE_ROOM&from=live-lobby`,
+    "performer-lobby": performerLobbyEntryHref(input.roomId, { from: "performer-lobby-wall" }),
+    "fan-avatar": fanAvatarLobbyEntryHref(input.roomId, { from: "lobby-wall" }),
     game: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=game`,
     live: `/live/rooms/${encodeURIComponent(input.roomId)}`,
   };

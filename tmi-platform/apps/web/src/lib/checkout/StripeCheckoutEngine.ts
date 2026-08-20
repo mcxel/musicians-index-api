@@ -26,7 +26,7 @@ export type StripePaymentIntentPayload = {
   currency: "usd";
   customer?: string;
   metadata: Record<string, string>;
-  payment_method_types: Array<"card">;
+  automatic_payment_methods: { enabled: true };
 };
 
 export function buildStripeCheckoutSessionPayload(input: {
@@ -97,6 +97,6 @@ export function buildStripePaymentIntentPayload(input: {
     currency: "usd",
     customer: input.customerId,
     metadata,
-    payment_method_types: ["card"],
+    automatic_payment_methods: { enabled: true } as const,
   };
 }

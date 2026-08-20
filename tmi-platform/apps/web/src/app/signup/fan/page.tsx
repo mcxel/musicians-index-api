@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
@@ -16,6 +16,19 @@ export default function FanSignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { authenticated?: boolean }) => {
+        if (active && d?.authenticated) {
+          router.replace("/hub/fan");
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [router]);
+
   async function handleSubmit() {
     console.log("[TMI] handleSubmit entered. Fan Signup. Email:", email);
     setSubmitting(true);
@@ -29,7 +42,7 @@ export default function FanSignupPage() {
         body: JSON.stringify({ email, password, dateOfBirth, termsAccepted: true, originalityAccepted: true, roles: ["FAN"] }),
       });
       if (res.ok) {
-        router.push("/dashboard");
+        router.replace("/hub/fan");
       } else {
         const data = await res.json().catch(() => null);
         setError((data as { message?: string })?.message ?? "Signup failed. Check your details.");

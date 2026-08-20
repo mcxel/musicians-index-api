@@ -11,6 +11,10 @@
 import type { LiveSession, StageState, StreamCategory, StreamHealth } from "@/lib/broadcast/globalLiveSessionStore";
 import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
+import {
+  isPlaylistLoungeDiscovery,
+  resolvePlaylistLoungeJoinHref,
+} from "@/lib/venue-hud/loungeContainer";
 
 // ── State / runtime enums (validated — never blind `as`) ─────────────────────
 
@@ -195,7 +199,16 @@ function resolveJoinKind(opts: {
   return opts.isLive ? "lobby_entry" : "watch";
 }
 
-function defaultJoinHref(roomId: string): string {
+function defaultJoinHref(roomId: string, category?: StreamCategory | string | null): string {
+  if (
+    isPlaylistLoungeDiscovery({
+      roomId,
+      streamCategory: category ?? undefined,
+      category: typeof category === "string" ? category : undefined,
+    })
+  ) {
+    return resolvePlaylistLoungeJoinHref(roomId, { from: "live-lobby-wall" });
+  }
   return `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
 }
 
@@ -263,7 +276,7 @@ export function projectLiveSessionToSurfaceCard(
   const paid =
     session.privacy === "PAID_ENTRY" ||
     (typeof session.entryPriceUsd === "number" && session.entryPriceUsd > 0);
-  const href = defaultJoinHref(roomId);
+  const href = defaultJoinHref(roomId, session.category);
   const hostAccountId = (session.userId ?? "").trim();
 
   const card: LiveSurfaceCard = {

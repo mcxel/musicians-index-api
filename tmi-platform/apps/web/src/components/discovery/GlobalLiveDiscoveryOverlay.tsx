@@ -11,25 +11,17 @@ import { usePathname } from "next/navigation";
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
-  type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
-import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
+import LiveLobbyWallHost from "@/components/live/LiveLobbyWallHost";
+import type { LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
-import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
-import {
-  LIVE_DISCOVERY_CATEGORY_LABELS,
-  LIVE_DISCOVERY_RAIL_ORDER,
-  type LiveDiscoveryCategory,
-} from "@/lib/discovery/LiveDiscoveryRecord";
-import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
+import { mapDiscoveryToWallCategory } from "@/lib/lobby/liveLobbyWallLaw";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
-import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 
 export interface GlobalLiveDiscoveryOverlayProps {
   /** Optional session user id for private/friends entitlement */
@@ -59,6 +51,8 @@ export default function GlobalLiveDiscoveryOverlay({
   const records = useDiscoveryBus(viewerUserId);
   const [mounted, setMounted] = useState(false);
   const [joinRoom, setJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+
+  const defaultWallCategory = mapDiscoveryToWallCategory(lockedCategory ?? undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -92,71 +86,15 @@ export default function GlobalLiveDiscoveryOverlay({
     };
   }, [isOpen, viewerUserIdProp]);
 
-  const filteredRecords = useMemo(() => {
-    if (!lockedCategory) return records;
-    return records.filter(
-      (r) => r.category === lockedCategory || r.categories.includes(lockedCategory),
-    );
-  }, [records, lockedCategory]);
-
-  const lobbyRooms = useMemo(
-    () => filteredRecords.map(discoveryToLobbyRoom),
-    [filteredRecords],
-  );
-
   const handleRoomJoin = useCallback(
     (room: LobbyRoom) => {
-      const record =
-        filteredRecords.find((r) => r.roomId === room.id || r.id === room.id) ?? null;
+      const record = records.find((r) => r.roomId === room.id || r.id === room.id) ?? null;
       if (record) {
         setJoinRoom(resolveInstantJoin(record, { role: viewerRole }));
-        return;
       }
-      const dest = resolveLobbyDestination({
-        roomId: room.id,
-        kind:
-          room.type === "mini-cypher"
-            ? "cypher"
-            : room.type === "gauntlet"
-              ? "gauntlet"
-              : room.type === "battle" ||
-                  room.type === "cypher" ||
-                  room.type === "challenge" ||
-                  room.type === "game" ||
-                  room.type === "live" ||
-                  room.type === "dance" ||
-                  room.type === "concert" ||
-                  room.type === "lounge"
-                ? room.type
-                : "live",
-        href: room.href,
-      });
-      setJoinRoom({
-        instant: true,
-        gateReason: "none",
-        href: dest.href,
-        room: {
-          id: room.id,
-          title: room.name,
-          hostName: sanitizeWallHostLabel(room.performerName, { hostUserId: room.hostUserId }),
-          genre: room.genre,
-          viewers: room.viewerCount,
-          seatsOpen: undefined,
-          status: room.status === "live" ? "live" : room.status === "starting" ? "starting-soon" : "upcoming",
-          access: "free",
-          accentColor: "#00FFFF",
-          prizeLabel: room.prizePool,
-          roomRoute: dest.href,
-          venueIndex: 0,
-        },
-      });
     },
-    [filteredRecords, viewerRole],
+    [records, viewerRole],
   );
-
-  const emptyMessage = lockedCategory
-    ? "No live events in your filters"
-    : "No live rooms right now";
 
   if (suppressOnHq || !mounted) return null;
 
@@ -307,35 +245,6 @@ export default function GlobalLiveDiscoveryOverlay({
 
               <div
                 style={{
-                  flexShrink: 0,
-                  display: "flex",
-                  gap: 6,
-                  padding: "10px 14px",
-                  overflowX: "auto",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setLockedCategory(null)}
-                  style={chipStyle(!lockedCategory)}
-                >
-                  ALL
-                </button>
-                {LIVE_DISCOVERY_RAIL_ORDER.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setLockedCategory(cat)}
-                    style={chipStyle(lockedCategory === cat)}
-                  >
-                    {LIVE_DISCOVERY_CATEGORY_LABELS[cat]}
-                  </button>
-                ))}
-              </div>
-
-              <div
-                style={{
                   flex: 1,
                   overflow: "hidden",
                   padding: "10px 14px 16px",
@@ -344,38 +253,18 @@ export default function GlobalLiveDiscoveryOverlay({
                   flexDirection: "column",
                 }}
               >
-                {lobbyRooms.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "48px 20px",
-                      textAlign: "center",
-                      color: "rgba(255,255,255,0.55)",
-                      fontSize: 13,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {emptyMessage}
-                    <div
-                      style={{
-                        marginTop: 8,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        color: "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      Go live publicly to appear here. Counts show real humans only.
-                    </div>
-                  </div>
-                ) : (
-                  <LiveLobbyWallGrid
-                    rooms={lobbyRooms}
-                    title="Live Now Video Wall"
-                    accentColor="#00FFFF"
-                    typeLabel="LIVE"
-                    variant="embedded"
-                    onRoomJoin={handleRoomJoin}
-                  />
-                )}
+                <LiveLobbyWallHost
+                  accentColor="#00FFFF"
+                  title="Live Now Video Wall"
+                  typeLabel="LIVE"
+                  variant="embedded"
+                  viewerUserId={viewerUserId}
+                  viewerRole={viewerRole}
+                  defaultCategory={defaultWallCategory}
+                  onRoomJoin={handleRoomJoin}
+                  showFanLobbySearch
+                  enableMobileRoam
+                />
               </div>
             </motion.div>
           </motion.div>
@@ -395,20 +284,4 @@ export default function GlobalLiveDiscoveryOverlay({
     </>,
     document.body,
   );
-}
-
-function chipStyle(active: boolean): CSSProperties {
-  return {
-    flexShrink: 0,
-    padding: "5px 11px",
-    borderRadius: 14,
-    border: active ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.12)",
-    background: active ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.03)",
-    color: active ? "#00FFFF" : "rgba(255,255,255,0.6)",
-    fontSize: 9,
-    fontWeight: 900,
-    letterSpacing: "0.04em",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  };
 }

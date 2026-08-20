@@ -94,30 +94,60 @@ export default function SplitActionButton({
         ...style,
       }}
     >
-      <Link
-        href={preset.primaryHref}
-        onClick={handlePrimaryClick}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          height: sizeStyles.height,
-          padding: sizeStyles.padding,
-          color: "#FFFFFF",
-          fontSize: sizeStyles.fontSize,
-          fontWeight: 900,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          textDecoration: "none",
-          cursor: "pointer",
-          borderTopLeftRadius: 8,
-          borderBottomLeftRadius: 8,
-          transition: "all 0.15s ease",
-        }}
-      >
-        <span style={{ fontSize: sizeStyles.iconSize }}>{preset.primaryIcon}</span>
-        <span>{preset.primaryLabel}</span>
-      </Link>
+      {/* Render a <button> when a callback is provided to stay in-place; Link otherwise. */}
+      {onPrimaryClick ? (
+        <button
+          type="button"
+          onClick={handlePrimaryClick}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: sizeStyles.height,
+            padding: sizeStyles.padding,
+            color: "#FFFFFF",
+            fontSize: sizeStyles.fontSize,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            textDecoration: "none",
+            cursor: "pointer",
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8,
+            transition: "all 0.15s ease",
+            background: "transparent",
+            border: "none",
+          }}
+        >
+          <span style={{ fontSize: sizeStyles.iconSize }}>{preset.primaryIcon}</span>
+          <span>{preset.primaryLabel}</span>
+        </button>
+      ) : (
+        <Link
+          href={preset.primaryHref}
+          onClick={handlePrimaryClick}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: sizeStyles.height,
+            padding: sizeStyles.padding,
+            color: "#FFFFFF",
+            fontSize: sizeStyles.fontSize,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            textDecoration: "none",
+            cursor: "pointer",
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8,
+            transition: "all 0.15s ease",
+          }}
+        >
+          <span style={{ fontSize: sizeStyles.iconSize }}>{preset.primaryIcon}</span>
+          <span>{preset.primaryLabel}</span>
+        </Link>
+      )}
 
       <div
         style={{

@@ -42,8 +42,8 @@ export default function AvatarScanBuildPage() {
 
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 20px" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-          {(["SCAN", "VERIFY", "BUILD", "WARDROBE"] as const).map((step, i) => {
-            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/scan/wardrobe"];
+          {(["SCAN", "VERIFY", "BUILD", "STUDIO"] as const).map((step, i) => {
+            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/studio"];
             const active = i === 2;
             return (
               <Link key={step} href={routes[i] + (scanId ? `?scanId=${scanId}` : "")} style={{ flex: 1, textAlign: "center", padding: "6px 0", borderRadius: 6, border: `1px solid ${active ? "#FF2DAA" : "#334155"}`, background: active ? "rgba(255,45,170,0.12)" : "transparent", color: active ? "#f9a8d4" : "#475569", fontSize: 9, fontWeight: 700, textDecoration: "none", letterSpacing: "0.1em" }}>
@@ -82,8 +82,8 @@ export default function AvatarScanBuildPage() {
           <button onClick={handleSave} disabled={saving} style={{ flex: 2, background: saving ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.15)", border: `1px solid ${saving ? "#1e293b" : "rgba(34,197,94,0.4)"}`, borderRadius: 8, color: saving ? "#475569" : "#22c55e", fontSize: 12, padding: "11px 0", cursor: saving ? "default" : "pointer", fontWeight: 700, letterSpacing: "0.1em" }}>
             {saving ? "SAVING..." : saved ? "✓ SAVED" : "SAVE AVATAR"}
           </button>
-          <Link href={`/avatar/scan/wardrobe?scanId=${scanId}`} style={{ flex: 1, textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.35)", borderRadius: 8, color: "#c4b5fd", fontSize: 12, padding: "11px 0", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            WARDROBE →
+          <Link href="/avatar/studio" style={{ flex: 1, textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.35)", borderRadius: 8, color: "#c4b5fd", fontSize: 12, padding: "11px 0", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            DECORATE →
           </Link>
         </div>
       </div>

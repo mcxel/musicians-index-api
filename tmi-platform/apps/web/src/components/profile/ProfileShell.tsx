@@ -1,6 +1,6 @@
-import { ImageSlotWrapper } from '@/components/visual-enforcement';
+import { ImageSlotWrapper } from "@/components/visual-enforcement";
 // Universal Profile Shell — shared by artist, performer, fan, sponsor, venue, advertiser.
-// Magazine framing with rail system. Server component.
+// Magazine framing with rail system. Responsive layout calibration.
 
 import { type ReactNode } from "react";
 import Link from "next/link";
@@ -17,7 +17,10 @@ export type ProfileRole =
   | "venue"
   | "promoter";
 
-const ROLE_CONFIG: Record<ProfileRole, { accent: string; label: string; icon: string; backRoute: string }> = {
+const ROLE_CONFIG: Record<
+  ProfileRole,
+  { accent: string; label: string; icon: string; backRoute: string }
+> = {
   artist:     { accent: "#00FFFF", label: "Artist",     icon: "🎤", backRoute: "/artists" },
   performer:  { accent: "#FF2DAA", label: "Performer",  icon: "🎭", backRoute: "/performers" },
   fan:        { accent: "#FFD700", label: "Fan",        icon: "⭐", backRoute: "/fans" },
@@ -59,16 +62,44 @@ export default function ProfileShell({
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
+        width: "100%",
+        maxWidth: "100%",
+        overflowX: "hidden",
+        boxSizing: "border-box",
         background: "linear-gradient(160deg, #06070d 0%, #040516 55%, #07030f 100%)",
         color: "#e4e4f0",
       }}
     >
+      <style>{`
+        .tmi-profile-header {
+          padding: 32px 24px 24px;
+          max-width: 960px;
+          margin: 0 auto;
+          border-bottom: 1px solid ${cfg.accent}14;
+        }
+        .tmi-profile-main {
+          max-width: 960px;
+          margin: 0 auto;
+          padding: 24px 24px 60px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (max-width: 767px) {
+          .tmi-profile-header {
+            padding: 16px 16px 16px;
+          }
+          .tmi-profile-main {
+            padding: 16px 16px 60px;
+          }
+        }
+      `}</style>
+
       {/* ── Top nav bar ── */}
       <nav
         style={{
           borderBottom: `1px solid ${cfg.accent}22`,
-          padding: "10px 24px",
+          padding: "10px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -77,6 +108,8 @@ export default function ProfileShell({
           top: 0,
           zIndex: 40,
           backdropFilter: "blur(12px)",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         <ProfileBackButton
@@ -102,42 +135,34 @@ export default function ProfileShell({
       </nav>
 
       {/* ── Identity header ── */}
-      <header
-        style={{
-          padding: "32px 24px 24px",
-          maxWidth: 960,
-          margin: "0 auto",
-          borderBottom: `1px solid ${cfg.accent}14`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
+      <header className="tmi-profile-header">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
           {/* Avatar */}
           <HighFidelityAvatar
             enable3D={role === "fan" || avatarMode}
             imageUrl={avatarUrl}
             name={displayName}
-            size={72}
+            size={64}
             tierColor={cfg.accent}
             isPlaying={isPlaying}
           />
 
           {/* Name block */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <h1
                 style={{
-                  fontSize: "clamp(20px, 4vw, 32px)",
+                  fontSize: "clamp(18px, 4vw, 30px)",
                   fontWeight: 900,
                   color: "#fff",
                   margin: 0,
                   letterSpacing: "-0.01em",
+                  wordBreak: "break-word",
                 }}
               >
                 {displayName}
               </h1>
-              {isVerified && (
-                <span style={{ fontSize: 12 }} title="Verified">✅</span>
-              )}
+              {isVerified && <span style={{ fontSize: 12 }} title="Verified">✅</span>}
               {rank !== undefined && (
                 <span
                   style={{
@@ -157,9 +182,11 @@ export default function ProfileShell({
               )}
             </div>
             {tagline && (
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "4px 0 0" }}>{tagline}</p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: "4px 0 0", lineHeight: 1.4 }}>
+                {tagline}
+              </p>
             )}
-            <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               {articleRoute && (
                 <Link
                   href={articleRoute}
@@ -200,14 +227,10 @@ export default function ProfileShell({
         </div>
       </header>
 
-      {/* ── Rail content area ── */}
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "24px 24px 60px" }}>
+      {/* ── Content area ── */}
+      <main className="tmi-profile-main">
         {/* Universal video panel — live stream → last video → placeholder */}
-        <UniversalMediaPanel
-          slug={slug}
-          displayName={displayName}
-          role={role}
-        />
+        <UniversalMediaPanel slug={slug} displayName={displayName} role={role} />
         {children}
       </main>
     </div>

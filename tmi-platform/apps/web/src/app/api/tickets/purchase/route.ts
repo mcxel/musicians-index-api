@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const eventSlug  = typeof body?.eventSlug  === 'string' ? body.eventSlug.trim()  : '';
+    const eventId    = typeof body?.eventId    === 'string' ? body.eventId.trim()    : eventSlug;
     const venueSlug  = typeof body?.venueSlug  === 'string' ? body.venueSlug.trim()  : '';
     const tier: TicketTier = typeof body?.tier === 'string' ? (body.tier as TicketTier) : 'STANDARD';
     const quantity   = typeof body?.quantity   === 'number' && body.quantity > 0
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         type: 'ticket_purchase',
         eventSlug,
+        eventId,
         venueSlug,
         tier,
         quantity: String(quantity),

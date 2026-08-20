@@ -27,6 +27,9 @@ import {
   type FloatingWorkspaceModuleId,
 } from "@/lib/workspace/FloatingWorkspaceModules";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
+import { resolveFanWorldEntry } from "@/lib/live/canonicalWorldViewport";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 const PANEL_GLASS: CSSProperties = {
   background: "rgba(10, 10, 26, 0.92)",
@@ -223,6 +226,13 @@ function ModuleBody({
   moduleId: FloatingWorkspaceModuleId;
   onOpenMemoryWall: () => void;
 }): ReactNode {
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const lobbyRoomId = resolveFanWorldEntry({
+    publishedRoomId: publishedRoomId ?? inPlaceRoomId,
+    from: "floating-workspace",
+  }).roomId;
+
   switch (moduleId) {
     case "fan_lobby":
       return (
@@ -235,7 +245,7 @@ function ModuleBody({
           }
         >
           <div style={{ height: "min(58vh, 520px)", borderRadius: 12, overflow: "hidden" }}>
-            <FanLobbyVenue roomId="fan-lobby" embedded />
+            <FanLobbyVenue roomId={lobbyRoomId} embedded />
           </div>
         </RoleGate>
       );

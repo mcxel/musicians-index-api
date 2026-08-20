@@ -58,8 +58,8 @@ export default function AvatarScanPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {(["SCAN", "VERIFY", "BUILD", "WARDROBE"] as const).map((step, i) => {
-            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/scan/wardrobe"];
+          {(["SCAN", "VERIFY", "BUILD", "STUDIO"] as const).map((step, i) => {
+            const routes = ["/avatar/scan", "/avatar/scan/verify", "/avatar/scan/build", "/avatar/studio"];
             const active = i === 0;
             const done = false;
             return (

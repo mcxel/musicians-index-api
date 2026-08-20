@@ -9,7 +9,7 @@ export default function AdminOnboarding() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    router.push("/dashboard/admin");
+    router.replace("/admin/overview");
   }
 
   return (

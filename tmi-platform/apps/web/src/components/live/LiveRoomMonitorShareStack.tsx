@@ -10,7 +10,9 @@ import { useMemo, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import CanonicalMonitorAssignmentOverlay from "@/components/personal-media/CanonicalMonitorAssignmentOverlay";
+import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
+import { isLoungeRoomId, resolveLoungeMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
@@ -81,7 +83,13 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
     pickShareSlot,
   } = useMonitorScreenShare();
 
-  const stageHint = "Main stage stays in the venue view above — route screen share to any open cell here.";
+  const lounge = isLoungeRoomId(roomId);
+  const loungeA = resolveLoungeMonitorViewport("A");
+  const loungeB = resolveLoungeMonitorViewport("B");
+
+  const stageHint = lounge
+    ? "Fullscreen expands this same viewport — no second lounge renderer. CAM/MIC are explicit."
+    : "Main stage stays in the venue view above — route screen share to any open cell here.";
 
   const renderShareOrStandby = (
     monitor: 0 | 1,
@@ -99,12 +107,23 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
 
   const topStandbyFull = (
     <AuxMonitorStandby
-      label="MONITOR A · AUX"
-      sublabel="Lobby wall, playlist, or co-view — main stage is above."
+      label={lounge ? loungeA.label : "MONITOR A · AUX"}
+      sublabel={
+        lounge
+          ? "Conversation / selected participant / self cam after CAM ON — never auto camera."
+          : "Lobby wall, playlist, or co-view — main stage is above."
+      }
     />
   );
   const bottomStandbyFull = (
-    <AuxMonitorStandby label="MONITOR B · AUX" sublabel="Default target for shared screen + side chat." />
+    <AuxMonitorStandby
+      label={lounge ? loungeB.label : "MONITOR B · AUX"}
+      sublabel={
+        lounge
+          ? "Lounge group / room view — video hangout, no avatar seating."
+          : "Default target for shared screen + side chat."
+      }
+    />
   );
 
   const topCells = useMemo(
@@ -209,16 +228,22 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
     >
       <CanonicalDualMonitorStack
         variant="chrome"
-        seriesLabel={`LIVE ROOM · ${roleLabel} · DUAL AUX MONITORS · SCREEN SHARE`}
+        seriesLabel={
+          lounge
+            ? `LOUNGE · ${roleLabel} · A CONVERSATION · B GROUP VIEW · NO AVATARS`
+            : `LIVE ROOM · ${roleLabel} · DUAL AUX MONITORS · SCREEN SHARE`
+        }
         toolbar={toolbar}
         monitors={[
           {
             id: "live-mon-a",
-            label: "MONITOR A",
+            label: lounge ? loungeA.shortLabel : "MONITOR A",
             children: (
-              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_A}>
-                {renderShareOrStandby(0, -1, "MON A", topStandbyFull)}
-              </CanonicalMonitorAssignmentOverlay>
+              <InPlaceGoLiveMonitorLayer target={DEFAULT_MONITOR_A}>
+                <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_A}>
+                  {renderShareOrStandby(0, -1, "MON A", topStandbyFull)}
+                </CanonicalMonitorAssignmentOverlay>
+              </InPlaceGoLiveMonitorLayer>
             ),
             cells: topCells.map((standby, ci) =>
               renderShareOrStandby(0, ci, `A${ci + 1}`, standby),
@@ -226,11 +251,13 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
           },
           {
             id: "live-mon-b",
-            label: "MONITOR B",
+            label: lounge ? loungeB.shortLabel : "MONITOR B",
             children: (
-              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_B}>
-                {renderShareOrStandby(1, -1, "MON B", bottomStandbyFull)}
-              </CanonicalMonitorAssignmentOverlay>
+              <InPlaceGoLiveMonitorLayer target={DEFAULT_MONITOR_B}>
+                <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_B}>
+                  {renderShareOrStandby(1, -1, "MON B", bottomStandbyFull)}
+                </CanonicalMonitorAssignmentOverlay>
+              </InPlaceGoLiveMonitorLayer>
             ),
             cells: bottomCells.map((standby, ci) =>
               renderShareOrStandby(1, ci, `B${ci + 1}`, standby),

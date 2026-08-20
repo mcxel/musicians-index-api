@@ -73,7 +73,7 @@ const RAIL_ITEMS = [
     section: "PROFILE",
     items: [
       { label: "MESSAGES",         href: "/messages",                 emoji: "💬", color: "#00FFFF" },
-      { label: "AVATAR CENTER",    href: "/avatar-center",            emoji: "🎭", color: "#AA2DFF" },
+      { label: "AVATAR CENTER",    href: "/avatar/studio",            emoji: "🎭", color: "#AA2DFF" },
       { label: "SUBSCRIBE",        href: "/subscribe",                emoji: "👑", color: "#00FF88" },
       { label: "SOCIAL",           href: "/social",                   emoji: "🌐", color: "#FF6B35" },
     ],
@@ -175,7 +175,7 @@ export default function NavigationRail() {
                         {section.section}
                       </div>
                       {section.items
-                        .filter(item => item.href !== '/avatar-center' || role === 'FAN')
+                        .filter(item => item.href !== '/avatar/studio' || role === 'FAN')
                         .map(item => {
                         const active = isActive(item.href);
                         return (

@@ -49,6 +49,12 @@ import {
   muteUserLocal,
 } from "@/lib/trustSafety/localBlocks";
 import { mergePropAtmospheres } from "@/lib/lobby/LobbyPropAtmosphere";
+import {
+  auditoriumEntryHref,
+  CANONICAL_WORLD_ZONE,
+  isSystemOperatedFanLobby,
+  loungeSideRoomEntryHref,
+} from "@/lib/live/canonicalWorldViewport";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -85,7 +91,7 @@ interface FanLobbyVenueProps {
  * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks.
  */
 export default function FanLobbyVenue({
-  roomId = "fan-lobby",
+  roomId = "anchor-global-fan-lobby",
   userName = "Fan",
   initialSkinId = DEFAULT_FAN_LOBBY_SKIN_ID,
   embedded = false,
@@ -359,6 +365,8 @@ export default function FanLobbyVenue({
   );
 
   const totalOnline = sync.participants.filter((p) => !hiddenIds.has(p.userId)).length + 1;
+  const liveSessionPresent =
+    roomType === "FAN_LOBBY" && !isSystemOperatedFanLobby(roomId);
 
   if (rejoinBlocked) {
     return (
@@ -379,6 +387,14 @@ export default function FanLobbyVenue({
 
   return (
     <div
+      data-canonical-zone={
+        roomType === "PLAYLIST_LOUNGE"
+          ? CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM
+          : CANONICAL_WORLD_ZONE.FAN_AVATAR_LOBBY
+      }
+      data-lounge-avatars={roomType === "PLAYLIST_LOUNGE" ? "false" : undefined}
+      data-canonical-room-id={roomId}
+      data-live-session={liveSessionPresent ? "true" : "false"}
       style={{
         position: "relative",
         minHeight: embedded ? "100%" : "100vh",
@@ -428,10 +444,55 @@ export default function FanLobbyVenue({
             ? "PLAYLIST LOUNGE"
             : roomType === "REHEARSAL_ROOM"
               ? "REHEARSAL ROOM"
-              : skinLabel.toUpperCase()}{" "}
+              : `FAN AVATAR LOBBY · ENTRY · ${skinLabel.toUpperCase()}`}{" "}
           · {totalOnline} HERE
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {liveSessionPresent ? (
+            <Link
+              href={auditoriumEntryHref(roomId)}
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                color: "#050510",
+                background: dressing.accent,
+                borderRadius: 999,
+                padding: "4px 10px",
+                textDecoration: "none",
+              }}
+            >
+              ENTER AUDITORIUM
+            </Link>
+          ) : roomType === "FAN_LOBBY" ? (
+            <span
+              style={{
+                fontSize: 8,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.45)",
+              }}
+            >
+              NO LIVE SESSION
+            </span>
+          ) : null}
+          {roomType !== "PLAYLIST_LOUNGE" ? (
+            <Link
+              href={loungeSideRoomEntryHref(roomId, { from: "fan-avatar-lobby" })}
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                color: "#AA2DFF",
+                border: "1px solid rgba(170,45,255,0.45)",
+                borderRadius: 999,
+                padding: "4px 10px",
+                textDecoration: "none",
+              }}
+            >
+              ENTER LOUNGE
+            </Link>
+          ) : null}
           {isStaffHost ? (
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "#FFD700", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 999, padding: "4px 8px" }}>
               HOST SAFETY
@@ -545,6 +606,32 @@ export default function FanLobbyVenue({
           />
         ) : null}
         <LobbyEnvironmentToys state={"FREE_ROAM" as never} onUseToy={(toyId) => sync.triggerProp(toyMapsToProp(toyId))} />
+        {roomType === "PLAYLIST_LOUNGE" ? (
+          <div
+            data-lounge-group-view="true"
+            data-lounge-avatars="false"
+            style={{
+              position: "relative",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              zIndex: 10,
+            }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF" }}>
+              LOUNGE · VIDEO HANGOUT · NO AVATARS
+            </span>
+            <Link
+              href={loungeSideRoomEntryHref(roomId, { from: "fan-avatar-lobby" })}
+              style={{ fontSize: 12, fontWeight: 800, color: "#00FFFF" }}
+            >
+              Open connected lounge mill →
+            </Link>
+          </div>
+        ) : (
         <LobbyFreeRoamAvatars
           self={{
             userId,
@@ -575,6 +662,7 @@ export default function FanLobbyVenue({
           peerMedia={peerMedia.snapshot}
           localHideHeadPanel={localHideHeadPanel}
         />
+        )}
         <LobbyInventoryTray state={"FREE_ROAM" as never} onUseProp={(propId) => sync.triggerProp(propId)} />
 
         <div style={{ position: "absolute", top: 12, right: 12, zIndex: 45 }}>

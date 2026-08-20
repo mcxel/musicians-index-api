@@ -209,7 +209,8 @@ export default function OmniPresenceEngine({ slug, displayName = 'Artist', defau
             <div style={{ fontSize: 10, fontWeight: 800, color: C.rd, letterSpacing: '0.1em', marginBottom: 14 }}>INSTANT LIVE ROUTING</div>
             <div style={{ background: `${C.rd}11`, border: `1px solid ${C.rd}`, padding: 24, borderRadius: 10, textAlign: 'center', marginBottom: 14 }}>
               <button
-                onClick={() => router.push('/go-live')}
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('tmi:golive-request', { detail: { source: 'omni-presence' } }))}
                 style={{ background: C.rd, color: '#fff', border: 'none', padding: '14px 28px', fontSize: 14, fontWeight: 900, borderRadius: 8, letterSpacing: 2, cursor: 'pointer', boxShadow: `0 0 18px ${C.rd}55` }}
               >
                 ⏺ GO LIVE NOW

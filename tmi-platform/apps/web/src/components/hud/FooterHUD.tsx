@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import NotificationBell from "@/components/hud/NotificationBell";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const NAV = [
   { href: "/home/1",        label: "HOME",     icon: "🏠" },

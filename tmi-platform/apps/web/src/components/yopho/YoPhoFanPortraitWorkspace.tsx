@@ -5,8 +5,9 @@ import {
   createDefaultYoPhoBlueprint,
   type YoPhoPortraitBlueprint,
 } from "@/lib/yopho/YoPhoPortraitEngine";
-import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import { normalizeYoPhoTier, trimYoPhoBlueprintToCapacity } from "@/lib/yopho/YoPhoImageCapacity";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface YoPhoFanPortraitWorkspaceProps {
   userId: string;
@@ -17,7 +18,7 @@ interface YoPhoFanPortraitWorkspaceProps {
 
 /**
  * Fan YoPho triple-stage studio — Media Console BOTTOM_DEEP + /fan/canvas.
- * Tier capacity gates multi-image / dimensional layers (FREE = 1).
+ * Tier capacity gates multi-image / dimensional layers (FREE = 3 pictures).
  */
 export default function YoPhoFanPortraitWorkspace({
   userId,
@@ -27,34 +28,24 @@ export default function YoPhoFanPortraitWorkspace({
 }: YoPhoFanPortraitWorkspaceProps) {
   const [blueprint, setBlueprint] = useState<YoPhoPortraitBlueprint | null>(null);
   const [tierKey, setTierKey] = useState("FREE");
+  const { tier: sessionTier } = useAuth();
 
   useEffect(() => {
-    const tier = tierProp?.toUpperCase() ?? "FREE";
-    setTierKey(tier);
-    const capacity = getYoPhoImageCapacity(tier);
+    const resolved = normalizeYoPhoTier(tierProp ?? sessionTier ?? "FREE");
+    setTierKey(resolved);
 
     try {
       const raw = localStorage.getItem("tmi_yopho_editions_fan");
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
       if (parsed.length > 0 && parsed[0]) {
-        // Trim layers if saved edition exceeds current tier capacity (honest gate)
-        let bp = parsed[0];
-        const total = 1 + bp.secondaryLayers.length;
-        if (total > capacity.maxImages) {
-          bp = {
-            ...bp,
-            secondaryLayers: bp.secondaryLayers.slice(0, Math.max(0, capacity.maxImages - 1)),
-            activePortraitsCount: Math.min(bp.activePortraitsCount, capacity.maxImages),
-          };
-        }
-        setBlueprint(bp);
+        setBlueprint(trimYoPhoBlueprintToCapacity(parsed[0], resolved));
       } else {
         setBlueprint(createDefaultYoPhoBlueprint("fan", displayName));
       }
     } catch {
       setBlueprint(createDefaultYoPhoBlueprint("fan", displayName));
     }
-  }, [userId, displayName, tierProp]);
+  }, [userId, displayName, tierProp, sessionTier]);
 
   const handleSaveEdition = (saved: YoPhoPortraitBlueprint) => {
     try {
@@ -104,6 +95,8 @@ export default function YoPhoFanPortraitWorkspace({
         onSaveEdition={handleSaveEdition}
         storageKey="tmi_yopho_editions_fan_active"
         tierOrRole={tierKey}
+        cardRole="fan"
+        userKey={userId}
       />
     </div>
   );

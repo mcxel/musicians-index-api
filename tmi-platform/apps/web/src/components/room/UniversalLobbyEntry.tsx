@@ -58,6 +58,8 @@ export interface UniversalRoom {
   status: RoomStatus;
   access: EntryAccess;
   entryPriceUsd?: number;
+  /** Prisma / catalog event id for ticket checkout (Shows & Releases). */
+  eventId?: string;
   accentColor: string;
   thumbnailUrl?: string;
   xpReward?: number;
@@ -500,26 +502,67 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
           {/* ── STEP: ACCESS CHECK ── */}
           {step === "access" && (
             <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "20px 0" })}>
-              <div style={s({ fontSize: 32 })}>🔑</div>
-              <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>Access Check</div>
+              <div style={s({ fontSize: 32 })}>{room.access === "paid" ? "🎟️" : "🔑"}</div>
+              <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>
+                {room.access === "paid" ? "Ticket Required" : "Access Check"}
+              </div>
               <div style={s({ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320 })}>
                 {[
-                  { label: "Membership",   pass: true,  value: room.access === "free" ? "Free Entry" : room.access.toUpperCase() },
+                  { label: "Membership",   pass: room.access !== "paid",  value: room.access === "free" ? "Free Entry" : room.access === "paid" ? (room.entryPriceUsd ? `$${room.entryPriceUsd.toFixed(2)}` : "Ticket") : room.access.toUpperCase() },
                   { label: "Age Gate",     pass: true,  value: "Verified"   },
                   { label: "Room Status",  pass: room.status !== "full", value: room.status === "full" ? "FULL — join queue" : "Available" },
                 ].map(row => (
                   <div key={row.label} style={s({ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 8 })}>
                     <span style={s({ fontSize: 10, color: "rgba(255,255,255,0.5)" })}>{row.label}</span>
-                    <span style={s({ fontSize: 10, fontWeight: 800, color: row.pass ? "#00FF88" : "#E63000" })}>{row.pass ? "✓" : "✗"} {row.value}</span>
+                    <span style={s({ fontSize: 10, fontWeight: 800, color: row.pass ? "#00FF88" : "#FFD700" })}>{row.pass ? "✓" : "🎟️"} {row.value}</span>
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => advance("seat")}
-                style={s({ marginTop: 8, padding: "11px 32px", background: `${ac}22`, border: `1px solid ${ac}55`, color: ac, borderRadius: 10, fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", cursor: "pointer" })}
-              >
-                CLEAR — FIND MY SEAT →
-              </button>
+              {room.access === "paid" ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      const eventSlug = room.eventId || room.id;
+                      const res = await fetch("/api/tickets/purchase", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({
+                          eventSlug,
+                          eventId: room.eventId || undefined,
+                          venueSlug: "tmi-live-online",
+                          tier: "STANDARD",
+                          quantity: 1,
+                          faceValue: room.entryPriceUsd ?? 10,
+                          successUrl: `${window.location.origin}${room.roomRoute}`,
+                          cancelUrl: `${window.location.origin}/concerts`,
+                        }),
+                      });
+                      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+                      if (res.status === 401) {
+                        window.location.href = `/auth?next=${encodeURIComponent(room.roomRoute)}`;
+                        return;
+                      }
+                      if (data.url) {
+                        window.location.href = data.url;
+                        return;
+                      }
+                    } catch {
+                      /* fall through — stay on access step */
+                    }
+                  }}
+                  style={s({ marginTop: 8, padding: "11px 32px", background: ac, color: "#050310", borderRadius: 10, fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", cursor: "pointer", border: "none" })}
+                >
+                  GET TICKET →
+                </button>
+              ) : (
+                <button
+                  onClick={() => advance("seat")}
+                  style={s({ marginTop: 8, padding: "11px 32px", background: `${ac}22`, border: `1px solid ${ac}55`, color: ac, borderRadius: 10, fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", cursor: "pointer" })}
+                >
+                  CLEAR — FIND MY SEAT →
+                </button>
+              )}
             </div>
           )}
 

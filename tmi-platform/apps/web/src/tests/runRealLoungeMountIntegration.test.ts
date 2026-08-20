@@ -6,8 +6,20 @@
 
 import {
   CANONICAL_LOUNGE_CONTAINER,
+  loungeAllowsAvatars,
+  loungeDatingAccess,
   loungeHudMountsForRoom,
 } from "../lib/venue-hud/loungeContainer";
+import {
+  CANONICAL_WORLD_VIEW_LAW,
+  CANONICAL_WORLD_ZONE,
+  LOUNGE_RUNTIME_LAW,
+  LOUNGE_SIDE_ROOM_ROUTE_MAP,
+  loungeSideRoomEntryHref,
+  resolveLoungeMonitorViewport,
+  resolveLoungeWorldEntry,
+  zoneAllowsAvatars,
+} from "../lib/live/canonicalWorldViewport";
 import {
   adaptRoomParticipantToMediaIdentity,
   consumeCanonicalMonitorAssignment,
@@ -35,7 +47,61 @@ export function runRealLoungeMountIntegrationTest(): {
     CANONICAL_LOUNGE_CONTAINER.renderer === "UniversalVenueRenderer" &&
     CANONICAL_LOUNGE_CONTAINER.hud === "TMIInteractiveLoungeHud" &&
     loungeHudMountsForRoom("lounge-playlist") === true &&
+    loungeHudMountsForRoom("playlist-lounge") === true &&
     loungeHudMountsForRoom("battle-thunder-dome") === false;
+
+  results["lounge_side_room_zone_locked"] =
+    CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM === "LOUNGE_SIDE_ROOM" &&
+    CANONICAL_LOUNGE_CONTAINER.zone === "LOUNGE_SIDE_ROOM" &&
+    CANONICAL_WORLD_VIEW_LAW.loungeAllowsAvatars === false &&
+    LOUNGE_RUNTIME_LAW.loungeAllowsAvatars === false &&
+    loungeAllowsAvatars("lounge-playlist") === false &&
+    zoneAllowsAvatars(CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM) === false &&
+    zoneAllowsAvatars(CANONICAL_WORLD_ZONE.FAN_AVATAR_LOBBY) === true;
+
+  results["lounge_joins_existing_mill_not_lounge_v2"] =
+    !resolveLoungeWorldEntry("playlist-lounge").href.includes("/lounge?") &&
+    resolveLoungeWorldEntry("playlist-lounge").href.includes("/live/rooms/lounge-playlist") &&
+    resolveLoungeWorldEntry("playlist-lounge").href.includes("zone=LOUNGE_SIDE_ROOM") &&
+    LOUNGE_SIDE_ROOM_ROUTE_MAP["/rooms/playlist-lounge"].millRoomId === "lounge-playlist" &&
+    loungeSideRoomEntryHref("playlist-lounge").includes("/live/rooms/lounge-playlist") &&
+    CANONICAL_WORLD_VIEW_LAW.gate3PhysicalWorld === "OPEN" &&
+    LOUNGE_RUNTIME_LAW.photorealMesh === false;
+
+  const monA = resolveLoungeMonitorViewport("A");
+  const monB = resolveLoungeMonitorViewport("B");
+  results["lounge_monitor_a_conversation_no_uvr"] =
+    monA.slot === "A" &&
+    monA.zone === "LOUNGE_SIDE_ROOM" &&
+    monA.usesUvr === false &&
+    /conversation|self cam/i.test(monA.label);
+  results["lounge_monitor_b_group_uvr"] =
+    monB.slot === "B" &&
+    monB.zone === "LOUNGE_SIDE_ROOM" &&
+    monB.usesUvr === true &&
+    /group|room/i.test(monB.label);
+
+  const dating16 = loungeDatingAccess(
+    {
+      userId: "u16",
+      ageYears: 16,
+      accountSafetyState: "active",
+      ageAssurance: "VERIFIED_TEEN",
+    },
+    "date-lounge",
+  );
+  const dating21 = loungeDatingAccess(
+    {
+      userId: "u21",
+      ageYears: 21,
+      accountSafetyState: "active",
+      ageAssurance: "VERIFIED_ADULT",
+    },
+    "date-lounge",
+  );
+  results["dating_lounge_still_21_gated"] =
+    dating16.allowed === false &&
+    dating21.allowed === true;
 
   const { transport, counts } = createCountingMediaTransport();
   const router = createPersonalMediaRouter({ mediaTransport: transport });

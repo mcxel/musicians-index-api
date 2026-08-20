@@ -19,6 +19,7 @@ import {
   type RoomAuthority,
   type SocialRoomType,
 } from "@/lib/lobby/FanLobbyPresence";
+import { loungeSideRoomEntryHref, SYSTEM_OPERATED_PLAYLIST_LOUNGE_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 interface RoomControlsDrawerPanelProps {
   userId: string;
@@ -55,7 +56,7 @@ export default function RoomControlsDrawerPanel({
   const onMigrateStub = () => {
     const intent = createPartyMigrationIntent({
       fromRoomId: roomId,
-      toRoomId: "playlist-lounge",
+      toRoomId: SYSTEM_OPERATED_PLAYLIST_LOUNGE_ROOM_ID,
       toRoomType: "PLAYLIST_LOUNGE",
       initiatedBy: userId,
       memberIds: [userId],
@@ -158,7 +159,7 @@ export default function RoomControlsDrawerPanel({
       </section>
 
       <Link
-        href="/rooms/playlist-lounge"
+        href={loungeSideRoomEntryHref(SYSTEM_OPERATED_PLAYLIST_LOUNGE_ROOM_ID, { from: "fan-avatar-lobby" })}
         style={{
           fontSize: 11,
           fontWeight: 800,

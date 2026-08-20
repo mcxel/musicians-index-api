@@ -9,6 +9,13 @@ import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 import type { LiveSurfaceCard } from "./LiveSurfaceCard";
 import { projectDiscoveryRecordToSurfaceCard } from "./LiveSurfaceCard";
 import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
+import { fanAvatarLobbyEntryHref } from "@/lib/live/canonicalWorldViewport";
+import {
+  isPlaylistLoungeDiscovery,
+  isPublicPerformerLobbyDiscovery,
+  resolvePerformerLobbyJoinHref,
+  resolvePlaylistLoungeJoinHref,
+} from "@/lib/venue-hud/loungeContainer";
 
 export type InstantJoinRole =
   | "FAN"
@@ -77,6 +84,7 @@ export function discoveryRecordToUniversalRoom(
     status,
     access,
     entryPriceUsd: record.entryPriceUsd ?? undefined,
+    eventId: record.experienceId,
     accentColor: record.accentColor,
     thumbnailUrl: record.posterUrl ?? undefined,
     roomRoute: record.joinRoute,
@@ -95,13 +103,17 @@ export function resolveInstantJoin(
   const role = normalizeRole(opts?.role);
   const room = discoveryRecordToUniversalRoom(record);
 
-  // Role-aware route nudge: performers joining as audience still use room route;
-  // fan-lobby tiles keep fan lobby destination (Rule 26).
+  // Playlist / mixed-genre listening → LOUNGE_SIDE_ROOM (video panels, no avatars).
+  // Other fan joins → FAN_AVATAR_LOBBY of the same roomId as performer STAGE / GO LIVE.
   let href = record.joinRoute;
-  if (record.category === "fan_lobbies" && !isPerformerLike(role)) {
-    href = record.joinRoute.includes("fan-lobby")
-      ? record.joinRoute
-      : `/rooms/fan-lobby?from=live-lobby-wall&roomId=${encodeURIComponent(record.roomId)}`;
+  if (isPlaylistLoungeDiscovery(record)) {
+    href = resolvePlaylistLoungeJoinHref(record.roomId, { from: "live-lobby-wall" });
+    room.roomRoute = href;
+  } else if (isPublicPerformerLobbyDiscovery(record) && isPerformerLike(role)) {
+    href = resolvePerformerLobbyJoinHref(record.roomId, { from: "live-lobby-wall" });
+    room.roomRoute = href;
+  } else if (!isPerformerLike(role)) {
+    href = fanAvatarLobbyEntryHref(record.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
   }
 
@@ -166,10 +178,8 @@ export function resolveInstantJoinFromSurface(
   const role = normalizeRole(opts?.role);
 
   let href = card.joinAction.href;
-  if (card.runtimeType === "fan_lobby" && !isPerformerLike(role)) {
-    href = href.includes("fan-lobby")
-      ? href
-      : `/rooms/fan-lobby?from=live-lobby-wall&roomId=${encodeURIComponent(card.roomId)}`;
+  if (!isPerformerLike(role)) {
+    href = fanAvatarLobbyEntryHref(card.roomId, { from: "live-lobby-wall" });
     room.roomRoute = href;
   }
 

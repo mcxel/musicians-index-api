@@ -453,7 +453,7 @@ export default function OnboardingArtistPage() {
           <button
             type="button"
             onClick={() => {
-              router.push("/hub/performer");
+              router.replace("/hub/performer");
             }}
             style={{
               padding: "14px 28px",

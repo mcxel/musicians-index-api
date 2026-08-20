@@ -33,8 +33,6 @@ import LaunchDock from "@/components/dock/LaunchDock";
 import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
 import BeatPurchaseInterestPrompt from "@/components/beats/BeatPurchaseInterestPrompt";
 import AdConsentBanner from "@/components/ads/AdConsentBanner";
-import StarfieldWarpEntry from "@/components/live/StarfieldWarpEntry";
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -227,7 +225,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <MonitorRuntime />
               <PersistentMiniPlayer />
               <LaunchDock />
-              <StarfieldWarpEntry />
               <GlobalLiveDiscoveryOverlay />
               <BeatPurchaseInterestPrompt />
             </WatchSessionProvider>

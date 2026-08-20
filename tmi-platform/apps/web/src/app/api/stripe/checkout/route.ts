@@ -143,7 +143,6 @@ export async function GET(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
-      payment_method_types: ['card'],
       line_items: [lineItem],
       success_url: successUrl,
       cancel_url:  cancelUrl,
@@ -241,7 +240,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const mpSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [
           isRealPriceId && priceId
             ? { price: priceId, quantity: 1 }
@@ -289,7 +287,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const skinSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [{
           quantity: 1,
           price_data: {
@@ -332,7 +329,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const tipSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [{
           quantity: 1,
           price_data: {
@@ -480,7 +476,6 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: checkoutMode,
-      payment_method_types: ['card'],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       line_items: lineItems as any,
       success_url: successUrl,

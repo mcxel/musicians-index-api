@@ -26,10 +26,12 @@ export interface CypherRuntimeState {
   micActive: boolean;
   micRequested: boolean;
   elapsedSeconds: number;
+  /** Each performer's slot duration in seconds (countdown counts down from this). */
+  roundDurationSeconds: number;
   isRoundRunning: boolean;
 }
 
-export function createInitialCypherState(roomId: string, sessionGenre = "Hip-Hop"): CypherRuntimeState {
+export function createInitialCypherState(roomId: string, sessionGenre = "Hip-Hop", roundDurationSeconds = 90): CypherRuntimeState {
   return {
     roomId,
     sessionGenre,
@@ -39,6 +41,7 @@ export function createInitialCypherState(roomId: string, sessionGenre = "Hip-Hop
     micActive: false,
     micRequested: false,
     elapsedSeconds: 0,
+    roundDurationSeconds,
     isRoundRunning: false,
   };
 }

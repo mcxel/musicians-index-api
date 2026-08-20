@@ -46,6 +46,7 @@ import {
   PERFORMER_STYLE_LABEL,
   type PerformerStyleSlot,
 } from "@/lib/competition/PerformerStyleSlots";
+import { resolvePlaylistLoungeJoinHref } from "@/lib/venue-hud/loungeContainer";
 
 export type { AnchorRoomFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
 
@@ -585,7 +586,10 @@ function toPublishInput(def: AnchorRoomDef): PublishLiveRoomInput {
     visibility: "public",
     humanViewerCount: occ.humanViewers,
     accentColor: def.accentColor,
-    joinRoute: `/live/rooms/${encodeURIComponent(def.roomId)}?from=anchor-network`,
+    joinRoute:
+      def.family === "playlist_lounge" || def.family === "conversation_lounge"
+        ? resolvePlaylistLoungeJoinHref(def.roomId, { from: "anchor-network" })
+        : `/live/rooms/${encodeURIComponent(def.roomId)}?from=anchor-network`,
     joinGate: "none",
     experienceId: `anchor:${def.family}`,
     startedAt: getLiveRoom(def.roomId)?.createdAtMs ?? Date.now(),

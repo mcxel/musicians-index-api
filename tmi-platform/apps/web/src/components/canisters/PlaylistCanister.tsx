@@ -20,6 +20,7 @@ import {
   sendPlaybackCommand,
   subscribePlaybackCommands,
   syncNowPlaying,
+  syncPlaylistQueue,
 } from "@/lib/playlists/commandCenterPlaybackBus";
 import { resolvePlaylistLibraryHeader } from "@/lib/playlists/playlistLibraryDisplayName";
 import {
@@ -91,10 +92,11 @@ export function PlaylistCanister({
   const [threads, setThreads] = useState<MessageThreadOption[]>([]);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [savingDisplayName, setSavingDisplayName] = useState(false);
-  const { play: playGlobal, pause: pauseGlobal } = useAudio();
+  const { play: playGlobal, pause: pauseGlobal, seek: seekGlobal, setVolume: setVolumeGlobal, toggleMute: toggleMuteGlobal } = useAudio();
 
   const selectedPlaylist = useMemo(
     () => playlists.find((p) => p.id === selectedId) ?? null,
@@ -204,19 +206,40 @@ export function PlaylistCanister({
   }, [pauseGlobal]);
 
   useEffect(() => {
-    return subscribePlaybackCommands((command) => {
+    return subscribePlaybackCommands((payload) => {
+      const { command } = payload;
       if (command === "toggle") togglePlayback();
       else if (command === "play") setIsPlaying(true);
       else if (command === "pause") {
         pauseGlobal();
         setIsPlaying(false);
-      }
-      else if (command === "prev") setCurrentTrackIndex((prev) => Math.max(0, prev - 1));
+      } else if (command === "prev") setCurrentTrackIndex((prev) => Math.max(0, prev - 1));
       else if (command === "next") {
         setCurrentTrackIndex((prev) => Math.min(Math.max(tracks.length - 1, 0), prev + 1));
+      } else if (command === "select-playlist" && payload.playlistId) {
+        setSelectedId(payload.playlistId);
+      } else if (command === "select-track") {
+        if (payload.trackIndex != null) setCurrentTrackIndex(payload.trackIndex);
+        else if (payload.trackId) {
+          const idx = tracks.findIndex((t) => t.id === payload.trackId);
+          if (idx >= 0) setCurrentTrackIndex(idx);
+        }
+        setIsPlaying(true);
+      } else if (command === "seek" && payload.seekRatio != null) {
+        seekGlobal(payload.seekRatio * 240);
+      } else if (command === "rewind" && payload.seekDeltaSec != null) {
+        seekGlobal(Math.max(0, (payload.seekRatio ?? 0) - payload.seekDeltaSec));
+      } else if (command === "forward" && payload.seekDeltaSec != null) {
+        seekGlobal((payload.seekRatio ?? 0) + payload.seekDeltaSec);
+      } else if (command === "volume" && payload.volume != null) {
+        setVolumeGlobal(payload.volume);
+      } else if (command === "mute") {
+        toggleMuteGlobal();
+      } else if (command === "unmute") {
+        setVolumeGlobal(0.7);
       }
     });
-  }, [tracks.length, togglePlayback, pauseGlobal]);
+  }, [tracks, togglePlayback, pauseGlobal, seekGlobal, setVolumeGlobal, toggleMuteGlobal]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -249,7 +272,31 @@ export function PlaylistCanister({
     });
   }, [selectedId, activeTrack, isPlaying, libraryHeader, playableUrl]);
 
-  // ── Load real playlists ────────────────────────────────────────────────
+  useEffect(() => {
+    syncPlaylistQueue({
+      playlists: playlists.map((p) => ({
+        id: p.id,
+        name: p.name,
+        trackCount: p._count?.items ?? 0,
+      })),
+      selectedPlaylistId: selectedId,
+      tracks: tracks.map((t) => ({ id: t.id, title: t.title, artist: libraryHeader })),
+      currentTrackIndex,
+      isPlaying,
+    });
+  }, [playlists, selectedId, tracks, currentTrackIndex, isPlaying, libraryHeader]);
+
+  const filteredPlaylists = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return playlists;
+    return playlists.filter((p) => p.name.toLowerCase().includes(q));
+  }, [playlists, searchQuery]);
+
+  const filteredTracks = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tracks;
+    return tracks.filter((t) => t.title.toLowerCase().includes(q));
+  }, [tracks, searchQuery]);
   const loadPlaylists = useCallback(async () => {
     setLoadingPlaylists(true);
     try {
@@ -382,6 +429,27 @@ export function PlaylistCanister({
             </button>
           </div>
         </div>
+        <input
+          type="search"
+          placeholder="Search songs / playlists…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "6px 8px",
+            borderRadius: 6,
+            border: `1px solid ${accentColor}44`,
+            background: "rgba(0,0,0,0.35)",
+            color: "#fff",
+            fontSize: 9,
+            boxSizing: "border-box",
+          }}
+        />
+        {searchQuery.trim() && filteredPlaylists.length === 0 && filteredTracks.length === 0 ? (
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", textAlign: "center" }}>
+            {`No results for '${searchQuery.trim()}'`}
+          </div>
+        ) : null}
         {loadingPlaylists ? (
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>Loading playlists…</div>
         ) : playlists.length === 0 ? (
@@ -390,7 +458,7 @@ export function PlaylistCanister({
           </div>
         ) : (
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-            {playlists.map((pl, i) => {
+            {(searchQuery.trim() ? filteredPlaylists : playlists).map((pl, i) => {
               const active = pl.id === selectedId;
               const accent = CARD_ACCENTS[i % CARD_ACCENTS.length];
               return (

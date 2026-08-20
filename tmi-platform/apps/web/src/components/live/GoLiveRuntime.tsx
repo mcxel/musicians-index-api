@@ -349,14 +349,14 @@ function DashboardOverlay({ onReturn, accentColor }: { onReturn: () => void; acc
 interface GoLiveRuntimeProps {
   roomId: string;
   eventId?: string;
-  /** Venue type — drives environment layer, colors, and seating geometry */
   venueType?: VenueType;
-  /** Legacy: eventType maps to venueType if venueType is not provided */
   eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'dance-party' | 'world-concert' | 'mini-concert' | 'release-party' | 'world-release' | 'mini-release';
   accentColor?: string;
   initialMode?: ViewMode;
-  /** Instant Go Live — empty seats first paint, real presence only */
   instantEmptyStage?: boolean;
+  contained?: boolean;
+  /** When false, suppress hardcoded LIVE chrome (hub privacy path). */
+  showLiveChrome?: boolean;
 }
 
 export default function GoLiveRuntime({
@@ -367,6 +367,8 @@ export default function GoLiveRuntime({
   accentColor: accentColorProp,
   initialMode = 'FULL_VENUE',
   instantEmptyStage = false,
+  contained = false,
+  showLiveChrome = true,
 }: GoLiveRuntimeProps) {
   // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
   const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
@@ -385,7 +387,7 @@ export default function GoLiveRuntime({
       venueType={venueType}
       mode="performer"
       energyLevel={0.8}
-      style={{ height: '100vh' }}
+      style={{ height: contained ? "100%" : "100vh" }}
     >
     <div style={{
       position: 'relative',
@@ -404,6 +406,7 @@ export default function GoLiveRuntime({
         borderBottom: `1px solid ${accentColor}22`,
         zIndex: 200, flexShrink: 0,
       }}>
+        {showLiveChrome ? (
         <span style={{
           display: 'flex', alignItems: 'center', gap: 5,
           fontSize: 8, fontWeight: 900, color: '#FF2020', letterSpacing: '.12em',
@@ -411,6 +414,13 @@ export default function GoLiveRuntime({
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', animation: 'grtBlink 1s step-end infinite' }} />
           LIVE
         </span>
+        ) : (
+        <span style={{
+          fontSize: 8, fontWeight: 900, color: '#00FFFF', letterSpacing: '.12em',
+        }}>
+          STAGE READY
+        </span>
+        )}
         <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)' }}>
           Room {roomId}
         </span>
