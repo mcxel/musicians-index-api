@@ -17,6 +17,7 @@ import { useLobbyPreviewBind } from '@/lib/lobby/useLobbyPreviewBind';
 import { resolveLobbyDestination, type LobbyWallKind } from '@/lib/lobby/DestinationResolver';
 import { sanitizeWallHostLabel } from '@/lib/lobby/wallPublicIdentity';
 import LobbyCategoryPillRow, { type LobbyCategoryPill } from '@/components/lobby/LobbyCategoryPillRow';
+import { isoCountryToFlag } from '@/lib/discovery/LiveDiscoveryRecord';
 import {
   LIVE_LOBBY_WALL_CONTRACT_ID,
   useAdaptiveWorldRuntime,
@@ -35,6 +36,15 @@ const CRAYON_PALETTE = [
 
 function roomColor(index: number): string {
   return CRAYON_PALETTE[index % CRAYON_PALETTE.length];
+}
+
+function mosaicGenreLabel(room: LobbyRoom): string {
+  const raw = (room.genre ?? room.type.replace(/-/g, ' ')).trim();
+  return raw.length > 0 ? raw : 'Live';
+}
+
+function mosaicFlag(room: LobbyRoom): string {
+  return isoCountryToFlag(room.countryCode ?? 'ZZ');
 }
 
 function stableColorForRoomId(roomId: string): string {
@@ -58,13 +68,9 @@ function resolveStickyTileGeometry(room: LobbyRoom): TileGeometry {
 
   const wide = room.type === 'concert' || room.type === 'game' || room.type === 'lounge';
   const tall = room.type === 'battle' || room.type === 'live' || room.type === 'cypher';
-  // Hero only on first assignment when featured by type+truthful occupancy floor (sticky thereafter).
-  const hero = room.viewerCount >= 200 && (room.type === 'concert' || room.type === 'battle' || room.type === 'live');
 
   let geom: TileGeometry;
-  if (hero) {
-    geom = { gridColumn: 'span 2', gridRow: 'span 2', aspectRatio: '16 / 9' };
-  } else if (wide) {
+  if (wide) {
     geom = { gridColumn: 'span 2', gridRow: 'span 1', aspectRatio: '21 / 9' };
   } else if (tall) {
     geom = { gridColumn: 'span 1', gridRow: 'span 2', aspectRatio: '3 / 4' };
@@ -83,9 +89,12 @@ export type LobbyRoom = {
   performerName: string;
   type: 'battle' | 'cypher' | 'mini-cypher' | 'challenge' | 'game' | 'live' | 'gauntlet' | 'lounge' | 'performer-lobby' | 'dance' | 'concert';
   href: string;
+  /** Kept for join/energy engines — never shown on mosaic tiles (Rule 20 + mosaic lock). */
   viewerCount: number;
   status: 'live' | 'starting' | 'ended';
   genre?: string;
+  /** ISO 3166-1 alpha-2; ZZ / missing → unknown flag. */
+  countryCode?: string;
   prizePool?: string;
   /** Optional discovery low-res preview URL (HTML video) — not a frozen LIVE photo. */
   previewUrl?: string | null;
@@ -260,31 +269,43 @@ function LobbyCell({
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
         gap: 6, zIndex: 5, pointerEvents: 'none',
       }}>
-        {isLive ? (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 8, fontWeight: 900, letterSpacing: '0.08em',
-            color: '#fff', background: 'rgba(230,48,0,0.92)',
-            padding: '3px 7px', borderRadius: 999,
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-            LIVE{room.viewerCount > 0 ? ` · ${room.viewerCount.toLocaleString()}` : ''}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          {isLive ? (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 8, fontWeight: 900, letterSpacing: '0.08em',
+              color: '#fff', background: 'rgba(230,48,0,0.92)',
+              padding: '3px 7px', borderRadius: 999,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+              LIVE
+            </span>
+          ) : (
+            <span style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
+              color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.55)',
+              padding: '3px 7px', borderRadius: 999, textTransform: 'uppercase',
+            }}>
+              {room.status === 'starting' ? 'Starting' : room.status}
+            </span>
+          )}
+          <span
+            title={room.countryCode && room.countryCode !== 'ZZ' ? room.countryCode : 'Country unknown'}
+            style={{
+              fontSize: 14, lineHeight: 1, padding: '1px 4px',
+              background: 'rgba(0,0,0,0.55)', borderRadius: 6,
+            }}
+          >
+            {mosaicFlag(room)}
           </span>
-        ) : (
-          <span style={{
-            fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
-            color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.55)',
-            padding: '3px 7px', borderRadius: 999, textTransform: 'uppercase',
-          }}>
-            {room.status === 'starting' ? 'Starting' : room.status}
-          </span>
-        )}
+        </div>
         <span style={{
-          fontSize: 8, fontWeight: 800, letterSpacing: '0.12em',
+          fontSize: 8, fontWeight: 800, letterSpacing: '0.08em',
           color: '#000', background: bg,
           padding: '2px 6px', borderRadius: 4,
+          maxWidth: '52%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {room.type.toUpperCase()}
+          {mosaicGenreLabel(room)}
         </span>
       </div>
 
@@ -760,8 +781,9 @@ function InPlaceWatchMonitor({
           <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', color: isLive ? '#FF6B6B' : 'rgba(255,255,255,0.6)' }}>
             IN-PLACE MONITOR
           </span>
+          <span style={{ fontSize: 12 }} title={room.countryCode ?? 'ZZ'}>{mosaicFlag(room)}</span>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
-            ({Math.max(1, index + 1)} / {total})
+            {mosaicGenreLabel(room)} · ({Math.max(1, index + 1)} / {total})
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -790,7 +812,7 @@ function InPlaceWatchMonitor({
           </div>
           <div style={{ fontSize: 11, color: '#00FF88', fontWeight: 700 }}>
             {hostLabel}
-            {isLive && room.viewerCount > 0 ? ` · ${room.viewerCount.toLocaleString()} watching` : ''}
+            {room.genre ? ` · ${room.genre}` : ''}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

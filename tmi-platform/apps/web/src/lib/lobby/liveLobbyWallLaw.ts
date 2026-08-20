@@ -15,7 +15,11 @@ import {
 import { LOUNGE_VIDEO_PRESENCE_LAW } from "@/lib/live/loungeVideoPresenceLaw";
 import { isPublicPerformerLobbyDiscovery } from "@/lib/venue-hud/loungeContainer";
 
-/** Primary in-shell category switch — QP-10 LOBBIES mosaic lens order (locked 2026-08-19). */
+/**
+ * Primary in-shell category switch — QP-10 LOBBIES mosaic (locked 2026-08-19).
+ * BROAD types only. Never section a mosaic by sub-genre / music-type chips —
+ * one room can mix performers; tiles show country + genre + name so users pick visually.
+ */
 export type LobbyWallCoreCategoryId =
   | "cyphers"
   | "challenges"
@@ -226,7 +230,10 @@ export function mapDiscoveryToWallCategory(
   return "lives";
 }
 
-/** Fan | Performer side tabs for 30-room genre baseline (Marcel lock 2026-08-19). */
+/**
+ * Genre-lobby mill helpers remain for CanonicalGenreRegistry room IDs.
+ * Do NOT mount these as mosaic filter chips (locked 2026-08-19 — no sub-genre sectioning).
+ */
 export type GenreLobbyWallSide = GenreLobbySide;
 
 export const GENRE_LOBBY_WALL_SIDE_TABS: readonly LobbyCategoryPill[] = [
@@ -234,6 +241,7 @@ export const GENRE_LOBBY_WALL_SIDE_TABS: readonly LobbyCategoryPill[] = [
   { id: "PERFORMER", label: "Performer Lobbies", icon: "🎤", accentColor: "#FFD700" },
 ] as const;
 
+/** @deprecated Mosaic must not filter by these pills. Kept for registry mill lookups. */
 export const GENRE_LOBBY_WALL_GENRE_PILLS: readonly LobbyCategoryPill[] = [
   { id: "all", label: "All Genres", icon: "🌐", accentColor: "#AA2DFF" },
   ...CANONICAL_GENRE_IDS.map((id) => ({

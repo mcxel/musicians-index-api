@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { resolveLobbyDestination, type LobbyWallKind } from "@/lib/lobby/DestinationResolver";
 import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
+import { isoCountryToFlag } from "@/lib/discovery/LiveDiscoveryRecord";
 
 interface LiveRoomTile {
   userId: string;
@@ -20,16 +21,14 @@ interface LiveRoomTile {
   category: string;
   roomId: string;
   accentColor: string;
-  viewerCount: number;
   thumbnailUrl: string | null;
+  countryCode?: string;
 }
 
 interface LiveLobbyWallCanisterProps {
   accentColor?: string;
   /** Maximum rooms to display. Defaults to 6. */
   maxRooms?: number;
-  /** Optional genre filter. */
-  genre?: string;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -57,7 +56,6 @@ function categoryToKind(category: string): LobbyWallKind {
 export function LiveLobbyWallCanister({
   accentColor = "#FF2DAA",
   maxRooms = 6,
-  genre,
 }: LiveLobbyWallCanisterProps) {
   const [rooms, setRooms] = useState<LiveRoomTile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,10 +74,7 @@ export function LiveLobbyWallCanister({
           rooms?: LiveRoomTile[];
         };
         const raw = data.sessions ?? data.rooms ?? [];
-        const filtered = genre
-          ? raw.filter((r) => r.category === genre)
-          : raw;
-        setRooms(filtered.slice(0, maxRooms));
+        setRooms(raw.slice(0, maxRooms));
         setLastFetched(Date.now());
       }
     } catch {
@@ -87,7 +82,7 @@ export function LiveLobbyWallCanister({
     } finally {
       setLoading(false);
     }
-  }, [maxRooms, genre]);
+  }, [maxRooms]);
 
   useEffect(() => {
     void load();
@@ -95,11 +90,6 @@ export function LiveLobbyWallCanister({
     const interval = setInterval(() => void load(), 30_000);
     return () => clearInterval(interval);
   }, [load]);
-
-  function fmtViewers(n: number): string {
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-    return n.toString();
-  }
 
   return (
     <div style={{
@@ -204,23 +194,29 @@ export function LiveLobbyWallCanister({
                       {!room.thumbnailUrl && (
                         <span style={{ fontSize: 32, opacity: 0.5 }}>{emoji}</span>
                       )}
-                      {/* LIVE badge */}
+                      {/* LIVE + country + genre — no viewer counts on tiles */}
                       <div style={{
-                        position: "absolute", top: 8, left: 8,
-                        display: "flex", alignItems: "center", gap: 4,
-                        background: "rgba(220,38,38,0.9)", borderRadius: 4,
-                        padding: "2px 7px",
+                        position: "absolute", top: 8, left: 8, right: 8,
+                        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                        gap: 6,
                       }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", display: "inline-block" }} />
-                        <span style={{ fontSize: 7, fontWeight: 900, color: "#fff", letterSpacing: "0.1em" }}>LIVE</span>
-                      </div>
-                      {/* Viewer count */}
-                      <div style={{
-                        position: "absolute", bottom: 8, right: 8,
-                        fontSize: 8, color: "#fff", background: "rgba(0,0,0,0.65)",
-                        borderRadius: 4, padding: "2px 6px", fontWeight: 700,
-                      }}>
-                        👁 {fmtViewers(room.viewerCount)}
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          background: "rgba(220,38,38,0.9)", borderRadius: 4,
+                          padding: "2px 7px",
+                        }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", display: "inline-block" }} />
+                          <span style={{ fontSize: 7, fontWeight: 900, color: "#fff", letterSpacing: "0.1em" }}>LIVE</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 12, lineHeight: 1 }}>{isoCountryToFlag(room.countryCode ?? "ZZ")}</span>
+                          <span style={{
+                            fontSize: 7, fontWeight: 800, color: "#000", background: roomAccent,
+                            borderRadius: 4, padding: "2px 6px", letterSpacing: "0.06em",
+                          }}>
+                            {room.category.replace(/_/g, " ")}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

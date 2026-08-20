@@ -3,7 +3,8 @@
 /**
  * /live/lobby-wall — All Live Stations wall.
  * LiveLobbyWallHost + DiscoveryBus (canonical registry feed, Rule 20).
- * Category tabs: Battles | Challenges | Cyphers | Lounges (in-shell switch).
+ * Broad category tabs only (no sub-genre chips): Lives | Battles | Cyphers |
+ * Challenges | Lounges | Performer Lobbies | Fan Avatar Lobbies.
  * Fan/Band avatar lobby search via RoleGate (Rule 26).
  */
 
@@ -20,7 +21,6 @@ export default function AllLiveLobbyWallPage() {
         typeLabel="ALL LIVE"
         variant="page"
         defaultCategory="lives"
-        showGenreLobbyTabs
         enableMobileRoam
       />
     </>

@@ -9,7 +9,6 @@
 import { useCallback, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
-import LobbyCategoryPillRow from "@/components/lobby/LobbyCategoryPillRow";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
@@ -18,18 +17,12 @@ import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
-  GENRE_LOBBY_WALL_GENRE_PILLS,
-  GENRE_LOBBY_WALL_SIDE_TABS,
   advanceLobbyWallCategory,
   canSearchFanAvatarLobbies,
-  filterDiscoveryByGenreId,
-  filterDiscoveryByGenreLobbySide,
   filterDiscoveryByWallCategory,
   filterFanAvatarLobbySearch,
-  type GenreLobbyWallSide,
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
-import type { CanonicalGenreId } from "@/lib/live/CanonicalGenreRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
 
 export type LiveLobbyWallHostProps = {
@@ -45,8 +38,6 @@ export type LiveLobbyWallHostProps = {
   defaultCategory?: LobbyWallCoreCategoryId;
   /** Show fan avatar lobby search (still gated by RoleGate + canSearchFanAvatarLobbies). */
   showFanLobbySearch?: boolean;
-  /** Fan | Performer genre lobby tabs — 30-room baseline from CanonicalGenreRegistry. */
-  showGenreLobbyTabs?: boolean;
   /** Touch pan on mosaic surface (phone free-roam). */
   enableMobileRoam?: boolean;
 };
@@ -61,7 +52,6 @@ export default function LiveLobbyWallHost({
   onRoomJoin,
   defaultCategory = "lives",
   showFanLobbySearch = true,
-  showGenreLobbyTabs = false,
   enableMobileRoam = true,
 }: LiveLobbyWallHostProps) {
   const { role: sessionRole } = useAuth();
@@ -69,18 +59,13 @@ export default function LiveLobbyWallHost({
   const records = useDiscoveryBus(viewerUserId);
 
   const [activeCategory, setActiveCategory] = useState<LobbyWallCoreCategoryId>(defaultCategory);
-  const [genreLobbySide, setGenreLobbySide] = useState<GenreLobbyWallSide>("FAN");
-  const [selectedGenreId, setSelectedGenreId] = useState<CanonicalGenreId | "all">("all");
   const [fanSearchQuery, setFanSearchQuery] = useState("");
   const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
 
-  const categoryRecords = useMemo(() => {
-    if (showGenreLobbyTabs) {
-      const sideRecords = filterDiscoveryByGenreLobbySide(records, genreLobbySide);
-      return filterDiscoveryByGenreId(sideRecords, selectedGenreId);
-    }
-    return filterDiscoveryByWallCategory(records, activeCategory);
-  }, [records, activeCategory, showGenreLobbyTabs, genreLobbySide, selectedGenreId]);
+  const categoryRecords = useMemo(
+    () => filterDiscoveryByWallCategory(records, activeCategory),
+    [records, activeCategory],
+  );
 
   const fanSearchResults = useMemo(() => {
     if (!showFanLobbySearch || !canSearchFanAvatarLobbies(viewerRole)) return [];
@@ -150,44 +135,18 @@ export default function LiveLobbyWallHost({
 
   const fanSearchActive = fanSearchQuery.trim().length > 0;
 
-  const sideTabPills = showGenreLobbyTabs && !fanSearchActive
-    ? {
-        items: [...GENRE_LOBBY_WALL_SIDE_TABS],
-        activeId: genreLobbySide,
-        onSelect: (id: string) => setGenreLobbySide(id as GenreLobbyWallSide),
-      }
-    : undefined;
-
-  const genrePills = showGenreLobbyTabs && !fanSearchActive
-    ? {
-        items: [...GENRE_LOBBY_WALL_GENRE_PILLS],
-        activeId: selectedGenreId,
-        onSelect: (id: string) => setSelectedGenreId(id as CanonicalGenreId | "all"),
-      }
-    : undefined;
-
   const categoryPills = fanSearchActive
     ? undefined
-    : showGenreLobbyTabs
-      ? genrePills
-      : {
-          items: [...LOBBY_WALL_CORE_CATEGORY_TABS],
-          activeId: activeCategory,
-          onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
-          onAdvance: advanceCategory,
-        };
+    : {
+        items: [...LOBBY_WALL_CORE_CATEGORY_TABS],
+        activeId: activeCategory,
+        onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
+        onAdvance: advanceCategory,
+      };
 
   return (
     <>
-      {showGenreLobbyTabs && sideTabPills && !fanSearchActive && (
-        <LobbyCategoryPillRow
-          items={sideTabPills.items}
-          activeId={sideTabPills.activeId}
-          onSelect={sideTabPills.onSelect}
-        />
-      )}
-
-      {showFanLobbySearch && !showGenreLobbyTabs && (
+      {showFanLobbySearch && (
         <RoleGate allow={["FAN", "BAND", "USER"]}>
           <div style={{ padding: variant === "quick" ? "0 4px 8px" : "0 0 10px" }}>
             <label
@@ -235,13 +194,7 @@ export default function LiveLobbyWallHost({
 
       <LiveLobbyWallGrid
         rooms={rooms}
-        title={
-          fanSearchActive
-            ? "Fan Avatar Lobby Results"
-            : showGenreLobbyTabs
-              ? `${genreLobbySide === "FAN" ? "Fan Avatar" : "Performer"} Genre Lobbies`
-              : title
-        }
+        title={fanSearchActive ? "Fan Avatar Lobby Results" : title}
         accentColor={accentColor}
         typeLabel={typeLabel}
         variant={variant}
