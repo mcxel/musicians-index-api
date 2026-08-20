@@ -100,35 +100,36 @@ export default function CommandCenterSessionControlStrip({
     const dockRole = isPerformer ? "PERFORMER" : "FAN";
     launchDockStore.setRole(dockRole);
 
-    let roomId = hubRoomId;
-    if (!roomId) {
-      const prep = await presentInstantGoLiveInPlace({
-        role: dockRole,
-        preferredExperience: "live",
-      });
-      if (!prep.ok || !prep.roomId) {
+    try {
+      // Registry publish first (cert: click → POST → registry). Stage bind is best-effort after.
+      const roomId = hubRoomId ?? `room-hub-${Date.now()}`;
+      const publish = await publishInstantGoLiveSession({ roomId, role: dockRole });
+      if (!publish.ok) {
         setGoLivePhase("error");
-        setGoLiveError(prep.error ?? "Stage did not open.");
+        setGoLiveError(publish.error ?? "Publish failed.");
         return;
       }
-      roomId = prep.roomId;
-    }
 
-    const publish = await publishInstantGoLiveSession({ roomId, role: dockRole });
-    if (!publish.ok) {
+      useLivePrivacyState.getState().markLivePublished(roomId);
+      useGoLiveTransition.getState().clearWarp();
+      setGoLivePhase("idle");
+
+      void presentInstantGoLiveInPlace({
+        role: dockRole,
+        preferredExperience: "live",
+      }).catch(() => {
+        /* stage bind optional after registry is live */
+      });
+
+      if (!useLivePrivacyState.getState().previewStream) {
+        void requestHubCameraPreview().then((cam) => {
+          if (!cam.ok) setMediaError(cam.error ?? "Broadcasting without local camera.");
+        });
+      }
+    } catch (err) {
       setGoLivePhase("error");
-      setGoLiveError(publish.error ?? "Publish failed.");
-      return;
+      setGoLiveError(err instanceof Error ? err.message : "Go Live failed.");
     }
-
-    if (!useLivePrivacyState.getState().previewStream) {
-      const cam = await requestHubCameraPreview();
-      if (!cam.ok) setMediaError(cam.error ?? "Broadcasting without local camera.");
-    }
-
-    useLivePrivacyState.getState().markLivePublished(roomId);
-    useGoLiveTransition.getState().clearWarp();
-    setGoLivePhase("idle");
   };
 
   const handleVideoShuffle = () => {

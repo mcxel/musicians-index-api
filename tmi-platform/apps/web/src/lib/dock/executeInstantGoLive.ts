@@ -26,6 +26,7 @@ async function resolveDisplayName(fallback: string): Promise<{ name: string; rol
     const sess = await fetch("/api/auth/session", {
       credentials: "include",
       cache: "no-store",
+      signal: AbortSignal.timeout(8000),
     });
     if (!sess.ok) return { name: fallback, role: "FAN" };
     const data = (await sess.json()) as {
@@ -104,21 +105,26 @@ export async function executeInstantGoLive(opts?: {
   let dailyRoomUrl: string | null = null;
   let dailyToken: string | null = null;
 
-  try {
-    const roomRes = await fetch("/api/video/rooms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userName: identity.name }),
-      credentials: "include",
-    });
-    if (roomRes.ok) {
-      const rd = (await roomRes.json()) as { roomId: string; roomUrl: string; token: string };
-      resolvedRoomId = rd.roomId;
-      dailyRoomUrl = rd.roomUrl;
-      dailyToken = rd.token;
+  // Hub in-place prepare (deferMedia) must not block on Daily — cert/headless and
+  // slow /api/video/rooms were leaving the strip stuck on GOING LIVE with no POST.
+  if (!deferMedia) {
+    try {
+      const roomRes = await fetch("/api/video/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName: identity.name }),
+        credentials: "include",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (roomRes.ok) {
+        const rd = (await roomRes.json()) as { roomId: string; roomUrl: string; token: string };
+        resolvedRoomId = rd.roomId;
+        dailyRoomUrl = rd.roomUrl;
+        dailyToken = rd.token;
+      }
+    } catch {
+      /* registry-only */
     }
-  } catch {
-    /* registry-only */
   }
 
   // Publication to GlobalLiveSessionRegistry — ONLY when publishSession is true (explicit GO LIVE).
@@ -231,16 +237,24 @@ export async function publishInstantGoLiveSession(opts: {
         eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
         roomId: opts.roomId,
         accentColor: opts.accentColor ?? "#FF2DAA",
-        privacy,
+        privacy: privacy === "public" ? "PUBLIC" : privacy === "invite" ? "INVITE_ONLY" : "PUBLIC",
         listed: !destination.flags.restrictedAudience,
       }),
       credentials: "include",
+      signal: AbortSignal.timeout(90000),
     });
     if (!res.ok) {
-      return { ok: false, error: "Could not publish to live registry." };
+      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; code?: string };
+      return {
+        ok: false,
+        error: `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "registry"}`,
+      };
     }
     return { ok: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
-  } catch {
-    return { ok: false, error: "Network error publishing live session." };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? `Network error publishing live session: ${err.message}` : "Network error publishing live session.",
+    };
   }
 }

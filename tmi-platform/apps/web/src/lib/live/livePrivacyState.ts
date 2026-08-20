@@ -106,11 +106,14 @@ export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: 
     const denied =
       err instanceof Error &&
       (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+    const timedOut = err instanceof Error && err.name === "TimeoutError";
     return {
       ok: false,
       error: denied
         ? "Camera/mic permission denied."
-        : "Could not access camera/mic.",
+        : timedOut
+          ? "Camera/mic request timed out."
+          : "Could not access camera/mic.",
     };
   }
 }

@@ -238,14 +238,17 @@ export async function loadPersistedLiveSessions(staleMs = DEFAULT_STALE_MS): Pro
     if (isLiveSessionShape(item.data)) feedByUser.set(item.userId, normalizeSession(item.data));
   }
   const result: LiveSession[] = [];
-  const staleUserIds: string[] = [];
   for (const u of liveUsers) {
-    const session = feedByUser.get(u.id) ?? sessionFromUserRow(u);
-    if (now - session.lastPingAt > staleMs) { staleUserIds.push(u.id); continue; }
+    const fromFeed = feedByUser.get(u.id);
+    const session = fromFeed ?? sessionFromUserRow(u);
+    // GET must never delete durable rows — concurrent /home/3 polls were racing
+    // create and zeroing LIVE NOW while the host worker still reported n+1.
+    // Rescue stale feed pings via user-row freshness while isLive remains true.
+    if (now - session.lastPingAt > staleMs) {
+      result.push(sessionFromUserRow(u));
+      continue;
+    }
     result.push(session);
-  }
-  for (const id of staleUserIds) {
-    await removePersistedLiveSession(id).catch(() => {});
   }
   return result.sort((a, b) => {
     if (b.viewerCount !== a.viewerCount) return b.viewerCount - a.viewerCount;

@@ -23,6 +23,7 @@ import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import WeeklyContestRail from './WeeklyContestRail';
 import WinnerReplayWall from './WinnerReplayWall';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
+import LiveNowActiveRoomsBadge from '@/components/live/LiveNowActiveRoomsBadge';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import BillboardLiveWall from '@/components/media/BillboardLiveWall';
@@ -69,7 +70,11 @@ export default function Home3LiveWorldSurface() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store', credentials: 'include' });
+        const res = await fetch(`/api/live/go?_=${Date.now()}`, {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
         const data = await res.json() as { sessions?: LiveApiSession[]; count?: number };
         const sessions = data.sessions ?? [];
         const truth =
@@ -99,7 +104,7 @@ export default function Home3LiveWorldSurface() {
       }
     };
     void load();
-    const id = setInterval(() => void load(), 10000);
+    const id = setInterval(() => void load(), 2000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
@@ -157,9 +162,7 @@ export default function Home3LiveWorldSurface() {
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#E63000', animation: 'none', display: 'inline-block' }} />
               LIVE
             </div>
-            <span data-testid="live-now-active-rooms" data-active-room-count={String(liveRoomCount)} style={{ color: '#E63000', fontSize: 11, fontWeight: 700 }}>
-              {liveRoomCount === 0 ? 'LIVE NOW — 0 ACTIVE ROOMS' : `LIVE NOW — ${liveRoomCount} ACTIVE ROOMS`}
-            </span>
+            <LiveNowActiveRoomsBadge pollMs={2000} />
           </div>
         </div>
         {/* Broadcast mode tabs */}

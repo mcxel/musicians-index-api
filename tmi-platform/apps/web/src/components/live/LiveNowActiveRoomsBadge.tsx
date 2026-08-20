@@ -11,7 +11,7 @@ import {
 } from "@/lib/broadcast/activeRoomTruth";
 
 export default function LiveNowActiveRoomsBadge({
-  pollMs = 10_000,
+  pollMs = 2_000,
 }: {
   pollMs?: number;
 }) {
@@ -23,26 +23,31 @@ export default function LiveNowActiveRoomsBadge({
     const load = async () => {
       try {
         const next = await fetchActiveRoomTruthCount();
-        if (!cancelled) {
-          setCount(next);
-          setReady(true);
-        }
+        if (!cancelled) setCount(next);
       } catch {
+        /* keep last known count */
+      } finally {
         if (!cancelled) setReady(true);
       }
     };
     void load();
     const id = setInterval(() => void load(), pollMs);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       cancelled = true;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [pollMs]);
 
   return (
     <span
       data-testid="live-now-active-rooms"
-      data-active-room-count={ready ? String(count) : undefined}
+      data-active-room-count={String(count)}
+      data-count-ready={ready ? "true" : "false"}
       style={{
         fontSize: 11,
         fontWeight: 900,
