@@ -190,6 +190,78 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // ─── 1b. EVENT TICKET PURCHASE (Shows & Releases / Live Online Concerts) ──
+      if (metadata.type === 'ticket_purchase') {
+        const buyerId = metadata.buyerId || null;
+        const eventId = metadata.eventId || metadata.eventSlug || '';
+        let eventRecord = eventId
+          ? await prisma.event.findUnique({ where: { id: eventId } })
+          : null;
+        if (!eventRecord && metadata.eventSlug) {
+          eventRecord = await prisma.event.findFirst({
+            where: { OR: [{ id: metadata.eventSlug }, { title: metadata.eventSlug }] },
+          });
+        }
+        if (!eventRecord) {
+          eventRecord = await prisma.event.create({
+            data: {
+              title: metadata.eventSlug || 'TMI Live Online Concert',
+              startsAt: new Date(),
+              status: 'PUBLISHED',
+              artistUserId: buyerId ?? undefined,
+            },
+          });
+        }
+
+        const order = await prisma.order.create({
+          data: {
+            buyerUserId: buyerId,
+            provider: 'STRIPE',
+            providerPaymentId: session.payment_intent as string,
+            amountCents: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            status: 'PAID',
+          },
+        });
+
+        const qty = Math.max(1, Number(metadata.quantity || 1));
+        const tierName = metadata.tier || 'STANDARD';
+        let ticketType = await prisma.ticketType.findFirst({
+          where: { eventId: eventRecord.id, name: tierName },
+        });
+        if (!ticketType) {
+          ticketType = await prisma.ticketType.create({
+            data: {
+              eventId: eventRecord.id,
+              name: tierName,
+              priceCents: Math.round(Number(metadata.faceValue || 10) * 100),
+              quantity: 500,
+            },
+          });
+        }
+
+        for (let i = 0; i < qty; i++) {
+          await prisma.ticket.create({
+            data: {
+              eventId: eventRecord.id,
+              ticketTypeId: ticketType.id,
+              orderId: order.id,
+              ownerUserId: buyerId,
+              tokenHash: `tk_purchase_${session.id}_${i}_${Date.now()}`,
+            },
+          });
+        }
+
+        // Best-effort inventory counter (Rule 17 platform inventory).
+        const invKey = `${metadata.venueSlug || 'tmi-live-online'}::${eventRecord.id}::${tierName}`;
+        await prisma.eventInventory
+          .updateMany({
+            where: { key: invKey },
+            data: { issued: { increment: qty } },
+          })
+          .catch(() => null);
+      }
+
       // ─── 2. BEAT LICENSE FULFILLMENT (SPLIT_PRESETS.beat) ─────────────
       if (metadata.type === 'beat') {
         if (!metadata.beatId || !metadata.licenseType) {

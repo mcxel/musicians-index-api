@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
 import dynamic from "next/dynamic";
 import { PlaylistLoungeCanister } from "@/components/canisters/PlaylistLoungeCanister";
+import ShowsReleasesProfileStrip from "@/components/events/ShowsReleasesProfileStrip";
 
 const VenuePreviewCanvas = dynamic(() => import("@/components/3d/VenuePreviewCanvas"), { ssr: false });
 const YoPhoLivingCanvasOS = dynamic(() => import("@/components/yopho/YoPhoLivingCanvasOS"), { ssr: false });
@@ -674,6 +675,8 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
             {showBooking && (
               <BookingCanister entityId={performer.slug} entityType="performer" accentColor={currentTheme.accent} />
             )}
+
+            <ShowsReleasesProfileStrip performerSlug={performer.slug} accentColor={currentTheme.accent} />
           </div>
 
           {/* Right Frame panel (Interactive Playlist Player Widget) */}

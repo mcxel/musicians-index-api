@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
+import ShowsReleasesMarquee from '@/components/events/ShowsReleasesMarquee';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
@@ -75,6 +76,7 @@ export default async function Home1Route() {
       <GlobalTmiHeader />
       <SponsorRail sponsors={sponsors} zone="home-1-top" />
       <Home1CoverPage />
+      <ShowsReleasesMarquee zone="home-1" />
       <EventReel zone="home-1" />
 
       {/* Rule 6: Discovery Rails — no dead ends */}

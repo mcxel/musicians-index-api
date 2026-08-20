@@ -4,9 +4,10 @@
  * LiveLobbyWallHost — unified lobby wall surface: category tabs, WebRTC mosaic,
  * optional Fan Avatar Lobby search (Rule 26), mobile free-roam pan.
  * Wires LiveLobbyWallGrid + DiscoveryBus — no second discovery mill.
+ * Shows & Releases tab merges catalog cards (scheduled) with live concert discovery.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
@@ -23,7 +24,23 @@ import {
   filterFanAvatarLobbySearch,
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
+import type { ShowsReleasePublicCard } from "@/lib/events/ScheduledEventRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
+
+function catalogCardToLobbyRoom(card: ShowsReleasePublicCard): LobbyRoom {
+  return {
+    id: card.roomId,
+    name: card.title,
+    performerName: card.performerName,
+    hostUserId: card.performerId,
+    type: "concert",
+    href: card.joinHref,
+    viewerCount: 0,
+    status: card.phase === "LIVE" ? "live" : card.phase === "POSTSHOW" ? "ended" : "starting",
+    genre: card.publicTypeLabel,
+    previewUrl: card.previewUrl,
+  };
+}
 
 export type LiveLobbyWallHostProps = {
   accentColor?: string;
@@ -61,6 +78,24 @@ export default function LiveLobbyWallHost({
   const [activeCategory, setActiveCategory] = useState<LobbyWallCoreCategoryId>(defaultCategory);
   const [fanSearchQuery, setFanSearchQuery] = useState("");
   const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+  const [showCatalog, setShowCatalog] = useState<ShowsReleasePublicCard[]>([]);
+
+  useEffect(() => {
+    if (activeCategory !== "shows_and_releases") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/events/shows-releases", { cache: "no-store" });
+        const data = (await res.json()) as { events?: ShowsReleasePublicCard[] };
+        if (!cancelled) setShowCatalog(Array.isArray(data.events) ? data.events : []);
+      } catch {
+        if (!cancelled) setShowCatalog([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory]);
 
   const categoryRecords = useMemo(
     () => filterDiscoveryByWallCategory(records, activeCategory),
@@ -75,10 +110,18 @@ export default function LiveLobbyWallHost({
 
   const displayRecords = fanSearchResults.length > 0 ? fanSearchResults : categoryRecords;
 
-  const rooms = useMemo(
-    () => displayRecords.map(discoveryToLobbyRoom),
-    [displayRecords],
-  );
+  const rooms = useMemo(() => {
+    if (activeCategory === "shows_and_releases" && fanSearchResults.length === 0) {
+      const liveRooms = displayRecords.map(discoveryToLobbyRoom);
+      const liveIds = new Set(liveRooms.map((r) => r.id));
+      const catalogRooms = showCatalog
+        .filter((c) => c.publishStatus === "PUBLISHED")
+        .map(catalogCardToLobbyRoom)
+        .filter((r) => !liveIds.has(r.id));
+      return [...liveRooms, ...catalogRooms];
+    }
+    return displayRecords.map(discoveryToLobbyRoom);
+  }, [activeCategory, displayRecords, showCatalog, fanSearchResults.length]);
 
   const handleRoomJoin = useCallback(
     (room: LobbyRoom) => {
@@ -92,12 +135,37 @@ export default function LiveLobbyWallHost({
         setJoinDecision(resolveInstantJoin(record, { role: viewerRole }));
         return;
       }
+      const catalog = showCatalog.find((c) => c.roomId === room.id || c.eventId === room.id);
+      if (catalog) {
+        const ticketed = catalog.ticketRequested && catalog.phase !== "POSTSHOW";
+        setJoinDecision({
+          instant: !ticketed && catalog.phase === "LIVE",
+          gateReason: ticketed ? "ticket" : "none",
+          href: catalog.joinHref,
+          room: {
+            id: catalog.roomId,
+            title: catalog.title,
+            hostName: catalog.performerName,
+            genre: catalog.publicTypeLabel,
+            viewers: 0,
+            status: catalog.phase === "LIVE" ? "live" : "upcoming",
+            access: ticketed ? "paid" : "free",
+            entryPriceUsd: catalog.requestedPriceUsd ?? undefined,
+            eventId: catalog.eventId,
+            accentColor: "#FFD700",
+            roomRoute: catalog.joinHref,
+            venueIndex: 0,
+            thumbnailUrl: catalog.artworkUrl ?? undefined,
+          },
+        });
+        return;
+      }
       const dest = resolveLobbyDestination({
         roomId: room.id,
         kind:
           room.type === "battle" || room.type === "cypher" || room.type === "challenge"
             ? room.type
-            :           room.type === "lounge"
+            : room.type === "lounge"
               ? "lounge"
               : room.type === "performer-lobby"
                 ? "performer-lobby"
@@ -122,16 +190,13 @@ export default function LiveLobbyWallHost({
         },
       });
     },
-    [onRoomJoin, displayRecords, viewerRole, accentColor],
+    [onRoomJoin, displayRecords, viewerRole, accentColor, showCatalog],
   );
 
-  const advanceCategory = useCallback(
-    (direction: "next" | "prev") => {
-      setActiveCategory((cur) => advanceLobbyWallCategory(cur, direction));
-      setFanSearchQuery("");
-    },
-    [],
-  );
+  const advanceCategory = useCallback((direction: "next" | "prev") => {
+    setActiveCategory((cur) => advanceLobbyWallCategory(cur, direction));
+    setFanSearchQuery("");
+  }, []);
 
   const fanSearchActive = fanSearchQuery.trim().length > 0;
 
@@ -143,6 +208,13 @@ export default function LiveLobbyWallHost({
         onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
         onAdvance: advanceCategory,
       };
+
+  const wallTitle =
+    fanSearchActive
+      ? "Fan Avatar Lobby Results"
+      : activeCategory === "shows_and_releases"
+        ? "Shows & Releases"
+        : title;
 
   return (
     <>
@@ -194,9 +266,9 @@ export default function LiveLobbyWallHost({
 
       <LiveLobbyWallGrid
         rooms={rooms}
-        title={fanSearchActive ? "Fan Avatar Lobby Results" : title}
-        accentColor={accentColor}
-        typeLabel={typeLabel}
+        title={wallTitle}
+        accentColor={activeCategory === "shows_and_releases" ? "#FFD700" : accentColor}
+        typeLabel={activeCategory === "shows_and_releases" ? "SHOWS" : typeLabel}
         variant={variant}
         onRoomJoin={handleRoomJoin}
         enableMobileRoam={enableMobileRoam && variant !== "quick"}

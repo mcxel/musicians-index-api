@@ -87,11 +87,25 @@ export async function POST(req: NextRequest) {
 
   const roomId = body.roomId ?? `room-${userId}-${Date.now()}`;
 
+  // Normalize show/release categories onto StreamCategory "concert" so discovery
+  // + getSessionsByCategory verification succeed (SHOWS & RELEASES wall).
+  const rawCategory = String(body.category ?? "live").toLowerCase().replace(/_/g, "-");
+  const category =
+    rawCategory === "release-party" ||
+    rawCategory === "mini-release" ||
+    rawCategory === "world-release" ||
+    rawCategory === "mini-concert" ||
+    rawCategory === "world-concert" ||
+    rawCategory === "live-online-concert" ||
+    rawCategory === "concert"
+      ? ("concert" as const)
+      : ((body.category ?? "live") as import("@/lib/broadcast/globalLiveSessionStore").StreamCategory);
+
   const session = registerLiveSession({
     userId,
     displayName,
     title:         body.title ?? `${displayName} — Live`,
-    category:      body.category ?? 'live',
+    category,
     roomId,
     avatarUrl:     body.avatarUrl,
     previewUrl:    body.previewUrl,

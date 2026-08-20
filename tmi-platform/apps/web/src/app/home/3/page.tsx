@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Home3LiveWorldSurface from "@/components/home/Home3LiveWorldSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
+import ShowsReleasesMarquee from '@/components/events/ShowsReleasesMarquee';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
@@ -57,6 +58,11 @@ export default function Home3Page() {
     <>
       <SponsorRail sponsors={sponsors} zone="home-3-top" />
       <Home3LiveWorldSurface />
+      <ShowsReleasesMarquee
+        zone="home-3"
+        title="SHOWS & RELEASES"
+        subtitle="Live Online Concerts · watch worldwide"
+      />
       <EventReel zone="home-3" />
 
       {/* Rule 6: Discovery Rails — Live World keeps users in the live ecosystem */}

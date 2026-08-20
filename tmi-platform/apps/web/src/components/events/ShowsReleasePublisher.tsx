@@ -5,7 +5,7 @@
  * Mini kinds can launch now; Live Online Concert / World Release require schedule.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { WorldMiniBadge } from "@/components/live/WorldMiniBadge";
 import type {
@@ -151,7 +151,7 @@ export default function ShowsReleasePublisher({
     drafts: mine.filter((e) => e.phase === "DRAFT" || e.publishStatus === "DRAFT"),
   };
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     width: "100%",
     boxSizing: "border-box",
     padding: "8px 10px",
