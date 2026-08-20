@@ -12,6 +12,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
+import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import CommandCenterMediaStack, {
@@ -62,6 +63,7 @@ import {
 } from "@/lib/commandCenter/hubQuickLaunch";
 import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
+import CompactQuickPanelHost, { SnipsOverlayHost } from "@/components/hud/CompactQuickPanelHost";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
@@ -611,7 +613,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         artist: payload.artist,
         coverUrl: payload.coverUrl,
         audioUrl: payload.audioUrl,
-        isPlaying: Boolean(payload.audioUrl),
+        videoUrl: payload.videoUrl,
+        isPlaying: Boolean(payload.audioUrl || payload.videoUrl),
       };
       setPlaylistCast(cast);
     });
@@ -625,6 +628,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             artist: payload.artist,
             coverUrl: payload.coverUrl,
             audioUrl: payload.audioUrl,
+            videoUrl: payload.videoUrl,
             isPlaying: payload.isPlaying,
             progress: payload.progress,
           };
@@ -636,6 +640,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           artist: payload.artist ?? prev.artist,
           coverUrl: payload.coverUrl ?? prev.coverUrl,
           audioUrl: payload.audioUrl ?? prev.audioUrl,
+          videoUrl: payload.videoUrl ?? prev.videoUrl,
           isPlaying: payload.isPlaying,
           progress: payload.progress,
         };
@@ -768,10 +773,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   }, []);
 
   const mediaSlots: CommandCenterMediaSlot[] = useMemo(() => {
-    const stageVideo =
-      featured?.videoUrl ||
-      process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
-      "/assets/videos/rooms/monday-night-stage.mp4";
     const monitorA: CommandCenterMediaSlot = playlistCast
       ? {
           id: "mon-a",
@@ -782,21 +783,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         }
       : {
           id: "mon-a",
-          label: "MONITOR A · STAGE",
-          videoUrl: featured?.videoUrl ?? stageVideo,
-          imageUrl: featured?.imageUrl,
-          kind: "video",
+          label: "MONITOR A · CAMERA",
+          kind: "empty",
         };
     return [
       monitorA,
       {
         id: "mon-b",
-        label: "MONITOR B · STAGE PREVIEW",
-        videoUrl: featured?.videoUrl ?? stageVideo ?? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        kind: "video",
+        label: "MONITOR B · VENUE",
+        kind: "empty",
       },
     ];
-  }, [featured, playlistCast]);
+  }, [playlistCast]);
 
   const railBtn = (opts: {
     key: string;
@@ -1139,14 +1137,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
           {!stageDeckWork ? (
               <>
-                {monitorLayoutMode !== "HIDDEN" && (
-                  <CommandCenterSessionControlStrip
-                    role={role === "performer" ? "performer" : "fan"}
-                    leaveLabel="📺 MONITORS"
-                    onLeaveRoom={hideStageManually}
-                    onEnterStage={() => router.push("/live/go")}
-                  />
-                )}
+                <CommandCenterSessionControlStrip
+                  role={role === "performer" ? "performer" : "fan"}
+                  userId={userId}
+                  displayName={resolvedDisplayName}
+                />
                 <PersistentMediaInteractionDock
                   role={role === "performer" ? "performer" : "fan"}
                   userId={userId}
@@ -1158,78 +1153,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   }
                   onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
                 />
-                {/* Mobile quick-action strip — Stage Deck WORK tools (in-place, no navigate) */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    overflowX: "auto",
-                    padding: "8px 12px",
-                    borderTop: "1px solid rgba(255,255,255,0.08)",
-                    scrollbarWidth: "none" as const,
-                  }}
-                >
-                  {(
-                    role === "performer"
-                      ? [
-                          {
-                            id: "magazine",
-                            label: "📰 MAGAZINE",
-                            onClick: () => {
-                              if (typeof window !== "undefined") {
-                                sessionStorage.setItem("tmi_magazine_origin", window.location.pathname + window.location.search);
-                              }
-                              router.push("/magazine/issue/current");
-                            },
-                          },
-                          { id: "my-article", label: "✍️ MY ARTICLE", onClick: () => openPerformerBioMagazineTab("magazine") },
-                          { id: "photos", label: "🖼️ PHOTOS", onClick: () => openPerformerBioMagazineTab("gallery") },
-                          { id: "bio", label: "👤 BIO", onClick: () => openPerformerBioMagazineTab("biography") },
-                          { id: "music", label: "🎵 MUSIC", onClick: () => openPerformerBioMagazineTab("music") },
-                          { id: "press-media", label: "🎙️ PRESS/MEDIA", onClick: () => openPerformerBioMagazineTab("interviews") },
-                          { id: "preview", label: "👁️ PREVIEW", onClick: () => openPerformerBioMagazineTab("magazine") },
-                          { id: "submit-update", label: "✅ SUBMIT/UPDATE", onClick: () => openPerformerBioMagazineTab("profile") },
-                          { id: "yopho", label: "📷 YOPHO" },
-                          { id: "playlist-studio", label: "🎚️ PLAYER" },
-                          { id: "live-destinations", label: "📹 LIVE" },
-                          { id: "messaging", label: "💬 MSGS" },
-                        ]
-                      : [
-                          {
-                            id: "magazine",
-                            label: "📰 MAGAZINE",
-                            onClick: () => {
-                              if (typeof window !== "undefined") {
-                                sessionStorage.setItem("tmi_magazine_origin", window.location.pathname + window.location.search);
-                              }
-                              router.push("/magazine/issue/current");
-                            },
-                          },
-                          { id: "yopho", label: "📷 YOPHO" },
-                          { id: "playlist-studio", label: "🎵 PLAYLIST" },
-                          { id: "stream-win", label: "📻 STREAM & WIN", onClick: () => openStageWorkspace("playlist-studio") },
-                          { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE", onClick: () => openStageWorkspace("live-destinations") },
-                          { id: "avatar-quick", label: "👤 AVATAR" },
-                          { id: "memory-wall", label: "🧠 MEMORY" },
-                          { id: "messaging", label: "💬 MSGS" },
-                          { id: "lobby", label: "🏟️ LOBBY WALL" },
-                          { id: "inventory", label: "🎒 INV" },
-                          { id: "live-destinations", label: "📹 LIVE" },
-                          { id: "share-studio", label: "↗ SHARE" },
-                        ]
-                  ).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      data-testid={item.id === "yopho" ? "tmi-yopho-trigger" : `tmi-${item.id}-trigger`}
-                      data-tmi-workspace={item.id}
-                      onClick={item.onClick ?? (() => openStageWorkspace(item.id))}
-                      style={{ flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", whiteSpace: "nowrap" }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
                 <CommandCenterPlaylistBand
                   role={role}
                   userId={userId}
@@ -1355,7 +1278,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               ) : null}
               {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
               {role === "performer"
-                ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
+                ? railBtn({
+                    key: "golive",
+                    label: "GO LIVE",
+                    info: "Broadcast",
+                    onClick: () => {
+                      void presentInstantGoLiveInPlace({ role: "PERFORMER", preferredExperience: "live" });
+                    },
+                  })
                 : null}
               {railBtn({
                 key: "camera",
@@ -1397,9 +1327,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               </div>
               <CommandCenterSessionControlStrip
                 role={role === "performer" ? "performer" : "fan"}
-                leaveLabel="📺 MONITORS"
-                onLeaveRoom={hideStageManually}
-                onEnterStage={() => router.push("/live/go")}
+                userId={userId}
+                displayName={resolvedDisplayName}
               />
               <PersistentMediaInteractionDock
                 role={role === "performer" ? "performer" : "fan"}
@@ -1669,7 +1598,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           })}
           {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
           {role === "performer"
-            ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
+            ? railBtn({
+                key: "golive",
+                label: "GO LIVE",
+                info: "Broadcast",
+                onClick: () => {
+                  void presentInstantGoLiveInPlace({ role: "PERFORMER", preferredExperience: "live" });
+                  setMobileLeftOpen(false);
+                },
+              })
             : null}
           {railBtn({
             key: "camera",
@@ -1753,6 +1690,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       {/* Canonical 4-zone quick panels — desktop only. Mobile uses GPS + Stage Deck. */}
       {!isMobile && <CanonicalLeftQuickPanelHost />}
       {!isMobile && <CanonicalRightQuickPanelHost />}
+      <CompactQuickPanelHost
+        userId={userId}
+        displayName={resolvedDisplayName}
+        role={role === "performer" ? "performer" : "fan"}
+      />
+      <SnipsOverlayHost />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}
       <PointFlightEngine />

@@ -26,15 +26,11 @@ import {
   subscribePlaylistNowPlaying,
   type PlaylistNowPlayingPayload,
 } from "@/lib/playlists/commandCenterPlaybackBus";
-import {
-  dockEmotesForRole,
-  triggerDockOverlayEmote,
-  type DockOverlayRole,
-} from "@/lib/commandCenter/dockOverlayEmotes";
 import type { DockModuleId } from "@/components/shell/MasterControlDock";
+import MobileQuickPanelBar from "@/components/commandCenter/MobileQuickPanelBar";
 
 export interface PersistentMediaInteractionDockProps {
-  role: DockOverlayRole;
+  role: "fan" | "performer";
   userId: string;
   roomId?: string;
   onLobbyNav?: () => void;
@@ -64,10 +60,22 @@ export default function PersistentMediaInteractionDock({
   const [online, setOnline] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [emotesExpanded, setEmotesExpanded] = useState(false);
-  const [recentEmote, setRecentEmote] = useState<string | null>(null);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 900px)");
+    const sync = () => {
+      const mobile = mql.matches;
+      setIsMobile(mobile);
+      if (!mobile) setNavDrawerOpen(false);
+    };
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace } =
     useFloatingWorkspace();
@@ -93,8 +101,8 @@ export default function PersistentMediaInteractionDock({
   }, [onOpenModule, isPerformer]);
 
   useEffect(() => {
-    return subscribePlaybackCommands((command) => {
-      if (command === "open-full") openPlaylistStudio();
+    return subscribePlaybackCommands((payload) => {
+      if (payload.command === "open-full") openPlaylistStudio();
     });
   }, [openPlaylistStudio]);
 
@@ -157,10 +165,53 @@ export default function PersistentMediaInteractionDock({
     return `${current} / —:—`;
   })();
 
-  const emotes = dockEmotesForRole(role);
+  const openNavModule = (moduleId: "lobby" | "messaging" | "notifications") => {
+    openCanonicalWorkspaceQuick(moduleId, "DRAWER");
+    setNavDrawerOpen(false);
+  };
 
   return (
     <>
+      {isMobile && navDrawerOpen ? (
+        <div
+          role="presentation"
+          onClick={() => setNavDrawerOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.65)",
+            zIndex: 8800,
+          }}
+        />
+      ) : null}
+      {isMobile && navDrawerOpen ? (
+        <div
+          style={{
+            position: "fixed",
+            right: 12,
+            bottom: "calc(120px + env(safe-area-inset-bottom, 0px))",
+            width: "min(88vw, 280px)",
+            zIndex: 8900,
+            background: "rgba(5,5,20,0.97)",
+            border: "1px solid rgba(0,255,255,0.25)",
+            borderRadius: 12,
+            padding: "10px 12px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.75)",
+          }}
+        >
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
+            NAVIGATION
+          </div>
+          <NavHome workspaceOpen={workspaceOpen} onToggleWorkspace={() => { toggleWorkspace(); setNavDrawerOpen(false); }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+            <NavButton label="DISCOVER" icon="🧭" onClick={() => openNavModule("lobby")} />
+            <NavButton label="LIVE NOW" icon="📹" onClick={() => openNavModule("lobby")} />
+            <NavButton label="LOBBY" icon="👥" onClick={() => openNavModule("lobby")} />
+            <NavButton label="MESSAGES" icon="💬" onClick={() => openNavModule("messaging")} badge={unreadMessages} />
+            <NavButton label="NOTIFICATIONS" icon="🔔" onClick={() => openNavModule("notifications")} badge={unreadNotifications} />
+          </div>
+        </div>
+      ) : null}
       <MemoryWallPanelOverlay
         isOpen={isMemoryWallOpen}
         onClose={() => setIsMemoryWallOpen(false)}
@@ -202,7 +253,7 @@ export default function PersistentMediaInteractionDock({
               width: "100%",
               minHeight: 56,
               gap: 12,
-              flexWrap: "wrap",
+              flexWrap: isMobile ? "nowrap" : "wrap",
             }}
           >
             {/* LEFT — Mini Media Player (compact, fixed) */}
@@ -211,13 +262,13 @@ export default function PersistentMediaInteractionDock({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                paddingRight: 14,
-                marginRight: 14,
-                borderRight: "1px solid rgba(255,255,255,0.12)",
+                paddingRight: isMobile ? 0 : 14,
+                marginRight: isMobile ? 0 : 14,
+                borderRight: isMobile ? "none" : "1px solid rgba(255,255,255,0.12)",
                 minWidth: 0,
-                maxWidth: 320,
+                maxWidth: isMobile ? "100%" : 320,
                 flexShrink: 1,
-                flex: "0 1 260px",
+                flex: isMobile ? "1 1 100%" : "0 1 260px",
               }}
             >
               <button
@@ -332,6 +383,46 @@ export default function PersistentMediaInteractionDock({
               </div>
             </div>
 
+            {isMobile ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  data-testid="tmi-mobile-nav-trigger"
+                  onClick={() => setNavDrawerOpen((v) => !v)}
+                  style={{
+                    ...toolBtn,
+                    border: navDrawerOpen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
+                    borderRadius: 8,
+                    padding: "6px 10px",
+                    color: navDrawerOpen ? "#00FFFF" : "rgba(255,255,255,0.75)",
+                  }}
+                  aria-expanded={navDrawerOpen}
+                >
+                  🧭 NAV {navDrawerOpen ? "▾" : "▴"}
+                </button>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 900,
+                    color: online ? "#00FF88" : "#FF6666",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: online ? "#00FF88" : "#FF6666",
+                    }}
+                  />
+                  {online ? "ONLINE" : "OFFLINE"}
+                </div>
+              </div>
+            ) : (
+              <>
             {/* CENTER — Global Navigation */}
             <div
               style={{
@@ -433,83 +524,10 @@ export default function PersistentMediaInteractionDock({
               >
                 🧠 MEMORY
               </button>
-              <button
-                type="button"
-                onClick={() => setEmotesExpanded((v) => !v)}
-                style={{ ...toolBtn, color: emotesExpanded ? theme.secondary : "rgba(255,255,255,0.7)" }}
-                aria-expanded={emotesExpanded}
-              >
-                {isPerformer ? "🎭 OVERLAYS" : "😃 EMOTES"}
-              </button>
             </div>
+              </>
+            )}
           </div>
-
-          {emotesExpanded ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                paddingTop: 6,
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 900,
-                  letterSpacing: "0.14em",
-                  color: "rgba(255,255,255,0.35)",
-                  marginRight: 4,
-                }}
-              >
-                {isPerformer ? "STAGE OVERLAYS" : "CROWD EMOTES"}
-              </span>
-              {emotes.map((em) => (
-                <button
-                  key={em.id}
-                  type="button"
-                  title={em.label}
-                  onClick={() => {
-                    const ok = triggerDockOverlayEmote({
-                      role,
-                      emoteId: em.id,
-                      roomId,
-                      userId,
-                    });
-                    if (ok) {
-                      setRecentEmote(em.emoji);
-                      window.setTimeout(() => setRecentEmote(null), 700);
-                    }
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: isPerformer ? 8 : "50%",
-                    border: `1px solid ${em.accent}${isPerformer ? "cc" : "55"}`,
-                    background: isPerformer
-                      ? `linear-gradient(145deg, ${em.accent}33, rgba(0,0,0,0.5))`
-                      : "rgba(255,255,255,0.04)",
-                    boxShadow: isPerformer ? `0 0 10px ${em.accent}44` : "none",
-                    fontSize: 16,
-                    cursor: "pointer",
-                  }}
-                >
-                  {em.emoji}
-                </button>
-              ))}
-              {recentEmote ? (
-                <span style={{ fontSize: 20, marginLeft: 4, animation: "dockEmotePop 0.7s ease-out" }}>{recentEmote}</span>
-              ) : null}
-              <style>{`
-                @keyframes dockEmotePop {
-                  0% { opacity: 1; transform: scale(1) translateY(0); }
-                  100% { opacity: 0; transform: scale(1.15) translateY(-12px); }
-                }
-              `}</style>
-            </div>
-          ) : null}
         </div>
 
         {/* Cyan / gold hard boundary — playlist library starts immediately below */}
@@ -522,6 +540,16 @@ export default function PersistentMediaInteractionDock({
           }}
         />
       </div>
+      {isMobile ? (
+        <MobileQuickPanelBar
+          role={role}
+          screenShareActive={Boolean(screenStream)}
+          onShareScreen={() => (screenStream ? stopScreenShare() : void startScreenShare())}
+          onRecord={() => setIsCameraOpen(true)}
+          onShare={openShareStudio}
+          onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+        />
+      ) : null}
     </>
   );
 }
