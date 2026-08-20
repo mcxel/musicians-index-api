@@ -25,6 +25,11 @@ export default function CanonicalRightQuickPanelHost({
 
   if (!rightPanelWorkspace) return null;
 
+  const fanOnlyPanels = new Set(["avatar-quick", "inventory-quick"]);
+  if (role === "performer" && fanOnlyPanels.has(rightPanelWorkspace)) {
+    return null;
+  }
+
   return (
     <div
       style={{

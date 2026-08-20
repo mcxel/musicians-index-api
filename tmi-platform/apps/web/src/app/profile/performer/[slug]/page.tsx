@@ -8,9 +8,9 @@ import ProfileShell from "@/components/profile/ProfileShell";
 import { notFound } from "next/navigation";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
 import dynamic from "next/dynamic";
+import { PlaylistLoungeCanister } from "@/components/canisters/PlaylistLoungeCanister";
 
 const VenuePreviewCanvas = dynamic(() => import("@/components/3d/VenuePreviewCanvas"), { ssr: false });
-const AvatarLobbyCanvas = dynamic(() => import("@/components/3d/AvatarLobbyCanvas"), { ssr: false });
 const YoPhoLivingCanvasOS = dynamic(() => import("@/components/yopho/YoPhoLivingCanvasOS"), { ssr: false });
 
 interface PublicYophoPageProps {
@@ -25,11 +25,9 @@ export interface YoPhoThemeConfig {
   emote: string;
   motto: string;
   customBgUrl?: string;
-  avatarMode: boolean;
   lobbySkin: string;
   roomSkin: string;
   venueSkin: string;
-  avatarEnv: string;
 }
 
 const DEFAULT_THEME_CONFIG: YoPhoThemeConfig = {
@@ -39,11 +37,9 @@ const DEFAULT_THEME_CONFIG: YoPhoThemeConfig = {
   quoteStyle: "simple",
   emote: "🔥",
   motto: "Create, perform, headline. This is my stage.",
-  avatarMode: false,
   lobbySkin: "cypher-entrance",
   roomSkin: "studio-suite",
   venueSkin: "theater",
-  avatarEnv: "neon",
 };
 
 const DEFAULT_TRACKS = [
@@ -488,7 +484,6 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
       rank={performer.rank}
       tagline={performer.bio}
       articleRoute={`/performers/${performer.slug}/article`}
-      avatarMode={themeConfig.avatarMode}
       isPlaying={isPlaying}
     >
       <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
@@ -803,6 +798,13 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
           </div>
         </div>
 
+        {/* Playlist lounges — mixed-genre listening, video panels (LOUNGE_SIDE_ROOM) */}
+        <PlaylistLoungeCanister
+          accentColor={currentTheme.accent}
+          profileSlug={performer.slug}
+          maxLounges={6}
+        />
+
         {/* 3D Integration Pass Panels */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginTop: 24, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24 }}>
           
@@ -830,33 +832,6 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* 3D Lobby connection panel */}
-          <div style={{ background: currentTheme.glassBg, border: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(10px)", padding: "20px", borderRadius: "14px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 955, color: currentTheme.accent, textTransform: "uppercase", letterSpacing: "0.15em" }}>
-              🎮 3D Lobby Connections
-            </h3>
-            
-            <div style={{ position: "relative", height: 160, borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <AvatarLobbyCanvas activeCount={5} />
-              <div style={{ position: "absolute", bottom: 8, left: 8, zIndex: 10, background: "rgba(0,0,0,0.7)", padding: "4px 8px", borderRadius: 4, fontSize: 10, color: "#fff", fontWeight: 700 }}>
-                🟢 {themeConfig.lobbySkin.replace("-", " ").toUpperCase()}
-              </div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
-                Friends Currently Inside
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Astra_X", "Marcel_K", "Wavetek", "Bar_God", "Nova_K"].map((name) => (
-                  <span key={name} style={{ fontSize: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "4px 10px", borderRadius: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
-                    👤 {name}
-                  </span>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -1097,34 +1072,13 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
             />
           </div>
 
-          {/* 3D Customizer Settings */}
+          {/* Venue / room skin settings (performer store domain — not avatar ownership) */}
           <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.1)", margin: "4px 0" }} />
           
           <div>
             <span style={{ fontSize: 10, fontWeight: 800, color: currentTheme.accent, letterSpacing: "0.15em", textTransform: "uppercase", display: "block", marginBottom: 10 }}>
-              🤖 3D World Settings
+              🎬 Stage & Venue Skins
             </span>
-            
-            {/* 3D Avatar Mode Toggle */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 11, color: "#fff", fontWeight: "bold" }}>3D Virtual Avatar Mode</span>
-              <button
-                type="button"
-                onClick={() => saveThemeConfig({ ...themeConfig, avatarMode: !themeConfig.avatarMode })}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: "6px",
-                  fontSize: 10,
-                  fontWeight: 900,
-                  cursor: "pointer",
-                  background: themeConfig.avatarMode ? currentTheme.accent : "rgba(255,255,255,0.05)",
-                  color: themeConfig.avatarMode ? "#050510" : "#fff",
-                  border: "none",
-                }}
-              >
-                {themeConfig.avatarMode ? "ENABLED" : "DISABLED"}
-              </button>
-            </div>
 
             {/* Lobby Skin Selector */}
             <div style={{ marginBottom: 10 }}>

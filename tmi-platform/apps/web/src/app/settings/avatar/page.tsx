@@ -19,17 +19,31 @@ export default function AvatarSettingsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Rule 26: avatar ownership is Fan-only.
   useEffect(() => {
-    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
-      .then(r => r.json())
-      .then((d: { user?: { role?: string } }) => {
-        const role = (d.user?.role ?? '').toUpperCase();
-        if (role && !FAN_AVATAR_ROLES.has(role)) {
-          router.replace('/settings/profile');
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean; user?: { role?: string } }) => {
+        if (!data.authenticated || !data.user?.role) {
+          router.replace("/auth?next=/settings/avatar");
+          return;
+        }
+        const role = (data.user.role ?? "").toUpperCase();
+        if (!FAN_AVATAR_ROLES.has(role)) {
+          const hubMap: Record<string, string> = {
+            PERFORMER: "/hub/performer",
+            ARTIST: "/hub/performer",
+            BAND: "/hub/band",
+            VENUE: "/hub/venue",
+            SPONSOR: "/hub/sponsor",
+            ADVERTISER: "/hub/advertiser",
+            PROMOTER: "/hub/promoter",
+            ADMIN: "/admin",
+            STAFF: "/admin",
+          };
+          router.replace(hubMap[role] ?? "/settings/profile");
         }
       })
-      .catch(() => {});
+      .catch(() => router.replace("/auth?next=/settings/avatar"));
   }, [router]);
   const [preview, setPreview]     = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');

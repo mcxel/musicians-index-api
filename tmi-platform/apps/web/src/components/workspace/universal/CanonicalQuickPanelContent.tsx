@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
-import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
-import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
+import LiveLobbyWallHost from "@/components/live/LiveLobbyWallHost";
+import type { LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
@@ -21,7 +21,8 @@ import {
 import { digitalQuickPanelFrameStyle } from "@/lib/ui/digitalQuickPanelChrome";
 import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
-import { useEffect } from "react";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((mod) => mod.AvatarViewer),
@@ -35,6 +36,8 @@ export interface CanonicalQuickPanelContentProps {
   role: "fan" | "performer";
   accentColor?: string;
   onClose: () => void;
+  /** When true, outer QuickPanelShell is omitted (host provides chrome). */
+  embedded?: boolean;
 }
 
 function QuickPanelShell({
@@ -116,6 +119,7 @@ function AvatarQuickPanel({
   role,
   accentColor = "#00E5FF",
   onClose,
+  embedded,
 }: Omit<CanonicalQuickPanelContentProps, "workspaceId">) {
   const outfits = useMemo(() => listEquippableCostumes().slice(0, 5), []);
   const props = useMemo(() => listEquippableProps().slice(0, 4), []);
@@ -124,24 +128,11 @@ function AvatarQuickPanel({
   const isFan = role === "fan";
 
   if (!isFan) {
-    return (
-      <QuickPanelShell title="PERFORMER PRESENTATION" accentColor={accentColor} onClose={onClose}>
-        <div style={{ padding: 14, fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
-          Real camera & stage video — avatar ownership is fan-only (Rule 26).
-        </div>
-      </QuickPanelShell>
-    );
+    return null;
   }
 
-  return (
-    <QuickPanelShell
-      title="AVATAR QUICK · LIVE 3D"
-      accentColor={accentColor}
-      onClose={onClose}
-      onOpenDeep={() => openCanonicalDeepStudio("inventory")}
-      deepLabel="FULL STUDIO"
-    >
-      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+  const avatarBody = (
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
         <div
           style={{
             height: 160,
@@ -220,6 +211,19 @@ function AvatarQuickPanel({
           {displayName} · {userId.slice(0, 8)}
         </div>
       </div>
+  );
+
+  if (embedded) return avatarBody;
+
+  return (
+    <QuickPanelShell
+      title="AVATAR QUICK · LIVE 3D"
+      accentColor={accentColor}
+      onClose={onClose}
+      onOpenDeep={() => openCanonicalDeepStudio("inventory")}
+      deepLabel="DECORATE / CUSTOMIZE"
+    >
+      {avatarBody}
     </QuickPanelShell>
   );
 }
@@ -227,19 +231,24 @@ function AvatarQuickPanel({
 function LiveDestinationsQuickPanel({
   accentColor,
   onClose,
+  embedded,
+  userId,
+  role,
 }: {
   accentColor: string;
   onClose: () => void;
+  embedded?: boolean;
+  userId: string;
+  role: "fan" | "performer";
 }) {
-  const records = useDiscoveryBus(null);
-  const rooms = useMemo(() => records.map(discoveryToLobbyRoom), [records]);
   const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+  const records = useDiscoveryBus(userId);
 
   const handleRoomJoin = useCallback(
     (room: LobbyRoom) => {
       const record = records.find((r) => r.roomId === room.id || r.id === room.id);
       if (record) {
-        setJoinDecision(resolveInstantJoin(record));
+        setJoinDecision(resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" }));
         return;
       }
       const dest = resolveLobbyDestination({
@@ -265,30 +274,33 @@ function LiveDestinationsQuickPanel({
         },
       });
     },
-    [records, accentColor],
+    [records, accentColor, role],
   );
 
+  const body = (
+    <div style={{ padding: 8, minHeight: embedded ? 120 : 220 }}>
+      <LiveLobbyWallHost
+        accentColor={accentColor}
+        title="Tap tile → watch · JOIN enters room"
+        typeLabel="LOBBIES"
+        variant="quick"
+        viewerUserId={userId}
+        viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
+        onRoomJoin={handleRoomJoin}
+        showFanLobbySearch
+        enableMobileRoam
+      />
+      {joinDecision ? (
+        <LobbyEntryFlow room={joinDecision.room} instant onClose={() => setJoinDecision(null)} />
+      ) : null}
+    </div>
+  );
+
+  if (embedded) return body;
+
   return (
-    <QuickPanelShell title="LIVE LOBBY WALL · DISCOVER" accentColor={accentColor} onClose={onClose}>
-      <div style={{ padding: 8, minHeight: 220 }}>
-        {rooms.length === 0 ? (
-          <div style={{ padding: 24, textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
-            No active rooms right now.
-          </div>
-        ) : (
-          <LiveLobbyWallGrid
-            rooms={rooms}
-            title="Tap tile → join room"
-            accentColor={accentColor}
-            typeLabel="LIVE"
-            variant="quick"
-            onRoomJoin={handleRoomJoin}
-          />
-        )}
-        {joinDecision ? (
-          <LobbyEntryFlow room={joinDecision.room} instant onClose={() => setJoinDecision(null)} />
-        ) : null}
-      </div>
+    <QuickPanelShell title="LIVE LOBBY WALL · LOBBIES" accentColor={accentColor} onClose={onClose}>
+      {body}
     </QuickPanelShell>
   );
 }
@@ -363,8 +375,10 @@ export default function CanonicalQuickPanelContent({
   role,
   accentColor = "#00E5FF",
   onClose,
+  embedded = false,
 }: CanonicalQuickPanelContentProps) {
   if (workspaceId === "inventory") {
+    if (role === "performer") return null;
     return (
       <AvatarQuickPanel
         userId={userId}
@@ -372,23 +386,70 @@ export default function CanonicalQuickPanelContent({
         role={role}
         accentColor={accentColor}
         onClose={onClose}
+        embedded={embedded}
       />
     );
   }
 
   if (workspaceId === "lobby" || workspaceId === "live-destinations") {
-    return <LiveDestinationsQuickPanel accentColor={accentColor} onClose={onClose} />;
+    return (
+      <LiveDestinationsQuickPanel
+        accentColor={accentColor}
+        onClose={onClose}
+        embedded={embedded}
+        userId={userId}
+        role={role}
+      />
+    );
+  }
+
+  if (workspaceId === "memory-wall") {
+    const inner = (
+      <div style={{ padding: 8 }}>
+        <MemoryWallCanister
+          entityId={userId}
+          entityType={role === "performer" ? "performer" : "fan"}
+          title="Memory Wall"
+          accentColor={accentColor}
+          useSessionOwner
+        />
+      </div>
+    );
+    if (embedded) return inner;
+    return (
+      <QuickPanelShell title="MEMORY WALL" accentColor={accentColor} onClose={onClose} onOpenDeep={() => openCanonicalDeepStudio("memory-wall")}>
+        {inner}
+      </QuickPanelShell>
+    );
+  }
+
+  if (workspaceId === "yopho") {
+    const inner = (
+      <div style={{ padding: 4, maxHeight: 320, overflow: "auto" }}>
+        <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
+      </div>
+    );
+    if (embedded) return inner;
+    return (
+      <QuickPanelShell title="YOPHO" accentColor={accentColor} onClose={onClose} onOpenDeep={() => openCanonicalDeepStudio("yopho")}>
+        {inner}
+      </QuickPanelShell>
+    );
   }
 
   if (workspaceId === "playlist-studio") {
     return <PlaylistQuickRemotePanel accentColor={accentColor} onClose={onClose} />;
   }
 
+  const fallback = (
+    <div style={{ padding: 14, fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
+      Quick controls for this workspace — open full studio for deep work.
+    </div>
+  );
+  if (embedded) return fallback;
   return (
     <QuickPanelShell title={workspaceId.toUpperCase()} accentColor={accentColor} onClose={onClose}>
-      <div style={{ padding: 14, fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-        Quick controls for this workspace — open full studio for deep work.
-      </div>
+      {fallback}
     </QuickPanelShell>
   );
 }

@@ -29,6 +29,10 @@ export default function CompactQuickPanelHost({
 
   if (!activePanel) return null;
 
+  if (activePanel === "avatar" && role === "performer") {
+    return null;
+  }
+
   if (activePanel === "remote") {
     return <RemoteQuickPanel onClose={closePanel} />;
   }
