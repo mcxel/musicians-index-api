@@ -18,6 +18,8 @@ import { persistBobbleheadBaseId } from "@/lib/avatars/BobbleheadRuntimeCharacte
 import {
   FAN_SKIN_TONE_CONTINUUM,
   getFanCosmeticCatalogStats,
+  listActionEmotes,
+  listDanceEmotes,
   listEquippableAccessories,
   listEquippableEmotes,
   listEquippableHair,
@@ -36,7 +38,16 @@ interface AvatarCreationCenterProps {
   accentColor?: string;
 }
 
-type RackTab = "cool" | "hair" | "glasses" | "clothes" | "props" | "emotes" | "instruments";
+type RackTab =
+  | "cool"
+  | "hair"
+  | "glasses"
+  | "clothes"
+  | "props"
+  | "dances"
+  | "actions"
+  | "emotes"
+  | "instruments";
 
 export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreationCenterProps) {
   const [baseId, setBaseId] = useState(BOBBLEHEAD_DEFAULT_BASE_ID);
@@ -64,21 +75,29 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
         return listFanCosmeticsByCategory("glasses");
       case "clothes":
         return [
+          ...listFanCosmeticsByCategory("tops"),
+          ...listFanCosmeticsByCategory("bottoms"),
           ...listFanCosmeticsByCategory("clothing"),
           ...listFanCosmeticsByCategory("jackets"),
           ...listFanCosmeticsByCategory("shoes"),
+          ...listFanCosmeticsByCategory("outfits"),
         ];
       case "props":
         return listEquippableProps().filter((c) => c.inventoryCategory !== "instruments");
+      case "dances":
+        return listDanceEmotes();
+      case "actions":
+        return listActionEmotes();
       case "emotes":
-        return listEquippableEmotes();
+        return listEquippableEmotes().filter((c) => c.emoteKind !== "action" && c.emoteKind !== "dance");
       case "instruments":
         return listEquippableInstruments();
       default:
         return [
           ...listEquippableAccessories().slice(0, 12),
           ...listFanCosmeticsByCategory("headphones"),
-          ...listFanCosmeticsByCategory("vfx").slice(0, 6),
+          ...listFanCosmeticsByCategory("auras").slice(0, 4),
+          ...listFanCosmeticsByCategory("vfx").slice(0, 4),
         ];
     }
   }, [rackTab]);
@@ -89,7 +108,9 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
     { id: "glasses", label: "Glasses" },
     { id: "clothes", label: "Fits" },
     { id: "props", label: "Props" },
-    { id: "emotes", label: "Emotes" },
+    { id: "dances", label: "Dances" },
+    { id: "actions", label: "Actions" },
+    { id: "emotes", label: "Gestures" },
     { id: "instruments", label: "Band" },
   ];
 
@@ -214,7 +235,8 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
           </div>
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
             Catalog {stats.total} SKUs · hair {stats.hair} · glasses {stats.glasses} · clothes{" "}
-            {stats.clothing} · emotes {stats.emotes} · props {stats.props} · instruments{" "}
+            {stats.clothing} · dances {stats.dances} · actions {stats.actionEmotes} · gestures{" "}
+            {stats.emotes} · props {stats.props} · instruments{" "}
             {stats.instruments} · skin stops {stats.skinStops}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>

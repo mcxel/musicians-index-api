@@ -203,7 +203,11 @@ export function seedFanCosmeticCatalogStoreItems(): void {
       featured:
         c.inventoryCategory === "instruments" ||
         c.inventoryCategory === "vfx" ||
+        c.inventoryCategory === "action-emotes" ||
+        c.inventoryCategory === "dances" ||
+        c.inventoryCategory === "auras" ||
         c.inventoryCategory === "hair" ||
+        Boolean(c.featured) ||
         Boolean(c.colorwayOf),
     });
     existingNames.add(c.label);
