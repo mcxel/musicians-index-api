@@ -56,6 +56,10 @@ import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceG
 import { ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
 import type { VenueEnvironmentKind } from "@/lib/venues/EventVenueEnvironment";
+import {
+  evaluateLiveRoomJoinAccess,
+  normalizeLivePrivacyMode,
+} from "@/lib/live/liveRoomPrivacyGate";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -166,6 +170,84 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           </div>
         </main>
       );
+    }
+  }
+
+  // Live privacy gate — public / friends / invite / private (no fake passes)
+  if (!isInstantPerformer) {
+    await ensureHydrated();
+    const privacySession = getSessionByRoomId(id);
+    const privacyMode = normalizeLivePrivacyMode(
+      privacyParam ||
+        (privacySession?.privacy === "INVITE_ONLY" ? "private" : "public"),
+    );
+    if (privacyMode !== "public" || privacySession?.privacy === "INVITE_ONLY") {
+      const auth = await getTmiAuth();
+      const join = await evaluateLiveRoomJoinAccess({
+        viewerUserId: auth?.user.id ?? null,
+        hostUserId: privacySession?.userId ?? null,
+        privacy:
+          privacyMode !== "public"
+            ? privacyMode
+            : privacySession?.privacy === "INVITE_ONLY"
+              ? "private"
+              : "public",
+        isHost: Boolean(
+          privacySession?.userId &&
+            auth?.user.id &&
+            privacySession.userId === auth.user.id,
+        ),
+      });
+      if (!join.allowed) {
+        return (
+          <main
+            style={{
+              minHeight: "60vh",
+              display: "grid",
+              placeItems: "center",
+              background: "#050510",
+              color: "#fff",
+              padding: 32,
+              textAlign: "center",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: "0.16em",
+                  color: "#FF2DAA",
+                }}
+              >
+                LIVE PRIVACY · {join.privacy.toUpperCase()}
+              </div>
+              <h1 style={{ fontSize: 22, fontWeight: 900, marginTop: 10 }}>Room access denied</h1>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.5)",
+                  fontSize: 13,
+                  marginTop: 8,
+                  maxWidth: 440,
+                }}
+              >
+                {join.reason}
+              </p>
+              <Link
+                href="/live/lobby"
+                style={{
+                  display: "inline-block",
+                  marginTop: 16,
+                  color: "#00FFFF",
+                  fontWeight: 800,
+                }}
+              >
+                ← Live Lobby
+              </Link>
+            </div>
+          </main>
+        );
+      }
     }
   }
 

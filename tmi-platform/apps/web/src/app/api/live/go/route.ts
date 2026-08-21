@@ -34,6 +34,7 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from '@/lib/venues/EventVenueEnvironment';
+import { mapLivePrivacyToRegistry } from '@/lib/live/liveRoomPrivacyGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,7 +188,9 @@ export async function POST(req: NextRequest) {
     avatarUrl:     body.avatarUrl,
     previewUrl:    body.previewUrl,
     thumbnailUrl:  body.thumbnailUrl,
-    privacy:       body.privacy ?? 'PUBLIC',
+    privacy:       mapLivePrivacyToRegistry(
+      (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC',
+    ),
     entryPriceUsd: body.entryPriceUsd,
     accentColor:   body.accentColor,
     performerTier: body.performerTier,

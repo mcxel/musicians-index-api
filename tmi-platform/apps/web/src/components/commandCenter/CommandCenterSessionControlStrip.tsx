@@ -103,7 +103,12 @@ export default function CommandCenterSessionControlStrip({
     try {
       // Registry publish first (cert: click → POST → registry). Stage bind is best-effort after.
       const roomId = hubRoomId ?? `room-hub-${Date.now()}`;
-      const publish = await publishInstantGoLiveSession({ roomId, role: dockRole });
+      const dockPrivacy = launchDockStore.getState().privacy;
+      const publish = await publishInstantGoLiveSession({
+        roomId,
+        role: dockRole,
+        privacy: dockPrivacy,
+      });
       if (!publish.ok) {
         setGoLivePhase("error");
         setGoLiveError(publish.error ?? "Publish failed.");

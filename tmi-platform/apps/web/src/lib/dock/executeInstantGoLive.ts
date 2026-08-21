@@ -11,6 +11,7 @@ import {
   resolveLiveDestination,
   type LivePrivacy,
 } from "@/lib/live/LiveDestinationRouter";
+import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyGate";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { publishLiveRoom } from "@/lib/discovery/DiscoveryPublisher";
 
@@ -141,7 +142,8 @@ export async function executeInstantGoLive(opts?: {
             eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
             roomId: resolvedRoomId,
             accentColor: opts?.accentColor ?? "#FF2DAA",
-            privacy,
+            privacy: mapLivePrivacyToRegistry(privacy),
+            audiencePrivacy: privacy,
             ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
           }),
           credentials: "include",
@@ -180,7 +182,8 @@ export async function executeInstantGoLive(opts?: {
             eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
             roomId: resolvedRoomId,
             accentColor: opts?.accentColor ?? "#AA2DFF",
-            privacy,
+            privacy: mapLivePrivacyToRegistry(privacy),
+            audiencePrivacy: privacy,
             listed: false,
             ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
           }),
@@ -219,7 +222,7 @@ export async function publishInstantGoLiveSession(opts: {
 }): Promise<InstantGoLiveResult> {
   const identity = await resolveDisplayName(opts.displayName ?? "Performer");
   const role = (opts.role ?? "PERFORMER").toUpperCase();
-  const privacy = opts.privacy ?? "public";
+  const privacy = opts.privacy ?? launchDockStore.getState().privacy ?? "public";
   const destination = resolveLiveDestination({
     role,
     privacy,
@@ -227,6 +230,7 @@ export async function publishInstantGoLiveSession(opts: {
   });
 
   try {
+    const registryPrivacy = mapLivePrivacyToRegistry(privacy);
     const res = await fetch("/api/live/go", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -237,8 +241,9 @@ export async function publishInstantGoLiveSession(opts: {
         eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
         roomId: opts.roomId,
         accentColor: opts.accentColor ?? "#FF2DAA",
-        privacy: privacy === "public" ? "PUBLIC" : privacy === "invite" ? "INVITE_ONLY" : "PUBLIC",
-        listed: !destination.flags.restrictedAudience,
+        privacy: registryPrivacy,
+        audiencePrivacy: privacy,
+        listed: !destination.flags.restrictedAudience && registryPrivacy === "PUBLIC",
       }),
       credentials: "include",
       signal: AbortSignal.timeout(90000),
