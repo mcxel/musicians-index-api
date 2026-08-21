@@ -1,6 +1,6 @@
 /**
  * FanCosmeticCatalog — single expandable ID scheme for tray + inventory + forge + Fan Store.
- * 3D Avatar Runtime v0: sprites/planes/primitives on sockets. certifiedGlb always false.
+ * 3D Avatar Runtime v0: sprites/planes/primitives on sockets. certifiedGlb true only via AvatarGlbRegistry.
  * Playlist skins stay in PlaylistArtifactEngine (Rule 19) — never mixed here.
  * SKU ids stable for later GLB swap (same id → mesh when certified).
  * Colorways = separate SKUs for monetization (Rule 20 honest pricing).
@@ -163,7 +163,10 @@ export interface FanCosmeticDef {
   inventoryCategory: FanInventoryCategory;
   equipSlot: "accessory" | "prop" | "outfit" | "hair" | "skin" | "instrument" | "emote" | "aura" | "entrance";
   plateUrl?: string;
-  certifiedGlb: false;
+  /** True only when a QA'd GLB exists in AvatarGlbRegistry — catalog seeds stay false. */
+  certifiedGlb: boolean;
+  /** Optional public GLB path when certifiedGlb (see AvatarGlbRegistry). */
+  glbUrl?: string | null;
   description: string;
   /** Outfit: tint AvatarRig body capsule. */
   bodyTint?: string;
@@ -1618,7 +1621,7 @@ function buildPropExpansion(): FanCosmeticDef[] {
       inventoryCategory: "props",
       equipSlot: "prop",
       certifiedGlb: false,
-      description: "HELD boombox — jam audio shared session still a gap",
+      description: "HELD boombox — triggers shared Fan lobby jam audio via prop bus",
       animKind: "hold_bob",
       capability: "HELD",
       isNew: true,
@@ -1990,13 +1993,36 @@ function inferStoreFilters(c: FanCosmeticDef): FanStoreFilterId[] {
   return [...out];
 }
 
+/** Marcel volume cash defaults — wired to STRIPE_PRODUCTS FAN_COSMETIC_* keys. */
+function volumeUsdCentsForRarity(rarity: FanCosmeticRarity, pointsCost: number): number | null {
+  if (pointsCost <= 0 || rarity === "free") return null;
+  if (rarity === "legendary") return 399;
+  if (rarity === "epic") return 299;
+  if (rarity === "rare") return 199;
+  return 99; // common + default
+}
+
+function volumeStripeProductKey(rarity: FanCosmeticRarity, pointsCost: number): string | null {
+  if (pointsCost <= 0 || rarity === "free") return null;
+  if (rarity === "legendary") return "FAN_COSMETIC_LEGENDARY";
+  if (rarity === "epic") return "FAN_COSMETIC_EPIC";
+  if (rarity === "rare") return "FAN_COSMETIC_RARE";
+  return "FAN_COSMETIC_COMMON";
+}
+
 /** Fill schema fields for every catalog row (seed may omit). */
 export function normalizeFanCosmetic(c: FanCosmeticDef): FanCosmeticDef {
   const category = c.category ?? c.inventoryCategory;
   const rigAnchor = c.rigAnchor ?? c.socketId;
+  const usdCents =
+    c.usdCents != null && c.usdCents > 0
+      ? c.usdCents
+      : volumeUsdCentsForRarity(c.rarity, c.pointsCost);
+  const stripeProductId =
+    c.stripeProductId ?? volumeStripeProductKey(c.rarity, c.pointsCost);
   const price: FanCosmeticPrice = c.price ?? {
     points: c.pointsCost,
-    stripeProductId: c.stripeProductId ?? null,
+    stripeProductId,
   };
   const entitlement: CosmeticEntitlementKind =
     c.entitlement ?? (c.pointsCost === 0 ? "free" : "points");
@@ -2004,15 +2030,17 @@ export function normalizeFanCosmetic(c: FanCosmeticDef): FanCosmeticDef {
     ...c,
     category,
     rigAnchor,
-    price,
+    price: { ...price, stripeProductId: price.stripeProductId ?? stripeProductId },
     entitlement,
     compatibleAvatarRig: c.compatibleAvatarRig ?? "AvatarRig_v0",
     performanceCost: c.performanceCost ?? defaultPerformanceCost(c),
     AIExpansionAllowed: c.AIExpansionAllowed ?? true,
     published: c.published ?? true,
     storeFilters: c.storeFilters ?? inferStoreFilters({ ...c, category, isNew: c.isNew, featured: c.featured }),
-    stripeProductId: c.stripeProductId ?? null,
-    usdCents: c.usdCents ?? null,
+    stripeProductId,
+    usdCents,
+    certifiedGlb: Boolean(c.certifiedGlb),
+    glbUrl: c.glbUrl ?? null,
   };
 }
 

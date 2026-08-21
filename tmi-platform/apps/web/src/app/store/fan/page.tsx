@@ -1,7 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FAN_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
 import BuyPointsSection from '@/components/store/BuyPointsSection';
@@ -21,8 +21,22 @@ const BADGE_COLORS: Record<string, string> = {
   HOT: '#FF2DAA', NEW: '#00FF88', LIMITED: '#FFD700', LAUNCH: '#AA2DFF',
 };
 
-function CosmeticCard({ item }: { item: FanCosmeticDef }) {
-  const cashDisabled = !item.stripeProductId;
+function formatUsdCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function CosmeticCard({
+  item,
+  stripeConfigured,
+}: {
+  item: FanCosmeticDef;
+  stripeConfigured: boolean | null;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const cashCents = item.usdCents != null && item.usdCents > 0 ? item.usdCents : null;
+  const cashAvailable = Boolean(cashCents && item.stripeProductId && stripeConfigured);
+  const stripeNa = stripeConfigured === false;
   const kind =
     item.emoteKind === 'action'
       ? 'ACTION'
@@ -33,6 +47,62 @@ function CosmeticCard({ item }: { item: FanCosmeticDef }) {
           : item.colorwayOf
             ? 'COLORWAY'
             : null;
+
+  const buyPoints = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/avatar/unlock', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: item.id,
+          payment: item.pointsCost === 0 ? 'grant_free' : 'points',
+          equip: true,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) setMsg('Unlocked · entitlement saved');
+      else if (res.status === 402) setMsg('Need points — buy below');
+      else if (res.status === 401 || res.status === 403) setMsg('Sign in as Fan');
+      else setMsg(data.error ?? 'Unlock failed');
+    } catch {
+      setMsg('Unlock failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buyCash = async () => {
+    if (busy || !cashAvailable) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: 'FAN_COSMETIC', cosmeticId: item.id }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string; code?: string };
+      if (res.status === 503 || data.code === 'STRIPE_NOT_CONFIGURED') {
+        setMsg('STRIPE N/A · points only');
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setMsg(data.error ?? 'Checkout failed');
+    } catch {
+      setMsg('Checkout failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -64,19 +134,81 @@ function CosmeticCard({ item }: { item: FanCosmeticDef }) {
         <div style={{ fontSize: 14, fontWeight: 900, color: '#00FFFF' }}>
           {item.pointsCost === 0 ? 'FREE' : `${item.pointsCost} pts`}
         </div>
-        <div style={{ fontSize: 8, color: cashDisabled ? 'rgba(255,255,255,0.3)' : '#00FF88', fontWeight: 700 }}>
-          {cashDisabled ? 'STRIPE N/A · points only' : 'CASH READY'}
+        <div
+          style={{
+            fontSize: 8,
+            color: stripeNa ? 'rgba(255,255,255,0.3)' : cashAvailable ? '#00FF88' : 'rgba(255,255,255,0.35)',
+            fontWeight: 700,
+          }}
+        >
+          {stripeNa
+            ? 'STRIPE N/A · points only'
+            : cashAvailable && cashCents
+              ? `CASH ${formatUsdCents(cashCents)}`
+              : item.pointsCost === 0
+                ? 'FREE GRANT'
+                : 'POINTS PATH'}
         </div>
       </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void buyPoints()}
+          style={{
+            flex: 1,
+            fontSize: 9,
+            fontWeight: 800,
+            padding: '6px 8px',
+            borderRadius: 8,
+            cursor: busy ? 'wait' : 'pointer',
+            border: '1px solid rgba(0,255,255,0.4)',
+            background: 'rgba(0,255,255,0.12)',
+            color: '#00FFFF',
+          }}
+        >
+          {item.pointsCost === 0 ? 'CLAIM' : 'BUY PTS'}
+        </button>
+        {cashAvailable && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void buyCash()}
+            style={{
+              flex: 1,
+              fontSize: 9,
+              fontWeight: 800,
+              padding: '6px 8px',
+              borderRadius: 8,
+              cursor: busy ? 'wait' : 'pointer',
+              border: '1px solid rgba(0,255,136,0.45)',
+              background: 'rgba(0,255,136,0.12)',
+              color: '#00FF88',
+            }}
+          >
+            BUY {cashCents ? formatUsdCents(cashCents) : 'CASH'}
+          </button>
+        )}
+      </div>
+      {msg && (
+        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{msg}</div>
+      )}
     </div>
   );
 }
 
 export default function FanStorePage() {
   const [filter, setFilter] = useState<FanStoreFilterId | 'ALL'>('ALL');
+  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
   const bobbleheadStoreItems = listFanStoreItems().filter((i) => i.itemType === 'avatar-item' || i.itemType === 'emote');
   const catalog = getUnifiedFanCosmeticCatalog();
   const stats = getFanCosmeticCatalogStats();
+
+  useEffect(() => {
+    // Honest STRIPE N/A only when publishable key missing (secret checked at checkout).
+    const pub = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+    setStripeConfigured(Boolean(pub && !pub.includes('replace') && !pub.endsWith('_xxx')));
+  }, []);
 
   const filtered = useMemo(() => {
     if (filter === 'ALL') return catalog;
@@ -106,7 +238,8 @@ export default function FanStorePage() {
           Catalog {stats.total} · hair {stats.hair} · eyewear {stats.glasses} · headwear {stats.headwear} ·
           tops {stats.tops} · bottoms {stats.bottoms} · dances {stats.dances} · actions {stats.actionEmotes} ·
           auras {stats.auras} · entrances {stats.entrances} · props {stats.props} · instruments {stats.instruments} ·
-          skin stops {stats.skinStops} · colorways {stats.colorwaySkus} · Stripe wired {stats.stripeWired}
+          skin stops {stats.skinStops} · colorways {stats.colorwaySkus} · Stripe SKUs {stats.stripeWired}
+          {stripeConfigured === false ? ' · STRIPE N/A (env)' : stripeConfigured ? ' · cash ready' : ''}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 28 }}>
@@ -166,7 +299,7 @@ export default function FanStorePage() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
               {filtered.map((item) => (
-                <CosmeticCard key={item.id} item={item} />
+                <CosmeticCard key={item.id} item={item} stripeConfigured={stripeConfigured} />
               ))}
             </div>
           )}

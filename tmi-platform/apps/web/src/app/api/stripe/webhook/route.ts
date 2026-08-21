@@ -472,6 +472,34 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // ─── 3B2. FAN COSMETIC FULFILLMENT ───────────────────────────────────
+      // Grants CosmeticEntitlement via grantAvatarCosmetic (canonical persist).
+      if (
+        (metadata.type === 'fan_cosmetic' || metadata.productType === 'FAN_COSMETIC') &&
+        metadata.cosmeticId &&
+        metadata.buyerId
+      ) {
+        const { getFanCosmetic } = await import('@/lib/avatars/FanCosmeticCatalog');
+        const { catalogItemToInventorySeed } = await import('@/lib/avatars/fanAvatarLoadout');
+        const { grantAvatarCosmetic } = await import('@/lib/avatar/avatarPersistence');
+        const def = getFanCosmetic(metadata.cosmeticId);
+        if (def) {
+          const seed = catalogItemToInventorySeed(def);
+          seed.owned = true;
+          seed.metadata = {
+            ...seed.metadata,
+            entitlementSource: 'stripe',
+            cosmeticEntitlement: true,
+            stripeSessionId: session.id,
+          };
+          await grantAvatarCosmetic(metadata.buyerId, seed);
+        } else {
+          console.warn(
+            `[Stripe Webhook] fan_cosmetic ${metadata.cosmeticId} unknown — payment recorded, entitlement skipped`,
+          );
+        }
+      }
+
       // ─── 3C. MEDIA PLAYER CHASSIS FULFILLMENT ──────────────────────────
       // Grants durable ownership only — does not auto-equip (user equips in store/studio).
       if (

@@ -197,7 +197,7 @@ export function seedFanCosmeticCatalogStoreItems(): void {
     addToFanStore({
       itemType,
       name: c.label,
-      description: `${c.description}${c.stripeProductId ? "" : " · Points path (Stripe product not wired — Rule 20)"}`,
+      description: `${c.description}${c.stripeProductId && c.usdCents ? ` · Cash from $${((c.usdCents ?? 0) / 100).toFixed(2)}` : " · Points path"}`,
       pointsCost: c.pointsCost,
       rarity,
       featured:

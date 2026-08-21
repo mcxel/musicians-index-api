@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
-import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, type StripeProductKey } from '@/lib/stripe/products';
+import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, isRealPriceId, resolveFanCosmeticStripeKey, resolveFanCosmeticUsdCents, type StripeProductKey } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
@@ -17,6 +17,7 @@ import {
   resolveFanUserIdFromEmail,
   resolveTipArtistUserId,
 } from '@/lib/tips/tipFulfillment';
+import { getFanCosmetic } from '@/lib/avatars/FanCosmeticCatalog';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -267,10 +268,84 @@ export async function POST(req: NextRequest) {
       skinId?: string;
       customColors?: Record<string, string>;
       chassisId?: string;
+      /** FanCosmeticCatalog SKU id for FAN_COSMETIC cash checkout. */
+      cosmeticId?: string;
       /** Explicit checkout mode — when omitted, inferred from recurring line items. */
       mode?: 'subscription' | 'payment';
     };
     const { items, successUrl, cancelUrl } = body;
+
+    // FAN_COSMETIC — Fan Store cash path → webhook grantAvatarCosmetic
+    if (body.product === 'FAN_COSMETIC' && body.cosmeticId) {
+      const cosmetic = getFanCosmetic(body.cosmeticId);
+      if (!cosmetic) {
+        return NextResponse.json({ error: 'Unknown cosmetic' }, { status: 400 });
+      }
+      if (cosmetic.pointsCost <= 0 || cosmetic.rarity === 'free') {
+        return NextResponse.json(
+          { error: 'Free cosmetics use points/grant path, not Stripe' },
+          { status: 400 },
+        );
+      }
+
+      const buyerEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+      if (!buyerEmail) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+      const buyer = await prisma.user.findUnique({ where: { email: buyerEmail }, select: { id: true, role: true } });
+      if (!buyer) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+      const role = String(buyer.role ?? '').toUpperCase();
+      if (role && role !== 'FAN' && role !== 'USER' && role !== 'ADMIN' && role !== 'STAFF') {
+        return NextResponse.json({ error: 'Fan cosmetics are Fan-only (Rule 26)' }, { status: 403 });
+      }
+
+      const stripe = getStripe();
+      if (!stripe) {
+        return NextResponse.json(
+          { error: 'STRIPE N/A', code: 'STRIPE_NOT_CONFIGURED', message: 'Stripe secret not configured — use points unlock' },
+          { status: 503 },
+        );
+      }
+
+      const productKey =
+        (cosmetic.stripeProductId && cosmetic.stripeProductId in STRIPE_PRODUCTS
+          ? (cosmetic.stripeProductId as StripeProductKey)
+          : null) ?? resolveFanCosmeticStripeKey(cosmetic.rarity) ?? 'FAN_COSMETIC_BASE';
+      const catalog = STRIPE_PRODUCTS[productKey];
+      const unitAmount =
+        resolveFanCosmeticUsdCents(cosmetic.rarity, cosmetic.usdCents) ?? catalog.price;
+      const priceId = catalog.priceId;
+      const usePriceId = typeof priceId === 'string' && isRealPriceId(priceId);
+
+      const { origin } = req.nextUrl;
+      const cosmeticSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          usePriceId
+            ? { price: priceId, quantity: 1 }
+            : {
+                quantity: 1,
+                price_data: {
+                  currency: 'usd',
+                  unit_amount: unitAmount,
+                  product_data: {
+                    name: `Fan Cosmetic — ${cosmetic.label}`,
+                    description: `${cosmetic.description.slice(0, 120)} · AvatarRig SKU ${cosmetic.id}`,
+                  },
+                },
+              },
+        ],
+        success_url: `${origin}/store/fan?purchased=${encodeURIComponent(cosmetic.id)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/store/fan?notice=cosmetic-checkout-cancelled`,
+        customer_email: buyerEmail,
+        metadata: {
+          type: 'fan_cosmetic',
+          productType: 'FAN_COSMETIC',
+          cosmeticId: cosmetic.id,
+          buyerId: buyer.id,
+        },
+      });
+      if (!cosmeticSession.url) throw new Error('No session URL from Stripe');
+      return NextResponse.json({ url: cosmeticSession.url });
+    }
 
     // MEDIA_PLAYER_CHASSIS — Shop / Studio dual-purchase Stripe path
     if (body.product === 'MEDIA_PLAYER_CHASSIS' && body.chassisId) {

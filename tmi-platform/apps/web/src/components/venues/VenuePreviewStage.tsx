@@ -255,7 +255,7 @@ export default function VenuePreviewStage({
             {meshFill.labeledOccupants.slice(0, 3).map((o) => o.label).join(", ") || "empty"}
             {meshFill.labeledOccupants.length > 3 ? "…" : ""}
             {" · "}
-            synthetic [TEST] labels only
+            synthetic [TEST] AvatarRig seats (Fan bobbleheads — Rule 26, no Performer ownership)
           </div>
         </div>
 

@@ -2,13 +2,24 @@
 
 import { Suspense, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Html } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Html, useGLTF } from '@react-three/drei';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import * as THREE from 'three';
 import {
   AvatarSocketAttachment,
   type SocketAttachmentDef,
 } from '@/components/3d/AvatarSocketAttachment';
+import {
+  resolveCertifiedAvatarGlbUrl,
+  type AvatarGlbSlotId,
+} from '@/lib/avatars/AvatarGlbRegistry';
+
+/** Loads a certified AvatarRig GLB when registry marks it certified — else never mounted. */
+function CertifiedAvatarGlbMesh({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+  return <primitive object={cloned} scale={1} />;
+}
 
 function Seat({ position }: { position: [number, number, number] }) {
   return (
@@ -185,6 +196,13 @@ export type AvatarRigProps = {
    * When set, head sphere grows and cutout portraitUrl is ignored (spatial mesh only).
    */
   bobbleheadRatio?: number;
+  /**
+   * Optional certified GLB from AvatarGlbRegistry. Only loads when
+   * resolveCertifiedAvatarGlbUrl returns a path (certified=true). Procedural
+   * capsule remains the default — no fake photoreal claim.
+   */
+  glbSlotId?: AvatarGlbSlotId | null;
+  glbUrl?: string | null;
 };
 
 export function AvatarRig({
@@ -202,6 +220,8 @@ export function AvatarRig({
   bodyHeight = 50,
   bodyMass = 50,
   bobbleheadRatio,
+  glbSlotId = null,
+  glbUrl = null,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -218,6 +238,9 @@ export function AvatarRig({
   const headY = isBobblehead ? 0.95 + headRadius * 0.35 : 1.05;
   const bodyCapsuleRadius = isBobblehead ? 0.26 : 0.3;
   const bodyCapsuleLen = isBobblehead ? (isSeated ? 0.32 : 0.48) : (isSeated ? 0.4 : 0.6);
+  const resolvedGlb =
+    glbUrl ??
+    (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
@@ -266,65 +289,73 @@ export function AvatarRig({
       position={[0, isSeated ? -0.55 : -0.4, 0]}
       scale={[massScale, heightScale, massScale]}
     >
-      {/* Body capsule — Primitive3D / 3D_MESH v0 (stockier when bobblehead) */}
-      <mesh position={[0, isSeated ? 0.28 : 0.4, 0]} castShadow receiveShadow>
-        <capsuleGeometry args={[bodyCapsuleRadius, bodyCapsuleLen, 12, 24]} />
-        <meshStandardMaterial
-          color={bodyColor}
-          roughness={0.15}
-          metalness={0.85}
-          emissive={bodyColor}
-          emissiveIntensity={active ? 0.4 : 0.15}
-        />
-      </mesh>
-
-      {/* Head sphere — oversized when bobbleheadRatio set (spatial citizen, not cutout) */}
-      <mesh position={[0, headY, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[headRadius, 28, 28]} />
-        <meshStandardMaterial
-          color={isBobblehead ? (color ?? headColor) : headColor}
-          roughness={0.35}
-          metalness={0.4}
-        />
-      </mesh>
-      {/* Hair cap disc for bobblehead bases */}
-      {isBobblehead && (
-        <mesh position={[0, headY + headRadius * 0.45, 0]} castShadow>
-          <sphereGeometry args={[headRadius * 0.92, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.45]} />
-          <meshStandardMaterial color={headColor} roughness={0.55} metalness={0.2} />
-        </mesh>
-      )}
-      {usePortraitPlate ? (
-        <Html position={[0, headY, headRadius + 0.01]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={portraitUrl}
-            alt=""
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '2px solid rgba(0,255,255,0.5)',
-            }}
-          />
-        </Html>
+      {resolvedGlb ? (
+        <Suspense fallback={null}>
+          <CertifiedAvatarGlbMesh url={resolvedGlb} />
+        </Suspense>
       ) : (
-        <mesh
-          ref={visorRef}
-          position={[0, headY - headRadius * 0.15, headRadius * 0.75]}
-          rotation={[0.15, 0, 0]}
-          castShadow
-        >
-          <boxGeometry args={[headRadius * 1.25, headRadius * 0.28, headRadius * 0.35]} />
-          <meshStandardMaterial
-            color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-            roughness={0.05}
-            metalness={0.95}
-            emissive={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-            emissiveIntensity={0.9}
-          />
-        </mesh>
+        <>
+          {/* Body capsule — Primitive3D / 3D_MESH v0 (stockier when bobblehead) */}
+          <mesh position={[0, isSeated ? 0.28 : 0.4, 0]} castShadow receiveShadow>
+            <capsuleGeometry args={[bodyCapsuleRadius, bodyCapsuleLen, 12, 24]} />
+            <meshStandardMaterial
+              color={bodyColor}
+              roughness={0.15}
+              metalness={0.85}
+              emissive={bodyColor}
+              emissiveIntensity={active ? 0.4 : 0.15}
+            />
+          </mesh>
+
+          {/* Head sphere — oversized when bobbleheadRatio set (spatial citizen, not cutout) */}
+          <mesh position={[0, headY, 0]} castShadow receiveShadow>
+            <sphereGeometry args={[headRadius, 28, 28]} />
+            <meshStandardMaterial
+              color={isBobblehead ? (color ?? headColor) : headColor}
+              roughness={0.35}
+              metalness={0.4}
+            />
+          </mesh>
+          {/* Hair cap disc for bobblehead bases */}
+          {isBobblehead && (
+            <mesh position={[0, headY + headRadius * 0.45, 0]} castShadow>
+              <sphereGeometry args={[headRadius * 0.92, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.45]} />
+              <meshStandardMaterial color={headColor} roughness={0.55} metalness={0.2} />
+            </mesh>
+          )}
+          {usePortraitPlate ? (
+            <Html position={[0, headY, headRadius + 0.01]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={portraitUrl}
+                alt=""
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid rgba(0,255,255,0.5)',
+                }}
+              />
+            </Html>
+          ) : (
+            <mesh
+              ref={visorRef}
+              position={[0, headY - headRadius * 0.15, headRadius * 0.75]}
+              rotation={[0.15, 0, 0]}
+              castShadow
+            >
+              <boxGeometry args={[headRadius * 1.25, headRadius * 0.28, headRadius * 0.35]} />
+              <meshStandardMaterial
+                color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
+                roughness={0.05}
+                metalness={0.95}
+                emissive={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
+                emissiveIntensity={0.9}
+              />
+            </mesh>
+          )}
+        </>
       )}
 
       {showCrown && (
@@ -375,6 +406,8 @@ export function AvatarViewer({
   bodyHeight,
   bodyMass,
   bobbleheadRatio,
+  glbSlotId,
+  glbUrl,
   enableOrbit = true,
   fill = false,
   cameraFocus = "body",
@@ -416,6 +449,8 @@ export function AvatarViewer({
             activePropId={activePropId}
             bodyHeight={bodyHeight}
             bodyMass={bodyMass}
+            glbSlotId={glbSlotId}
+            glbUrl={glbUrl}
           />
           <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={8} blur={2.5} far={4} />
 

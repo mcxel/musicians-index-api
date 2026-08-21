@@ -417,6 +417,45 @@ export const STRIPE_PRODUCTS = {
     interval: "one_time" as const,
   },
 
+  // ── Fan Avatar cosmetics (volume model — low cash, points path stays) ─────
+  // Prefer STRIPE_PRICE_FAN_COSMETIC_* env; checkout falls back to price_data
+  // from catalog usdCents when placeholder price IDs are not live yet.
+  FAN_COSMETIC_BASE: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_BASE ?? "price_fan_cosmetic_base",
+    name: "Fan Cosmetic — Base",
+    price: 99, // $0.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_COMMON: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_COMMON ?? process.env.STRIPE_PRICE_FAN_COSMETIC_BASE ?? "price_fan_cosmetic_common",
+    name: "Fan Cosmetic — Common",
+    price: 99, // $0.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_RARE: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_RARE ?? "price_fan_cosmetic_rare",
+    name: "Fan Cosmetic — Rare",
+    price: 199, // $1.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_EPIC: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_EPIC ?? "price_fan_cosmetic_epic",
+    name: "Fan Cosmetic — Epic",
+    price: 299, // $2.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_LEGENDARY: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_LEGENDARY ?? "price_fan_cosmetic_legendary",
+    name: "Fan Cosmetic — Legendary",
+    price: 399, // $3.99
+    interval: "one_time" as const,
+  },
+
   // ── Season passes (bonus points granted on webhook) ───────────────────────
   SEASON_PASS_FAN: {
     productId: "prod_season_pass",
@@ -477,6 +516,41 @@ export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey>
   submarine: "MEDIA_PLAYER_CHASSIS_SUBMARINE",
   rocket: "MEDIA_PLAYER_CHASSIS_ROCKET",
 };
+
+/** Fan cosmetic rarity → Stripe product key (volume SKUs). */
+export const FAN_COSMETIC_PRODUCT_KEYS = {
+  free: null,
+  common: "FAN_COSMETIC_COMMON",
+  rare: "FAN_COSMETIC_RARE",
+  epic: "FAN_COSMETIC_EPIC",
+  legendary: "FAN_COSMETIC_LEGENDARY",
+} as const satisfies Record<string, StripeProductKey | null>;
+
+/** Marcel volume defaults (cents) when catalog usdCents omitted. */
+export const FAN_COSMETIC_VOLUME_USD_CENTS: Record<string, number> = {
+  common: 99,
+  rare: 199,
+  epic: 299,
+  legendary: 399,
+};
+
+export function resolveFanCosmeticStripeKey(
+  rarity: string,
+): StripeProductKey | null {
+  if (rarity === "free") return null;
+  const key = FAN_COSMETIC_PRODUCT_KEYS[rarity as keyof typeof FAN_COSMETIC_PRODUCT_KEYS];
+  if (key == null) return "FAN_COSMETIC_BASE";
+  return key;
+}
+
+export function resolveFanCosmeticUsdCents(
+  rarity: string,
+  explicitUsdCents?: number | null,
+): number | null {
+  if (explicitUsdCents != null && explicitUsdCents > 0) return explicitUsdCents;
+  if (rarity === "free") return null;
+  return FAN_COSMETIC_VOLUME_USD_CENTS[rarity] ?? FAN_COSMETIC_VOLUME_USD_CENTS.common ?? 99;
+}
 
 // ── Price ID helpers ──────────────────────────────────────────────────────────
 // Real Stripe price IDs match the format price_1<alphanum>

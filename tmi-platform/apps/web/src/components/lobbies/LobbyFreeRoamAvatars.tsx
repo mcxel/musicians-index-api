@@ -30,6 +30,7 @@ import {
   readPersistedBobbleheadBaseId,
   resolveBobbleheadRuntimeCharacter,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { syncLobbyJamFromPresence } from "@/lib/lobby/FanLobbyJamAudio";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -107,6 +108,19 @@ export function LobbyFreeRoamAvatars({
       cancelled = true;
     };
   }, [equippedProp]);
+
+  /** Shared instrument jam — presence propTrigger bus + local Web Audio / sound pack. */
+  const jamPrevRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    jamPrevRef.current = syncLobbyJamFromPresence({
+      selfPropTrigger: self.propTrigger,
+      peerPropTriggers: participants.map((p) => ({
+        userId: p.userId,
+        propTrigger: p.propTrigger ?? "none",
+      })),
+      prevMap: jamPrevRef.current,
+    });
+  }, [self.propTrigger, participants]);
 
   function handleFloorClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = floorRef.current?.getBoundingClientRect();
