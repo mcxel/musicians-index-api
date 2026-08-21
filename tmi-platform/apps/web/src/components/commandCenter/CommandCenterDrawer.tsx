@@ -693,7 +693,11 @@ export default function CommandCenterDrawer({
           <button
             type="button"
             onClick={() => {
-              void presentInstantGoLiveInPlace({ role: "PERFORMER", preferredExperience: "live" });
+              void presentInstantGoLiveInPlace({
+                role: "PERFORMER",
+                preferredExperience: "live",
+                publishSession: true,
+              });
             }}
             style={{
               ...toolLink(theme.primary),

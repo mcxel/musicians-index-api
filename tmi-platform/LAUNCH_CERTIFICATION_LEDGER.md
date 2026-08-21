@@ -120,3 +120,202 @@ Wave 2 Complete (2026-07-05):
 - Theme Store purchase flow
 - Dating Lounge
 - Radio Network
+
+---
+
+## MASTER MODULE CERTIFICATION PROOF MATRIX
+
+```text
+CERTIFICATION LAW
+
+CODE EXISTS ≠ FEATURE CERTIFIED
+AUTOMATED TEST PASSES ≠ PHYSICAL CERTIFICATION
+PHYSICAL PASS = exact required behavior observed on real device/runtime without hidden workarounds.
+
+If a physical test FAILS:
+record exact failing step first,
+then modify ONLY the failing execution path.
+Do not redesign frozen architecture.
+```
+
+### Module Proof Index
+
+#### 1. QP-10 / QUICK PANELS — FUNCTIONAL (desktop harness)
+* **Status**: ⏳ READY FOR HARNESS RE-RUN (post mobile collapse patch)
+* **Canonical Components**: `components/hud/CompactFloatingQuickPanel.tsx`, `lib/hud/compactQuickPanelStore.ts`, `components/hud/CompactQuickPanelHost.tsx`, `components/hud/panels/RemoteQuickPanel.tsx`, `lib/shuffle/VideoShuffleModeRuntime.ts`, `lib/discovery/SnipsDiscoveryRuntime.ts`, `components/hud/panels/SnipsSwipeOverlay.tsx`, `components/commandCenter/MobileQuickPanelBar.tsx`, `lib/commandCenter/mobileCommandCenterCapabilities.ts`
+* **Proof Steps**:
+  1. Tap **LOBBIES** → compact panel opens → shell stays → no route jump → scroll works → tapping room enters via same media experience.
+  2. Tap **REMOTE** → PLAYLIST tab shows canonical playlists + search works → PLAYER tab controls same active player → playlist switching does not create a second player.
+  3. Tap **VIDEO SHUFFLE** → video starts immediately in canonical player → no landing page → queue continues.
+  4. Tap **SNIPS** → eligible public sources appear → tapping source routes to canonical destination.
+  5. Open panels while multiple monitor frames are active → one parks visually, other remains live; close returns to same state.
+* **Evidence Block**:
+  ```text
+  QP-10 FUNCTIONAL PROOF EVIDENCE
+  PANEL OPENED IN PLACE: YES / NO
+  ROUTE JUMP: YES / NO
+  SECOND PLAYER CREATED: YES / NO
+  MONITOR PARKED WITHOUT RESET: YES / NO
+  SCROLL / THUMB ACCESS: PASS / FAIL
+  VIDEO SHUFFLE HARNESS STEP: PASS / FAIL / BLOCKED
+  ```
+
+#### 1b. QP-10 / QUICK PANELS — MOBILE VISUAL (360 / 390 / 430)
+* **Status**: ⏳ OPEN — code collapse landed; physical device screenshots still required
+* **Canonical Components**: `components/commandCenter/CommandCenterShell.tsx`, `components/commandCenter/CommandCenterSessionControlStrip.tsx`, `components/commandCenter/PersistentMediaInteractionDock.tsx`, `components/commandCenter/MobileQuickPanelBar.tsx`, `lib/commandCenter/mobileCommandCenterCapabilities.ts`, `components/mobile/PWAInstallPrompt.tsx`
+* **Proof Steps**:
+  1. `/hub/fan` and `/hub/performer` at 360 / 390 / 430 px: **LOBBIES** on quick-panel bar (not STAGE); no duplicate CAM+CAMERA on primary strip.
+  2. Right nav (HOME|DISCOVER|LIVE NOW|…) hidden behind **NAV ▴** drawer — not permanently expanded.
+  3. Secondary utilities (SHARE SCREEN|RECORD|SHARE|AUTO) only inside **MORE ▴** tray.
+  4. **INSTALL TMI** banner suppressed on hub + during GO LIVE / camera session; NOT NOW persists 7 days.
+  5. Mini player region stable — quick panels open below without playback restart.
+* **Evidence Block**:
+  ```text
+  QP-10 MOBILE VISUAL EVIDENCE
+  DEVICE WIDTH: 360 / 390 / 430
+  STAGE LABEL ABSENT: YES / NO
+  LOBBIES ON QUICK BAR: YES / NO
+  NAV COLLAPSED: YES / NO
+  MORE TRAY WORKS: YES / NO
+  PWA SUPPRESSED ON HUB: YES / NO
+  MINI PLAYER STABLE: PASS / FAIL
+  ```
+
+#### 2. GO LIVE PHYSICAL RETEST
+* **Status**: 🔴 PHYSICAL FAIL (2026-08-21 — code path converged; phone proof required)
+* **Superseding law**: ONE TAP GO LIVE stays on Command Center — Monitor A = local cam, Monitor B = venue, publish LiveSession for fans, NO broadcaster route change / Welcome / Wave / starfield.
+* **Canonical Components**: `components/commandCenter/CommandCenterSessionControlStrip.tsx`, `lib/dock/presentInstantGoLiveInPlace.ts`, `lib/dock/executeInstantGoLive.ts`, `components/commandCenter/CommandCenterMediaStack.tsx`, `components/live/HubMonitorCameraPlayer.tsx`, `components/live/HubMonitorVenuePlayer.tsx`
+* **Proof Steps**:
+  1. Load performer shell on phone Preview: camera OFF, mic OFF, live false; monitors may idle-rotate.
+  2. Tap GO LIVE once: URL stays on `/hub` (or Command Center) — never `/live/lobby` or `/live/rooms/{id}` for broadcaster.
+  3. Monitor A = self-camera within ~1s; Monitor B = UniversalVenueRenderer (empty→presence); idle MNS/Kiara rotation STOPPED.
+  4. No VENUE READY / Welcome / Wave takeover flicker for broadcaster.
+  5. Fan joins via Lobby Wall → `/live/rooms/{sameRoomId}`.
+  6. SWAP / FULLSCREEN does not restart camera or remount venue.
+* **Evidence Block**:
+  ```text
+  GO LIVE PROOF EVIDENCE
+  BUTTON FIRED: YES / NO
+  ROUTE STAYED ON COMMAND CENTER: YES / NO
+  MONITOR A SELF-CAM: YES / NO
+  MONITOR B VENUE: YES / NO
+  IDLE ROTATION STOPPED: YES / NO
+  WELCOME/WAVE/VENUE-READY FLICKER: YES / NO
+  REGISTRY PUBLISHED (fan discoverable): YES / NO
+  SAME ROOM ID FAN JOIN: YES / NO
+  ```
+* **Cert rule**: stays 🔴 PHYSICAL FAIL until phone screenshots prove Monitor A self-cam + Monitor B venue + no redirect.
+
+#### 3. GATE 3 BROADCAST CONVERGENCE
+* **Status**: ⏳ OPEN
+* **Canonical Components**: `lib/broadcast/BroadcastControlRuntime.ts`, `lib/live/GlobalLiveSessionRegistry.ts`, `components/live/AudienceField.tsx`
+* **Proof Steps**:
+  1. Performer enters live room → verify canonical session `roomId`.
+  2. Monitor A = performer source; Monitor B = canonical venue view.
+  3. Audience enters same `roomId` → verify real fan presence; 0 attendees shows empty seats.
+  4. Media continuity: same player runtime survives fullscreen + exit.
+  5. End LIVE: publication stops and LIVE indicator clears.
+* **Evidence Block**:
+  ```text
+  GATE 3 PROOF EVIDENCE
+  PERFORMER ROOM ID: <id>
+  AUDIENCE ROOM ID: <id>
+  MONITOR ROOM ID: <id>
+  ALL IDENTICAL: YES / NO
+  REAL AUDIENCE PRESENCE: YES / NO
+  LOBBY WALL PREVIEW: YES / NO
+  HOME LIVE SLOT: YES / NO
+  EXACT-ROOM ENTRY: YES / NO
+  DUPLICATE WEBRTC CAPTURE: YES / NO
+  ```
+
+#### 4. GATE 4 AUDIO PERSISTENCE
+* **Status**: ⏳ OPEN
+* **Canonical Components**: `apps/web/src/app/api/upload/media/route.ts`, `lib/media/blobStorage.ts`, `lib/playlists/PlaylistEngine.ts`
+* **Proof Steps**:
+  1. Log in → upload beat → ensure blob/store size > 0.
+  2. Hit PLAY → confirm audible playback.
+  3. Refresh page → PLAY same track.
+* **Evidence Block**:
+  ```text
+  GATE 4 PROOF EVIDENCE
+  UPLOAD SUCCEEDED: YES / NO
+  STORED URL / ASSET EXISTS: YES / NO
+  AUDIBLE BEFORE REFRESH: YES / NO
+  AUDIBLE AFTER REFRESH: YES / NO
+  SAME TRACK ID: YES / NO
+  ```
+
+#### 5. CANONICAL MEDIA PLAYER & MULTI-MONITOR GRID (1, 2, 3, 4, 6, 8)
+* **Status**: 🟢 CODE CERTIFIED / ⏳ RUNTIME PROOF OPEN
+* **Canonical Components**: `lib/monitors/MonitorLayoutDirector.ts`, `components/monitors/CanonicalDualMonitorStack.tsx`, `components/shell/VideoMonitorGrid.tsx`
+* **Evidence Block**:
+  ```text
+  MEDIA PLAYER PROOF EVIDENCE
+  LAYOUT: SINGLE / SPLIT_2 / SPLIT_3 / SPLIT_4 / GRID_6 / GRID_8
+  SWAP WITHOUT RECONNECT: PASS / FAIL
+  PARK / UNPARK WITHOUT RECONNECT: PASS / FAIL
+  PRIMARY AUDIO EXCLUSIVE: PASS / FAIL
+  ASPECT RATIO PRESERVED: PASS / FAIL
+  6/8 SCREEN DENSITY FIT: PASS / FAIL
+  ROOM ID UNCHANGED: PASS / FAIL
+  ```
+
+#### 6. LIVE SCENE EFFECTS
+* **Status**: 🟢 WIRING COMPLETE / ⏳ PHYSICAL PROOF OPEN
+* **Canonical Components**: `lib/effects/TmiFilterEngine.ts`, `lib/effects/BattleMomentumEngine.ts`, `components/effects/LiveFxDrawer.tsx`
+* **Proof Steps**:
+  1. Apply presentation effect → verify WebRTC stream remains active without reconnecting.
+  2. Switch presets → verify zero audio/video drops.
+
+#### 7. MAGAZINE READER & EDITORIAL SYSTEM
+* **Status**: 🟢 CONSOLIDATED / ⏳ PHONE VIEWPORT PROOF OPEN
+* **Canonical Components**: `/magazine/issue/current`, `components/magazine/TMIMagazineEngine.tsx`, `components/magazine/SafeMagazineImage.tsx`
+* **Proof Steps**:
+  1. Phone: Edge-to-edge 100dvw/100dvh single-page flip mode.
+  2. Media fallback: missing assets render safe editorial placeholder without layout collapse.
+
+#### 8. YOUTH SAFETY & AGE GUARDRAILS
+* **Status**: 🟢 CODE & TEST CERTIFIED (72/72 PASS)
+* **Canonical Components**: `lib/trustSafety/YouthSocialGuard.ts`, `/api/account/update-age/route.ts`
+* **Proof Steps**:
+  1. 16-17 minors barred from adult 1:1 contact without verified family link.
+  2. Missing age state triggers inline DOB completion, updates Prisma, and unlocks messaging cleanly.
+
+#### 9. AVATAR STUDIO
+* **Status**: 🟢 CANONICAL ROUTING ACTIVE
+* **Canonical Components**: `/settings/avatar`, `components/avatar/AvatarStudioExperience.tsx`
+* **Proof Steps**:
+  1. All customize/avatar links (`/avatar/customize`, `/avatar-builder`, `/avatar/shop`) auto-redirect to `/settings/avatar`.
+  2. Avatar is centered with 3D orbit controls and side category panels.
+
+#### 10. FREE-ROAM + COLLISION MESH CERTIFICATION
+* **Status**: ⏳ OPEN
+* **Evidence Block**:
+  ```text
+  COLLISION PROOF EVIDENCE
+  FLOOR DETECTION: PASS / FAIL
+  WALL COLLISION: PASS / FAIL
+  PROP COLLISION: PASS / FAIL
+  AVATAR / PERSONAL SPACE: PASS / FAIL / N/A
+  VIDEO PANEL COLLISION: PASS / FAIL
+  STAIRS / RAMPS: PASS / FAIL
+  SEATING: PASS / FAIL
+  MOVEMENT REMAINS FREE-ROAM: PASS / FAIL
+  ```
+
+#### 11. STRIPE COMMERCE & ENTITLEMENTS
+* **Status**: 🟢 MODULE PATH FIXED / ⏳ END-TO-END PAYMENT PROOF OPEN
+* **Canonical Components**: `lib/commerce/CommerceCatalogContract.ts`, `/api/stripe/checkout/route.ts`, `/api/stripe/webhook/route.ts`
+* **Evidence Block**:
+  ```text
+  COMMERCE PROOF EVIDENCE
+  CHECKOUT SESSION CREATED: YES / NO
+  PAYMENT SUCCEEDED: YES / NO
+  SIGNED WEBHOOK RECEIVED: YES / NO
+  ORDER SETTLED ONCE: YES / NO
+  ENTITLEMENT GRANTED ONCE: YES / NO
+  WEBHOOK REPLAY DUPLICATED ENTITLEMENT: YES / NO
+  OWNERSHIP VISIBLE IN UI: YES / NO
+  ```
+

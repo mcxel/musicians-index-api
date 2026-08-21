@@ -17,6 +17,7 @@ import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLay
 import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
 import HubMonitorVenuePlayer from "@/components/live/HubMonitorVenuePlayer";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
 import {
   MonitorScreenShareVideo,
@@ -528,6 +529,8 @@ export default function CommandCenterMediaStack({
 }: CommandCenterMediaStackProps) {
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const hubLiveRoomId = hubInPlaceRoomId ?? publishedRoomId;
   const [swapOrder, setSwapOrder] = useState(false);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
@@ -1101,7 +1104,7 @@ export default function CommandCenterMediaStack({
                   onSwap={handleSwap}
                   overlayTarget={DEFAULT_MONITOR_A}
                   sponsorOverlay={activeSponsorOverlay}
-                  hubLiveRoomId={hubInPlaceRoomId}
+                  hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="A"
                 />
               ),
@@ -1130,7 +1133,7 @@ export default function CommandCenterMediaStack({
                   slot={bottomSlots[0]!}
                   onSwap={handleSwap}
                   overlayTarget={DEFAULT_MONITOR_B}
-                  hubLiveRoomId={hubInPlaceRoomId}
+                  hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="B"
                 />
               ),

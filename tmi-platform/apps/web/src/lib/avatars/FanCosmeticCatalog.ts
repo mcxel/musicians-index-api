@@ -294,14 +294,20 @@ const BEANIE_COLORWAYS: Colorway[] = [
 ];
 
 function colorwaySku(
-  base: Omit<FanCosmeticDef, "id" | "label" | "accent" | "pointsCost" | "rarity" | "certifiedGlb" | "colorwayOf"> & {
+  base: Omit<
+    FanCosmeticDef,
+    "id" | "label" | "accent" | "pointsCost" | "rarity" | "certifiedGlb" | "colorwayOf"
+  > & {
     idBase: string;
     labelBase: string;
     icon: string;
+    /** Kept explicit so tintKey="accentOnly" can inherit without Omit regressions. */
+    bodyTint?: string;
   },
   cw: Colorway,
   tintKey: "bodyTint" | "accentOnly" = "bodyTint",
 ): FanCosmeticDef {
+  const inheritedBodyTint = base.bodyTint;
   return {
     id: `${base.idBase}_${cw.slug}`,
     label: `${base.labelBase} · ${cw.label}`,
@@ -315,7 +321,7 @@ function colorwaySku(
     equipSlot: base.equipSlot,
     certifiedGlb: false,
     description: `${base.description} · colorway ${cw.label} (separate SKU)`,
-    bodyTint: tintKey === "bodyTint" ? cw.hex : base.bodyTint,
+    bodyTint: tintKey === "bodyTint" ? cw.hex : inheritedBodyTint,
     layerScale: base.layerScale,
     animKind: base.animKind,
     ambientDelta: base.ambientDelta,

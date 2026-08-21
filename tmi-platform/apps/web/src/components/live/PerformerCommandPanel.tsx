@@ -229,16 +229,18 @@ export default function PerformerCommandPanel({
           >
             {tab === "audience" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 900,
-                    letterSpacing: "0.14em",
-                    color: "#00FF88",
-                  }}
-                >
-                  VENUE READY
-                </div>
+                {!contained ? (
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                      color: "#00FF88",
+                    }}
+                  >
+                    VENUE READY
+                  </div>
+                ) : null}
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", lineHeight: 1.55 }}>
                   <div>
                     🎭 Environment {environmentVerified || metrics ? "Verified" : "Checking…"}
@@ -265,12 +267,16 @@ export default function PerformerCommandPanel({
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button type="button" onClick={() => onWelcome?.()} style={actionBtn(accentColor)}>
-                    👋 Welcome
-                  </button>
-                  <button type="button" onClick={() => onWave?.()} style={actionBtn(accentColor)}>
-                    🌊 Wave
-                  </button>
+                  {!contained && onWelcome ? (
+                    <button type="button" onClick={() => onWelcome()} style={actionBtn(accentColor)}>
+                      👋 Welcome
+                    </button>
+                  ) : null}
+                  {!contained && onWave ? (
+                    <button type="button" onClick={() => onWave()} style={actionBtn(accentColor)}>
+                      🌊 Wave
+                    </button>
+                  ) : null}
                 </div>
               </div>
             )}

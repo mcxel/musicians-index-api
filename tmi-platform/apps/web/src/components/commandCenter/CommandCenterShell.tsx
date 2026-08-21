@@ -1287,7 +1287,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     label: "GO LIVE",
                     info: "Broadcast",
                     onClick: () => {
-                      void presentInstantGoLiveInPlace({ role: "PERFORMER", preferredExperience: "live" });
+                      void presentInstantGoLiveInPlace({
+                        role: "PERFORMER",
+                        preferredExperience: "live",
+                        publishSession: true,
+                      });
                     },
                   })
                 : null}
@@ -1616,7 +1620,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 label: "GO LIVE",
                 info: "Broadcast",
                 onClick: () => {
-                  void presentInstantGoLiveInPlace({ role: "PERFORMER", preferredExperience: "live" });
+                  void presentInstantGoLiveInPlace({
+                    role: "PERFORMER",
+                    preferredExperience: "live",
+                    publishSession: true,
+                  });
                   setMobileLeftOpen(false);
                 },
               })

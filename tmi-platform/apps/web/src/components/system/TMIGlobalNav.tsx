@@ -365,7 +365,11 @@ export default function TMIGlobalNav() {
             // LaunchDock excludes itself (/admin, /hub, /dashboard) — the
             // store flag flipped but nothing on screen could render it.
             if (shouldPresentGoLiveInPlace(pathname)) {
-              void presentInstantGoLiveInPlace({ role: dockRole, preferredExperience: "live" }).then((r) => {
+              void presentInstantGoLiveInPlace({
+                role: dockRole,
+                preferredExperience: "live",
+                publishSession: true,
+              }).then((r) => {
                 if (r.ok && r.roomId) {
                   setGoLivePhase("idle");
                   return;

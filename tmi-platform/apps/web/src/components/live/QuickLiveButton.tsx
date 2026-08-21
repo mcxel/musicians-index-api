@@ -12,6 +12,7 @@ import type { CSSProperties } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { loadPersistedLivePrivacy } from "@/lib/live/LiveDestinationRouter";
 
 export type QuickLiveCategory =
@@ -93,6 +94,22 @@ export default function QuickLiveButton({
     setErrorMsg("");
 
     setPhase("creating");
+    if (shouldPresentGoLiveInPlace(pathname)) {
+      const inPlace = await presentInstantGoLiveInPlace({
+        role: "PERFORMER",
+        privacy: loadPersistedLivePrivacy(),
+        preferredExperience: category,
+        publishSession: true,
+      });
+      if (!inPlace.ok || !inPlace.roomId) {
+        setPhase("error");
+        setErrorMsg(inPlace.error ?? "Failed to start broadcast.");
+        return;
+      }
+      setPhase("live");
+      return;
+    }
+
     const result = await executeInstantGoLive({
       role: "PERFORMER",
       privacy: loadPersistedLivePrivacy(),
@@ -109,7 +126,7 @@ export default function QuickLiveButton({
 
     setPhase("live");
     router.push(result.href);
-  }, [phase, category, displayNameProp, accentColor, router]);
+  }, [phase, category, displayNameProp, accentColor, router, pathname]);
 
   const sizeStyle: CSSProperties = {
     sm: { padding: "8px 16px", fontSize: 9, borderRadius: 7 },

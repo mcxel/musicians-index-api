@@ -450,8 +450,8 @@ export default function InstantGoLiveStage({
         soundCheckComplete={soundOk}
         hostMode={hostMode}
         onHostModeChange={setHostMode}
-        onWelcome={onWelcome}
-        onWave={onWave}
+        onWelcome={contained ? undefined : onWelcome}
+        onWave={contained ? undefined : onWave}
       />
 
       {/* Human arrival toast */}

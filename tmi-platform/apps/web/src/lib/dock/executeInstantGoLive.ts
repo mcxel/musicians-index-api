@@ -62,6 +62,8 @@ export async function executeInstantGoLive(opts?: {
    * /api/live/go or list on the lobby wall until explicit GO LIVE publish.
    */
   publishSession?: boolean;
+  /** Reuse a room already bound on Command Center monitors (one-tap in-place). */
+  roomId?: string;
 }): Promise<InstantGoLiveResult> {
   launchDockStore.setPhase("launching");
 
@@ -101,8 +103,10 @@ export async function executeInstantGoLive(opts?: {
     return { ok: true, href: destination.route };
   }
 
-  // Performer stage — mint Daily room when available, register, navigate to empty stage
-  let resolvedRoomId = `room-${identity.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
+  // Performer stage — mint Daily room when available, register; callers decide navigate vs in-place
+  let resolvedRoomId =
+    opts?.roomId?.trim() ||
+    `room-${identity.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
   let dailyRoomUrl: string | null = null;
   let dailyToken: string | null = null;
 

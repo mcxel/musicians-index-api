@@ -15,12 +15,10 @@ import { useMobileQuickPanelRuntime } from "@/lib/hud/mobileQuickPanelRuntime";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
-import { publishInstantGoLiveSession } from "@/lib/dock/executeInstantGoLive";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { getPrimarySessionStrip } from "@/lib/commandCenter/sessionControlCapabilities";
 import {
-  requestHubCameraPreview,
   toggleHubCameraPreview,
   toggleHubMicPreview,
   useLivePrivacyState,
@@ -101,36 +99,25 @@ export default function CommandCenterSessionControlStrip({
     launchDockStore.setRole(dockRole);
 
     try {
-      // Registry publish first (cert: click → POST → registry). Stage bind is best-effort after.
-      const roomId = hubRoomId ?? `room-hub-${Date.now()}`;
-      const dockPrivacy = launchDockStore.getState().privacy;
-      const publish = await publishInstantGoLiveSession({
-        roomId,
+      // ONE TAP in-place: camera + Monitor A/B + registry publish — never leave Command Center
+      const result = await presentInstantGoLiveInPlace({
         role: dockRole,
-        privacy: dockPrivacy,
+        preferredExperience: "live",
+        roomId: hubRoomId ?? undefined,
+        publishSession: true,
       });
-      if (!publish.ok) {
+
+      if (!result.ok || !result.roomId) {
         setGoLivePhase("error");
-        setGoLiveError(publish.error ?? "Publish failed.");
+        setGoLiveError(result.error ?? "Go Live failed.");
         return;
       }
 
-      useLivePrivacyState.getState().markLivePublished(roomId);
-      useGoLiveTransition.getState().clearWarp();
-      setGoLivePhase("idle");
-
-      void presentInstantGoLiveInPlace({
-        role: dockRole,
-        preferredExperience: "live",
-      }).catch(() => {
-        /* stage bind optional after registry is live */
-      });
-
-      if (!useLivePrivacyState.getState().previewStream) {
-        void requestHubCameraPreview().then((cam) => {
-          if (!cam.ok) setMediaError(cam.error ?? "Broadcasting without local camera.");
-        });
+      if (result.error) {
+        setMediaError(result.error);
       }
+
+      setGoLivePhase("idle");
     } catch (err) {
       setGoLivePhase("error");
       setGoLiveError(err instanceof Error ? err.message : "Go Live failed.");

@@ -89,7 +89,7 @@ export default function HubVenueHudDrawer({
           {openDrawer === "venue" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.14em" }}>
-                VENUE READY
+                VENUE STATUS
               </div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
                 Room: <span style={{ color: "#00FFFF" }}>{roomId}</span>

@@ -1,13 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import StarfieldWarpEntry from "@/components/live/StarfieldWarpEntry";
-import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { monitorSlotKey, type MonitorTarget } from "@/lib/personal-media";
 
 /**
- * In-monitor overlay: starfield warp ONLY inside the assigned player node.
- * Live camera / venue bodies mount via CommandCenterMediaStack — not here.
+ * In-monitor host for Go Live bodies.
+ * Broadcaster path: NO starfield / Welcome / Wave takeover — camera + venue
+ * mount via CommandCenterMediaStack (HubMonitorCameraPlayer / HubMonitorVenuePlayer).
  */
 export default function InPlaceGoLiveMonitorLayer({
   target,
@@ -16,15 +15,10 @@ export default function InPlaceGoLiveMonitorLayer({
   target: MonitorTarget;
   children: ReactNode;
 }) {
-  const assigned = useGoLiveTransition((s) => s.assignedMonitor);
-  const inPlace = useGoLiveTransition((s) => s.inPlace);
-  const isActive = useGoLiveTransition((s) => s.isActive);
-  const isAssigned = monitorSlotKey(assigned) === monitorSlotKey(target);
-  const showWarp = isAssigned && isActive && Boolean(inPlace?.roomId);
-
   return (
     <div
       data-in-place-go-live-monitor={target.monitorId}
+      data-monitor-slot={monitorSlotKey(target)}
       style={{
         position: "relative",
         width: "100%",
@@ -37,7 +31,6 @@ export default function InPlaceGoLiveMonitorLayer({
       }}
     >
       {children}
-      {showWarp ? <StarfieldWarpEntry /> : null}
     </div>
   );
 }

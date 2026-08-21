@@ -331,7 +331,11 @@ export default function MasterControlDock({
               // /admin, /hub, or /dashboard routes — that fallback silently
               // flipped a store flag nothing on screen could render.
               if (shouldPresentGoLiveInPlace(pathname)) {
-                void presentInstantGoLiveInPlace({ role: dockRole, preferredExperience: 'live' }).then((r) => {
+                void presentInstantGoLiveInPlace({
+                  role: dockRole,
+                  preferredExperience: 'live',
+                  publishSession: true,
+                }).then((r) => {
                   if (r.ok && r.roomId) {
                     setGoLivePhase('idle');
                     return;
