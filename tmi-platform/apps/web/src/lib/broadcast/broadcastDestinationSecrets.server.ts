@@ -4,6 +4,12 @@
  * File suffix `.server.ts` — import only from API routes / server modules.
  */
 
+// Typed global augmentation so Next.js hot-reload survives without unsafe casts
+declare global {
+  // eslint-disable-next-line no-var
+  var __TMI_BDEST_RAW__: Map<string, string> | undefined;
+}
+
 import type { BroadcastProvider } from "./BroadcastDestinationTypes";
 
 export type DestinationSecretRecord = {
@@ -110,17 +116,16 @@ export function linkDestinationSecrets(
     refreshTokenRef: opts?.refreshToken ? `ref:${provider}:refresh` : null,
     linkedAt: Date.now(),
   });
-  const g = globalThis as unknown as { __TMI_BDEST_RAW__?: Map<string, string> };
-  g.__TMI_BDEST_RAW__ ??= new Map();
-  if (streamKey) g.__TMI_BDEST_RAW__.set(`${key}:stream`, streamKey);
-  if (accessToken) g.__TMI_BDEST_RAW__.set(`${key}:access`, accessToken);
+  global.__TMI_BDEST_RAW__ ??= new Map();
+  if (streamKey) global.__TMI_BDEST_RAW__.set(`${key}:stream`, streamKey);
+  if (accessToken) global.__TMI_BDEST_RAW__.set(`${key}:access`, accessToken);
   return { ok: true };
 }
 
 export function unlinkDestinationSecrets(userId: string, provider: BroadcastProvider): void {
   const key = vaultKey(userId, provider);
   vault.delete(key);
-  const raw = (globalThis as unknown as { __TMI_BDEST_RAW__?: Map<string, string> }).__TMI_BDEST_RAW__;
+  const raw = global.__TMI_BDEST_RAW__;
   raw?.delete(`${key}:stream`);
   raw?.delete(`${key}:access`);
 }
