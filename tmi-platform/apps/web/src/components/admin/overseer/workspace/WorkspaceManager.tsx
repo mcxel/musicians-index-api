@@ -11,6 +11,7 @@ import { filterWorkspaceByPermissions, listPermissions } from "./WorkspacePermis
 import type { WorkspacePanelConfig, WorkspaceRole } from "./WorkspaceSchema";
 import { getWorkspaceWidgetComponent } from "./WorkspaceWidgetRegistry";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
+import { resolveWorkspaceFromSession } from "@/lib/auth/workspaceSecurity";
 
 const toShellPanels = (panels: WorkspacePanelConfig[]): ShellPanel[] =>
   panels.map((panel) => {
@@ -29,23 +30,13 @@ const toShellPanels = (panels: WorkspacePanelConfig[]): ShellPanel[] =>
     };
   });
 
-// Real admin emails (HARDCODED_ADMINS in lib/auth/UserStore.ts) mapped to
-// their workspace identity. Workspace is ALWAYS resolved from the authenticated
-// session — never from the ?workspace= URL parameter (security slice).
-const EMAIL_TO_WORKSPACE_ROLE: Record<string, WorkspaceRole> = {
-  "berntmusic33@gmail.com": "marcel",
-  "justin@themusiciansindex.com": "justin",
-  "rjking42@icloud.com": "justin",
-  "jay@themusiciansindex.com": "jaypaul",
-  "bjmtherapper1@gmail.com": "jaypaul",
-};
-
 type SessionState = "loading" | "resolved" | "denied";
 
 export default function WorkspaceManager() {
   // null = session fetch still in flight (never default to any workspace)
   const [activeRole, setActiveRole] = useState<WorkspaceRole | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>("loading");
+  const [denyReason, setDenyReason] = useState("Your session is not authorized for this workspace.");
 
   useEffect(() => {
     let cancelled = false;
@@ -53,17 +44,24 @@ export default function WorkspaceManager() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { user?: { email?: string } } | null) => {
         if (cancelled) return;
-        const email = data?.user?.email?.trim().toLowerCase() ?? "";
-        const role = EMAIL_TO_WORKSPACE_ROLE[email] ?? null;
-        if (role) {
-          setActiveRole(role);
+        // Never read ?workspace= — Security Stability Slice A
+        const resolved = resolveWorkspaceFromSession({
+          email: data?.user?.email,
+          workspaceQuery: null,
+        });
+        if (resolved.ok) {
+          setActiveRole(resolved.role);
           setSessionState("resolved");
         } else {
+          setDenyReason(resolved.reason);
           setSessionState("denied");
         }
       })
       .catch(() => {
-        if (!cancelled) setSessionState("denied");
+        if (!cancelled) {
+          setDenyReason("Session lookup failed — workspace denied.");
+          setSessionState("denied");
+        }
       });
     return () => {
       cancelled = true;
@@ -71,13 +69,13 @@ export default function WorkspaceManager() {
   }, []);
 
   const activeWorkspace = useMemo(() => {
-    const resolvedRole = activeRole ?? "marcel";
-    const raw = WORKSPACE_CONFIGS[resolvedRole];
-    const filtered = filterWorkspaceByPermissions(raw, resolvedRole);
+    if (!activeRole) return null;
+    const raw = WORKSPACE_CONFIGS[activeRole];
+    const filtered = filterWorkspaceByPermissions(raw, activeRole);
 
     const roleBadges = (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-        {listPermissions(resolvedRole).map((permission) => (
+        {listPermissions(activeRole).map((permission) => (
           <button
             key={permission}
             type="button"
@@ -155,6 +153,8 @@ export default function WorkspaceManager() {
     return (
       <div
         data-overseer-workspace-root
+        data-http-status="403"
+        role="alert"
         style={{
           minHeight: "100vh",
           display: "flex",
@@ -167,17 +167,19 @@ export default function WorkspaceManager() {
           textTransform: "uppercase",
           flexDirection: "column",
           gap: 12,
+          padding: 24,
+          textAlign: "center",
         }}
       >
-        <div>ACCESS DENIED</div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-          Your session is not authorized for this workspace.
+        <div>403 FORBIDDEN</div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "none", maxWidth: 420 }}>
+          {denyReason}
         </div>
       </div>
     );
   }
 
-  if (sessionState === "loading" || !activeRole) {
+  if (sessionState === "loading" || !activeRole || !activeWorkspace) {
     return (
       <div
         data-overseer-workspace-root

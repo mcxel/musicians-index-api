@@ -227,8 +227,44 @@ export function getVenueSceneInstance(id: string): VenueSceneInstance | undefine
   return instances.get(id) ?? [...cache.values()].find((i) => i.id === id);
 }
 
+/**
+ * Scene Factory Controller — unlocked for orchestrator/admin use.
+ * Does not invent SceneFactoryV2. Non-instantiable templates return honest deny.
+ */
+export const SCENE_FACTORY_CONTROLLER = {
+  unlocked: true as const,
+  entryPoint: "controlRequestVenueScene → requestVenueSceneInstance",
+  parallelGeneratorForbidden: true,
+  note: "Unlocked — request instances only through existing VenueSceneFactory. Geometry remains MISSING until real GLBs exist.",
+} as const;
+
+export type SceneFactoryControlResult =
+  | { ok: true; instance: VenueSceneInstance; controller: typeof SCENE_FACTORY_CONTROLLER }
+  | { ok: false; reason: string; controller: typeof SCENE_FACTORY_CONTROLLER };
+
+export function controlRequestVenueScene(req: VenueSceneFactoryRequest): SceneFactoryControlResult {
+  if (!SCENE_FACTORY_CONTROLLER.unlocked) {
+    return {
+      ok: false,
+      reason: "Scene Factory Controller is locked.",
+      controller: SCENE_FACTORY_CONTROLLER,
+    };
+  }
+  const template = getVenueTemplate(req.templateId);
+  if (template && template.instantiable === false) {
+    return {
+      ok: false,
+      reason: `Template ${req.templateId} is not instantiable (${template.blockers.join("; ") || "blockers remain"}).`,
+      controller: SCENE_FACTORY_CONTROLLER,
+    };
+  }
+  const instance = requestVenueSceneInstance(req);
+  return { ok: true, instance, controller: SCENE_FACTORY_CONTROLLER };
+}
+
 export function getSceneFactorySnapshot() {
   return {
+    controller: SCENE_FACTORY_CONTROLLER,
     laws: {
       existingSceneFactory: VENUE_PLATFORM_LAWS.existingSceneFactory,
       rightSizedCapacity: VENUE_PLATFORM_LAWS.rightSizedCapacity,
