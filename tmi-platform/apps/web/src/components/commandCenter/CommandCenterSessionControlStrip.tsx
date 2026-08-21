@@ -90,7 +90,22 @@ export default function CommandCenterSessionControlStrip({
   };
 
   const handleGoLive = async () => {
-    if (goLivePhase === "launching" || isLivePublished) return;
+    if (goLivePhase === "launching") return;
+
+    // Second tap while live → end session (registry + DiscoveryBus unpublish)
+    if (isLivePublished) {
+      setGoLivePhase("launching");
+      try {
+        const { endInstantGoLiveSession } = await import("@/lib/dock/executeInstantGoLive");
+        await endInstantGoLiveSession(hubRoomId);
+        setGoLivePhase("idle");
+      } catch (err) {
+        setGoLivePhase("error");
+        setGoLiveError(err instanceof Error ? err.message : "End live failed.");
+      }
+      return;
+    }
+
     setGoLivePhase("launching");
     setGoLiveError("");
     setMediaError("");
@@ -214,14 +229,14 @@ export default function CommandCenterSessionControlStrip({
             key={id}
             label={
               isLivePublished
-                ? "● LIVE"
+                ? "● LIVE · END"
                 : goLivePhase === "launching"
                   ? "● GOING LIVE…"
                   : "🔴 GO LIVE"
             }
             gradient="linear-gradient(135deg,#AA2DFF,#FF2DAA)"
             border="#FF2DAA"
-            disabled={goLivePhase === "launching" || isLivePublished}
+            disabled={goLivePhase === "launching"}
             onClick={() => void handleGoLive()}
           />
         );

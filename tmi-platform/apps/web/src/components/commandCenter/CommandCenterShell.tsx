@@ -1102,6 +1102,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     naturalHeight
                     monitorLayoutMode={monitorLayoutForStack}
                     role={role === "performer" ? "performer" : "fan"}
+                    userId={userId}
                     seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                   />
                 </GlobalErrorBoundary>
@@ -1325,6 +1326,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     naturalHeight
                     monitorLayoutMode={monitorLayoutForStack}
                     role={role === "performer" ? "performer" : "fan"}
+                    userId={userId}
                     seriesLabel={
                       role === "performer"
                         ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"

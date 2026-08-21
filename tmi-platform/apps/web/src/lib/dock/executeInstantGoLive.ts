@@ -13,7 +13,8 @@ import {
 } from "@/lib/live/LiveDestinationRouter";
 import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyGate";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
-import { publishLiveRoom } from "@/lib/discovery/DiscoveryPublisher";
+import { publishLiveRoom, unpublishLiveRoom, liveSessionToDiscoveryRecord } from "@/lib/discovery/DiscoveryPublisher";
+import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
 
 export interface InstantGoLiveResult {
   ok: boolean;
@@ -133,8 +134,18 @@ export async function executeInstantGoLive(opts?: {
   }
 
   // Publication to GlobalLiveSessionRegistry — ONLY when publishSession is true (explicit GO LIVE).
+  // Instant DiscoveryBus publish on success so Live Lobby Wall + Home LIVE NOW update without waiting on poll.
   if (publishSession) {
     if (!destination.flags.restrictedAudience) {
+      const discoveryInput = {
+        roomId: resolvedRoomId,
+        title: `${identity.name} — Live`,
+        hostName: identity.name,
+        hostUserId: identity.userId ?? "performer-1",
+        category: destination.category,
+        accentColor: opts?.accentColor ?? "#FF2DAA",
+        joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
+      };
       try {
         const res = await fetch("/api/live/go", {
           method: "POST",
@@ -152,27 +163,23 @@ export async function executeInstantGoLive(opts?: {
           }),
           credentials: "include",
         });
-        if (!res.ok) {
-          publishLiveRoom({
-            roomId: resolvedRoomId,
-            title: `${identity.name} — Live`,
-            hostName: identity.name,
-            hostUserId: identity.userId ?? "performer-1",
-            category: destination.category,
-            accentColor: opts?.accentColor ?? "#FF2DAA",
-            joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
-          });
+        if (res.ok) {
+          const data = (await res.json().catch(() => ({}))) as {
+            session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
+          };
+          if (data.session) {
+            const rec = liveSessionToDiscoveryRecord(data.session);
+            if (rec) DiscoveryBus.upsert(rec);
+            else publishLiveRoom(discoveryInput);
+          } else {
+            publishLiveRoom(discoveryInput);
+          }
+        } else {
+          // Registry write failed — still list locally so broadcaster sees own panel (honest local tile).
+          publishLiveRoom(discoveryInput);
         }
       } catch {
-        publishLiveRoom({
-          roomId: resolvedRoomId,
-          title: `${identity.name} — Live`,
-          hostName: identity.name,
-          hostUserId: identity.userId ?? "performer-1",
-          category: destination.category,
-          accentColor: opts?.accentColor ?? "#FF2DAA",
-          joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
-        });
+        publishLiveRoom(discoveryInput);
       }
     } else {
       try {
@@ -259,11 +266,49 @@ export async function publishInstantGoLiveSession(opts: {
         error: `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "registry"}`,
       };
     }
+    const data = (await res.json().catch(() => ({}))) as {
+      session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
+    };
+    if (data.session) {
+      const rec = liveSessionToDiscoveryRecord(data.session);
+      if (rec) DiscoveryBus.upsert(rec);
+    } else if (!destination.flags.restrictedAudience) {
+      publishLiveRoom({
+        roomId: opts.roomId,
+        title: `${identity.name} — Live`,
+        hostName: identity.name,
+        hostUserId: identity.userId ?? "performer-1",
+        category: destination.category,
+        accentColor: opts.accentColor ?? "#FF2DAA",
+        joinRoute: `/live/rooms/${encodeURIComponent(opts.roomId)}?from=live-lobby-wall`,
+      });
+    }
     return { ok: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
   } catch (err) {
     return {
       ok: false,
       error: err instanceof Error ? `Network error publishing live session: ${err.message}` : "Network error publishing live session.",
     };
+  }
+}
+
+/** End LiveSession → registry DELETE + DiscoveryBus unpublish (Lobby Wall / Home LIVE NOW). */
+export async function endInstantGoLiveSession(roomId?: string | null): Promise<void> {
+  const { useLivePrivacyState } = await import("@/lib/live/livePrivacyState");
+  const rid = roomId?.trim() || useLivePrivacyState.getState().publishedRoomId;
+  try {
+    await fetch("/api/live/go", { method: "DELETE", credentials: "include", cache: "no-store" });
+  } catch {
+    /* local unpublish still required */
+  }
+  if (rid) unpublishLiveRoom(rid);
+  useLivePrivacyState.getState().clearLivePublished();
+  try {
+    const { stopAllExternalDestinations } = await import(
+      "@/lib/broadcast/ExternalBroadcastDistributor"
+    );
+    void stopAllExternalDestinations();
+  } catch {
+    /* distributor optional at boot */
   }
 }

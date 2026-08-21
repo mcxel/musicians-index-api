@@ -16,6 +16,7 @@ import IdleMonitorFallbackRuntime from "@/components/admin/overseer/IdleMonitorF
 import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
 import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
 import HubMonitorVenuePlayer from "@/components/live/HubMonitorVenuePlayer";
+import LiveDistributionBezel from "@/components/broadcast/LiveDistributionBezel";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
@@ -181,6 +182,8 @@ interface CommandCenterMediaStackProps {
   monitorLayoutMode?: "dual" | "primary";
   /** Fan vs performer — Rule 26: avatar-ownership controls never show for performers. */
   role?: "fan" | "performer";
+  /** Broadcaster user id for Live Distribution Bezel link state. */
+  userId?: string | null;
   /** Optional dev-only continuity context supplied by the route/runtime layer. */
   continuityContext?: {
     venueInstanceId?: string;
@@ -526,6 +529,7 @@ export default function CommandCenterMediaStack({
   monitorLayoutMode = "dual",
   continuityContext,
   role = "fan",
+  userId = null,
 }: CommandCenterMediaStackProps) {
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
@@ -1085,6 +1089,9 @@ export default function CommandCenterMediaStack({
           <div>presentationMode: {continuitySnapshot.presentationMode}</div>
         </div>
       ) : null}
+
+      {/* External-only Live Distribution Bezel — ABOVE monitors, no TMI light */}
+      {role === "performer" ? <LiveDistributionBezel userId={userId} /> : null}
 
       <CanonicalDualMonitorStack
         variant={bezelVariant}

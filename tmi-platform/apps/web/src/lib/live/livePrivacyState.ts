@@ -58,9 +58,12 @@ export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
   },
 
   clearLivePublished: () => {
+    const roomId = get().publishedRoomId;
     set({ isLivePublished: false, publishedRoomId: null });
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("tmi:endbroadcast"));
+      window.dispatchEvent(
+        new CustomEvent("tmi:endbroadcast", { detail: { roomId: roomId ?? undefined } }),
+      );
     }
   },
 
