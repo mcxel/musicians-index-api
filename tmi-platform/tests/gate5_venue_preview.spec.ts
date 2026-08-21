@@ -17,7 +17,13 @@ const PREVIEW_BASE = `/live/venue-preview/${PREVIEW_VENUE_ID}`;
 
 test.describe("Gate 5 — venue preview & certification runtime", () => {
   test("venue preview page loads with TEST occupancy controls", async ({ page, baseURL }) => {
+    // New dynamic route compiles lazily in dev — allow extra time for first SSR build.
+    test.setTimeout(300_000);
     const base = baseURL ?? "http://127.0.0.1:3000";
+
+    // Warm up shared components by visiting the legacy route first so that the
+    // dynamic route compilation reuses already-cached module chunks.
+    await page.goto(`${base}/venue/preview?skin=red-theater`, { waitUntil: "domcontentloaded" });
 
     // The route is PROTECTED (requires auth).  In dev the middleware falls back to the
     // login redirect — so we verify the route at least exists (status < 500) rather
