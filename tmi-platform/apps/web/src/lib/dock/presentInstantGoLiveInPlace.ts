@@ -17,6 +17,8 @@ import {
   registerAndAdaptParticipant,
   type MonitorTarget,
 } from "@/lib/personal-media";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
+import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
 
 function paramFromHref(href: string | undefined, key: string, fallback: string): string {
   if (!href) return fallback;
@@ -27,6 +29,9 @@ function paramFromHref(href: string | undefined, key: string, fallback: string):
   }
 }
 
+/** Session flag: off-hub GO LIVE taps route to hub then fire in-place once. */
+export const PENDING_GO_LIVE_KEY = "tmi_pending_golive";
+
 /** Command Center / hub shells — broadcaster stays on this surface. */
 export function shouldPresentGoLiveInPlace(pathname: string | null | undefined): boolean {
   const p = pathname ?? "";
@@ -35,9 +40,90 @@ export function shouldPresentGoLiveInPlace(pathname: string | null | undefined):
     p.startsWith("/hub/") ||
     p.startsWith("/dashboard") ||
     p.startsWith("/performer") ||
+    p.startsWith("/performers/") ||
     p.startsWith("/command-center") ||
     p.includes("/hq")
   );
+}
+
+/** Parse roomId from mini-event join URLs (/live/rooms/{id}…). */
+export function extractRoomIdFromJoinUrl(joinUrl: string): string | null {
+  const trimmed = joinUrl.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/\/live\/rooms\/([^/?#]+)/i);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+function hubPathForRole(role: string): string {
+  return role === "FAN" ? "/hub/fan" : "/hub/performer";
+}
+
+/**
+ * Canonical GO LIVE for any surface — in-place on hub/dashboard shells;
+ * otherwise one redirect to hub + automatic in-place launch (no /live/rooms hop).
+ */
+export async function triggerCanonicalGoLive(opts?: {
+  role?: string;
+  privacy?: LivePrivacy;
+  preferredExperience?: string;
+  monitor?: MonitorTarget;
+  roomId?: string;
+  publishSession?: boolean;
+}): Promise<InstantGoLiveResult> {
+  const role = (opts?.role ?? "PERFORMER").toUpperCase();
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+
+  if (shouldPresentGoLiveInPlace(pathname)) {
+    return presentInstantGoLiveInPlace({ ...opts, role });
+  }
+
+  try {
+    sessionStorage.setItem(
+      PENDING_GO_LIVE_KEY,
+      JSON.stringify({
+        role,
+        privacy: opts?.privacy,
+        preferredExperience: opts?.preferredExperience ?? "live",
+        roomId: opts?.roomId,
+        publishSession: opts?.publishSession ?? true,
+      }),
+    );
+  } catch {
+    /* sessionStorage blocked — hub query fallback */
+  }
+
+  const hub = hubPathForRole(role);
+  window.location.replace(`${hub}?golive=1`);
+  return { ok: true };
+}
+
+/** Mini events (battle/cypher/challenge/concert) — bind in-place when roomId is known. */
+export async function presentMiniEventInPlace(opts: {
+  joinUrl: string;
+  preferredExperience: string;
+  role?: string;
+  roomId?: string;
+  publishSession?: boolean;
+}): Promise<InstantGoLiveResult> {
+  const roomId =
+    opts.roomId?.trim() ||
+    extractRoomIdFromJoinUrl(opts.joinUrl) ||
+    undefined;
+
+  if (!roomId) {
+    return triggerCanonicalGoLive({
+      role: opts.role ?? "PERFORMER",
+      preferredExperience: opts.preferredExperience,
+      publishSession: opts.publishSession,
+    });
+  }
+
+  return triggerCanonicalGoLive({
+    role: opts.role ?? "PERFORMER",
+    preferredExperience: opts.preferredExperience,
+    roomId,
+    publishSession: opts.publishSession ?? true,
+  });
 }
 
 function bindMonitorSession(opts: {
@@ -66,6 +152,16 @@ function bindMonitorSession(opts: {
   );
   // Broadcaster: no Welcome / Wave / starfield warp takeover
   useGoLiveTransition.getState().clearWarp();
+}
+
+/** Wire Canonical Media Bus (constitution #8) — frame layout only; does not rewrite WebRTC. */
+function bindCanonicalMediaBus(roomId: string) {
+  const media = useCanonicalMediaPlayerRuntime.getState();
+  media.setRoomId(roomId);
+  media.assignSource("a", "SELF_CAMERA");
+  media.assignSource("b", "VENUE_VIEW");
+  media.setLayout("SPLIT_2");
+  media.setPrimaryAudio("a");
 }
 
 /**
@@ -111,6 +207,12 @@ export async function presentInstantGoLiveInPlace(opts?: {
   });
 
   if (existing?.roomId && existing.roomId === roomId && privacyState.isLivePublished) {
+    bindCanonicalMediaBus(roomId);
+    useWorldScenePlanStore.getState().buildAndStore({
+      roomId,
+      category: existing.category,
+      source: "session-resume",
+    });
     const cam = await camPromise;
     return {
       ok: true,
@@ -137,12 +239,23 @@ export async function presentInstantGoLiveInPlace(opts?: {
     };
   }
 
+  const category = paramFromHref(result.href, "category", "live");
   bindMonitorSession({
     roomId: result.roomId,
     href: result.href,
-    category: paramFromHref(result.href, "category", "live"),
+    category,
     privacy: paramFromHref(result.href, "privacy", "public"),
     monitor,
+  });
+
+  bindCanonicalMediaBus(result.roomId);
+
+  useWorldScenePlanStore.getState().buildAndStore({
+    roomId: result.roomId,
+    category,
+    eventType: opts?.preferredExperience ?? "live-show",
+    environment: opts?.privacy === "private" ? "indoor" : undefined,
+    source: "go-live",
   });
 
   if (publishSession) {

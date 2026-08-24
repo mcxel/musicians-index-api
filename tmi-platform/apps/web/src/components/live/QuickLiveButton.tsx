@@ -9,10 +9,9 @@
 
 import { useCallback, useState } from "react";
 import type { CSSProperties } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
-import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { loadPersistedLivePrivacy } from "@/lib/live/LiveDestinationRouter";
 
 export type QuickLiveCategory =
@@ -81,7 +80,6 @@ export default function QuickLiveButton({
   size = "md",
   label,
 }: QuickLiveButtonProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -94,39 +92,21 @@ export default function QuickLiveButton({
     setErrorMsg("");
 
     setPhase("creating");
-    if (shouldPresentGoLiveInPlace(pathname)) {
-      const inPlace = await presentInstantGoLiveInPlace({
-        role: "PERFORMER",
-        privacy: loadPersistedLivePrivacy(),
-        preferredExperience: category,
-        publishSession: true,
-      });
-      if (!inPlace.ok || !inPlace.roomId) {
-        setPhase("error");
-        setErrorMsg(inPlace.error ?? "Failed to start broadcast.");
-        return;
-      }
-      setPhase("live");
-      return;
-    }
-
-    const result = await executeInstantGoLive({
+    const result = await triggerCanonicalGoLive({
       role: "PERFORMER",
       privacy: loadPersistedLivePrivacy(),
       preferredExperience: category,
-      displayName: displayNameProp,
-      accentColor,
+      publishSession: true,
     });
 
-    if (!result.ok || !result.href) {
+    if (!result.ok) {
       setPhase("error");
       setErrorMsg(result.error ?? "Failed to start broadcast.");
       return;
     }
 
     setPhase("live");
-    router.push(result.href);
-  }, [phase, category, displayNameProp, accentColor, router, pathname]);
+  }, [phase, category, displayNameProp, accentColor, pathname]);
 
   const sizeStyle: CSSProperties = {
     sm: { padding: "8px 16px", fontSize: 9, borderRadius: 7 },

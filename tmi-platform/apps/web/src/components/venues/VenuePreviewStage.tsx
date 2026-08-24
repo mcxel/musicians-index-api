@@ -23,6 +23,8 @@ import {
 } from "@/lib/venues/VenuePreviewCertification";
 import VenueTestOccupancyBar from "@/components/venues/VenueTestOccupancyBar";
 import VenueCertificationChecklist from "@/components/venues/VenueCertificationChecklist";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
+import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -68,6 +70,24 @@ export default function VenuePreviewStage({
   );
   const [occupancy, setOccupancy] = useState<TestOccupancyLevel>(initialOccupancy);
   const [viewMode, setViewMode] = useState<VenuePreviewViewMode>(initialViewMode);
+
+  const scenePlan = useMemo(
+    () =>
+      useWorldScenePlanStore.getState().buildAndStore({
+        roomId,
+        eventType,
+        environment: venueEnvironment,
+        venueSkinId,
+        isPreview: true,
+        testOccupancyRatio: occupancyRatioForLevel(occupancy),
+        testCapacity: capacity,
+        source: "preview",
+        viewMode,
+      }),
+    [roomId, eventType, venueEnvironment, venueSkinId, occupancy, capacity, viewMode],
+  );
+
+  const renderFromPlan = worldScenePlanToRenderProps(scenePlan);
 
   const layout = crowdLayoutForEnvironment(venueEnvironment, eventType);
   const ratio = occupancyRatioForLevel(occupancy);
@@ -214,13 +234,7 @@ export default function VenuePreviewStage({
               borderRadius: 12,
               overflow: "hidden",
               border: `1px solid ${GOLD}33`,
-              // View-mode framing only — same renderer underneath (no parallel engine).
-              transform:
-                viewMode === "PANORAMA_180"
-                  ? "perspective(900px) rotateY(-6deg)"
-                  : viewMode === "PANORAMA_360" || viewMode === "SPHERICAL_360"
-                    ? "perspective(1100px) scale(1.02)"
-                    : undefined,
+              // View mode framing applied inside UVR from WorldScenePlan (same GO LIVE path).
             }}
           >
             <ArenaEventShell
@@ -228,14 +242,16 @@ export default function VenuePreviewStage({
               eventType={eventType}
               mode={mode}
               liveState="soon"
-              instantEmptyStage={false}
-              venueEnvironment={venueEnvironment}
-              venueSkinId={venueSkinId}
-              isPreview
+              instantEmptyStage={renderFromPlan.instantEmptyStage}
+              venueEnvironment={renderFromPlan.venueEnvironment ?? venueEnvironment}
+              venueSkinId={renderFromPlan.venueSkinId ?? venueSkinId}
+              isPreview={renderFromPlan.isPreview}
               isCertification={isCertification}
-              testOccupancyRatio={ratio}
-              testCapacity={capacity}
-              testOccupancyLabel={testLabel}
+              testOccupancyRatio={renderFromPlan.forcedOccupancyRatio ?? ratio}
+              testCapacity={renderFromPlan.previewCapacity ?? capacity}
+              testOccupancyLabel={scenePlan.crowdPolicy.testLabel ?? testLabel}
+              viewMode={renderFromPlan.viewMode}
+              spatialMap={renderFromPlan.spatialMap}
             />
           </div>
 
@@ -256,6 +272,10 @@ export default function VenuePreviewStage({
             {meshFill.labeledOccupants.length > 3 ? "…" : ""}
             {" · "}
             synthetic [TEST] AvatarRig seats (Fan bobbleheads — Rule 26, no Performer ownership)
+            {" · "}
+            sq-ft map: {scenePlan.spatialMap.floor.widthFt}×{scenePlan.spatialMap.floor.depthFt} ft (
+            {scenePlan.spatialMap.floor.areaSqFt.toLocaleString()} sq ft) · {scenePlan.spatialMap.geometryStatus} · view{" "}
+            {scenePlan.viewMode}
           </div>
         </div>
 

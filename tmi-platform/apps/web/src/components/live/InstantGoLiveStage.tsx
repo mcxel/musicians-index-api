@@ -38,6 +38,8 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from "@/lib/venues/EventVenueEnvironment";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
+import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -294,6 +296,8 @@ export default function InstantGoLiveStage({
   }, []);
 
   const eventType = categoryToEventType(category);
+  const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
+  const renderFromPlan = scenePlan ? worldScenePlanToRenderProps(scenePlan) : null;
   const envResolution = resolveEventVenueEnvironment({
     kind:
       eventType === "world-dance-party"
@@ -425,9 +429,9 @@ export default function InstantGoLiveStage({
             mode="performer"
             liveState="soon"
             watcherCount={watching}
-            instantEmptyStage
-            venueEnvironment={envResolution.environment}
-            venueSkinId={envResolution.skinId}
+            instantEmptyStage={renderFromPlan?.instantEmptyStage ?? true}
+            venueEnvironment={renderFromPlan?.venueEnvironment ?? envResolution.environment}
+            venueSkinId={renderFromPlan?.venueSkinId ?? envResolution.skinId}
           />
         ) : (
           <GoLiveRuntime

@@ -18,8 +18,7 @@ import UniversalWorkspaceHost from '@/components/workspace/universal/UniversalWo
 import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
-import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
-import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from '@/lib/dock/presentInstantGoLiveInPlace';
+import { triggerCanonicalGoLive } from '@/lib/dock/presentInstantGoLiveInPlace';
 import { livingOsCommandBus } from '@/lib/os/livingOsCommandBus';
 import type { PlatformRole } from '@/lib/os/universalPermissionRegistry';
 import { useRouter, usePathname } from 'next/navigation';
@@ -330,24 +329,13 @@ export default function MasterControlDock({
               // launchDockStore.open(), but LaunchDock never mounts on
               // /admin, /hub, or /dashboard routes — that fallback silently
               // flipped a store flag nothing on screen could render.
-              if (shouldPresentGoLiveInPlace(pathname)) {
-                void presentInstantGoLiveInPlace({
-                  role: dockRole,
-                  preferredExperience: 'live',
-                  publishSession: true,
-                }).then((r) => {
-                  if (r.ok && r.roomId) {
-                    setGoLivePhase('idle');
-                    return;
-                  }
-                  setGoLivePhase('error');
-                  setGoLiveError(r.error ?? 'Failed to start broadcast.');
-                });
-                return;
-              }
-              void executeInstantGoLive({ role: dockRole }).then((r) => {
-                if (r.ok && r.href) {
-                  router.push(r.href);
+              void triggerCanonicalGoLive({
+                role: dockRole,
+                preferredExperience: 'live',
+                publishSession: true,
+              }).then((r) => {
+                if (r.ok) {
+                  setGoLivePhase('idle');
                   return;
                 }
                 setGoLivePhase('error');

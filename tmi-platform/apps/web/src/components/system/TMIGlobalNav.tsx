@@ -4,8 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
-import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
-import { presentInstantGoLiveInPlace, shouldPresentGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
 import {
   openCanonicalWorkspaceQuick,
@@ -364,24 +363,13 @@ export default function TMIGlobalNav() {
             // launchDockStore.open(), which is a dead end wherever
             // LaunchDock excludes itself (/admin, /hub, /dashboard) — the
             // store flag flipped but nothing on screen could render it.
-            if (shouldPresentGoLiveInPlace(pathname)) {
-              void presentInstantGoLiveInPlace({
-                role: dockRole,
-                preferredExperience: "live",
-                publishSession: true,
-              }).then((r) => {
-                if (r.ok && r.roomId) {
-                  setGoLivePhase("idle");
-                  return;
-                }
-                setGoLivePhase("error");
-                setGoLiveError(r.error ?? "Failed to start broadcast.");
-              });
-              return;
-            }
-            void executeInstantGoLive({ role: dockRole }).then((r) => {
-              if (r.ok && r.href) {
-                router.push(r.href);
+            void triggerCanonicalGoLive({
+              role: dockRole,
+              preferredExperience: "live",
+              publishSession: true,
+            }).then((r) => {
+              if (r.ok) {
+                setGoLivePhase("idle");
                 return;
               }
               setGoLivePhase("error");

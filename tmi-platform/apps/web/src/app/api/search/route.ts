@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { getAnchorDiscoveryRecords } from '@/lib/live/AnchorRoomNetwork';
 import { getAllGenreDiscoveryRecords } from '@/lib/live/performerGenreRoomNetwork';
 import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
@@ -106,7 +107,7 @@ function searchArticles(q: string): UnifiedSearchResult[] {
       ? `/articles/performer/${a.performerSlug}`
       : a.newsSlug
         ? `/articles/news/${a.newsSlug}`
-        : `/magazine/article/${a.slug}`,
+        : magazineReaderArticleUrl(a.slug),
     imageUrl: null,
   }));
 }

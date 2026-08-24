@@ -30,6 +30,7 @@ import {
   getPerformerPoolArticles,
   type MagazineArticle as IssueMagazineArticle,
 } from "./magazineIssueData";
+import { magazineReaderArticleUrl } from "./MagazineReaderRoutes";
 
 export type RotationCandidate = {
   id: string;
@@ -254,7 +255,7 @@ export function buildMagazineIssueSequence(input: {
         const performer = performerQueue[cycle];
         if (!performer) continue;
         const href = performer.articleSlug
-          ? `/magazine/article/${performer.articleSlug}`
+          ? magazineReaderArticleUrl(performer.articleSlug)
           : performer.profileRoute;
         slots.push({
           id: `p-${performer.slug}`,
@@ -348,7 +349,7 @@ export function newsArticlesToSlotSources(articles: IssueMagazineArticle[]): Mag
     slug: article.slug,
     title: article.title,
     subtitle: article.subtitle,
-    href: `/magazine/article/${article.slug}`,
+    href: magazineReaderArticleUrl(article.slug),
     heroColor: article.heroColor,
     preview: articlePreview(article),
     author: article.author,
@@ -514,7 +515,7 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
     subtype: "STREAM_AND_WIN_DISCOVERY",
     paidObligation: false,
     title: "Stream & Win Radio",
-    href: "/magazine/article/stream-win-radio-explained",
+    href: magazineReaderArticleUrl("stream-win-radio-explained"),
     deck: "Read the format explainer — rotation rooms are not claimed live here.",
     monetizationLayer: "NONE",
   });

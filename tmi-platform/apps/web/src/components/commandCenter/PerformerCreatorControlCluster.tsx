@@ -2,6 +2,9 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { endInstantGoLiveSession } from "@/lib/dock/executeInstantGoLive";
+import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 
 type Props = {
   compact?: boolean;
@@ -26,8 +29,27 @@ function clusterButtonStyle(active: boolean): CSSProperties {
 export default function PerformerCreatorControlCluster({ compact = false }: Readonly<Props>) {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
-  const [liveOn, setLiveOn] = useState(false);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const [fullScreenOn, setFullScreenOn] = useState(false);
+  const [goLiveBusy, setGoLiveBusy] = useState(false);
+
+  const handleGoLive = async () => {
+    if (goLiveBusy) return;
+    setGoLiveBusy(true);
+    if (isLivePublished) {
+      await endInstantGoLiveSession();
+      setGoLiveBusy(false);
+      return;
+    }
+    await triggerCanonicalGoLive({
+      role: "PERFORMER",
+      preferredExperience: "live",
+      publishSession: true,
+    });
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/hub")) {
+      setGoLiveBusy(false);
+    }
+  };
 
   const actions = useMemo(
     () => [
@@ -45,9 +67,9 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
       },
       {
         id: "live",
-        label: liveOn ? "⏹ END LIVE" : "🔴 GO LIVE",
-        active: liveOn,
-        onClick: () => setLiveOn((v) => !v),
+        label: isLivePublished ? "⏹ END LIVE" : goLiveBusy ? "⏳ GOING LIVE…" : "🔴 GO LIVE",
+        active: isLivePublished,
+        onClick: () => void handleGoLive(),
       },
       {
         id: "share-screen",
@@ -76,7 +98,7 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
         onClick: () => setFullScreenOn((v) => !v),
       },
     ],
-    [cameraOn, micOn, liveOn, fullScreenOn],
+    [cameraOn, micOn, isLivePublished, goLiveBusy, fullScreenOn],
   );
 
   return (

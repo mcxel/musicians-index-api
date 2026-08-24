@@ -12,6 +12,8 @@
 import { createSeatingMesh, type SeatingMeshState } from "@/lib/seats/SeatingMeshEngine";
 import { listVenueSkins, type VenueSkin } from "@/lib/venue/venueSkinEngine";
 import type { VenueEnvironmentKind, EventVenueKind } from "@/lib/venues/EventVenueEnvironment";
+import type { WorldViewMode } from "@/lib/world/WorldScenePlan";
+import { canonicalizeWorldViewMode } from "@/lib/world/WorldScenePlan";
 
 /** Mirrors ArenaEventShell event types without importing the client shell. */
 export type VenuePreviewEventType =
@@ -37,12 +39,11 @@ export type TestOccupancyLevel =
   | "NEAR_CAPACITY"
   | "FULL";
 
-/** One viewport system for preview + broadcast. Prefer FREE_ROAM_3D for modeled venues. */
-export type VenuePreviewViewMode =
-  | "FREE_ROAM_3D"
-  | "PANORAMA_180"
-  | "PANORAMA_360"
-  | "SPHERICAL_360";
+/**
+ * One viewport system for preview + broadcast.
+ * Alias of WorldViewMode — prefer FREE_ROAM_3D; PANORAMA_360 ≡ SPHERICAL_360.
+ */
+export type VenuePreviewViewMode = WorldViewMode;
 
 export const TEST_OCCUPANCY_RATIOS: Record<TestOccupancyLevel, number> = {
   EMPTY: 0,
@@ -169,7 +170,7 @@ export function parsePreviewViewMode(
     u === "PANORAMA_360" ||
     u === "SPHERICAL_360"
   ) {
-    return u;
+    return canonicalizeWorldViewMode(u);
   }
   return "FREE_ROAM_3D";
 }

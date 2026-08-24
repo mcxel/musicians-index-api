@@ -5,6 +5,7 @@ import Link from "next/link";
 import { EDITORIAL_CUT_REGISTRY, getCutShapeStyle, type EditorialCutShape } from "@/lib/magazine/EditorialCutRegistry";
 import type { EditorialTemplateId } from "@/lib/magazine/MagazineLayoutRuntime";
 import type { RandomPageSubtype } from "@/lib/magazine/MagazineIssueContract";
+import { magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import { ImageSlotWrapper } from "@/components/visual-enforcement";
 
 export interface EditorialSpreadProps {
@@ -323,7 +324,7 @@ export default function MagazineEditorialSpreadEngine({
         <ImageSlotWrapper imageId="default-editorial-hero" roomId="magazine-spread" className="w-full h-full object-cover" altText={title} />
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <NativeEditorialAction label="EXPLORE ISSUE" href="/magazine/issue/current" color={accentColor} icon="📖" />
+        <NativeEditorialAction label="EXPLORE ISSUE" href={magazineReaderUrl()} color={accentColor} icon="📖" />
       </div>
     </div>
   );

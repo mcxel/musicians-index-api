@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import { magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
-/** MAGAZINE nav opens the active issue spread reader, not the article-card feed. */
+/** MAGAZINE nav opens the active issue reader on the first readable spread. */
 export default function MagazinePage() {
-  redirect("/magazine/issue/current");
+  redirect(magazineReaderUrl());
 }

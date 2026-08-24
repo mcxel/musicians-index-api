@@ -808,6 +808,9 @@ export function resolveLoungeMonitorViewport(slot: HubMonitorSlot): ResolvedHubM
   };
 }
 
+import type { WorldScenePlan } from "@/lib/world/WorldScenePlan";
+import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
+
 /** Map resolved viewport → UniversalVenueRenderer props (Monitor B only). */
 export function hubMonitorUvrProps(
   slot: HubMonitorSlot,
@@ -816,15 +819,40 @@ export function hubMonitorUvrProps(
     instantEmptyStage?: boolean;
     forceStadiumFill?: boolean;
     zone?: CanonicalWorldZone | string | null;
+    /** When set, World Director scene plan overrides venue defaults for Monitor B. */
+    scenePlan?: WorldScenePlan | null;
   },
 ) {
-  const vp = resolveHubMonitorViewport(slot, { zone: opts?.zone });
+  const vp = resolveHubMonitorViewport(slot, {
+    zone: opts?.scenePlan?.canonicalZone ?? opts?.zone,
+  });
   if (!vp.usesUvr || !vp.uvrMode) {
     return null;
   }
   const lounge = isLoungeZone(vp.zone) || isLoungeRoomId(roomId);
   const performerLobby = isPerformerLobbyZone(vp.zone);
   const videoPanelZone = lounge || performerLobby;
+
+  if (opts?.scenePlan) {
+    const fromPlan = worldScenePlanToRenderProps(opts.scenePlan);
+    return {
+      roomId,
+      mode: vp.uvrMode,
+      venueIndex: fromPlan.venueIndex,
+      hubVenueOnly: true,
+      hubViewportRole: vp.role,
+      canonicalZone: fromPlan.canonicalZone,
+      instantEmptyStage: fromPlan.instantEmptyStage,
+      forceStadiumFill: videoPanelZone ? false : fromPlan.forceStadiumFill,
+      suppressAvatars: videoPanelZone || fromPlan.suppressAvatars,
+      isPreview: fromPlan.isPreview,
+      forcedOccupancyRatio: fromPlan.forcedOccupancyRatio,
+      previewCapacity: fromPlan.previewCapacity,
+      viewMode: fromPlan.viewMode,
+      spatialMap: fromPlan.spatialMap,
+    };
+  }
+
   return {
     roomId,
     mode: vp.uvrMode,

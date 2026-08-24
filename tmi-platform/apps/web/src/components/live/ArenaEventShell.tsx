@@ -39,6 +39,8 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from "@/lib/venues/EventVenueEnvironment";
+import type { VenueSpatialMap, WorldViewMode } from "@/lib/world/WorldScenePlan";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -184,6 +186,10 @@ interface ArenaEventShellProps {
   readonly testCapacity?: number;
   /** Labeled TEST counter for HUD (e.g. "TEST: 250 / 1,000 OCCUPANCY"). */
   readonly testOccupancyLabel?: string | null;
+  /** World Director view mode — falls back to stored WorldScenePlan for roomId. */
+  readonly viewMode?: WorldViewMode;
+  /** Square-feet spatial map — falls back to stored WorldScenePlan. */
+  readonly spatialMap?: VenueSpatialMap | null;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -235,7 +241,12 @@ export default function ArenaEventShell({
   testOccupancyRatio = null,
   testCapacity = 1000,
   testOccupancyLabel = null,
+  viewMode: viewModeProp,
+  spatialMap: spatialMapProp,
 }: ArenaEventShellProps) {
+  const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
+  const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
+  const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
   const venueKindForEnv =
     eventType === "monday-stage"
       ? "monday-night-stage"
@@ -402,6 +413,8 @@ export default function ArenaEventShell({
           isPreview={isPreview}
           forcedOccupancyRatio={isPreview ? (testOccupancyRatio ?? 0) : null}
           previewCapacity={testCapacity}
+          viewMode={viewMode}
+          spatialMap={spatialMap}
         />
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer

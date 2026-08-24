@@ -12,7 +12,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
-import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import {
+  PENDING_GO_LIVE_KEY,
+  presentInstantGoLiveInPlace,
+} from "@/lib/dock/presentInstantGoLiveInPlace";
+import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import CommandCenterMediaStack, {
@@ -159,6 +163,31 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     window.addEventListener("tmi:display-name-updated", onUpdated);
     return () => window.removeEventListener("tmi:display-name-updated", onUpdated);
   }, []);
+
+  // Off-hub GO LIVE taps land here with ?golive=1 + optional sessionStorage payload.
+  useEffect(() => {
+    if (searchParams?.get("golive") !== "1") return;
+    let pending: Record<string, unknown> | null = null;
+    try {
+      const raw = sessionStorage.getItem(PENDING_GO_LIVE_KEY);
+      if (raw) {
+        sessionStorage.removeItem(PENDING_GO_LIVE_KEY);
+        pending = JSON.parse(raw) as Record<string, unknown>;
+      }
+    } catch {
+      /* sessionStorage unavailable */
+    }
+    const dockRole = role === "performer" ? "PERFORMER" : "FAN";
+    void presentInstantGoLiveInPlace({
+      role: (pending?.role as string | undefined) ?? dockRole,
+      privacy: pending?.privacy as LivePrivacy | undefined,
+      preferredExperience: (pending?.preferredExperience as string | undefined) ?? "live",
+      roomId: pending?.roomId as string | undefined,
+      publishSession: (pending?.publishSession as boolean | undefined) ?? true,
+    });
+    router.replace(pathname);
+  }, [searchParams, role, pathname, router]);
+
   const resolvedDisplayName = liveDisplayName;
   const { activePerformer, setActivePerformer } = useActivePerformer();
   const centers = centersForRole(role);

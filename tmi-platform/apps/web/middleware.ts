@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { shouldNoIndexRoute } from './src/lib/seo/SeoIndexingRules';
 
 const ADMIN_PATHS = ['/admin', '/api/admin', '/contest/admin'];
 
@@ -159,6 +160,13 @@ const QUARANTINED_PUBLIC_PREFIXES = [
 
 function isQuarantined(pathname: string): boolean {
   return QUARANTINED_PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+function applyCrawlHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (shouldNoIndexRoute(pathname)) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  return response;
 }
 
 export function middleware(req: NextRequest) {
@@ -431,7 +439,7 @@ export function middleware(req: NextRequest) {
   // ───────────────────────────────────────────────────────────────────────────
 
   if (matchesAny(pathname, AUTH_WHITELIST)) {
-    return withReferralCookies(NextResponse.next());
+    return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
   }
 
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
@@ -494,7 +502,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return withReferralCookies(NextResponse.next());
+  return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
 }
 
 export const config = {

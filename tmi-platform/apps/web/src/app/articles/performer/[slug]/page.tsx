@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { getPerformerBySlug, PERFORMER_REGISTRY, getTierColor } from '@/lib/performers/PerformerRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { XP_TIER_THRESHOLDS, getNextTier, getXpToNextTier, getTierFromXp } from '@/lib/xp/XpActionRegistry';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
@@ -223,7 +224,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
                     )}
                   </div>
                 ))}
-                <Link href={`/magazine/article/${a.slug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '8px 16px', background: `${a.heroColor}14`, border: `1px solid ${a.heroColor}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: a.heroColor, textDecoration: 'none', letterSpacing: '0.06em' }}>
+                <Link href={magazineReaderArticleUrl(a.slug)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '8px 16px', background: `${a.heroColor}14`, border: `1px solid ${a.heroColor}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: a.heroColor, textDecoration: 'none', letterSpacing: '0.06em' }}>
                   READ FULL ARTICLE →
                 </Link>
               </div>

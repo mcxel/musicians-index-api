@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { hubMonitorUvrProps, isLoungeRoomId, resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import HubVenueHudDrawer from "@/components/live/HubVenueHudDrawer";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -50,14 +51,18 @@ function HubMonitorIdle({ label }: { label: string }) {
 
 export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const [watching, setWatching] = useState(0);
   const lounge = isLoungeRoomId(roomId);
-  const BOH = resolveHubMonitorViewport("B", { zone: lounge ? "LOUNGE_SIDE_ROOM" : undefined });
+  const BOH = resolveHubMonitorViewport("B", {
+    zone: scenePlan?.canonicalZone ?? (lounge ? "LOUNGE_SIDE_ROOM" : undefined),
+  });
 
   const uvrProps = hubMonitorUvrProps("B", roomId, {
     instantEmptyStage: !isLivePublished,
     forceStadiumFill: lounge ? false : isLivePublished,
     zone: lounge ? "LOUNGE_SIDE_ROOM" : undefined,
+    scenePlan,
   });
 
   useEffect(() => {
@@ -98,6 +103,9 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       data-canonical-zone={BOH.zone}
       data-audience-scene-view={BOH.audienceSceneView}
       data-lounge-avatars={lounge ? "false" : undefined}
+      data-view-mode={scenePlan?.viewMode ?? "FREE_ROAM_3D"}
+      data-spatial-units={scenePlan?.spatialMap.units ?? "ft"}
+      data-spatial-area-sqft={scenePlan?.spatialMap.floor.areaSqFt}
       style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#010308" }}
     >
       <div

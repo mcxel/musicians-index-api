@@ -9,10 +9,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLaunchDock } from "@/lib/dock/launchDockStore";
-import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import { resolveLiveDestination } from "@/lib/live/LiveDestinationRouter";
 
@@ -33,7 +33,6 @@ const EXPERIENCE_OPTIONS = [
 ];
 
 export default function LaunchDock() {
-  const router = useRouter();
   const pathname = usePathname() ?? "";
   const dock = useLaunchDock();
   const [isMobile, setIsMobile] = useState(false);
@@ -98,16 +97,13 @@ export default function LaunchDock() {
     if (!dock.isReady) {
       await requestMedia();
     }
-    const result = await executeInstantGoLive({
+    await triggerCanonicalGoLive({
       role: dock.role,
       privacy: dock.privacy,
       preferredExperience: dock.preferredExperience,
+      publishSession: true,
     });
-    if (result.ok && result.href) {
-      router.push(result.href);
-      return;
-    }
-  }, [dock, requestMedia, router]);
+  }, [dock, requestMedia]);
 
   // Never mount GO LIVE floater on admin, Command Center /hub, /dashboard,
   // or immersive venue preview (ArenaEventShell owns the surface).

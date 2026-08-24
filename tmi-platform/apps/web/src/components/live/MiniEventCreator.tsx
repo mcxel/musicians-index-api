@@ -14,8 +14,12 @@
  * Runtime registers it with the correct live discovery surface immediately."
  */
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { WorldMiniBadge } from "./WorldMiniBadge";
+import {
+  extractRoomIdFromJoinUrl,
+  presentMiniEventInPlace,
+} from "@/lib/dock/presentInstantGoLiveInPlace";
 import {
   isOutdoorSelectable,
   normalizeEventVenueKind,
@@ -36,6 +40,22 @@ export type MiniEventType =
   | "dirty-dozens"
   | "producer-battle"
   | "dj-battle";
+
+const MINI_EXPERIENCE: Partial<Record<MiniEventType, string>> = {
+  battle: "battle",
+  "joke-off": "battle",
+  "dance-off": "battle",
+  "dirty-dozens": "battle",
+  "producer-battle": "battle",
+  "dj-battle": "battle",
+  cypher: "cypher",
+  challenge: "challenge",
+  concert: "concert",
+  "release-party": "release-party",
+  lounge: "lounge",
+  "dance-party": "dance-party",
+  "slow-jam": "lounge",
+};
 
 interface MiniEventDef {
   type: MiniEventType;
@@ -308,6 +328,7 @@ export function MiniEventCreator({
   style,
 }: MiniEventCreatorProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [creating, setCreating] = useState<CreatingState>(null);
   const [error, setError] = useState<ErrorState>(null);
   const [venueEnvironment, setVenueEnvironment] = useState<VenueEnvironmentKind>("indoor");
@@ -360,7 +381,27 @@ export function MiniEventCreator({
         venueEnvironment: (data.venueEnvironment as string | undefined) ?? env,
         venueSkinId: (data.venueSkinId as string | undefined) ?? (data.session as { venueSkinId?: string } | undefined)?.venueSkinId,
       });
+      const roomId =
+        typeof data.roomId === "string"
+          ? data.roomId
+          : extractRoomIdFromJoinUrl(joinUrl) ?? undefined;
+      const experience = MINI_EXPERIENCE[def.type] ?? "live";
+
       onCreated?.(def.type, joinUrl);
+
+      if (roomId) {
+        const inPlace = await presentMiniEventInPlace({
+          joinUrl,
+          preferredExperience: experience,
+          roomId,
+          publishSession: true,
+        });
+        if (!inPlace.ok && inPlace.error) {
+          setError({ type: def.type, message: inPlace.error });
+        }
+        return;
+      }
+
       router.push(joinUrl);
     } catch {
       setError({ type: def.type, message: "Network error — try again" });

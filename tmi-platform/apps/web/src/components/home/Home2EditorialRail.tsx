@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import TripleImageCarousel from '@/lib/media/TripleImageCarousel';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { resolveCategoryBoardImages } from '@/lib/magazine/resolveArticleEditorialImage';
 
 interface Home2EditorialRailProps {
@@ -28,7 +29,7 @@ const REAL_BOARDS = Object.entries(CATEGORY_META)
       title: meta.label,
       subtitle: latest ? latest.title : null,
       icon: meta.icon,
-      href: latest ? `/magazine/article/${latest.slug}` : meta.href,
+      href: latest ? magazineReaderArticleUrl(latest.slug) : meta.href,
       color: meta.color,
       count: articles.length,
       images: resolveCategoryBoardImages(articles),

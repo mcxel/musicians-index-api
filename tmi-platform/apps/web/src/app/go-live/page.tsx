@@ -38,6 +38,19 @@ const ROOM_OPTIONS = [
 
 export default function GoLivePage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const legacyWizard =
+      params.get("setup") === "1" ||
+      params.get("setup") === "true" ||
+      params.get("wizard") === "1" ||
+      params.get("wizard") === "true";
+    if (!legacyWizard) {
+      router.replace("/hub/performer?golive=1");
+    }
+  }, [router]);
+
   const { currentLevel } = useGamificationEngine();
 
   function xpLevelToTier(level: number): UserTier {

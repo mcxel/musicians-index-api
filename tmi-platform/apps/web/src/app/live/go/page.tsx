@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
-import InstantGoLiveLauncher from '@/components/live/InstantGoLiveLauncher';
 import GoLiveStudio from '@/components/live/GoLiveStudio';
 
 export const metadata: Metadata = {
@@ -22,30 +20,21 @@ export default function GoLivePage({
     redirect('/auth/signin?next=/live/go');
   }
 
-  // Legacy full setup only when explicitly requested — never default path
   const useWizard =
     searchParams?.setup === '1' ||
     searchParams?.setup === 'true' ||
     searchParams?.wizard === '1' ||
     searchParams?.wizard === 'true';
 
-  if (useWizard) {
-    return (
-      <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '40px 24px 80px' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <GoLiveStudio />
-        </div>
-      </main>
-    );
+  if (!useWizard) {
+    redirect('/hub/performer?golive=1');
   }
 
   return (
-    <Suspense
-      fallback={
-        <main style={{ minHeight: '100vh', background: '#050510', color: '#fff' }} />
-      }
-    >
-      <InstantGoLiveLauncher />
-    </Suspense>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '40px 24px 80px' }}>
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        <GoLiveStudio />
+      </div>
+    </main>
   );
 }

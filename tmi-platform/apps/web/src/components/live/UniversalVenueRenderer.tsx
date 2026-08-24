@@ -73,6 +73,8 @@ import {
   fanAvatarLobbyEntryHref,
   type CanonicalWorldZone,
 } from "@/lib/live/canonicalWorldViewport";
+import type { VenueSpatialMap, WorldViewMode } from "@/lib/world/WorldScenePlan";
+import { canonicalizeWorldViewMode } from "@/lib/world/WorldScenePlan";
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 import { AttentionDebugOverlay } from '@/components/live/AttentionDebugOverlay';
@@ -216,6 +218,13 @@ interface Props {
   forcedOccupancyRatio?: number | null;
   /** Capacity for TEST occupancy math / labeling. */
   previewCapacity?: number;
+  /**
+   * World Director immersive view mode — same coordinate integrity for
+   * PC mouse-look and phone touch-drag (framing only until Gate 3 GLB).
+   */
+  viewMode?: WorldViewMode;
+  /** Square-feet spatial map from WorldScenePlan (registry estimate until measured GLB). */
+  spatialMap?: VenueSpatialMap | null;
 }
 
 function publicName(name: string): string {
@@ -254,8 +263,8 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity }: Props) {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null }: Props) {
+  const canonicalView = canonicalizeWorldViewMode(viewMode);  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
   const [displayName, setDisplayName] = useState(mode === 'performer' ? 'Performer' : 'Fan');
@@ -673,6 +682,12 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         ? "BOH · HOUSE VIEW"
         : "FOH · STAGE VIEW";
     const accentCol = isLoungeSideRoom ? "#AA2DFF" : mode === "performer" ? "#FFD700" : "#00FFFF";
+    const viewFraming =
+      canonicalView === "PANORAMA_180"
+        ? "perspective(900px) rotateY(-6deg)"
+        : canonicalView === "SPHERICAL_360"
+          ? "perspective(1100px) scale(1.02)"
+          : undefined;
 
     return (
       <div
@@ -681,7 +696,18 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         data-canonical-zone={isLoungeSideRoom ? CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM : (canonicalZone ?? viewportRole)}
         data-lounge-avatars="false"
         data-world-coverage="360x180-4pi"
-        style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#010308" }}
+        data-view-mode={canonicalView}
+        data-spatial-units={spatialMap?.units ?? "ft"}
+        data-spatial-area-sqft={spatialMap?.floor.areaSqFt ?? undefined}
+        data-spatial-geometry={spatialMap?.geometryStatus ?? "REGISTRY_ESTIMATE"}
+        style={{
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          background: "#010308",
+          transform: viewFraming,
+          transformOrigin: "center center",
+        }}
       >
         <style>{`@keyframes universalReactionFloat{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-90px) scale(1.4);}}`}</style>
 
@@ -824,10 +850,23 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       }
       data-lounge-avatars={isVideoPanelRoom ? "false" : undefined}
       data-performer-lobby={isPerformerLobby ? "true" : undefined}
+      data-view-mode={canonicalView}
+      data-spatial-units={spatialMap?.units ?? "ft"}
+      data-spatial-width-ft={spatialMap?.floor.widthFt ?? undefined}
+      data-spatial-depth-ft={spatialMap?.floor.depthFt ?? undefined}
+      data-spatial-area-sqft={spatialMap?.floor.areaSqFt ?? undefined}
+      data-spatial-geometry={spatialMap?.geometryStatus ?? "REGISTRY_ESTIMATE"}
       style={{
         border: `1px solid ${tierSkin.accent}40`,
         borderRadius: 14,
         padding: 12,
+        transform:
+          canonicalView === "PANORAMA_180"
+            ? "perspective(900px) rotateY(-6deg)"
+            : canonicalView === "SPHERICAL_360"
+              ? "perspective(1100px) scale(1.02)"
+              : undefined,
+        transformOrigin: "center center",
         background: `radial-gradient(ellipse at 50% 0%, ${tierSkin.accent}0a 0%, rgba(5,5,16,0.22) 60%)`,
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',

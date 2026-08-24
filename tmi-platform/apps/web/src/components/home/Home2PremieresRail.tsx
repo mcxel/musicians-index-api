@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl, magazineReaderUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { resolveArticleEditorialImage } from '@/lib/magazine/resolveArticleEditorialImage';
 
 interface Home2PremieresRailProps {
@@ -35,7 +36,7 @@ const REAL_PREMIERES = MAGAZINE_ISSUE_1
       day: 'numeric',
       year: 'numeric',
     }),
-    href: `/magazine/article/${article.slug}`,
+    href: magazineReaderArticleUrl(article.slug),
     color: CATEGORY_COLOR[article.category] ?? '#00FFFF',
     icon: CATEGORY_ICON[article.category] ?? '📰',
     image: resolveArticleEditorialImage(article),
@@ -117,7 +118,7 @@ export default function Home2PremieresRail({ title = 'PREMIERES' }: Home2Premier
         </div>
       )}
 
-      <Link href="/magazine" style={{ display: 'inline-block', marginTop: 16, fontSize: 9, fontWeight: 800, color: '#FF2DAA', textDecoration: 'none' }}>
+      <Link href={magazineReaderUrl()} style={{ display: 'inline-block', marginTop: 16, fontSize: 9, fontWeight: 800, color: '#FF2DAA', textDecoration: 'none' }}>
         Browse All Issues →
       </Link>
     </div>
