@@ -7,9 +7,18 @@ import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profile/PublicProfileMediaComposer";
+import IdentityPlate, { type ProfileRoleType } from "@/components/profile/IdentityPlate";
+import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
+import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
 
 export interface PerformerPublicPageProps {
   performer: PerformerIdentity;
+  /** True when the authenticated viewer owns this profile. */
+  isOwner?: boolean;
+  /** Current saved profile config (server-read). Defaults to canonical defaults. */
+  profileConfig?: PublicProfileConfig;
+  /** Style pack ids the owner currently owns. */
+  ownedStylePacks?: string[];
 }
 
 const TABS = ["FEATURED", "ABOUT", "MUSIC", "EVENTS", "MAGAZINE", "MERCH"] as const;
@@ -124,9 +133,22 @@ function ctaStyle(color: string, filled = false): React.CSSProperties {
 }
 
 /** Public performer page — reads PerformerRegistry; no duplicate profile system. */
-export default function PerformerPublicPage({ performer: p }: PerformerPublicPageProps) {
+function derivePlateRole(category: string): ProfileRoleType {
+  const c = category.toLowerCase();
+  if (c.includes("dj")) return "DJ";
+  if (c.includes("producer")) return "PRODUCER";
+  if (c.includes("band") || c.includes("group")) return "BAND";
+  if (c.includes("comedian") || c.includes("comedy")) return "COMEDIAN";
+  if (c.includes("dancer") || c.includes("dance")) return "DANCER";
+  return "PERFORMER";
+}
+
+export default function PerformerPublicPage({ performer: p, isOwner = false, profileConfig, ownedStylePacks = [] }: PerformerPublicPageProps) {
   const [tab, setTab] = useState<Tab>("FEATURED");
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const ac = getTierColor(p.tier);
+  const plateRole = derivePlateRole(p.category);
+  const activeCfg = profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG;
 
   return (
     <main
@@ -175,15 +197,20 @@ export default function PerformerPublicPage({ performer: p }: PerformerPublicPag
 
         {/* Identity + actions floating at the bottom */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 28px" }}>
+          <div style={{ marginBottom: 12 }}>
+            <IdentityPlate
+              roleType={plateRole}
+              tier={p.tier}
+              accentColor={ac}
+              isLive={p.isLive}
+            />
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
             {p.isLive && (
               <span style={{ background: "#E63000", color: "#fff", fontSize: 8, fontWeight: 900, padding: "3px 10px", letterSpacing: "0.12em", borderRadius: 4 }}>
                 🔴 LIVE NOW · {p.audienceCount.toLocaleString()} WATCHING
               </span>
             )}
-            <span style={{ background: `${ac}20`, border: `1px solid ${ac}55`, color: ac, fontSize: 8, fontWeight: 900, padding: "3px 10px", letterSpacing: "0.1em", borderRadius: 4 }}>
-              {p.tier.toUpperCase()}
-            </span>
             <span style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: "0.1em" }}>
               #{p.rank} · {p.category.toUpperCase()}
             </span>
@@ -201,15 +228,41 @@ export default function PerformerPublicPage({ performer: p }: PerformerPublicPag
             {p.isLive ? (
               <Link href={p.liveRoomRoute} style={ctaStyle("#E63000", true)}>🔴 WATCH LIVE</Link>
             ) : null}
-            <Link href={`/messages/new?recipientSlug=${encodeURIComponent(p.slug)}&name=${encodeURIComponent(p.name)}`} style={ctaStyle(ac)}>
-              MESSAGE
-            </Link>
-            <Link href={`/tips?to=${encodeURIComponent(p.slug)}`} style={ctaStyle("#FFD700")}>TIP</Link>
-            <Link href={`/booking?performer=${encodeURIComponent(p.slug)}`} style={ctaStyle("#00FF88")}>BOOK</Link>
+            {!isOwner && (
+              <Link href={`/messages/new?recipientSlug=${encodeURIComponent(p.slug)}&name=${encodeURIComponent(p.name)}`} style={ctaStyle(ac)}>
+                MESSAGE
+              </Link>
+            )}
+            {!isOwner && <Link href={`/tips?to=${encodeURIComponent(p.slug)}`} style={ctaStyle("#FFD700")}>TIP</Link>}
+            {!isOwner && <Link href={`/booking?performer=${encodeURIComponent(p.slug)}`} style={ctaStyle("#00FF88")}>BOOK</Link>}
             <Link href={`/yopho/card/${encodeURIComponent(p.slug)}`} style={ctaStyle("#00FFFF")}>YOPHO</Link>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setCustomizerOpen(true)}
+                style={{ ...ctaStyle("rgba(255,255,255,0.5)"), border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.06)" }}
+              >
+                ✏ CUSTOMIZE PAGE
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Owner customizer overlay */}
+      {isOwner && customizerOpen && (
+        <ProfileCustomizer
+          config={activeCfg}
+          ownedPackIds={ownedStylePacks}
+          accountTier={p.tier}
+          onSave={async (next) => {
+            // Caller wires API persistence; console for now.
+            console.log("[ProfileCustomizer] save", next);
+            setCustomizerOpen(false);
+          }}
+          onClose={() => setCustomizerOpen(false)}
+        />
+      )}
 
       {/* Section tab bar */}
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>

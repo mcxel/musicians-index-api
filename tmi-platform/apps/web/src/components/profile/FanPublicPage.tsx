@@ -6,6 +6,9 @@ import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profile/PublicProfileMediaComposer";
+import IdentityPlate from "@/components/profile/IdentityPlate";
+import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
+import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
 
 export interface FanPublicPageProps {
   slug: string;
@@ -15,6 +18,11 @@ export interface FanPublicPageProps {
   userId?: string;
   isLive?: boolean;
   liveRoomRoute?: string | null;
+  /** True when the authenticated viewer owns this profile. */
+  isOwner?: boolean;
+  /** Current saved profile config (server-read). */
+  profileConfig?: PublicProfileConfig;
+  ownedStylePacks?: string[];
 }
 
 const TABS = ["FEATURED", "PROFILE", "PLAYLISTS", "YOPHO", "ACTIVITY"] as const;
@@ -133,10 +141,15 @@ export default function FanPublicPage({
   userId,
   isLive = false,
   liveRoomRoute,
+  isOwner = false,
+  profileConfig,
+  ownedStylePacks = [],
 }: FanPublicPageProps) {
   const [tab, setTab] = useState<Tab>("FEATURED");
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const ac = tierColor(tier);
   const initial = displayName.charAt(0).toUpperCase();
+  const activeCfg = profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG;
 
   return (
     <main
@@ -169,10 +182,7 @@ export default function FanPublicPage({
         <div style={{ position: "absolute", top: "20%", left: "30%", width: 320, height: 320, borderRadius: "50%", background: `${ac}0C`, filter: "blur(80px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: "10%", right: "20%", width: 200, height: 200, borderRadius: "50%", background: "rgba(255,45,170,0.06)", filter: "blur(60px)", pointerEvents: "none" }} />
 
-        {/* FAN label */}
-        <div style={{ position: "absolute", top: 16, right: 20, fontSize: 8, fontWeight: 900, letterSpacing: "0.25em", color: "rgba(255,255,255,0.3)" }}>
-          FAN PROFILE
-        </div>
+
       </div>
 
       {/* Identity block — overlaps banner bottom */}
@@ -207,17 +217,8 @@ export default function FanPublicPage({
 
           {/* Name + meta */}
           <div style={{ flex: 1, minWidth: 180, paddingBottom: 4 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-              <span
-                style={{ background: `${ac}22`, border: `1px solid ${ac}55`, color: ac, fontSize: 8, fontWeight: 900, padding: "3px 10px", letterSpacing: "0.1em", borderRadius: 4 }}
-              >
-                {tier.toUpperCase()} FAN
-              </span>
-              {isLive && liveRoomRoute ? (
-                <Link href={liveRoomRoute} style={{ background: "#E63000", color: "#fff", fontSize: 8, fontWeight: 900, padding: "3px 10px", letterSpacing: "0.12em", borderRadius: 4, textDecoration: "none" }}>
-                  🔴 LIVE NOW
-                </Link>
-              ) : null}
+            <div style={{ marginBottom: 8 }}>
+              <IdentityPlate roleType="FAN" tier={tier} accentColor={ac} isLive={isLive && !!liveRoomRoute} />
             </div>
 
             <h1 style={{ margin: "0 0 4px", fontSize: "clamp(22px, 4vw, 36px)", fontWeight: 900, lineHeight: 1 }}>
@@ -228,9 +229,11 @@ export default function FanPublicPage({
 
           {/* Action bar */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingBottom: 4 }}>
-            <Link href={`/messages/new?recipientId=${encodeURIComponent(userId ?? slug)}&name=${encodeURIComponent(displayName)}`} style={ctaStyle(ac)}>
-              MESSAGE
-            </Link>
+            {!isOwner && (
+              <Link href={`/messages/new?recipientId=${encodeURIComponent(userId ?? slug)}&name=${encodeURIComponent(displayName)}`} style={ctaStyle(ac)}>
+                MESSAGE
+              </Link>
+            )}
             {isLive && liveRoomRoute ? (
               <Link href={liveRoomRoute} style={ctaStyle("#E63000", true)}>JOIN LOBBY</Link>
             ) : null}
@@ -241,8 +244,31 @@ export default function FanPublicPage({
             >
               SHARE
             </button>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setCustomizerOpen(true)}
+                style={{ ...ctaStyle("rgba(255,255,255,0.5)"), border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.06)" }}
+              >
+                ✏ CUSTOMIZE PAGE
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Owner customizer overlay */}
+        {isOwner && customizerOpen && (
+          <ProfileCustomizer
+            config={activeCfg}
+            ownedPackIds={ownedStylePacks}
+            accountTier={tier}
+            onSave={async (next) => {
+              console.log("[ProfileCustomizer] save", next);
+              setCustomizerOpen(false);
+            }}
+            onClose={() => setCustomizerOpen(false)}
+          />
+        )}
 
         {/* Tab bar */}
         <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 0, overflowX: "auto", marginBottom: 28 }}>
