@@ -10,6 +10,7 @@ import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profil
 import IdentityPlate, { type ProfileRoleType } from "@/components/profile/IdentityPlate";
 import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
 import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
+import { useProfileConfig } from "@/hooks/useProfileConfig";
 
 export interface PerformerPublicPageProps {
   performer: PerformerIdentity;
@@ -148,7 +149,12 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const ac = getTierColor(p.tier);
   const plateRole = derivePlateRole(p.category);
-  const activeCfg = profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG;
+
+  // Owner: live config from API; visitor: use server-passed config or defaults
+  const { config: liveConfig, saveStatus, saveError, save } = useProfileConfig(
+    isOwner ? (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG) : undefined
+  );
+  const activeCfg = isOwner ? liveConfig : (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG);
 
   return (
     <main
@@ -255,12 +261,10 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
           config={activeCfg}
           ownedPackIds={ownedStylePacks}
           accountTier={p.tier}
-          onSave={async (next) => {
-            // Caller wires API persistence; console for now.
-            console.log("[ProfileCustomizer] save", next);
-            setCustomizerOpen(false);
-          }}
+          onSave={async (next) => { await save(next); }}
           onClose={() => setCustomizerOpen(false)}
+          saveStatus={saveStatus}
+          saveError={saveError}
         />
       )}
 

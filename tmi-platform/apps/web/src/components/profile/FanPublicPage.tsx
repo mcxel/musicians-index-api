@@ -9,6 +9,7 @@ import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profil
 import IdentityPlate from "@/components/profile/IdentityPlate";
 import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
 import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
+import { useProfileConfig } from "@/hooks/useProfileConfig";
 
 export interface FanPublicPageProps {
   slug: string;
@@ -149,7 +150,12 @@ export default function FanPublicPage({
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const ac = tierColor(tier);
   const initial = displayName.charAt(0).toUpperCase();
-  const activeCfg = profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG;
+
+  // Owner: live config from API; visitor: use server-passed config or defaults
+  const { config: liveConfig, saveStatus, saveError, save } = useProfileConfig(
+    isOwner ? (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG) : undefined
+  );
+  const activeCfg = isOwner ? liveConfig : (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG);
 
   return (
     <main
@@ -262,11 +268,10 @@ export default function FanPublicPage({
             config={activeCfg}
             ownedPackIds={ownedStylePacks}
             accountTier={tier}
-            onSave={async (next) => {
-              console.log("[ProfileCustomizer] save", next);
-              setCustomizerOpen(false);
-            }}
+            onSave={async (next) => { await save(next); }}
             onClose={() => setCustomizerOpen(false)}
+            saveStatus={saveStatus}
+            saveError={saveError}
           />
         )}
 

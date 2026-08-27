@@ -14,16 +14,14 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProfileCustomizerProps {
-  /** Current saved config (server-read, never faked). */
   config: PublicProfileConfig;
-  /** Style pack ids the user currently owns (server-read). */
   ownedPackIds: string[];
-  /** Canonical tier string (e.g. "gold"). */
   accountTier: string;
-  /** Called when user publishes changes. Caller persists via API. */
   onSave: (next: PublicProfileConfig) => Promise<void>;
-  /** Called to close the customizer panel. */
   onClose: () => void;
+  /** Injected from useProfileConfig — drives button label and error display. */
+  saveStatus?: "idle" | "saving" | "saved" | "error";
+  saveError?: string | null;
 }
 
 type CTab = "LOOK" | "CONTENT" | "MOTION";
@@ -109,22 +107,20 @@ export default function ProfileCustomizer({
   accountTier,
   onSave,
   onClose,
+  saveStatus = "idle",
+  saveError = null,
 }: ProfileCustomizerProps) {
   const [cfg, setCfg] = useState<PublicProfileConfig>({ ...DEFAULT_PUBLIC_PROFILE_CONFIG, ...initialConfig });
   const [activeTab, setActiveTab] = useState<CTab>("LOOK");
-  const [saving, setSaving] = useState(false);
+  // saving is derived from saveStatus so the parent hook is the single source of truth
+  const saving = saveStatus === "saving";
 
   const patch = useCallback(<K extends keyof PublicProfileConfig>(key: K, value: PublicProfileConfig[K]) => {
     setCfg((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleSave = async () => {
-    setSaving(true);
-    try {
-      await onSave(cfg);
-    } finally {
-      setSaving(false);
-    }
+    await onSave(cfg);
   };
 
   const allOwned = [...FREE_STYLE_IDS, ...ownedPackIds];
@@ -168,13 +164,14 @@ export default function ProfileCustomizer({
               padding: "8px 16px",
               borderRadius: 6,
               border: "none",
-              background: cfg.accentColor,
+              background: saveStatus === "saved" ? "#00FF88" : saveStatus === "error" ? "#E63000" : cfg.accentColor,
               color: "#050510",
               cursor: saving ? "default" : "pointer",
-              opacity: saving ? 0.6 : 1,
+              opacity: saving ? 0.7 : 1,
+              transition: "background 0.2s",
             }}
           >
-            {saving ? "SAVING…" : "PUBLISH CHANGES"}
+            {saveStatus === "saving" ? "SAVING…" : saveStatus === "saved" ? "✓ SAVED" : saveStatus === "error" ? "ERROR — RETRY" : "PUBLISH CHANGES"}
           </button>
           <button
             type="button"
