@@ -936,3 +936,281 @@ Before declaring provisioning complete:
 6. **UI respects role** → Fan cannot see performer dashboard, performer cannot see fan lobby from their own account
 
 *Established 2026-07-14 by Marcel Dickens. Fixed provisioning routing 2026-07-14 (commit f7b22f3f).*
+
+---
+
+### Rule 27 — Visual Composition Engine + Creator Commerce (locked 2026-08-27)
+
+**The YoPho and every other visual surface must be powered by one canonical Visual Composition Engine, not a separate editor per surface.**
+
+#### Source Allowance vs. Layer Count (strictly separated)
+
+**Free tier source allowance:**
+```
+1 background source   (static or animated/window-style)
++ 2 user-imported image sources
+```
+This governs what the user **brings in**. It does not cap the total composition-layer count.
+
+**System layers are unlimited and separate from source allowance.** A free user may still compose with:
+```
+BACKGROUND  →  UNDERLAY  →  CONTENT  →  TEXT  →  MEDIA  →  OVERLAY  →  FX  →  HUD/IDENTITY
+```
+including: overlays, underlays, frames, borders, masks, glows, particles, stickers, shapes, gradients, light leaks, smoke/fog, rain/snow, stars, sparkles, animated textures, motion trails, shadows, reflections, blur/depth layers, color filters, lens effects, animated windows/portals, waveform/equalizer layers, playlist/media-player widget, quote/text layer, chat-bubble layer, badges, QR/Artist ID/Fan ID layer, event/release labels, magazine-style headline layers.
+
+#### Text System (certified layer types)
+```
+PLAIN TEXT · CHAT BUBBLE · THOUGHT BUBBLE · COMIC BURST · CAPTION BAR
+LOWER THIRD · NEON SIGN · STICKER LABEL · QUOTE CARD · MAGAZINE HEADLINE
+HANDWRITTEN NOTE · TYPEWRITER CARD · TEXT MESSAGE · SOCIAL COMMENT
+RIBBON · BANNER · FLOATING TEXT
+```
+Each with variants: rounded · sharp · cloud · angular · glass · neon · comic · retro · luxury · graffiti · chrome · holographic.
+
+#### Animation Behaviors (any eligible layer)
+```
+ENTER · EXIT · LOOP · PULSE · FLOAT · BOUNCE · SLIDE · SPIN · DRIFT
+PARALLAX · ZOOM · SHAKE · GLOW · FADE · TYPE-ON · BEAT REACT
+```
+Controls: speed, delay, intensity, direction, loop/no-loop, opacity, start/end time, layer depth.
+**Every animated composition must have a Reduced Motion fallback, battery/performance fallback, and static thumbnail fallback.** No rich card may become a broken card on weaker devices.
+
+#### Canonical Composition Engine Pipeline
+```
+Sources → Layers → Styling → Motion → Interaction → Audio/Beat → Preview → Save Draft → Publish/Export → Re-edit
+```
+Supports: layer ordering, lock/unlock, hide/show, duplicate, group/ungroup, opacity, blend modes, crop/mask, clipping, rotation, perspective, depth/parallax, blur, glow, shadow, outline, gradients, chroma, animation timing, entrance/exit, looping, beat sync, snapping/alignment, safe zones, undo/redo, version history, templates, scenes.
+
+#### Scenes (timed + event-driven state sequences)
+```
+INTRO → MAIN CARD → PLAYLIST → QUOTE → CTA → LOOP
+```
+Transitions: TIME · TAP · HOVER · PLAYBACK_START · TRACK_CHANGE · LIVE_STATUS_CHANGE · COUNTDOWN_COMPLETE.
+
+#### Dynamic Widgets (first-class layer type)
+Playlist widget, quote card, live-status indicator, countdown, event ticket, Artist ID, song card, QR/share card, supporter/fan counter, merchandise card, social link card, chat bubble, magazine clipping, etc. — **widgets must reference canonical platform data, never copy-and-freeze it as editable fake values** (Rule 20).
+
+#### Canonical Project Schema
+```
+VisualCompositionProject {
+  projectId, ownerId, surfaceType, sources[], layers[], scenes[], widgets[],
+  motionConfig, themeBinding, entitlementRefs[], draftVersion, publishedVersion,
+  compositionSchemaVersion, createdAt, updatedAt
+}
+```
+Surface types: `YOPHO | PUBLIC_PROFILE | PLAYLIST_ART | ARTIST_ID | MAGAZINE_FEATURE | EVENT_POSTER | RELEASE_ART`
+Layer types: `IMAGE | BACKGROUND | TEXT | CHAT_BUBBLE | SHAPE | OVERLAY | UNDERLAY | MASK | FRAME | PARTICLE | WIDGET | MEDIA | QR | BADGE | FX`
+
+Schema versioning is mandatory from day one — compositions may live for years. A migration layer must upgrade old projects without corrupting them.
+
+#### Commerce Model (locked)
+```
+FREE            starter set of text, overlays, bubbles, frames, basic motion/effects
+$1.99/month     Creator Tools add-on — advanced capability bundle (animation controls, masking, beat-reactive, export, etc.)
+$0.99–$1.99     one-time permanent packs (Chat Bubble Pack, Neon Overlay Pack, Cinematic FX Pack, Comic Pack, etc.)
+BUNDLES         themed packs: Comic · Neon · Hip-Hop · Country · Cinematic · Magazine · Retro · Galaxy · Luxury · etc.
+```
+Laws:
+- **Subscription = ongoing creator capability. One-time purchase = permanent ownership.**
+- Purchased packs remain owned if the monthly Creator Tools plan is cancelled.
+- **Try Before You Buy**: any locked asset is previewable inside the real composition — watermarked, non-publishable until entitled.
+- Every asset/tool displays its exact state: `FREE · OWNED · $0.99 · $1.99 · CREATOR TOOLS · TIER · POINTS · LIMITED`
+
+#### Unified Asset Entitlement Registry
+One registry, not one per surface. A purchased pack registers its compatible surfaces:
+`Owned asset → compatible surfaces: YOPHO | PROFILE | PLAYLIST | ARTIST ID`
+Entitlement types are distinct: `ASSET_ENTITLEMENT | TOOL_CAPABILITY | SURFACE_COMPATIBILITY`.
+
+#### Project Safeguards (mandatory)
+Autosave drafts, named projects, duplicate/remix, version history, restore previous version, cloud project library, crash-recovery draft.
+My Creations area: Drafts · Published · Templates · Purchased Assets · Favorites · Archived.
+Creators must be able to return months later to an editable project, not only a flattened export.
+
+#### Templates (non-flattening)
+Templates remain editable compositions with semantic slots. Example: *New Single Release* = artwork slot + artist name + track title + release date + streaming/playlist widget + animated accent + CTA. User replaces content; design is retained.
+
+#### Product Laws (locked forever)
+1. Basic creation must remain genuinely useful for free.
+2. Profile color is always free.
+3. Imported source limits and system-decoration layers are separate concepts.
+4. Purchased packs remain owned.
+5. Subscriptions unlock ongoing capabilities; they do not erase permanent purchases.
+6. Preview before purchase wherever technically possible.
+7. No fake engagement, followers, reactions, audiences, or rewards may be decorative assets.
+8. User creations remain editable projects, not flattened exports only.
+9. Every animation has accessibility/performance fallback.
+10. Entitlements come from one canonical registry, never hardcoded UI flags.
+11. The same composition engine must be reusable across TMI instead of a new editor per route.
+12. Every editor route must end somewhere real: save, publish, export/share, add to profile/playlist, or return to editable project.
+
+*Established 2026-08-27 by Marcel Dickens.*
+
+---
+
+### Rule 28 — Canonical Avatar System + Herser Asset Binding (locked 2026-08-27)
+
+**We do not build a second avatar/rig/environment system. The runtime connects to the canonical Herser-built assets.**
+
+#### The Hard Binding Directive
+```
+HERSER CANONICAL ASSETS
+→ existing bobblehead avatar meshes
+→ existing canonical skeleton/rig
+→ existing clothing/attachment sockets
+→ existing environment/world geometry
+→ existing room dimensions (square-root canonical dimensions)
+→ existing seat meshes + seat anchors
+→ existing collision/navmesh
+→ existing spawn/stage/audience anchors
+        ↓
+TMI CANONICAL AVATAR RUNTIME
+        ↓
+Quick Panel · Avatar Creation Center · Fan Lobby · Venue · Go Live · Public Profile · Overseer
+```
+
+No runtime component may silently generate a replacement skeleton, placeholder avatar, substitute chair geometry, or alternate venue dimensions when a canonical Herser asset exists.
+
+#### Canonical Asset Registries (required before any avatar work)
+A **Canonical Asset Binding Audit** must produce:
+```
+CanonicalAvatarAssetRegistry    — avatar GLBs/FBXs, rig IDs, skeleton version, body archetypes
+CanonicalRigRegistry            — rig ID → skeleton version → animation graph ID
+CanonicalWardrobeSocketRegistry — socket → bone → mesh variant → collision profile
+CanonicalEnvironmentRegistry    — venue ID → world asset ID → collision → navmesh → dimensions
+CanonicalSeatRegistry           — seat ID → room ID → section → row → sitAnchor → standAnchor → lookAt
+CanonicalAnimationRegistry      — animation ID → rig compatibility → LOD requirements
+```
+
+Every avatar resolves: `avatarId → canonicalMeshAssetId → canonicalRigId → bodyArchetype → rigVersion → animationGraphId → wardrobeCompatibilityProfile`
+
+Every venue resolves: `venueId → canonicalWorldAssetId → collisionAssetId → navmeshAssetId → seatLayoutId → spawnAnchorSetId → stageAnchorSetId → audienceAnchorSetId → environmentDimensions`
+
+#### No Substitute Asset Gate
+During development, if a canonical asset binding is missing the system must **fail visibly** with a diagnostic instead of manufacturing a fake replacement:
+```
+CANONICAL_RIG_NOT_BOUND
+CANONICAL_AVATAR_NOT_BOUND
+CANONICAL_ENVIRONMENT_NOT_BOUND
+CANONICAL_SEAT_LAYOUT_NOT_BOUND
+CANONICAL_COLLISION_NOT_BOUND
+```
+Observatory must report any active fallback clearly. Development certification cannot pass while a fallback is being mistaken for a finished Herser asset.
+
+#### Rig/Environment Compatibility Certification (required per venue)
+```
+AVATAR RIG · BODY SCALE · GROUND CONTACT · DOOR CLEARANCE · STAIR CLEARANCE
+SEAT FIT · SIT ANIMATION · STAND ANIMATION · NAVMESH · COLLISION
+PROP SOCKETS · CAMERA HEIGHT · LOD
+```
+If Herser's world was authored around a specific avatar scale, that scale is authoritative — normalize the runtime to it once, certify it, never silently resize avatars to "make them fit."
+
+#### Avatar Quick Panel vs. Full Creation Center
+Both surfaces render the same real rigged avatar, same equipped outfit, same animation system. Neither may fall back to a static PNG.
+
+**Avatar Quick Panel** (instant, from Hub / Account menu / Venue HUD / Fan Lobby HUD):
+```
+live 3D avatar viewport → ROTATE · ZOOM · IDLE · WAVE · DANCE · EMOTE · PROP
+current look picker → QUICK CHANGE (hair/hat/glasses/top/shoes/accessory)
+→ FULL AVATAR STUDIO link
+```
+
+**Full Avatar Creation Center** (`/avatar/studio`) — deep editing:
+```
+BODY · FACE · HAIR · SKIN · EYES · FACIAL HAIR
+WARDROBE: TOPS · JACKETS · BOTTOMS · OUTFITS · SHOES · JEWELRY · GLASSES · ACCESSORIES · PROPS
+MOTION: IDLES · WALK · RUN · DANCE · EMOTES · POSES · PROP TESTS
+MY LOOKS · MARKETPLACE · TEST AVATAR · SAVE DRAFT · EQUIP / PUBLISH
+```
+
+#### AvatarPreviewMotionDirector (canonical — not freeform)
+Context-aware preview motions bound to edit actions:
+- hair changed → head turn / hair-check pose
+- jacket equipped → shoulder roll
+- shoes changed → step / foot showcase
+- glasses equipped → look toward camera
+- full outfit → turntable spin / signature pose
+
+Animation uses layer blending: `LOCOMOTION + UPPER-BODY ACTION + FACIAL EXPRESSION + PROP ACTION + ADDITIVE IDLE`
+
+#### Draft vs. Equipped Appearance
+```
+DRAFT AVATAR      → local preview only
+EQUIP / PUBLISH   → validate ownership + rig/body compatibility + LOD exists
+                  → LiveAvatarSyncService broadcasts new loadout
+                  → current rooms receive appearance update (no session restart)
+```
+
+#### Saved Looks (first-class)
+`MY LOOKS`: EVERYDAY · BATTLE NIGHT · WORLD DANCE PARTY · CONCERT · MONDAY NIGHT STAGE · BUSINESS · FAN LOBBY · FORMAL · CUSTOM
+Includes: hair, clothing, shoes, accessories, props preset, default idle, optional emote wheel.
+One press equips the complete loadout. Operations: DUPLICATE · RENAME · FAVORITE · DELETE · SET DEFAULT.
+
+#### Blender's Role (manufacturing backend only)
+Blender runs as a headless pipeline for asset creation, NOT as a live browser operation:
+```
+NEW ASSET → normalize → canonical skeleton compatibility → skin/weights → sockets
+          → materials → collision checks → LOD generation → texture optimization
+          → validation report → GLB export → asset registry → live runtime
+```
+The web 3D engine loads certified assets; Blender manufactures and certifies them ahead of runtime.
+
+#### One Identity Law
+```
+ONE ACCOUNT
+→ ONE CANONICAL AVATAR
+→ EDIT FOREVER
+→ MANY SAVED LOOKS
+→ ONE CURRENT EQUIPPED LOOK
+→ EVERY AUTHORIZED 3D EXPERIENCE
+
+ONE GO LIVE
+→ ONE ROOM
+→ ONE LIVE SESSION
+→ REAL AUDIENCE PRESENCE
+→ MANY VIEWPORTS
+```
+
+#### Route Map (locked)
+```
+/avatar/studio          — complete creation/editing
+/avatar/closet          — inventory
+/avatar/looks           — saved appearances
+/avatar/test            — QA environments (Avatar QA Lab: flat floor / stairs / chair row / VIP booth / dance floor / stage edge / prop test / lighting tunnel)
+
+Hub AVATAR button       → AvatarQuickPanel
+Quick Panel → FULL STUDIO → /avatar/studio workspace/overlay
+Venue HUD AVATAR        → QuickPanel
+Public Profile          → read-only Avatar Showcase
+/admin/observatory      → avatar/runtime health inspection
+```
+
+#### Canonical Runtime Architecture
+```
+AvatarRuntime
+├── AvatarIdentityService
+├── AvatarLoadoutService
+├── AvatarWardrobeRegistry
+├── AvatarPreviewMotionDirector
+├── AvatarAnimationGraph
+├── AvatarFacialRuntime
+├── AvatarPhysicsDirector
+├── AvatarEntitlementResolver
+├── AvatarDraftService
+├── AvatarSavedLookService
+├── AvatarPresenceBridge
+├── LiveAvatarSyncService
+└── AvatarAssetRecoveryDirector
+```
+
+#### Error Recovery Codes
+```
+AVATAR_001_RIG_LOAD · AVATAR_002_MATERIAL · AVATAR_003_WARDROBE · AVATAR_004_COLLISION
+AVATAR_005_SPAWN · AVATAR_006_SEAT · AVATAR_007_LOD · AVATAR_008_PROP
+AVATAR_009_ANIMATION · AVATAR_010_SYNC
+```
+Each maps to an automatic recovery policy: retry → fallback asset → fallback outfit → safe spawn → LOD downgrade. User stays in session whenever possible.
+
+#### Scope Honesty (2026-08-27)
+The face-capture → rigged-3D-avatar → lip-synced pipeline remains multi-session, multi-specialist work (computer-vision + 3D-animation). Do not fake a stub version. The near-term work is: (1) connect the runtime to the existing Herser assets via the canonical registries, (2) wire the Avatar Quick Panel and Creation Center to those registries, (3) run the Avatar QA Lab certification. The full face-scan pipeline is scoped separately and cannot begin before the canonical rig/environment binding is complete.
+
+*Established 2026-08-27 by Marcel Dickens.*
