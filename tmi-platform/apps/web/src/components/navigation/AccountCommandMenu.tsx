@@ -146,11 +146,22 @@ export default function AccountCommandMenu({
   const [loading, setLoading]         = useState(false);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
   const [panelPos, setPanelPos]       = useState({ top: 56, right: 12 });
-  const [subScreen, setSubScreen]     = useState<"main" | "notifications" | "settings">("main");
+  const [subScreen, setSubScreen]     = useState<"main" | "notifications" | "settings" | "linked-accounts">("main");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifsLoading, setNotifsLoading] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"account" | "color" | "privacy">("account");
+  const [activeProfileColor, setActiveProfileColor] = useState(accentColor);
+  const [colorSaveStatus, setColorSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  interface LinkedAccount {
+    id: string; provider: string; label: string; maskedId: string; canUnlink: boolean;
+  }
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [linkedLoading, setLinkedLoading]   = useState(false);
+  const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null);
+  const [unlinkError, setUnlinkError]       = useState<string | null>(null);
+  const [hasPassword, setHasPassword]       = useState(false);
 
   const tier: TierLevel = identity ? mapSessionTier(identity.tier) : (tierProp ?? "free");
   const resolvedName    = identity?.displayName ?? displayName;
@@ -206,6 +217,55 @@ export default function AccountCommandMenu({
   }, [avatarUrlProp, displayName, userId]);
 
   useEffect(() => { void hydrateIdentity(); }, [hydrateIdentity]);
+
+  // load linked OAuth providers when that sub-screen opens
+  useEffect(() => {
+    if (subScreen !== "linked-accounts") return;
+    setLinkedLoading(true);
+    setUnlinkError(null);
+    fetch("/api/account/linked", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { accounts?: LinkedAccount[]; hasPassword?: boolean }) => {
+        setLinkedAccounts(d.accounts ?? []);
+        setHasPassword(Boolean(d.hasPassword));
+      })
+      .catch(() => setUnlinkError("Could not load linked accounts."))
+      .finally(() => setLinkedLoading(false));
+  }, [subScreen]);
+
+  const unlinkProvider = async (provider: string) => {
+    setUnlinkingProvider(provider);
+    setUnlinkError(null);
+    try {
+      const res = await fetch("/api/account/linked", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ provider }),
+      });
+      const d = await res.json() as { ok?: boolean; error?: string; code?: string };
+      if (!res.ok) {
+        setUnlinkError(d.error ?? "Unlink failed.");
+      } else {
+        setLinkedAccounts((prev) => prev.filter((a) => a.provider !== provider));
+      }
+    } catch {
+      setUnlinkError("Network error. Try again.");
+    } finally {
+      setUnlinkingProvider(null);
+    }
+  };
+
+  // load canonical profile color when settings screen opens
+  useEffect(() => {
+    if (subScreen !== "settings") return;
+    fetch("/api/profile/config", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { config?: { themeColor?: string } }) => {
+        if (d.config?.themeColor) setActiveProfileColor(d.config.themeColor);
+      })
+      .catch(() => {});
+  }, [subScreen]);
 
   // fetch notifications when sub-screen opens
   useEffect(() => {
@@ -328,6 +388,23 @@ export default function AccountCommandMenu({
     } catch { /* silent */ }
   };
 
+  const saveProfileColor = async (color: string) => {
+    setActiveProfileColor(color);
+    setColorSaveStatus("saving");
+    try {
+      const res = await fetch("/api/profile/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ themeColor: color }),
+      });
+      setColorSaveStatus(res.ok ? "saved" : "error");
+      if (res.ok) setTimeout(() => setColorSaveStatus("idle"), 2200);
+    } catch {
+      setColorSaveStatus("error");
+    }
+  };
+
   const handleLogout = async () => {
     close();
     try { await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); } catch { /* noop */ }
@@ -443,13 +520,53 @@ export default function AccountCommandMenu({
             <div style={{ fontSize: 9, fontWeight: 700, color: "#FFD700", letterSpacing: "0.1em" }}>
               PROFILE COLOR — dashboard + public page in sync
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Quick preset swatches */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {SHELL_THEMES.map(({ color, label }) => (
-                <button key={color} type="button" title={label} style={{
-                  width: 28, height: 28, borderRadius: "50%", background: color,
-                  border: `2px solid ${color === accentColor ? "#fff" : "transparent"}`, cursor: "pointer",
-                }} />
+                <button key={color} type="button" title={label}
+                  onClick={() => void saveProfileColor(color)}
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%", background: color,
+                    border: `2px solid ${color === activeProfileColor ? "#fff" : "transparent"}`,
+                    cursor: "pointer", outline: "none",
+                    boxShadow: color === activeProfileColor ? `0 0 8px ${color}` : "none",
+                    transition: "border-color 0.15s, box-shadow 0.15s",
+                  }} />
               ))}
+            </div>
+            {/* Full-spectrum picker + hex input */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="color"
+                value={activeProfileColor.match(/^#[0-9A-Fa-f]{6}$/) ? activeProfileColor : "#00FFFF"}
+                onChange={(e) => setActiveProfileColor(e.target.value)}
+                onBlur={(e) => void saveProfileColor(e.target.value)}
+                title="Full spectrum color picker"
+                style={{ width: 36, height: 28, borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", padding: 1, background: "rgba(255,255,255,0.05)" }}
+              />
+              <input
+                type="text"
+                value={activeProfileColor}
+                maxLength={7}
+                placeholder="#00FFFF"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setActiveProfileColor(v);
+                  if (/^#[0-9A-Fa-f]{6}$/.test(v)) void saveProfileColor(v);
+                }}
+                style={{
+                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: 6, color: "#fff", fontSize: 11, padding: "4px 8px",
+                  width: 80, fontFamily: "monospace", outline: "none",
+                }}
+              />
+              <span style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", minWidth: 52,
+                color: colorSaveStatus === "saved" ? "#00FF88" : colorSaveStatus === "saving" ? "#00FFFF" : colorSaveStatus === "error" ? "#FF6B6B" : "transparent",
+                transition: "color 0.2s",
+              }}>
+                {colorSaveStatus === "saving" ? "SAVING…" : colorSaveStatus === "saved" ? "SAVED ✓" : colorSaveStatus === "error" ? "ERROR" : ""}
+              </span>
             </div>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>One color. Dashboard and public profile stay in sync.</div>
           </div>
@@ -462,6 +579,75 @@ export default function AccountCommandMenu({
             <Link href="/settings?section=access"     onClick={close} style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>Accessibility →</Link>
           </div>
         )}
+      </div>
+    </div>
+  );
+
+  // ── Linked Accounts sub-screen ──
+
+  const PROVIDER_ICON: Record<string, string> = {
+    google: "G", apple: "🍎", spotify: "🎵", facebook: "f",
+    twitter: "X", github: "⌥", discord: "💬", tiktok: "♪",
+  };
+
+  const linkedAccountsScreen = (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <button type="button" onClick={() => setSubScreen("main")}
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1, fontFamily: "inherit" }}>‹</button>
+        <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.7)" }}>LINKED ACCOUNTS</div>
+      </div>
+      <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {linkedLoading && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", padding: "18px 0" }}>Loading…</div>}
+        {!linkedLoading && linkedAccounts.length === 0 && (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", padding: "18px 0" }}>
+            No external accounts linked.
+          </div>
+        )}
+        {linkedAccounts.map((a) => (
+          <div key={a.provider} style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
+            background: "rgba(255,255,255,0.04)", borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
+              {PROVIDER_ICON[a.provider.toLowerCase()] ?? "🔗"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{a.label}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 1, fontFamily: "monospace" }}>{a.maskedId}</div>
+            </div>
+            <button type="button"
+              disabled={!a.canUnlink || unlinkingProvider === a.provider}
+              onClick={() => {
+                if (!a.canUnlink) return;
+                if (!window.confirm(`Unlink ${a.label}? You${hasPassword ? " can still sign in with your password" : " must have another provider to log in"}.`)) return;
+                void unlinkProvider(a.provider);
+              }}
+              style={{
+                padding: "4px 9px", borderRadius: 6, fontSize: 8, fontWeight: 900,
+                letterSpacing: "0.09em", cursor: a.canUnlink ? "pointer" : "not-allowed",
+                border: `1px solid ${a.canUnlink ? "rgba(255,59,92,0.5)" : "rgba(255,255,255,0.1)"}`,
+                background: a.canUnlink ? "rgba(255,59,92,0.1)" : "transparent",
+                color: a.canUnlink ? "#FF6B6B" : "rgba(255,255,255,0.25)",
+                fontFamily: "inherit",
+              }}>
+              {unlinkingProvider === a.provider ? "…" : "UNLINK"}
+            </button>
+          </div>
+        ))}
+        {unlinkError && (
+          <div style={{ fontSize: 10, color: "#FF6B6B", padding: "4px 2px", lineHeight: 1.4 }}>{unlinkError}</div>
+        )}
+        {!hasPassword && !linkedLoading && (
+          <div style={{ fontSize: 9, color: "rgba(255,215,0,0.7)", lineHeight: 1.5, marginTop: 4 }}>
+            ⚠ No password set. You need at least one provider linked to sign in.
+          </div>
+        )}
+        <Link href="/settings?section=security" onClick={close}
+          style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none", marginTop: 6 }}>
+          Set or change password →
+        </Link>
       </div>
     </div>
   );
@@ -563,9 +749,10 @@ export default function AccountCommandMenu({
         <Link href="/account/subscription" onClick={close} className="tmi-acm-row" style={rowStyle}>
           ACCOUNT &amp; BILLING
         </Link>
-        <Link href="/settings?section=linked" onClick={close} className="tmi-acm-row" style={rowStyle}>
+        <button type="button" className="tmi-acm-row" onClick={() => setSubScreen("linked-accounts")} style={rowStyle}>
           LINKED ACCOUNTS &amp; ACCESS
-        </Link>
+          <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.35 }}>›</span>
+        </button>
         {showAdmin && (
           <>
             <div style={{ height: 1, background: "rgba(255,215,0,0.15)", margin: "4px 12px" }} />
@@ -610,8 +797,9 @@ export default function AccountCommandMenu({
       }}
     >
       <style>{CSS}</style>
-      {subScreen === "notifications" ? notificationsScreen :
-       subScreen === "settings"      ? settingsScreen :
+      {subScreen === "notifications"    ? notificationsScreen :
+       subScreen === "settings"         ? settingsScreen :
+       subScreen === "linked-accounts"  ? linkedAccountsScreen :
        mainScreen}
     </div>
   );
