@@ -12,6 +12,7 @@
  */
 
 import { routeLivePlacement, type RoutedLivePlacement } from "@/lib/live/LiveRoutingEngine";
+import { getRoleEntryProfile, RoleEntryProfile, LiveParticipantRole } from "@/lib/live/RoleEntryMap";
 import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 export type LivePrivacy = "public" | "friends" | "invite" | "private";
@@ -64,6 +65,19 @@ export interface LiveDestination {
     goldDirector: string[];
     diamondDirector: string[];
   };
+  /**
+   * Role-based presentation profile (entryZone/spawnAnchor/presenceMode/
+   * capabilities/hudPolicy) — NOT a full RoleEntry, because no real roomId
+   * exists yet at this point for a freshly-minted performer stage. Combine
+   * this with the real minted roomId + liveSessionId via
+   * RoleEntryMap.resolveRoleEntry() once both are known (see
+   * executeInstantGoLive.ts) to get the full canonical RoleEntry.
+   */
+  roleEntryProfile: RoleEntryProfile;
+}
+
+export function toLiveParticipantRole(role: LiveDestinationRole): LiveParticipantRole {
+  return isPerformerLike(role) ? "performer" : "fan";
 }
 
 const STORAGE_PRIVACY_KEY = "tmi.live.privacy";
@@ -91,7 +105,7 @@ const DIAMOND_DIRECTOR = [
   "cinematic_replay",
 ];
 
-function normalizeRole(role: string): LiveDestinationRole {
+export function normalizeRole(role: string): LiveDestinationRole {
   const r = (role || "FAN").trim().toUpperCase();
   if (r === "ARTIST") return "PERFORMER";
   if (
@@ -139,7 +153,10 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
   const role = normalizeRole(input.role);
   const privacy = input.privacy;
   const preferred = input.preferredExperience;
-  const restricted = privacy === "friends" || privacy === "invite" || privacy === "private";
+  const roleEntryProfile: RoleEntryProfile = getRoleEntryProfile(
+    toLiveParticipantRole(role),
+    privacy !== "public",
+  );
   const entitlements = {
     freeBasics: FREE_BASICS,
     goldDirector: GOLD_DIRECTOR,
@@ -164,6 +181,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
         },
         lobbyPlacement: null,
         entitlements,
+        roleEntryProfile,
       };
     }
     return {
@@ -179,6 +197,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: null,
       entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -197,6 +216,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: null,
       entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -217,6 +237,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: placement,
       entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -240,6 +261,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
     },
     lobbyPlacement: placement,
     entitlements,
+    roleEntryProfile,
   };
 }
 
