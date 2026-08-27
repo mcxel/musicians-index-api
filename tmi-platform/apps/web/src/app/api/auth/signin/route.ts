@@ -166,18 +166,19 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? '';
     const { sessionId, sessionToken } = createSession(resolvedUser.id, resolvedUser.role, clientIp, userAgent);
 
-    // tmi_roles (plural) is what middleware's hub-access gate actually reads
-    // for multi-role accounts. Registration sets it from the real UserRole
-    // rows, but until now login never refreshed it - so it went stale after
-    // the cookie's 7-day maxAge and multi-role hub access silently broke.
-    let userRoles: string[] = [resolvedUser.role.toUpperCase()];
+    // tmi_roles is what the middleware hub-access gate reads for multi-role
+    // accounts. Always include the authoritative User.role first; UserRole
+    // table rows are additive (never replace) so primary role is never lost.
+    const primaryRole = resolvedUser.role.toUpperCase();
+    let userRoles: string[] = [primaryRole];
     try {
       const roleRows = await prisma.userRole.findMany({
         where: { userId: resolvedUser.id },
         select: { role: true },
       });
       if (roleRows.length > 0) {
-        userRoles = roleRows.map((r) => r.role);
+        const merged = new Set([primaryRole, ...roleRows.map((r) => r.role.toUpperCase())]);
+        userRoles = [...merged];
       }
     } catch (roleErr) {
       console.warn('[auth/signin] UserRole lookup warning (falling back to single role):', roleErr);

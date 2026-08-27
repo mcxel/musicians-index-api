@@ -93,21 +93,27 @@ function normalizeRef(input: string | null): string | null {
   return value || null;
 }
 
-// Extract all user roles from tmi_roles cookie (multi-role support)
+// Extract all user roles — always merges tmi_role (primary) + tmi_roles (multi-role).
+// tmi_roles must never shadow the authoritative single-role cookie.
 function getUserRoles(req: NextRequest): string[] {
+  const roles = new Set<string>();
+
+  const singleRole = req.cookies.get('tmi_role')?.value;
+  if (singleRole) roles.add(singleRole.toUpperCase());
+
   try {
     const rolesJson = req.cookies.get('tmi_roles')?.value;
     if (rolesJson) {
       const parsed = JSON.parse(rolesJson);
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) {
+        parsed.forEach((r) => roles.add(String(r).toUpperCase()));
+      }
     }
   } catch {
-    // Ignore malformed roles cookie and fall back to single-role cookie.
+    // Ignore malformed tmi_roles — tmi_role fallback already added above.
   }
 
-  // Fallback: single role cookie
-  const singleRole = req.cookies.get('tmi_role')?.value;
-  return singleRole ? [singleRole] : [];
+  return [...roles];
 }
 
 // Check if user has any of the required roles
