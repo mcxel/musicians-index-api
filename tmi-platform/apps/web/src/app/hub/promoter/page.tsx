@@ -6,6 +6,9 @@ import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import { buildVenueEventRoutes } from "@/lib/venues/VenueEventPromotionRoutingEngine";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
+import MediaMonitor from "@/components/video/MediaMonitor";
+import LiveMediaWall from "@/components/media/LiveMediaWall";
 
 const ACCENT = "#00FF88";
 
@@ -121,6 +124,48 @@ export default function PromoterHubPage() {
             <Link href="/promoter/events" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#00FFFF)`, borderRadius: 9, color: "#050510", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>PROMOTE EVENT</Link>
             <Link href="/booking" style={{ padding: "13px 20px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>BOOK ARTIST</Link>
           </div>
+        </div>
+
+        {/* Media + discovery (canonical MediaMonitor / DiscoveryRail — no fake inventory) */}
+        <div
+          style={{
+            marginBottom: 28,
+            borderRadius: 16,
+            overflow: "hidden",
+            border: "1px solid rgba(0,255,136,0.28)",
+            background: "#000",
+            minHeight: 200,
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              padding: "8px 14px",
+              borderBottom: "1px solid rgba(0,255,136,0.2)",
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.16em",
+              color: ACCENT,
+            }}
+          >
+            MEDIA · EVENT PREVIEW
+          </div>
+          <div style={{ height: 180, position: "relative" }}>
+            <MediaMonitor mode="standby" isActive={false} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+          <DiscoveryRail type="performers" limit={6} accentColor={ACCENT} label="DISCOVER ARTISTS TO BOOK" />
+          <DiscoveryRail type="venues" limit={4} accentColor="#FFD700" label="VENUE PARTNERS" />
+          <LiveMediaWall
+            roomId="promoter-hub"
+            title="PROMOTED LIVE EVENTS"
+            mode="billboard"
+            nodeCount={4}
+            accentColor={ACCENT}
+            enterHref="/live/rooms"
+            compact={false}
+          />
         </div>
 
         {/* Quick Actions */}

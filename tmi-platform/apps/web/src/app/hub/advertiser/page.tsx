@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import RoomContainer from "@/components/room/RoomContainer";
-import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import MediaMonitor from "@/components/video/MediaMonitor";
 import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
@@ -11,6 +10,7 @@ import Link from "next/link";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 
 type HubMode = "ADVERTISER" | "SPONSOR";
 
@@ -22,15 +22,9 @@ export default function AdvertiserSponsorHub() {
 
   return (
     <RoomContainer roomId="hub-adv-sponsor" title="Command Center" accentColor={accentColor} bpm={95}>
-      <ActionCanister actions={[
-        { id: "messages", label: "Messages", icon: "💬" },
-        { id: "revenue", label: "ROI", icon: "💰" },
-        { id: "sponsors", label: "Marketplace", icon: "🤝" },
-        { id: "notifications", label: "Alerts", icon: "🔔" },
-      ]} />
       <WidgetDrawer />
 
-      <div className="min-h-screen flex flex-col p-4 md:p-6 ml-[60px] md:ml-[80px] font-sans text-white bg-[#050510]">
+      <div className="min-h-screen flex flex-col p-4 md:p-6 font-sans text-white bg-[#050510]">
 
         {/* ── HEADER ── */}
         <header className="flex justify-between items-center bg-black/60 border border-white/10 p-4 rounded-xl backdrop-blur-md mb-6">
@@ -180,6 +174,13 @@ export default function AdvertiserSponsorHub() {
               </div>
             </div>
           </aside>
+        </div>
+
+        {/* Discovery — artists / events / sponsorship (zero results OK; no fake inventory) */}
+        <div className="flex flex-col gap-4 mb-6">
+          <DiscoveryRail type="performers" limit={6} accentColor={accentColor} label="DISCOVER ARTISTS" />
+          <DiscoveryRail type="venues" limit={4} accentColor="#00FFFF" label="EVENT & VENUE OPPORTUNITIES" />
+          <DiscoveryRail type="sponsors" limit={4} accentColor="#FFD700" label="SPONSORSHIP SURFACES" />
         </div>
 
         {/* Canisters — Memory Wall + Messaging (Rule 15) */}

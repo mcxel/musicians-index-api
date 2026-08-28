@@ -6,9 +6,9 @@ import LiveMediaWall from "@/components/media/LiveMediaWall";
 import Link from "next/link";
 import { HubBackNav } from "@/components/nav/HubBackNav";
 import RoomContainer from "@/components/room/RoomContainer";
-import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
+import MediaMonitor from "@/components/video/MediaMonitor";
 
 const NAV_LINKS = [
   { href: "/hub/venue",       label: "Dashboard"  },
@@ -20,14 +20,6 @@ const NAV_LINKS = [
   { href: "/tickets/print",   label: "Print"      },
   { href: "/tickets/scanner", label: "Scanner"    },
   { href: "/settings",        label: "Settings"   },
-];
-
-const VENUE_ACTIONS = [
-  { id: "bookings",      icon: "📅", label: "Bookings"   },
-  { id: "revenue",       icon: "💰", label: "Revenue"    },
-  { id: "messages",      icon: "💬", label: "Messages"   },
-  { id: "notifications", icon: "🔔", label: "Alerts"     },
-  { id: "live-rooms",    icon: "🏟️", label: "Rooms"      },
 ];
 
 export default function VenueHubPage() {
@@ -73,7 +65,33 @@ export default function VenueHubPage() {
             </div>
           </div>
 
-          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px" }}>
+          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
+            <div
+              style={{
+                borderRadius: 16,
+                overflow: "hidden",
+                border: "1px solid rgba(34,197,94,0.28)",
+                background: "#000",
+                minHeight: 200,
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  padding: "8px 14px",
+                  borderBottom: "1px solid rgba(34,197,94,0.2)",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: "0.16em",
+                  color: "#22c55e",
+                }}
+              >
+                MEDIA · VENUE PREVIEW
+              </div>
+              <div style={{ height: 180, position: "relative" }}>
+                <MediaMonitor mode="standby" isActive={false} />
+              </div>
+            </div>
             <LiveMediaWall
               roomId="venue-hub"
               title="YOUR VENUE ROOMS — LIVE"
@@ -86,7 +104,6 @@ export default function VenueHubPage() {
           </div>
         </div>
 
-        <ActionCanister actions={VENUE_ACTIONS} />
         <WidgetDrawer />
       </div>
     </RoomContainer>
