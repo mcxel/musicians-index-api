@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 
 const ACCENT = "#FF2DAA";
 
@@ -93,17 +94,18 @@ export default function WriterHubPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
-      {/* Top bar */}
-      <div style={{ background: "rgba(0,0,0,0.88)", borderBottom: "1px solid rgba(255,45,170,0.2)", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-        <div>
+      {/* Top bar — RoleHubAccountMenu is the sole logout/account authority (same as Venue/Sponsor/Promoter/Advertiser) */}
+      <div style={{ background: "rgba(0,0,0,0.88)", borderBottom: "1px solid rgba(255,45,170,0.2)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>EDITORIAL HUB</div>
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Writer Command Center</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
           <PersonaSwitcher currentRole="writer" compact />
           <Link href="/dashboard/writer" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(255,45,170,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
           <Link href="/editorial" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>EDITORIAL DESK</Link>
           <Link href="/magazine" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>MAGAZINE</Link>
+          <RoleHubAccountMenu accentColor={ACCENT} />
         </div>
       </div>
 
@@ -159,7 +161,7 @@ export default function WriterHubPage() {
         </div>
 
         {/* Articles + Categories */}
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 28 }}>
+        <div className="writer-hub-split" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 28 }}>
 
           {/* Article Queue */}
           <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,45,170,0.15)", borderRadius: 14, padding: "20px" }}>
@@ -222,12 +224,17 @@ export default function WriterHubPage() {
         </div>
 
         {/* Canisters — Memory Wall + Messaging (Rule 15) */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <div className="writer-hub-split" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
           <MemoryWallCanister entityId="writer" entityType="fan" title="Writer Moments" accentColor="#FF2DAA" />
           <MessagingCanister height={360} />
         </div>
 
       </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .writer-hub-split { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }
