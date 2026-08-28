@@ -2,14 +2,9 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
-import { liveDiscoveryOverlayStore } from "@/lib/discovery/liveDiscoveryOverlayStore";
-import {
-  openCanonicalWorkspaceQuick,
-  presentCanonicalWorkspace,
-} from "@/lib/workspace/universal/openCanonicalPresentation";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 import styles from "./TMIGlobalNav.module.css";
 
 interface SessionState {
@@ -30,40 +25,22 @@ const ROLE_COLOR: Record<string, string> = {
   default: "#ffffff",
 };
 
-const ROLE_PROFILE: Record<string, string> = {
-  artist: "/profile/artist",
-  performer: "/profile/performer",
-  fan: "/profile/fan",
-  venue: "/profile/venue",
-  promoter: "/profile/promoter",
-  advertiser: "/profile/advertiser",
-  sponsor: "/profile/sponsor",
-  admin: "/admin/overview",
-  superadmin: "/admin/overview",
-};
-
-const ROLE_DASHBOARD: Record<string, string> = {
-  fan: "/hub/fan",
-  performer: "/hub/performer",
-  artist: "/hub/artist",
-  promoter: "/hub/promoter",
-  advertiser: "/hub/advertiser",
-  sponsor: "/hub/sponsor",
-  venue: "/hub/venue",
-  admin: "/admin/overview",
-  superadmin: "/admin/overview",
-};
-
+/** Hub superseded HOME/DISCOVER/LIVE NOW/LOBBY — Explore + Search only on outer shell. */
 const NAV_ITEMS = [
-  { icon: "🏠", label: "Home", href: "/home/1" },
-  { icon: "🧭", label: "Discover", href: "/discover" },
-  { icon: "🔴", label: "Live Now", href: "/live" },
-  { icon: "🎪", label: "Lobby", href: "/live/lobby" },
   { icon: "🌐", label: "Explore", href: "/explore" },
   { icon: "🔎", label: "Search", href: "/search" },
 ];
 
-const LIVE_ROLES = new Set(["artist", "performer", "admin", "superadmin", "venue"]);
+const LIVE_ROLES = new Set([
+  "artist",
+  "performer",
+  "band",
+  "producer",
+  "admin",
+  "superadmin",
+  "venue",
+  "staff",
+]);
 
 export default function TMIGlobalNav() {
   const router = useRouter();
@@ -71,8 +48,6 @@ export default function TMIGlobalNav() {
 
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [goLivePhase, setGoLivePhase] = useState<"idle" | "launching" | "error">("idle");
   const [goLiveError, setGoLiveError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -88,10 +63,6 @@ export default function TMIGlobalNav() {
 
   useEffect(() => {
     setMounted(true);
-    const refresh = () => setUnreadCount(NotificationEngine.getUnreadCount());
-    refresh();
-    const unsub = NotificationEngine.subscribe(refresh);
-    return unsub;
   }, []);
 
   const fetchSession = useCallback(() => {
@@ -116,71 +87,26 @@ export default function TMIGlobalNav() {
     };
   }, [fetchSession, mounted]);
 
-  async function handleLogout() {
-    setLoggingOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      setSession({ authenticated: false });
-      window.dispatchEvent(new CustomEvent("tmi:session_change"));
-      router.push("/home/1");
-    } catch {
-      setLoggingOut(false);
-    }
-  }
-
   const isAuthenticated = session?.authenticated === true;
   const user = session?.user;
   const role = (user?.role ?? "default").toLowerCase();
   const userId = user?.id ?? "";
-  // P0 Identity/Entitlement Integrity: derive the fallback circle from the
-  // person's own registered name, never their database ID — a CUID's first
-  // character (e.g. "c" from "cmoq0bpst0000...") is not their initial and
-  // reads as a random letter unrelated to who they actually are.
-  const userInitial = (user?.name ?? "").trim().charAt(0).toUpperCase() || "?";
   const avatarUrl = user?.avatarUrl ?? null;
   const roleColor = ROLE_COLOR[role] ?? ROLE_COLOR.default!;
-  const profileBase = ROLE_PROFILE[role] ?? "/profile";
-  const profileHref = isAuthenticated ? `${profileBase}/${userId}` : "/auth/signin";
   const isFlightDeck =
     pathname === "/admin/overseer" ||
     pathname.startsWith("/admin/overseer/") ||
     pathname === "/admin/observatory" ||
     pathname.startsWith("/admin/observatory/");
   const canGoLive = isAuthenticated && LIVE_ROLES.has(role) && !pathname.startsWith("/admin");
-  const dashboardHref = isAuthenticated ? ROLE_DASHBOARD[role] ?? "/hub/fan" : "/home/1";
   const safeBottomInset = "max(8px, env(safe-area-inset-bottom, 0px))";
 
   // Command Center owns MONITORS / GPS / CHAT. Unmount this dock on hub —
   // do not leave a competing Discover / Live Now / Lobby bar or empty spacer.
   // Venue preview is immersive (ArenaEventShell + Venue HUD) — same rule.
-  if (isFlightDeck || isHubPath || isVenuePreviewPath) {
+  // Also stay unmounted until pathname is known (avoid legacy-board flash).
+  if (!mounted || !pathname || isFlightDeck || isHubPath || isVenuePreviewPath) {
     return null;
-  }
-
-  if (!mounted) {
-    return (
-      <nav
-        suppressHydrationWarning
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 99999,
-          display: "flex",
-          gap: 2,
-          alignItems: "center",
-          background: "rgba(5,3,16,0.96)",
-          backdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(0,255,255,0.16)",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.7)",
-          padding: `6px 10px calc(6px + ${safeBottomInset})`,
-          overflowX: "auto",
-          flexWrap: "nowrap",
-        }}
-        aria-label="Global navigation"
-      />
-    );
   }
 
   return (
@@ -205,44 +131,17 @@ export default function TMIGlobalNav() {
       }}
       aria-label="Global navigation"
     >
-      {/* User avatar / profile link */}
+      {/* Account — notifications, messages, role switch, logout live in AccountCommandMenu */}
       {isAuthenticated ? (
-        <button
-          title={`My Profile (${role})`}
-          onClick={() => router.push(profileHref)}
-          className={styles.dockItem}
-          style={{ padding: "4px 6px" }}
-        >
-          <span
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              border: `2px solid ${roleColor}`,
-              background: avatarUrl ? "#000" : `${roleColor}22`,
-              fontSize: 11,
-              fontWeight: 900,
-              color: roleColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 0 10px ${roleColor}44`,
-              overflow: "hidden",
-            }}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-              />
-            ) : (
-              userInitial
-            )}
-          </span>
-          <span className={styles.dockLabel}>Profile</span>
-        </button>
+        <div style={{ flexShrink: 0, padding: "0 4px" }}>
+          <AccountCommandMenu
+            userId={userId}
+            displayName={user?.name ?? "Account"}
+            avatarUrl={avatarUrl}
+            accentColor={roleColor}
+            compact
+          />
+        </div>
       ) : (
         <button title="Sign In" onClick={() => router.push("/auth/signin")} className={styles.dockItem}>
           <span className={styles.dockIcon} style={{ color: "#FFD700" }}>
@@ -266,33 +165,18 @@ export default function TMIGlobalNav() {
 
       {/* Core nav items */}
       {NAV_ITEMS.map(({ icon, label, href }) => {
-        const targetHref = label === "Home" ? dashboardHref : href;
-        const opensLobbyDrawer =
-          label === "Lobby" || label === "Live Now" || label === "Discover";
         const active =
-          !opensLobbyDrawer &&
-          (pathname === targetHref || (targetHref !== "/" && pathname.startsWith(targetHref + "/")));
+          pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
         return (
           <button
             key={label}
-            title={opensLobbyDrawer ? "Open lobby / live destinations in drawer" : label}
+            title={label}
             onClick={() => {
-              if (isHubPath && opensLobbyDrawer) {
-                presentCanonicalWorkspace(
-                  label === "Live Now" ? "live-destinations" : "lobby",
-                  "DRAWER",
-                );
-                return;
-              }
-              if (label === "Lobby" || label === "Live Now") {
-                liveDiscoveryOverlayStore.open();
-                return;
-              }
               if (label === "Search") {
                 setSearchOpen(true);
                 return;
               }
-              router.push(targetHref);
+              router.push(href);
             }}
             className={styles.dockItem}
             data-active={String(active)}
@@ -302,47 +186,6 @@ export default function TMIGlobalNav() {
           </button>
         );
       })}
-
-      {/* Notifications */}
-      <button
-        title="Notifications"
-        onClick={() => {
-          if (isHubPath) {
-            openCanonicalWorkspaceQuick("notifications", "DRAWER");
-            return;
-          }
-          router.push("/notifications");
-        }}
-        className={styles.dockItem}
-        data-active={String(pathname.startsWith("/notifications"))}
-      >
-        <span className={styles.dockIcon}>
-          🔔
-          {unreadCount > 0 && (
-            <span className={styles.dockBadge}>
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </span>
-        <span className={styles.dockLabel}>Alerts</span>
-      </button>
-
-      {/* Messages */}
-      <button
-        title="Messages"
-        onClick={() => {
-          if (isHubPath) {
-            openCanonicalWorkspaceQuick("messaging", "DRAWER");
-            return;
-          }
-          router.push("/messages");
-        }}
-        className={styles.dockItem}
-        data-active={String(pathname.startsWith("/messages"))}
-      >
-        <span className={styles.dockIcon}>✉️</span>
-        <span className={styles.dockLabel}>Messages</span>
-      </button>
 
       <div style={{ flex: 1, minWidth: 8 }} />
 
@@ -417,34 +260,6 @@ export default function TMIGlobalNav() {
         <span style={{ fontSize: 9, color: "#FF4444", fontWeight: 700, whiteSpace: "nowrap" }}>
           {goLiveError}
         </span>
-      )}
-
-      {/* Logout */}
-      {isAuthenticated && (
-        <button
-          title="Log Out"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            flexShrink: 0,
-            border: "1.5px solid rgba(255,255,255,0.18)",
-            background: "transparent",
-            cursor: loggingOut ? "not-allowed" : "pointer",
-            fontSize: 11,
-            color: "rgba(255,255,255,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s",
-            opacity: loggingOut ? 0.5 : 1,
-            marginLeft: 6,
-          }}
-        >
-          ⏻
-        </button>
       )}
 
       {/* ── Global search modal ─────────────────────────────────────── */}

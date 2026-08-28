@@ -24,8 +24,9 @@ import {
   subscribePlaylistNowPlaying,
   type PlaylistNowPlayingPayload,
 } from "@/lib/playlists/commandCenterPlaybackBus";
-import type { DockModuleId } from "@/components/shell/MasterControlDock";
+import type { DockModuleId } from "@/components/shell/dockModuleTypes";
 import MobileQuickPanelBar from "@/components/commandCenter/MobileQuickPanelBar";
+import CanonicalQuickToolsStrip from "@/components/commandCenter/CanonicalQuickToolsStrip";
 
 export interface PersistentMediaInteractionDockProps {
   role: "fan" | "performer";
@@ -69,9 +70,11 @@ export default function PersistentMediaInteractionDock({
   }, []);
 
   const { open: openWorkspace } = useFloatingWorkspace();
-  const { screenStream, startScreenShare, stopScreenShare } = useMonitorScreenShare({
-    openPickerOnStart: true,
-  });
+  const { screenStream, shareActive, shareButtonLabel, cycleSharePress } =
+    useMonitorScreenShare({
+      defaultSlot: { monitor: 0, cellIndex: -1 },
+      openPickerOnStart: false,
+    });
   const openInSurface = useWorkspacePresentationStore((s) => s.openInSurface);
 
   useEffect(() => {
@@ -323,55 +326,6 @@ export default function PersistentMediaInteractionDock({
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
-              {/* Avatar/Inventory ownership is Fan-only (Rule 26 Identity Policy) — never expose the chrome to Performers. */}
-              {!isPerformer && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
-                    style={toolBtn}
-                    aria-label="Avatar workspace"
-                  >
-                    👤 AVATAR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => presentCanonicalWorkspace("inventory", "DRAWER")}
-                    style={toolBtn}
-                    aria-label="Inventory workspace"
-                  >
-                    🎒 INV
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => (screenStream ? stopScreenShare() : void startScreenShare())}
-                style={toolBtn}
-                aria-label={screenStream ? "Stop screen share" : "Start screen share"}
-              >
-                🖥 {screenStream ? "STOP SHARE" : "SHARE SCREEN"}
-              </button>
-              <button type="button" onClick={() => setIsCameraOpen(true)} style={toolBtn} aria-label="Camera workspace">
-                ⏺ RECORD
-              </button>
-              <button type="button" onClick={openShareStudio} style={toolBtn} aria-label="Open Share Studio">
-                ↗ SHARE
-              </button>
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 900,
-                  color: "#FFD700",
-                  border: "1px solid rgba(255,215,0,0.45)",
-                  borderRadius: 4,
-                  padding: "2px 6px",
-                }}
-                title="Stream quality follows connection (auto)"
-              >
-                AUTO
-              </span>
               <div
                 style={{
                   fontSize: 9,
@@ -380,6 +334,7 @@ export default function PersistentMediaInteractionDock({
                   display: "flex",
                   alignItems: "center",
                   gap: 5,
+                  flexShrink: 0,
                 }}
               >
                 <span
@@ -392,15 +347,6 @@ export default function PersistentMediaInteractionDock({
                 />
                 {online ? "ONLINE" : "OFFLINE"}
               </div>
-              <button
-                type="button"
-                onClick={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
-                style={toolBtn}
-                aria-label="Memory workspace"
-              >
-                🧠 MEMORY
-              </button>
-            </div>
             )}
           </div>
         </div>
@@ -418,13 +364,22 @@ export default function PersistentMediaInteractionDock({
       {isMobile ? (
         <MobileQuickPanelBar
           role={role}
-          screenShareActive={Boolean(screenStream)}
-          onShareScreen={() => (screenStream ? stopScreenShare() : void startScreenShare())}
+          screenShareActive={shareActive || Boolean(screenStream)}
+          onShareScreen={() => void cycleSharePress()}
           onRecord={() => setIsCameraOpen(true)}
           onShare={openShareStudio}
           onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
         />
-      ) : null}
+      ) : (
+        <CanonicalQuickToolsStrip
+          role={role}
+          screenShareActive={shareActive || Boolean(screenStream)}
+          onShareScreen={() => void cycleSharePress()}
+          onRecord={() => setIsCameraOpen(true)}
+          onShare={openShareStudio}
+          onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+        />
+      )}
     </>
   );
 }
@@ -437,15 +392,4 @@ const transportBtn: React.CSSProperties = {
   cursor: "pointer",
   padding: 0,
   lineHeight: 1,
-};
-
-const toolBtn: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "rgba(255,255,255,0.65)",
-  fontSize: 9,
-  fontWeight: 800,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  fontFamily: "inherit",
 };

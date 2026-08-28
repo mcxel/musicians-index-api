@@ -1,6 +1,6 @@
 /**
  * DockRegistry — data-driven bottom dock navigation (Phase 2 Dashboard Runtime).
- * MasterControlDock renders from here; no duplicate Fan/Performer JSX trees.
+ * PersistentMediaInteractionDock / role shells own HQ chrome — no legacy MasterControlDock board.
  */
 
 import type { EosRole } from "@/core/eos/types";
@@ -87,10 +87,11 @@ export const DOCK_ACTION_CATALOG: Record<DockActionId, DockActionDefinition> = {
   "stream-win": { id: "stream-win", label: "STREAM & WIN", icon: "📻" },
 };
 
+/** Nav rail retired — messages/notifications live in AccountCommandMenu + TopNav. */
 export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   fan: {
     role: "fan",
-    navItemIds: ["home", "explore", "search", "live_now", "messages", "notifications"],
+    navItemIds: [],
     actionIds: ["leave", "mic", "cam", "snips", "video-shuffle", "stream-win", "camera"],
     centerButton: "camera",
     accentColor: "#00FF88",
@@ -99,7 +100,7 @@ export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   },
   performer: {
     role: "performer",
-    navItemIds: ["home", "explore", "search", "live_now", "messages", "notifications"],
+    navItemIds: [],
     actionIds: ["leave", "mic", "cam", "snips", "video-shuffle", "stream-win", "broadcast"],
     centerButton: "broadcast",
     accentColor: "#AA2DFF",
@@ -108,7 +109,7 @@ export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   },
   admin: {
     role: "admin",
-    navItemIds: ["home", "explore", "observatory", "analytics", "runtime", "settings"],
+    navItemIds: ["observatory", "analytics", "runtime", "settings"],
     actionIds: ["leave", "mic", "cam", "camera"],
     centerButton: "broadcast",
     accentColor: "#FFD700",
