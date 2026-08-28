@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { buildVenueEventRoutes } from "@/lib/venues/VenueEventPromotionRoutingEngine";
 
 const ACCENT = "#00FF88";
 
@@ -16,7 +17,7 @@ const STATS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/dashboard",    color: "#00FF88", desc: "Launch event campaign" },
+  { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/events",      color: "#00FF88", desc: "Launch event campaign" },
   { label: "BOOK ARTIST",     icon: "🎤", href: "/booking",            color: "#00FFFF", desc: "Contract performers" },
   { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/rooms",        color: "#AA2DFF", desc: "Open pre-show space" },
   { label: "VENUES",          icon: "🏢", href: "/venues",             color: "#FFD700", desc: "Find partner venues" },
@@ -36,7 +37,7 @@ type TicketTier = { id: string; name: string; price: number; inventory: number; 
 const INITIAL_TIERS: TicketTier[] = [];
 
 // Events start empty — real events created via /promoter/events and fetched from API
-const EVENTS: { id: string; name: string; date: string; venue: string; status: string }[] = [];
+const EVENTS: { id: string; name: string; date: string; venue: string; venueSlug: string; status: string }[] = [];
 
 const EVENT_STATUS: Record<string, { label: string; color: string }> = {
   on_sale:  { label: "ON SALE",  color: "#00FF88" },
@@ -88,7 +89,7 @@ export default function PromoterHubPage() {
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Event Promoter Command Center</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <PersonaSwitcher currentRole="promoter" compact />
+          <RoleHubAccountMenu accentColor={ACCENT} />
           <Link href="/dashboard/promoter" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(0,255,136,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
           <Link href="/booking" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>BOOK ARTIST</Link>
           <Link href="/hub/venue" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>VENUE HUB</Link>
@@ -299,13 +300,15 @@ export default function PromoterHubPage() {
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No events yet. Create your first event to get started.</div>
               ) : EVENTS.map((ev) => {
                 const s = EVENT_STATUS[ev.status];
+                const promoteRoute = buildVenueEventRoutes({ venueSlug: ev.venueSlug, eventId: ev.id }).promoteEventRoute;
                 return (
                   <div key={ev.id} style={{ padding: "10px 12px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 3 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{ev.name}</span>
                       <span style={{ fontSize: 8, fontWeight: 800, color: s.color, letterSpacing: "0.12em" }}>{s.label}</span>
                     </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{ev.date} · {ev.venue}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>{ev.date} · {ev.venue}</div>
+                    <Link href={promoteRoute} style={{ display: "inline-block", fontSize: 9, fontWeight: 800, color: ACCENT, letterSpacing: "0.12em", border: `1px solid ${ACCENT}40`, borderRadius: 5, padding: "3px 9px", textDecoration: "none" }}>📣 PROMOTE</Link>
                   </div>
                 );
               })}

@@ -6,7 +6,7 @@ import RoomContainer from "@/components/room/RoomContainer";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import MediaMonitor from "@/components/video/MediaMonitor";
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import Link from "next/link";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -42,7 +42,7 @@ export default function AdvertiserSponsorHub() {
           </div>
 
           <div className="flex gap-3 items-center">
-            <PersonaSwitcher currentRole="advertiser" compact />
+            <RoleHubAccountMenu accentColor={accentColor} />
             <div className="flex gap-2 p-1 bg-black/50 border border-white/10 rounded-lg">
               <button
                 onClick={() => setMode("ADVERTISER")}

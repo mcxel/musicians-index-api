@@ -1,6 +1,6 @@
 "use client";
 
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import SponsorHubShell from "@/components/sponsor/SponsorHubShell";
 import LiveMediaWall from "@/components/media/LiveMediaWall";
 import Link from "next/link";
@@ -20,6 +20,8 @@ const NAV_LINKS = [
   { href: "/sponsor/payments",   label: "Payments"      },
   { href: "/giveaway",           label: "Giveaway"      },
   { href: "/settings",           label: "Settings"      },
+  { href: "/home/1",             label: "Home"          },
+  { href: "/api/auth/logout",    label: "Exit / Logout" },
 ];
 
 const SPONSOR_ACTIONS = [
@@ -38,16 +40,27 @@ export default function SponsorHubPage() {
 
         {/* Nav bar */}
         <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(255,215,0,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 16, overflowX: "auto", backdropFilter: "blur(12px)" }}>
-          <HubBackNav accentColor="#FFD700" fallbackRoute="/hub/sponsor" />
+          <HubBackNav accentColor="#FFD700" homeHref="/home/1" fallbackRoute="/home/1" />
           <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.2em", color: "#FFD700", textTransform: "uppercase", flexShrink: 0 }}>Sponsor Hub</span>
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />
           {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+            <Link
+              key={link.href}
+              href={link.href}
+              style={{
+                fontSize: 11,
+                color: link.href === "/api/auth/logout" ? "#FF5555" : link.href === "/home/1" ? "#00FFFF" : "rgba(255,255,255,0.5)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                fontWeight: link.href === "/home/1" || link.href === "/api/auth/logout" ? 800 : 400,
+              }}
+            >
               {link.label}
             </Link>
           ))}
           <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-            <PersonaSwitcher currentRole="sponsor" compact />
+            <RoleHubAccountMenu accentColor="#FFD700" />
           </div>
         </div>
 
