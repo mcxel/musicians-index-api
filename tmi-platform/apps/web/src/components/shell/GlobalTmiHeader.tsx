@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 
 export interface GlobalTmiHeaderProps {
   user?: {
+    id?: string;
     displayName?: string;
     email?: string;
     role?: string;
@@ -28,6 +30,7 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
       .then((data) => {
         if (active && data?.authenticated && data?.user) {
           setSessionUser({
+            id: data.user.id,
             displayName: data.user.name || data.user.email?.split("@")[0] || "User",
             email: data.user.email,
             role: data.role || data.user.role || "FAN",
@@ -102,58 +105,13 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
         {/* Auth or Account Controls (Strictly isolated in right corner) */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {sessionUser ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Link
-                href="/settings/profile"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  textDecoration: "none",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,45,170,0.3)",
-                  borderRadius: 20,
-                  padding: "4px 10px",
-                }}
-              >
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg,#5b217a,#301042)",
-                    border: "1px solid #FF2DAA",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    color: "#fff",
-                  }}
-                >
-                  {sessionUser.avatarUrl ? (
-                    <img src={sessionUser.avatarUrl} alt={sessionUser.displayName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    (sessionUser.displayName?.trim()?.[0] || "?").toUpperCase()
-                  )}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {sessionUser.displayName}
-                </span>
-                <span
-                  style={{
-                    fontSize: 7,
-                    fontWeight: 900,
-                    color: "#FF2DAA",
-                    background: "rgba(255,45,170,0.15)",
-                    padding: "1px 5px",
-                    borderRadius: 4,
-                  }}
-                >
-                  {sessionUser.role}
-                </span>
-              </Link>
-            </div>
+            <AccountCommandMenu
+              userId={sessionUser.id ?? "session"}
+              displayName={sessionUser.displayName ?? "Account"}
+              avatarUrl={sessionUser.avatarUrl}
+              accentColor="#FF2DAA"
+              compact
+            />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Link

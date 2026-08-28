@@ -16,6 +16,8 @@ import {
   toShowsReleasePublicCard,
   type ShowsReleaseRecord,
 } from "@/lib/events/ScheduledEventRegistry";
+import { attachDigitalOfferToEvent, publishDigitalOffer } from "@/lib/tickets/DigitalTicketOfferEngine";
+import { TICKET_FEE_POLICY_ID } from "@/lib/tickets/TicketFeeResolver";
 
 export const dynamic = "force-dynamic";
 
@@ -87,9 +89,43 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     });
     await persistSessionNow(session).catch(() => null);
 
+    // Minimal glue: attach online digital ticketing when event is ticketed.
+    let digitalOfferId = record.digitalOfferId ?? null;
+    if (record.ticketRequested && !digitalOfferId) {
+      const priceCents =
+        record.onlineTicketPriceCents ??
+        Math.round((record.requestedPriceUsd ?? 2.99) * 100);
+      const offer = await attachDigitalOfferToEvent({
+        eventId,
+        ownerId: auth.user.id,
+        title: record.title,
+        priceCents,
+        capacity: record.onlineCapacity ?? record.inventoryCapacity ?? 500,
+        artworkUrl: record.artworkUrl,
+      });
+      try {
+        await publishDigitalOffer(offer.id, auth.user.id);
+        digitalOfferId = offer.id;
+      } catch {
+        digitalOfferId = offer.id;
+      }
+    }
+
     const updated: ShowsReleaseRecord = {
       ...record,
       previewUrl: session.previewUrl,
+      eventOwnerId: record.eventOwnerId ?? auth.user.id,
+      performerIds: record.performerIds ?? [auth.user.id],
+      onlineTicketPriceCents:
+        record.onlineTicketPriceCents ??
+        (record.requestedPriceUsd != null
+          ? Math.round(record.requestedPriceUsd * 100)
+          : null),
+      platformFeePolicyId: record.platformFeePolicyId ?? TICKET_FEE_POLICY_ID,
+      onlineTicketingPolicy:
+        record.onlineTicketingPolicy ??
+        (record.ticketRequested ? "ticketed" : "open"),
+      digitalOfferId,
       updatedAtIso: new Date().toISOString(),
     };
     if (feed) {

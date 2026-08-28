@@ -23,7 +23,7 @@ export function ArtistHeroPanel({ slug }: { slug: string }) {
     },
     {
       label: '🔴 Go Live',
-      href: '/go-live',
+      href: '/hub/performer?golive=1',
       style: {
         background: 'rgba(0,255,255,0.08)',
         color: '#00FFFF',

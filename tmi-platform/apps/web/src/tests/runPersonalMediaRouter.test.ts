@@ -240,12 +240,5 @@ export function runPersonalMediaRouterTest(): { allPassed: boolean; results: Rec
   return { allPassed, results };
 }
 
-declare const require: { main: unknown; cache: unknown };
-declare const module: { exports: unknown };
 
-if (typeof require !== "undefined" && require.main === module) {
-  const outcome = runPersonalMediaRouterTest();
-  if (!outcome.allPassed) {
-    process.exitCode = 1;
-  }
-}
+

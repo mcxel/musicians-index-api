@@ -36,6 +36,18 @@ import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import HomeFeaturedChannelPanels from '@/components/discovery/HomeFeaturedChannelPanels';
 import { hasRole } from '@/lib/auth/session';
+import { HOME_BROADCAST_ROTATION_MS } from '@/lib/broadcast/BroadcastRotationEngine';
+import { resolveInstantJoin } from '@/lib/discovery/InstantJoinRuntime';
+import {
+  categoryLabel,
+  discoveryRecordToHomeOrbitCard,
+  logHomeExactJoinRequested,
+  verifyHomeOrbitRecordEligible,
+  type HomeOrbitDiscoveryCard,
+  type HomeOrbitRoomState,
+} from '@/lib/discovery/HomeDiscoveryRotationEngine';
+import { useHomeDiscoveryRotation } from '@/lib/discovery/useHomeDiscoveryRotation';
+import type { LiveDiscoveryRecord } from '@/lib/discovery/LiveDiscoveryRecord';
 import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
 import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import {
@@ -74,6 +86,13 @@ interface Performer {
   category?: string;
   honorTitle?: string;
   verified?: boolean;
+  /** Canonical discovery orbit fields (Gap 2 — exact-room law) */
+  discoveryRecord?: LiveDiscoveryRecord;
+  exactJoinTarget?: string;
+  liveSessionId?: string;
+  experienceType?: string;
+  roomState?: HomeOrbitRoomState;
+  isSystemAutomated?: boolean;
 }
 
 const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }> = {
@@ -310,6 +329,35 @@ function buildOrbitPerformers(genreKey: string): Performer[] {
   return [...unique, ...buildHonestEmptySlots(10 - unique.length)];
 }
 
+function homeOrbitCardToPerformer(card: HomeOrbitDiscoveryCard, index: number): Performer {
+  return {
+    slug: card.roomId,
+    performerId: card.record.hostUserId,
+    name: card.title,
+    emoji: card.isSystemAutomated ? '🤖' : '🔴',
+    rank: index + 2,
+    score: card.participantCount,
+    genre: categoryLabel(card.discoveryCategory),
+    image: card.posterUrl ?? undefined,
+    avatarImage: card.posterUrl ?? undefined,
+    profileRoute: card.exactJoinTarget,
+    accountType: card.isSystemAutomated ? 'system-bot' : 'verified-performer',
+    voteCount: null,
+    audienceCount: card.participantCount,
+    isLive: card.roomState === 'LIVE' || card.roomState === 'OPEN' || card.roomState === 'SCHEDULED',
+    liveRoomRoute: card.exactJoinTarget,
+    roomId: card.roomId,
+    viewerCount: card.participantCount,
+    category: card.discoveryCategory,
+    discoveryRecord: card.record,
+    exactJoinTarget: card.exactJoinTarget,
+    liveSessionId: card.liveSessionId,
+    experienceType: card.experienceType,
+    roomState: card.roomState,
+    isSystemAutomated: card.isSystemAutomated,
+  };
+}
+
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container).
 // rotationDeg (optional) slowly drifts every card's angle over time so the
 // wheel visibly orbits instead of sitting in fixed positions forever.
@@ -369,9 +417,11 @@ const OrbitCard = memo(function OrbitCard({
     .join('')
     .slice(0, 2)
     .toUpperCase();
-  const profileHref = performer.accountType === 'empty-slot'
-    ? performer.profileRoute
-    : (performer.isLive && performer.liveRoomRoute ? `${performer.liveRoomRoute}?from=home-1` : performer.profileRoute);
+  const profileHref = performer.exactJoinTarget
+    ? performer.exactJoinTarget
+    : performer.accountType === 'empty-slot'
+      ? performer.profileRoute
+      : (performer.isLive && performer.liveRoomRoute ? `${performer.liveRoomRoute}?from=home-1` : performer.profileRoute);
 
   return (
     <Link
@@ -379,7 +429,9 @@ const OrbitCard = memo(function OrbitCard({
       style={{ textDecoration: 'none' }}
       onClick={(e: React.MouseEvent) => {
         e.preventDefault();
-        if (performer.isLive && performer.liveRoomRoute) {
+        if (performer.discoveryRecord) {
+          onOpenLive(performer);
+        } else if (performer.isLive && performer.liveRoomRoute) {
           onOpenLive(performer);
         } else if (performer.accountType === 'empty-slot') {
           onOpenEmptySlot(performer);
@@ -743,6 +795,9 @@ export default function Home1CoverPage() {
   const [rightOpen, setRightOpen] = useState(true);
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
+  const [discoveryJoinRoom, setDiscoveryJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+  const [staleOrbitMessage, setStaleOrbitMessage] = useState<string | null>(null);
+  const [viewerRole, setViewerRole] = useState('FAN');
   const [pendingEmptySlot, setPendingEmptySlot] = useState<Performer | null>(null);
   const [selectedPerformer, setSelectedPerformer] = useState<Performer | null>(null);
   const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
@@ -801,6 +856,25 @@ export default function Home1CoverPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean; user?: { role?: string } }) => {
+        if (!cancelled && data?.authenticated) {
+          setViewerRole((data.user?.role ?? 'FAN').toUpperCase());
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const orbitSlotCount = isMobileViewport ? 6 : 8;
+  const {
+    cards: orbitDiscoveryCards,
+    isEmpty: orbitDiscoveryEmpty,
+  } = useHomeDiscoveryRotation({ slotCount: orbitSlotCount });
+
+  useEffect(() => {
     fetch('/api/submissions/queue')
       .then(r => r.ok ? r.json() : null)
       .then((data: { pending?: number; queue?: { status: string }[] } | null) => {
@@ -833,26 +907,22 @@ export default function Home1CoverPage() {
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
   const genreConfig = GENRE_CONFIG[genreKey]!;
 
-  // UNIFICATION: Replace static GENRE_DATA with live data from PerformerRegistry
-  const [performers, setPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
+  // Directory grid / left-rail — PerformerRegistry ranking snapshot (NOT live orbit).
+  const [directoryPerformers, setDirectoryPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
   useEffect(() => {
     publishUniversalRankingSnapshot(undefined, 12);
-    setPerformers(buildOrbitPerformers(genreKey));
+    setDirectoryPerformers(buildOrbitPerformers(genreKey));
     return subscribeUniversalRanking(() => {
-      setPerformers(buildOrbitPerformers(genreKey));
+      setDirectoryPerformers(buildOrbitPerformers(genreKey));
     }, { emitCurrent: false });
   }, [genreKey]);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && performers.length === 0) {
-      // Development signal to catch unexpected registry/category mismatches.
-      console.warn('[Home1CoverPage] orbit performers empty for genre', genreKey);
-    }
-  }, [performers.length, genreKey]);
+  // Live orbit — canonical DiscoveryBus only (Gap 2).
+  const visibleOrbitCards = orbitDiscoveryCards.map((c, i) => homeOrbitCardToPerformer(c, i));
 
   useEffect(() => {
-    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), 13000);
-    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), 13000);
+    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), HOME_BROADCAST_ROTATION_MS);
+    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), HOME_BROADCAST_ROTATION_MS);
     return () => {
       clearInterval(leftId);
       clearInterval(rightId);
@@ -907,35 +977,18 @@ export default function Home1CoverPage() {
     honorTitle: getPerformerHonorTitle(crownData),
   };
 
-  // Overlay real liveness from livePerformers (GlobalLiveSessionRegistry) onto the
-  // orbit ring — buildOrbitPerformers()/PERFORMER_REGISTRY only carries the static
-  // seed isLive flag, which never reflects an actual broadcast. Live performers also
-  // sort to the front so a real broadcaster isn't cut off by the 6/10-card slice
-  // (Rule 11: Content Freshness — LIVE first).
-  // Map LiveSession objects by userId to find matching performers.
-  const liveByUserId = new Map(livePerformers.map((s) => {
-    const performer = getPerformerById(s.userId);
-    return [s.userId, { session: s, performer }];
-  }));
-  const performersWithRealLiveness = performers
-    .map((p) => {
-      const live = Array.from(liveByUserId.values()).find((item) => item.performer?.slug === p.slug);
-      if (live) {
-        return {
-          ...p,
-          isLive: true,
-          liveRoomRoute: live.session.roomId ? `/live/rooms/${live.session.roomId}` : p.liveRoomRoute,
-          roomId: live.session.roomId,
-          viewerCount: live.session.viewerCount,
-          category: live.session.category,
-        };
-      }
-      return p;
-    });
-
-  const visibleOrbitCards = performersWithRealLiveness
-    .filter((p) => p.slug !== crowdHolder.slug && p.rank !== 1)
-    .slice(0, isMobileViewport ? 6 : 8);
+  const handleOrbitDiscoveryJoin = (p: Performer) => {
+    if (!p.discoveryRecord) return;
+    const fresh = verifyHomeOrbitRecordEligible(p.discoveryRecord);
+    if (!fresh) {
+      setStaleOrbitMessage('This room is no longer available. Refreshing live discovery…');
+      window.setTimeout(() => setStaleOrbitMessage(null), 4000);
+      return;
+    }
+    const card = discoveryRecordToHomeOrbitCard(fresh);
+    logHomeExactJoinRequested(card);
+    setDiscoveryJoinRoom(resolveInstantJoin(fresh, { role: viewerRole }));
+  };
   const orbitRadius = isMobileViewport ? 36 : 44;
 
   // Genre cycle every 6s with starburst flash
@@ -986,8 +1039,8 @@ export default function Home1CoverPage() {
     { label: 'Top Fans', categoryHint: 'Fans', route: '/rankings', filter: () => false },
   ] as const;
   const activeDiscovery = genreDiscoveryRails[leftRailIndex % genreDiscoveryRails.length]!;
-  const discoveryEntries = performers.filter(activeDiscovery.filter).slice(0, 3);
-  const discoveryFallbackBots = buildSystemBotRing().filter((p) => ['discovery-bot', 'helper-bot', 'welcome-bot'].includes(p.botRole ?? '')).slice(0, 3);
+  const discoveryEntries = directoryPerformers.filter(activeDiscovery.filter).slice(0, 3);
+  const discoveryFallbackBots: Performer[] = [];
   const renderedDiscoveryEntries = discoveryEntries.length > 0 ? discoveryEntries : discoveryFallbackBots;
 
   const rightRailViews = [
@@ -1021,12 +1074,19 @@ export default function Home1CoverPage() {
     },
   ] as const;
   const activeRightRail = rightRailViews[rightRailIndex % rightRailViews.length]!;
-  const rightRailFallback = buildSystemBotRing().slice(0, 3).map((b) => ({ name: b.name, sub: b.systemFunction ?? 'System actor', href: b.profileRoute }));
+  const rightRailFallback: { name: string; sub: string; href: string }[] = [];
   const rightRailEntries = activeRightRail.entries.length > 0 ? activeRightRail.entries : rightRailFallback;
 
   return (
     <>
     {pendingOrbit && <LobbyEntryFlow room={pendingOrbit} onClose={() => setPendingOrbit(null)} />}
+    {discoveryJoinRoom && (
+      <LobbyEntryFlow
+        room={discoveryJoinRoom.room}
+        instant={discoveryJoinRoom.instant}
+        onClose={() => setDiscoveryJoinRoom(null)}
+      />
+    )}
     {pendingEmptySlot && (
       <div
         role="dialog"
@@ -1180,10 +1240,10 @@ export default function Home1CoverPage() {
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {(() => {
-                const clickedIdx = performers.findIndex(p => p.slug === selectedPerformer.slug);
+                const clickedIdx = directoryPerformers.findIndex(p => p.slug === selectedPerformer.slug);
                 const startIndex = Math.max(0, clickedIdx - 1);
-                const endIndex = Math.min(performers.length, clickedIdx + 2);
-                const list = performers.slice(startIndex, endIndex);
+                const endIndex = Math.min(directoryPerformers.length, clickedIdx + 2);
+                const list = directoryPerformers.slice(startIndex, endIndex);
 
                 return list.map((p) => {
                   const isCurrent = p.slug === selectedPerformer.slug;
@@ -2215,8 +2275,7 @@ export default function Home1CoverPage() {
             </div>
           </Link>
 
-          {/* Orbit cards — static on load, occasional accent spin (see
-              orbitSpinning state above), not a continuous loop */}
+          {/* Orbit cards — canonical DiscoveryBus rotation (Gap 2) */}
           <div
             style={{
               position: 'absolute',
@@ -2228,9 +2287,56 @@ export default function Home1CoverPage() {
               pointerEvents: 'none',
             }}
           >
-            {visibleOrbitCards.map((performer, i) => (
+            {staleOrbitMessage && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '8%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 45,
+                  background: 'rgba(5,5,16,0.92)',
+                  border: '1px solid rgba(255,45,170,0.5)',
+                  borderRadius: 8,
+                  padding: '8px 14px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: '#FF2DAA',
+                  pointerEvents: 'auto',
+                }}
+              >
+                {staleOrbitMessage}
+              </div>
+            )}
+            {orbitDiscoveryEmpty ? (
+              <div
+                data-testid="home1-orbit-empty"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 40,
+                  width: 'min(280px, 70vw)',
+                  textAlign: 'center',
+                  padding: '16px 14px',
+                  borderRadius: 12,
+                  border: `1px dashed ${accentColor}44`,
+                  background: 'rgba(5,5,16,0.88)',
+                  pointerEvents: 'auto',
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 900, color: accentColor, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  NO LIVE ROOMS IN ROTATION
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+                  Battles, cyphers, lobbies, and live sessions appear here when published to discovery.
+                </div>
+              </div>
+            ) : (
+            visibleOrbitCards.map((performer, i) => (
               <OrbitCard
-                key={performer.slug}
+                key={performer.roomId ?? performer.slug}
                 performer={performer}
                 index={i}
                 total={visibleOrbitCards.length}
@@ -2240,6 +2346,10 @@ export default function Home1CoverPage() {
                 isBrokenImage={Boolean(brokenOrbitImages[performer.slug])}
                 onImageError={(slug) => setBrokenOrbitImages(prev => ({ ...prev, [slug]: true }))}
                 onOpenLive={(p) => {
+                  if (p.discoveryRecord) {
+                    handleOrbitDiscoveryJoin(p);
+                    return;
+                  }
                   setPendingOrbit({
                     id: p.slug,
                     title: `${p.name} LIVE`,
@@ -2256,7 +2366,8 @@ export default function Home1CoverPage() {
                 onOpenDetail={(p) => setSelectedPerformer(p)}
                 isSpinning={orbitSpinning}
               />
-            ))}
+            ))
+            )}
           </div>
 
           {/* ── Stream & Win Radio — fixed card at 9 o'clock position in orbit ──
@@ -2609,7 +2720,7 @@ export default function Home1CoverPage() {
               gap: 10,
             }}
           >
-            {performers.map((p, i) => (
+            {directoryPerformers.map((p, i) => (
               <Link
                 key={p.slug}
                 href={`/articles/performer/${p.slug}`}

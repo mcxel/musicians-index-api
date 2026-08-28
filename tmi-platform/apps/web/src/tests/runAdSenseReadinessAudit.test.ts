@@ -64,7 +64,3 @@ export function runAdSenseReadinessAuditTest(): { allPassed: boolean; results: R
   console.log(`[ADSENSE_READINESS_AUDIT_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runAdSenseReadinessAuditTest();
-}

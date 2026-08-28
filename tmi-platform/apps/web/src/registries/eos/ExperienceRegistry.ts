@@ -4,6 +4,7 @@
  */
 
 import type { ExperienceDefinition } from "@/core/eos/types";
+import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 const DEFAULT_PERMS = {
   fan: true,
@@ -279,7 +280,7 @@ export const EXPERIENCE_REGISTRY: Record<string, ExperienceDefinition> = {
     permissions: { fan: true, performer: false, admin: true },
     featureFlags: ["video_popover", "prop_sync", "lobby_skins"],
     version: "1.0.0",
-    entryRoute: "/rooms/fan-lobby",
+    entryRoute: fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID),
   },
 
   //

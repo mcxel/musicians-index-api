@@ -40,6 +40,8 @@ import {
 } from "@/lib/venues/EventVenueEnvironment";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
+import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
+import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -158,8 +160,15 @@ export default function InstantGoLiveStage({
     }
   }, [attachPreview, finishBroadcastInit]);
 
-  // Parallel media init — explicit device drawer only (never on mount).
-  // Hub Command Center uses livePrivacyState + HubMonitorCameraPlayer instead.
+  // Instant Go Live requires the camera/mic to start the moment the stage
+  // mounts — waiting on a manual "Open Devices" click contradicts "press Go
+  // Live and you're instantly on stage." Falls back to the device drawer
+  // automatically on permission/device failure (see runMediaInit's catch).
+  useEffect(() => {
+    if (mediaStarted.current) return;
+    mediaStarted.current = true;
+    void runMediaInit();
+  }, [runMediaInit]);
 
   useEffect(() => {
     if (!previewVideoRef.current || !localStream) return;
@@ -444,6 +453,32 @@ export default function InstantGoLiveStage({
           />
         )}
       </div>
+
+      {/* TMI Interactive Venue HUD Overlay — same mount pattern as GoLiveStudio.tsx */}
+      {!contained && initPhase === "live" && (
+        <TMIInteractiveVenueHud
+          roomId={roomId}
+          roomTitle="Live Broadcast"
+          experienceType={eventType === "battle" ? "BATTLE" : eventType === "concert" ? "WORLD_CONCERT" : "LIVE"}
+          role="performer"
+        />
+      )}
+
+      {/* Media Player One — canonical dual-monitor stack + local screen share (any source, with audio) */}
+      {!contained && initPhase === "live" && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 16,
+            zIndex: 50,
+            width: 300,
+            maxWidth: "34vw",
+          }}
+        >
+          <LiveRoomMonitorShareSection roomId={roomId} isPerformerSession />
+        </div>
+      )}
 
       <PerformerCommandPanel
         contained={contained}

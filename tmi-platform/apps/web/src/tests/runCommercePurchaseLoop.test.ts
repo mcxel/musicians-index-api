@@ -79,7 +79,3 @@ export function runCommercePurchaseLoopTest(): { allPassed: boolean; results: Re
   console.log(`[COMMERCE_PURCHASE_LOOP_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runCommercePurchaseLoopTest();
-}

@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { BroadcastFeedItem, BroadcastFeedKind } from "@/types/broadcast";
 import { DECK_LABELS } from "@/types/broadcast";
+import { TIMING } from "@/lib/motion/timingRegistry";
+import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
+import {
+  discoveryRecordToHomeOrbitCard,
+  filterHomeOrbitEligibleRecords,
+  sortHomeOrbitPool,
+} from "@/lib/discovery/HomeDiscoveryRotationEngine";
 import { SEED_FEEDS } from "./BroadcastSeedFeeds";
+
+/** Canonical home broadcast deck rotation interval (Marcel lock — 13s). */
+export const HOME_BROADCAST_ROTATION_MS = TIMING.broadcastDeckRotation;
 
 export { SEED_FEEDS };
 
@@ -75,30 +85,42 @@ export interface BroadcastRotationState {
   allFeeds: BroadcastFeedItem[];
 }
 
+export interface BroadcastRotationOptions {
+  /** When provided, discovery feeds replace SEED_FEEDS for the active kind. */
+  discoveryRecords?: readonly LiveDiscoveryRecord[];
+}
+
 export function useBroadcastRotation(
   sequence: BroadcastFeedKind[],
-  intervalMs = 13000
+  intervalMs: number = HOME_BROADCAST_ROTATION_MS,
+  options?: BroadcastRotationOptions,
 ): BroadcastRotationState {
   const [deckIndex, setDeckIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const prevIndex = useRef(0);
+  const discoveryRecords = options?.discoveryRecords;
 
   const currentKind = sequence[deckIndex % sequence.length] as BroadcastFeedKind;
   const currentLabel = DECK_LABELS[currentKind];
-  const currentFeeds = SEED_FEEDS.filter((f) => f.kind === currentKind);
+  const discoveryFeeds = discoveryRecords?.length
+    ? discoveryRecordsToBroadcastFeeds(discoveryRecords).filter((f) => f.kind === currentKind)
+    : [];
+  // Seed-free (Rule 20): honest empty when no live discovery records for this kind.
+  const currentFeeds = discoveryFeeds;
 
   useEffect(() => {
     const id = setInterval(() => {
-      // Crossfade out
       setTransitioning(true);
 
-      // Show toast for next high-XP deck
       const nextIdx = (deckIndex + 1) % sequence.length;
       const nextKind = sequence[nextIdx] as BroadcastFeedKind;
       const xpToast = XP_TOASTS.find((t) => t.kind === nextKind);
-      const nextIsHighXP = SEED_FEEDS.some((f) => f.kind === nextKind && f.isHighXP);
-      if (xpToast && nextIsHighXP) {
+      const nextDiscoveryHighXp = discoveryRecords?.some(
+        (r) => mapDiscoveryCategoryToFeedKind(r.category) === nextKind &&
+          (r.category === "battles" || r.category === "cyphers"),
+      );
+      if (xpToast && nextDiscoveryHighXp) {
         setToast(xpToast.message);
         setTimeout(() => setToast(null), 4500);
       }
@@ -115,6 +137,10 @@ export function useBroadcastRotation(
     return () => clearInterval(id);
   }, [deckIndex, sequence, intervalMs]);
 
+  const allFeeds = discoveryRecords?.length
+    ? discoveryRecordsToBroadcastFeeds(discoveryRecords)
+    : [];
+
   return {
     currentKind,
     currentLabel,
@@ -122,7 +148,7 @@ export function useBroadcastRotation(
     deckIndex,
     transitioning,
     toast,
-    allFeeds: SEED_FEEDS,
+    allFeeds,
   };
 }
 
@@ -136,11 +162,46 @@ export function getHighXPFeeds(): BroadcastFeedItem[] {
   return SEED_FEEDS.filter((f) => f.isHighXP);
 }
 
-// ── Live-First Priority Feed ──────────────────────────────────────────────────
-// "Whoever is online owns the screen"
-// Priority: real live users → SEED_FEEDS live → SEED_FEEDS fallback
-// liveUsers: pass in from your real-time DB / presence layer when available
+/** Map canonical discovery records → BroadcastFeedItem tiles (Home surfaces). */
+export function discoveryRecordsToBroadcastFeeds(
+  records: readonly LiveDiscoveryRecord[],
+  maxTiles = 12,
+): BroadcastFeedItem[] {
+  const pool = sortHomeOrbitPool(filterHomeOrbitEligibleRecords(records));
+  return pool.slice(0, maxTiles).map((record) => {
+    const card = discoveryRecordToHomeOrbitCard(record);
+    const kind = mapDiscoveryCategoryToFeedKind(record.category);
+    return {
+      id: `discovery-${record.roomId}`,
+      kind,
+      title: card.title,
+      subtitle: `${card.hostName} · ${card.participantCount} watching`,
+      href: card.exactJoinTarget,
+      roomId: card.roomId,
+      genre: record.category,
+      status: record.recruiting ? ("scheduled" as const) : ("live" as const),
+      layoutMode: "single" as const,
+      mediaMode: record.previewUrl ? ("preview" as const) : ("avatar" as const),
+      accentColor: card.accentColor,
+      viewerCount: card.participantCount,
+      shape: "octagon" as const,
+      isHighXP: record.category === "battles" || record.category === "cyphers",
+    };
+  });
+}
 
+function mapDiscoveryCategoryToFeedKind(category: LiveDiscoveryRecord["category"]): BroadcastFeedKind {
+  if (category === "battles") return "battle";
+  if (category === "cyphers") return "cypher";
+  if (category === "challenges") return "challenge";
+  if (category === "games") return "game-show";
+  if (category === "concerts") return "concert";
+  if (category === "fan_lobbies") return "fan-lobby-wall";
+  if (category === "lounges" || category === "listening") return "mixed-lobby-wall";
+  return "live-camera";
+}
+
+// ── Live-First Priority Feed ──────────────────────────────────────────────────
 export interface LiveUserSlot {
   id: string;
   slug: string;
@@ -155,8 +216,12 @@ export interface LiveUserSlot {
 export function getPrioritizedFeeds(
   liveUsers: LiveUserSlot[] = [],
   maxTiles = 12,
+  discoveryRecords: readonly LiveDiscoveryRecord[] = [],
 ): BroadcastFeedItem[] {
-  // Convert real live users to feed items — they always go first
+  const discoveryFeeds = discoveryRecords.length
+    ? discoveryRecordsToBroadcastFeeds(discoveryRecords, maxTiles)
+    : [];
+
   const userFeeds: BroadcastFeedItem[] = liveUsers.map((u) => ({
     id: `live-user-${u.id}`,
     kind: "live-camera" as const,
@@ -169,20 +234,17 @@ export function getPrioritizedFeeds(
     mediaMode: "webrtc" as const,
     accentColor: u.accentColor ?? "#FF2DAA",
     avatarEmoji: u.avatarEmoji ?? "🎤",
-    viewerCount: u.viewerCount ?? 1,
+    viewerCount: u.viewerCount ?? 0,
     shape: "octagon" as const,
     isHighXP: true,
   }));
 
-  // Fill remaining slots from SEED_FEEDS: live items first, then fallbacks
-  const seedLive     = SEED_FEEDS.filter((f) => f.status === "live");
-  const seedFallback = SEED_FEEDS.filter((f) => f.status !== "live");
+  const combined = [...userFeeds, ...discoveryFeeds];
+  const seedLive = discoveryFeeds.length === 0 ? SEED_FEEDS.filter((f) => f.status === "live") : [];
+  const seedFallback = discoveryFeeds.length === 0 ? SEED_FEEDS.filter((f) => f.status !== "live") : [];
 
-  const combined = [...userFeeds, ...seedLive, ...seedFallback];
-
-  // Deduplicate by id
   const seen = new Set<string>();
-  const deduped = combined.filter((f) => {
+  const deduped = [...combined, ...seedLive, ...seedFallback].filter((f) => {
     if (seen.has(f.id)) return false;
     seen.add(f.id);
     return true;

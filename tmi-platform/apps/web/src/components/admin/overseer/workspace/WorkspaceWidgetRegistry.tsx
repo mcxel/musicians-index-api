@@ -14,6 +14,7 @@ import AdminRevenuePanel from "@/components/admin/AdminRevenuePanel";
 import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import ObservatoryDeck from "@/components/admin/overseer/ObservatoryDeck";
 import RouteButtonAuditPanel from "@/components/admin/overseer/RouteButtonAuditPanel";
+import OverseerMonitorWall from "@/components/admin/overseer/OverseerMonitorWall";
 import MediaMatrixEngine from "./widgets/MediaMatrixEngine";
 import {
   ComplianceOverviewPanel,
@@ -81,6 +82,7 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
   "money-billing": { id: "money-billing", title: "Money and Billing", defaultZone: "left", permissions: ["revenue.manage"], component: BigAceFinancePanel },
   "bot-roster": { id: "bot-roster", title: "Bot Roster", defaultZone: "left", permissions: ["automation.manage"], component: BotSummonDeck },
   "media-matrix": { id: "media-matrix", title: "Media Matrix", defaultZone: "center", permissions: ["media.manage"], component: MediaMatrixEngine },
+  "overseer-monitor-wall": { id: "overseer-monitor-wall", title: "Live Monitor Wall", defaultZone: "center", permissions: ["media.manage"], component: OverseerMonitorWall },
   "unified-inbox": { id: "unified-inbox", title: "Unified Inbox", defaultZone: "left", component: UnifiedInbox },
   "broadcast-monitor": { id: "broadcast-monitor", title: "Broadcast Monitor", defaultZone: "center", component: LiveFeedRouter },
   "battle-lobby": { id: "battle-lobby", title: "Battle Lobby", defaultZone: "center", component: BattleLobby },

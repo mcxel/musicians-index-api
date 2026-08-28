@@ -99,7 +99,7 @@ export default function PerformerDashboardPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <Link href="/go-live" style={{ padding: '8px 16px', background: 'rgba(0,255,136,.1)', border: '1px solid #00FF88', color: '#00FF88', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4, boxShadow: '0 0 10px rgba(0,255,136,.2)' }}>
+            <Link href="/hub/performer?golive=1" style={{ padding: '8px 16px', background: 'rgba(0,255,136,.1)', border: '1px solid #00FF88', color: '#00FF88', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4, boxShadow: '0 0 10px rgba(0,255,136,.2)' }}>
               🔴 GO LIVE NOW
             </Link>
             <Link href="/performer/studio" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(170,45,255,.5)', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4 }}>

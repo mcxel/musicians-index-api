@@ -19,15 +19,18 @@ function readRoles(serialized: string | undefined): string[] {
   }
 }
 
-function hubForRoles(roles: string[]): string {
+function hubForRoles(roles: string[]): string | null {
   const set = new Set(roles);
   if (set.has("PERFORMER") || set.has("ARTIST") || set.has("BAND")) return "/hub/performer";
+  if (set.has("FAN") || set.has("USER") || set.has("MEMBER")) return "/hub/fan";
   if (set.has("WRITER")) return "/hub/writer";
   if (set.has("VENUE")) return "/hub/venue";
   if (set.has("PROMOTER")) return "/hub/promoter";
   if (set.has("SPONSOR")) return "/hub/sponsor";
   if (set.has("ADVERTISER")) return "/hub/advertiser";
-  return "/hub/fan";
+  if (set.has("ADMIN") || set.has("STAFF") || set.has("SUPERADMIN")) return "/admin";
+  // Unknown / missing role — never default to FAN
+  return null;
 }
 
 export default function DashboardGatewayPage() {
@@ -41,5 +44,10 @@ export default function DashboardGatewayPage() {
   const roleCookie = store.get("tmi_role")?.value?.toUpperCase();
   const roleList = readRoles(store.get("tmi_roles")?.value);
   const roles = roleCookie ? Array.from(new Set([...roleList, roleCookie])) : roleList;
-  redirect(hubForRoles(roles));
+  const hub = hubForRoles(roles);
+  if (!hub) {
+    // ROLE_RESOLVING path — hub directory, never assume FAN
+    redirect("/hub");
+  }
+  redirect(hub);
 }

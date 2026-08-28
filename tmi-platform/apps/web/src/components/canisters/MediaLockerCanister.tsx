@@ -5,6 +5,7 @@ import CollapsibleCanister from "./CollapsibleCanister";
 import { useAudio } from "@/components/AudioProvider";
 import { isDurablePlayableMediaUrl } from "@/lib/media/durablePlayableUrl";
 import { uploadCanonicalMediaFile } from "@/lib/media/clientMediaUpload";
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 export type MediaLockerTab = "songs" | "videos" | "images" | "documents";
 
 interface MediaItem {
@@ -37,8 +38,21 @@ export default function MediaLockerCanister({
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [playlists, setPlaylists] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
+  const [addingToPlaylistId, setAddingToPlaylistId] = useState<string | null>(null);
+  const [lockerMsg, setLockerMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play, addToPlaylist } = useAudio();
+
+  const reloadPlaylists = async () => {
+    const r = await fetch("/api/user/content", { credentials: "include", cache: "no-store" });
+    if (!r.ok) return;
+    const d = (await r.json()) as { playlists?: Array<{ id: string; name: string }> };
+    const list = d.playlists ?? [];
+    setPlaylists(list);
+    setSelectedPlaylistId((prev) => prev || list[0]?.id || "");
+  };
 
   const reloadLocker = async () => {
     const r = await fetch("/api/media/locker", { credentials: "include" });
@@ -54,7 +68,35 @@ export default function MediaLockerCanister({
 
   useEffect(() => {
     void reloadLocker().finally(() => setIsLoading(false));
+    void reloadPlaylists();
   }, []);
+
+  const addSongToPlaylist = async (songId: string, songTitle: string) => {
+    const playlistId = selectedPlaylistId;
+    if (!playlistId) {
+      openCanonicalWorkspaceQuick("playlist", "DRAWER");
+      setLockerMsg("Create a playlist in the drawer that opened, then tap + PLAYLIST again.");
+      return;
+    }
+    setAddingToPlaylistId(songId);
+    setLockerMsg(null);
+    try {
+      const res = await fetch(`/api/user/playlists/${playlistId}/songs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ songId }),
+      });
+      if (res.ok) {
+        setLockerMsg(`Added "${songTitle}" to playlist.`);
+      } else {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setLockerMsg(err.error ?? "Could not add song to playlist.");
+      }
+    } finally {
+      setAddingToPlaylistId(null);
+    }
+  };
 
   const ACCEPT_MAP: Record<MediaLockerTab, string> = {
     songs: "audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/m4a,audio/aac,audio/*",
@@ -162,6 +204,53 @@ export default function MediaLockerCanister({
             {uploadError}
           </div>
         )}
+        {lockerMsg ? (
+          <div
+            style={{
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: `1px solid ${accentColor}55`,
+              background: `${accentColor}12`,
+              color: lockerMsg.includes("Could not") ? "#FFB4B4" : "#9dffc8",
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1.4,
+            }}
+          >
+            {lockerMsg}
+          </div>
+        ) : null}
+        {activeTab === "songs" && playlists.length > 0 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.45)", letterSpacing: "0.08em" }}>
+              ADD UPLOADS TO:
+            </span>
+            <select
+              value={selectedPlaylistId}
+              onChange={(e) => setSelectedPlaylistId(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 140,
+                padding: "6px 8px",
+                borderRadius: 6,
+                border: `1px solid ${accentColor}44`,
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                fontSize: 10,
+                fontFamily: "inherit",
+              }}
+            >
+              {playlists.map((pl) => (
+                <option key={pl.id} value={pl.id}>{pl.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        {activeTab === "songs" && playlists.length === 0 ? (
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
+            No playlist yet. Open Hub → PLAYLIST, name one, then return here to add uploads.
+          </div>
+        ) : null}
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 6, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 8 }}>
@@ -242,6 +331,16 @@ export default function MediaLockerCanister({
                     >
                       + QUEUE
                     </button>
+                    {item.type === "songs" ? (
+                      <button
+                        type="button"
+                        disabled={addingToPlaylistId === item.id}
+                        onClick={() => void addSongToPlaylist(item.id, item.title)}
+                        style={{ padding: "4px 8px", fontSize: 9, fontWeight: 800, background: "transparent", color: "#AA2DFF", border: "1px solid #AA2DFF55", borderRadius: 4, cursor: addingToPlaylistId === item.id ? "wait" : "pointer", opacity: addingToPlaylistId === item.id ? 0.6 : 1 }}
+                      >
+                        {addingToPlaylistId === item.id ? "…" : "+ PLAYLIST"}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}

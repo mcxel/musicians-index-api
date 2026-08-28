@@ -33,3 +33,24 @@ export type {
   RoomChatMessage,
   RoomChatState,
 } from "./RoomChatEngine";
+
+export {
+  evaluateAgeVerification,
+  ageVerificationStatusFromAgeYears,
+  type AgeVerificationStatus,
+} from "./AgeVerification";
+export {
+  getMessagingEligibility,
+  needsAgeOrPolicyGate,
+  type MessagingEligibilityState,
+} from "./MessagingEligibility";
+export {
+  startConversation,
+  startConversationHttpStatus,
+  type StartConversationResult,
+  START_CONVERSATION_ERROR_CODES,
+} from "./startConversation";
+export {
+  REQUIRED_MESSAGING_POLICIES,
+  CURRENT_POLICY_VERSION,
+} from "./policyCatalog";

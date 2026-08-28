@@ -7,6 +7,7 @@ import type { TeenRestrictions } from "@/lib/devices/DeviceSessionBridge";
 import { canOneToOneSocial } from "@/lib/trustSafety/YouthSocialGuard";
 import { runYouthSocialGuardTest } from "./runYouthSocialGuard.test";
 import { runDatingExperiencePolicyTest } from "./runDatingExperiencePolicy.test";
+import { runMessagingGateTest } from "./runMessagingGate.test";
 
 export interface TeenCheck {
   system: string;
@@ -154,6 +155,13 @@ export function runTeenTruth(): TeenTruthReport {
   for (const [name, pass] of Object.entries(datingGate)) {
     checks.push(
       check("DatingExperiencePolicy", name.replace(/_/g, " "), pass, `${name} failed`),
+    );
+  }
+
+  const messagingGate = runMessagingGateTest();
+  for (const [name, pass] of Object.entries(messagingGate)) {
+    checks.push(
+      check("MessagingAgePolicyGate", name.replace(/_/g, " "), pass, `${name} failed`),
     );
   }
 

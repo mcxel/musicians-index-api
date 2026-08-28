@@ -11,6 +11,10 @@ import {
   rolesFromBusinessCapabilities,
   type BusinessPartnerCapability,
 } from "@/lib/auth/BusinessPartnerCapabilities";
+import {
+  AGE_REQUIRED_ERROR,
+  isSignupAgeEligible,
+} from "@/components/onboarding/SignupPolicyAcceptance";
 
 const DEFAULT_CAPS: BusinessPartnerCapability[] = ["ADVERTISER"];
 
@@ -49,6 +53,11 @@ export default function AdvertiserSignupPage() {
     setError("");
     if (!form.businessName.trim() || !form.email.trim() || !form.password || !form.dateOfBirth) {
       setError("Business name, email, password, and date of birth are required.");
+      setSubmitting(false);
+      return;
+    }
+    if (!isSignupAgeEligible(form.dateOfBirth)) {
+      setError(AGE_REQUIRED_ERROR);
       setSubmitting(false);
       return;
     }

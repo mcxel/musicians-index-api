@@ -5,7 +5,30 @@
 
 import type { LiveDiscoveryCategory, LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 
-export type HomepageDiscoverySurface = "home1_featured" | "home3_mosaic" | "home5_arena";
+export type HomepageDiscoverySurface =
+  | "home1_featured"
+  | "home1_orbit"
+  | "home3_mosaic"
+  | "home5_arena";
+
+/** Home 1 orbit — full live-discovery mix (Marcel lock — Gap 2). */
+const HOME1_ORBIT_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "live_now",
+  "battles",
+  "cyphers",
+  "challenges",
+  "fan_lobbies",
+  "lounges",
+  "listening",
+  "games",
+  "concerts",
+  "dance",
+  "comedy",
+  "djs",
+  "videos",
+  "worldwide",
+  "new_empty",
+]);
 
 /** Featured showcase — concerts / trending live / premieres mix. Not every room. */
 const HOME1_FEATURED_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
@@ -55,6 +78,16 @@ function recordMatches(
   return record.categories.some((c) => allowed.has(c));
 }
 
+function scoreOrbit(r: LiveDiscoveryRecord): number {
+  let score = r.humanViewerCount * 10;
+  if (r.isLive && r.humanViewerCount > 0) score += 50;
+  if (r.isAnchor) score += 35;
+  if (r.category === "battles" || r.category === "cyphers" || r.category === "challenges") score += 20;
+  if (r.isNewEmpty) score += 8;
+  if (Date.now() - r.startedAt < 30 * 60 * 1000) score += 15;
+  return score;
+}
+
 function scoreFeatured(r: LiveDiscoveryRecord): number {
   let score = r.humanViewerCount * 10;
   if (r.category === "concerts") score += 40;
@@ -96,6 +129,11 @@ export function filterForHomepageSurface(
     const pool = live.filter((r) => recordMatches(r, HOME1_FEATURED_CATS));
     // Cap pool — featured is curated, not the full wall
     return [...pool].sort((a, b) => scoreFeatured(b) - scoreFeatured(a)).slice(0, 12);
+  }
+
+  if (surface === "home1_orbit") {
+    const pool = live.filter((r) => recordMatches(r, HOME1_ORBIT_CATS));
+    return [...pool].sort((a, b) => scoreOrbit(b) - scoreOrbit(a));
   }
 
   if (surface === "home3_mosaic") {
@@ -146,6 +184,13 @@ export const HOMEPAGE_SURFACE_COPY: Record<
     title: "FEATURED LIVE CHANNELS",
     emptyTitle: "Waiting for featured live…",
     emptyHint: "Go live publicly to appear in CH Featured.",
+    goLiveHref: "/live/go",
+    accent: "#00FFFF",
+  },
+  home1_orbit: {
+    title: "LIVE DISCOVERY ORBIT",
+    emptyTitle: "No live rooms in rotation",
+    emptyHint: "Battles, cyphers, lobbies, and live sessions appear here when published.",
     goLiveHref: "/live/go",
     accent: "#00FFFF",
   },

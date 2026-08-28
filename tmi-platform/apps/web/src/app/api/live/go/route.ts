@@ -35,6 +35,7 @@ import {
   type VenueEnvironmentKind,
 } from '@/lib/venues/EventVenueEnvironment';
 import { mapLivePrivacyToRegistry } from '@/lib/live/liveRoomPrivacyGate';
+import { admitGoLive } from '@/lib/live/goLiveAdmitGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,6 +118,34 @@ export async function POST(req: NextRequest) {
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     userId = uid;
     displayName = body.displayName ?? uid;
+
+    // Persistent-environment go-live admit (role × privacy) — does not trust ?workspace=
+    const auth = await getTmiAuth().catch(() => null);
+    let roleHint =
+      auth?.user?.role ??
+      req.cookies.get('tmi_role')?.value ??
+      '';
+    if (!roleHint) {
+      const dbUser = await prisma.user
+        .findUnique({ where: { id: userId }, select: { role: true } })
+        .catch(() => null);
+      roleHint = dbUser?.role ?? 'PERFORMER';
+    }
+    const privacyHint =
+      (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC';
+    const listedHint = (body as { listed?: boolean }).listed;
+    const admit = admitGoLive({
+      authenticated: true,
+      role: roleHint,
+      privacy: privacyHint,
+      listed: listedHint,
+    });
+    if (!admit.allowed) {
+      return NextResponse.json(
+        { error: admit.code, message: admit.reason, code: admit.code },
+        { status: admit.status },
+      );
+    }
   }
 
   await ensureHydrated();

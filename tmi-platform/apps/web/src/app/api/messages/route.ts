@@ -2,15 +2,17 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import {
   listConversationsForUser,
-  getOrCreateConversation,
   sendMessage,
   resolveParticipants,
   unreadCountForUser,
 } from "@/lib/messaging/prismaMessageStore";
 import {
   resolveMessagingUser,
-  resolveRecipientId,
 } from "@/lib/messaging/resolveMessagingUser";
+import {
+  startConversation,
+  startConversationHttpStatus,
+} from "@/lib/messaging/startConversation";
 import { youthSocialBlockPayload } from "@/lib/trustSafety/resolveYouthSocialSubject";
 
 export async function GET(req: NextRequest) {
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await resolveMessagingUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
 
   let body: {
     recipientId?: string;
@@ -66,27 +68,45 @@ export async function POST(req: NextRequest) {
     type?: string;
     mediaUrl?: string;
     callId?: string;
+    bootstrapOnly?: boolean;
   };
   try {
     body = (await req.json()) as typeof body;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON", code: "INVALID_JSON" }, { status: 400 });
   }
 
-  if (!body.recipientId || !body.body?.trim()) {
-    return NextResponse.json({ error: "recipientId and body required" }, { status: 400 });
+  if (!body.recipientId) {
+    return NextResponse.json({ error: "recipientId required", code: "MISSING_FIELDS" }, { status: 400 });
   }
 
-  const recipient = await resolveRecipientId(body.recipientId);
-  if (!recipient) {
+  const bootstrap = await startConversation({
+    senderId: user.id,
+    recipientHandle: body.recipientId,
+    kind: body.kind,
+    previewBody: body.body,
+  });
+
+  if (!bootstrap.ok) {
     return NextResponse.json(
-      { error: "Recipient not found. Use a real user id, email, or display name." },
-      { status: 404 },
+      {
+        error: bootstrap.error,
+        code: bootstrap.code,
+        eligibilityState: bootstrap.eligibilityState,
+        recipientEligibilityState: bootstrap.recipientEligibilityState,
+      },
+      { status: startConversationHttpStatus(bootstrap) },
     );
   }
 
-  if (recipient.id === user.id) {
-    return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
+  // Bootstrap-only (profiles / Message CTA) — create/open thread without requiring body
+  if (body.bootstrapOnly || !body.body?.trim()) {
+    return NextResponse.json({
+      threadId: bootstrap.threadId,
+      created: bootstrap.created,
+      kind: bootstrap.kind,
+      recipient: bootstrap.recipient,
+    });
   }
 
   try {
@@ -101,13 +121,8 @@ export async function POST(req: NextRequest) {
         ? JSON.stringify({ callId: body.callId, mediaUrl: body.mediaUrl })
         : body.mediaUrl;
 
-    const convo = await getOrCreateConversation({
-      userId: user.id,
-      recipientId: recipient.id,
-      kind: body.kind ?? "fan-fan",
-    });
     const message = await sendMessage({
-      conversationId: convo.id,
+      conversationId: bootstrap.threadId,
       senderId: user.id,
       senderName: user.displayName,
       body: body.body.trim(),
@@ -115,22 +130,25 @@ export async function POST(req: NextRequest) {
       mediaUrl: mediaPayload,
     });
     return NextResponse.json({
-      threadId: convo.id,
+      threadId: bootstrap.threadId,
+      created: bootstrap.created,
       message: {
         messageId: message.id,
         body: message.body,
         type: message.messageType,
         createdAt: message.createdAt.toISOString(),
       },
-      recipient: {
-        userId: recipient.id,
-        displayName: recipient.displayName,
-      },
+      recipient: bootstrap.recipient,
     });
   } catch (err) {
     const blocked = youthSocialBlockPayload(err);
-    if (blocked) return NextResponse.json(blocked, { status: 403 });
+    if (blocked) {
+      return NextResponse.json(
+        { ...blocked, code: blocked.code === "YOUTH_SOCIAL_BLOCKED" ? "AGE_POLICY_RESTRICTED" : blocked.code },
+        { status: 403 },
+      );
+    }
     console.error("[api/messages POST]", err);
-    return NextResponse.json({ error: "Unable to send message" }, { status: 500 });
+    return NextResponse.json({ error: "Unable to send message", code: "SEND_FAILED" }, { status: 500 });
   }
 }

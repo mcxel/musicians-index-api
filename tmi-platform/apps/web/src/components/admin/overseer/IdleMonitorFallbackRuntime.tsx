@@ -102,10 +102,13 @@ function OpenMatchCell({
         </span>
         <span style={{ fontSize: 20, opacity: 0.35 }}>🎤</span>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
-          No open battles or cyphers right now
+          MATCHMAKING AVAILABLE
+        </div>
+        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", textAlign: "center" }}>
+          No open battles or cyphers right now — join queue without fabricating rooms
         </div>
         <Link
-          href="/live/lobby"
+          href="/battles"
           style={{
             fontSize: 8,
             fontWeight: 900,
@@ -115,6 +118,18 @@ function OpenMatchCell({
             border: "1px solid rgba(0,255,255,0.35)",
             borderRadius: 6,
             padding: "6px 10px",
+          }}
+        >
+          START MATCHMAKING
+        </Link>
+        <Link
+          href="/live/lobby"
+          style={{
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            color: "rgba(255,255,255,0.45)",
+            textDecoration: "none",
           }}
         >
           BROWSE LIVE LOBBY

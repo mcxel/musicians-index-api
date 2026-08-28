@@ -3,6 +3,12 @@
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AgePolicyGateModal, {
+  clearMessagingPendingIntent,
+  gateModeFromCode,
+  loadMessagingPendingIntent,
+  saveMessagingPendingIntent,
+} from "@/components/messaging/AgePolicyGateModal";
 
 const SYSTEM_CONTACTS = [
   { id: "tmi-support", name: "TMI Support",   role: "SUPPORT", icon: "🛡️", color: "#00FFFF" },
@@ -32,6 +38,9 @@ function NewMessageInner() {
   const [message, setMessage] = useState("");
   const [blocked, setBlocked] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateCode, setGateCode] = useState<string | undefined>();
+  const [gateMessage, setGateMessage] = useState<string | undefined>();
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(
@@ -64,6 +73,46 @@ function NewMessageInner() {
       ]
     : systemFiltered;
 
+  async function resumeAfterGate() {
+    setGateOpen(false);
+    const pending = loadMessagingPendingIntent();
+    clearMessagingPendingIntent();
+    if (!pending?.recipientId) return;
+    setMessage(pending.body ?? message);
+    setSelected({ id: pending.recipientId, name: pending.recipientName ?? pending.recipientId });
+    // Re-attempt send with saved body without dumping to dashboard
+    const bodyText = (pending.body ?? message).trim();
+    if (!bodyText) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          recipientId: pending.recipientId,
+          recipientName: pending.recipientName,
+          body: bodyText,
+          kind: "fan-fan",
+        }),
+      });
+      const data = await res.json().catch(() => ({})) as { threadId?: string; error?: string; code?: string };
+      if (res.ok && data.threadId) {
+        router.push(`/messages/${data.threadId}`);
+      } else {
+        setBlocked(data.error ?? "Could not start conversation.");
+        if (data.code === "AGE_VERIFICATION_REQUIRED" || data.code === "POLICY_ACCEPTANCE_REQUIRED") {
+          setGateCode(data.code);
+          setGateOpen(true);
+        }
+      }
+    } catch {
+      setBlocked("Unable to send message.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function handleSend(recipientId: string, recipientName: string) {
     setBlocked(null);
 
@@ -80,11 +129,29 @@ function NewMessageInner() {
         credentials: "include",
         body: JSON.stringify({ recipientId, recipientName, body: message.trim(), kind: "fan-fan" }),
       });
+      const data = await res.json().catch(() => ({})) as {
+        threadId?: string;
+        error?: string;
+        reason?: string;
+        code?: string;
+      };
       if (res.ok) {
-        const data = await res.json() as { threadId?: string };
         router.push(`/messages/${data.threadId ?? recipientId}`);
+      } else if (data.code === "AGE_VERIFICATION_REQUIRED" || data.code === "POLICY_ACCEPTANCE_REQUIRED") {
+        saveMessagingPendingIntent({
+          recipientId,
+          recipientName,
+          body: message.trim(),
+          returnPath: "/messages/new",
+        });
+        setGateCode(data.code);
+        setGateMessage(data.reason ?? data.error);
+        setGateOpen(true);
+        setBlocked(data.reason ?? data.error ?? "Messaging gate required");
       } else {
-        const data = await res.json().catch(() => ({})) as { error?: string; reason?: string };
+        setGateCode(data.code);
+        setGateMessage(data.reason ?? data.error);
+        if (data.code) setGateOpen(true);
         setBlocked(data.reason ?? data.error ?? "Message blocked.");
       }
     } catch {
@@ -188,6 +255,14 @@ function NewMessageInner() {
           </button>
         </div>
       </div>
+      <AgePolicyGateModal
+        open={gateOpen}
+        mode={gateModeFromCode(gateCode)}
+        code={gateCode}
+        message={gateMessage}
+        onClose={() => setGateOpen(false)}
+        onComplete={() => void resumeAfterGate()}
+      />
     </main>
   );
 }

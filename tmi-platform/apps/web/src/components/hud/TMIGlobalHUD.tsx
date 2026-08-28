@@ -140,9 +140,18 @@ export function TMIGlobalHUD() {
     };
   }, []);
 
-  // Only render when logged in
+  // Only render when logged in. Hub / dashboard shells own chrome — never
+  // stack a second floating HUD (legacy bell / Home) over FanShell/PerformerShell.
   if (!user) return null;
   if (pathname?.startsWith('/admin')) return null;
+  if (
+    pathname === '/hub' ||
+    pathname?.startsWith('/hub/') ||
+    pathname === '/dashboard' ||
+    pathname?.startsWith('/dashboard/')
+  ) {
+    return null;
+  }
 
   const xp = user.xp ?? 0;
   const xpTier = xp >= 5000 ? "DIAMOND" : xp >= 3000 ? "PLATINUM" : xp >= 2000 ? "GOLD" : xp >= 1000 ? "SILVER" : xp >= 500 ? "PRO" : "FREE";

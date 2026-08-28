@@ -3,7 +3,7 @@
 /**
  * CommandCenterSessionControlStrip — primary horizontal session controls.
  * Single-row horizontal touch-scroll bar on mobile & desktop (QP-10).
- * Locked 7 buttons: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE
+ * Locked 7 buttons: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | STREAM & WIN | GO LIVE
  */
 
 import React, { useEffect, useState } from "react";
@@ -17,7 +17,7 @@ import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
-import { getPrimarySessionStrip } from "@/lib/commandCenter/sessionControlCapabilities";
+import { getPrimarySessionStripForRole } from "@/lib/commandCenter/sessionControlCapabilities";
 import {
   toggleHubCameraPreview,
   toggleHubMicPreview,
@@ -28,6 +28,12 @@ import {
   exitVideoShuffle,
   isVideoShuffleActive,
 } from "@/lib/shuffle/VideoShuffleModeRuntime";
+import {
+  startStreamWin,
+  exitStreamWin,
+  isStreamWinActive,
+} from "@/lib/radio/StreamWinModeRuntime";
+import { registerShellButtonHealth } from "@/registries/shell/ButtonCommandRegistry";
 
 const GOLD = "#FFD700";
 
@@ -50,8 +56,9 @@ export default function CommandCenterSessionControlStrip({
   const [goLiveError, setGoLiveError] = useState("");
   const [mediaError, setMediaError] = useState("");
   const [shuffleActive, setShuffleActive] = useState(false);
+  const [streamWinActive, setStreamWinActive] = useState(false);
 
-  const { activePanel, openPanel, closePanel, togglePanel } = useCompactQuickPanelStore();
+  const { activePanel, openPanel, closePanel } = useCompactQuickPanelStore();
   const { open: openWorkspace } = useFloatingWorkspace();
 
   const isMobile = useMobileQuickPanelRuntime((s) => s.isMobile);
@@ -75,17 +82,23 @@ export default function CommandCenterSessionControlStrip({
 
   useEffect(() => {
     setShuffleActive(isVideoShuffleActive());
+    setStreamWinActive(isStreamWinActive());
   }, [activePanel]);
 
   const handleCamToggle = async () => {
     setMediaError("");
+    registerShellButtonHealth("shell.cam", "ok");
     await toggleHubCameraPreview();
   };
 
-  const openCameraDevicePicker = () => setIsCameraOpen(true);
+  const openCameraDevicePicker = () => {
+    registerShellButtonHealth("shell.camera", "ok");
+    setIsCameraOpen(true);
+  };
 
   const handleMicToggle = async () => {
     setMediaError("");
+    registerShellButtonHealth("shell.mic", "ok");
     await toggleHubMicPreview();
   };
 
@@ -109,6 +122,7 @@ export default function CommandCenterSessionControlStrip({
     setGoLivePhase("launching");
     setGoLiveError("");
     setMediaError("");
+    registerShellButtonHealth("shell.go-live", "ok");
 
     const dockRole = isPerformer ? "PERFORMER" : "FAN";
     launchDockStore.setRole(dockRole);
@@ -140,6 +154,7 @@ export default function CommandCenterSessionControlStrip({
   };
 
   const handleVideoShuffle = () => {
+    registerShellButtonHealth("shell.video-shuffle", "ok");
     closePanel();
     if (isVideoShuffleActive()) {
       exitVideoShuffle();
@@ -150,16 +165,28 @@ export default function CommandCenterSessionControlStrip({
   };
 
   const handleSnips = () => {
+    registerShellButtonHealth("shell.snips", "ok");
     closePanel();
     if (activePanel === "snips") closePanel();
     else openPanel("snips", "bottom-right");
   };
 
-  const handleLobbies = () => {
-    togglePanel("lobbies", "bottom-left");
+  const handleStreamWin = () => {
+    registerShellButtonHealth("shell.stream-win", "ok");
+    closePanel();
+    if (activePanel === "stream-win" || isStreamWinActive()) {
+      exitStreamWin();
+      setStreamWinActive(false);
+      closePanel();
+    } else {
+      void startStreamWin().then((started) => {
+        setStreamWinActive(Boolean(started));
+        if (started) openPanel("stream-win", "bottom-left");
+      });
+    }
   };
 
-  const primaryStrip = getPrimarySessionStrip();
+  const primaryStrip = getPrimarySessionStripForRole();
 
   const renderPrimaryButton = (id: string) => {
     switch (id) {
@@ -213,14 +240,14 @@ export default function CommandCenterSessionControlStrip({
             onClick={handleVideoShuffle}
           />
         );
-      case "lobbies":
+      case "stream-win":
         return (
           <SessionBtn
             key={id}
-            label="🏠 LOBBIES"
-            accent={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.85)"}
-            border={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.18)"}
-            onClick={handleLobbies}
+            label="📻 STREAM & WIN"
+            accent={streamWinActive || activePanel === "stream-win" ? "#FFD700" : "rgba(255,255,255,0.85)"}
+            border={streamWinActive || activePanel === "stream-win" ? "#FFD700" : "rgba(255,255,255,0.18)"}
+            onClick={handleStreamWin}
           />
         );
       case "go-live":

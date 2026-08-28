@@ -21,6 +21,9 @@ import ParticipantMediaContextMenu from "@/components/personal-media/Participant
 import { defaultPersonalMediaCommandBus, defaultPersonalMediaRouter } from "@/lib/personal-media";
 import { requestOneToOneSocial } from "@/lib/trustSafety/requestOneToOneSocial";
 import { HudCommandBus } from "@/lib/venue-hud/TMIExperienceHudRuntime";
+import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
+import InRoomMixerPanel from "@/components/venue-hud/InRoomMixerPanel";
+import { ChannelMixerDirector } from "@/lib/audio/mixer";
 import {
   resolveLoungeProximityActions,
   type LoungeMode,
@@ -37,6 +40,10 @@ export interface TMIInteractiveLoungeHudProps {
   loungeTitle: string;
   loungeMode?: LoungeMode;
   userRole?: "fan" | "performer" | "admin";
+  /** When true, user may open VENUE TOOLS for lounge environment controls */
+  isLoungeHost?: boolean;
+  /** Required for venue tools panel when host */
+  userId?: string;
   /** Real participant id only. Omit rather than inventing a lounge context identity. */
   contextParticipantId?: string;
   /** Honest occupancy from audience runtime. Omit rather than inventing viewers. */
@@ -46,8 +53,12 @@ export interface TMIInteractiveLoungeHudProps {
 }
 
 export default function TMIInteractiveLoungeHud({
+  loungeId,
   loungeTitle,
   loungeMode = "CHILL_LOUNGE",
+  userRole = "fan",
+  isLoungeHost = false,
+  userId,
   contextParticipantId,
   occupancyPresent,
   occupancyCapacity,
@@ -59,12 +70,21 @@ export default function TMIInteractiveLoungeHud({
   const [activeDance, setActiveDance] = useState<string | null>(null);
   const [showChevron, setShowChevron] = useState(false);
   const [myViewOpen, setMyViewOpen] = useState(false);
+  const [mixerOpen, setMixerOpen] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const contextIdRef = useRef(contextParticipantId);
   contextIdRef.current = contextParticipantId;
   const proximityRef = useRef(proximityTarget);
   proximityRef.current = proximityTarget;
   const privateTalkingRef = useRef(false);
+
+  useEffect(() => {
+    ChannelMixerDirector.bindSession({
+      roomId: loungeId,
+      liveSessionId: `lounge:${loungeId}`,
+      experienceType: "LOUNGE",
+    });
+  }, [loungeId]);
 
   useEffect(() => {
     const unbindMedia = defaultPersonalMediaCommandBus.bindToHudBus(
@@ -146,6 +166,26 @@ export default function TMIInteractiveLoungeHud({
       <div style={{ position: "absolute", top: 12, right: 12, pointerEvents: "auto", zIndex: 120, display: "flex", gap: 8 }}>
         <button
           type="button"
+          onClick={() => setMixerOpen((v) => !v)}
+          title="In-room audio mixer"
+          style={{
+            padding: "6px 12px",
+            borderRadius: 20,
+            border: `1.5px solid ${mixerOpen ? GOLD : CYAN}`,
+            background: "rgba(6,6,20,0.85)",
+            color: mixerOpen ? GOLD : CYAN,
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+          }}
+          data-testid="lounge-hud-audio-btn"
+        >
+          🔊 AUDIO
+        </button>
+        <button
+          type="button"
           onClick={() => setMyViewOpen((v) => !v)}
           title="MY VIEW personal media"
           style={{
@@ -183,9 +223,38 @@ export default function TMIInteractiveLoungeHud({
         >
           {hudVisible ? "◱ HIDE HUD" : "◰ SHOW HUD"}
         </button>
+        {isLoungeHost && userId ? (
+          <VenueToolsToggleButton
+            accent={GREEN}
+            loungeHost
+            role="fan"
+            roomId={loungeId}
+            testId="tmi-venue-tools-lounge-hud"
+            style={{
+              padding: "6px 12px",
+              borderRadius: 20,
+              fontSize: 10,
+              minHeight: 36,
+            }}
+          />
+        ) : null}
       </div>
 
       <MyViewDrawer open={myViewOpen} onClose={() => setMyViewOpen(false)} />
+
+      <InRoomMixerPanel
+        roomId={loungeId}
+        liveSessionId={`lounge:${loungeId}`}
+        experienceType="LOUNGE"
+        auth={{
+          userId: userId ?? `guest-${loungeId}`,
+          role: isLoungeHost ? "host" : userRole === "admin" ? "admin" : userRole === "performer" ? "performer" : "fan",
+          isRoomOwner: isLoungeHost,
+        }}
+        open={mixerOpen}
+        onClose={() => setMixerOpen(false)}
+        compact
+      />
 
       {contextParticipantId ? (
         <div style={{ position: "absolute", bottom: 80, left: 72, pointerEvents: "auto", zIndex: 130 }}>

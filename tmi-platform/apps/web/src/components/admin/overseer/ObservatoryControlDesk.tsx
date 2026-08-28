@@ -37,6 +37,7 @@ import {
   type DeskWorkspaceMode,
   type ObservatoryDeskState,
 } from "@/lib/admin/ObservatoryDeskState";
+import { OVERSEER_INSPECT_EVENT, type OverseerInspectPayload } from "@/lib/admin/overseerInspectBridge";
 import {
   ensurePresentationDirectorsStarted,
   PresentationTelemetryDirector,
@@ -158,6 +159,8 @@ export default function ObservatoryControlDesk() {
     };
   }, []);
 
+  const [inspectNote, setInspectNote] = useState<string | null>(null);
+
   const health = useMemo<DeskHealthMap>(() => {
     const activeBots = BOT_ACCOUNT_REGISTRY.filter((b) => b.status === "ACTIVE").length;
     const botsHealth: DeskHealth =
@@ -238,6 +241,30 @@ export default function ObservatoryControlDesk() {
     if (mode === "focus") setMaximizedTileId(null);
     setActiveLayoutId("custom");
   };
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const onInspect = (event: Event) => {
+      const detail = (event as CustomEvent<OverseerInspectPayload>).detail;
+      if (!detail) return;
+      setInspectNote(
+        `${detail.label}${detail.roomId ? ` · ${detail.roomId}` : ""}${
+          typeof detail.viewerCount === "number" ? ` · ${detail.viewerCount} viewers` : ""
+        }`,
+      );
+      selectPanel(detail.type.includes("BOT") ? "bots" : "rooms");
+    };
+    const onDeskFocus = (event: Event) => {
+      const panelId = (event as CustomEvent<{ panelId?: DeskPanelId }>).detail?.panelId;
+      if (panelId) selectPanel(panelId);
+    };
+    window.addEventListener(OVERSEER_INSPECT_EVENT, onInspect);
+    window.addEventListener("tmi:overseer-desk-focus", onDeskFocus);
+    return () => {
+      window.removeEventListener(OVERSEER_INSPECT_EVENT, onInspect);
+      window.removeEventListener("tmi:overseer-desk-focus", onDeskFocus);
+    };
+  }, [hydrated, mode, maximizedTileId]);
 
   const switchMode = (next: DeskWorkspaceMode) => {
     setMode(next);
@@ -426,6 +453,21 @@ export default function ObservatoryControlDesk() {
               {" · "}
               Health ≠ Selection (cyan = selected)
             </div>
+            {inspectNote ? (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 9,
+                  color: "#00FF88",
+                  border: "1px solid rgba(0,255,136,0.35)",
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  background: "rgba(0,255,136,0.08)",
+                }}
+              >
+                INSPECT · {inspectNote}
+              </div>
+            ) : null}
           </div>
 
           <div

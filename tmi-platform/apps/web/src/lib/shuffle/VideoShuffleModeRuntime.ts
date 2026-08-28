@@ -1,12 +1,17 @@
 /**
  * VideoShuffleModeRuntime — passive randomized video watching (instant mode).
- * Pool: approved video submissions (MediaRegistry) + performer intro/motion + MediaEngine fallback.
- * Lifecycle mirrors competition rooms where it fits: empty → RESET → SHUFFLE → keep casting.
+ * Pool: approved video submissions (MediaRegistry) + performer intro/motion +
+ * MediaEngine + VenueAssetRegistry ambient loops (canonical room videos).
+ * Lifecycle: empty → RESET → SHUFFLE → keep casting. Honest idle when no URLs.
  */
 
 import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 import { MediaEngine } from "@/lib/media/MediaAssetEngine";
-import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
+import { getAllVenueTypes, getVenueAsset } from "@/lib/venues/VenueAssetRegistry";
+import {
+  castPlaylistToMonitor,
+  publishPlaylistNowPlaying,
+} from "@/lib/playlists/PlaylistMonitorCast";
 
 export interface ShuffleVideoItem {
   id: string;
@@ -30,17 +35,17 @@ function emitState(state: VideoShuffleState, item?: ShuffleVideoItem | null) {
 }
 
 function buildPerformerPool(): ShuffleVideoItem[] {
-  return PERFORMER_REGISTRY.filter(
-    (p) => (p.introVideoUrl || p.motionPosterUrl) && p.lineupType !== undefined,
-  ).map((p) => ({
-    id: `shuffle-${p.slug}`,
-    title: p.name,
-    artist: p.category,
-    videoUrl: (p.introVideoUrl ?? p.motionPosterUrl)!,
-    genre: p.category,
-    performerSlug: p.slug,
-    coverUrl: p.profileImageUrl,
-  }));
+  return PERFORMER_REGISTRY.filter((p) => Boolean(p.introVideoUrl || p.motionPosterUrl)).map(
+    (p) => ({
+      id: `shuffle-${p.slug}`,
+      title: p.name,
+      artist: p.category,
+      videoUrl: (p.introVideoUrl ?? p.motionPosterUrl)!,
+      genre: p.category,
+      performerSlug: p.slug,
+      coverUrl: p.profileImageUrl,
+    }),
+  );
 }
 
 function buildMediaEnginePool(): ShuffleVideoItem[] {
@@ -52,6 +57,27 @@ function buildMediaEnginePool(): ShuffleVideoItem[] {
     genre: m.genre ?? "Media",
     coverUrl: m.thumbnailUrl,
   }));
+}
+
+/** Canonical venue ambient loops — always available for QP retest when user uploads are empty. */
+function buildVenueAmbientPool(): ShuffleVideoItem[] {
+  const seen = new Set<string>();
+  const out: ShuffleVideoItem[] = [];
+  for (const type of getAllVenueTypes()) {
+    const asset = getVenueAsset(type);
+    const url = asset.ambientVideoUrl?.trim();
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    out.push({
+      id: `shuffle-venue-${type}`,
+      title: asset.label ?? type,
+      artist: "TMI Venue",
+      videoUrl: url,
+      genre: type,
+      coverUrl: asset.bannerUrl,
+    });
+  }
+  return out;
 }
 
 async function fetchApprovedBroadcastPool(): Promise<ShuffleVideoItem[]> {
@@ -97,26 +123,32 @@ async function buildPool(recentIds: string[]): Promise<ShuffleVideoItem[]> {
   const approved = await fetchApprovedBroadcastPool();
   const performerItems = buildPerformerPool();
   const mediaItems = buildMediaEnginePool();
-  const merged = [...approved, ...performerItems, ...mediaItems];
+  const venueItems = buildVenueAmbientPool();
+  // Prefer real uploads; venue ambient is last-resort inventory so QP never dead-ends.
+  const merged = [...approved, ...performerItems, ...mediaItems, ...venueItems];
   const seen = new Set<string>();
   const unique = merged.filter((item) => {
-    if (seen.has(item.id)) return false;
+    if (!item.videoUrl?.trim()) return false;
+    if (seen.has(item.id) || seen.has(item.videoUrl)) return false;
     seen.add(item.id);
+    seen.add(item.videoUrl);
     return true;
   });
   return shufflePool(unique, recentIds);
 }
 
 function castItem(item: ShuffleVideoItem): void {
-  castPlaylistToMonitor({
+  const payload = {
     playlistId: "video-shuffle",
     trackId: item.id,
     title: item.title,
     artist: item.artist,
     coverUrl: item.coverUrl ?? null,
     videoUrl: item.videoUrl,
-    targetMonitorId: "mon-a",
-  });
+    targetMonitorId: "mon-a" as const,
+  };
+  castPlaylistToMonitor(payload);
+  publishPlaylistNowPlaying({ ...payload, isPlaying: true });
 }
 
 let active = false;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import BotConsole from '@/components/bots/BotConsole';
-import FooterHUD from '@/components/hud/FooterHUD';
 import HUDFrame from '@/components/hud/HUDFrame';
 import HomeNavigator from '@/components/home/HomeNavigator';
 import {
@@ -144,7 +143,6 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
             <BotConsole surface={`home${surfaceId}`} />
           </div>
         </main>
-        <FooterHUD />
       </HUDFrame>
     );
   }
@@ -173,7 +171,6 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
           <BotConsole surface={`home${surfaceId}`} />
         </div>
       </main>
-      <FooterHUD />
     </HUDFrame>
   );
 }

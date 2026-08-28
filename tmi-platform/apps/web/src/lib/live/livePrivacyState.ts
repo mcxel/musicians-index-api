@@ -6,6 +6,7 @@
  */
 
 import { create } from "zustand";
+import { getStageSnapshot } from "@/lib/live/StageLifecycleEngine";
 
 export interface LivePrivacyState {
   cameraPreviewActive: boolean;
@@ -77,7 +78,18 @@ export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
 
   syncPreviewTracks: () => {
     const { previewStream, isLivePublished, cameraPreviewActive, micPreviewActive } = get();
-    if (!previewStream || isLivePublished) return;
+    if (!previewStream) return;
+    // While LIVE: keep video; respect StageLifecycle audienceMicMuted during intermission.
+    if (isLivePublished) {
+      const audienceMicMuted = getStageSnapshot().audienceMicMuted;
+      previewStream.getVideoTracks().forEach((track) => {
+        track.enabled = true;
+      });
+      previewStream.getAudioTracks().forEach((track) => {
+        track.enabled = !audienceMicMuted;
+      });
+      return;
+    }
     previewStream.getVideoTracks().forEach((track) => {
       track.enabled = cameraPreviewActive;
     });

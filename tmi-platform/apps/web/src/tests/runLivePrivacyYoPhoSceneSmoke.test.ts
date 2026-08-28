@@ -9,6 +9,8 @@ import {
   normalizeLivePrivacyMode,
 } from "../lib/live/liveRoomPrivacyGate";
 import { getYoPhoImageCapacity } from "../lib/yopho/YoPhoImageCapacity";
+import { ensureTripleLayerStack, countStackLayers } from "../lib/yopho/YoPhoLayerStack";
+import { createDefaultYoPhoBlueprint } from "../lib/yopho/YoPhoPortraitEngine";
 import { SCENE_FACTORY_CONTROLLER, controlRequestVenueScene } from "../lib/venues/VenueSceneFactory";
 import { auditoriumMeshAddress } from "../lib/venues/VenueMeshAddress";
 
@@ -35,6 +37,17 @@ async function main() {
 
   const free = getYoPhoImageCapacity("FREE");
   assert.equal(free.maxImages, 3, "FREE = 2 pictures + 1 background");
+
+  const seeded = createDefaultYoPhoBlueprint("fan", "Test");
+  assert.equal(countStackLayers(seeded), 3, "default blueprint seeds 3 image slots");
+
+  const legacy = createDefaultYoPhoBlueprint("fan", "Legacy");
+  legacy.secondaryLayers = [];
+  legacy.primaryLayer.label = "Only layer";
+  legacy.primaryLayer.imageUrl = "https://example.com/legacy.jpg";
+  const upgraded = ensureTripleLayerStack(legacy);
+  assert.equal(countStackLayers(upgraded), 3, "legacy single-layer blueprints upgrade to triple stack");
+  assert.equal(upgraded.primaryLayer.imageUrl.includes("legacy.jpg"), true, "legacy image stays on foreground slot");
 
   assert.equal(SCENE_FACTORY_CONTROLLER.unlocked, true);
   const denied = controlRequestVenueScene({

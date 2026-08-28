@@ -4,6 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
+import SignupPolicyAcceptance, {
+  AGE_REQUIRED_ERROR,
+  POLICY_ACCEPTANCE_ERROR,
+  allRequiredPoliciesAccepted,
+  emptyPolicyChecks,
+  isSignupAgeEligible,
+} from "@/components/onboarding/SignupPolicyAcceptance";
+import type { PolicyId } from "@/lib/messaging/policyCatalog";
 
 
 export default function HostSignupPage() {
@@ -13,11 +21,27 @@ export default function HostSignupPage() {
   const [venueType, setVenueType] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [policyChecks, setPolicyChecks] = useState<Record<PolicyId, boolean>>(emptyPolicyChecks);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const policiesOk = allRequiredPoliciesAccepted(policyChecks);
+  const canSubmit = Boolean(email.trim() && password && dateOfBirth && policiesOk);
+
   async function handleSubmit() {
+    if (!email.trim() || !password || !dateOfBirth) {
+      setError("Email, password, and date of birth are required.");
+      return;
+    }
+    if (!isSignupAgeEligible(dateOfBirth)) {
+      setError(AGE_REQUIRED_ERROR);
+      return;
+    }
+    if (!policiesOk) {
+      setError(POLICY_ACCEPTANCE_ERROR);
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -26,13 +50,21 @@ export default function HostSignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-csrf-token": csrfToken },
         credentials: "include",
-        body: JSON.stringify({ email, password, dateOfBirth, termsAccepted: true, originalityAccepted: true, roles: ["VENUE"] }),
+        body: JSON.stringify({
+          email,
+          password,
+          dateOfBirth,
+          displayName: hostName,
+          termsAccepted: true,
+          originalityAccepted: true,
+          roles: ["VENUE"],
+        }),
       });
       if (res.ok) {
         router.push("/dashboard");
       } else {
         const data = await res.json().catch(() => null);
-        setError((data as { message?: string })?.message ?? "Signup failed. Check your details.");
+        setError((data as { message?: string; error?: string })?.error ?? (data as { message?: string })?.message ?? "Signup failed. Check your details.");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -80,6 +112,8 @@ export default function HostSignupPage() {
         <input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8+ characters" />
         <label style={labelStyle}>Date of Birth</label>
         <input style={inputStyle} type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+        <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Required — you must be 16+ to join TMI.</p>
+        <SignupPolicyAcceptance checks={policyChecks} onChange={setPolicyChecks} accent="#FF2DAA" />
       </div>
 
       <div style={cardStyle}>
@@ -96,7 +130,7 @@ export default function HostSignupPage() {
         </ul>
       </div>
 
-      <button type="button" style={ctaStyle} onClick={handleSubmit} disabled={submitting}>
+      <button type="button" style={{ ...ctaStyle, opacity: submitting || !canSubmit ? 0.5 : 1, cursor: submitting || !canSubmit ? "not-allowed" : "pointer" }} onClick={handleSubmit} disabled={submitting || !canSubmit}>
         {submitting ? "Creating Account…" : "Create Host Account →"}
       </button>
       {error && <p style={{ fontSize: 11, color: "#FF4444", margin: 0 }}>{error}</p>}

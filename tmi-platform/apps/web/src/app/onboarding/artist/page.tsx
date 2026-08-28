@@ -397,7 +397,7 @@ export default function OnboardingArtistPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label htmlFor="artist-name" style={labelStyle}>Artist Stage Name</label>
+            <label htmlFor="artist-name" style={labelStyle}>Artist Stage Name *</label>
             <input
               id="artist-name"
               type="text"
@@ -406,11 +406,12 @@ export default function OnboardingArtistPage() {
               onBlur={() => void handleAutoSaveField("artistName", artistName)}
               placeholder="e.g. Marcel Beats"
               style={inputStyle}
+              required
             />
           </div>
 
           <div>
-            <label htmlFor="short-bio" style={labelStyle}>Artistic Bio</label>
+            <label htmlFor="short-bio" style={labelStyle}>Artistic Bio <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>(Optional)</span></label>
             <textarea
               id="short-bio"
               value={shortBio}
@@ -423,7 +424,7 @@ export default function OnboardingArtistPage() {
           </div>
 
           <div>
-            <label htmlFor="genres" style={labelStyle}>Primary Genres (comma-separated)</label>
+            <label htmlFor="genres" style={labelStyle}>Primary Genres <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>(Optional)</span></label>
             <input
               id="genres"
               type="text"
@@ -436,7 +437,7 @@ export default function OnboardingArtistPage() {
           </div>
 
           <div>
-            <label htmlFor="city" style={labelStyle}>Hometown / City</label>
+            <label htmlFor="city" style={labelStyle}>Hometown / City *</label>
             <input
               id="city"
               type="text"
@@ -445,37 +446,16 @@ export default function OnboardingArtistPage() {
               onBlur={() => void handleAutoSaveField("city", city)}
               placeholder="e.g. Los Angeles, CA"
               style={inputStyle}
+              required
             />
           </div>
         </div>
 
-        <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <button
-            type="button"
-            onClick={() => {
-              router.replace("/hub/performer");
-            }}
-            style={{
-              padding: "14px 28px",
-              background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.8)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 900,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              boxShadow: "none",
-            }}
-          >
-            Skip to Dashboard
-          </button>
-
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
           <button
             type="button"
             onClick={() => void handleNextStep("3")}
-            disabled={busy || !artistName}
+            disabled={busy || !artistName.trim() || !city.trim()}
             style={buttonStyle}
           >
             Choose Profile Photo →

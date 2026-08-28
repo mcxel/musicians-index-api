@@ -1,5 +1,7 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+import { listSeasonPassOffers } from "@/lib/season/SeasonPassCatalog";
+
 export type AccountType = "artist" | "performer" | "fan";
 
 export type SubscriptionTier = "free" | "pro" | "RUBY" | "silver" | "gold" | "platinum" | "diamond";
@@ -56,13 +58,14 @@ const FAN_PRICES: Record<SubscriptionTier, { cents: number; display: string }> =
   diamond:  { cents: 4999, display: "$49.99" },
 };
 
-// Season Pass pricing (separate from membership tiers)
-// Base $9.99 / Pro $19.99 / Elite $29.99
-export const SEASON_PASS_PRICES = {
-  base:  { cents:  999, display: "$9.99"  },
-  pro:   { cents: 1999, display: "$19.99" },
-  elite: { cents: 2999, display: "$29.99" },
-} as const;
+// Season Pass pricing — delegated to SeasonPassCatalog (TMI-owned, separate from membership).
+// Kept as a thin alias so membership code never invents pass prices.
+export const SEASON_PASS_PRICES = Object.fromEntries(
+  listSeasonPassOffers({ includeUnavailable: true }).map((o) => [
+    o.id,
+    { cents: o.priceCents, display: o.priceDisplay },
+  ]),
+) as Record<string, { cents: number; display: string }>;
 export type SeasonPassTier = keyof typeof SEASON_PASS_PRICES;
 
 function priceTable(accountType: AccountType) {

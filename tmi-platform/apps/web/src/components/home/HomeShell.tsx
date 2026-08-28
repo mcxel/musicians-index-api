@@ -3,7 +3,6 @@
 import { useCallback, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import FooterHUD from '@/components/hud/FooterHUD';
 import HUDFrame from '@/components/hud/HUDFrame';
 import PageShell from '@/components/layout/PageShell';
 import PageSwitcher from '@/components/home/PageSwitcher';
@@ -97,7 +96,7 @@ export default function HomeShell() {
             </AnimatePresence>
           </div>
         </main>
-        <FooterHUD />
+        
       </HUDFrame>
     </PageShell>
   );

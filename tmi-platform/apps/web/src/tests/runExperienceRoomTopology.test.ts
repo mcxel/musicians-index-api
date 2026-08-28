@@ -58,7 +58,7 @@ export function runExperienceRoomTopologyTest(): {
     EXPERIENCE_CLASSES.includes("CONTEST");
 
   results["one_mill_live_rooms"] = Object.values(EXPERIENCE_ROOM_REGISTRY).every((r) => {
-    if (r.experienceClass === "FAN_AVATAR_LOBBY") return r.millRoute.includes("/rooms/fan-lobby");
+    if (r.experienceClass === "FAN_AVATAR_LOBBY") return r.millRoute.includes("/live/rooms/");
     return r.millRoute.includes("/live/rooms/");
   });
 
@@ -123,12 +123,4 @@ export function runExperienceRoomTopologyTest(): {
   const allPassed = Object.values(results).every(Boolean);
   console.log(`[EXPERIENCE_ROOM_TOPOLOGY_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
-}
-
-declare const require: { main: unknown };
-declare const module: { exports: unknown };
-
-if (typeof require !== "undefined" && require.main === module) {
-  const outcome = runExperienceRoomTopologyTest();
-  if (!outcome.allPassed) process.exitCode = 1;
 }

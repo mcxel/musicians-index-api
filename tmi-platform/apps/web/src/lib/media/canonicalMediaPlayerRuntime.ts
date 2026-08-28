@@ -78,6 +78,12 @@ export interface CanonicalMediaPlayerState {
   /** The frame whose audio track is currently unmuted for the viewer */
   primaryAudioFrame: FrameId | null;
 
+  /**
+   * Single screen-share audio ownership — at most one share source id may own
+   * tab/system audio. Layout changes must not register a second owner.
+   */
+  screenShareAudioSourceId: string | null;
+
   // ── Density ──
   /** Derived from layout — consumers use this to reduce chrome at higher densities. */
   densityMode: MonitorDensityMode;
@@ -102,6 +108,12 @@ export interface CanonicalMediaPlayerState {
   unparkFrame: (frameId: FrameId) => void;
 
   setPrimaryAudio: (frameId: FrameId) => void;
+
+  /**
+   * Register (or clear) the single screen-share audio owner. Replacing the
+   * source id updates ownership in place — never stacks a second registration.
+   */
+  setScreenShareAudioOwner: (sourceId: string | null) => void;
 
   /** Update the display label for a frame (e.g. "CAM A", "VENUE", "SCREEN"). */
   setFrameLabel: (frameId: FrameId, label: string) => void;
@@ -158,6 +170,7 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
     layout: "SPLIT_2",
     fullscreenFrame: null,
     primaryAudioFrame: "b",
+    screenShareAudioSourceId: null,
     densityMode: "COMFORTABLE",
 
     // ── Room ──
@@ -242,6 +255,10 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
       set({ primaryAudioFrame: frameId });
     },
 
+    setScreenShareAudioOwner(sourceId) {
+      set({ screenShareAudioSourceId: sourceId });
+    },
+
     // ── Labels ──
 
     setFrameLabel(frameId, label) {
@@ -279,6 +296,7 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
         layout: "SPLIT_2",
         fullscreenFrame: null,
         primaryAudioFrame: "b",
+        screenShareAudioSourceId: null,
         densityMode: "COMFORTABLE",
       });
     },
@@ -299,6 +317,9 @@ export const selectFullscreenFrame = (s: CanonicalMediaPlayerState) =>
 
 export const selectPrimaryAudioFrame = (s: CanonicalMediaPlayerState) =>
   s.primaryAudioFrame;
+
+export const selectScreenShareAudioSourceId = (s: CanonicalMediaPlayerState) =>
+  s.screenShareAudioSourceId;
 
 export const selectFocusedFrame = (s: CanonicalMediaPlayerState) => {
   const entry = Object.values(s.frames).find((f) => f.focused);

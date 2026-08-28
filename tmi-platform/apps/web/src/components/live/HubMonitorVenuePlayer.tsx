@@ -11,6 +11,13 @@ import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { hubMonitorUvrProps, isLoungeRoomId, resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import HubVenueHudDrawer from "@/components/live/HubVenueHudDrawer";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
+import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
+import {
+  getStageSnapshot,
+  markIntermissionAdOpportunity,
+  subscribeStage,
+} from "@/lib/live/StageLifecycleEngine";
+import { resolveCurtainAdCampaign } from "@/lib/presentation/CurtainRuntimeManager";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -53,17 +60,52 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const [watching, setWatching] = useState(0);
+  const [intermission, setIntermission] = useState(
+    () => getStageSnapshot().state === "INTERMISSION",
+  );
+  const [breakBoard, setBreakBoard] = useState<{
+    name: string;
+    href: string;
+    house: boolean;
+  } | null>(null);
   const lounge = isLoungeRoomId(roomId);
   const BOH = resolveHubMonitorViewport("B", {
     zone: scenePlan?.canonicalZone ?? (lounge ? "LOUNGE_SIDE_ROOM" : undefined),
   });
 
   const uvrProps = hubMonitorUvrProps("B", roomId, {
-    instantEmptyStage: !isLivePublished,
-    forceStadiumFill: lounge ? false : isLivePublished,
+    instantEmptyStage: true,
+    forceStadiumFill: false,
     zone: lounge ? "LOUNGE_SIDE_ROOM" : undefined,
     scenePlan,
   });
+
+  useEffect(() => {
+    if (!roomId) return;
+    useGoLiveBootstrapStore.getState().markVenueReady(true);
+    useGoLiveBootstrapStore.getState().markHudReady(true);
+  }, [roomId]);
+
+  useEffect(() => {
+    return subscribeStage((s) => {
+      const onBreak = s.state === "INTERMISSION";
+      setIntermission(onBreak);
+      if (onBreak) {
+        const campaign = resolveCurtainAdCampaign("curtain-ad-rail");
+        setBreakBoard({
+          name: campaign.advertiserName,
+          href: campaign.creativeUrl,
+          house: campaign.isHousePromotion,
+        });
+        markIntermissionAdOpportunity({
+          played: true,
+          campaignId: campaign.campaignId,
+        });
+      } else {
+        setBreakBoard(null);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!isLivePublished) {
@@ -96,6 +138,14 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
     return <HubMonitorIdle label="Stage ready — press GO LIVE" />;
   }
 
+  const safeUvrProps = uvrProps
+    ? {
+        ...uvrProps,
+        instantEmptyStage: true,
+        forceStadiumFill: false,
+      }
+    : null;
+
   return (
     <div
       data-hub-monitor-venue-player="true"
@@ -106,6 +156,7 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       data-view-mode={scenePlan?.viewMode ?? "FREE_ROAM_3D"}
       data-spatial-units={scenePlan?.spatialMap.units ?? "ft"}
       data-spatial-area-sqft={scenePlan?.spatialMap.floor.areaSqFt}
+      data-intermission={intermission ? "true" : "false"}
       style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#010308" }}
     >
       <div
@@ -134,7 +185,21 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
         >
           {BOH.shortLabel} · {lounge ? "ROOM" : "HOUSE"}
         </span>
-        {isLivePublished ? (
+        {intermission ? (
+          <span
+            style={{
+              background: "rgba(255,215,0,0.2)",
+              color: "#FFD700",
+              borderRadius: 4,
+              padding: "2px 8px",
+              fontSize: 8,
+              fontWeight: 900,
+              letterSpacing: "0.12em",
+            }}
+          >
+            INTERMISSION
+          </span>
+        ) : isLivePublished ? (
           <span
             style={{
               background: "#FF2020",
@@ -170,9 +235,43 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
 
       <HubVenueHudDrawer roomId={roomId} watching={watching} isLivePublished={isLivePublished} />
 
-      <div style={{ position: "absolute", inset: 0 }}>
-        {uvrProps ? <UniversalVenueRenderer {...uvrProps} /> : null}
+      <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+        {safeUvrProps ? <UniversalVenueRenderer {...safeUvrProps} /> : null}
       </div>
+
+      {intermission && breakBoard ? (
+        <div
+          data-intermission-break-board="true"
+          style={{
+            position: "absolute",
+            left: 12,
+            right: 12,
+            bottom: 36,
+            zIndex: 12,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "rgba(5,5,16,0.92)",
+            border: breakBoard.house
+              ? "1px solid rgba(255,215,0,0.4)"
+              : "1px solid rgba(0,255,136,0.45)",
+            pointerEvents: "auto",
+          }}
+        >
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700" }}>
+            INTERMISSION · BREAK BOARD
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#fff", marginTop: 4 }}>
+            {breakBoard.name}
+          </div>
+          <a
+            href={breakBoard.href}
+            style={{ fontSize: 9, color: "#00FFFF", fontWeight: 700 }}
+            onClick={() => markIntermissionAdOpportunity({ completed: true })}
+          >
+            {breakBoard.house ? "Open promo / advertise" : "Open sponsor"} →
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }

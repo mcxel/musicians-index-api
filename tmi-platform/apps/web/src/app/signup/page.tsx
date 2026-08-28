@@ -1,4 +1,6 @@
 "use client";
+
+import { type PolicyId } from "@/lib/messaging/policyCatalog";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +11,14 @@ import {
   VENUE_PROFESSIONAL_LABELS,
   type VenueProfessionalCapability,
 } from "@/lib/auth/VenueProfessionalCapabilities";
+import { getProfileFieldLabels } from "@/lib/auth/profileFieldLabels";
+import SignupPolicyAcceptance, {
+  AGE_REQUIRED_ERROR,
+  POLICY_ACCEPTANCE_ERROR,
+  allRequiredPoliciesAccepted,
+  emptyPolicyChecks,
+  isSignupAgeEligible,
+} from "@/components/onboarding/SignupPolicyAcceptance";
 
 // ---------------------------------------------------------------------------
 // Single-surface signup: credentials + role on one screen, no mid-flow bounce
@@ -67,6 +77,7 @@ function SignupForm() {
   const [selectedRole, setSelectedRole] = useState<AccountType>(ROLE_MAP[roleParam] ?? "FAN");
   const [performerSubtypes, setPerformerSubtypes] = useState<string[]>([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", dob: "" });
+  const [policyChecks, setPolicyChecks] = useState<Record<PolicyId, boolean>>(emptyPolicyChecks);
   const [venueCapabilities, setVenueCapabilities] = useState<VenueProfessionalCapability[]>(["VENUE_OPERATOR"]);
   const [venueProfile, setVenueProfile] = useState({
     venueName: "",
@@ -105,21 +116,15 @@ function SignupForm() {
 
   const sel = ACCOUNT_TYPES.find(t => t.type === selectedRole)!;
 
-  // Age gate from DOB
-  function isOldEnough(): boolean {
-    if (!form.dob) return false;
-    const birth = new Date(form.dob);
-    const now = new Date();
-    const age = now.getFullYear() - birth.getFullYear()
-      - (now < new Date(now.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
-    return age >= 16;
-  }
-
   async function handleSignup() {
     setError("");
     if (!form.name || !form.email || !form.password) { setError("Name, email and password are required."); return; }
     if (!form.dob) { setError("Date of birth is required."); return; }
-    if (!isOldEnough()) { setError("You must be 16 or older to create an account."); return; }
+    if (!isSignupAgeEligible(form.dob)) { setError(AGE_REQUIRED_ERROR); return; }
+    if (!allRequiredPoliciesAccepted(policyChecks)) {
+      setError(POLICY_ACCEPTANCE_ERROR);
+      return;
+    }
     if (selectedRole === "PERFORMER" && performerSubtypes.length === 0) {
       setError("Please select at least one performer type."); return;
     }
@@ -138,9 +143,11 @@ function SignupForm() {
         body: JSON.stringify({
           name: form.name, email: form.email, password: form.password,
           dob: form.dob,
+          dateOfBirth: form.dob,
           role: provisionRoles[0],
           roles: provisionRoles,
-          termsAccepted: true,
+          termsAccepted: policyChecks.TOS,
+          originalityAccepted: policyChecks.COMMUNITY_GUIDELINES,
           inviteToken: vipToken || undefined,
           ref: refToken || undefined,
           performerTypes: selectedRole === "PERFORMER" ? performerSubtypes : undefined,
@@ -237,21 +244,38 @@ function SignupForm() {
               </div>
 
               {/* ── Credential fields ── */}
-              {([
-                ["name",     "USERNAME / DISPLAY NAME", "text",     "Your name or artist alias"],
-                ["email",    "EMAIL ADDRESS",            "email",    "you@example.com"],
-                ["password", "CREATE PASSWORD",          "password", "8+ characters"],
-              ] as [keyof typeof form, string, string, string][]).map(([key, lbl, type, ph]) => (
-                <div key={key} style={{ marginBottom: 12 }}>
-                  <label style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 5, fontWeight: 700 }}>{lbl}</label>
-                  <input
-                    type={type} placeholder={ph} value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    autoComplete={key === "password" ? "new-password" : key}
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
+              {/* Name field — label and placeholder update as the user picks their role */}
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 5, fontWeight: 700 }}>
+                  {getProfileFieldLabels(selectedRole).identityName.label}
+                </label>
+                <input
+                  type="text"
+                  placeholder={getProfileFieldLabels(selectedRole).identityName.placeholder}
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  autoComplete="name"
+                  style={inputStyle}
+                />
+              </div>
+              {(["email", "password"] as const).map((key) => {
+                const meta: Record<string, [string, string, string]> = {
+                  email:    ["EMAIL ADDRESS",   "email",    "you@example.com"],
+                  password: ["CREATE PASSWORD", "password", "8+ characters"],
+                };
+                const [lbl, type, ph] = meta[key]!;
+                return (
+                  <div key={key} style={{ marginBottom: 12 }}>
+                    <label style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 5, fontWeight: 700 }}>{lbl}</label>
+                    <input
+                      type={type} placeholder={ph} value={form[key]}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      autoComplete={key === "password" ? "new-password" : key}
+                      style={inputStyle}
+                    />
+                  </div>
+                );
+              })}
 
               {/* Date of birth */}
               <div style={{ marginBottom: 20 }}>
@@ -263,6 +287,10 @@ function SignupForm() {
                   style={{ ...inputStyle, colorScheme: "dark" }}
                 />
                 <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 4 }}>You must be 16 or older. Date of birth is used for account safety and age-gating.</div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <SignupPolicyAcceptance checks={policyChecks} onChange={setPolicyChecks} />
               </div>
 
               {/* ── Role selection ── */}

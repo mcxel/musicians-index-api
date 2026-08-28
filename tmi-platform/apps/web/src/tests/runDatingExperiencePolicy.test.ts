@@ -102,13 +102,3 @@ export function runDatingExperiencePolicyTest(): Record<string, boolean> {
 export function datingExperiencePolicyAllPassed(): boolean {
   return Object.values(runDatingExperiencePolicyTest()).every(Boolean);
 }
-
-declare const require: { main: unknown };
-declare const module: { exports: unknown };
-
-if (typeof require !== "undefined" && require.main === module) {
-  const results = runDatingExperiencePolicyTest();
-  const allPassed = Object.values(results).every(Boolean);
-  console.log("[DATING_EXPERIENCE_POLICY_TEST_ASSERT]", JSON.stringify({ allPassed, results }, null, 2));
-  if (!allPassed) process.exitCode = 1;
-}

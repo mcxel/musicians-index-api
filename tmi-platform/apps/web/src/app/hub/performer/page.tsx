@@ -1,88 +1,51 @@
-"use client";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import PerformerHubMount from "@/components/auth/PerformerHubMount";
+import PerformerHubSessionFallback from "@/components/auth/PerformerHubSessionFallback";
+import {
+  classifyShellIdentity,
+  hubPathForIdentity,
+} from "@/lib/auth/sessionRole";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Performer Hub — matching Command Center shell (shared with Fan).
- * Drawer: Media Locker / YoPho / Beat Lab / Bookings / Stage — never Fan Lobby ownership.
+ * Performer hub — prefer cookie role (no ROLE_RESOLVING). Static PerformerShell only.
+ * Client SessionRoleGate only when role cookie is missing/unclassified.
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import PerformerCommandCenter from "@/components/performer/PerformerCommandCenter";
+export default async function PerformerHubPage() {
+  const store = await cookies();
+  const sessionToken = store.get("tmi_session")?.value;
+  const sessionUserId = store.get("tmi_session_id")?.value;
+  if (!sessionToken && !sessionUserId) {
+    redirect("/auth?next=/hub/performer");
+  }
 
-interface SessionUser {
-  id: string;
-  name?: string;
-  email?: string;
-  role?: string;
-}
+  const roleCookie = store.get("tmi_role")?.value;
+  const identity = classifyShellIdentity(roleCookie);
 
-function LoadingScreen() {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#050510",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, letterSpacing: "0.14em" }}>
-        LOADING COMMAND CENTER…
-      </p>
-    </main>
-  );
-}
+  if (identity === "FAN") {
+    redirect("/hub/fan");
+  }
+  if (identity === "OTHER") {
+    redirect(hubPathForIdentity("OTHER", roleCookie ?? ""));
+  }
 
-export default function PerformerHubPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
+  if (identity === "PERFORMER") {
+    const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
+    const displayName = store.get("tmi_display_name")?.value?.trim() || "Performer";
+    return (
+      <PerformerHubMount
+        session={{
+          identity: "PERFORMER",
+          rawRole: (roleCookie ?? "PERFORMER").toUpperCase(),
+          userId,
+          displayName,
+        }}
+      />
+    );
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      for (let attempt = 0; attempt < 12 && !cancelled; attempt++) {
-        try {
-          const r = await fetch("/api/auth/session", {
-            credentials: "include",
-            cache: "no-store",
-          });
-          const d = (await r.json()) as {
-            authenticated?: boolean;
-            user?: SessionUser;
-          };
-          if (cancelled) return;
-          if (d.authenticated && d.user) {
-            const role = (d.user.role ?? "").toUpperCase();
-            if (
-              !["PERFORMER", "ARTIST", "BAND", "ADMIN", "STAFF", "SUPERADMIN"].includes(role)
-            ) {
-              router.replace("/hub/fan");
-              return;
-            }
-            setUser(d.user);
-            return;
-          }
-        } catch {
-          /* retry while hub/session compile */
-        }
-        await new Promise((res) => setTimeout(res, 500 + attempt * 250));
-      }
-      if (!cancelled) router.replace("/auth?next=/hub/performer");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  if (!user) return <LoadingScreen />;
-
-  return (
-    <PerformerCommandCenter
-      performerId={user.id}
-      displayName={user.name?.trim() || "Performer"}
-    />
-  );
+  return <PerformerHubSessionFallback />;
 }

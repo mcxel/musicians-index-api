@@ -11,6 +11,8 @@ export interface ExploreCardDefinition {
   href: string;
   /** When set, card opens StageLoader before entry */
   experienceId?: string;
+  colexistingRoutes?: string[];
+  hentryRoute?: string;
 }
 
 export const EXPLORE_SECTIONS: Array<{ label: string; items: ExploreCardDefinition[] }> = [
@@ -18,8 +20,8 @@ export const EXPLORE_SECTIONS: Array<{ label: string; items: ExploreCardDefiniti
     label: "LIVE LOBBIES",
     items: [
       { name: "Live Lobby", desc: "Real-time active rooms platform-wide", icon: "🎪", color: "#00FFFF", href: "/live/lobby" },
-      { name: "Live Lobby Wall", desc: "Grid view of every live room", icon: "🧱", color: "#00FFFF", href: "/live/lobby-wall" },
-      { name: "Fan Lobby", desc: "Social hangout — fans only", icon: "👥", color: "#AA2DFF", href: "/rooms/fan-lobby", experienceId: "fan-lobby" },
+      { name: "Live Lobby Wall", desc: "Grid view of every live room", icon: "🧱", color: "#00FFFF", colexistingRoutes: ["/fan-lobby", "/live/lobby/fans"], href: "/live/lobby" },
+      { name: "Fan Lobby", desc: "Social hangout — fans only", icon: "👥", color: "#AA2DFF", hentryRoute: "/fan-lobby", href: "/fan-lobby", experienceId: "fan-lobby" },
       { name: "VIP Lounge", desc: "Video-window social lounge", icon: "🛋️", color: "#AA2DFF", href: "/rooms/vip-lounge", experienceId: "lounge" },
       { name: "All Rooms", desc: "Browse every room on the platform", icon: "🌐", color: "#00FF88", href: "/rooms" },
     ],

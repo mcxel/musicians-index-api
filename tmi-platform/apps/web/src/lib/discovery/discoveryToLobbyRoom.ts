@@ -9,7 +9,7 @@ import {
   type LiveDiscoveryCategory,
   type LiveDiscoveryRecord,
 } from "@/lib/discovery/LiveDiscoveryRecord";
-import { isPerformerLobbyRecord } from "@/lib/lobby/liveLobbyWallLaw";
+import { isOfficialWDPRecord, isPerformerLobbyRecord } from "@/lib/lobby/liveLobbyWallLaw";
 import { resolvePerformerLobbyJoinHref } from "@/lib/venue-hud/loungeContainer";
 import { getGenreRoomByRoomId, resolveGenreLobbyJoinHref } from "@/lib/live/CanonicalGenreRegistry";
 
@@ -47,6 +47,12 @@ function fallbackCastOverlay(r: LiveDiscoveryRecord, type: LobbyRoom["type"]): s
     return r.recruiting
       ? `LOOKING FOR PERFORMERS · ${genre} Cypher`
       : `LIVE · ${genre} Cypher`;
+  }
+  if (type === "dance") {
+    const badge = isOfficialWDPRecord(r) ? "🌍 WORLD" : "⭐ MINI";
+    if (r.recruiting) return `${badge} · Dance Party · LOOKING`;
+    if (!r.isLive) return `${badge} · Dance Party · STARTING SOON`;
+    return `${badge} · Dance Party`;
   }
   if (r.recruiting) return `LOOKING FOR PERFORMERS · ${genre} ${kind}`;
   if (!r.isLive) return `STARTING SOON · ${genre} ${kind}`;

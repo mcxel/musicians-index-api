@@ -2,6 +2,12 @@
 # The Musician's Index | BernoutGlobal LLC
 # Last updated: 2026-04-26
 
+> **AI Navigation:** Every agent reads [`MASTER_AI_NAVIGATION.md`](MASTER_AI_NAVIGATION.md) first.
+> General lookup (engines, registries, routes, archive, bots, 3D tiers): [§1–8](MASTER_AI_NAVIGATION.md#1-where-to-look-by-task-type) · [§ 3D upgrade map](MASTER_AI_NAVIGATION.md#3d--avatar--environment-upgrade-map).
+> Media players (Fan + Performer dual experience): [§ MEDIA PLAYER DUAL-EXPERIENCE MAP](MASTER_AI_NAVIGATION.md#media-player-dual-experience-map).
+> Split screens / dual monitors / battle VS: [§ SPLIT SCREEN CANON](MASTER_AI_NAVIGATION.md#split-screen-canon).
+> Front/back of house + lobby walls + home rotation: [§ FRONT/BACK OF HOUSE + LOBBY WALL CANON](MASTER_AI_NAVIGATION.md#frontback-of-house--lobby-wall-canon).
+
 ## NON-NEGOTIABLES FOR ALL AI AGENTS
 
 These rules apply to every AI tool working in this repo: Claude, Copilot, Gemini, CodeGPT, BlackBox.

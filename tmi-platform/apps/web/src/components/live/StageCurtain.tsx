@@ -72,10 +72,22 @@ export default function StageCurtain({ durationMs = 4000, onFullyOpen, onFullyCl
     });
   }, []);
 
-  const isParting = snap.state === "CURTAIN_PART" || snap.state === "LIGHTING_SNAP" || snap.state === "CAMERA_LIVE" || snap.state === "INTERMISSION";
-  const isClosing = snap.state === "CURTAIN_CLOSE" || snap.state === "ENDED";
-  const isOpen = snap.state === "CAMERA_LIVE" || snap.state === "INTERMISSION";
+  const isParting =
+    snap.state === "CURTAIN_PART" ||
+    snap.state === "LIGHTING_SNAP" ||
+    snap.state === "CAMERA_LIVE";
+  // Intermission = curtains CLOSED (house held). Not the same as LIVE open.
+  const isClosing =
+    snap.state === "CURTAIN_CLOSE" ||
+    snap.state === "ENDED";
+  const isOpen = snap.state === "CAMERA_LIVE";
   const showCountdown = snap.state === "COUNTDOWN" && snap.countdownRemaining !== null;
+  const showIntermissionArm =
+    snap.intermissionArmRemaining != null && snap.intermissionArmRemaining > 0;
+  const curtainsClosedIdle =
+    snap.state === "STAGE_PREP" ||
+    snap.state === "INTERMISSION" ||
+    snap.state === "ENDED";
 
   // Fire callbacks
   useEffect(() => {
@@ -125,6 +137,8 @@ export default function StageCurtain({ durationMs = 4000, onFullyOpen, onFullyCl
             ? `curtainPartLeft ${animDur} cubic-bezier(0.25,0.46,0.45,0.94) forwards`
             : isClosing
             ? `curtainCloseLeft ${animDur} cubic-bezier(0.55,0.06,0.68,0.19) forwards`
+            : curtainsClosedIdle
+            ? undefined
             : undefined,
           boxShadow: "inset -8px 0 24px rgba(0,0,0,0.5), 4px 0 20px rgba(0,0,0,0.6)",
         }}
@@ -235,6 +249,37 @@ export default function StageCurtain({ durationMs = 4000, onFullyOpen, onFullyCl
             PREPARING STAGE
           </div>
           <div style={{ width: 40, height: 2, background: "rgba(255,215,0,0.3)" }} />
+        </div>
+      )}
+
+      {showIntermissionArm && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 11,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: 10, background: "rgba(0,0,0,0.45)",
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.2em" }}>
+            INTERMISSION IN {snap.intermissionArmRemaining}
+          </div>
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.55)" }}>Tap CANCEL on the rail to abort</div>
+        </div>
+      )}
+
+      {snap.state === "INTERMISSION" && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 10,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: 10, pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#FFD700", letterSpacing: "0.22em" }}>
+            INTERMISSION
+          </div>
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.55)", letterSpacing: "0.08em" }}>
+            Session held · audience stays · not ended
+          </div>
+          {snap.resumeError ? (
+            <div style={{ fontSize: 9, color: "#FF2DAA", fontWeight: 800 }}>{snap.resumeError}</div>
+          ) : null}
         </div>
       )}
     </div>

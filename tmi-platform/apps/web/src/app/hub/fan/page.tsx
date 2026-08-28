@@ -1,73 +1,51 @@
-"use client";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import FanHubMount from "@/components/auth/FanHubMount";
+import FanHubSessionFallback from "@/components/auth/FanHubSessionFallback";
+import {
+  classifyShellIdentity,
+  hubPathForIdentity,
+} from "@/lib/auth/sessionRole";
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import FanHQShell from "@/components/fan/FanHQShell";
+/**
+ * Fan hub — prefer cookie role (no ROLE_RESOLVING). Static FanShell only.
+ * Client SessionRoleGate only when role cookie is missing/unclassified.
+ */
 
-interface SessionUser {
-  id: string;
-  name?: string;
-  email?: string;
-  role?: string;
-}
+export default async function FanHubPage() {
+  const store = await cookies();
+  const sessionToken = store.get("tmi_session")?.value;
+  const sessionUserId = store.get("tmi_session_id")?.value;
+  if (!sessionToken && !sessionUserId) {
+    redirect("/auth?next=/hub/fan");
+  }
 
-function LoadingScreen() {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#050510",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, letterSpacing: "0.14em" }}>
-        LOADING COMMAND CENTER…
-      </p>
-    </main>
-  );
-}
+  const roleCookie = store.get("tmi_role")?.value;
+  const identity = classifyShellIdentity(roleCookie);
 
-export default function FanHubPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
+  if (identity === "PERFORMER") {
+    redirect("/hub/performer");
+  }
+  if (identity === "OTHER") {
+    redirect(hubPathForIdentity("OTHER", roleCookie ?? ""));
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      for (let attempt = 0; attempt < 12 && !cancelled; attempt++) {
-        try {
-          const r = await fetch("/api/auth/session", {
-            credentials: "include",
-            cache: "no-store",
-          });
-          const d = (await r.json()) as {
-            authenticated?: boolean;
-            user?: SessionUser;
-          };
-          if (cancelled) return;
-          if (d.authenticated && d.user) {
-            setUser(d.user);
-            return;
-          }
-        } catch {
-          /* retry */
-        }
-        await new Promise((res) => setTimeout(res, 500 + attempt * 250));
-      }
-      if (!cancelled) router.replace("/auth?next=/hub/fan");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+  if (identity === "FAN") {
+    const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
+    const displayName = store.get("tmi_display_name")?.value?.trim() || "Fan";
+    return (
+      <FanHubMount
+        session={{
+          identity: "FAN",
+          rawRole: (roleCookie ?? "FAN").toUpperCase(),
+          userId,
+          displayName,
+        }}
+      />
+    );
+  }
 
-  if (!user) return <LoadingScreen />;
-
-  return (
-    <FanHQShell fanId={user.id} fanDisplayName={user.name?.trim() || "Fan"} />
-  );
+  return <FanHubSessionFallback />;
 }

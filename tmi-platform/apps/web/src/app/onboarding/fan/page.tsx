@@ -394,7 +394,7 @@ export default function OnboardingFanPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label htmlFor="display-name" style={labelStyle}>Display Name</label>
+            <label htmlFor="display-name" style={labelStyle}>Display Name *</label>
             <input
               id="display-name"
               type="text"
@@ -403,11 +403,12 @@ export default function OnboardingFanPage() {
               onBlur={() => void handleAutoSaveField("displayName", displayName)}
               placeholder="e.g. MusicFanatic"
               style={inputStyle}
+              required
             />
           </div>
 
           <div>
-            <label htmlFor="bio" style={labelStyle}>About Me</label>
+            <label htmlFor="bio" style={labelStyle}>About Me <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>(Optional)</span></label>
             <textarea
               id="bio"
               value={bio}
@@ -420,7 +421,7 @@ export default function OnboardingFanPage() {
           </div>
 
           <div>
-            <label htmlFor="favorite-genres" style={labelStyle}>Favorite Genres (comma-separated)</label>
+            <label htmlFor="favorite-genres" style={labelStyle}>Favorite Genres <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>(Optional)</span></label>
             <input
               id="favorite-genres"
               type="text"
@@ -433,7 +434,7 @@ export default function OnboardingFanPage() {
           </div>
 
           <div>
-            <label htmlFor="city" style={labelStyle}>City / Location</label>
+            <label htmlFor="city" style={labelStyle}>City / Location *</label>
             <input
               id="city"
               type="text"
@@ -442,37 +443,16 @@ export default function OnboardingFanPage() {
               onBlur={() => void handleAutoSaveField("city", city)}
               placeholder="e.g. Chicago, IL"
               style={inputStyle}
+              required
             />
           </div>
         </div>
 
-        <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <button
-            type="button"
-            onClick={() => {
-              router.replace("/hub/fan");
-            }}
-            style={{
-              padding: "14px 28px",
-              background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.8)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 900,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              boxShadow: "none",
-            }}
-          >
-            Skip to Dashboard
-          </button>
-
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
           <button
             type="button"
             onClick={() => void handleNextStep("3")}
-            disabled={busy || !displayName}
+            disabled={busy || !displayName.trim() || !city.trim()}
             style={buttonStyle}
           >
             Choose Profile Photo →

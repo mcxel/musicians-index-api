@@ -2,15 +2,14 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import {
   listConversationsForUser,
-  getOrCreateConversation,
   resolveParticipants,
   unreadCountForUser,
 } from "@/lib/messaging/prismaMessageStore";
+import { resolveMessagingUser } from "@/lib/messaging/resolveMessagingUser";
 import {
-  resolveMessagingUser,
-  resolveRecipientId,
-} from "@/lib/messaging/resolveMessagingUser";
-import { youthSocialBlockPayload } from "@/lib/trustSafety/resolveYouthSocialSubject";
+  startConversation,
+  startConversationHttpStatus,
+} from "@/lib/messaging/startConversation";
 
 export async function GET(req: NextRequest) {
   const user = await resolveMessagingUser(req);
@@ -48,7 +47,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await resolveMessagingUser(req);
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Not authenticated", code: "UNAUTHORIZED" }, { status: 401 });
 
   let body: { recipientId?: string; recipientName?: string; kind?: string } = {};
   try {
@@ -58,25 +57,32 @@ export async function POST(req: NextRequest) {
   }
 
   if (!body.recipientId) {
-    return NextResponse.json({ error: "recipientId required" }, { status: 400 });
+    return NextResponse.json({ error: "recipientId required", code: "MISSING_FIELDS" }, { status: 400 });
   }
 
-  const recipient = await resolveRecipientId(body.recipientId);
-  if (!recipient) {
-    return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+  const result = await startConversation({
+    senderId: user.id,
+    recipientHandle: body.recipientId,
+    kind: body.kind,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json(
+      {
+        error: result.error,
+        code: result.code,
+        eligibilityState: result.eligibilityState,
+        recipientEligibilityState: result.recipientEligibilityState,
+      },
+      { status: startConversationHttpStatus(result) },
+    );
   }
 
-  try {
-    const convo = await getOrCreateConversation({
-      userId: user.id,
-      recipientId: recipient.id,
-      kind: body.kind ?? "fan-fan",
-    });
-    return NextResponse.json({ ok: true, threadId: convo.id, conversation: { id: convo.id } });
-  } catch (err) {
-    const blocked = youthSocialBlockPayload(err);
-    if (blocked) return NextResponse.json(blocked, { status: 403 });
-    console.error("[api/messages/conversations POST]", err);
-    return NextResponse.json({ error: "Unable to create conversation" }, { status: 500 });
-  }
+  return NextResponse.json({
+    ok: true,
+    threadId: result.threadId,
+    created: result.created,
+    conversation: { id: result.threadId },
+    recipient: result.recipient,
+  });
 }

@@ -13,7 +13,7 @@
  * states when the user has no playlists or a selected playlist is empty.
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { sanitizePublicDisplayLabel } from "@/lib/auth/resolveSessionIdentity";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
 import {
@@ -30,6 +30,29 @@ import {
 } from "@/lib/playlists/sharePlaylistToThread";
 import { useAudio } from "@/components/AudioProvider";
 import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
+import {
+  FREE_DEFAULT_CHASSIS_ID,
+  MEDIA_PLAYER_CHASSIS_REGISTRY,
+  canEquipChassis,
+  type MediaPlayerChassisId,
+} from "@/lib/artifacts/PlaylistArtifactEngine";
+import {
+  equipChassisApi,
+  ensureDefaultMediaPlayer,
+  getEquippedChassisId,
+  getOwnedChassisIds,
+  hydrateMediaPlayerOwnership,
+  subscribeMediaPlayerInventory,
+  unequipChassisApi,
+} from "@/lib/artifacts/MediaPlayerInventory";
+import { normalizeMembershipTier } from "@/registries/eos/MembershipRegistry";
+
+const FREE_SKIN_IDS: MediaPlayerChassisId[] = [
+  FREE_DEFAULT_CHASSIS_ID,
+  "tmi_classic",
+  "tmi_dark",
+  "tmi_neon",
+];
 
 interface ApiPlaylistSummary {
   id: string;
@@ -47,6 +70,13 @@ interface ApiSong {
   coverUrl?: string | null;
   genre?: string | null;
   bpm?: number | null;
+}
+
+interface UserLibrarySong {
+  id: string;
+  title: string;
+  genre?: string | null;
+  audioUrl?: string | null;
 }
 
 interface PlaylistCanisterProps {
@@ -92,10 +122,21 @@ export function PlaylistCanister({
   const [threads, setThreads] = useState<MessageThreadOption[]>([]);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [userLibrarySongs, setUserLibrarySongs] = useState<UserLibrarySong[]>([]);
+  const [addingSongId, setAddingSongId] = useState("");
+  const [addingSong, setAddingSong] = useState(false);
+  const [playlistActionMsg, setPlaylistActionMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [savingDisplayName, setSavingDisplayName] = useState(false);
+  const [accountTier, setAccountTier] = useState("FREE");
+  const [ownedChassisIds, setOwnedChassisIds] = useState<MediaPlayerChassisId[]>([...FREE_SKIN_IDS]);
+  const [equippedChassisId, setEquippedChassisId] = useState<MediaPlayerChassisId>(FREE_DEFAULT_CHASSIS_ID);
+  const [skinOwnedTick, setSkinOwnedTick] = useState(0);
+  const [skinActionMsg, setSkinActionMsg] = useState<string | null>(null);
+  const skinsSectionRef = useRef<HTMLDivElement | null>(null);
   const { play: playGlobal, pause: pauseGlobal, seek: seekGlobal, setVolume: setVolumeGlobal, toggleMute: toggleMuteGlobal } = useAudio();
 
   const selectedPlaylist = useMemo(
@@ -134,10 +175,14 @@ export function PlaylistCanister({
         const sessionRes = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
         if (!sessionRes.ok || cancelled) return;
         const sessionData = (await sessionRes.json()) as {
-          user?: { id?: string; name?: string; email?: string };
+          user?: { id?: string; name?: string; email?: string; tier?: string };
+          tier?: string;
         };
         const email = sessionData.user?.email ?? null;
-        if (!cancelled) setSessionEmail(email);
+        if (!cancelled) {
+          setSessionEmail(email);
+          setAccountTier(sessionData.user?.tier ?? sessionData.tier ?? "FREE");
+        }
 
         let profileName: string | null = sessionData.user?.name?.trim() ?? null;
         const profileRes = await fetch("/api/user/profile", { credentials: "include", cache: "no-store" });
@@ -156,6 +201,72 @@ export function PlaylistCanister({
       cancelled = true;
     };
   }, [isOwner]);
+
+  // Media-player skins (chassis) — same inventory as PlaylistStudioContent MY PLAYLIST SKINS
+  useEffect(() => {
+    if (!isOwner) return;
+    return subscribeMediaPlayerInventory(() => {
+      setOwnedChassisIds(getOwnedChassisIds(entityId));
+      setEquippedChassisId(getEquippedChassisId(entityId));
+    });
+  }, [isOwner, entityId]);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    let active = true;
+    ensureDefaultMediaPlayer(entityId);
+    void hydrateMediaPlayerOwnership(entityId).then((state) => {
+      if (!active) return;
+      setEquippedChassisId(state.equippedChassisId);
+      setOwnedChassisIds(state.ownedChassisIds);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isOwner, entityId, skinOwnedTick]);
+
+  const membershipTier = useMemo(() => normalizeMembershipTier(accountTier), [accountTier]);
+
+  const equippableSkins = useMemo(() => {
+    void skinOwnedTick;
+    const ids = (Object.keys(MEDIA_PLAYER_CHASSIS_REGISTRY) as MediaPlayerChassisId[]).filter((id) =>
+      canEquipChassis(id, membershipTier as Parameters<typeof canEquipChassis>[1], ownedChassisIds),
+    );
+    return ids.map((id) => MEDIA_PLAYER_CHASSIS_REGISTRY[id]).filter(Boolean);
+  }, [membershipTier, ownedChassisIds, skinOwnedTick]);
+
+  const equipOwnedSkin = useCallback(
+    (skinId: MediaPlayerChassisId) => {
+      const c = MEDIA_PLAYER_CHASSIS_REGISTRY[skinId];
+      if (!c) return;
+      const equipped = equippedChassisId === skinId;
+      void (async () => {
+        if (equipped) {
+          await unequipChassisApi(entityId);
+          setSkinActionMsg(`Unequipped ${c.label} · Standard active.`);
+        } else {
+          const r = await equipChassisApi(entityId, skinId);
+          setSkinActionMsg(r.ok ? `Equipped ${c.label}.` : r.message ?? "Cannot equip");
+        }
+        setSkinOwnedTick((n) => n + 1);
+        setEquippedChassisId(getEquippedChassisId(entityId));
+      })();
+    },
+    [entityId, equippedChassisId],
+  );
+
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const section = (e as CustomEvent<{ section?: string }>).detail?.section;
+      if (section === "skins") {
+        window.setTimeout(() => {
+          skinsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 120);
+      }
+    };
+    window.addEventListener("tmi:playlist-studio-focus", onFocus);
+    return () => window.removeEventListener("tmi:playlist-studio-focus", onFocus);
+  }, []);
 
   const editDisplayName = async () => {
     const next = window.prompt("Your display name on playlists and casts:", publicOwnerName);
@@ -300,19 +411,20 @@ export function PlaylistCanister({
   const loadPlaylists = useCallback(async () => {
     setLoadingPlaylists(true);
     try {
-      const res = await fetch("/api/user/content", { cache: "no-store" });
+      const res = await fetch("/api/user/content", { cache: "no-store", credentials: "include" });
       if (res.ok) {
-        const data = await res.json() as { playlists?: ApiPlaylistSummary[] };
+        const data = await res.json() as { playlists?: ApiPlaylistSummary[]; songs?: UserLibrarySong[] };
         const list = data.playlists ?? [];
         setPlaylists(list);
         setSelectedId((prev) => prev ?? list[0]?.id ?? null);
+        if (isOwner) setUserLibrarySongs(data.songs ?? []);
       }
     } catch {
       /* honest fallback: empty playlist state */
     } finally {
       setLoadingPlaylists(false);
     }
-  }, []);
+  }, [isOwner]);
 
   useEffect(() => {
     void loadPlaylists();
@@ -329,7 +441,7 @@ export function PlaylistCanister({
     setLoadingTracks(true);
     (async () => {
       try {
-        const res = await fetch(`/api/user/playlists/${selectedId}/songs`, { cache: "no-store" });
+        const res = await fetch(`/api/user/playlists/${selectedId}/songs`, { cache: "no-store", credentials: "include" });
         if (!res.ok || cancelled) return;
         const data = await res.json() as { items?: { song: ApiSong }[] };
         setTracks((data.items ?? []).map((i) => i.song));
@@ -345,25 +457,169 @@ export function PlaylistCanister({
     };
   }, [selectedId]);
 
-  const createPlaylist = async () => {
-    const name = window.prompt("Playlist name?");
-    if (!name?.trim()) return;
+  const reloadSelectedTracks = useCallback(async () => {
+    if (!selectedId) return;
+    setLoadingTracks(true);
+    try {
+      const res = await fetch(`/api/user/playlists/${selectedId}/songs`, { cache: "no-store", credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { items?: { song: ApiSong }[] };
+      setTracks((data.items ?? []).map((i) => i.song));
+    } catch {
+      setTracks([]);
+    } finally {
+      setLoadingTracks(false);
+    }
+  }, [selectedId]);
+
+  const createPlaylist = async (nameOverride?: string) => {
+    const name = (nameOverride ?? newPlaylistName).trim();
+    if (!name) {
+      setPlaylistActionMsg("Enter a playlist name first.");
+      return;
+    }
     setCreatingPlaylist(true);
+    setPlaylistActionMsg(null);
     try {
       const res = await fetch("/api/user/content", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
+        credentials: "include",
+        body: JSON.stringify({ name }),
       });
       if (res.ok) {
-        const data = await res.json() as { playlist: { id: string } };
+        const data = await res.json() as { playlist: { id: string; name: string } };
         await loadPlaylists();
         setSelectedId(data.playlist.id);
+        setNewPlaylistName("");
+        setPlaylistActionMsg(`Created playlist "${data.playlist.name}". Add songs below.`);
+      } else {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setPlaylistActionMsg(err.error ?? "Could not create playlist. Sign in and try again.");
       }
     } finally {
       setCreatingPlaylist(false);
     }
   };
+
+  const addSongToSelectedPlaylist = async () => {
+    if (!selectedId || !addingSongId) return;
+    setAddingSong(true);
+    setPlaylistActionMsg(null);
+    try {
+      const res = await fetch(`/api/user/playlists/${selectedId}/songs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ songId: addingSongId }),
+      });
+      if (res.ok) {
+        const added = userLibrarySongs.find((s) => s.id === addingSongId);
+        await reloadSelectedTracks();
+        await loadPlaylists();
+        setAddingSongId("");
+        setPlaylistActionMsg(added ? `Added "${added.title}" to playlist.` : "Song added to playlist.");
+      } else {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setPlaylistActionMsg(err.error ?? "Could not add song to playlist.");
+      }
+    } finally {
+      setAddingSong(false);
+    }
+  };
+
+  const addableLibrarySongs = useMemo(
+    () => userLibrarySongs.filter((s) => !tracks.some((t) => t.id === s.id)),
+    [userLibrarySongs, tracks],
+  );
+
+  const skinsSection = isOwner ? (
+    <div
+      ref={skinsSectionRef}
+      data-playlist-skins-section
+      style={{
+        background: "rgba(10,5,25,0.65)",
+        border: "1px solid rgba(170,45,255,0.35)",
+        borderRadius: 12,
+        padding: isCompact ? 10 : 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <div
+          style={{
+            fontSize: isCompact ? 9 : 10,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            color: "#AA2DFF",
+          }}
+        >
+          MY PLAYLIST SKINS
+        </div>
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+          Player appearance — not playlist content. Switching skins never resets your playlists.
+        </div>
+      </div>
+      {equippableSkins.length === 0 ? (
+        <div
+          style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.45)",
+            padding: "10px 8px",
+            borderRadius: 8,
+            border: "1px dashed rgba(255,255,255,0.15)",
+            lineHeight: 1.45,
+          }}
+        >
+          No player styles unlocked yet. Free styles appear after sign-in.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {equippableSkins.map((c) => {
+            const equipped = equippedChassisId === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => equipOwnedSkin(c.id)}
+                style={{
+                  fontSize: 8,
+                  fontWeight: 900,
+                  letterSpacing: "0.06em",
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  border: equipped ? `1px solid ${c.accent}` : "1px solid rgba(255,255,255,0.12)",
+                  background: equipped ? `${c.accent}22` : "rgba(255,255,255,0.03)",
+                  color: equipped ? c.accent : "rgba(255,255,255,0.55)",
+                  fontFamily: "inherit",
+                }}
+              >
+                {c.icon} {c.label.replace(/^TMI /, "")}
+                {equipped ? " · ACTIVE" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {skinActionMsg ? (
+        <div
+          style={{
+            fontSize: 10,
+            color:
+              skinActionMsg.includes("Cannot") || skinActionMsg.includes("Not enough")
+                ? "#ffb0b0"
+                : "#9dffc8",
+            lineHeight: 1.4,
+          }}
+        >
+          {skinActionMsg}
+        </div>
+      ) : null}
+    </div>
+  ) : null;
 
   const openShare = async () => {
     setShareStatus(null);
@@ -421,7 +677,7 @@ export function PlaylistCanister({
             {libraryHeader}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist} style={actionBtn("#00FF88")}>
+            <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist || !newPlaylistName.trim()} style={actionBtn("#00FF88")}>
               {creatingPlaylist ? "…" : "+ PLAYLIST"}
             </button>
             <button type="button" onClick={() => sendPlaybackCommand("open-full")} style={actionBtn("#FFD700")}>
@@ -429,6 +685,34 @@ export function PlaylistCanister({
             </button>
           </div>
         </div>
+        {isOwner ? (
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              type="text"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              placeholder="New playlist name…"
+              onKeyDown={(e) => { if (e.key === "Enter") void createPlaylist(); }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: "6px 8px",
+                borderRadius: 6,
+                border: `1px solid ${accentColor}44`,
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                fontSize: 9,
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+        ) : null}
+        {playlistActionMsg ? (
+          <div style={{ fontSize: 9, color: playlistActionMsg.includes("Could not") ? "#ffb0b0" : "#9dffc8", lineHeight: 1.4 }}>
+            {playlistActionMsg}
+          </div>
+        ) : null}
         <input
           type="search"
           placeholder="Search songs / playlists…"
@@ -532,6 +816,49 @@ export function PlaylistCanister({
             ))
           )}
         </div>
+        {isOwner && selectedId ? (
+          addableLibrarySongs.length > 0 ? (
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <select
+                value={addingSongId}
+                onChange={(e) => setAddingSongId(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: "rgba(255,255,255,0.07)",
+                  border: `1px solid ${accentColor}44`,
+                  borderRadius: 6,
+                  padding: "5px 8px",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value="">— add a song —</option>
+                {addableLibrarySongs.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void addSongToSelectedPlaylist()}
+                disabled={addingSong || !addingSongId}
+                style={actionBtn("#AA2DFF")}
+              >
+                {addingSong ? "…" : "ADD"}
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 4, lineHeight: 1.4 }}>
+              {userLibrarySongs.length === 0
+                ? role === "performer"
+                  ? "Upload songs in Media Locker, then add them to this playlist here."
+                  : "Upload songs to your library first, then add them to this playlist here."
+                : "All your uploaded songs are already in this playlist."}
+            </div>
+          )
+        ) : null}
+        {skinsSection}
         {activeTrack && !playableUrl ? (
           <div style={{ fontSize: 9, color: "rgba(255,180,180,0.8)", padding: "4px 0" }}>
             No playable audio for this track.
@@ -779,10 +1106,10 @@ export function PlaylistCanister({
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
-              PLAYLIST LIBRARY
+              MY PLAYLISTS
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist} style={actionBtn("#00FF88")}>
+              <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist || !newPlaylistName.trim()} style={actionBtn("#00FF88")}>
                 {creatingPlaylist ? "…" : "+ ADD PLAYLIST"}
               </button>
               <button type="button" onClick={() => void openShare()} disabled={!activeTrack} style={actionBtn("#00FFFF")}>
@@ -790,6 +1117,42 @@ export function PlaylistCanister({
               </button>
             </div>
           </div>
+
+          {isOwner ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="New playlist name…"
+                onKeyDown={(e) => { if (e.key === "Enter") void createPlaylist(); }}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.35)",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void createPlaylist()}
+                disabled={creatingPlaylist || !newPlaylistName.trim()}
+                style={actionBtn("#00FF88")}
+              >
+                {creatingPlaylist ? "…" : "CREATE"}
+              </button>
+            </div>
+          ) : null}
+          {playlistActionMsg ? (
+            <div style={{ fontSize: 10, color: playlistActionMsg.includes("Could not") ? "#ffb0b0" : "#9dffc8", lineHeight: 1.4 }}>
+              {playlistActionMsg}
+            </div>
+          ) : null}
 
           {loadingPlaylists ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
@@ -895,7 +1258,7 @@ export function PlaylistCanister({
               </div>
             ) : tracks.length === 0 ? (
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", padding: "12px 4px", textAlign: "center" }}>
-                {selectedId ? "No tracks in this playlist yet." : "Select a playlist to see its tracks."}
+                {selectedId ? "No tracks in this playlist yet — add one below." : "Select a playlist to see its tracks."}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -929,6 +1292,48 @@ export function PlaylistCanister({
                 })}
               </div>
             )}
+            {isOwner && selectedId ? (
+              addableLibrarySongs.length > 0 ? (
+                <div style={{ display: "flex", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <select
+                    value={addingSongId}
+                    onChange={(e) => setAddingSongId(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      background: "rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: 6,
+                      padding: "6px 8px",
+                      color: "#fff",
+                      fontSize: 10,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <option value="">— add a song from your library —</option>
+                    {addableLibrarySongs.map((s) => (
+                      <option key={s.id} value={s.id}>{s.title}{s.genre ? ` · ${s.genre}` : ""}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void addSongToSelectedPlaylist()}
+                    disabled={addingSong || !addingSongId}
+                    style={actionBtn("#AA2DFF")}
+                  >
+                    {addingSong ? "…" : "ADD TO PLAYLIST"}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.45 }}>
+                  {userLibrarySongs.length === 0
+                    ? role === "performer"
+                      ? "Upload songs in Media Locker, then add them to this playlist here."
+                      : "Upload songs to your library first, then add them to this playlist here."
+                    : "Every song in your library is already in this playlist."}
+                </div>
+              )
+            ) : null}
           </div>
 
           {/* EQUALIZER */}
@@ -984,6 +1389,8 @@ export function PlaylistCanister({
           </div>
         </div>
       </div>
+
+      {skinsSection}
 
       {/* Share Modal Overlay */}
       {shareOpen ? (

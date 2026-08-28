@@ -19,3 +19,21 @@ export function shareSlotTargetsCell(
   if (shareSlot.cellIndex === -1) return cellIndex === -1;
   return shareSlot.cellIndex === cellIndex;
 }
+
+/** Screen-share capture / lifecycle errors — real UI states, never silent dead buttons. */
+export type ScreenShareErrorCode =
+  | "cancelled"
+  | "denied"
+  | "ended"
+  | "unsupported"
+  | "audio_unavailable"
+  | "track_disconnected"
+  | null;
+
+export interface ScreenShareSource {
+  id: string;
+  label: string;
+  stream: MediaStream;
+  alive: boolean;
+  hasAudio: boolean;
+}

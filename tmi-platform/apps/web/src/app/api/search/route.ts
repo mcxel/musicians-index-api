@@ -9,6 +9,7 @@ import { getAnchorDiscoveryRecords } from '@/lib/live/AnchorRoomNetwork';
 import { getAllGenreDiscoveryRecords } from '@/lib/live/performerGenreRoomNetwork';
 import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
 import { liveSessionToDiscoveryRecord } from '@/lib/discovery/DiscoveryPublisher';
+import { canonicalPublicPath } from '@/lib/identity/PublicProfileRuntime';
 import type { LiveDiscoveryRecord } from '@/lib/discovery/LiveDiscoveryRecord';
 
 /**
@@ -178,7 +179,7 @@ async function searchProfiles(q: string, type: 'performers' | 'fans'): Promise<U
       role: true,
       tier: true,
       isLive: true,
-      userProfile: { select: { avatarUrl: true, location: true } },
+        userProfile: { select: { avatarUrl: true, location: true, username: true } },
       artistProfile: { select: { slug: true, stageName: true, genres: true, verified: true, followers: true } },
     },
     take: 20,
@@ -186,11 +187,9 @@ async function searchProfiles(q: string, type: 'performers' | 'fans'): Promise<U
   });
 
   return users.map((u) => {
-    const isPerformer = PERFORMER_ROLES.includes(u.role);
     const name = u.artistProfile?.stageName ?? u.displayName ?? u.name ?? 'TMI Member';
-    const profileRoute = isPerformer
-      ? `/profile/performer/${u.artistProfile?.slug ?? u.id}`
-      : `/profile/fan/${u.id}`;
+    const slug = u.artistProfile?.slug ?? u.userProfile?.username ?? u.id.slice(0, 8);
+    const profileRoute = canonicalPublicPath(slug);
     return {
       id: u.id,
       kind: 'profile' as const,

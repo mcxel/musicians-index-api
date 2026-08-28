@@ -14,7 +14,8 @@
  *   4. Zero document layout mutation (Δx=0, Δy=0, Δwidth=0, Δheight=0 for venue viewport).
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   HudCommandBus,
   resolveHudCapabilities,
@@ -23,6 +24,8 @@ import {
   type HudPresentationState,
   type UserRoleCapability,
 } from "@/lib/venue-hud/TMIExperienceHudRuntime";
+import VenueHUDParticipantRail, { type PresenceParticipant } from "./VenueHUDParticipantRail";
+import VenueControlConsole, { type GoLiveQuality, type ExperienceMode } from "./VenueControlConsole";
 import { resolveParticipationHudActions } from "@/lib/venue-hud/HudActionRegistry";
 import {
   joinQueue as joinQueueEngine,
@@ -36,6 +39,11 @@ import {
   resolveHostControlCapabilities,
 } from "@/lib/live/HostRoomControlBridge";
 import { resolveVotingOpen } from "@/lib/live/ParticipationVotingBridge";
+import CompactVotingPanel from "@/components/voting/CompactVotingPanel";
+import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
+import InRoomMixerPanel from "@/components/venue-hud/InRoomMixerPanel";
+import { ChannelMixerDirector } from "@/lib/audio/mixer";
+import { ensureMixerHealthRegistered } from "@/lib/audio/mixer";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -44,6 +52,8 @@ const GREEN = "#00FF88";
 const RED = "#FF4466";
 
 export interface TMIInteractiveVenueHudProps {
+  /** Real room presence participants — no fake data (Rule 20) */
+  roomPresence?: PresenceParticipant[];
   roomId: string;
   roomTitle: string;
   experienceType?: ExperienceType;
@@ -81,6 +91,7 @@ export default function TMIInteractiveVenueHud({
   humanViewerCount = 0,
   isPreview = false,
   testOccupancyLabel = null,
+  roomPresence = [],
 }: TMIInteractiveVenueHudProps) {
   const [hudState, setHudState] = useState<HudPresentationState>("PRE_LIVE");
   const [broadcastState, setBroadcastState] = useState<BroadcastState>("IDLE");
@@ -96,6 +107,15 @@ export default function TMIInteractiveVenueHud({
   const [liveVotingOpen, setLiveVotingOpen] = useState(votingOpen);
   const [spotlightOn, setSpotlightOn] = useState(false);
   const [audienceAudioOn, setAudienceAudioOn] = useState(true);
+  const [chatInput, setChatInput] = useState("");
+  const [consoleMicMuted, setConsoleMicMuted] = useState(false);
+  const [consoleCameraOff, setConsoleCameraOff] = useState(false);
+  const [consoleQuality, setConsoleQuality] = useState<GoLiveQuality>("720p");
+  const [consoleMode, setConsoleMode] = useState<ExperienceMode>(experienceType as ExperienceMode);
+  const [mixerOpen, setMixerOpen] = useState(false);
+  const [mixerFocusParticipantId, setMixerFocusParticipantId] = useState<string | null>(null);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const capabilities = useMemo(() => resolveHudCapabilities(role), [role]);
 
@@ -139,6 +159,32 @@ export default function TMIInteractiveVenueHud({
   useEffect(() => {
     syncQueueCount();
   }, [syncQueueCount]);
+
+  useEffect(() => {
+    ChannelMixerDirector.bindSession({
+      roomId,
+      liveSessionId: `live:${roomId}`,
+      experienceType,
+    });
+    ensureMixerHealthRegistered();
+    ChannelMixerDirector.syncRoster(
+      roomPresence.map((p) => ({
+        participantId: p.id,
+        displayName: p.displayName,
+        role: p.role,
+        // hasRealSource omitted — LiveRoomMixerBind sets true only when a real WebRTC track attaches
+      })),
+    );
+  }, [roomId, experienceType, roomPresence]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 720px)");
+    const apply = () => setIsCompactViewport(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
 
   useEffect(() => {
     setLocalParticipation(participationState);
@@ -387,6 +433,8 @@ export default function TMIInteractiveVenueHud({
   };
 
   const handleGoLive = () => {
+    setConsoleMicMuted(micMuted);
+    setConsoleCameraOff(cameraOff);
     void HudCommandBus.execute("GO_LIVE");
   };
 
@@ -396,6 +444,17 @@ export default function TMIInteractiveVenueHud({
 
   const toggleCleanStage = () => {
     setHudState((current) => (current === "CLEAN_STAGE" ? "LIVE_VISIBLE" : "CLEAN_STAGE"));
+  };
+
+  const handleSendChat = () => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    // Emit chat event to room messaging — real rooms consume tmi:chat:send
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("tmi:chat:send", { detail: { roomId, message: msg } }));
+    }
+    setChatInput("");
+    chatInputRef.current?.focus();
   };
 
   const isCleanStage = hudState === "CLEAN_STAGE";
@@ -431,7 +490,42 @@ export default function TMIInteractiveVenueHud({
       </div>
 
       {/* PERMANENT HUD RECALL CONTROL ([ ◰ HUD ] / [ ◱ HIDE HUD ]) IN TOP-RIGHT EDGE */}
-      <div style={{ position: "absolute", top: 12, right: 12, pointerEvents: "auto", zIndex: 120 }}>
+      <div style={{ position: "absolute", top: 12, right: 12, pointerEvents: "auto", zIndex: 120, display: "flex", gap: 8, alignItems: "center" }}>
+        {(isRoomOwner || role === "performer") && hudState !== "PRE_LIVE" ? (
+          <VenueToolsToggleButton
+            accent={GREEN}
+            roomId={roomId}
+            role={role === "performer" ? "performer" : "fan"}
+            policyContext={{ isGoLiveContext: true }}
+            testId="tmi-venue-tools-venue-hud"
+            style={{
+              padding: "6px 12px",
+              borderRadius: 20,
+              fontSize: 10,
+              minHeight: 36,
+            }}
+          />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setMixerOpen((v) => !v)}
+          title="In-room audio mixer"
+          style={{
+            padding: "6px 12px",
+            borderRadius: 20,
+            border: `1.5px solid ${mixerOpen ? GOLD : CYAN}`,
+            background: "rgba(6,6,20,0.85)",
+            color: mixerOpen ? GOLD : CYAN,
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+          }}
+          data-testid="venue-hud-audio-btn-recall"
+        >
+          🔊 AUDIO
+        </button>
         <button
           type="button"
           onClick={toggleCleanStage}
@@ -457,8 +551,59 @@ export default function TMIInteractiveVenueHud({
         </button>
       </div>
 
-      {/* PRE-LIVE CENTERED CONTROL DECK */}
+      {/* Mixer mounts at HUD root — available PRE_LIVE + LIVE (toggle, no navigation) */}
+      <InRoomMixerPanel
+        roomId={roomId}
+        liveSessionId={`live:${roomId}`}
+        experienceType={experienceType}
+        auth={{
+          userId: payloadUserId(),
+          role: isRoomOwner
+            ? "host"
+            : role === "admin"
+              ? "admin"
+              : role === "host"
+                ? "host"
+                : role === "fan"
+                  ? "fan"
+                  : "performer",
+          isRoomOwner,
+        }}
+        open={mixerOpen}
+        onClose={() => {
+          setMixerOpen(false);
+          setMixerFocusParticipantId(null);
+        }}
+        focusParticipantId={mixerFocusParticipantId}
+        compact={isCompactViewport}
+      />
+
+      {/* PRE-LIVE CENTERED CONTROL CONSOLE (VenueControlConsole) */}
+      <AnimatePresence>
       {hudState === "PRE_LIVE" && (
+        <VenueControlConsole
+          roomTitle={roomTitle}
+          experienceMode={consoleMode}
+          onExperienceModeChange={(m) => setConsoleMode(m)}
+          micMuted={consoleMicMuted}
+          cameraOff={consoleCameraOff}
+          quality={consoleQuality}
+          onToggleMic={() => {
+            setConsoleMicMuted((v) => !v);
+            void HudCommandBus.execute("TOGGLE_MIC");
+          }}
+          onToggleCamera={() => {
+            setConsoleCameraOff((v) => !v);
+            void HudCommandBus.execute("TOGGLE_CAMERA");
+          }}
+          onQualityChange={(q) => setConsoleQuality(q)}
+          isConnecting={broadcastState === "CONNECTING"}
+          onGoLive={handleGoLive}
+        />
+      )}
+      </AnimatePresence>
+      {/* LEGACY inline pre-live block — KEPT for backward compat, only shows when VenueControlConsole is not visible */}
+      {false && hudState === "PRE_LIVE" && (
         <div
           style={{
             position: "absolute",
@@ -590,25 +735,34 @@ export default function TMIInteractiveVenueHud({
         </div>
       )}
 
-      {/* LIVE PERIMETER HUD RAILS (VISIBLE WHEN LIVE & NOT CLEAN_STAGE) */}
+      {/* LIVE PERIMETER HUD RAILS — animated reveal from perimeter (video-reference: 1.75 sec+) */}
+      <AnimatePresence>
       {broadcastState === "LIVE" && !isCleanStage && (
         <>
-          {/* TOP STATUS RAIL */}
-          <div
+          {/* TOP STATUS RAIL — video-reference: x 52→1228, y 34→100, 9.2% height */}
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
             style={{
               position: "absolute",
-              top: 12,
-              left: 12,
-              right: 120, // Keep space for HUD recall button in top right
-              height: 44,
+              top: "4.7%",
+              left: "4.1%",
+              right: "calc(4.1% + 90px)", // Keep space for HUD recall button
+              height: "9.2%",
+              minHeight: 44,
+              maxHeight: 66,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "0 14px",
-              borderRadius: 14,
-              border: `1px solid ${CYAN}44`,
-              background: "rgba(6,6,20,0.88)",
-              backdropFilter: "blur(10px)",
+              padding: "0 16px",
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(12,14,22,0.68)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 2px 16px rgba(0,0,0,0.45)",
               pointerEvents: "auto",
             }}
           >
@@ -640,36 +794,50 @@ export default function TMIInteractiveVenueHud({
               <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{roomTitle}</span>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 10, color: isPreview ? GOLD : CYAN, fontWeight: 800 }}>
-                {isPreview && testOccupancyLabel
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ fontSize: 10, color: isPreview ? GOLD : CYAN, fontWeight: 800 }}>{
+                isPreview && testOccupancyLabel
                   ? testOccupancyLabel
-                  : `👁 ${humanViewerCount > 0 ? humanViewerCount.toLocaleString() : "—"}`}
-              </span>
-              <span style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}>
+                  : `👁 ${humanViewerCount > 0 ? humanViewerCount.toLocaleString() : "—"}`
+              }</span>
+              {/* Reaction counter — pulses on increment (video-reference: x ~1080–1216, y ~120–163) */}
+              <motion.span
+                key={reactionCount}
+                animate={{ scale: [1, 1.12, 1] }}
+                transition={{ duration: 0.2 }}
+                style={{ fontSize: 10, color: FUCHSIA, fontWeight: 800 }}
+              >
                 ♥ {reactionCount.toLocaleString()}
-              </span>
+              </motion.span>
               {queueCount > 0 && (
                 <span style={{ fontSize: 10, color: GOLD, fontWeight: 800 }}>Q {queueCount}</span>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* LEFT CONTROL RAIL */}
-          <div
+          {/* LEFT CONTROL RAIL — video-reference: x 61→118, y 118→611 */}
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: 0.04 }}
             style={{
               position: "absolute",
-              top: 68,
-              left: 12,
-              width: 46,
+              top: "calc(4.7% + 9.2% + 12px)",
+              left: "4.1%",
+              width: "4.3%",
+              minWidth: 44,
+              maxWidth: 56,
               display: "flex",
               flexDirection: "column",
               gap: 8,
               padding: 8,
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(6,6,20,0.88)",
-              backdropFilter: "blur(10px)",
+              borderRadius: 20,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(12,14,22,0.62)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 2px 16px rgba(0,0,0,0.4)",
               pointerEvents: "auto",
             }}
           >
@@ -725,20 +893,42 @@ export default function TMIInteractiveVenueHud({
                 </button>
               </>
             )}
-          </div>
+          </motion.div>
 
-          {/* RIGHT EXPERIENCE CONTEXT MODULE RAIL */}
-          <div
+          {/* RIGHT — PARTICIPANT PRESENCE RAIL (video-reference: x 1165→1220, y 185→630) */}
+          <VenueHUDParticipantRail
+            participants={roomPresence}
+            onParticipantTap={(p) => {
+              setStatusLine(`${p.displayName} · ${p.role ?? "participant"} · mixer`);
+              setMixerFocusParticipantId(p.id);
+              setMixerOpen(true);
+              ChannelMixerDirector.upsertParticipantChannel({
+                participantId: p.id,
+                displayName: p.displayName,
+                role: p.role,
+                hasRealSource: p.isConnected !== false,
+              });
+            }}
+          />
+
+          {/* RIGHT EXPERIENCE CONTEXT MODULE (compact overlay, not full rail) */}
+          <motion.div
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: 0.06 }}
             style={{
               position: "absolute",
-              top: 68,
-              right: 12,
-              width: 160,
+              top: "calc(4.7% + 9.2% + 12px)",
+              right: "calc(4.1% + 50px)", // shifted left of participant rail
+              width: 130,
               padding: 10,
               borderRadius: 14,
-              border: `1px solid ${CYAN}33`,
-              background: "rgba(6,6,20,0.88)",
-              backdropFilter: "blur(10px)",
+              border: `1px solid ${CYAN}22`,
+              background: "rgba(12,14,22,0.62)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
               pointerEvents: "auto",
               display: "flex",
               flexDirection: "column",
@@ -827,197 +1017,189 @@ export default function TMIInteractiveVenueHud({
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
-          {/* BOTTOM INTERACTION RAIL */}
-          <div
+          {/* VOTING PANEL — floats above bottom dock when voting is open */}
+          {liveVotingOpen && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "calc(4.7% + 80px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                pointerEvents: "auto",
+                zIndex: 110,
+              }}
+            >
+              <CompactVotingPanel
+                voteId={battleId ? `vote-battle-${battleId}` : `vote-room-${roomId}`}
+                title={experienceType === "CYPHER" ? "REACT" : "VOTE"}
+                choices={
+                  experienceType === "CYPHER"
+                    ? [
+                        { id: "fire", label: "\uD83D\uDD25 Fire" },
+                        { id: "love", label: "\u2764\uFE0F Love It" },
+                      ]
+                    : [
+                        { id: "a", label: "Contestant A" },
+                        { id: "b", label: "Contestant B" },
+                      ]
+                }
+                opensAt={Date.now()}
+                closesAt={Date.now() + 30_000}
+                allowWinnerVote={experienceType !== "CYPHER"}
+                onVoteCast={(choiceId) => setStatusLine(`Voted \u2713 \u00b7 ${choiceId}`)}
+              />
+            </div>
+          )}
+
+          {/* BOTTOM DOCK — video-reference: x 52→1228, y 640→698, 8.7% from bottom */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: 0.10 }}
             style={{
               position: "absolute",
-              bottom: 12,
-              left: 12,
-              right: 12,
-              height: 52,
+              bottom: "4.7%",
+              left: "4.1%",
+              right: "4.1%",
+              minHeight: 52,
+              maxHeight: 70,
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              padding: "0 14px",
-              borderRadius: 14,
-              border: `1px solid ${CYAN}44`,
-              background: "rgba(6,6,20,0.88)",
-              backdropFilter: "blur(10px)",
+              gap: 8,
+              padding: "0 12px",
+              borderRadius: 20,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(12,14,22,0.65)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 2px 16px rgba(0,0,0,0.4)",
               pointerEvents: "auto",
             }}
           >
-            {/* Reaction Trigger Bar */}
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-              {["🔥", "❤️", "👏", "💎"].map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => HudCommandBus.execute("EMIT_REACTION", { params: { emoji } })}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: "rgba(255,255,255,0.06)",
-                    fontSize: 16,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-              {competition && (role === "performer" || role === "admin") && !isRoomOwner && (
-                <button
-                  type="button"
-                  title="Join Queue"
-                  disabled={localParticipation === "QUEUED" || localParticipation === "READY" || localParticipation === "ON_STAGE"}
-                  onClick={() => HudCommandBus.execute("JOIN_QUEUE")}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 14,
-                    border: `1px solid ${FUCHSIA}`,
-                    background: `${FUCHSIA}22`,
-                    color: FUCHSIA,
-                    fontSize: 10,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
-                >
-                  📋 QUEUE
-                </button>
-              )}
-              {role === "fan" && (
-                <>
-                <button
-                  type="button"
-                  title={liveVotingOpen ? "Vote" : "Voting closed"}
-                  disabled={!liveVotingOpen}
-                  onClick={() => HudCommandBus.execute("VOTE")}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 14,
-                    border: `1px solid ${liveVotingOpen ? GOLD : "rgba(255,255,255,0.2)"}`,
-                    background: liveVotingOpen ? `${GOLD}22` : "rgba(255,255,255,0.04)",
-                    color: liveVotingOpen ? GOLD : "rgba(255,255,255,0.35)",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    cursor: liveVotingOpen ? "pointer" : "not-allowed",
-                  }}
-                >
-                  🗳️ VOTE
-                </button>
-                <button
-                  type="button"
-                  title="Tip performer / DJ"
-                  onClick={() => {
-                    const tipUrl = `/api/stripe/checkout?priceId=price_tip&amount=500&mode=payment&type=tip&roomId=${encodeURIComponent(roomId)}&productName=${encodeURIComponent(`Tip · ${roomTitle}`)}`;
-                    window.location.href = tipUrl;
-                  }}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 14,
-                    border: `1px solid ${FUCHSIA}`,
-                    background: `${FUCHSIA}22`,
-                    color: FUCHSIA,
-                    fontSize: 10,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
-                >
-                  💎 TIP
-                </button>
-                </>
-              )}
-              {(isRoomOwner || role === "host" || role === "admin") && (
-                <>
-                  {hudActions
-                    .filter((a) =>
-                      [
-                        "reorder_queue",
-                        "audience_mute",
-                        "audience_audio",
-                        "participant_mic",
-                        "allow_reactions",
-                        "allow_voting",
-                        "lock_entry",
-                        "toggle_qa",
-                      ].includes(a.id),
-                    )
-                    .map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        title={a.reason ?? a.label}
-                        disabled={!a.enabled}
-                        onClick={() => {
-                          if (!a.enabled) {
-                            setStatusLine(a.reason ?? "Unavailable");
-                            return;
-                          }
-                          executeParticipationAction(a.id);
-                        }}
-                        style={{
-                          padding: "6px 8px",
-                          borderRadius: 14,
-                          border: `1px solid ${a.enabled ? CYAN : "rgba(255,255,255,0.2)"}`,
-                          background: a.enabled ? `${CYAN}18` : "rgba(255,255,255,0.04)",
-                          color: a.enabled ? CYAN : "rgba(255,255,255,0.35)",
-                          fontSize: 9,
-                          fontWeight: 900,
-                          cursor: a.enabled ? "pointer" : "not-allowed",
-                          opacity: a.enabled ? 1 : 0.45,
-                        }}
-                      >
-                        {a.icon} {a.label}
-                      </button>
-                    ))}
-                </>
-              )}
-              {(localParticipation === "QUEUED" || localParticipation === "READY") && myQueuePos != null && (
-                <span
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 14,
-                    border: `1px solid ${GOLD}66`,
-                    background: `${GOLD}14`,
-                    color: GOLD,
-                    fontSize: 10,
-                    fontWeight: 900,
-                  }}
-                >
-                  📋 #{myQueuePos} · watching
-                </span>
-              )}
-            </div>
+            {/* HUD family: AUDIO toggles same ChannelMixerDirector panel */}
+            <button
+              type="button"
+              title="Audio mixer"
+              onClick={() => setMixerOpen((v) => !v)}
+              style={{
+                ...iconChip(mixerOpen ? GOLD : CYAN),
+                flexShrink: 0,
+                padding: "6px 10px",
+              }}
+              data-testid="venue-hud-audio-btn"
+            >
+              🔊 AUDIO
+            </button>
 
-            {/* Performer Action Button */}
-            {capabilities.canEndLive && (
-              <button
+            {/* Chat input — video-reference: x ~266–422, y ~647–695 */}
+            <input
+              ref={chatInputRef}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSendChat(); }}
+              placeholder="Type comment..."
+              style={{
+                flex: 1,
+                minWidth: 80,
+                maxWidth: 200,
+                height: 34,
+                borderRadius: 17,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "#fff",
+                fontSize: 11,
+                padding: "0 12px",
+                outline: "none",
+                fontFamily: "inherit",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleSendChat}
+              disabled={!chatInput.trim()}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                border: `1px solid ${CYAN}44`,
+                background: chatInput.trim() ? `${CYAN}22` : "rgba(255,255,255,0.04)",
+                color: chatInput.trim() ? CYAN : "rgba(255,255,255,0.25)",
+                fontSize: 14,
+                cursor: chatInput.trim() ? "pointer" : "default",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.15s",
+                flexShrink: 0,
+              }}
+            >
+              ➤
+            </button>
+
+            {/* Circular leave/end — video-reference: center x~1198, y~672, diameter~43 */}
+            {capabilities.canEndLive ? (
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={handleEndLive}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: 18,
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
                   border: `1px solid ${RED}`,
                   background: `${RED}22`,
                   color: RED,
-                  fontSize: 11,
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
+                  fontSize: 16,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: `0 0 12px ${RED}44`,
+                  flexShrink: 0,
                 }}
+                title="End broadcast"
               >
-                ⏹ END LIVE
-              </button>
+                ⏹
+              </motion.button>
+            ) : (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("tmi:room:leave", { detail: { roomId } }));
+                  }
+                  setStatusLine("Leaving room...");
+                }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  border: `1px solid #F53E5C`,
+                  background: `#F53E5C22`,
+                  color: "#F53E5C",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: `0 0 12px #F53E5C44`,
+                  flexShrink: 0,
+                }}
+                title="Leave room"
+              >
+                🚪
+              </motion.button>
             )}
-          </div>
+          </motion.div>
         </>
       )}
+      </AnimatePresence>
 
       {statusLine ? (
         <div

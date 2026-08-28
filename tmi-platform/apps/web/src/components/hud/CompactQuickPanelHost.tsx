@@ -15,6 +15,7 @@ import CanonicalQuickPanelContent from "@/components/workspace/universal/Canonic
 import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonicalPresentation";
 import SnipsSwipeOverlay from "@/components/hud/panels/SnipsSwipeOverlay";
 import StreamWinMosaicPanel from "@/components/commandCenter/StreamWinMosaicPanel";
+import VenueToolsPanelHost from "@/components/hud/VenueToolsPanelHost";
 
 export interface CompactQuickPanelHostProps {
   userId: string;
@@ -48,8 +49,14 @@ export default function CompactQuickPanelHost({
     );
   }
 
+  if (activePanel === "venue") {
+    return (
+      <VenueToolsPanelHost userId={userId} role={role} />
+    );
+  }
+
   const workspaceMap = {
-    lobbies: { ws: "lobby" as const, title: "LOBBIES", accent: "#FF2DAA" },
+    lobbies: { ws: "lobby" as const, title: "LOBBIES / DISCOVERY", accent: "#FF2DAA" },
     avatar: { ws: "inventory" as const, title: "AVATAR", accent: "#00E5FF" },
     "memory-wall": { ws: "memory-wall" as const, title: "MEMORY WALL", accent: "#AA2DFF" },
     yopho: { ws: "yopho" as const, title: "YOPHO", accent: "#FF2DAA" },

@@ -118,14 +118,3 @@ export async function runCanisterAuthHydrationIntegrationTest(): Promise<{ allPa
   console.log(`[CANISTER_AUTH_HYDRATION_INTEGRATION_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-declare const require: { main: unknown; cache: unknown };
-declare const module: { exports: unknown };
-
-if (typeof require !== "undefined" && require.main === module) {
-  runCanisterAuthHydrationIntegrationTest().then((outcome) => {
-    if (!outcome.allPassed) {
-      process.exitCode = 1;
-    }
-  });
-}

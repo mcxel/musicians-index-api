@@ -115,6 +115,7 @@ export function normalizeYoPhoTier(tierOrRole: string | undefined | null): strin
   const raw = (tierOrRole || "FREE").toUpperCase().trim();
   if (raw === "MEMBER") return "FREE";
   if (raw === "BRONZE") return "RUBY";
+  if (raw === "FAN" || raw === "PERFORMER" || raw === "ARTIST" || raw === "WRITER") return "FREE";
   return raw;
 }
 

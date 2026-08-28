@@ -12,6 +12,7 @@ import {
   normalizeYoPhoTier,
   trimYoPhoBlueprintToCapacity,
 } from "@/lib/yopho/YoPhoImageCapacity";
+import { ensureTripleLayerStack } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
 
 export type YoPhoStudioRole = "fan" | "performer";
@@ -57,7 +58,7 @@ export default function YoPhoStudio({
       const raw = localStorage.getItem(storageKey);
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
       if (parsed.length > 0 && parsed[0]) {
-        setBlueprint(trimYoPhoBlueprintToCapacity(parsed[0], resolved));
+        setBlueprint(ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(parsed[0], resolved)));
       } else {
         setBlueprint(
           createDefaultYoPhoBlueprint(role, displayName, profileImageUrl ?? undefined),
@@ -69,7 +70,7 @@ export default function YoPhoStudio({
   }, [userId, displayName, tierProp, role, profileImageUrl]);
 
   const handleSaveEdition = (saved: YoPhoPortraitBlueprint) => {
-    const trimmed = trimYoPhoBlueprintToCapacity(saved, tierKey);
+    const trimmed = ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(saved, tierKey));
     try {
       const storageKey = editionsStorageKey(role);
       const raw = localStorage.getItem(storageKey);

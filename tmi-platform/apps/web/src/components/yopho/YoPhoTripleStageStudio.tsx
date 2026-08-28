@@ -41,7 +41,10 @@ import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   addStackLayer,
   bringLayerToFront,
+  duplicateStackLayer,
+  ensureTripleLayerStack,
   getLayerById,
+  layerHasVisibleMedia,
   listStackLayers,
   nudgeLayerPosition,
   nudgeLayerScale,
@@ -51,6 +54,7 @@ import {
   resetLayerTransform,
   sendLayerToBack,
   setActiveLayerImage,
+  setActiveLayerMedia,
   updateLayerById,
   YOPHO_NUDGE_ROTATION_STEP,
   YOPHO_NUDGE_SCALE_STEP,
@@ -119,7 +123,9 @@ export default function YoPhoTripleStageStudio({
   userKey = "local",
 }: YoPhoTripleStageStudioProps) {
   const capacity = useMemo(() => getYoPhoImageCapacity(tierOrRole), [tierOrRole]);
-  const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() => clonePortraitBlueprint(master));
+  const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() =>
+    ensureTripleLayerStack(clonePortraitBlueprint(master)),
+  );
   const [selectedControlId, setSelectedControlId] = useState<string | null>("smoke");
   const [activeLayerId, setActiveLayerId] = useState<string>(master.primaryLayer.id);
   const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion" | "media">("layers");
@@ -156,11 +162,18 @@ export default function YoPhoTripleStageStudio({
   );
 
   useEffect(() => {
-    setPreview(clonePortraitBlueprint(master));
+    const normalized = ensureTripleLayerStack(clonePortraitBlueprint(master));
+    setPreview(normalized);
     setActiveLayerId((prev) => {
-      const ids = new Set([master.primaryLayer.id, ...master.secondaryLayers.map((l) => l.id)]);
-      return ids.has(prev) ? prev : master.primaryLayer.id;
+      const ids = new Set([normalized.primaryLayer.id, ...normalized.secondaryLayers.map((l) => l.id)]);
+      return ids.has(prev) ? prev : normalized.primaryLayer.id;
     });
+    if (
+      normalized.secondaryLayers.length !== master.secondaryLayers.length ||
+      normalized.primaryLayer.id !== master.primaryLayer.id
+    ) {
+      onMasterChange(normalized);
+    }
   }, [master.id, master.updatedAt]);
 
   useEffect(() => {
@@ -214,6 +227,14 @@ export default function YoPhoTripleStageStudio({
     redoStack.current = [];
   }, [preview]);
 
+  const commitPreview = useCallback(
+    (next: YoPhoPortraitBlueprint) => {
+      setPreview(next);
+      onMasterChange(next);
+    },
+    [onMasterChange],
+  );
+
   const handleUndo = () => {
     if (undoStack.current.length === 0) {
       setStatusLine("Nothing to undo.");
@@ -239,18 +260,37 @@ export default function YoPhoTripleStageStudio({
   const onPickImage = () => fileInputRef.current?.click();
 
   const onFileChosen = async (file: File | null) => {
-    if (!file || !file.type.startsWith("image/")) {
-      setStatusLine("Choose a valid image file.");
+    if (!file) {
+      setStatusLine("No file selected.");
       return;
     }
-    setStatusLine("Preparing image…");
-    const { blob } = await downscaleImageFile(file);
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isImage && !isVideo) {
+      setStatusLine("Choose a valid image or video file.");
+      return;
+    }
+    setStatusLine(isVideo ? "Preparing video layer…" : "Preparing image…");
     pushUndo();
-    const url = URL.createObjectURL(blob);
-    const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
-    setPreview(next);
-    onMasterChange(next);
-    setStatusLine(`Image loaded into layer: ${file.name}`);
+    let next: YoPhoPortraitBlueprint;
+    if (isVideo) {
+      const url = URL.createObjectURL(file);
+      next = setActiveLayerMedia(preview, activeLayerId, {
+        videoUrl: url,
+        mediaMode: "animated",
+        label: file.name,
+      });
+    } else {
+      const { blob } = await downscaleImageFile(file);
+      const url = URL.createObjectURL(blob);
+      next = setActiveLayerImage(preview, activeLayerId, url, file.name);
+    }
+    commitPreview(next);
+    setStatusLine(
+      isVideo
+        ? `Video loaded into ${activeLayer.label || "layer"} (animated).`
+        : `Image loaded into layer: ${file.name}`,
+    );
   };
 
   const handleControlClick = (controlId: string) => {
@@ -281,7 +321,7 @@ export default function YoPhoTripleStageStudio({
     pushUndo();
     setSelectedControlId(controlId);
     const next = applyPortraitControl(preview, controlId);
-    setPreview(next);
+    commitPreview(next);
     setShowUpgradeCta(false);
     setStatusLine(
       burnsNewTotalLayer
@@ -321,8 +361,7 @@ export default function YoPhoTripleStageStudio({
         ambientGlow: preset.accentHint,
       };
     }
-    setPreview(next);
-    onMasterChange(next);
+    commitPreview(next);
     setStatusLine(`Style applied: ${preset.label}`);
   };
 
@@ -357,13 +396,16 @@ export default function YoPhoTripleStageStudio({
       return;
     }
     setShowUpgradeCta(false);
-    setPreview(next);
     const added = listStackLayers(next).at(-1);
+    let patched = next;
     if (added) {
-      setActiveLayerId(added.id);
+      const role =
+        kind === "background" ? "background" : kind === "cutout" ? "cutout" : kind === "photo" ? "secondary" : added.layer.role;
       const label = `${kind.charAt(0).toUpperCase() + kind.slice(1)} ${added.layer.zIndex}`;
-      setPreview((p) => updateLayerById(p, added.id, { label, budgetKind }));
+      patched = updateLayerById(next, added.id, { label, budgetKind, role });
+      setActiveLayerId(added.id);
     }
+    commitPreview(patched);
     if (kind === "photo" || kind === "background" || kind === "cutout") {
       onPickImage();
     } else {
@@ -376,10 +418,9 @@ export default function YoPhoTripleStageStudio({
       return;
     }
     pushUndo();
-    const fresh = clonePortraitBlueprint(master);
+    const fresh = ensureTripleLayerStack(clonePortraitBlueprint(master));
     fresh.portraitEffects = [];
-    setPreview(fresh);
-    onMasterChange(fresh);
+    commitPreview(fresh);
     setStatusLine("Project reset to initial state.");
   };
 
@@ -438,9 +479,9 @@ export default function YoPhoTripleStageStudio({
       {stageLabel("PREVIEW 1", "Source image only", "SOURCE")}
       <div
         onClick={() => {
-          if (!activeLayer.imageUrl) onPickImage();
+          if (!layerHasVisibleMedia(activeLayer)) onPickImage();
         }}
-        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+        style={{ cursor: !layerHasVisibleMedia(activeLayer) ? "pointer" : "default" }}
       >
         <YoPhoPortraitStageCanvas
           blueprint={sourceOnlyBlueprint}
@@ -476,9 +517,9 @@ export default function YoPhoTripleStageStudio({
       {stageLabel("PREVIEW 3", "Live Master Composite · Continuous animation", "MASTER")}
       <div
         onClick={() => {
-          if (!activeLayer.imageUrl) onPickImage();
+          if (!layerHasVisibleMedia(activeLayer)) onPickImage();
         }}
-        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+        style={{ cursor: !layerHasVisibleMedia(activeLayer) ? "pointer" : "default" }}
       >
         <YoPhoPortraitStageCanvas
           blueprint={preview}
@@ -744,9 +785,9 @@ export default function YoPhoTripleStageStudio({
           {activeTab === "layers" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
-                Image slots {countYoPhoImageSlots(preview)}/{capacity.maxImages} · Total layers{" "}
-                {countYoPhoTotalLayers(preview)}/{capacity.maxTotalLayers} on {capacity.tierKey} · Diamond is not
-                unlimited. Effects on an existing image do not burn an extra image slot.
+                3-slot stack (Background · Mid · Foreground) — image slots {countYoPhoImageSlots(preview)}/
+                {capacity.maxImages} · Total layers {countYoPhoTotalLayers(preview)}/{capacity.maxTotalLayers} on{" "}
+                {capacity.tierKey}. Each slot can be static image or animated video.
               </div>
               {/* Opacity & Blend Mode Bar */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", paddingBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -785,13 +826,50 @@ export default function YoPhoTripleStageStudio({
                     ))}
                   </select>
                 </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Media:</span>
+                  {(["static", "animated"] as const).map((mode) => {
+                    const selected = (activeLayer.mediaMode ?? "static") === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          commitPreview(
+                            setActiveLayerMedia(preview, activeLayerId, {
+                              mediaMode: mode,
+                              ...(mode === "static" ? { videoUrl: "" } : {}),
+                            }),
+                          )
+                        }
+                        style={{
+                          ...chipBtn(selected ? CYAN : "rgba(255,255,255,0.45)"),
+                          fontSize: 8,
+                          padding: "3px 8px",
+                        }}
+                      >
+                        {mode.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                  <button type="button" onClick={onPickImage} style={{ ...chipBtn(FUCHSIA), fontSize: 8, padding: "3px 8px" }}>
+                    {(activeLayer.mediaMode ?? "static") === "animated" ? "UPLOAD VIDEO" : "UPLOAD IMAGE"}
+                  </button>
+                </div>
               </div>
 
               {/* Layer Stack Items */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[...stackLayers].reverse().map((ref) => {
                   const selected = ref.id === activeLayerId;
-                  const empty = !ref.layer.imageUrl?.trim();
+                  const empty = !layerHasVisibleMedia(ref.layer);
+                  const thumbBg =
+                    ref.layer.mediaMode === "animated" && ref.layer.videoUrl
+                      ? "rgba(255,45,170,0.25)"
+                      : ref.layer.imageUrl
+                        ? `url(${ref.layer.imageUrl}) center/cover`
+                        : "rgba(255,255,255,0.1)";
                   return (
                     <div
                       key={ref.id}
@@ -813,7 +891,7 @@ export default function YoPhoTripleStageStudio({
                           width: 28,
                           height: 28,
                           borderRadius: 4,
-                          background: ref.layer.imageUrl ? `url(${ref.layer.imageUrl}) center/cover` : "rgba(255,255,255,0.1)",
+                          background: thumbBg,
                           border: "1px solid rgba(255,255,255,0.2)",
                           display: "flex",
                           alignItems: "center",
@@ -821,7 +899,7 @@ export default function YoPhoTripleStageStudio({
                           fontSize: 10,
                         }}
                       >
-                        {!ref.layer.imageUrl ? "🖼" : null}
+                        {!layerHasVisibleMedia(ref.layer) ? (ref.layer.mediaMode === "animated" ? "🎬" : "🖼") : null}
                       </div>
 
                       {/* Layer Label & Rename Input */}
@@ -840,7 +918,7 @@ export default function YoPhoTripleStageStudio({
                           }}
                         />
                         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
-                          z{ref.layer.zIndex} · {(ref.layer.budgetKind ?? "image") === "image" ? (empty ? "Empty image slot" : "Image slot") : `${ref.layer.budgetKind} layer`}
+                          z{ref.layer.zIndex} · {(ref.layer.budgetKind ?? "image") === "image" ? (empty ? "Empty slot" : ref.layer.mediaMode === "animated" ? "Animated video" : "Static image") : `${ref.layer.budgetKind} layer`}
                         </div>
                       </div>
 
@@ -885,16 +963,19 @@ export default function YoPhoTripleStageStudio({
                 <button
                   type="button"
                   onClick={() => {
-                    const next = addStackLayer(
+                    const next = duplicateStackLayer(
                       preview,
+                      activeLayerId,
                       capacity.maxImages,
                       capacity.maxTotalLayers,
-                      activeLayer.budgetKind ?? "image",
                     );
                     if (next) {
                       setPreview(next);
                       const added = listStackLayers(next).at(-1);
-                      if (added) setActiveLayerId(added.id);
+                      if (added) {
+                        setActiveLayerId(added.id);
+                        setStatusLine(`Duplicated layer: ${activeLayer.label ?? "Layer"}`);
+                      }
                       setShowUpgradeCta(false);
                     } else {
                       setShowUpgradeCta(true);
@@ -1101,7 +1182,7 @@ export default function YoPhoTripleStageStudio({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         style={{ display: "none" }}
         onChange={(e) => {
           onFileChosen(e.target.files?.[0] ?? null);

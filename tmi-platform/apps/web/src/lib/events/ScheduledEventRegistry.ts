@@ -201,6 +201,20 @@ export interface ShowsReleaseRecord {
   requestedPriceUsd: number | null;
   inventoryCapacity: number | null;
   inventoryIssued: number;
+  /** Dual-audience event fields (physical vs digital broadcast). */
+  eventOwnerId?: string | null;
+  performerIds?: string[];
+  physicalVenueId?: string | null;
+  promoterId?: string | null;
+  onlineTicketPriceCents?: number | null;
+  digitalRevenueSplitBps?: number | null;
+  platformFeePolicyId?: string | null;
+  inPersonCapacity?: number | null;
+  onlineCapacity?: number | null;
+  onlineTicketingPolicy?: "open" | "ticketed" | "invite" | null;
+  digitalOfferId?: string | null;
+  venueBusinessRevenueCents?: number;
+  digitalPerformerRevenueCents?: number;
   replayAllowed: boolean;
   publishStatus: ShowsReleasePublishStatus;
   roomId: string;
@@ -450,6 +464,42 @@ export function parseShowsReleaseRecord(raw: unknown): ShowsReleaseRecord | null
     inventoryCapacity:
       typeof o.inventoryCapacity === "number" ? o.inventoryCapacity : null,
     inventoryIssued: typeof o.inventoryIssued === "number" ? o.inventoryIssued : 0,
+    eventOwnerId: typeof o.eventOwnerId === "string" ? o.eventOwnerId : performerId,
+    performerIds: Array.isArray(o.performerIds)
+      ? o.performerIds.filter((x): x is string => typeof x === "string")
+      : [performerId],
+    physicalVenueId: typeof o.physicalVenueId === "string" ? o.physicalVenueId : null,
+    promoterId: typeof o.promoterId === "string" ? o.promoterId : null,
+    onlineTicketPriceCents:
+      typeof o.onlineTicketPriceCents === "number"
+        ? o.onlineTicketPriceCents
+        : typeof o.requestedPriceUsd === "number"
+          ? Math.round(o.requestedPriceUsd * 100)
+          : null,
+    digitalRevenueSplitBps:
+      typeof o.digitalRevenueSplitBps === "number" ? o.digitalRevenueSplitBps : 10000,
+    platformFeePolicyId:
+      typeof o.platformFeePolicyId === "string" ? o.platformFeePolicyId : "tmi-ticket-fee-v1",
+    inPersonCapacity: typeof o.inPersonCapacity === "number" ? o.inPersonCapacity : null,
+    onlineCapacity:
+      typeof o.onlineCapacity === "number"
+        ? o.onlineCapacity
+        : typeof o.inventoryCapacity === "number"
+          ? o.inventoryCapacity
+          : null,
+    onlineTicketingPolicy:
+      o.onlineTicketingPolicy === "open" ||
+      o.onlineTicketingPolicy === "ticketed" ||
+      o.onlineTicketingPolicy === "invite"
+        ? o.onlineTicketingPolicy
+        : o.ticketRequested === true
+          ? "ticketed"
+          : "open",
+    digitalOfferId: typeof o.digitalOfferId === "string" ? o.digitalOfferId : null,
+    venueBusinessRevenueCents:
+      typeof o.venueBusinessRevenueCents === "number" ? o.venueBusinessRevenueCents : 0,
+    digitalPerformerRevenueCents:
+      typeof o.digitalPerformerRevenueCents === "number" ? o.digitalPerformerRevenueCents : 0,
     replayAllowed: o.replayAllowed !== false,
     publishStatus:
       o.publishStatus === "DRAFT" || o.publishStatus === "CANCELED" ? o.publishStatus : "PUBLISHED",

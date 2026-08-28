@@ -39,6 +39,10 @@ import { getGuestId } from '@/lib/identity/getGuestId';
 import { useStageWebRTC } from '@/hooks/useStageWebRTC';
 import { useLiveSessionHeartbeat } from '@/hooks/useLiveSessionHeartbeat';
 import { recordFanJoin, recordFanMessage } from '@/lib/fans/SuperFanMomentumEngine';
+import {
+  ensureLiveRoomMixerBound,
+  markLocalMicSource,
+} from '@/lib/audio/mixer/LiveRoomMixerBind';
 import PerformerRelationshipPanel from './PerformerRelationshipPanel';
 import AudienceRecognitionOverlay from './AudienceRecognitionOverlay';
 import { SystemSecurityBot } from '@/lib/bots/SystemSecurityBot';
@@ -46,6 +50,7 @@ import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 import AudienceScene, {
   type VenueIndex,
   type AudienceBobbleheadSeating,
@@ -54,6 +59,7 @@ import AudienceScene, {
 } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import TMIInteractiveLoungeHud from "@/components/venue-hud/TMIInteractiveLoungeHud";
+import VenueToolsPanelHost from "@/components/hud/VenueToolsPanelHost";
 import LoungeVideoPresenceFloor from "@/components/live/LoungeVideoPresenceFloor";
 import PerformerVideoPresenceFloor from "@/components/live/PerformerVideoPresenceFloor";
 import { registerAndAdaptParticipant } from "@/lib/personal-media";
@@ -310,7 +316,11 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
     8,
     12,
     undefined,
-    { enabled: !isVideoPanelRoom },
+    {
+      enabled: !isVideoPanelRoom,
+      // Instant GO LIVE / empty house — real seats only, no bot/host fill (Rule 20)
+      botFill: !instantEmptyStage && forceStadiumFill,
+    },
   );
 
   // Progressive stadium fill — used in performer view so the room never looks
@@ -515,6 +525,16 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
     prevMemberIdsRef.current = new Set(currentIds);
   }, [snapshot?.activeMembers, liveSession?.userId, roomId]);
 
+  // Bind ChannelMixerDirector → TMIAudioSafetyMixer on room presence (audience or performer)
+  useEffect(() => {
+    if (!joined || hubVenueOnly || isPreview) return;
+    ensureLiveRoomMixerBound({
+      roomId,
+      liveSessionId: liveSession ? `live:${roomId}` : `session:${roomId}`,
+      experienceType: isLoungeSideRoom ? 'LOUNGE' : 'LIVE',
+    });
+  }, [joined, roomId, liveSession, isLoungeSideRoom, hubVenueOnly, isPreview]);
+
   useEffect(() => {
     if (mode !== 'audience' || !joined) return;
     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -537,6 +557,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       .catch(() => {});
 
     return () => {
+      markLocalMicSource(false);
       void fetch('/api/live/audience', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -544,6 +565,19 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       }).catch(() => {});
     };
   }, [mode, joined, roomId, userId, displayName, captureEnabled, refresh]);
+
+  // Local capture mic availability only — no fake crowd.
+  // OPEN: UVR/arena has no Daily/WebRTC remote peer track attach path yet —
+  // remote participants register via LiveRoomMixerBind at GoLiveStudio / VideoRoom /
+  // media TMIVideoRoom / useLobbyPeerMediaSession call sites, not here.
+  useEffect(() => {
+    if (!joined) {
+      markLocalMicSource(false);
+      return;
+    }
+    const hasLocalAudio = Boolean(stream?.getAudioTracks?.().some((t) => t.readyState === 'live'));
+    markLocalMicSource(hasLocalAudio && requestLocalMedia);
+  }, [joined, stream, requestLocalMedia]);
 
   useEffect(() => {
     if (mode !== 'audience' || !joined) return;
@@ -744,12 +778,26 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
               view={audienceView}
               venue={venueIndex}
               watcherCount={watchingCount}
-              entities={audienceEntities}
-              occupancyRatio={occupancyForScene}
+              entities={instantEmptyStage ? [] : audienceEntities}
+              occupancyRatio={instantEmptyStage ? realOccupancyRatio : occupancyForScene}
               onReaction={sendReaction}
               hideControls
               accentColor={accentCol}
-              bobbleheadSeating={bobbleheadSeating}
+              bobbleheadSeating={instantEmptyStage ? undefined : bobbleheadSeating}
+              screenLabel={
+                liveSession || !instantEmptyStage
+                  ? undefined
+                  : watchingCount > 0
+                    ? "● LIVE"
+                    : "STAGE OPEN"
+              }
+              screenSubLabel={
+                liveSession || !instantEmptyStage
+                  ? undefined
+                  : watchingCount > 0
+                    ? undefined
+                    : "EMPTY HOUSE · REAL FANS ONLY"
+              }
             />
           )}
         </div>
@@ -925,6 +973,8 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             loungeTitle={`Lounge ${roomId}`}
             loungeMode={roomId.toLowerCase().includes("playlist") ? "PLAYLIST_LOUNGE" : "CHILL_LOUNGE"}
             userRole={mode === "performer" ? "performer" : "fan"}
+            userId={userId}
+            isLoungeHost={mode === "performer" || liveSession?.userId === userId}
             contextParticipantId={loungeContextParticipantId}
             occupancyPresent={snapshot?.present ?? 0}
             occupancyCapacity={snapshot?.capacity}
@@ -1097,15 +1147,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
       {mode === 'performer' && (
         <>
-          <div style={{ marginBottom: 12, border: '1px solid rgba(255,215,0,0.3)', borderRadius: 10, padding: 12, background: 'rgba(255,215,0,0.05)' }}>
-            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 10 }}>🎭 STAGE CURTAIN · {curtainState.replace(/_/g, ' ')}</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => resetStage()} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer' }}>🔄 PREPARE STAGE</button>
-              <button type="button" onClick={() => startCountdown()} disabled={curtainState !== 'STAGE_PREP'} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,215,0,0.4)', background: curtainState === 'STAGE_PREP' ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState === 'STAGE_PREP' ? '#FFD700' : 'rgba(255,255,255,0.3)', cursor: curtainState === 'STAGE_PREP' ? 'pointer' : 'not-allowed' }}>⏱ START COUNTDOWN</button>
-              <button type="button" onClick={() => openCurtain()} disabled={curtainState === 'CAMERA_LIVE'} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(0,255,136,0.4)', background: curtainState !== 'CAMERA_LIVE' ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState !== 'CAMERA_LIVE' ? '#00FF88' : 'rgba(255,255,255,0.3)', cursor: curtainState !== 'CAMERA_LIVE' ? 'pointer' : 'not-allowed' }}>🎬 OPEN CURTAIN</button>
-              <button type="button" onClick={() => closeCurtainAndEnd()} disabled={curtainState !== 'CAMERA_LIVE' && curtainState !== 'INTERMISSION'} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,45,170,0.4)', background: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'rgba(255,45,170,0.15)' : 'rgba(255,255,255,0.04)', color: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? '#FF2DAA' : 'rgba(255,255,255,0.3)', cursor: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'pointer' : 'not-allowed' }}>🚪 CLOSE & END</button>
-            </div>
-          </div>
+          <VenueToolsShellHint roomId={roomId} compact />
 
           {liveSession?.userId && (
             <>
@@ -1164,6 +1206,14 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           <button type="button" onClick={sendMessage} style={{ borderRadius: 8, border: '1px solid rgba(170,45,255,0.5)', background: 'rgba(170,45,255,0.22)', color: '#DDB7FF', fontWeight: 700, padding: '8px 12px', cursor: 'pointer' }}>Send</button>
         </div>
       </div>
+
+      {isLoungeSideRoom && !hubVenueOnly ? (
+        <VenueToolsPanelHost
+          userId={userId}
+          role={mode === "performer" ? "performer" : "fan"}
+          defaultRoomId={roomId}
+        />
+      ) : null}
     </section>
   );
 }

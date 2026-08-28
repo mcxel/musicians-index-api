@@ -74,6 +74,9 @@ export async function GET(req: NextRequest) {
   let dbOnboardingStep = '2';
   let dbDisplayName: string | null = null;
   let dbActiveRole: string | null = null;
+  let dbUsername: string | null = null;
+  let dbArtistSlug: string | null = null;
+  let dbUserRef: string | null = null;
   let sessionYouthBand: 'YOUTH' | 'ADULT' | null = null;
   let sessionAgeKnown = false;
 
@@ -98,11 +101,18 @@ export async function GET(req: NextRequest) {
           onboardingState: true,
           age: true,
           dateOfBirth: true,
+          userRef: true,
           userProfile: {
             select: {
               avatarUrl: true,
               socialLinks: true,
               displayName: true,
+              username: true,
+            },
+          },
+          artistProfile: {
+            select: {
+              slug: true,
             },
           },
         },
@@ -127,6 +137,9 @@ export async function GET(req: NextRequest) {
         dbUser.userProfile?.displayName ??
         dbUser.name ??
         null;
+      dbUsername = dbUser.userProfile?.username ?? null;
+      dbArtistSlug = dbUser.artistProfile?.slug ?? null;
+      dbUserRef = dbUser.userRef ?? null;
       const ageYears =
         typeof dbUser.age === 'number' && dbUser.age > 0
           ? Math.floor(dbUser.age)
@@ -190,6 +203,9 @@ export async function GET(req: NextRequest) {
       isLive,
       liveRoomId,
       avatarUrl,
+      username: dbUsername,
+      userRef: dbUserRef,
+      artistSlug: dbArtistSlug,
       onboardingState: dbOnboardingState.toLowerCase(),
       onboardingStep: dbOnboardingStep,
       youthBand: sessionYouthBand,

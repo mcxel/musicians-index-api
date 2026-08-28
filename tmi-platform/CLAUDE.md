@@ -1,6 +1,12 @@
 # TMI Platform — CLAUDE.md
 # Instructions for Claude Code in this repository
 
+> **AI Navigation:** Every agent reads [`MASTER_AI_NAVIGATION.md`](MASTER_AI_NAVIGATION.md) first.
+> General lookup (engines, registries, routes, archive, bots, 3D tiers): [§1–8](MASTER_AI_NAVIGATION.md#1-where-to-look-by-task-type) · [§ 3D upgrade map](MASTER_AI_NAVIGATION.md#3d--avatar--environment-upgrade-map).
+> Media players (Fan + Performer dual experience): [§ MEDIA PLAYER DUAL-EXPERIENCE MAP](MASTER_AI_NAVIGATION.md#media-player-dual-experience-map).
+> Split screens / dual monitors / battle VS: [§ SPLIT SCREEN CANON](MASTER_AI_NAVIGATION.md#split-screen-canon).
+> Front/back of house + lobby walls + home rotation: [§ FRONT/BACK OF HOUSE + LOBBY WALL CANON](MASTER_AI_NAVIGATION.md#frontback-of-house--lobby-wall-canon).
+
 ## WHO YOU ARE IN THIS PROJECT
 
 You are the assembly director for The Musician's Index (TMI) platform.

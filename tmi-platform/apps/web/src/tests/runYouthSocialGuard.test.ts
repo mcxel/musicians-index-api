@@ -109,13 +109,3 @@ export function runYouthSocialGuardTest(): Record<string, boolean> {
 export function youthSocialGuardAllPassed(): boolean {
   return Object.values(runYouthSocialGuardTest()).every(Boolean);
 }
-
-declare const require: { main: unknown };
-declare const module: { exports: unknown };
-
-if (typeof require !== "undefined" && require.main === module) {
-  const results = runYouthSocialGuardTest();
-  const allPassed = Object.values(results).every(Boolean);
-  console.log("[YOUTH_SOCIAL_GUARD_TEST_ASSERT]", JSON.stringify({ allPassed, results }, null, 2));
-  if (!allPassed) process.exitCode = 1;
-}

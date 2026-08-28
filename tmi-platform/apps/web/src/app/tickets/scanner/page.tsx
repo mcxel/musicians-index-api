@@ -19,7 +19,7 @@ type CheckinResponse = {
 }
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_TICKETS_API_BASE?.trim() || 'http://localhost:4000'
+  process.env.NEXT_PUBLIC_TICKETS_API_BASE?.trim() || ''
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(' ')
@@ -349,7 +349,9 @@ export default function TicketScannerPage() {
             <div className="text-xs uppercase tracking-widest text-white/60">Ticket Scanner</div>
             <h1 className="text-2xl font-semibold text-white">
               Verify & Check-in
-              <span className="ml-2 text-sm font-normal text-lime-300/80">(DEV API: {API_BASE})</span>
+              <span className="ml-2 text-sm font-normal text-lime-300/80">
+                ({API_BASE ? `API: ${API_BASE}` : "same-origin /api/tickets"})
+              </span>
             </h1>
             <p className="mt-1 text-sm text-white/70">
               Camera scanning uses <span className="text-white/90">BarcodeDetector</span> when available.

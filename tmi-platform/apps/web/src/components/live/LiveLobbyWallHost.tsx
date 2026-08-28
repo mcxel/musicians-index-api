@@ -169,7 +169,7 @@ export default function LiveLobbyWallHost({
           viewerCount: 0,
           status: wdp.phase === "LIVE" ? "live" : wdp.phase === "SUBMIT_OPEN" ? "starting" : "recruiting",
           genre: "Official · All-day Friday ET",
-          overlayLine: wdp.label,
+          overlayLine: `🌍 WORLD · ${wdp.label}`,
         };
         base = mapped.some((r) => r.id === pinned.id) ? mapped : [pinned, ...mapped];
       } else if (activeCategory === "lounges" && fanSearchResults.length === 0) {
@@ -330,7 +330,9 @@ export default function LiveLobbyWallHost({
       ? "Fan Avatar Lobby Results"
       : activeCategory === "shows_and_releases"
         ? "Shows & Releases"
-        : title;
+        : activeCategory === "world_dance_party"
+          ? "Dance Party Wall"
+          : title;
 
   return (
     <>
@@ -380,11 +382,35 @@ export default function LiveLobbyWallHost({
         </RoleGate>
       )}
 
+      {activeCategory === "world_dance_party" && !fanSearchActive && (
+        <div style={{
+          display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
+          padding: variant === "quick" ? "0 4px 8px" : "0 0 10px",
+          borderBottom: "1px solid rgba(0,255,136,0.18)",
+          marginBottom: 10,
+        }}>
+          <span style={{
+            fontSize: 10, fontWeight: 900, letterSpacing: "0.08em",
+            color: "#00FF88", display: "flex", alignItems: "center", gap: 5,
+          }}>
+            🌍 <span>WORLD</span>
+            <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>Official · DJ Record Ralph · Every Friday</span>
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 900, letterSpacing: "0.08em",
+            color: "#00FFFF", display: "flex", alignItems: "center", gap: 5,
+          }}>
+            ⭐ <span>MINI</span>
+            <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>User-created · Gold DJ+ · Start instantly</span>
+          </span>
+        </div>
+      )}
+
       <LiveLobbyWallGrid
         rooms={rooms}
         title={wallTitle}
-        accentColor={activeCategory === "shows_and_releases" ? "#FFD700" : accentColor}
-        typeLabel={activeCategory === "shows_and_releases" ? "SHOWS" : typeLabel}
+        accentColor={activeCategory === "shows_and_releases" ? "#FFD700" : activeCategory === "world_dance_party" ? "#00FF88" : accentColor}
+        typeLabel={activeCategory === "shows_and_releases" ? "SHOWS" : activeCategory === "world_dance_party" ? "DANCE" : typeLabel}
         variant={variant}
         onRoomJoin={handleRoomJoin}
         enableMobileRoam={enableMobileRoam && variant !== "quick"}

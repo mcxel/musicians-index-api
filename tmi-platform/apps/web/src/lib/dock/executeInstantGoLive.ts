@@ -9,18 +9,25 @@
 import {
   materializeLiveRoute,
   resolveLiveDestination,
+  normalizeRole,
+  toLiveParticipantRole,
   type LivePrivacy,
 } from "@/lib/live/LiveDestinationRouter";
+import { resolveRoleEntry, type RoleEntry } from "@/lib/live/RoleEntryMap";
+import { roomIdFromJoinRoute } from "@/lib/live/canonicalWorldViewport";
 import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyGate";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { publishLiveRoom, unpublishLiveRoom, liveSessionToDiscoveryRecord } from "@/lib/discovery/DiscoveryPublisher";
 import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
+import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
 
 export interface InstantGoLiveResult {
   ok: boolean;
   href?: string;
   roomId?: string;
   error?: string;
+  /** Canonical role entry for this session — same roomId/liveSessionId as every other role. */
+  roleEntry?: RoleEntry;
 }
 
 async function resolveDisplayName(fallback: string): Promise<{ name: string; role: string; userId?: string }> {
@@ -101,7 +108,16 @@ export async function executeInstantGoLive(opts?: {
   if (!destination.route.includes("{roomId}")) {
     launchDockStore.setPhase("idle");
     launchDockStore.close();
-    return { ok: true, href: destination.route };
+    const staticRoomId = roomIdFromJoinRoute(destination.route);
+    const roleEntry = staticRoomId
+      ? resolveRoleEntry(
+          toLiveParticipantRole(normalizeRole(role)),
+          staticRoomId,
+          staticRoomId,
+          privacy !== "public",
+        )
+      : undefined;
+    return { ok: true, href: destination.route, roomId: staticRoomId ?? undefined, roleEntry };
   }
 
   // Performer stage — mint Daily room when available, register; callers decide navigate vs in-place
@@ -111,25 +127,30 @@ export async function executeInstantGoLive(opts?: {
   let dailyRoomUrl: string | null = null;
   let dailyToken: string | null = null;
 
-  // Hub in-place prepare (deferMedia) must not block on Daily — cert/headless and
-  // slow /api/video/rooms were leaving the strip stuck on GOING LIVE with no POST.
-  if (!deferMedia) {
+  // Hub in-place prepare (deferMedia) must not block on Daily — but PUBLIC publish
+  // still mints the Daily/server-kit room in parallel so remote viewers can join.
+  // Never pass hub roomId as Daily roomName — hub ids are registry keys, not Daily names.
+  const shouldMintServerKit = publishSession && !destination.flags.restrictedAudience;
+  if (!deferMedia || shouldMintServerKit) {
     try {
       const roomRes = await fetch("/api/video/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userName: identity.name }),
         credentials: "include",
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(shouldMintServerKit && deferMedia ? 6000 : 8000),
       });
       if (roomRes.ok) {
         const rd = (await roomRes.json()) as { roomId: string; roomUrl: string; token: string };
-        resolvedRoomId = rd.roomId;
+        // Prefer Daily room id only when we did not already bind a hub roomId
+        if (!opts?.roomId?.trim()) {
+          resolvedRoomId = rd.roomId;
+        }
         dailyRoomUrl = rd.roomUrl;
         dailyToken = rd.token;
       }
     } catch {
-      /* registry-only */
+      /* registry-only / local camera still works — honest without Daily */
     }
   }
 
@@ -143,6 +164,7 @@ export async function executeInstantGoLive(opts?: {
         hostName: identity.name,
         hostUserId: identity.userId ?? "performer-1",
         category: destination.category,
+        experienceId: preferredExperience ?? destination.category ?? "live",
         accentColor: opts?.accentColor ?? "#FF2DAA",
         joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
       };
@@ -159,7 +181,8 @@ export async function executeInstantGoLive(opts?: {
             accentColor: opts?.accentColor ?? "#FF2DAA",
             privacy: mapLivePrivacyToRegistry(privacy),
             audiencePrivacy: privacy,
-            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+            venueEnvironment: "indoor",
+            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl, previewUrl: dailyRoomUrl } : {}),
           }),
           credentials: "include",
         });
@@ -196,7 +219,8 @@ export async function executeInstantGoLive(opts?: {
             privacy: mapLivePrivacyToRegistry(privacy),
             audiencePrivacy: privacy,
             listed: false,
-            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+            venueEnvironment: "indoor",
+            ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl, previewUrl: dailyRoomUrl } : {}),
           }),
           credentials: "include",
         });
@@ -217,9 +241,17 @@ export async function executeInstantGoLive(opts?: {
     href += (href.includes("?") ? "&" : "?") + params.toString();
   }
 
+  const roleEntry = resolveRoleEntry(
+    toLiveParticipantRole(normalizeRole(role)),
+    resolvedRoomId,
+    resolvedRoomId,
+    privacy !== "public",
+  );
+
   launchDockStore.setPhase("idle");
   launchDockStore.close();
-  return { ok: true, href, roomId: resolvedRoomId };
+  recordFunctionInvocation("executeInstantGoLive", true);
+  return { ok: true, href, roomId: resolvedRoomId, roleEntry };
 }
 
 /** Registry publish only — call after hub stage is bound (explicit GO LIVE). */
@@ -255,6 +287,7 @@ export async function publishInstantGoLiveSession(opts: {
         privacy: registryPrivacy,
         audiencePrivacy: privacy,
         listed: !destination.flags.restrictedAudience && registryPrivacy === "PUBLIC",
+        venueEnvironment: "indoor",
       }),
       credentials: "include",
       signal: AbortSignal.timeout(90000),
@@ -303,6 +336,7 @@ export async function endInstantGoLiveSession(roomId?: string | null): Promise<v
   }
   if (rid) unpublishLiveRoom(rid);
   useLivePrivacyState.getState().clearLivePublished();
+  recordFunctionInvocation("endInstantGoLiveSession", true);
   try {
     const { stopAllExternalDestinations } = await import(
       "@/lib/broadcast/ExternalBroadcastDistributor"

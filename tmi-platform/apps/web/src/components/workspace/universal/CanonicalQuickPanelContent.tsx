@@ -34,6 +34,7 @@ import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonical
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
+import VenueControlPanel from "@/components/hud/panels/VenueControlPanel";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((mod) => mod.AvatarViewer),
@@ -543,6 +544,29 @@ export default function CanonicalQuickPanelContent({
 
   if (workspaceId === "playlist-studio") {
     return <PlaylistQuickRemotePanel accentColor={accentColor} onClose={onClose} />;
+  }
+
+  if (workspaceId === "room-controls") {
+    const inner = (
+      <VenueControlPanel
+        role={role}
+        userId={userId}
+        venueId={userId}
+        accentColor={accentColor}
+      />
+    );
+    if (embedded) return inner;
+    return (
+      <QuickPanelShell
+        title="VENUE CONTROLS"
+        accentColor={accentColor}
+        onClose={onClose}
+        onOpenDeep={() => openCanonicalDeepStudio("room-controls")}
+        deepLabel="FULL CONTROLS"
+      >
+        {inner}
+      </QuickPanelShell>
+    );
   }
 
   const fallback = (

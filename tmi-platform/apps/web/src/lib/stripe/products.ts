@@ -271,19 +271,21 @@ export const STRIPE_PRODUCTS = {
   TICKET_VIP:      { productId:"prod_ticket", priceId: process.env.STRIPE_PRICE_TICKET_VIP ?? "price_ticket_vip",           name:"Event Ticket (VIP)",      price:1500, interval:"one_time" as const },
   VENUE_PROMOTION: { productId:"prod_venue_promo", priceId: process.env.STRIPE_PRICE_VENUE_PROMO ?? "price_venue_promotion", name:"Venue Promotion (1 month)", price:4900, interval:"month" as const },
 
-  // ── Meet & Greet / Shoutouts ──────────────────────────────────────────────
+  // ── Meet & Greet / Shoutouts (LEGACY platform catalog — DO NOT use for artist store)
+  // Artist-set prices live in ArtistCommerceProduct + /api/commerce/checkout (price_data).
+  // These entries remain only for older deep-links; never add STRIPE_PRICE_SHOUTOUT as a fix.
   MEET_GREET: {
     productId: "prod_meet_greet",
-    priceId:   process.env.STRIPE_PRICE_MEET_GREET ?? "price_1TUWSaEL7B8tMf4N74LrAyG",
-    name:      "Artist Meet & Greet",
-    price:     2500, // $25
+    priceId:   process.env.STRIPE_PRICE_MEET_GREET ?? "price_legacy_meet_greet_unused",
+    name:      "Artist Meet & Greet (legacy)",
+    price:     2500,
     interval:  "one_time" as const,
   },
   SHOUTOUT: {
     productId: "prod_shoutout",
-    priceId:   process.env.STRIPE_PRICE_SHOUTOUT ?? "price_1TUWvpEL7B8tMf4Ns2TE2uX4",
-    name:      "Personalized Artist Shoutout",
-    price:     1500, // $15
+    priceId:   process.env.STRIPE_PRICE_SHOUTOUT ?? "price_legacy_shoutout_unused",
+    name:      "Personalized Artist Shoutout (legacy)",
+    price:     1500,
     interval:  "one_time" as const,
   },
   QUICK_VIDEO_CHAT: {
@@ -330,6 +332,36 @@ export const STRIPE_PRODUCTS = {
     priceId:   process.env.STRIPE_PRICE_LOBBY_WALL_BOOST ?? "price_lobby_wall_boost_24h",
     name:      "Lobby Wall Visibility Boost (24h)",
     price:     199, // $1.99 — paid promotion, honest PROMOTED badge
+    interval:  "one_time" as const,
+  },
+
+  /** Self-serve discovery boosts — TMI-owned promo products (not artist store). */
+  DISCOVERY_BOOST_SPARK: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_SPARK ?? "price_discovery_boost_spark",
+    name:      "TMI Discovery Boost — Spark (24h)",
+    price:     199, // $1.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_PULSE: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_PULSE ?? "price_discovery_boost_pulse",
+    name:      "TMI Discovery Boost — Pulse (48h)",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_WAVE: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_WAVE ?? "price_discovery_boost_wave",
+    name:      "TMI Discovery Boost — Wave (72h)",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_BLAST: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_BLAST ?? "price_discovery_boost_blast",
+    name:      "TMI Discovery Boost — Blast (7 days)",
+    price:     1999, // $19.99
     interval:  "one_time" as const,
   },
 
@@ -456,26 +488,49 @@ export const STRIPE_PRODUCTS = {
     interval: "one_time" as const,
   },
 
-  // ── Season passes (bonus points granted on webhook) ───────────────────────
+  // ── Season passes (TMI-owned; bonus points on webhook) ─────────────────────
+  // Display order MUST always sort by `price` ASC — never lead with VIP.
+  // Checkout amount must equal these cents (price_data fallback when priceId is placeholder).
+  SEASON_PASS_STARTER: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_STARTER ?? "price_season_pass_starter",
+    name: "Starter Season Pass — Season 1",
+    price: 199, // $1.99 — low-cost entry
+    interval: "one_time" as const,
+  },
+  SEASON_PASS_PLUS: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_PLUS ?? "price_season_pass_plus",
+    name: "Plus Season Pass — Season 1",
+    price: 499, // $4.99
+    interval: "one_time" as const,
+  },
   SEASON_PASS_FAN: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_FAN ?? "price_season_pass_fan",
     name: "Fan Season Pass — Season 1",
-    price: 999,
+    price: 999, // $9.99
     interval: "one_time" as const,
   },
   SEASON_PASS_ARTIST: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_ARTIST ?? "price_season_pass_artist",
     name: "Artist Season Pass — Season 1",
-    price: 1999,
+    price: 1999, // $19.99
     interval: "one_time" as const,
   },
   SEASON_PASS_BUNDLE: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_BUNDLE ?? "price_season_pass_bundle",
     name: "Full Bundle — Season 1",
-    price: 2499,
+    price: 2499, // $24.99
+    interval: "one_time" as const,
+  },
+  SEASON_PASS_VIP: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_VIP ?? "price_season_pass_vip",
+    name: "VIP Season Pass — Season 1",
+    price: 4999, // $49.99 — always last in ASC display
     interval: "one_time" as const,
   },
 } as const;
@@ -498,6 +553,7 @@ export const REVENUE_SPLITS = {
   SPONSOR:          { platform: 1.00 },
   ADVERTISER:       { platform: 1.00 },
   ARTIST_SPOTLIGHT: { platform: 1.00 },
+  DISCOVERY_BOOST:  { platform: 1.00 },
   FAN_CLUB:         { platform: 0.20, artist: 0.80 },
   MEET_GREET:       { platform: 0.20, artist: 0.80 },
   SHOUTOUT:         { platform: 0.20, artist: 0.80 },

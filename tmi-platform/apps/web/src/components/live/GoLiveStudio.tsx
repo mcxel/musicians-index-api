@@ -6,16 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { DailyCall } from '@daily-co/daily-js';
 import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
 import LiveDestinationDrawer from '@/components/live/LiveDestinationDrawer';
-import {
-  startCountdown,
-  openCurtain,
-  subscribeStage,
-  getStageSnapshot,
-} from '@/lib/live/StageLifecycleEngine';
-import PerformerCurtainControlPanel from '@/components/performer/PerformerCurtainControlPanel';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 import MobileMonitorYield from '@/components/hud/MobileMonitorYield';
 import { useMobileQuickPanelRuntime } from '@/lib/hud/mobileQuickPanelRuntime';
 import TMIInteractiveVenueHud from '@/components/venue-hud/TMIInteractiveVenueHud';
+import {
+  leaveLiveRoomMixer,
+  syncDailyCallRemoteAudio,
+} from '@/lib/audio/mixer/LiveRoomMixerBind';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
 type EventMode = 'LIVE_GENERAL' | 'LIVE_BATTLE' | 'LIVE_CHALLENGE' | 'LIVE_CONCERT' | 'LIVE_CYPHER';
@@ -75,11 +73,9 @@ export default function GoLiveStudio() {
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
   const [dailyRoomId,    setDailyRoomId]    = useState('');
-  const [curtainState,     setCurtainState]     = useState(() => getStageSnapshot().state);
   const [isPublicSession,  setIsPublicSession]  = useState(true);
   const [autoTrigger,    setAutoTrigger]    = useState(false);
 
-  useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   // Prefill session — camera is NOT requested here (opt-in only, see startCameraPreview)
   useEffect(() => {
@@ -173,9 +169,36 @@ export default function GoLiveStudio() {
     return () => clearInterval(t);
   }, [broadcastState, userId]);
 
+  // Detach mixer + Daily if studio unmounts while live
+  useEffect(() => {
+    return () => {
+      leaveLiveRoomMixer();
+      const call = dailyCallRef.current;
+      if (call) {
+        dailyCallRef.current = null;
+        void call.leave().catch(() => {}).finally(() => {
+          try { call.destroy(); } catch { /* ignore */ }
+        });
+      }
+    };
+  }, []);
+
   function toggleMic() {
+    const next = !micOn;
     const track = streamRef.current?.getAudioTracks()[0];
-    if (track) { track.enabled = !micOn; setMicOn(v => !v); }
+    if (track) track.enabled = next;
+    setMicOn(next);
+    void dailyCallRef.current?.setLocalAudio(next);
+    const call = dailyCallRef.current;
+    if (call && dailyRoomId) {
+      void syncDailyCallRemoteAudio(call, {
+        roomId: dailyRoomId,
+        liveSessionId: `golive:${dailyRoomId}`,
+        experienceType: 'LIVE',
+        remoteRole: 'audience',
+        localMicAvailable: next,
+      });
+    }
   }
 
   function toggleCam() {
@@ -235,10 +258,36 @@ export default function GoLiveStudio() {
           const call = DailyIframe.createCallObject({ videoSource: true, audioSource: true });
           dailyCallRef.current = call;
 
+          const syncMixer = () => {
+            const local = call.participants().local;
+            const localAudio =
+              local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track ?? null;
+            const localPlayable =
+              Boolean(localAudio) &&
+              (local?.tracks?.audio?.state === 'playable' ||
+                local?.tracks?.audio?.state === 'sendable');
+            void syncDailyCallRemoteAudio(call, {
+              roomId: roomData.roomId!,
+              liveSessionId: `golive:${roomData.roomId}`,
+              experienceType: 'LIVE',
+              remoteRole: 'audience',
+              localMicAvailable: localPlayable && micOn,
+            });
+          };
+
           call.on('error', (e) => console.error('[Daily] call error', e));
-          call.on('left-meeting', () => { dailyCallRef.current = null; });
+          call.on('participant-joined', syncMixer);
+          call.on('participant-updated', syncMixer);
+          call.on('participant-left', syncMixer);
+          call.on('track-started', syncMixer);
+          call.on('track-stopped', syncMixer);
+          call.on('left-meeting', () => {
+            leaveLiveRoomMixer();
+            dailyCallRef.current = null;
+          });
 
           await call.join({ url: roomData.roomUrl, token: roomData.token });
+          syncMixer();
           console.log('[GoLive] Daily.co room joined as host:', roomData.roomId);
         }
       }
@@ -284,8 +333,9 @@ export default function GoLiveStudio() {
     setBroadcastState('ending');
     setActionError('');
 
-    // Leave Daily.co call first
+    // Leave Daily.co call first — detach mixer tracks before destroy
     try {
+      leaveLiveRoomMixer();
       if (dailyCallRef.current) {
         await dailyCallRef.current.leave();
         await dailyCallRef.current.destroy();
@@ -617,35 +667,8 @@ export default function GoLiveStudio() {
           </div>
         )}
 
-        {/* ── Curtain control (presentation directors + StageLifecycle sync) ─ */}
         {isLive && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(255,215,0,0.2)', background: 'rgba(255,215,0,0.04)' }}>
-              <button
-                type="button"
-                onClick={() => startCountdown()}
-                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)', color: GOLD, cursor: 'pointer', letterSpacing: '0.07em' }}
-              >
-                ▶ PREPARE STAGE
-              </button>
-              <button
-                type="button"
-                onClick={() => openCurtain()}
-                disabled={curtainState !== 'COUNTDOWN'}
-                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`, color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)', cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed', letterSpacing: '0.07em' }}
-              >
-                🎭 OPEN CURTAIN
-              </button>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center' }}>
-                StageLifecycle: <span style={{ color: CYAN, fontWeight: 700, marginLeft: 4 }}>{curtainState}</span>
-              </span>
-            </div>
-            <PerformerCurtainControlPanel
-              performerId={userId || sessionUser?.id || 'performer'}
-              sessionId={dailyRoomId ? `live-curtain-${dailyRoomId}` : `live-curtain-${userId || 'preview'}`}
-              accentColor={FUCHSIA}
-            />
-          </div>
+          <VenueToolsShellHint roomId={dailyRoomId ?? userId} accent={GOLD} />
         )}
 
         {/* ── Broadcast setup (only when idle) ─────────────────────────────── */}

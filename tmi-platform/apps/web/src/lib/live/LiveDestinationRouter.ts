@@ -22,6 +22,7 @@ export type LiveDestinationRole =
   | "PERFORMER"
   | "BAND"
   | "ARTIST"
+  | "PRODUCER"
   | "ADMIN"
   | "SUPERADMIN"
   | "VENUE"
@@ -107,7 +108,8 @@ const DIAMOND_DIRECTOR = [
 
 export function normalizeRole(role: string): LiveDestinationRole {
   const r = (role || "FAN").trim().toUpperCase();
-  if (r === "ARTIST") return "PERFORMER";
+  // PRODUCER is a PerformerType specialty (Prisma) — go-live treats as performer stage.
+  if (r === "ARTIST" || r === "PRODUCER") return "PERFORMER";
   if (
     r === "FAN" ||
     r === "PERFORMER" ||
@@ -128,6 +130,7 @@ function isPerformerLike(role: LiveDestinationRole): boolean {
   return (
     role === "PERFORMER" ||
     role === "BAND" ||
+    role === "PRODUCER" ||
     role === "ADMIN" ||
     role === "SUPERADMIN" ||
     role === "VENUE"

@@ -148,11 +148,28 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+          gridTemplateColumns: "repeat(4,minmax(0,1fr))",
           gap: 8,
           marginTop: 10,
         }}
       >
+        <Link
+          href="/hub/performer/network"
+          style={{
+            textDecoration: "none",
+            borderRadius: 8,
+            border: "1px solid rgba(0,255,255,0.35)",
+            background: "rgba(0,255,255,0.08)",
+            color: "#00FFFF",
+            padding: "8px 10px",
+            fontSize: 10,
+            fontWeight: 800,
+            textAlign: "center",
+            letterSpacing: "0.07em",
+          }}
+        >
+          🌐 NETWORK
+        </Link>
         <Link
           href="/performer/analytics"
           style={{

@@ -13,16 +13,13 @@ import {
   type MobileCommandCenterRole,
   type MobileQuickPanelActionId,
 } from "@/lib/commandCenter/mobileCommandCenterCapabilities";
+import {
+  isQuickToolActive,
+  runQuickToolAction,
+} from "@/lib/commandCenter/quickToolsActions";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
-import {
-  startStreamWin,
-  exitStreamWin,
-  isStreamWinActive,
-} from "@/lib/radio/StreamWinModeRuntime";
-import {
-  openCanonicalWorkspaceQuick,
-  presentCanonicalWorkspace,
-} from "@/lib/workspace/universal/openCanonicalPresentation";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 
 export interface MobileQuickPanelBarProps {
   role: MobileCommandCenterRole;
@@ -30,7 +27,6 @@ export interface MobileQuickPanelBarProps {
   onRecord?: () => void;
   onShare?: () => void;
   onMemory?: () => void;
-  onEmotes?: () => void;
   screenShareActive?: boolean;
 }
 
@@ -40,101 +36,47 @@ export default function MobileQuickPanelBar({
   onRecord,
   onShare,
   onMemory,
-  onEmotes,
   screenShareActive = false,
 }: MobileQuickPanelBarProps) {
   const router = useRouter();
-  const { primary, more } = getMobileQuickPanelCapabilities(role);
+  const hubRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const { primary, more } = getMobileQuickPanelCapabilities(role, {
+    isLive: isLivePublished,
+    isGoLiveContext: Boolean(hubRoomId),
+  });
   const [moreOpen, setMoreOpen] = useState(false);
   const { activePanel, togglePanel, openPanel, closePanel } = useCompactQuickPanelStore();
 
-  const runAction = (id: MobileQuickPanelActionId) => {
-    switch (id) {
-      case "magazine":
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("tmi_magazine_origin", window.location.pathname + window.location.search);
-        }
-        router.push("/magazine/issue/current");
-        break;
-      case "playlist":
-        openCanonicalWorkspaceQuick("playlist", "DRAWER");
-        break;
-      case "avatar":
-        togglePanel("avatar", "bottom-left");
-        break;
-      case "inventory":
-        presentCanonicalWorkspace("inventory", "DRAWER");
-        break;
-      case "lobbies":
-        togglePanel("lobbies", "bottom-left");
-        break;
-      case "stream-win":
-        if (activePanel === "stream-win" || isStreamWinActive()) {
-          exitStreamWin();
-          closePanel();
-        } else {
-          void startStreamWin().then((started) => {
-            if (started) openPanel("stream-win", "bottom-left");
-          });
-        }
-        break;
-      case "remote":
-        togglePanel("remote", "bottom-right");
-        break;
-      case "yopho":
-        togglePanel("yopho", "bottom-left");
-        break;
-      case "share-screen":
-        onShareScreen?.();
-        break;
-      case "record":
-        onRecord?.();
-        break;
-      case "share":
-        onShare?.();
-        break;
-      case "memory":
-        onMemory?.();
-        break;
-      case "emotes":
-        onEmotes?.();
-        break;
-      default:
-        break;
-    }
-  };
-
-  const isActive = (id: MobileQuickPanelActionId): boolean => {
-    if (id === "lobbies") return activePanel === "lobbies";
-    if (id === "stream-win") return activePanel === "stream-win" || isStreamWinActive();
-    if (id === "remote") return activePanel === "remote";
-    if (id === "yopho") return activePanel === "yopho";
-    if (id === "avatar") return activePanel === "avatar";
-    if (id === "share-screen") return screenShareActive;
-    return false;
+  const actionCtx = {
+    role,
+    router,
+    activePanel,
+    togglePanel,
+    openPanel,
+    closePanel,
+    hubRoomId,
+    isLive: isLivePublished,
+    onShareScreen,
+    onRecord,
+    onShare,
+    onMemory,
   };
 
   const renderBtn = (id: MobileQuickPanelActionId, label: string) => {
-    const active = isActive(id);
+    const active = isQuickToolActive(id, { activePanel, screenShareActive });
     const btn = (
       <button
         key={id}
         type="button"
         data-testid={`tmi-mobile-qp-${id}`}
-        onClick={() => runAction(id)}
+        onClick={() => runQuickToolAction(id, actionCtx)}
         style={barBtnStyle(active)}
       >
         {label}
       </button>
     );
-    if (id === "avatar") {
-      return (
-        <RoleGate key={id} allow={["FAN", "ADMIN", "STAFF"]}>
-          {btn}
-        </RoleGate>
-      );
-    }
-    if (id === "inventory") {
+    if (id === "avatar" || id === "inventory") {
       return (
         <RoleGate key={id} allow={["FAN", "ADMIN", "STAFF"]}>
           {btn}

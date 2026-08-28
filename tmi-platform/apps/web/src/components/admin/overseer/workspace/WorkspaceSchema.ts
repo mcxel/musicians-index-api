@@ -19,6 +19,7 @@ export type WorkspaceWidgetKey =
   | "money-billing"
   | "bot-roster"
   | "media-matrix"
+  | "overseer-monitor-wall"
   | "unified-inbox"
   | "broadcast-monitor"
   | "battle-lobby"
@@ -50,7 +51,8 @@ export type WorkspaceWidgetKey =
   | "presentation-preview"
   | "observatory-intelligence"
   | "observatory-control-desk"
-  | "platform-core-health";
+  | "platform-core-health"
+  | "overseer-monitor-wall";
 
 export type WorkspacePanelConfig = {
   id: string;

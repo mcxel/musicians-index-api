@@ -12,24 +12,14 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "bot-roster", title: "BOT ROSTER & SUMMON", widget: "bot-roster", accent: "#FF2DAA", flex: 1, requiredPermission: "automation.manage" },
       { id: "unified-inbox", title: "UNIFIED INBOX", widget: "unified-inbox", accent: "#00FFFF" },
     ],
-    // Pass 8: dual equal center monitors — true 16:9 stacked (shell locks aspect-ratio;
-    // never fixedHeight / vh-squashed 1fr rows).
+    // Pass 8+: canonical A/B/C/D monitor wall — live/video only on top deck.
     center: [
       {
-        id: "live-feed-router",
-        title: "TV SCREEN ROUTER · LIVE MONITOR WALL",
-        widget: "media-matrix",
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
         accent: "#00FFFF",
         flex: 1,
-        fullscreenKey: "tv",
-      },
-      {
-        id: "feed-explorer",
-        title: "LIVE FEED EXPLORER",
-        widget: "feed-explorer",
-        accent: "#00FFFF",
-        flex: 1,
-        fullscreenKey: "feed",
       },
     ],
     rightRail: [
@@ -89,8 +79,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "automation-workforce", title: "AUTOMATION WORKFORCE", widget: "automation-workforce", accent: "#00FFFF", flex: 1, requiredPermission: "automation.manage" },
     ],
     center: [
-      { id: "bigace-broadcast", title: "TV SCREEN ROUTER", widget: "broadcast-monitor", accent: "#00FFFF", flex: 1, fullscreenKey: "tv" },
-      { id: "bigace-feed", title: "AI EVENT TIMELINE", widget: "feed-explorer", accent: "#00FFFF", flex: 1, fullscreenKey: "feed" },
+      {
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
+        accent: "#00FFFF",
+        flex: 1,
+      },
     ],
     rightRail: [
       { id: "bigace-security", title: "SECURITY SENTINEL", widget: "security-wall", accent: "#FF4444", requiredPermission: "security.manage" },
@@ -119,8 +114,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "jay-submissions", title: "SUBMISSION QUEUE", widget: "music-submissions", accent: "#FFD700", requiredPermission: "music.manage" },
     ],
     center: [
-      { id: "jay-monitor", title: "LIVE AUDIO MONITOR", widget: "broadcast-monitor", accent: "#00FFFF", flex: 1, fullscreenKey: "tv" },
-      { id: "jay-feed", title: "DISCOVERY FEED", widget: "feed-explorer", accent: "#00FFFF", flex: 1, fullscreenKey: "feed" },
+      {
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
+        accent: "#00FFFF",
+        flex: 1,
+      },
     ],
     rightRail: [
       { id: "jay-inbox", title: "ARTIST INBOX", widget: "unified-inbox", accent: "#FF2DAA" },
@@ -140,8 +140,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "justin-observe", title: "OBSERVER REPORTS", widget: "observer-reports", accent: "#00FFFF", requiredPermission: "read.only" },
     ],
     center: [
-      { id: "justin-live", title: "LIVE PLATFORM MONITOR", widget: "broadcast-monitor", accent: "#00FFFF", flex: 1, fullscreenKey: "tv" },
-      { id: "justin-feed", title: "SYSTEM FEED", widget: "feed-explorer", accent: "#00FFFF", flex: 1, fullscreenKey: "feed" },
+      {
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
+        accent: "#00FFFF",
+        flex: 1,
+      },
     ],
     rightRail: [
       { id: "justin-security", title: "SECURITY READOUT", widget: "security-wall", accent: "#FF4444" },
@@ -163,8 +168,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "mc-queue", title: "QUEUE PROCESSING", widget: "queue-processing", accent: "#FFD700", requiredPermission: "queue.manage" },
     ],
     center: [
-      { id: "mc-runtime", title: "RUNTIME HEALTH MATRIX", widget: "runtime-health", accent: "#00FFFF", flex: 1, fullscreenKey: "tv" },
-      { id: "mc-feed", title: "OPERATIONS FEED", widget: "feed-explorer", accent: "#00FFFF", flex: 1, fullscreenKey: "feed" },
+      {
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
+        accent: "#00FFFF",
+        flex: 1,
+      },
     ],
     rightRail: [
       { id: "mc-deploy", title: "DEPLOYMENT STATUS", widget: "deployment-status", accent: "#AA2DFF", requiredPermission: "deployment.manage" },
@@ -186,8 +196,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "legal-promoter", title: "PROMOTER AGREEMENT", widget: "legal-doc-promoter", accent: "#AA2DFF" },
     ],
     center: [
-      { id: "legal-dashboard", title: "LEGAL DASHBOARD", widget: "legal-overview", accent: "#00FFFF", flex: 1, fullscreenKey: "tv" },
-      { id: "legal-community", title: "COMMUNITY RULES", widget: "legal-doc-community", accent: "#FF2DAA", flex: 1, fullscreenKey: "feed" },
+      {
+        id: "overseer-monitor-wall",
+        title: "LIVE MONITOR WALL · A/B/C/D",
+        widget: "overseer-monitor-wall",
+        accent: "#00FFFF",
+        flex: 1,
+      },
     ],
     rightRail: [
       { id: "legal-contact", title: "CONTACT SUPPORT", widget: "legal-contact", accent: "#00FFFF" },

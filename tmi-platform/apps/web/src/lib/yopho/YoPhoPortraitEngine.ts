@@ -71,6 +71,10 @@ export interface PortraitLayer {
   depthBlur?: number;
   locked?: boolean;
   hidden?: boolean;
+  /** Static image vs looping video on this layer slot. */
+  mediaMode?: "static" | "animated";
+  /** Looping video source when mediaMode === "animated". */
+  videoUrl?: string;
   /**
    * Stack budget. Default / undefined = IMAGE SLOT (source picture, background, or cutout).
    * Text, stickers, overlays, frames, effects, shadows, and masks are total-layers only.
@@ -367,16 +371,17 @@ export function createDefaultYoPhoBlueprint(
   imageUrl?: string
 ): YoPhoPortraitBlueprint {
   const subjectUrl = (imageUrl && imageUrl.trim()) || '';
+  const now = Date.now();
   return {
-    id: `yopho_blueprint_${Date.now()}`,
+    id: `yopho_blueprint_${now}`,
     title: `${displayName}'s Living YoPho Card`,
     userRole,
     mode: 'single',
     activePortraitsCount: subjectUrl ? 1 : 0,
     primaryLayer: {
-      id: 'layer_primary',
+      id: `layer_foreground_${now}`,
       imageUrl: subjectUrl,
-      label: 'Working image',
+      label: 'Foreground',
       role: 'primary',
       facing: 'center',
       scale: 1.0,
@@ -388,8 +393,47 @@ export function createDefaultYoPhoBlueprint(
       edgeSoftness: 4,
       preserveHairEdges: true,
       zIndex: 2,
+      mediaMode: 'static',
+      budgetKind: 'image',
     },
-    secondaryLayers: [],
+    secondaryLayers: [
+      {
+        id: `layer_mid_${now}`,
+        imageUrl: '',
+        label: 'Mid layer',
+        role: 'secondary',
+        facing: 'center',
+        scale: 1.0,
+        xOffset: 0,
+        yOffset: 0,
+        rotation: 0,
+        blendMode: 'normal',
+        opacity: 1.0,
+        edgeSoftness: 4,
+        preserveHairEdges: true,
+        zIndex: 1,
+        mediaMode: 'static',
+        budgetKind: 'image',
+      },
+      {
+        id: `layer_background_${now}`,
+        imageUrl: '',
+        label: 'Background',
+        role: 'background',
+        facing: 'center',
+        scale: 1.1,
+        xOffset: 0,
+        yOffset: 0,
+        rotation: 0,
+        blendMode: 'normal',
+        opacity: 1.0,
+        edgeSoftness: 2,
+        preserveHairEdges: false,
+        zIndex: 0,
+        mediaMode: 'static',
+        budgetKind: 'image',
+      },
+    ],
     objectMask: 'coffee_cup',
     secondaryFillType: 'stage',
     secondaryFillUrl: '',

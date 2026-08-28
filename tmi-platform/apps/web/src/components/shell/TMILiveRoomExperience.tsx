@@ -838,14 +838,11 @@ export default function TMILiveRoomExperience({
                     ['playlist',    '🎵', 'Playlist'],
                     ['memories',    '🧠', 'Memories'],
                     ['photos',      '📸', 'Photos'],
-                    ['media-locker','🎬', 'Media Locker'],
                     ['achievements','🏆', 'Achievements'],
                     ['rewards',     '⭐', 'Rewards'],
                     ['stats',       '📊', 'Stats'],
                     ['inventory',   '🎒', 'Inventory'],
-                    ['uploads',     '⬆️', 'Uploads'],
                     ['saved',       '💾', 'Saved'],
-                    ['favorites',   '❤️', 'Favorites'],
                   ] as const).map(([tab, icon, label]) => (
                     <button
                       key={tab}

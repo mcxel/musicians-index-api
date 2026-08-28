@@ -8,6 +8,12 @@ import {
   type AuditEntry,
   type AuditStatus,
 } from "@/lib/certification/RouteButtonAuditRegistry";
+import {
+  getOrphanAuditSnapshot,
+  traceCommandToCallers,
+  traceButtonToOutcome,
+  REBUILD_AUDIT_LAST_RUN,
+} from "@/registries/shell";
 
 const STATUS_COLOR: Record<AuditStatus, string> = {
   working: "#00FF88",
@@ -44,6 +50,15 @@ function IndicatorLight({ status }: { status: AuditStatus }) {
 export default function RouteButtonAuditPanel() {
   const [filter, setFilter] = useState<AuditStatus | "all">("all");
   const counts = useMemo(() => getAuditCounts(), []);
+  const orphanSnapshot = useMemo(() => getOrphanAuditSnapshot(), []);
+  const sampleTraces = useMemo(
+    () => ({
+      goLive: traceButtonToOutcome("session-strip.go-live"),
+      venueTools: traceCommandToCallers("shell.venue-tools"),
+      lobbies: traceButtonToOutcome("mobile.lobbies"),
+    }),
+    [],
+  );
   const bySurface = useMemo(() => {
     const groups = new Map<string, AuditEntry[]>();
     for (const entry of ROUTE_BUTTON_AUDIT) {
@@ -80,6 +95,57 @@ export default function RouteButtonAuditPanel() {
       <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 10, lineHeight: 1.5 }}>
         This is a manual audit ledger, not a live scanner — nothing here re-checks itself automatically.
         Counts reflect the most recent Fan/Performer surface pass and the fixes applied afterward.
+      </div>
+
+      {/* Orphan Function Audit — rebuild surfaces (SYSTEMS hook) */}
+      <div
+        style={{
+          marginBottom: 14,
+          padding: "10px 12px",
+          borderRadius: 8,
+          border: "1px solid rgba(0,229,255,0.25)",
+          background: "rgba(0,229,255,0.04)",
+        }}
+      >
+        <div style={{ color: "#00E5FF", fontWeight: 800, fontSize: 10, letterSpacing: "0.08em", marginBottom: 6 }}>
+          ORPHAN FUNCTION AUDIT · REBUILD SURFACES
+        </div>
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>
+          Last run: {REBUILD_AUDIT_LAST_RUN} · Registry-backed · {orphanSnapshot.rebuildEntries.length} entries
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+          {[
+            ["Wired", orphanSnapshot.audit?.counts.wired ?? 0, "#00FF88"],
+            ["Orphans", orphanSnapshot.audit?.counts.orphans ?? 0, "#FF4444"],
+            ["OFF", orphanSnapshot.audit?.counts.off ?? 0, "#888"],
+            ["Unknown", orphanSnapshot.audit?.counts.unknown ?? 0, "#FFD700"],
+            ["No command", orphanSnapshot.audit?.counts.buttonsWithoutCommand ?? 0, "#FF2DAA"],
+            ["No caller", orphanSnapshot.audit?.counts.commandsWithoutCaller ?? 0, "#AA2DFF"],
+          ].map(([label, count, color]) => (
+            <span
+              key={String(label)}
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                color: String(color),
+                border: `1px solid ${String(color)}44`,
+                borderRadius: 4,
+                padding: "2px 6px",
+              }}
+            >
+              {label}: {count}
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+          <strong>GO LIVE</strong> → {sampleTraces.goLive?.expectedOutcome ?? "unregistered"}
+          <br />
+          <strong>VENUE TOOLS</strong> → {sampleTraces.venueTools?.buttons.length ?? 0} button(s) ·{" "}
+          {sampleTraces.venueTools?.expectedOutcomes[0] ?? "unregistered"}
+          <br />
+          <strong>LOBBIES</strong> → {sampleTraces.lobbies?.panelOrRoute ?? "unregistered"} ·{" "}
+          {sampleTraces.lobbies?.expectedOutcome ?? ""}
+        </div>
       </div>
 
       {/* Status filter chips */}

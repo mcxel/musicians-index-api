@@ -164,15 +164,29 @@ export function isPerformerLobbyRecord(r: LiveDiscoveryRecord): boolean {
   });
 }
 
+/** True for the single official Friday World Dance Party hosted by DJ Record Ralph. */
+export function isOfficialWDPRecord(r: LiveDiscoveryRecord): boolean {
+  return (
+    r.roomId === "world-dance-party" ||
+    r.roomId.startsWith("world-dance-party") ||
+    r.roomId === "anchor-world-dance-room" ||
+    (r.anchorFamily ?? "").toLowerCase() === "world-dance-party" ||
+    r.hostUserId === "record-ralph"
+  );
+}
+
 function isWorldDanceRecord(r: LiveDiscoveryRecord): boolean {
   const fam = (r.anchorFamily ?? "").toLowerCase();
   return (
     r.category === "dance" ||
     r.categories.includes("dance") ||
     fam === "dance" ||
+    fam === "mini-dance-party" ||
     r.roomId.includes("world-dance") ||
+    r.roomId.includes("mini-dance") ||
     r.roomId === "anchor-world-dance-room" ||
-    (r.experienceId ?? "").includes("world-dance")
+    (r.experienceId ?? "").includes("world-dance") ||
+    (r.experienceId ?? "").includes("mini-dance")
   );
 }
 

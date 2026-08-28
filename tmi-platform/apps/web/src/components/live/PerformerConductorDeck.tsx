@@ -271,7 +271,7 @@ export default function PerformerConductorDeck() {
                     </button>
                   ) : (
                     <button
-                      onClick={resumeFromIntermission}
+                      onClick={() => resumeFromIntermission()}
                       style={{ padding: "8px 0", borderRadius: 8, border: "1px solid rgba(0,255,136,0.3)", background: "rgba(0,255,136,0.08)", color: "#00FF88", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
                     >
                       ▶ Resume Show

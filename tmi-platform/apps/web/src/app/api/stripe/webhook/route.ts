@@ -194,6 +194,21 @@ export async function POST(req: NextRequest) {
       if (metadata.type === 'ticket_purchase') {
         const buyerId = metadata.buyerId || null;
         const eventId = metadata.eventId || metadata.eventSlug || '';
+        const offerId = metadata.offerId || '';
+
+        // Digital offer fulfillment (in-memory + scanner path) when offerId present.
+        if (offerId && buyerId) {
+          try {
+            const { purchaseDigitalOffer } = await import('@/lib/tickets/DigitalTicketOfferEngine');
+            const qty = Math.max(1, Number(metadata.quantity || 1));
+            for (let i = 0; i < qty; i++) {
+              await purchaseDigitalOffer({ offerId, buyerId, quantity: 1 });
+            }
+          } catch (e) {
+            console.error('[stripe/webhook] digital offer issue failed', e);
+          }
+        }
+
         let eventRecord = eventId
           ? await prisma.event.findUnique({ where: { id: eventId } })
           : null;
@@ -226,6 +241,10 @@ export async function POST(req: NextRequest) {
 
         const qty = Math.max(1, Number(metadata.quantity || 1));
         const tierName = metadata.tier || 'STANDARD';
+        const sellerPriceCents = Math.max(
+          0,
+          Number(metadata.sellerPriceCents || Math.round(Number(metadata.faceValue || 10) * 100)),
+        );
         let ticketType = await prisma.ticketType.findFirst({
           where: { eventId: eventRecord.id, name: tierName },
         });
@@ -234,7 +253,7 @@ export async function POST(req: NextRequest) {
             data: {
               eventId: eventRecord.id,
               name: tierName,
-              priceCents: Math.round(Number(metadata.faceValue || 10) * 100),
+              priceCents: sellerPriceCents,
               quantity: 500,
             },
           });
@@ -407,6 +426,33 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // ─── 2c. DISCOVERY BOOST (profile/show/booking exposure weight) ────
+      if (metadata.type === 'discovery_boost') {
+        const { recordDiscoveryBoost } = await import('@/lib/discovery/DiscoveryBoostEngine');
+        const tierRaw = metadata.tier || 'spark';
+        const tier = (['spark', 'pulse', 'wave', 'blast'].includes(tierRaw)
+          ? tierRaw
+          : 'spark') as 'spark' | 'pulse' | 'wave' | 'blast';
+        recordDiscoveryBoost({
+          ownerId: metadata.ownerId || session.customer_email || 'unknown',
+          ownerRole: metadata.ownerRole === 'venue' ? 'venue' : 'performer',
+          target: (metadata.target || 'profile') as import('@/lib/discovery/DiscoveryBoostEngine').DiscoveryBoostTarget,
+          targetRefId: metadata.targetRefId || metadata.ownerId || 'unknown',
+          tier,
+          stripeSessionId: session.id,
+        });
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'boost',
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          type: 'discovery_boost',
+          simulated: false,
+        });
+      }
+
       // ─── 3. LIVE TIP FULFILLMENT ──────────────────────────────────────
       if (metadata.type === 'tip') {
         const amount = session.amount_total || 0;
@@ -429,6 +475,24 @@ export async function POST(req: NextRequest) {
           amountCents: amount,
           roomId: metadata.roomId || null,
         });
+
+        // Payout-aware tip alert — ledger already recorded; never suppress the tip.
+        try {
+          const { resolveTipPayoutGate, tipNotificationCopy } = await import('@/lib/tips/tipNotification');
+          const { pushStoredNotification } = await import('@/lib/notifications/notificationStore');
+          const gate = await resolveTipPayoutGate(artistUserId);
+          const copy = tipNotificationCopy(gate, amount);
+          pushStoredNotification(artistUserId, {
+            type: 'tip_received',
+            title: copy.title,
+            body: copy.body,
+            priority: 'high',
+            href: copy.href,
+            emoji: '💰',
+          });
+        } catch (tipNotifErr) {
+          console.warn('[Stripe Webhook] tip notification push failed (ledger intact)', tipNotifErr);
+        }
 
         recordStripeEvent('webhook_verified', {
           fingerprint: session.id,
@@ -531,6 +595,81 @@ export async function POST(req: NextRequest) {
           },
           update: {},
         });
+      }
+
+      // ─── 4B. ARTIST COMMERCE (per-artist catalog / price_data) ───────────
+      if (metadata.type === 'artist_commerce' && metadata.productId) {
+        const { decrementArtistProductInventory } = await import(
+          '@/lib/commerce/ArtistCommerceCatalog'
+        );
+        const inventoryOk = await decrementArtistProductInventory(metadata.productId, 1).catch(
+          () => false,
+        );
+        const paidStatus = inventoryOk ? 'PAID' : 'PAID_PENDING_FULFILLMENT';
+        const paymentRef = (session.payment_intent as string) || session.id;
+
+        const updated = await prisma.order.updateMany({
+          where: {
+            OR: [
+              ...(metadata.orderId ? [{ id: metadata.orderId }] : []),
+              { providerPaymentId: session.id },
+              { providerPaymentId: paymentRef },
+            ],
+          },
+          data: {
+            providerPaymentId: paymentRef,
+            amountCents: session.amount_total || 0,
+            status: paidStatus,
+            buyerUserId: metadata.buyerId || null,
+          },
+        });
+        if (updated.count === 0) {
+          await prisma.order.create({
+            data: {
+              ...(metadata.orderId ? { id: metadata.orderId } : {}),
+              provider: 'STRIPE',
+              providerPaymentId: paymentRef,
+              amountCents: session.amount_total || 0,
+              currency: session.currency || 'usd',
+              status: paidStatus,
+              buyerUserId: metadata.buyerId || null,
+            },
+          }).catch(() => {});
+        }
+
+        const connectDest = metadata.connectDestination || '';
+        const artistId = metadata.artistId || '';
+        const sellerShare = Math.max(0, parseInt(metadata.sellerShareCents || '0', 10) || 0);
+        if (artistId && sellerShare > 0 && !connectDest) {
+          try {
+            let wallet = await prisma.wallet.findUnique({ where: { userId: artistId } });
+            if (!wallet) {
+              wallet = await prisma.wallet.create({ data: { userId: artistId } });
+            }
+            await prisma.wallet.update({
+              where: { id: wallet.id },
+              data: {
+                pendingBalance: { increment: sellerShare },
+                lifetimeEarnings: { increment: sellerShare },
+              },
+            });
+            await prisma.transaction.create({
+              data: {
+                walletId: wallet.id,
+                type: 'ARTIST_COMMERCE',
+                amount: sellerShare,
+                fee: Math.max(0, parseInt(metadata.platformFeeCents || '0', 10) || 0),
+                netAmount: sellerShare,
+                status: 'PENDING_PAYOUT',
+                stripeId: session.id,
+                referenceId: metadata.productId,
+                note: `artist_commerce:${metadata.productType || 'OTHER'}`,
+              },
+            }).catch(() => {});
+          } catch (walletErr) {
+            console.error('[webhook] artist_commerce wallet credit failed', walletErr);
+          }
+        }
       }
 
       // ─── 4. NFT — HONEST STUB (Rule 20) ─────────────────────────────────

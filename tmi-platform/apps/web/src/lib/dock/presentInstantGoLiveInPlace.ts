@@ -9,8 +9,16 @@
 import { executeInstantGoLive, type InstantGoLiveResult } from "@/lib/dock/executeInstantGoLive";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import {
+  mediaErrorToBootstrapCode,
+  useGoLiveBootstrapStore,
+} from "@/lib/live/goLiveBootstrapStore";
 import { requestHubCameraPreview, useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { openCurtainForInstantGoLive } from "@/lib/live/StageLifecycleEngine";
+import { useMediaTransitionDirector } from "@/lib/live/MediaTransitionDirector";
+import { TRANSITION_CODES } from "@/lib/live/mediaTransitionHealthCodes";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
+import { admitGoLive } from "@/lib/live/goLiveAdmitGate";
 import {
   DEFAULT_MONITOR_A,
   defaultPersonalMediaRouter,
@@ -19,6 +27,7 @@ import {
 } from "@/lib/personal-media";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
 
 function paramFromHref(href: string | undefined, key: string, fallback: string): string {
   if (!href) return fallback;
@@ -132,6 +141,8 @@ function bindMonitorSession(opts: {
   category?: string;
   privacy?: string;
   monitor: MonitorTarget;
+  roomUrl?: string | null;
+  venueEnvironment?: "indoor" | "outdoor" | null;
 }) {
   const identity = registerAndAdaptParticipant({
     participantId: opts.roomId,
@@ -147,6 +158,8 @@ function bindMonitorSession(opts: {
       category: opts.category ?? "live",
       privacy: opts.privacy ?? "public",
       href: opts.href ?? `/live/rooms/${encodeURIComponent(opts.roomId)}`,
+      roomUrl: opts.roomUrl ?? null,
+      venueEnvironment: opts.venueEnvironment ?? "indoor",
     },
     opts.monitor,
   );
@@ -184,7 +197,30 @@ export async function presentInstantGoLiveInPlace(opts?: {
   const monitor = opts?.monitor ?? DEFAULT_MONITOR_A;
   const role = (opts?.role ?? "PERFORMER").toUpperCase();
   const publishSession = opts?.publishSession !== false;
+  const privacy = opts?.privacy ?? "public";
   launchDockStore.setRole(role);
+  const boot = useGoLiveBootstrapStore.getState();
+
+  const admit = admitGoLive({
+    authenticated: true,
+    role,
+    privacy,
+    listed: publishSession && privacy === "public",
+  });
+  if (!admit.allowed) {
+    useMediaTransitionDirector.getState().cancelStarburst(
+      TRANSITION_CODES.UNAUTHORIZED,
+      admit.reason ?? "GO LIVE not authorized.",
+    );
+    recordFunctionInvocation("presentInstantGoLiveInPlace", false);
+    return {
+      ok: false,
+      error: admit.reason,
+    };
+  }
+
+  useMediaTransitionDirector.getState().reset();
+  useMediaTransitionDirector.getState().markAuthorized();
 
   const existing = useGoLiveTransition.getState().inPlace;
   const privacyState = useLivePrivacyState.getState();
@@ -194,26 +230,51 @@ export async function presentInstantGoLiveInPlace(opts?: {
     privacyState.publishedRoomId ||
     `room-hub-${Date.now()}`;
 
-  // T+0 — getUserMedia immediately (parallel with session mint/publish)
-  const camPromise = requestHubCameraPreview();
+  // Bootstrap: IDLE → REQUESTING_MEDIA (self preview ASAP when track exists)
+  boot.begin(roomId);
 
-  // T+immediate — stop idle MNS/Kiara rotation; bind Monitor A camera + Monitor B venue
-  bindMonitorSession({
-    roomId,
-    href: existing?.href,
-    category: existing?.category,
-    privacy: existing?.privacy ?? opts?.privacy ?? "public",
-    monitor,
+  const mediaDirector = useMediaTransitionDirector.getState();
+
+  // T+0 — getUserMedia immediately (parallel with session mint/publish)
+  const camPromise = requestHubCameraPreview().then((cam) => {
+    if (cam.ok) {
+      useGoLiveBootstrapStore.getState().markSelfPreview(true);
+    }
+    return cam;
   });
 
+  // Do NOT bind monitors or starburst until room mint succeeds (below).
+  bindCanonicalMediaBus(roomId);
+
   if (existing?.roomId && existing.roomId === roomId && privacyState.isLivePublished) {
-    bindCanonicalMediaBus(roomId);
+    mediaDirector.resolveRoom(roomId);
+    bindMonitorSession({
+      roomId,
+      href: existing.href,
+      category: existing.category,
+      privacy: existing.privacy,
+      monitor,
+    });
+    boot.setPhase("VENUE_LOADING");
+    mediaDirector.markMediaTransitionReady();
+    mediaDirector.requestStarburst();
     useWorldScenePlanStore.getState().buildAndStore({
       roomId,
       category: existing.category,
       source: "session-resume",
     });
+    boot.setPhase("HUD_MOUNTING");
     const cam = await camPromise;
+    if (cam.ok) boot.markSelfPreview(true);
+    boot.markVenueReady(true);
+    boot.markHudReady(true);
+    boot.ready();
+    mediaDirector.completeStarburst();
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    openCurtainForInstantGoLive({ reducedMotion });
+    recordFunctionInvocation("presentInstantGoLiveInPlace", true);
     return {
       ok: true,
       href: existing.href,
@@ -221,6 +282,9 @@ export async function presentInstantGoLiveInPlace(opts?: {
       error: cam.ok ? undefined : cam.error,
     };
   }
+
+  boot.setPhase("SESSION_CREATED");
+  boot.setSession(roomId);
 
   const result = await executeInstantGoLive({
     role,
@@ -233,37 +297,67 @@ export async function presentInstantGoLiveInPlace(opts?: {
 
   if (!result.ok || !result.roomId) {
     useGoLiveTransition.getState().clearWarp();
+    mediaDirector.failLaunch(result.error ?? "Stage room did not mint.");
+    boot.fail("SESSION_MINT_FAILED", result.error ?? "Stage room did not mint.");
+    recordFunctionInvocation("presentInstantGoLiveInPlace", false);
     return {
       ok: false,
       error: result.error ?? "Stage room did not mint. Staying in this shell — no kick-out.",
     };
   }
 
+  boot.setPhase("VENUE_RESOLVING");
   const category = paramFromHref(result.href, "category", "live");
+  const roomUrl = paramFromHref(result.href, "roomUrl", "") || null;
+
+  mediaDirector.resolveRoom(result.roomId);
   bindMonitorSession({
     roomId: result.roomId,
     href: result.href,
     category,
     privacy: paramFromHref(result.href, "privacy", "public"),
     monitor,
+    roomUrl,
+    venueEnvironment: "indoor",
   });
 
   bindCanonicalMediaBus(result.roomId);
+  boot.setSession(result.roomId);
+  boot.setPhase("VENUE_LOADING");
+  mediaDirector.markMediaTransitionReady();
+  mediaDirector.requestStarburst();
 
   useWorldScenePlanStore.getState().buildAndStore({
     roomId: result.roomId,
     category,
     eventType: opts?.preferredExperience ?? "live-show",
-    environment: opts?.privacy === "private" ? "indoor" : undefined,
+    environment: "indoor",
     source: "go-live",
   });
+
+  // Curtain open deferred until READY below — do not open early
+  boot.setPhase("HUD_MOUNTING");
 
   if (publishSession) {
     useLivePrivacyState.getState().markLivePublished(result.roomId);
   }
 
   const cam = await camPromise;
-  if (!cam.ok && !useLivePrivacyState.getState().previewStream) {
+  if (cam.ok) {
+    boot.markSelfPreview(true);
+    useLivePrivacyState.getState().syncPreviewTracks();
+  } else if (!useLivePrivacyState.getState().previewStream) {
+    boot.markSelfPreview(false);
+    // Session still READY — honest media warning, not hard fail of live
+    boot.markVenueReady(true);
+    boot.markHudReady(true);
+    boot.ready();
+    mediaDirector.completeStarburst();
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    openCurtainForInstantGoLive({ reducedMotion });
+    recordFunctionInvocation("presentInstantGoLiveInPlace", true);
     return {
       ok: true,
       href: result.href,
@@ -272,5 +366,21 @@ export async function presentInstantGoLiveInPlace(opts?: {
     };
   }
 
+  if (!cam.ok && cam.error) {
+    // Soft warn — do not flip whole session to ERROR if stream already present
+    void mediaErrorToBootstrapCode(cam.error);
+  }
+
+  boot.markVenueReady(true);
+  boot.markHudReady(true);
+  boot.ready();
+  mediaDirector.completeStarburst();
+  {
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    openCurtainForInstantGoLive({ reducedMotion });
+  }
+  recordFunctionInvocation("presentInstantGoLiveInPlace", true);
   return result;
 }

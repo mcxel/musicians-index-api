@@ -16,7 +16,6 @@ import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
-import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 import BotRoomActivator from "@/components/bots/BotRoomActivator";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
@@ -332,7 +331,6 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
-      <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
       <GoLiveTransitionClear />
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
@@ -440,7 +438,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           <ControlCanisterCluster
             eventId={id}
             eventMode="casual"
-            availableCanisters={['lighting', 'effects', 'banner', 'camera', 'support', 'stage', 'director', 'event-owner', 'curtain']}
+            availableCanisters={['lighting', 'event-owner']}
           />
         )}
 
@@ -492,7 +490,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           <MessagingCanister recipientId={performerSlug ?? id} height={340} compact />
           {/* Store — support the performer */}
           {performerSlug && (
-            <StoreCanister entityId={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={4} />
+            <StoreCanister entityId={performerSlug} artistSlug={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={6} />
           )}
           {/* Avatar Creation Center / Workspace / Inventory — Fan-only per the
               Identity Policy (CLAUDE.md Rule 26, added 2026-07-18). Performers

@@ -11,6 +11,7 @@ import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 import { waitUntil } from '@vercel/functions';
+import { acceptAllRequiredPolicies } from "@/lib/messaging/PolicyAcceptance";
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
   let stage: RegisterStage = 'REQUEST_RECEIVED';
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
-    dateOfBirth?: string; termsAccepted?: boolean; ref?: string; roles?: string[];
+    dateOfBirth?: string; dob?: string; termsAccepted?: boolean; originalityAccepted?: boolean; ref?: string; roles?: string[];
     inviteToken?: string;
     tier?: string;
     paymentToken?: string;
@@ -104,6 +105,12 @@ export async function POST(req: NextRequest) {
     stage = 'REQUEST_JSON_PARSED';
   } catch {
     return NextResponse.json({ ok: false, errorCode: 'INVALID_JSON', error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  
+  // Normalize DOB field aliases from signup UIs (dateOfBirth | dob)
+  if (!parsed.dateOfBirth?.trim() && typeof (parsed as { dob?: string }).dob === "string") {
+    parsed.dateOfBirth = (parsed as { dob?: string }).dob;
   }
 
   const email       = (parsed.email ?? '').trim().toLowerCase();
@@ -158,7 +165,39 @@ export async function POST(req: NextRequest) {
   }
 
   const registerAgeYears = parsed.dateOfBirth ? ageYearsFromDateOfBirthIso(parsed.dateOfBirth) : null;
-  if (registerAgeYears != null && registerAgeYears < 16) {
+  if (!parsed.dateOfBirth?.trim()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'MISSING_FIELDS',
+        error: 'Date of birth is required.',
+      },
+      { status: 400 },
+    );
+  }
+  if (registerAgeYears == null || !Number.isFinite(registerAgeYears)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'MISSING_FIELDS',
+        error: 'Enter a valid date of birth.',
+      },
+      { status: 400 },
+    );
+  }
+  
+  if (parsed.termsAccepted !== true) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'TERMS_REQUIRED',
+        error: 'You must accept the Terms, Privacy, Community Guidelines, Messaging Conduct, and liability acknowledgment.',
+      },
+      { status: 400 },
+    );
+  }
+
+  if (registerAgeYears < 16) {
     return NextResponse.json(
       {
         ok: false,
@@ -244,6 +283,7 @@ async function ensureUserDatabaseSchema() {
         displayName: displayName || email.split('@')[0],
         role: platformRoles[0].toUpperCase() as any,
         tier: resolvedTier,
+        termsAccepted: true,
         ...(hasSignupDob
           ? {
               dateOfBirth: signupDob!,
@@ -253,6 +293,13 @@ async function ensureUserDatabaseSchema() {
           : {}),
       }
     });
+
+    // Versioned policy acceptance at signup (messaging eligibility)
+    try {
+      await acceptAllRequiredPolicies(user.id);
+    } catch (polErr) {
+      console.warn("[TMI register] policy acceptance record failed", polErr);
+    }
 
     // Create UserRole records for all selected roles
     stage = 'USER_ROLES_CREATED';

@@ -9,6 +9,7 @@ import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profile/PublicProfileMediaComposer";
 import IdentityPlate, { type ProfileRoleType } from "@/components/profile/IdentityPlate";
 import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
+import ProfileMediaPlayerShowcase from "@/components/profile/ProfileMediaPlayerShowcase";
 import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
 
@@ -299,13 +300,16 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
 
         {/* ── FEATURED (media composer) ── */}
         {tab === "FEATURED" && (
-          <PublicProfileMediaComposer
-            blocks={derivePerformerBlocks(p, ac)}
-            accentColor={ac}
-            role="performer"
-            ownerSlug={p.slug}
-            ownerName={p.name}
-          />
+          <>
+            <ProfileMediaPlayerShowcase ownerSlug={p.slug} accentColor={ac} />
+            <PublicProfileMediaComposer
+              blocks={derivePerformerBlocks(p, ac)}
+              accentColor={ac}
+              role="performer"
+              ownerSlug={p.slug}
+              ownerName={p.name}
+            />
+          </>
         )}
 
         {/* ── ABOUT ── */}

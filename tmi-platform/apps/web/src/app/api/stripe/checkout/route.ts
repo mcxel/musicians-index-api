@@ -96,6 +96,74 @@ export async function GET(req: NextRequest) {
   const boostCategory = searchParams.get('category') ?? 'all';
   const wdpEntryId = searchParams.get('wdpEntryId') ?? '';
 
+  // Self-serve discovery boost ($1.99–$19.99)
+  if (purchaseType === 'discovery_boost') {
+    if (isStripePaused()) {
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=stripe-paused', req.url));
+    }
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=stripe-pending', req.url));
+    }
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    if (!userEmail) {
+      return NextResponse.redirect(new URL('/login?next=/hub/performer/network', req.url));
+    }
+    const tierRaw = (searchParams.get('tier') ?? 'spark') as
+      | 'spark'
+      | 'pulse'
+      | 'wave'
+      | 'blast';
+    const tier = ['spark', 'pulse', 'wave', 'blast'].includes(tierRaw) ? tierRaw : 'spark';
+    const target = searchParams.get('target') ?? 'profile';
+    const targetRefId = searchParams.get('targetRefId') ?? '';
+    const ownerRole = searchParams.get('ownerRole') === 'venue' ? 'venue' : 'performer';
+    const productKey =
+      tier === 'pulse'
+        ? 'DISCOVERY_BOOST_PULSE'
+        : tier === 'wave'
+          ? 'DISCOVERY_BOOST_WAVE'
+          : tier === 'blast'
+            ? 'DISCOVERY_BOOST_BLAST'
+            : 'DISCOVERY_BOOST_SPARK';
+    const catalog = STRIPE_PRODUCTS[productKey];
+    try {
+      const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
+      const ownerId = buyer?.id ?? targetRefId ?? userEmail;
+      const isRealBoostPrice = /^price_[A-Za-z0-9]{16,}$/.test(catalog.priceId);
+      const lineItem = isRealBoostPrice
+        ? { price: catalog.priceId, quantity: 1 as const }
+        : {
+            quantity: 1 as const,
+            price_data: {
+              currency: 'usd' as const,
+              unit_amount: catalog.price,
+              product_data: { name: catalog.name },
+            },
+          };
+      const session = await stripeClient.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [lineItem],
+        success_url: `${origin}/payment-success?type=discovery_boost&tier=${encodeURIComponent(tier)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/hub/performer/network?notice=boost-cancelled`,
+        customer_email: userEmail,
+        metadata: {
+          type: 'discovery_boost',
+          ownerId,
+          ownerRole,
+          target,
+          targetRefId: targetRefId || ownerId,
+          tier,
+        },
+      });
+      if (!session.url) throw new Error('No session URL returned');
+      return NextResponse.redirect(session.url, 303);
+    } catch (err) {
+      console.error('[stripe/checkout] discovery_boost failed', err);
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=boost-failed', req.url));
+    }
+  }
+
   if (
     purchaseType === 'boost_lobby_wall' ||
     purchaseType === 'wdp_submission_boost'
@@ -156,6 +224,7 @@ export async function GET(req: NextRequest) {
   // For placeholders, build inline price_data from URL params
   const amountStr   = searchParams.get('amount');
   const productName = searchParams.get('productName') ?? 'TMI Pass';
+  const passType    = searchParams.get('passType') ?? '';
   const amount      = amountStr ? parseInt(amountStr, 10) : null;
 
   // Resolve which plan/tier this purchase maps to
@@ -217,9 +286,12 @@ export async function GET(req: NextRequest) {
         plan: planKey,
         tierUpgrade,
         userEmail,
+        ...(passType || purchaseType === 'season_pass'
+          ? { type: 'season_pass', passType: passType || 'starter', ...(amount ? { amountCents: String(amount) } : {}) }
+          : {}),
         ...(battleId
           ? { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' }
-          : purchaseType
+          : purchaseType && purchaseType !== 'season_pass'
             ? { type: purchaseType, refId, creativeUrl, startDate: placementStartDate }
             : {}),
       },
@@ -582,7 +654,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (lineItems.length === 0) {
-      return NextResponse.json({ error: 'No valid products — set STRIPE_PRICE_* env vars in Vercel for subscription products' }, { status: 400 });
+      // Subscription / TMI catalog path only — artist store uses /api/commerce/checkout (DB price_data).
+      const wantsSubscription = body.mode === 'subscription' || hasRecurring;
+      return NextResponse.json(
+        {
+          error: wantsSubscription
+            ? 'Subscriptions temporarily unavailable'
+            : 'No valid subscription products for this checkout',
+          code: 'SUBSCRIPTIONS_UNAVAILABLE',
+          hint: 'Artist merch/shoutouts/meet-greet use /api/commerce/checkout with productId — not STRIPE_PRICE_* env vars.',
+        },
+        { status: 400 },
+      );
     }
 
     // Subscription when caller asks or when any line item is recurring — never force payment-only.

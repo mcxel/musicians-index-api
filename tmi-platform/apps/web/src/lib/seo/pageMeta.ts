@@ -31,7 +31,7 @@ export const PAGE_META: Record<string, Metadata> = {
   spotlight:       makeMeta("Artist Spotlight Packages",   "Get your music seen. Purchase a spotlight placement on the TMI homepage, magazine, and social feeds.",          "/spotlight"),
   gift:            makeMeta("Gift a Subscription",         "Give the gift of TMI — send a Pro or VIP subscription to any artist or fan in your life.",                     "/gift"),
   invite:          makeMeta("Invite Friends to TMI",       "Share your referral link and earn XP bonuses when your friends join The Musician's Index.",                    "/invite"),
-  "go-live":       makeMeta("TMI Is Now Live",             "The Musician's Index is open. Create your profile, explore rooms, and start building your music career.",      "/go-live"),
+  "go-live":       makeMeta("TMI Is Now Live",             "The Musician's Index is open. Create your profile, explore rooms, and start building your music career.",      "/hub/performer?golive=1"),
   "beat-marketplace": makeMeta("Beat Marketplace",         "Buy and sell professional beat licenses on TMI. Producers earn 90% of every sale.",                          "/beat-marketplace"),
   "live-schedule": makeMeta("Live Schedule",               "See what's coming up on TMI — live rooms, cypher battles, Monday Stage events, and more.",                    "/live-schedule"),
   "hall-of-fame":  makeMeta("Hall of Fame",                "The most decorated artists and fans in TMI history. Crown holders, contest winners, and platform legends.",   "/hall-of-fame"),

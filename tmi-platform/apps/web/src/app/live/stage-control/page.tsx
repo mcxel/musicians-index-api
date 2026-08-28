@@ -99,7 +99,7 @@ export default function StageControlPage() {
       {/* Header */}
       <div style={{ background: "rgba(0,0,0,0.8)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/go-live" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>← GO LIVE</Link>
+          <Link href="/hub/performer?golive=1" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>← GO LIVE</Link>
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)" }} />
           <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FFFF", fontWeight: 800 }}>STAGE CONTROL</div>
         </div>

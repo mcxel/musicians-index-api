@@ -48,7 +48,3 @@ export function runCanisterAuthHydrationTest(): { allPassed: boolean; results: R
   console.log(`[CANISTER_AUTH_HYDRATION_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runCanisterAuthHydrationTest();
-}

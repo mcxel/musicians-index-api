@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
-import type { UserTier } from '@/lib/auth/UserStore';
+import { resolveHardcodedTierRole, type UserTier } from '@/lib/auth/UserStore';
 
 const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']);
 
@@ -43,6 +43,14 @@ export function computeAuthoritativeTier(
   if (isFounderEmail && baseTier !== 'DIAMOND') {
     return { tier: 'DIAMOND', needsFounderHeal: true };
   }
+
+  // Same entitlement chain as login/UserStore — never let a stale FREE DB row
+  // downgrade a canonical hardcoded-Diamond or DIAMOND_EMAILS account on session read.
+  const hardcoded = email ? resolveHardcodedTierRole(email) : null;
+  if (hardcoded?.tier === 'DIAMOND' && baseTier !== 'DIAMOND') {
+    return { tier: 'DIAMOND', needsFounderHeal: true };
+  }
+
   return { tier: baseTier, needsFounderHeal };
 }
 

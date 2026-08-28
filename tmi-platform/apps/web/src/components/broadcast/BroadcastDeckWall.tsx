@@ -1,52 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useBroadcastRotation } from "@/lib/broadcast/BroadcastRotationEngine";
+import {
+  HOME_BROADCAST_ROTATION_MS,
+  useBroadcastRotation,
+} from "@/lib/broadcast/BroadcastRotationEngine";
+import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import type { BroadcastFeedKind } from "@/types/broadcast";
 import { KIND_TO_SHAPE } from "@/types/broadcast";
-import { MaskedVideoTile, type BroadcastTileStatus } from "@/components/live/MaskedVideoTile";
+import { MaskedVideoTile } from "@/components/live/MaskedVideoTile";
 import FanLobbyWall from "@/components/lobby/FanLobbyWall";
 import PerformerLobbyWall from "@/components/lobby/PerformerLobbyWall";
 import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
-import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 
 const LOBBY_WALL_KINDS = new Set<BroadcastFeedKind>([
   "fan-lobby-wall",
   "performer-lobby-wall",
   "mixed-lobby-wall",
 ]);
-
-// Real performer accounts (bot-driven, real photo, real room) used to fill
-// placeholder tile slots — never a generic emoji avatar. BroadcastRotationEngine
-// never actually populates feed.performerIds, so the split-screen "Fighter 1" /
-// "Fighter 2" battle tiles and the no-feed fallback grid were always 100%
-// placeholder; these now resolve to a real, distinct, deterministically-picked
-// room owner instead, so clicking through lands on a real profile/room.
-const BOT_ROOM_OWNERS = PERFORMER_REGISTRY.filter((p) => p.profileImageUrl.startsWith("/bot-images/"));
-
-function hashSeed(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-/** Deterministic pick so the same tile always shows the same "room owner" across re-renders. */
-function pickRoomOwner(seed: string, offset = 0) {
-  if (BOT_ROOM_OWNERS.length === 0) return null;
-  return BOT_ROOM_OWNERS[(hashSeed(seed) + offset) % BOT_ROOM_OWNERS.length]!;
-}
-
-/** Pick `count` distinct room owners for a seed (used by the no-feed fallback grid). */
-function pickDistinctRoomOwners(seed: string, count: number) {
-  const picks: typeof BOT_ROOM_OWNERS = [];
-  let offset = 0;
-  while (picks.length < count && offset < BOT_ROOM_OWNERS.length) {
-    const candidate = pickRoomOwner(seed, offset);
-    if (candidate && !picks.some((p) => p.id === candidate.id)) picks.push(candidate);
-    offset++;
-  }
-  return picks;
-}
 
 interface BroadcastDeckWallProps {
   sequence: BroadcastFeedKind[];
@@ -61,10 +32,11 @@ export default function BroadcastDeckWall({
   title,
   accentColor = "#00FFFF",
   maxTiles = 8,
-  intervalMs = 13000,
+  intervalMs = HOME_BROADCAST_ROTATION_MS,
 }: BroadcastDeckWallProps) {
+  const discoveryRecords = useDiscoveryBus(null);
   const { currentKind, currentLabel, currentFeeds, transitioning, toast } =
-    useBroadcastRotation(sequence, intervalMs);
+    useBroadcastRotation(sequence, intervalMs, { discoveryRecords });
 
   const feeds = currentFeeds.slice(0, maxTiles);
 
@@ -202,22 +174,25 @@ export default function BroadcastDeckWall({
         }}
       >
         {feeds.length === 0 ? (
-          /* No feeds of this kind right now — fill with real room-owner accounts
-             (Rule 15 progressive fill) instead of a generic mic emoji. */
-          pickDistinctRoomOwners(currentKind, 4).map((owner) => (
-            <Link key={owner.id} href={owner.profileRoute} style={{ textDecoration: "none" }}>
-              <MaskedVideoTile
-                shape="octagon"
-                performerName={owner.name}
-                avatarUrl={owner.profileImageUrl}
-                performerSlug={owner.slug}
-                accentColor={accentColor}
-                size={160}
-                isLive={false}
-                genre={owner.category}
-              />
-            </Link>
-          ))
+          <div
+            style={{
+              flex: 1,
+              minWidth: 160,
+              minHeight: 160,
+              borderRadius: 12,
+              border: `1px dashed ${accentColor}44`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+              color: 'rgba(255,255,255,0.55)',
+              fontSize: 10,
+              fontWeight: 700,
+              textAlign: 'center',
+            }}
+          >
+            No live {currentLabel.toLowerCase()} rooms right now
+          </div>
         ) : (
           feeds.map((feed, i) => {
             const shape = feed.shape ?? KIND_TO_SHAPE[feed.kind] ?? "octagon";
@@ -238,15 +213,14 @@ export default function BroadcastDeckWall({
                 >                  
                   <MaskedVideoTile
                     shape="hexagon"
-                    performerName={pickRoomOwner(feed.id, 0)?.name ?? "Fighter 1"}
-                    avatarUrl={pickRoomOwner(feed.id, 0)?.profileImageUrl}
-                    performerSlug={pickRoomOwner(feed.id, 0)?.slug}
+                    performerName={feed.title}
                     avatarEmoji="⚔️"
                     accentColor={feed.accentColor ?? accentColor}
                     size={150}
                     isLive={isLive}
                     viewerCount={Math.floor((feed.viewerCount ?? 0) / 2)}
                     genre={feed.genre}
+                    performerSlug={feed.roomId}
                   />
                   <div
                     style={{

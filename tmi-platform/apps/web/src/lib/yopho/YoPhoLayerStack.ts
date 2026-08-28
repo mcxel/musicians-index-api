@@ -60,8 +60,103 @@ export function createEmptyStackLayer(
     edgeSoftness: 4,
     preserveHairEdges: true,
     zIndex,
+    mediaMode: "static",
     budgetKind,
   };
+}
+
+/** Canonical FREE-tier stack: background (z0) · mid (z1) · foreground (z2). */
+export const YOPHO_TRIPLE_LAYER_LABELS = ["Background", "Mid layer", "Foreground"] as const;
+
+function roleForTripleSlot(slot: 0 | 1 | 2): PortraitLayer["role"] {
+  if (slot === 0) return "background";
+  if (slot === 1) return "secondary";
+  return "primary";
+}
+
+/**
+ * Upgrade legacy single-layer blueprints to the 3-slot image stack (2 pictures + 1 background).
+ * Idempotent — safe on every load. Never drops existing image URLs.
+ */
+export function ensureTripleLayerStack(bp: YoPhoPortraitBlueprint): YoPhoPortraitBlueprint {
+  const stackCount = countStackLayers(bp);
+  if (stackCount >= 3) return bp;
+
+  const next = clonePortraitBlueprint(bp);
+  const allRefs = listStackLayers(bp);
+  const byZ = [...allRefs].sort((a, b) => a.layer.zIndex - b.layer.zIndex);
+
+  const slots: PortraitLayer[] = [];
+  if (stackCount === 1 && byZ[0]) {
+    const existing = byZ[0].layer;
+    slots.push(
+      createEmptyStackLayer(0, YOPHO_TRIPLE_LAYER_LABELS[0], {
+        budgetKind: "image",
+        role: roleForTripleSlot(0),
+      }),
+      createEmptyStackLayer(1, YOPHO_TRIPLE_LAYER_LABELS[1], {
+        budgetKind: "image",
+        role: roleForTripleSlot(1),
+      }),
+      {
+        ...existing,
+        zIndex: 2,
+        role: roleForTripleSlot(2),
+        label: existing.label?.trim() || YOPHO_TRIPLE_LAYER_LABELS[2]!,
+        mediaMode: existing.mediaMode ?? "static",
+        budgetKind: existing.budgetKind ?? "image",
+      },
+    );
+  } else {
+    for (let i = 0; i < 3; i++) {
+      const existing = byZ[i]?.layer;
+      if (existing) {
+        slots.push({
+          ...existing,
+          zIndex: i,
+          role: roleForTripleSlot(i as 0 | 1 | 2),
+          label: existing.label?.trim() || YOPHO_TRIPLE_LAYER_LABELS[i]!,
+          mediaMode: existing.mediaMode ?? "static",
+          budgetKind: existing.budgetKind ?? "image",
+        });
+      } else {
+        slots.push(
+          createEmptyStackLayer(i, YOPHO_TRIPLE_LAYER_LABELS[i], {
+            budgetKind: "image",
+            role: roleForTripleSlot(i as 0 | 1 | 2),
+          }),
+        );
+      }
+    }
+  }
+
+  next.primaryLayer = slots[2]!;
+  next.secondaryLayers = [slots[1]!, slots[0]!];
+  next.updatedAt = new Date().toISOString();
+  next.activePortraitsCount = slots.filter((layer) => Boolean(layer.imageUrl?.trim() || layer.videoUrl?.trim())).length;
+  return next;
+}
+
+export function layerHasVisibleMedia(layer: PortraitLayer): boolean {
+  if (layer.mediaMode === "animated") return Boolean(layer.videoUrl?.trim());
+  return Boolean(layer.imageUrl?.trim());
+}
+
+export function setActiveLayerMedia(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  payload: { imageUrl?: string; videoUrl?: string; mediaMode?: PortraitLayer["mediaMode"]; label?: string },
+): YoPhoPortraitBlueprint {
+  const patch: Partial<PortraitLayer> = { ...payload };
+  if (payload.mediaMode === "static" && payload.videoUrl === undefined) {
+    patch.videoUrl = "";
+  }
+  if (payload.mediaMode === "animated" && payload.imageUrl === undefined) {
+    // keep imageUrl as poster/fallback when switching modes
+  }
+  const next = updateLayerById(bp, layerId, patch);
+  next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter(layerHasVisibleMedia).length;
+  return next;
 }
 
 /** Total stack items currently on the card (images + non-image stack entries). */
@@ -84,7 +179,7 @@ export function updateLayerById(
   }
   next.updatedAt = new Date().toISOString();
   next.activePortraitsCount =
-    [next.primaryLayer, ...next.secondaryLayers].filter((l) => Boolean(l.imageUrl?.trim())).length;
+    [next.primaryLayer, ...next.secondaryLayers].filter(layerHasVisibleMedia).length;
   return next;
 }
 
@@ -179,17 +274,44 @@ export function removeStackLayer(
     next.primaryLayer = { ...promoted, role: "primary" };
     next.secondaryLayers = rest;
     next.updatedAt = new Date().toISOString();
-    next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter((l) =>
-      Boolean(l.imageUrl?.trim()),
-    ).length;
+    next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter(layerHasVisibleMedia).length;
     return next;
   }
   const next = clonePortraitBlueprint(bp);
   next.secondaryLayers = next.secondaryLayers.filter((l) => l.id !== layerId);
   next.updatedAt = new Date().toISOString();
-  next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter((l) =>
-    Boolean(l.imageUrl?.trim()),
-  ).length;
+  next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter(layerHasVisibleMedia).length;
+  return next;
+}
+
+/**
+ * Duplicate the active layer: clones all properties (imageUrl, scale, opacity,
+ * blendMode, transform, etc.) into a new secondary layer placed on top.
+ * Returns null if at either the image-slot or total-layer capacity limit.
+ */
+export function duplicateStackLayer(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  maxImages: number,
+  maxTotalLayers: number = Number.POSITIVE_INFINITY,
+): YoPhoPortraitBlueprint | null {
+  const sourceRef = listStackLayers(bp).find((r) => r.id === layerId);
+  if (!sourceRef) return null;
+  const budgetKind = sourceRef.layer.budgetKind ?? "image";
+  if (countYoPhoTotalLayers(bp) >= maxTotalLayers) return null;
+  if (budgetKind === "image" && countYoPhoImageSlots(bp) >= maxImages) return null;
+  const maxZ = Math.max(...listStackLayers(bp).map((r) => r.layer.zIndex), 0);
+  const cloned: PortraitLayer = {
+    ...sourceRef.layer,
+    id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    label: `${sourceRef.layer.label ?? "Layer"} copy`,
+    role: "secondary",
+    zIndex: maxZ + 1,
+  };
+  const next = clonePortraitBlueprint(bp);
+  next.secondaryLayers = [...next.secondaryLayers, cloned];
+  next.updatedAt = new Date().toISOString();
+  next.activePortraitsCount = [next.primaryLayer, ...next.secondaryLayers].filter(layerHasVisibleMedia).length;
   return next;
 }
 
@@ -200,8 +322,10 @@ export function setActiveLayerImage(
   imageUrl: string,
   label?: string,
 ): YoPhoPortraitBlueprint {
-  return updateLayerById(bp, layerId, {
+  return setActiveLayerMedia(bp, layerId, {
     imageUrl,
+    mediaMode: "static",
+    videoUrl: "",
     ...(label ? { label } : {}),
   });
 }

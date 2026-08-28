@@ -1,10 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   BUSINESS_PARTNER_CAPABILITY_LABELS,
   type BusinessPartnerCapability,
 } from "@/lib/auth/BusinessPartnerCapabilities";
+import SignupPolicyAcceptance, {
+  AGE_REQUIRED_ERROR,
+  POLICY_ACCEPTANCE_ERROR,
+  allRequiredPoliciesAccepted,
+  emptyPolicyChecks,
+  isSignupAgeEligible,
+} from "@/components/onboarding/SignupPolicyAcceptance";
+import type { PolicyId } from "@/lib/messaging/policyCatalog";
 
 export type BusinessPartnerSignupFormState = {
   businessName: string;
@@ -72,6 +81,9 @@ export default function BusinessPartnerSignupFields({
   subheading,
   backHref = "/signup",
 }: Props) {
+  const [policyChecks, setPolicyChecks] = useState<Record<PolicyId, boolean>>(emptyPolicyChecks());
+  const [localError, setLocalError] = useState("");
+
   function toggleCapability(cap: BusinessPartnerCapability) {
     const next = form.capabilities.includes(cap)
       ? form.capabilities.filter((c) => c !== cap)
@@ -87,6 +99,23 @@ export default function BusinessPartnerSignupFields({
         [cap]: { ...(form.followUps[cap] ?? {}), [key]: value },
       },
     });
+  }
+
+  function handleSubmitClick() {
+    setLocalError("");
+    if (!form.dateOfBirth.trim()) {
+      setLocalError("Date of birth is required.");
+      return;
+    }
+    if (!isSignupAgeEligible(form.dateOfBirth)) {
+      setLocalError(AGE_REQUIRED_ERROR);
+      return;
+    }
+    if (!allRequiredPoliciesAccepted(policyChecks)) {
+      setLocalError(POLICY_ACCEPTANCE_ERROR);
+      return;
+    }
+    onSubmit();
   }
 
   const labelStyle: React.CSSProperties = {
@@ -107,6 +136,12 @@ export default function BusinessPartnerSignupFields({
     fontSize: 14,
   };
 
+  const displayError = localError || error;
+  const canSubmit =
+    Boolean(form.businessName.trim() && form.email.trim() && form.password && form.dateOfBirth) &&
+    allRequiredPoliciesAccepted(policyChecks) &&
+    form.capabilities.length > 0;
+
   return (
     <>
       <header style={{ display: "grid", gap: 8 }}>
@@ -120,12 +155,12 @@ export default function BusinessPartnerSignupFields({
       <div style={{ display: "grid", gap: 10 }}>
         {[
           ["Business Name *", "businessName", "text", "Acme Audio Co."],
-          ["Legal Entity Name", "legalName", "text", "Acme Audio LLC"],
-          ["Public Username", "username", "text", "acme-audio"],
-          ["Website", "website", "url", "https://example.com"],
-          ["Industry Category", "category", "text", "Audio gear, apparel, beverage…"],
+          ["Legal Entity Name (Optional)", "legalName", "text", "Acme Audio LLC"],
+          ["Public Username (Optional)", "username", "text", "acme-audio"],
+          ["Website (Optional)", "website", "url", "https://example.com"],
+          ["Industry Category (Optional)", "category", "text", "Audio gear, apparel, beverage…"],
           ["Work Email *", "email", "email", "partnerships@brand.com"],
-          ["Contact Phone / Region", "region", "text", "North America · +1…"],
+          ["Contact Phone / Region (Optional)", "region", "text", "North America · +1…"],
           ["Password *", "password", "password", "8+ characters"],
         ].map(([label, key, type, placeholder]) => (
           <div key={key}>
@@ -147,7 +182,15 @@ export default function BusinessPartnerSignupFields({
             value={form.dateOfBirth}
             onChange={(e) => onChange({ ...form, dateOfBirth: e.target.value })}
           />
+          <p style={{ margin: "4px 0 0", fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+            Required — you must be 16+ to join TMI.
+          </p>
         </div>
+        <SignupPolicyAcceptance
+          checks={policyChecks}
+          onChange={setPolicyChecks}
+          accent={accentColor}
+        />
       </div>
 
       <div style={{ borderRadius: 12, border: `1px solid ${accentColor}33`, padding: "12px 14px" }}>
@@ -214,15 +257,16 @@ export default function BusinessPartnerSignupFields({
           letterSpacing: "0.14em",
           textTransform: "uppercase",
           padding: "12px 14px",
-          cursor: "pointer",
+          cursor: submitting || !canSubmit ? "not-allowed" : "pointer",
+          opacity: submitting || !canSubmit ? 0.5 : 1,
         }}
-        onClick={onSubmit}
-        disabled={submitting}
+        onClick={handleSubmitClick}
+        disabled={submitting || !canSubmit}
       >
         {submitting ? "Creating Account…" : "Create Business Partner Account →"}
       </button>
 
-      {error && <p style={{ fontSize: 11, color: "#FF4444", margin: 0 }}>{error}</p>}
+      {displayError && <p style={{ fontSize: 11, color: "#FF4444", margin: 0 }}>{displayError}</p>}
 
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
         Need another role?{" "}

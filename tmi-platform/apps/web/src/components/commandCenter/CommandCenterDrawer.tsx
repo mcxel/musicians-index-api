@@ -32,7 +32,7 @@ import { drawerStateStore, useDrawerState, type AnalyticsPeriod, ANALYTICS_PERIO
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
-import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
+import VenueToolsShellHint from "@/components/hud/VenueToolsShellHint";
 import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazineDrawer";
 import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
@@ -682,14 +682,9 @@ export default function CommandCenterDrawer({
       {activePanel === "stage_tools" && role === "performer" ? (
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            Stage & broadcast tools — curtain control + real destinations.
+            Stage & broadcast tools — curtain/lighting/mood live in VENUE TOOLS.
           </div>
-          <PerformerCurtainControlPanel
-            performerId={userId}
-            sessionId={`hub-curtain-${userId}`}
-            accentColor={theme.primary}
-            compact
-          />
+          <VenueToolsShellHint accent={theme.primary} roomId={`hub-curtain-${userId}`} />
           <button
             type="button"
             onClick={() => {

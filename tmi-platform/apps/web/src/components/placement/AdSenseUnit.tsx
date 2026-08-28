@@ -1,5 +1,7 @@
 "use client";
 
+/** @deprecated LEGACY — use CanonicalAdSlot for new surfaces. */
+
 import { useEffect, useRef } from "react";
 import { getAdSensePublisherId } from "@/lib/ads/adConfig";
 

@@ -6,6 +6,7 @@ import {
   type YoPhoPortraitBlueprint,
 } from "@/lib/yopho/YoPhoPortraitEngine";
 import { normalizeYoPhoTier, trimYoPhoBlueprintToCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import { ensureTripleLayerStack } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
 import { useAuth } from "@/lib/hooks/useAuth";
 
@@ -38,7 +39,7 @@ export default function YoPhoFanPortraitWorkspace({
       const raw = localStorage.getItem("tmi_yopho_editions_fan");
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
       if (parsed.length > 0 && parsed[0]) {
-        setBlueprint(trimYoPhoBlueprintToCapacity(parsed[0], resolved));
+        setBlueprint(ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(parsed[0], resolved)));
       } else {
         setBlueprint(createDefaultYoPhoBlueprint("fan", displayName));
       }
@@ -48,16 +49,17 @@ export default function YoPhoFanPortraitWorkspace({
   }, [userId, displayName, tierProp, sessionTier]);
 
   const handleSaveEdition = (saved: YoPhoPortraitBlueprint) => {
+    const normalized = ensureTripleLayerStack(saved);
     try {
       const raw = localStorage.getItem("tmi_yopho_editions_fan");
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
-      const updated = parsed.length > 0 ? [...parsed] : [saved];
-      updated[0] = saved;
+      const updated = parsed.length > 0 ? [...parsed] : [normalized];
+      updated[0] = normalized;
       localStorage.setItem("tmi_yopho_editions_fan", JSON.stringify(updated));
     } catch {
       /* quota */
     }
-    setBlueprint(saved);
+    setBlueprint(normalized);
   };
 
   if (!blueprint) {

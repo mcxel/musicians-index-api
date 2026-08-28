@@ -9,51 +9,31 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
-import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
-import { presentCanonicalWorkspace, openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
   userId: string;
   displayName: string;
 }
 
+/** Shell-owned destinations only — no legacy Home/Discover/Live Now/Lobby board. */
 const NAV_LINKS = [
-  { label: "HOME", href: "/" },
-  { label: "DISCOVER", href: null as string | null, liveWall: true },
-  { label: "LIVE NOW", href: null as string | null, liveWall: true },
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
   { label: "ARENA", href: "/arena" },
 ];
 
-function mapSessionTier(raw: string | null | undefined): TierLevel {
-  switch ((raw ?? "").toUpperCase()) {
-    case "DIAMOND":
-      return "diamond";
-    case "PLATINUM":
-    case "GOLD":
-      return "gold";
-    case "RUBY":
-    case "SILVER":
-      return "RUBY";
-    default:
-      return "free";
-  }
-}
-
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
-  const pathname = usePathname() ?? "";
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [tier, setTier] = useState<TierLevel>("free");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [isMobile, setIsMobile] = useState(true); // mobile-first: nav links collapse on phones
 
@@ -63,9 +43,14 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       try {
         const res = await fetch("/api/auth/session", { cache: "no-store" });
         if (!res.ok || cancelled) return;
-        const data = await res.json();
-        setAvatarUrl(data.avatarUrl ?? null);
-        setTier(mapSessionTier(data.tier));
+        const data = (await res.json()) as {
+          authenticated?: boolean;
+          user?: {
+            avatarUrl?: string | null;
+          };
+        };
+        if (!data.authenticated) return;
+        setAvatarUrl(data.user?.avatarUrl ?? null);
       } catch {
         /* honest fallback: no avatar, free tier */
       }
@@ -122,23 +107,21 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
     router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
-  const initial = displayName?.trim()?.[0]?.toUpperCase() ?? "?";
-  const onHub = pathname.startsWith("/hub/");
-
   const openNotifications = () => {
-    if (onHub) {
-      openCanonicalWorkspaceQuick("notifications", "DRAWER");
-      return;
-    }
-    router.push("/notifications");
+    // Canonical single entry: toggle notifications drawer in-shell (never leave Fan/Performer shell).
+    openCanonicalWorkspaceQuick("notifications", "DRAWER");
+    NotificationEngine.markAllSeen();
+    void fetch("/api/notifications", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ action: "mark_all_seen" }),
+    }).catch(() => {});
+    setUnreadNotifications(NotificationEngine.getUnreadCount());
   };
 
   const openMessages = () => {
-    if (onHub) {
-      openCanonicalWorkspaceQuick("messaging", "DRAWER");
-      return;
-    }
-    router.push("/messages");
+    openCanonicalWorkspaceQuick("messaging", "DRAWER");
   };
 
   return (
@@ -171,31 +154,10 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         TMI
       </Link>
 
-      {/* Primary nav — hidden on mobile (☰ OPS in status bar handles mobile navigation) */}
+      {/* Primary nav — shell secondary destinations only (no legacy Home/Discover/Live Now/Lobby board) */}
       {!isMobile && (
       <nav style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-        {NAV_LINKS.map((link) =>
-          link.href === null || ("liveWall" in link && link.liveWall) ? (
-            <button
-              key={link.label}
-              type="button"
-              onClick={() => presentCanonicalWorkspace("lobby", "DRAWER")}
-              style={{
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.75)",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                padding: 0,
-                fontFamily: "inherit",
-              }}
-            >
-              {link.label}
-            </button>
-          ) : (
+        {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -210,8 +172,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             >
               {link.label}
             </Link>
-          ),
-        )}
+        ))}
       </nav>
       )}
 
@@ -311,102 +272,15 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         ) : null}
       </button>
 
-      {/* Profile */}
+      {/* Profile — anchored overlay; identity tier from session hydration */}
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={() => setProfileOpen((v) => !v)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            fontFamily: "inherit",
-          }}
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", border: `1px solid ${theme.primary}55` }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 900,
-                color: "#050510",
-              }}
-            >
-              {initial}
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{displayName}</span>
-            <DiamondTierBadge tier={tier} />
-          </div>
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{profileOpen ? "▲" : "▼"}</span>
-        </button>
-
-        {profileOpen ? (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              zIndex: 50,
-              minWidth: 160,
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 10,
-              padding: 6,
-              boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <Link
-              href="/profile"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              My Profile
-            </Link>
-            <Link
-              href="/settings"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              Settings
-            </Link>
-            <Link
-              href="/rewards"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              Rewards
-            </Link>
-            <Link
-              href="/api/auth/logout"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#FF6666", textDecoration: "none" }}
-            >
-              Sign Out
-            </Link>
-          </div>
-        ) : null}
+        <AccountCommandMenu
+          userId={userId}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          accentColor={theme.primary}
+          compact
+        />
       </div>
     </div>
   );

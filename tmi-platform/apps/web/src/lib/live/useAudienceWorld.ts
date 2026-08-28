@@ -89,9 +89,14 @@ export function useAudienceWorld(
   rows = 8,
   cols = 12,
   performerId?: string,
-  options?: { enabled?: boolean },
+  options?: {
+    enabled?: boolean;
+    /** When false (Instant GO LIVE empty house), no bot/host seat fill — Rule 20. */
+    botFill?: boolean;
+  },
 ): AudienceWorldState & AudienceWorldHandlers {
   const enabled = options?.enabled ?? true;
+  const botFill = options?.botFill !== false;
   const [seats, setSeats] = useState<SeatPosition[]>([]);
   const [avatars, setAvatars] = useState<AudienceAvatar[]>([]);
   const [entities, setEntities] = useState<AvatarEntity[]>([]);
@@ -152,32 +157,34 @@ export function useAudienceWorld(
     audienceVisibilityEngine.initGrid(roomId, rows, cols);
     roomEnergyEngine.initRoom(roomId);
 
-    // Bot fill: 45% minimum, activates when real users < 5, max 92% bots
-    botCrowdFillEngine.activate({
-      roomId,
-      minimumFillRatio: 0.45,
-      minimumRealThreshold: 5,
-      maxBotCount: Math.floor(rows * cols * 0.92),
-    });
-    botCrowdFillEngine.startActivity(roomId, 8_000);
-
-    // Seed host entities into VIP seats so they appear in the world
-    const hosts = HOST_IDENTITY_REGISTRY
-      .filter(h => h.role !== 'PLATFORM_AUTHORITY')
-      .slice(0, 4); // up to 4 hosts visible in audience at a time
-
-    hosts.forEach(host => {
-      audienceVisibilityEngine.seatUser(roomId, {
-        userId: `host-${host.id}`,
-        displayName: host.name,
-        avatarImageUrl: `/hosts/${host.id}.png`,
-        state: 'sitting',
-        tier: 'vip',
-        isBot: false,
-        joinedAt: Date.now(),
-        supporterBadge: host.role,
+    if (botFill) {
+      // Bot fill: 45% minimum, activates when real users < 5, max 92% bots
+      botCrowdFillEngine.activate({
+        roomId,
+        minimumFillRatio: 0.45,
+        minimumRealThreshold: 5,
+        maxBotCount: Math.floor(rows * cols * 0.92),
       });
-    });
+      botCrowdFillEngine.startActivity(roomId, 8_000);
+
+      // Seed host entities into VIP seats so they appear in the world
+      const hosts = HOST_IDENTITY_REGISTRY
+        .filter(h => h.role !== 'PLATFORM_AUTHORITY')
+        .slice(0, 4); // up to 4 hosts visible in audience at a time
+
+      hosts.forEach(host => {
+        audienceVisibilityEngine.seatUser(roomId, {
+          userId: `host-${host.id}`,
+          displayName: host.name,
+          avatarImageUrl: `/hosts/${host.id}.png`,
+          state: 'sitting',
+          tier: 'vip',
+          isBot: false,
+          joinedAt: Date.now(),
+          supporterBadge: host.role,
+        });
+      });
+    }
 
     snapshot();
 
@@ -208,7 +215,7 @@ export function useAudienceWorld(
       unsubscribeAttention();
       botCrowdFillEngine.stopActivity(roomId);
     };
-  }, [roomId, rows, cols, snapshot, enabled]);
+  }, [roomId, rows, cols, snapshot, enabled, botFill]);
 
   // ── Signal handlers ─────────────────────────────────────────────────────────
 

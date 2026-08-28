@@ -24,7 +24,6 @@ import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
 import { getGuestId } from "@/lib/identity/getGuestId";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
-import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import RoleGate from "@/components/auth/RoleGate";
 
@@ -146,13 +145,13 @@ interface LobbyEntryFlowProps {
 }
 
 export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlowProps) {
-  // instant=true → Star Wars hyperspace covers seat claim + scene preload (no black screen)
+  // instant=true → seat claim + venue preload; no LEGACY fixed SeatArrivalTransition overlay
   const [step, setStep] = useState<Step>(instant ? "seat" : "preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
   const [seatId, setSeatId] = useState<string | null>(null);
   const [occupancyRatio, setOccupancyRatio] = useState(0);
   const [showStarBurst, setShowStarBurst] = useState(false);
-  /** Instant path: hyperspace overlay active until seated reveal */
+  /** Instant settle gate — absolute in-flow only until seat ready (GLOBAL OVERLAY = 0). */
   const [hyperspaceActive, setHyperspaceActive] = useState(instant);
   const [seatReady, setSeatReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -304,14 +303,14 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
           setSeatReady(true);
         }
       } finally {
-        // Non-instant: classic timed advance. Instant: wait for SeatArrivalTransition onComplete.
+        // Non-instant: classic timed advance. Instant: settle after seatReady (below).
         if (!cancelled && !instant) advance("audience", 1600);
       }
     })();
     return () => { cancelled = true; };
   }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim, shouldClaimFanSeat, room.participationEntryMode]);
 
-  /** Hyperspace complete → reveal seated audience, then enter room */
+  /** Settle complete → reveal seated audience, then enter room (no global fixed overlay). */
   const onHyperspaceComplete = useCallback(() => {
     setHyperspaceActive(false);
     setStep("audience");
@@ -319,6 +318,13 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setStep("enter"), seatReady ? 650 : 900);
   }, [seatReady]);
+
+  // Instant path: complete settle when seat claim finishes — MediaTransitionDirector owns hub GO LIVE only.
+  useEffect(() => {
+    if (!instant || !seatReady || !hyperspaceActive) return;
+    const t = setTimeout(() => onHyperspaceComplete(), 320);
+    return () => clearTimeout(t);
+  }, [instant, seatReady, hyperspaceActive, onHyperspaceComplete]);
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
@@ -394,16 +400,9 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
         </div>
       )}
 
-      {/* ── Star Wars hyperspace → slow-down → big stars → seated (instant path) ── */}
-      {instant && (
-        <SeatArrivalTransition
-          active={hyperspaceActive}
-          onComplete={onHyperspaceComplete}
-          destinationLabel={room.title}
-        />
-      )}
+      {/* LEGACY SeatArrivalTransition (fixed viewport) UNMOUNTED — hub starburst = Monitor B only */}
 
-      {/* ── Legacy star burst (non-instant audience step only) ── */}
+      {/* ── Absolute in-flow star burst (non-instant audience step; never position:fixed) ── */}
       {showStarBurst && !instant && (
         <div style={s({ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none", overflow: "hidden" })}>
           <style>{`

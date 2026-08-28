@@ -55,6 +55,14 @@ const nextConfig = {
       };
     }
 
+    // Hub shells (FanShell/PerformerShell → CommandCenterShell) are large async
+    // chunks. Cold `next dev` compile can exceed webpack's default ~120s
+    // chunkLoadTimeout and surface "Loading chunk … failed (timeout)".
+    config.output = {
+      ...(config.output || {}),
+      chunkLoadTimeout: 300000,
+    };
+
     return config;
   },
   reactStrictMode: false,

@@ -30,3 +30,23 @@ export function resolveDurablePlayableSrc(url: string | null | undefined): strin
   const playable = toClientPlayableMediaUrl(url);
   return isDurablePlayableMediaUrl(playable) ? playable : null;
 }
+
+/** First valid durable audio URL from catalog / library / artifact track fields. */
+export function resolveStudioTrackAudioUrl(sources: {
+  audioUrl?: string | null;
+  streamUrl?: string | null;
+  uri?: string | null;
+  platforms?: Partial<Record<string, string>>;
+}): string | null {
+  const candidates = [
+    sources.audioUrl,
+    sources.streamUrl,
+    sources.platforms?.tmi,
+    sources.uri,
+  ];
+  for (const candidate of candidates) {
+    const resolved = resolveDurablePlayableSrc(candidate);
+    if (resolved) return resolved;
+  }
+  return null;
+}

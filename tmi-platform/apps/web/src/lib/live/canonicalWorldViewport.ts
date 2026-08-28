@@ -627,7 +627,7 @@ export function fanAvatarLobbyEntryHref(
   params.set("zone", CANONICAL_WORLD_ZONE.FAN_AVATAR_LOBBY);
   if (opts?.from) params.set("from", opts.from);
   if (opts?.privacy) params.set("privacy", opts.privacy);
-  return `/rooms/fan-lobby?${params.toString()}`;
+  return `/live/rooms/${encodeURIComponent(roomId)}?${params.toString()}`;
 }
 
 export function auditoriumEntryHref(roomId: string, opts?: { from?: string }): string {

@@ -8,6 +8,7 @@
 import { useEffect, useRef } from "react";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
+import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
 
 const FOH = resolveHubMonitorViewport("A");
 
@@ -52,8 +53,12 @@ export default function HubMonitorCameraPlayer() {
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const previewStream = useLivePrivacyState((s) => s.previewStream);
 
-  const showPreview =
-    Boolean(previewStream) && (cameraPreviewActive || isLivePublished);
+  const hasLiveVideo =
+    Boolean(previewStream) &&
+    Boolean(previewStream?.getVideoTracks().some((t) => t.readyState === "live"));
+
+  // Self preview ASAP when track exists — GO LIVE or CAM ON
+  const showPreview = hasLiveVideo;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -61,6 +66,7 @@ export default function HubMonitorCameraPlayer() {
     if (showPreview && previewStream) {
       video.srcObject = previewStream;
       void video.play().catch(() => {});
+      useGoLiveBootstrapStore.getState().markSelfPreview(true);
       return;
     }
     video.srcObject = null;
@@ -69,8 +75,12 @@ export default function HubMonitorCameraPlayer() {
   if (!showPreview) {
     return (
       <HubMonitorIdle
-        label="Camera idle"
-        hint="Tap CAM ON for local preview · GO LIVE to broadcast"
+        label={isLivePublished || cameraPreviewActive ? "Camera starting…" : "Camera idle"}
+        hint={
+          isLivePublished || cameraPreviewActive
+            ? "Requesting camera/mic for this live session"
+            : "Tap CAM ON for local preview · GO LIVE to broadcast"
+        }
       />
     );
   }

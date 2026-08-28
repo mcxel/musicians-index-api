@@ -103,9 +103,12 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
 
   const categories = buildCategories(primary, humanViewerCount, visibility, startedAt);
+  const experienceKey = (input.experienceId ?? "live").trim() || "live";
+  /** Idempotent bus key — roomId + experience identity prevents duplicate cards on reconnect. */
+  const busId = `${roomId}::${experienceKey}`;
 
   return {
-    id: roomId,
+    id: busId,
     roomId,
     title: (input.title || `${input.hostName || "Live"} — Live`).trim(),
     hostName: (input.hostName || "Host").trim(),
@@ -149,7 +152,9 @@ export function publishLiveRoom(input: PublishLiveRoomInput): LiveDiscoveryRecor
   return record;
 }
 
-export function unpublishLiveRoom(roomId: string): void {
+export function unpublishLiveRoom(roomId: string, experienceId?: string): void {
+  DiscoveryBus.remove(`${roomId}::${(experienceId ?? "live").trim() || "live"}`);
+  // Legacy id cleanup for sessions published before composite keys
   DiscoveryBus.remove(roomId);
 }
 

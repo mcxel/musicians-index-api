@@ -30,6 +30,7 @@ import {
   getPersistedFanLobbySkinId,
   listSwitchableFanLobbySkins,
   persistFanLobbySkinId,
+  FAN_LOBBY_SKIN_CHANGED_EVENT,
   type FanLobbySkinId,
   type SeatAnchor,
 } from "@/lib/lobby/FanLobbySkinRegistry";
@@ -132,6 +133,17 @@ export default function FanLobbyVenue({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const joinedRef = useRef(false);
+
+  useEffect(() => {
+    const onSkinChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ skinId: FanLobbySkinId }>).detail;
+      if (!detail?.skinId || !canSwitchSkin) return;
+      const canon = getFanLobbySkinCanon(detail.skinId);
+      if (canon) setSkinId(canon.id);
+    };
+    window.addEventListener(FAN_LOBBY_SKIN_CHANGED_EVENT, onSkinChanged);
+    return () => window.removeEventListener(FAN_LOBBY_SKIN_CHANGED_EVENT, onSkinChanged);
+  }, [canSwitchSkin]);
 
   const dressing = getFanLobbySkinDressing(skinId);
   const skinLabel = getFanLobbySkinCanon(skinId)?.label ?? "Fan Lobby";

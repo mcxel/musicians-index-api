@@ -6,7 +6,7 @@ const TUTORIALS = [
   { id: "t3", title: "Creating Your First Sponsor Campaign", desc: "Launch a campaign, assign placements, and track ROI.", category: "Sponsor", mins: 6, route: "/tutorials/sponsor-campaign" },
   { id: "t4", title: "Booking a Venue on TMI", desc: "List your venue, manage bookings, and sell tickets.", category: "Venue", mins: 7, route: "/tutorials/venue-booking" },
   { id: "t5", title: "Minting Your First NFT", desc: "Use the NFT Lab to mint and list digital collectibles from your content.", category: "Creator", mins: 8, route: "/nft-lab" },
-  { id: "t6", title: "Going Live with WebRTC", desc: "Start a live stream, manage your HUD, and engage your audience.", category: "Performer", mins: 10, route: "/go-live" },
+  { id: "t6", title: "Going Live with WebRTC", desc: "Start a live stream, manage your HUD, and engage your audience.", category: "Performer", mins: 10, route: "/hub/performer?golive=1" },
 ];
 
 const CAT_COLOR: Record<string, string> = { Performer: "#AA2DFF", Fan: "#FF2DAA", Sponsor: "#FFD700", Venue: "#22c55e", Creator: "#00FFFF" };

@@ -21,6 +21,7 @@ import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 import {
   startCountdown,
   openCurtain,
@@ -623,37 +624,7 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
 
       {mode === 'performer' && (
         <>
-          {/* ── Curtain Control Panel ──────────────────────────────────────── */}
-          <div style={{ marginBottom: 12, border: '1px solid rgba(255,215,0,0.3)', borderRadius: 10, padding: 12, background: 'rgba(255,215,0,0.05)' }}>
-            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 10 }}>
-              🎭 STAGE CURTAIN · {curtainState.replace(/_/g, ' ')}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => resetStage()}
-                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer' }}>
-                🔄 PREPARE STAGE
-              </button>
-              <button type="button" onClick={() => startCountdown()}
-                disabled={curtainState !== 'STAGE_PREP'}
-                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,215,0,0.4)', background: curtainState === 'STAGE_PREP' ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState === 'STAGE_PREP' ? '#FFD700' : 'rgba(255,255,255,0.3)', cursor: curtainState === 'STAGE_PREP' ? 'pointer' : 'not-allowed' }}>
-                ⏱ START COUNTDOWN
-              </button>
-              <button type="button" onClick={() => openCurtain()}
-                disabled={curtainState === 'CAMERA_LIVE'}
-                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(0,255,136,0.4)', background: curtainState !== 'CAMERA_LIVE' ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState !== 'CAMERA_LIVE' ? '#00FF88' : 'rgba(255,255,255,0.3)', cursor: curtainState !== 'CAMERA_LIVE' ? 'pointer' : 'not-allowed' }}>
-                🎬 OPEN CURTAIN
-              </button>
-              <button type="button" onClick={() => closeCurtainAndEnd()}
-                disabled={curtainState !== 'CAMERA_LIVE' && curtainState !== 'INTERMISSION'}
-                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,45,170,0.4)', background: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'rgba(255,45,170,0.15)' : 'rgba(255,255,255,0.04)', color: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? '#FF2DAA' : 'rgba(255,255,255,0.3)', cursor: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'pointer' : 'not-allowed' }}>
-                🚪 CLOSE & END
-              </button>
-            </div>
-            <div style={{ marginTop: 8, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
-              Prepare Stage → Start Countdown → Open Curtain → Perform → Close &amp; End
-            </div>
-          </div>
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          <VenueToolsShellHint roomId={roomId} compact />
 
           {liveSession?.userId && (
             <>

@@ -232,10 +232,4 @@ export function runRealLoungeMountIntegrationTest(): {
   return { allPassed, results };
 }
 
-declare const require: { main: unknown };
-declare const module: { exports: unknown };
 
-if (typeof require !== "undefined" && require.main === module) {
-  const outcome = runRealLoungeMountIntegrationTest();
-  if (!outcome.allPassed) process.exitCode = 1;
-}

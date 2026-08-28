@@ -2,18 +2,21 @@
 
 import type { ReactNode } from "react";
 import { monitorSlotKey, type MonitorTarget } from "@/lib/personal-media";
+import GoLiveMediaTransition from "@/components/live/GoLiveMediaTransition";
 
 /**
  * In-monitor host for Go Live bodies.
- * Broadcaster path: NO starfield / Welcome / Wave takeover — camera + venue
- * mount via CommandCenterMediaStack (HubMonitorCameraPlayer / HubMonitorVenuePlayer).
+ * Canonical starburst mounts HERE (media region only) via GoLiveMediaTransition.
  */
 export default function InPlaceGoLiveMonitorLayer({
   target,
   children,
+  showTransition = true,
 }: {
   target: MonitorTarget;
   children: ReactNode;
+  /** Monitor B (venue) shows the canonical starburst during media transition. */
+  showTransition?: boolean;
 }) {
   return (
     <div
@@ -31,6 +34,7 @@ export default function InPlaceGoLiveMonitorLayer({
       }}
     >
       {children}
+      {showTransition ? <GoLiveMediaTransition accentColor="#00FFFF" /> : null}
     </div>
   );
 }

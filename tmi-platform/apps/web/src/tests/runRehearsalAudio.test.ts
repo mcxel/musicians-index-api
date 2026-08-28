@@ -37,7 +37,3 @@ export function runRehearsalAudioTest(): { allPassed: boolean; results: Record<s
   console.log("[REHEARSAL_AUDIO_TEST_ASSERT]", JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runRehearsalAudioTest();
-}

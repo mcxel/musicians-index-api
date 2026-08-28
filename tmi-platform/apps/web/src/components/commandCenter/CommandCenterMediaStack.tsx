@@ -1,8 +1,9 @@
 "use client";
 
-import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
-import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
-
+import {
+  openCanonicalWorkspaceQuick,
+  presentCanonicalWorkspace,
+} from "@/lib/workspace/universal/openCanonicalPresentation";
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.
  * Dual geometry via CanonicalDualMonitorStack (shared with Observatory).
@@ -23,13 +24,107 @@ import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
+  ScreenShareErrorBanner,
 } from "@/components/monitors/MonitorScreenSharePrimitives";
+import ParticipantSurfaceGrid from "@/components/monitors/ParticipantSurfaceGrid";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import { shareSlotTargetsCell } from "@/lib/monitors/monitorScreenShareTypes";
 import {
+  resolveMediaSurfaceLayout,
+  type FullscreenState,
+  type PriorMediaPresentationSnapshot,
+} from "@/lib/monitors/MediaSurfaceLayoutDirector";
+import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import useViewportMode from "@/hooks/useViewportMode";
+import {
   HOUSE_SPONSORS,
   type HouseSponsor,
-} from "@/lib/commerce/DualStreamSponsorshipEngine";
+} from "@/lib/commerce/HouseSponsorCanon";
+import {
+  useGoLiveBootstrapStore,
+  type GoLiveBootstrapPhase,
+} from "@/lib/live/goLiveBootstrapStore";
+import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
+import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
+
+/** Bootstrap / error chrome over dual monitors during Instant GO LIVE. */
+function GoLiveBootstrapOverlay({
+  phase,
+  errorCode,
+  errorMessage,
+  onRetry,
+}: {
+  phase: GoLiveBootstrapPhase;
+  errorCode: string | null;
+  errorMessage: string | null;
+  onRetry: () => void;
+}) {
+  if (phase === "IDLE" || phase === "READY") return null;
+  const booting =
+    phase === "REQUESTING_MEDIA" ||
+    phase === "SESSION_CREATED" ||
+    phase === "VENUE_RESOLVING" ||
+    phase === "VENUE_LOADING" ||
+    phase === "HUD_MOUNTING";
+  if (!booting && phase !== "ERROR") return null;
+
+  return (
+    <div
+      data-golive-bootstrap={phase}
+      style={{
+        position: "absolute",
+        left: 12,
+        right: 12,
+        bottom: 12,
+        zIndex: 20,
+        pointerEvents: phase === "ERROR" ? "auto" : "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        padding: "8px 12px",
+        borderRadius: 10,
+        background:
+          phase === "ERROR" ? "rgba(80,0,20,0.92)" : "rgba(5,5,16,0.82)",
+        border:
+          phase === "ERROR"
+            ? "1px solid rgba(255,45,170,0.55)"
+            : "1px solid rgba(0,255,255,0.35)",
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: "0.08em",
+        color: phase === "ERROR" ? "#FF2DAA" : "#00FFFF",
+      }}
+    >
+      <span>
+        {phase === "ERROR"
+          ? `${errorCode ?? "ERROR"} · ${errorMessage ?? "Go Live failed"}`
+          : `${phase.replace(/_/g, " ")}…`}
+      </span>
+      {phase === "ERROR" ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            padding: "5px 10px",
+            borderRadius: 6,
+            border: "1px solid #FF2DAA",
+            background: "rgba(255,45,170,0.2)",
+            color: "#FF2DAA",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          RETRY
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 function traceLaunch(action: string, payload?: unknown): void {
   if (process.env.NODE_ENV !== "development") return;
@@ -184,6 +279,8 @@ interface CommandCenterMediaStackProps {
   role?: "fan" | "performer";
   /** Broadcaster user id for Live Distribution Bezel link state. */
   userId?: string | null;
+  /** Display name for Fan ID / Artist ID strip. */
+  displayName?: string | null;
   /** Optional dev-only continuity context supplied by the route/runtime layer. */
   continuityContext?: {
     venueInstanceId?: string;
@@ -213,6 +310,7 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
       {videoSrc ? (
         <video
           key={videoSrc}
+          data-video-shuffle-player="true"
           autoPlay
           loop
           muted
@@ -225,6 +323,9 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
             height: "100%",
             objectFit: "cover",
             zIndex: 0,
+          }}
+          onLoadedData={(e) => {
+            void e.currentTarget.play().catch(() => {});
           }}
           onError={() => {
             // Keep UI honest: PlaylistCastBody remains as "title projected only".
@@ -311,12 +412,14 @@ function MonitorMediaBody({
   hubLiveRoomId,
   hubLiveMonitor,
   cellIndex,
+  goLiveBootActive,
 }: {
   slot: CommandCenterMediaSlot;
   sponsorOverlay?: ActiveSponsorOverlay | null;
   hubLiveRoomId?: string | null;
   hubLiveMonitor?: "A" | "B" | null;
   cellIndex?: number;
+  goLiveBootActive?: boolean;
 }) {
   const videoSrc = slot.videoUrl?.trim() || "";
   const [videoFailed, setVideoFailed] = useState(false);
@@ -325,13 +428,17 @@ function MonitorMediaBody({
     setVideoFailed(false);
   }, [videoSrc]);
 
-  if (hubLiveRoomId && hubLiveMonitor === "A") {
-    return (
-      <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
-        {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
-        <HubMonitorCameraPlayer />
-      </div>
-    );
+  if ((hubLiveRoomId || goLiveBootActive) && hubLiveMonitor === "A") {
+    // Explicit playlist / video-shuffle cast wins Monitor A (QP retest path).
+    // Live camera remains default when no cast is active.
+    if (!(slot.kind === "playlist" && slot.playlistCast?.videoUrl?.trim())) {
+      return (
+        <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+          {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
+          <HubMonitorCameraPlayer />
+        </div>
+      );
+    }
   }
 
   if (hubLiveRoomId && hubLiveMonitor === "B") {
@@ -389,6 +496,7 @@ function MonitorChrome({
   hubLiveRoomId,
   hubLiveMonitor,
   cellIndex,
+  goLiveBootActive,
 }: {
   slot: CommandCenterMediaSlot;
   onSwap?: () => void;
@@ -397,6 +505,7 @@ function MonitorChrome({
   hubLiveRoomId?: string | null;
   hubLiveMonitor?: "A" | "B" | null;
   cellIndex?: number;
+  goLiveBootActive?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -417,6 +526,7 @@ function MonitorChrome({
       hubLiveRoomId={hubLiveRoomId}
       hubLiveMonitor={hubLiveMonitor}
       cellIndex={cellIndex}
+      goLiveBootActive={goLiveBootActive}
     />
   );
 
@@ -504,7 +614,12 @@ function MonitorChrome({
         </div>
       </div>
       {overlayTarget ? (
-        <InPlaceGoLiveMonitorLayer target={overlayTarget}>{mediaBody}</InPlaceGoLiveMonitorLayer>
+        <InPlaceGoLiveMonitorLayer
+          target={overlayTarget}
+          showTransition={hubLiveMonitor === "B"}
+        >
+          {mediaBody}
+        </InPlaceGoLiveMonitorLayer>
       ) : (
         mediaBody
       )}
@@ -530,17 +645,22 @@ export default function CommandCenterMediaStack({
   continuityContext,
   role = "fan",
   userId = null,
+  displayName = null,
 }: CommandCenterMediaStackProps) {
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const hubLiveRoomId = hubInPlaceRoomId ?? publishedRoomId;
+  const bootPhase = useGoLiveBootstrapStore((s) => s.phase);
+  const bootErrorCode = useGoLiveBootstrapStore((s) => s.errorCode);
+  const bootErrorMessage = useGoLiveBootstrapStore((s) => s.errorMessage);
+  const goLiveBootActive =
+    bootPhase !== "IDLE" && bootPhase !== "READY" && bootPhase !== "ERROR";
   const [swapOrder, setSwapOrder] = useState(false);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
+  const [castPanelOpen, setCastPanelOpen] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
-
-  const toggleRemotePanel = useCompactQuickPanelStore((s) => s.togglePanel);
-  const remoteActive = useCompactQuickPanelStore((s) => s.activePanel === "remote");
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -566,16 +686,78 @@ export default function CommandCenterMediaStack({
     }
   }, [isFullscreen]);
 
-  // ── Screen share state ────────────────────────────────────────────────────
+  // ── Screen share — cyclic single-button + MediaSurfaceLayoutDirector ─────
+  const { isPhone, isTablet } = useViewportMode();
+  const deviceTier = isPhone ? "phone" : isTablet ? "tablet" : "desktop";
+  /** Hub mobile (≤900px): shell status bar + session strip own GPS/CHAT/workspaces — hide duplicate toolbar. */
+  const [compactHubLayout, setCompactHubLayout] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 900px)");
+    const sync = () => setCompactHubLayout(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  const setPrimaryAudio = useCanonicalMediaPlayerRuntime((s) => s.setPrimaryAudio);
+  const setScreenShareAudioOwner = useCanonicalMediaPlayerRuntime((s) => s.setScreenShareAudioOwner);
+  const assignSource = useCanonicalMediaPlayerRuntime((s) => s.assignSource);
+  const screenShareAudioSourceId = useCanonicalMediaPlayerRuntime((s) => s.screenShareAudioSourceId);
+  const priorPresentationRef = useRef<PriorMediaPresentationSnapshot | null>(null);
+  const [surfaceFullscreenManual, setSurfaceFullscreen] = useState<FullscreenState>("none");
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPrefersReducedMotion(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+
   const {
     screenStream,
+    availableShareSources,
+    shareSourceIndex,
+    shareActive,
+    shareButtonLabel,
     shareSlot,
     slotPickerOpen,
     setSlotPickerOpen,
-    startScreenShare,
+    error: shareError,
+    clearError: clearShareError,
+    cycleSharePress,
+    addShareSource,
     stopScreenShare,
     pickShareSlot,
-  } = useMonitorScreenShare();
+  } = useMonitorScreenShare({
+    defaultSlot: { monitor: 0, cellIndex: -1 },
+    openPickerOnStart: false,
+    onShareStopped: () => {
+      setSurfaceFullscreen("none");
+      setPrimaryAudio("b");
+      assignSource("a", "SELF_CAMERA");
+    },
+    onScreenAudioOwnership: ({ sourceId, hasAudio }) => {
+      // Single audio owner — replace in place, never stack a second registration
+      setScreenShareAudioOwner(sourceId);
+      if (sourceId && hasAudio) {
+        setPrimaryAudio("a");
+        assignSource("a", "SCREEN_SHARE");
+      }
+    },
+  });
+
+  const surfaceFullscreen: FullscreenState =
+    isFullscreen && shareActive ? "share" : surfaceFullscreenManual;
+
+  useEffect(() => {
+    const onClusterShare = () => {
+      void cycleSharePress();
+    };
+    window.addEventListener("tmi:performer-share-screen", onClusterShare);
+    return () => window.removeEventListener("tmi:performer-share-screen", onClusterShare);
+  }, [cycleSharePress]);
 
   // ── Sponsor logic ─────────────────────────────────────────────────────────
   const pushSponsorLive = (sponsor: HouseSponsor) => {
@@ -609,6 +791,79 @@ export default function CommandCenterMediaStack({
     () => padSlots(orderedSlots.slice(8, 16).length > 0 ? orderedSlots.slice(8, 16) : orderedSlots.slice(1, 9), 8, "bot"),
     [orderedSlots],
   );
+
+  const participantCount = useMemo(() => {
+    const named = orderedSlots.filter((s) => s.kind !== "empty").length;
+    if (shareActive) return Math.max(1, Math.min(8, named || 1));
+    return Math.min(8, named);
+  }, [orderedSlots, shareActive]);
+
+  const surfaceLayout = useMemo(
+    () =>
+      resolveMediaSurfaceLayout({
+        screenShareActive: shareActive,
+        shareSourceIndex,
+        availableShareSources: availableShareSources.map((s) => ({
+          id: s.id,
+          label: s.label,
+          alive: s.alive,
+        })),
+        participantCount,
+        activeSpeakerId: null,
+        audiencePanelEnabled: monitorLayoutMode === "dual",
+        fullscreenState: surfaceFullscreen,
+        deviceTier,
+        roleContext: role === "performer" ? "performer" : "fan",
+        prefersReducedMotion,
+        priorTopSurface: priorPresentationRef.current?.topSurface,
+        priorBottomSurface: priorPresentationRef.current?.bottomSurface,
+      }),
+    [
+      shareActive,
+      shareSourceIndex,
+      availableShareSources,
+      participantCount,
+      surfaceFullscreen,
+      deviceTier,
+      role,
+      prefersReducedMotion,
+      monitorLayoutMode,
+    ],
+  );
+
+  // Capture prior presentation once when share becomes active
+  useEffect(() => {
+    if (shareActive && !priorPresentationRef.current) {
+      priorPresentationRef.current = {
+        topSurface: "prior_media",
+        bottomSurface: monitorLayoutMode === "dual" ? "audience" : "prior_media",
+        fullscreenState: "none",
+      };
+    }
+    if (!shareActive) {
+      priorPresentationRef.current = null;
+    }
+  }, [shareActive, monitorLayoutMode]);
+
+  const participantTiles = useMemo(() => {
+    const sourceSlots = orderedSlots.filter((s) => s.kind !== "empty").slice(0, 8);
+    const tiles = (sourceSlots.length > 0 ? sourceSlots : topSlots.slice(0, Math.max(1, participantCount))).map(
+      (slot, i) => ({
+        id: `p${i}`,
+        label: slot.label,
+        children: (
+          <MonitorChrome
+            slot={slot}
+            cellIndex={i}
+            hubLiveRoomId={hubLiveRoomId}
+            hubLiveMonitor={i === 0 ? "A" : "B"}
+            goLiveBootActive={goLiveBootActive}
+          />
+        ),
+      }),
+    );
+    return tiles;
+  }, [orderedSlots, topSlots, participantCount, hubLiveRoomId, goLiveBootActive]);
 
   const primarySourceId = topSlots[0]?.id ?? null;
   const secondarySourceId = monitorLayoutMode === "dual" ? (bottomSlots[0]?.id ?? null) : null;
@@ -645,6 +900,48 @@ export default function CommandCenterMediaStack({
   const handleSwap = () => {
     setSwapOrder((prev) => !prev);
   };
+
+  const openGpsNav = useCallback(() => {
+    presentCanonicalWorkspace("live-destinations", "LEFT_PANEL");
+  }, []);
+
+  const openChatPanel = useCallback(() => {
+    openCanonicalWorkspaceQuick("messaging", "DRAWER");
+  }, []);
+
+  const utilityBtn = (
+    active: boolean,
+    accent: string,
+    label: string,
+    onClick: () => void,
+    opts?: { testId?: string; title?: string; icon?: string },
+  ) => (
+    <button
+      type="button"
+      data-testid={opts?.testId}
+      onClick={onClick}
+      title={opts?.title ?? label}
+      style={{
+        fontSize: 8,
+        fontWeight: 900,
+        letterSpacing: "0.08em",
+        padding: "3px 9px",
+        borderRadius: 6,
+        cursor: "pointer",
+        border: active ? `1px solid ${accent}` : `1px solid ${accent}66`,
+        background: active ? `${accent}22` : "transparent",
+        color: accent,
+        fontFamily: "inherit",
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {opts?.icon ? <span>{opts.icon}</span> : null}
+      <span>{label}</span>
+    </button>
+  );
 
   const enterPrimaryFullscreen = useCallback(() => {
     const el = document.querySelector(`[data-monitor-chrome-id="${topSlots[0]?.id ?? ""}"]`);
@@ -713,13 +1010,21 @@ export default function CommandCenterMediaStack({
     isDevDiagnostics,
   ]);
 
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 8,
+    fontWeight: 900,
+    letterSpacing: "0.12em",
+    color: "rgba(255,255,255,0.38)",
+    marginBottom: 2,
+    width: "100%",
+  };
+
   const toolbar = (
     <div
       style={{
         flexShrink: 0,
         display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
+        flexDirection: "column",
         gap: 6,
         padding: "6px 10px",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -728,311 +1033,223 @@ export default function CommandCenterMediaStack({
         borderRadius: 8,
       }}
     >
-      <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)" }}>
-        DUAL MONITORS · PER-SIDE 1/2/3/4/8
-      </span>
-      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontWeight: 700 }}>
-        Max 8+8=16
-      </span>
-
-      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
-
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          onClick={() => setSponsorPanelOpen((v) => !v)}
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: activeSponsorOverlay ? "1px solid #FFD700" : "1px solid rgba(255,215,0,0.4)",
-            background: activeSponsorOverlay ? "rgba(255,215,0,0.18)" : "transparent",
-            color: "#FFD700",
-            fontFamily: "inherit",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
+      {/* Row 1 — monitor utility: VENUE TOOLS · CAST · ARTIST ID / FAN ID */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+        <VenueToolsToggleButton
+          role={role === "performer" ? "performer" : "fan"}
+          accent={role === "performer" ? "#AA2DFF" : "#00FF88"}
+          corner="bottom-right"
+          roomId={hubLiveRoomId ?? undefined}
+          testId="tmi-venue-tools-media-stack"
+          policyContext={{
+            isLive: Boolean(publishedRoomId),
+            isGoLiveContext: Boolean(hubInPlaceRoomId),
           }}
-        >
-          <span>★</span>
-          <span>SPONSORS</span>
-        </button>
+        />
 
-        {sponsorPanelOpen ? (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              left: 0,
-              zIndex: 12,
-              width: 220,
-              background: "#0d1117",
-              border: "1px solid rgba(255,215,0,0.4)",
-              borderRadius: 10,
-              padding: 8,
-              boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              pointerEvents: "auto",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
-              OFFICIAL TMI SPONSORS
-            </span>
-            {HOUSE_SPONSORS.map((sp) => (
-              <motion.button
-                key={sp.id}
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ ...sectionLabel, marginBottom: 0, width: "auto" }}>CAST BUTTONS</span>
+          {utilityBtn(castPanelOpen || shareActive || isFullscreen, "#AA2DFF", "CAST", () => setCastPanelOpen((v) => !v), {
+            testId: "tmi-cast-panel-trigger",
+            title: "Screen share · big screen",
+            icon: "📡",
+          })}
+          {castPanelOpen ? (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                zIndex: 14,
+                width: 280,
+                background: "#0d1117",
+                border: "1px solid rgba(170,45,255,0.45)",
+                borderRadius: 10,
+                padding: 8,
+                boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
+                CAST BUTTONS
+              </span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                <button
+                  type="button"
+                  data-testid="tmi-share-screen-cycle"
+                  onClick={() => void cycleSharePress()}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    void addShareSource();
+                  }}
+                  title={
+                    shareActive
+                      ? "Cycle share sources (right-click to add another)"
+                      : "Share screen / window / tab"
+                  }
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    border: shareActive ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
+                    background: shareActive ? "rgba(0,255,136,0.15)" : "transparent",
+                    color: "#00FF88",
+                    fontFamily: "inherit",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span>⬡</span>
+                  <span>SHARE SCREEN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleFullscreen();
+                    setCastPanelOpen(false);
+                  }}
+                  title={isFullscreen ? "Exit big screen" : "Big screen — native fullscreen"}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(0,255,255,0.4)",
+                    background: isFullscreen ? "rgba(0,255,255,0.18)" : "transparent",
+                    color: "#00FFFF",
+                    fontFamily: "inherit",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span>⛶</span>
+                  <span>{isFullscreen ? "EXIT BIG SCREEN" : "BIG SCREEN"}</span>
+                </button>
+              </div>
+              {shareActive ? (
+                <button
+                  type="button"
+                  onClick={stopScreenShare}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    padding: "5px 8px",
+                    borderRadius: 5,
+                    border: "1px solid rgba(255,68,68,0.5)",
+                    background: "rgba(255,68,68,0.12)",
+                    color: "#FF6B6B",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  STOP SHARE
+                </button>
+              ) : null}
+              {shareError ? (
+                <ScreenShareErrorBanner
+                  code={shareError}
+                  onDismiss={clearShareError}
+                  onRetry={() => void cycleSharePress()}
+                />
+              ) : null}
+              <AnimatePresence>
+                {slotPickerOpen && screenStream ? (
+                  <MonitorShareSlotPicker
+                    activeSlot={shareSlot}
+                    onPick={pickShareSlot}
+                    onClose={() => setSlotPickerOpen(false)}
+                  />
+                ) : null}
+              </AnimatePresence>
+              <button
                 type="button"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => pushSponsorLive(sp)}
+                onClick={() => setCastPanelOpen(false)}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: 2,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: `1px solid ${sp.accent}55`,
-                  background: `${sp.accent}12`,
+                  marginTop: 2,
+                  padding: "5px 8px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 8,
+                  fontWeight: 800,
                   cursor: "pointer",
-                  textAlign: "left",
                   fontFamily: "inherit",
                 }}
               >
-                <span style={{ fontSize: 10, fontWeight: 900, color: sp.accent }}>{sp.name}</span>
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{sp.tagline}</span>
-              </motion.button>
-            ))}
-            {activeSponsorOverlay ? (
+                CLOSE
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{ position: "relative" }}>
+          {utilityBtn(
+            identityOpen,
+            "#FFD700",
+            role === "performer" ? "ARTIST ID" : "FAN ID",
+            () => setIdentityOpen((v) => !v),
+            {
+              testId: role === "performer" ? "tmi-artist-id-rail" : "tmi-fan-id-rail",
+              title: role === "performer" ? "Artist ID / QR — same live session" : "Fan ID / QR — share your profile",
+              icon: "👤",
+            },
+          )}
+          {identityOpen ? (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                zIndex: 30,
+                width: 280,
+                padding: 10,
+                borderRadius: 10,
+                background: "rgba(5,5,16,0.96)",
+                border: "1px solid rgba(255,215,0,0.45)",
+                boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ArtistIdShareStrip
+                userId={userId ?? "local"}
+                displayName={displayName ?? (role === "performer" ? "Artist" : "Fan")}
+                role={role}
+              />
               <button
                 type="button"
-                onClick={() => {
-                  setActiveSponsorOverlay(null);
-                  setSponsorPanelOpen(false);
-                }}
+                onClick={() => setIdentityOpen(false)}
                 style={{
-                  marginTop: 2,
-                  padding: "6px 10px",
-                  borderRadius: 8,
+                  marginTop: 8,
+                  width: "100%",
+                  fontSize: 8,
+                  fontWeight: 900,
+                  padding: "6px 8px",
+                  borderRadius: 6,
                   border: "1px solid rgba(255,255,255,0.2)",
                   background: "transparent",
-                  color: "rgba(255,255,255,0.6)",
-                  fontSize: 9,
-                  fontWeight: 800,
+                  color: "rgba(255,255,255,0.65)",
                   cursor: "pointer",
+                  fontFamily: "inherit",
                 }}
               >
-                Stop overlay
+                CLOSE
               </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
-
-      {/* SHARE SCREEN — routes stream into any monitor slot without blocking camera feed */}
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          onClick={screenStream ? () => setSlotPickerOpen((v) => !v) : startScreenShare}
-          title={screenStream ? "Change which slot shows your screen share" : "Share your screen to a monitor slot"}
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 9px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: screenStream ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
-            background: screenStream ? "rgba(0,255,136,0.15)" : "transparent",
-            color: "#00FF88",
-            fontFamily: "inherit",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <span>{screenStream ? "⬡" : "⬡"}</span>
-          <span>{screenStream ? "SHARING…" : "SHARE SCREEN"}</span>
-        </button>
-        {screenStream && (
-          <button
-            type="button"
-            onClick={stopScreenShare}
-            title="Stop screen share"
-            style={{
-              marginLeft: 3,
-              fontSize: 7,
-              fontWeight: 900,
-              padding: "3px 6px",
-              borderRadius: 5,
-              border: "1px solid rgba(255,68,68,0.5)",
-              background: "rgba(255,68,68,0.12)",
-              color: "#FF6B6B",
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-        )}
-        <AnimatePresence>
-          {slotPickerOpen && screenStream && (
-            <MonitorShareSlotPicker
-              activeSlot={shareSlot}
-              onPick={pickShareSlot}
-              onClose={() => setSlotPickerOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* BIG SCREEN — native browser fullscreen */}
-      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        title={isFullscreen ? "Exit fullscreen" : "Big screen — native fullscreen"}
-        style={{
-          fontSize: 8,
-          fontWeight: 900,
-          letterSpacing: "0.08em",
-          padding: "3px 10px",
-          borderRadius: 6,
-          cursor: "pointer",
-          border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(0,255,255,0.4)",
-          background: isFullscreen ? "rgba(0,255,255,0.18)" : "transparent",
-          color: "#00FFFF",
-          fontFamily: "inherit",
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-        }}
-      >
-        <span>{isFullscreen ? "⛶" : "⛶"}</span>
-        <span>{isFullscreen ? "EXIT BIG SCREEN" : "BIG SCREEN"}</span>
-      </button>
-
-      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)", margin: "0 2px" }} />
-
-      {/* Direct-Action Quick Shortcuts: One Tap = Immediate Action */}
-      <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
-        {role === "fan" ? (
-        <button
-          type="button"
-          onClick={() => openCanonicalWorkspaceQuick("inventory", "DRAWER")}
-          title="Open Avatar Studio"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: "1px solid #00FFFF",
-            background: "rgba(0,255,255,0.14)",
-            color: "#00FFFF",
-            fontFamily: "inherit",
-          }}
-        >
-          👤 AVATAR
-        </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={() => openCanonicalWorkspaceQuick("memory", "DRAWER")}
-          title="Open Memory Wall"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: "1px solid #9D4EDD",
-            background: "rgba(157,78,221,0.14)",
-            color: "#9D4EDD",
-            fontFamily: "inherit",
-          }}
-        >
-          🧠 MEMORY
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            traceLaunch("PLAYLIST_CLICK", { source: "media-stack", workspaceId: "playlist-studio" });
-            openCanonicalWorkspaceQuick("playlist", "DRAWER");
-          }}
-          title="Open Playlist Library"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: "1px solid #00FF88",
-            background: "rgba(0,255,136,0.14)",
-            color: "#00FF88",
-            fontFamily: "inherit",
-          }}
-        >
-          🎵 PLAYLIST
-        </button>
-
-        <button
-          type="button"
-          onClick={() => toggleRemotePanel("remote", "bottom-right")}
-          title="Open Remote — quick playlist + player controller"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: remoteActive ? "1px solid #FF2DAA" : "1px solid rgba(255,45,170,0.45)",
-            background: remoteActive ? "rgba(255,45,170,0.2)" : "rgba(255,45,170,0.14)",
-            color: "#FF2DAA",
-            fontFamily: "inherit",
-          }}
-        >
-          🎚️ REMOTE
-        </button>
-
-        <button
-          type="button"
-          data-testid="tmi-yopho-media-stack-trigger"
-          data-tmi-action="open-workspace"
-          data-tmi-workspace="yopho"
-          onClick={() => {
-            traceLaunch("YOPHO_CLICK", { source: "media-stack", workspaceId: "yopho" });
-            openCanonicalWorkspaceQuick("yopho", "DRAWER");
-          }}
-          title="Open YoPho Studio"
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            padding: "3px 8px",
-            borderRadius: 6,
-            cursor: "pointer",
-            border: "1px solid #FF2DAA",
-            background: "rgba(255,45,170,0.14)",
-            color: "#FF2DAA",
-            fontFamily: "inherit",
-          }}
-        >
-          📸 YOPHO
-        </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -1093,18 +1310,47 @@ export default function CommandCenterMediaStack({
       {/* External-only Live Distribution Bezel — ABOVE monitors, no TMI light */}
       {role === "performer" ? <LiveDistributionBezel userId={userId} /> : null}
 
+      <div style={{ position: "relative", flex: naturalHeight ? undefined : 1, minHeight: 0 }}>
+      <GoLiveBootstrapOverlay
+        phase={bootPhase}
+        errorCode={bootErrorCode}
+        errorMessage={bootErrorMessage}
+        onRetry={() => {
+          void presentInstantGoLiveInPlace({
+            role: role === "performer" ? "PERFORMER" : "FAN",
+            preferredExperience: "live",
+            roomId: hubLiveRoomId ?? undefined,
+            publishSession: true,
+          });
+        }}
+      />
       <CanonicalDualMonitorStack
         variant={bezelVariant}
         seriesLabel={seriesLabel}
-        toolbar={toolbar}
+        toolbar={compactHubLayout ? undefined : toolbar}
         minMonitorCount={monitorLayoutMode === "primary" ? 1 : 2}
+        enableMediaRuntime
         monitors={[
           {
             id: topSlots[0]!.id,
-            label: "MONITOR A",
+            label: surfaceLayout.topSurface === "screen_share" ? "SCREEN SHARE" : "MONITOR A",
             children:
-              screenStream && shareSlotTargetsCell(shareSlot, 0, -1) ? (
-                <MonitorScreenShareVideo stream={screenStream} onStop={stopScreenShare} label="MON A" />
+              surfaceLayout.topSurface === "screen_share" && screenStream ? (
+                <MonitorScreenShareVideo
+                  stream={screenStream}
+                  onStop={stopScreenShare}
+                  label={surfaceLayout.shareButtonLabel}
+                  audioOwned={Boolean(screenShareAudioSourceId)}
+                  transitionKey={surfaceLayout.activeShareSourceId ?? "share"}
+                />
+              ) : screenStream && shareSlotTargetsCell(shareSlot, 0, -1) ? (
+                <MonitorScreenShareVideo
+                  stream={screenStream}
+                  onStop={stopScreenShare}
+                  label="MON A"
+                  audioOwned={Boolean(screenShareAudioSourceId)}
+                  transitionKey={surfaceLayout.activeShareSourceId ?? "share"}
+                />
               ) : (
                 <MonitorChrome
                   slot={topSlots[0]!}
@@ -1113,11 +1359,20 @@ export default function CommandCenterMediaStack({
                   sponsorOverlay={activeSponsorOverlay}
                   hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="A"
+                  goLiveBootActive={goLiveBootActive}
                 />
               ),
             cells: topSlots.map((slot, ci) =>
-              screenStream && shareSlotTargetsCell(shareSlot, 0, ci) ? (
-                <MonitorScreenShareVideo key={slot.id} stream={screenStream} onStop={stopScreenShare} label={`A${ci + 1}`} />
+              screenStream &&
+              surfaceLayout.topSurface !== "screen_share" &&
+              shareSlotTargetsCell(shareSlot, 0, ci) ? (
+                <MonitorScreenShareVideo
+                  key={slot.id}
+                  stream={screenStream}
+                  onStop={stopScreenShare}
+                  label={`A${ci + 1}`}
+                  audioOwned={Boolean(screenShareAudioSourceId)}
+                />
               ) : (
                 <MonitorChrome
                   key={slot.id}
@@ -1131,10 +1386,24 @@ export default function CommandCenterMediaStack({
           ...(monitorLayoutMode === "dual"
             ? [{
             id: bottomSlots[0]!.id,
-            label: "MONITOR B",
+            label:
+              surfaceLayout.bottomSurface === "participant_grid"
+                ? "PARTICIPANTS"
+                : "MONITOR B",
             children:
-              screenStream && shareSlotTargetsCell(shareSlot, 1, -1) ? (
-                <MonitorScreenShareVideo stream={screenStream} onStop={stopScreenShare} label="MON B" />
+              surfaceLayout.bottomSurface === "participant_grid" ? (
+                <ParticipantSurfaceGrid
+                  layout={surfaceLayout.participantLayout}
+                  tiles={participantTiles}
+                  overflowLabel={surfaceLayout.overflow.fallbackLabel}
+                />
+              ) : screenStream && shareSlotTargetsCell(shareSlot, 1, -1) ? (
+                <MonitorScreenShareVideo
+                  stream={screenStream}
+                  onStop={stopScreenShare}
+                  label="MON B"
+                  audioOwned={false}
+                />
               ) : (
                 <MonitorChrome
                   slot={bottomSlots[0]!}
@@ -1142,23 +1411,34 @@ export default function CommandCenterMediaStack({
                   overlayTarget={DEFAULT_MONITOR_B}
                   hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="B"
+                  goLiveBootActive={goLiveBootActive}
                 />
               ),
-            cells: bottomSlots.map((slot, ci) =>
-              screenStream && shareSlotTargetsCell(shareSlot, 1, ci) ? (
-                <MonitorScreenShareVideo key={slot.id} stream={screenStream} onStop={stopScreenShare} label={`B${ci + 1}`} />
-              ) : (
-                <MonitorChrome
-                  key={slot.id}
-                  slot={slot}
-                  cellIndex={ci}
-                />
-              ),
-            ),
+            cells:
+              surfaceLayout.bottomSurface === "participant_grid"
+                ? participantTiles.slice(0, 8).map((tile) => (
+                    <div key={tile.id} style={{ position: "absolute", inset: 0 }}>
+                      {tile.children}
+                    </div>
+                  ))
+                : bottomSlots.map((slot, ci) =>
+                    screenStream && shareSlotTargetsCell(shareSlot, 1, ci) ? (
+                      <MonitorScreenShareVideo
+                        key={slot.id}
+                        stream={screenStream}
+                        onStop={stopScreenShare}
+                        label={`B${ci + 1}`}
+                        audioOwned={false}
+                      />
+                    ) : (
+                      <MonitorChrome key={slot.id} slot={slot} cellIndex={ci} />
+                    ),
+                  ),
           }]
             : []),
         ]}
       />
+      </div>
 
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}
     </div>
