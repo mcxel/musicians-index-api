@@ -53,10 +53,7 @@ export default function TMIGlobalNav() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const isHubPath =
-    pathname === "/hub" ||
-    pathname.startsWith("/hub/") ||
-    pathname.startsWith("/dashboard");
+  const isHubPath = pathname === "/hub" || pathname.startsWith("/hub/");
   // Immersive PREVIEW VENUE — no legacy bottom dock over ArenaEventShell.
   const isVenuePreviewPath =
     pathname === "/venue/preview" || pathname.startsWith("/venue/preview/");

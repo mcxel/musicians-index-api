@@ -24,8 +24,11 @@ import {
   publicKindFromDbRole,
   selfPublicPath,
 } from "@/lib/identity/PublicProfileRuntime";
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 const ADMIN_ROLES = new Set(["ADMIN", "STAFF", "SUPERADMIN"]);
+const FAN_ROLES = new Set(["FAN", "MEMBER", "USER"]);
+const PERFORMER_ROLES = new Set(["PERFORMER", "ARTIST", "BAND"]);
 
 interface SessionIdentity {
   userId: string;
@@ -143,7 +146,6 @@ export default function AccountCommandMenu({
   const [mounted, setMounted]         = useState(false);
   const [identity, setIdentity]       = useState<SessionIdentity | null>(null);
   const [roles, setRoles]             = useState<string[]>([]);
-  const [loading, setLoading]         = useState(false);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
   const [panelPos, setPanelPos]       = useState({ top: 56, right: 12 });
   const [subScreen, setSubScreen]     = useState<"main" | "notifications" | "settings" | "linked-accounts">("main");
@@ -171,7 +173,6 @@ export default function AccountCommandMenu({
   useEffect(() => { setMounted(true); }, []);
 
   const hydrateIdentity = useCallback(async () => {
-    setLoading(true);
     try {
       const [sessionRes, profileRes, rolesRes] = await Promise.all([
         fetch("/api/auth/session",  { cache: "no-store", credentials: "include" }),
@@ -213,7 +214,7 @@ export default function AccountCommandMenu({
         userId, displayName, email: "", username: null, artistSlug: null,
         role: "USER", activeRole: "USER", tier: "FREE", avatarUrl: avatarUrlProp ?? null,
       });
-    } finally { setLoading(false); }
+    }
   }, [avatarUrlProp, displayName, userId]);
 
   useEffect(() => { void hydrateIdentity(); }, [hydrateIdentity]);
@@ -323,16 +324,52 @@ export default function AccountCommandMenu({
     role: "USER", activeRole: "USER", tier: "FREE", avatarUrl: avatarUrlProp ?? null,
   };
 
-  const roleSet     = new Set(roles.map((r) => r.toUpperCase()));
-  const hasFan      = roleSet.has("FAN") || roleSet.has("MEMBER") || roleSet.has("USER");
-  const hasPerformer = roleSet.has("PERFORMER") || roleSet.has("ARTIST") || roleSet.has("BAND");
-  const showSwitch  = hasFan && hasPerformer;
-  const showAdmin   =
-    ADMIN_ROLES.has(resolved.role) || ADMIN_ROLES.has(resolved.activeRole) ||
-    roleSet.has("ADMIN") || roleSet.has("STAFF");
+  const roleSet = new Set(roles.map((r) => r.toUpperCase()));
+  // Fall back to session active/primary role when my-roles is empty (hub letter still works).
+  for (const r of [resolved.role, resolved.activeRole]) {
+    if (r) roleSet.add(r.toUpperCase());
+  }
+  const hasFan =
+    [...roleSet].some((r) => FAN_ROLES.has(r)) ||
+    FAN_ROLES.has(resolved.activeRole.toUpperCase());
+  const hasPerformer =
+    [...roleSet].some((r) => PERFORMER_ROLES.has(r)) ||
+    PERFORMER_ROLES.has(resolved.activeRole.toUpperCase());
+  const showAdmin =
+    ADMIN_ROLES.has(resolved.role) ||
+    ADMIN_ROLES.has(resolved.activeRole) ||
+    roleSet.has("ADMIN") ||
+    roleSet.has("STAFF") ||
+    roleSet.has("SUPERADMIN");
 
   const activeMode    = modeLabel(resolved.activeRole);
   const activeModeClr = modeColor(resolved.activeRole);
+
+  const openCanonicalNotifications = () => {
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const onCommandCenter = path.startsWith("/hub/fan") || path.startsWith("/hub/performer");
+    if (onCommandCenter) {
+      const opened = openCanonicalWorkspaceQuick("notifications", "DRAWER");
+      if (opened) {
+        close();
+        return;
+      }
+    }
+    setSubScreen("notifications");
+  };
+
+  const openCanonicalSettings = () => {
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const onCommandCenter = path.startsWith("/hub/fan") || path.startsWith("/hub/performer");
+    if (onCommandCenter) {
+      const opened = openCanonicalWorkspaceQuick("settings", "DRAWER");
+      if (opened) {
+        close();
+        return;
+      }
+    }
+    setSubScreen("settings");
+  };
 
   const usernameHandle =
     resolved.username?.trim() || resolved.email.split("@")[0] || resolved.userId.slice(0, 8);
@@ -411,10 +448,10 @@ export default function AccountCommandMenu({
     window.location.href = "/auth";
   };
 
-  // ── Trigger avatar circle with mode badge ──
+  // ── Trigger: letter/avatar only — no phantom unread/mode badge on the trigger ──
 
   const avatarCircle = (
-    <div style={{ position: "relative", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+    <div style={{ position: "relative", flexShrink: 0 }}>
       {resolvedAvatar ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={resolvedAvatar} alt={resolvedName} style={{
@@ -430,9 +467,6 @@ export default function AccountCommandMenu({
           border: `2px solid ${open ? activeModeClr : `${activeModeClr}55`}`, transition: "border-color 0.2s",
         }}>{initial}</div>
       )}
-      <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.09em", color: activeModeClr, lineHeight: 1, textShadow: `0 0 6px ${activeModeClr}88` }}>
-        {loading ? "…" : activeMode}
-      </div>
     </div>
   );
 
@@ -688,79 +722,104 @@ export default function AccountCommandMenu({
         </div>
       </div>
 
-      {/* Account Mode switcher */}
-      {showSwitch && (
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>ACCOUNT MODE</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {(["FAN", "PERFORMER"] as const).map((m) => {
-              const isCurrent = activeMode === m;
-              const clr = m === "FAN" ? "#00FFFF" : "#FF2DAA";
-              const isSwitching = switchingRole === m;
-              return (
-                <button key={m} type="button"
-                  disabled={isCurrent || !!switchingRole}
-                  onClick={() => !isCurrent && void switchToRole(m)}
-                  style={{
-                    flex: 1, padding: "8px 12px", borderRadius: 8,
-                    border: `1px solid ${isCurrent ? clr : `${clr}44`}`,
-                    background: isCurrent ? `${clr}1a` : "rgba(0,0,0,0.3)",
-                    color: isCurrent ? clr : "rgba(255,255,255,0.5)",
-                    fontSize: 10, fontWeight: 900, letterSpacing: "0.12em",
-                    cursor: isCurrent ? "default" : switchingRole ? "wait" : "pointer",
-                    fontFamily: "inherit",
-                    boxShadow: isCurrent ? `0 0 10px ${clr}33` : "none",
-                    transition: "all 0.15s",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                  }}>
-                  {isSwitching
-                    ? <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", border: `2px solid ${clr}44`, borderTopColor: clr, animation: "tmiRoleSpin 0.6s linear infinite" }} />
-                    : (isCurrent ? "✓ " : "")}
-                  {m}
-                </button>
-              );
-            })}
+      {/* Role hubs — only when authorized on this session */}
+      {(hasFan || hasPerformer || showAdmin) && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>
+            HUBS · {activeMode} MODE
           </div>
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 6, letterSpacing: "0.06em" }}>Currently: {activeMode}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {hasFan && (
+              <button
+                type="button"
+                disabled={!!switchingRole}
+                onClick={() => {
+                  if (activeMode === "FAN") {
+                    close();
+                    router.push("/hub/fan");
+                    return;
+                  }
+                  void switchToRole("FAN");
+                }}
+                className="tmi-acm-row"
+                style={{
+                  ...rowStyle,
+                  color: "#00FFFF",
+                  border: "1px solid rgba(0,255,255,0.25)",
+                  background: activeMode === "FAN" ? "rgba(0,255,255,0.1)" : "transparent",
+                  opacity: switchingRole && switchingRole !== "FAN" ? 0.5 : 1,
+                }}
+              >
+                {switchingRole === "FAN" ? "…" : "Fan Hub"}
+                {activeMode === "FAN" ? " · here" : ""}
+              </button>
+            )}
+            {hasPerformer && (
+              <button
+                type="button"
+                disabled={!!switchingRole}
+                onClick={() => {
+                  if (activeMode === "PERFORMER") {
+                    close();
+                    router.push("/hub/performer");
+                    return;
+                  }
+                  void switchToRole("PERFORMER");
+                }}
+                className="tmi-acm-row"
+                style={{
+                  ...rowStyle,
+                  color: "#FF2DAA",
+                  border: "1px solid rgba(255,45,170,0.25)",
+                  background: activeMode === "PERFORMER" ? "rgba(255,45,170,0.1)" : "transparent",
+                  opacity: switchingRole && switchingRole !== "PERFORMER" ? 0.5 : 1,
+                }}
+              >
+                {switchingRole === "PERFORMER" ? "…" : "Performer Hub"}
+                {activeMode === "PERFORMER" ? " · here" : ""}
+              </button>
+            )}
+            {showAdmin && (
+              <Link
+                href="/admin"
+                onClick={close}
+                className="tmi-acm-row"
+                style={{
+                  ...rowStyle,
+                  color: "#FFD700",
+                  border: "1px solid rgba(255,215,0,0.3)",
+                  background: activeMode === "ADMIN" ? "rgba(255,215,0,0.1)" : "transparent",
+                }}
+              >
+                Admin Hub
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Navigation rows */}
+      {/* Canonical rows */}
       <div style={{ padding: "6px 4px", display: "flex", flexDirection: "column", gap: 0 }}>
         <Link href={publicPath} onClick={close} className="tmi-acm-row" style={rowStyle}>
           VIEW MY PUBLIC PROFILE
         </Link>
-        <Link href="/account" onClick={close} className="tmi-acm-row" style={rowStyle}>
-          MY ACCOUNT
-        </Link>
-        <button type="button" className="tmi-acm-row" onClick={() => setSubScreen("settings")} style={rowStyle}>
-          SETTINGS
-          <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.35 }}>›</span>
-        </button>
-        <button type="button" className="tmi-acm-row" onClick={() => setSubScreen("notifications")} style={rowStyle}>
+        <button type="button" className="tmi-acm-row" onClick={openCanonicalNotifications} style={rowStyle}>
           NOTIFICATIONS
-          {unreadCount > 0 && (
+          {unreadCount > 0 ? (
             <span style={{ marginLeft: 6, background: "#FF2DAA", color: "#fff", borderRadius: 999, padding: "1px 6px", fontSize: 9, fontWeight: 900 }}>
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
-          )}
+          ) : null}
           <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.35 }}>›</span>
         </button>
-        <Link href="/account/subscription" onClick={close} className="tmi-acm-row" style={rowStyle}>
-          ACCOUNT &amp; BILLING
-        </Link>
+        <button type="button" className="tmi-acm-row" onClick={openCanonicalSettings} style={rowStyle}>
+          SETTINGS
+          <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.35 }}>›</span>
+        </button>
         <button type="button" className="tmi-acm-row" onClick={() => setSubScreen("linked-accounts")} style={rowStyle}>
           LINKED ACCOUNTS &amp; ACCESS
           <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.35 }}>›</span>
         </button>
-        {showAdmin && (
-          <>
-            <div style={{ height: 1, background: "rgba(255,215,0,0.15)", margin: "4px 12px" }} />
-            <Link href="/admin" onClick={close} className="tmi-acm-row" style={{ ...rowStyle, color: "#FFD700" }}>
-              ⚡ ADMINISTRATION HUB
-            </Link>
-          </>
-        )}
       </div>
 
       {/* Logout */}

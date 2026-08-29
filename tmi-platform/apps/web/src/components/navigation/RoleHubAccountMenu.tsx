@@ -2,7 +2,8 @@
 
 /**
  * RoleHubAccountMenu — canonical account header for non-fan/performer role hubs.
- * One sign-in, one session, one logout via AccountCommandMenu.
+ * Letter/avatar toggles AccountCommandMenu popover (hubs · notifications · settings · logout).
+ * One sign-in, one session, one logout via /api/auth/logout.
  */
 
 import { useEffect, useState } from "react";
@@ -34,12 +35,14 @@ export default function RoleHubAccountMenu({ accentColor = "#00FFFF" }: RoleHubA
   }, []);
 
   return (
-    <AccountCommandMenu
-      userId={userId}
-      displayName={displayName}
-      avatarUrl={avatarUrl}
-      accentColor={accentColor}
-      compact
-    />
+    <div data-tmi-role-hub-account-menu="1" style={{ position: "relative", flexShrink: 0, zIndex: 50 }}>
+      <AccountCommandMenu
+        userId={userId}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        accentColor={accentColor}
+        compact
+      />
+    </div>
   );
 }
