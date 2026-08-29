@@ -39,6 +39,7 @@ import { buildSurroundSectionOptions } from "@/components/admin/overseer/oversee
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import OverseerCoverageRail from "@/components/admin/overseer/OverseerCoverageRail";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
@@ -983,6 +984,8 @@ export default function OverseerFlightDeck({
           >
             Admin
           </button>
+          {/* Canonical account letter — hubs / settings / logout (not AdminHubShell legacy) */}
+          <RoleHubAccountMenu accentColor="#FFD700" />
         </div>
       </header>
 
