@@ -22,6 +22,7 @@ import {
   LegalDocPanel,
 } from "./widgets/LegalCenterWidgets";
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
+import ModerationCaseDesk from "@/components/admin/overseer/ModerationCaseDesk";
 import LegalComplianceCard from "@/components/admin/overseer/LegalComplianceCard";
 import ObservatoryIntelligencePanel from "@/components/admin/overseer/ObservatoryIntelligencePanel";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
@@ -164,6 +165,13 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
     defaultZone: "bottom",
     permissions: ["security.manage"],
     component: ScamDefenseCenter,
+  },
+  "moderation-case-desk": {
+    id: "moderation-case-desk",
+    title: "Moderation Case Desk",
+    defaultZone: "bottom",
+    permissions: ["security.manage"],
+    component: ModerationCaseDesk,
   },
   "presentation-preview": {
     id: "presentation-preview",
