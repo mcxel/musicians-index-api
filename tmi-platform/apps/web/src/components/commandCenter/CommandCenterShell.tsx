@@ -548,14 +548,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", "entered");
 
     const params = new URLSearchParams(window.location.search);
-    const drawer = params.get("drawer") as UniversalDrawerModuleId | null;
+    const drawer = params.get("drawer") as UniversalDrawerModuleId | "avatar" | "avatar-quick" | null;
     const playlistId = params.get("playlistId");
     const isProofReplay = params.get("proof") === "1";
     if (!drawer) {
       if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", "no-drawer");
       return;
     }
-    if (!getUniversalDrawerModule(drawer)) {
+    // Fan Avatar Canister lives in Universal Workspace (avatar-quick), not UniversalDrawerRegistry.
+    const isAvatarCanisterDeepLink = drawer === "avatar" || drawer === "avatar-quick";
+    if (!isAvatarCanisterDeepLink && !getUniversalDrawerModule(drawer as UniversalDrawerModuleId)) {
       if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", `invalid-${drawer}`);
       return;
     }
@@ -566,7 +568,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       setActivePanel(null);
       drawerStateStore.setLastPanel(role, null);
       if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
-      presentCanonicalWorkspace(drawer as any, "DRAWER");
+      if (isAvatarCanisterDeepLink) {
+        presentCanonicalWorkspace("avatar-quick", "DRAWER");
+      } else {
+        openCanonicalWorkspaceQuick(drawer as UniversalDrawerModuleId, "DRAWER");
+      }
       if (diagnosticsEnabled) document.documentElement.setAttribute("data-proof-effect", `proof-open-${drawer}`);
       hubDrawerDeepLinkDone.current = true;
       return;
@@ -591,7 +597,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     hubDrawerDeepLinkDone.current = true;
     setAppearanceOpen(false);
 
-    if (drawer === "yopho") {
+    if (isAvatarCanisterDeepLink) {
+      presentCanonicalWorkspace("avatar-quick", "DRAWER");
+    } else if (drawer === "yopho") {
       openHubQuickLaunch({
         moduleId: "yopho",
         role,
@@ -608,9 +616,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         },
       });
     } else {
-      setActivePanel(drawer);
-      drawerStateStore.setLastPanel(role, drawer);
-      if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
+      const moduleId = drawer as UniversalDrawerModuleId;
+      setActivePanel(moduleId);
+      drawerStateStore.setLastPanel(role, moduleId);
+      if (moduleId === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
     }
 
     const clean = new URLSearchParams(window.location.search);

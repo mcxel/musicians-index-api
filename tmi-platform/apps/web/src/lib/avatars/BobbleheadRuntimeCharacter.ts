@@ -5,8 +5,8 @@
  * not flat pasted cutouts. Same world as FanLobbyVenue seats + FREE_ROAM floor.
  *
  * Honesty:
- * - Runtime = Primitive3D / AvatarRig capsule + oversized bobblehead sphere + socket attachments
- * - NOT photoreal GLB / face-scan / lip-sync (those stay FUTURE on BobbleheadBaseRegistry)
+ * - Runtime prefers certified AvatarGlbRegistry bobblehead_v0 (Foundry) via AvatarRig
+ * - Procedural capsule remains lobby fallback only when GLB unbound
  * - conceptPreviewUrl on the registry is catalog reference only — never the world citizen
  */
 
@@ -240,6 +240,8 @@ export function bobbleheadRuntimeToRigProps(
     attachments,
     activePropId: opts?.activePropId,
     crown: attachments.some((a) => a.id === "crown"),
+    // Same AvatarGlbRegistry authority as FanAvatarCanister (Rule 28 — no second mesh).
+    glbSlotId: "bobblehead_v0",
   };
 }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import * as THREE from 'three';
 import {
@@ -16,43 +17,218 @@ import {
   type AvatarGlbSlotId,
 } from '@/lib/avatars/AvatarGlbRegistry';
 
-function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
-  root.updateMatrixWorld(true);
-  const box = new THREE.Box3();
-  let hasMesh = false;
+/** Module-level GLB cache — load outside R3F Canvas (Canvas useEffect loaders were hanging). */
+const foundryGlbCache = new Map<string, Promise<THREE.Group>>();
+
+function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
+  const hit = foundryGlbCache.get(url);
+  if (hit) return hit;
+  const pending = new Promise<THREE.Group>((resolve, reject) => {
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => resolve(gltf.scene as THREE.Group),
+      undefined,
+      (err) => {
+        foundryGlbCache.delete(url);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      },
+    );
+  });
+  foundryGlbCache.set(url, pending);
+  return pending;
+}
+
+/** Max mesh extent (meters) accepted for camera fit — Foundry LOD0 morph outliers are ~1e12. */
+const FOUNDRY_MESH_EXTENT_MAX_M = 8;
+/** Morph delta clamp — Foundry proof ARKit keys after eyeBlinkLeft explode (~2× cascade). */
+const FOUNDRY_MORPH_DELTA_MAX_M = 0.12;
+
+export type AvatarExpressionId = "neutral" | "smile" | "hype";
+
+export type FoundryMorphCapability = {
+  smileUsable: boolean;
+  hypeFacialUsable: boolean;
+  reason: string | null;
+};
+
+const SMILE_MORPHS = ["mouthSmileLeft", "mouthSmileRight"] as const;
+const HYPE_FACIAL_MORPHS = ["jawOpen", "eyeWideLeft", "eyeWideRight"] as const;
+
+/**
+ * Base-position AABB only — never geometry.computeBoundingBox() when morphAttributes
+ * exist (Three expands by morph deltas; Foundry LOD0 morph outliers → ~7e12m height).
+ */
+function computeSkinnedMeshContentBox(mesh: THREE.Mesh): THREE.Box3 | null {
+  const pos = mesh.geometry?.attributes?.position as THREE.BufferAttribute | undefined;
+  if (!pos || pos.count < 3) return null;
+  const local = new THREE.Box3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    if (![v.x, v.y, v.z].every((n) => Number.isFinite(n) && Math.abs(n) < FOUNDRY_MESH_EXTENT_MAX_M)) {
+      continue;
+    }
+    local.expandByPoint(v);
+  }
+  if (local.isEmpty()) return null;
+  // Pin geometry bbox/sphere so frustum helpers never inherit morph-inflated bounds.
+  mesh.geometry.boundingBox = local.clone();
+  mesh.geometry.boundingSphere = local.getBoundingSphere(new THREE.Sphere());
+  return local.clone().applyMatrix4(mesh.matrixWorld);
+}
+
+function isSaneWorldBox(box: THREE.Box3): boolean {
+  if (box.isEmpty()) return false;
+  const size = box.getSize(new THREE.Vector3());
+  return [size.x, size.y, size.z].every(
+    (n) => Number.isFinite(n) && n >= 0 && n < FOUNDRY_MESH_EXTENT_MAX_M,
+  ) && size.length() >= 1e-4;
+}
+
+/** Zero exploding morph deltas so influences cannot throw the mesh off-camera. */
+function sanitizeFoundryMorphAttributes(root: THREE.Object3D): FoundryMorphCapability {
+  let smileUsable = false;
+  let hypeFacialUsable = false;
+  let sawMorphMesh = false;
+
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh || !mesh.geometry) return;
-    mesh.geometry.computeBoundingBox();
-    const local = mesh.geometry.boundingBox;
-    if (!local) return;
-    const world = local.clone().applyMatrix4(mesh.matrixWorld);
-    const size = world.getSize(new THREE.Vector3());
-    if (![size.x, size.y, size.z].every((n) => Number.isFinite(n) && n >= 0 && n < 50)) return;
-    if (size.length() < 1e-4) return;
-    box.union(world);
-    hasMesh = true;
-    mesh.frustumCulled = false;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    const morphPos = mesh.geometry.morphAttributes?.position;
+    const dict = mesh.morphTargetDictionary;
+    if (!morphPos?.length || !dict || !mesh.morphTargetInfluences) return;
+    sawMorphMesh = true;
+
+    for (const attr of morphPos) {
+      const arr = attr.array as Float32Array;
+      for (let i = 0; i < arr.length; i++) {
+        const n = arr[i]!;
+        if (!Number.isFinite(n) || Math.abs(n) > FOUNDRY_MORPH_DELTA_MAX_M) {
+          arr[i] = 0;
+        }
+      }
+      attr.needsUpdate = true;
+    }
+
+    const usable = (names: readonly string[]) =>
+      names.some((name) => {
+        const idx = dict[name];
+        if (idx == null) return false;
+        const attr = morphPos[idx];
+        if (!attr) return false;
+        const arr = attr.array as Float32Array;
+        for (let i = 0; i < arr.length; i++) {
+          if (arr[i] !== 0) return true;
+        }
+        return false;
+      });
+
+    if (usable(SMILE_MORPHS)) smileUsable = true;
+    if (usable(HYPE_FACIAL_MORPHS)) hypeFacialUsable = true;
   });
-  if (hasMesh && !box.isEmpty()) {
+
+  if (!sawMorphMesh) {
+    return {
+      smileUsable: false,
+      hypeFacialUsable: false,
+      reason: "No morph targets on loaded Foundry mesh",
+    };
+  }
+  if (!smileUsable) {
+    return {
+      smileUsable: false,
+      hypeFacialUsable,
+      reason:
+        "ARKit smile/jaw morph deltas corrupt on LOD0 (Foundry proof cascade) — remanufacture with from_mix=False required",
+    };
+  }
+  return { smileUsable: true, hypeFacialUsable, reason: null };
+}
+
+function applyFoundryExpression(root: THREE.Object3D, expression: AvatarExpressionId) {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.morphTargetDictionary || !mesh.morphTargetInfluences) return;
+    const dict = mesh.morphTargetDictionary;
+    const weights = mesh.morphTargetInfluences;
+    for (let i = 0; i < weights.length; i++) weights[i] = 0;
+
+    const set = (name: string, w: number) => {
+      const idx = dict[name];
+      if (idx != null && idx < weights.length) weights[idx] = w;
+    };
+
+    if (expression === "smile") {
+      set("mouthSmileLeft", 0.85);
+      set("mouthSmileRight", 0.85);
+      set("cheekSquintLeft", 0.25);
+      set("cheekSquintRight", 0.25);
+    } else if (expression === "hype") {
+      set("jawOpen", 0.35);
+      set("eyeWideLeft", 0.45);
+      set("eyeWideRight", 0.45);
+      set("browOuterUpLeft", 0.4);
+      set("browOuterUpRight", 0.4);
+    }
+  });
+}
+
+function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
+  root.updateMatrixWorld(true);
+
+  // Prefer morph-bearing LOD0; hide lower LODs to avoid z-fight / double draw.
+  const lod0 = root.getObjectByName("Avatar_LOD0");
+  if (lod0) {
+    root.traverse((obj) => {
+      if (obj.name === "Avatar_LOD1" || obj.name === "Avatar_LOD2") {
+        obj.visible = false;
+      }
+    });
+  }
+
+  const collectSaneBoxes = (): THREE.Box3 => {
+    const box = new THREE.Box3();
+    root.traverse((obj) => {
+      const mesh = obj as THREE.SkinnedMesh;
+      // SkinnedMesh only — ignore Empties/sockets/bones (scene Box3.setFromObject is poison).
+      if (!mesh.isMesh || !mesh.isSkinnedMesh || !mesh.visible || !mesh.geometry) return;
+      const world = computeSkinnedMeshContentBox(mesh);
+      if (!world || !isSaneWorldBox(world)) return;
+      box.union(world);
+      mesh.frustumCulled = false;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      // Ensure lit bobblehead reads on dark canister bg (Foundry mats can be near-black metal).
+      const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+      for (const mat of mats) {
+        const m = mat as THREE.MeshStandardMaterial;
+        if (m && "metalness" in m) {
+          m.metalness = Math.min(m.metalness ?? 0.35, 0.45);
+          m.roughness = Math.max(m.roughness ?? 0.55, 0.45);
+          m.envMapIntensity = 0.85;
+          m.needsUpdate = true;
+        }
+      }
+      if (mesh.isSkinnedMesh && mesh.skeleton) {
+        mesh.skeleton.update();
+      }
+    });
+    return box;
+  };
+
+  let box = collectSaneBoxes();
+  if (!box.isEmpty() && isSaneWorldBox(box)) {
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1e-3);
-    root.scale.setScalar(1.6 / maxDim);
+    // Clamp scale so a near-empty/outlier pass cannot explode or shrink to invisibility.
+    const scale = THREE.MathUtils.clamp(1.65 / maxDim, 0.25, 4);
+    root.scale.setScalar(scale);
     root.updateMatrixWorld(true);
-    const fitted = new THREE.Box3();
-    root.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh || !mesh.geometry) return;
-      mesh.geometry.computeBoundingBox();
-      const local = mesh.geometry.boundingBox;
-      if (!local) return;
-      fitted.union(local.clone().applyMatrix4(mesh.matrixWorld));
-    });
-    if (!fitted.isEmpty()) {
-      const center = fitted.getCenter(new THREE.Vector3());
-      const h = fitted.getSize(new THREE.Vector3()).y;
+    box = collectSaneBoxes();
+    if (!box.isEmpty() && isSaneWorldBox(box)) {
+      const center = box.getCenter(new THREE.Vector3());
+      const h = box.getSize(new THREE.Vector3()).y;
       root.position.sub(center);
       root.position.y += h * 0.5;
     }
@@ -60,18 +236,33 @@ function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
   return root;
 }
 
-/** Loads a certified AvatarRig GLB when registry marks it certified — else never mounted. */
-function CertifiedAvatarGlbMesh({ url }: { url: string }) {
-  const resolvedUrl =
-    typeof window !== "undefined" ? new URL(url, window.location.origin).href : url;
-  const gltf = useLoader(GLTFLoader, resolvedUrl);
-  const root = useMemo(() => {
-    try {
-      return fitFoundryAvatarRoot(gltf.scene.clone(true));
-    } catch {
-      return gltf.scene.clone(true);
-    }
-  }, [gltf]);
+/** Fitted Foundry mesh — expects scene already loaded outside the Canvas. */
+function CertifiedAvatarGlbMesh({
+  scene,
+  expression = "neutral",
+  onMorphCapability,
+}: {
+  scene: THREE.Object3D;
+  expression?: AvatarExpressionId;
+  onMorphCapability?: (cap: FoundryMorphCapability) => void;
+}) {
+  const reportedRef = useRef(false);
+  const { root, capability } = useMemo(() => {
+    const cloned = cloneSkinned(scene) as THREE.Object3D;
+    const cap = sanitizeFoundryMorphAttributes(cloned);
+    return { root: fitFoundryAvatarRoot(cloned), capability: cap };
+  }, [scene]);
+
+  useEffect(() => {
+    if (reportedRef.current) return;
+    reportedRef.current = true;
+    onMorphCapability?.(capability);
+  }, [capability, onMorphCapability]);
+
+  useEffect(() => {
+    applyFoundryExpression(root, expression);
+  }, [root, expression]);
+
   return <primitive object={root} />;
 }
 
@@ -287,6 +478,13 @@ export type AvatarRigProps = {
    * Shows CANONICAL_AVATAR_NOT_BOUND when no certified GLB is bound.
    */
   certifiedOnly?: boolean;
+  /** ARKit expression weights on certified Foundry mesh (neutral/smile/hype). */
+  expression?: AvatarExpressionId;
+  /** Reports post-sanitize morph usability (smile may be corrupt on current GLB). */
+  onMorphCapability?: (cap: FoundryMorphCapability) => void;
+  /** Preloaded Foundry scene (loaded outside Canvas — required for reliable GLB mount). */
+  foundryScene?: THREE.Object3D | null;
+  foundryLoadError?: string | null;
 };
 
 export function AvatarRig({
@@ -307,6 +505,10 @@ export function AvatarRig({
   glbSlotId = null,
   glbUrl = null,
   certifiedOnly = false,
+  expression = "neutral",
+  onMorphCapability,
+  foundryScene = null,
+  foundryLoadError = null,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -328,16 +530,25 @@ export function AvatarRig({
     (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
   const showCapsuleFallback = !resolvedGlb && !certifiedOnly;
   const showUnboundMarker = !resolvedGlb && certifiedOnly;
+  // Fitted Foundry GLB owns its scale — do not apply forge bodyHeight/mass on top.
+  const groupScale: [number, number, number] = resolvedGlb
+    ? [1, 1, 1]
+    : [massScale, heightScale, massScale];
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
     if (groupRef.current) {
-      const baseY = isSeated ? -0.55 : -0.4;
+      const baseY = resolvedGlb ? 0 : isSeated ? -0.55 : -0.4;
       const tempo = isPlaying && !isSeated ? 3.5 : 1.8;
       const amplitude = isPlaying && !isSeated ? 0.12 : isSeated ? 0.015 : 0.035;
       groupRef.current.position.y = baseY + Math.sin(elapsed * tempo) * amplitude;
 
-      if (isSeated) {
+      if (resolvedGlb && !isPlaying) {
+        // Idle turntable for Foundry full-body — keep upright (no sit lean on mesh).
+        groupRef.current.rotation.x = 0;
+        groupRef.current.rotation.z = 0;
+        groupRef.current.rotation.y = Math.sin(elapsed * 0.35) * 0.15;
+      } else if (isSeated) {
         // Sit pose: lean into chair, slight sway — synced to seat anchors
         groupRef.current.rotation.x = 0.42;
         groupRef.current.rotation.y = Math.sin(elapsed * 0.35) * 0.04;
@@ -373,21 +584,43 @@ export function AvatarRig({
   return (
     <group
       ref={groupRef}
-      position={[0, isSeated ? -0.55 : -0.4, 0]}
-      scale={[massScale, heightScale, massScale]}
+      position={[0, resolvedGlb ? 0 : isSeated ? -0.55 : -0.4, 0]}
+      scale={groupScale}
     >
-      {resolvedGlb ? (
-        <Suspense
-          fallback={
-            <Html center style={{ pointerEvents: "none" }}>
-              <div style={{ color: "#00FFFF", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em" }}>
-                LOADING FOUNDRY GLB…
-              </div>
-            </Html>
-          }
-        >
-          <CertifiedAvatarGlbMesh url={resolvedGlb} />
-        </Suspense>
+      {resolvedGlb && foundryLoadError ? (
+        <Html center style={{ pointerEvents: "none", width: 180 }}>
+          <div
+            data-foundry-glb-error={foundryLoadError}
+            style={{
+              color: "#FF2DAA",
+              fontSize: 8,
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              textAlign: "center",
+              lineHeight: 1.35,
+            }}
+          >
+            FOUNDRY GLB ERROR
+            <div style={{ color: "rgba(255,255,255,0.45)", fontWeight: 600, marginTop: 4, fontSize: 7 }}>
+              {foundryLoadError}
+            </div>
+          </div>
+        </Html>
+      ) : resolvedGlb && foundryScene ? (
+        <CertifiedAvatarGlbMesh
+          scene={foundryScene}
+          expression={expression}
+          onMorphCapability={onMorphCapability}
+        />
+      ) : resolvedGlb ? (
+        <Html center style={{ pointerEvents: "none" }}>
+          <div
+            data-foundry-glb-loading="1"
+            style={{ color: "#00FFFF", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em" }}
+          >
+            LOADING FOUNDRY GLB…
+          </div>
+        </Html>
       ) : showUnboundMarker ? (
         <CanonicalAvatarNotBoundMarker />
       ) : showCapsuleFallback ? (
@@ -506,6 +739,8 @@ export function AvatarViewer({
   glbSlotId,
   glbUrl,
   certifiedOnly = false,
+  expression = "neutral",
+  onMorphCapability,
   enableOrbit = true,
   fill = false,
   cameraFocus = "body",
@@ -515,23 +750,73 @@ export function AvatarViewer({
   fill?: boolean;
   cameraFocus?: AvatarCameraFocus;
 }) {
+  const resolvedGlb =
+    glbUrl ?? (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
+  const [foundryScene, setFoundryScene] = useState<THREE.Object3D | null>(null);
+  const [foundryLoadError, setFoundryLoadError] = useState<string | null>(null);
+
+  // Load OUTSIDE the R3F Canvas — Canvas-local GLTFLoader effects were hanging (no network).
+  useEffect(() => {
+    if (!resolvedGlb) {
+      setFoundryScene(null);
+      setFoundryLoadError(null);
+      return;
+    }
+    let cancelled = false;
+    setFoundryLoadError(null);
+    const timer = window.setTimeout(() => {
+      if (!cancelled) setFoundryLoadError("Foundry GLB load timed out (20s)");
+    }, 20_000);
+    loadFoundryGlbScene(resolvedGlb)
+      .then((scene) => {
+        window.clearTimeout(timer);
+        if (!cancelled) setFoundryScene(scene);
+      })
+      .catch((err) => {
+        window.clearTimeout(timer);
+        if (!cancelled) {
+          setFoundryLoadError(err instanceof Error ? err.message : "Foundry GLB failed to load");
+        }
+      });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [resolvedGlb]);
+
   const cam = CAMERA_BY_FOCUS[cameraFocus] ?? CAMERA_BY_FOCUS.body;
-  const seatedCam: [number, number, number] = isSeated ? [0, 0.15, 2.5] : cam.position;
+  const bodyCam = resolvedGlb
+    ? { position: [0, 0.85, 2.85] as [number, number, number], target: [0, 0.75, 0] as [number, number, number] }
+    : cam;
+  const focusCam = cameraFocus === "body" && resolvedGlb ? bodyCam : cam;
+  const seatedCam: [number, number, number] = isSeated ? [0, 0.15, 2.5] : focusCam.position;
+  const boxSize = fill ? "100%" : size;
+
   return (
-    <div style={{ width: fill ? "100%" : size, height: fill ? "100%" : size, minHeight: fill ? 280 : undefined, position: "relative" }}>
+    <div
+      data-avatar-viewer={resolvedGlb || "procedural"}
+      data-foundry-loaded={foundryScene ? "1" : "0"}
+      style={{
+        width: boxSize,
+        height: boxSize,
+        minHeight: fill ? 220 : undefined,
+        position: "relative",
+      }}
+    >
       <SafeReactThreeCanvas
         faultContext="Avatar Viewer"
         fallbackLabel="Avatar 3D unavailable"
         shadows
-        camera={{ position: seatedCam, fov: cameraFocus === "face" ? 32 : 42 }}
+        camera={{ position: seatedCam, fov: cameraFocus === "face" ? 32 : 40, near: 0.05, far: 40 }}
         gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
         style={{ background: "transparent", width: "100%", height: "100%" }}
+        resize={{ debounce: 0 }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={1.05} />
-          <hemisphereLight intensity={0.55} groundColor="#12002b" color="#88ccff" />
-          <directionalLight position={[3, 6, 4]} intensity={1.8} color="#ffffff" castShadow />
-          <spotLight position={[5, 5, 5]} intensity={1.2} color="#fff" />
+          <ambientLight intensity={1.15} />
+          <hemisphereLight intensity={0.6} groundColor="#12002b" color="#88ccff" />
+          <directionalLight position={[3, 6, 4]} intensity={2.0} color="#ffffff" castShadow />
+          <spotLight position={[5, 5, 5]} intensity={1.35} color="#fff" />
 
           <AvatarRig
             bobbleheadRatio={bobbleheadRatio}
@@ -551,17 +836,23 @@ export function AvatarViewer({
             glbSlotId={glbSlotId}
             glbUrl={glbUrl}
             certifiedOnly={certifiedOnly}
+            expression={expression}
+            onMorphCapability={onMorphCapability}
+            foundryScene={foundryScene}
+            foundryLoadError={foundryLoadError}
           />
           <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={8} blur={2.5} far={4} />
 
           {enableOrbit && (
             <OrbitControls
-              key={cameraFocus}
-              target={cam.target}
+              key={`${cameraFocus}-${glbSlotId ?? "none"}`}
+              target={isSeated ? [0, 0.2, 0] : focusCam.target}
               enableZoom={true}
               enablePan={false}
               enableDamping={true}
               dampingFactor={0.05}
+              minDistance={1.4}
+              maxDistance={4.5}
               minPolarAngle={cameraFocus === "feet" ? Math.PI / 2.4 : Math.PI / 3.4}
               maxPolarAngle={cameraFocus === "face" ? Math.PI / 1.7 : Math.PI / 1.45}
             />

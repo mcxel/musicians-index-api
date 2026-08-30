@@ -8,7 +8,7 @@
  * Performers retain live camera/video presentation (no avatar ownership UI).
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   bindAvatarToSeat,
@@ -21,9 +21,13 @@ import {
   resolveAvatarViewportBinding,
   type AvatarGlbSlotId,
 } from "@/lib/avatars/AvatarGlbRegistry";
-import { AvatarViewer } from "@/components/3d/AvatarLobbyCanvas";
+import {
+  AvatarViewer,
+  type AvatarExpressionId,
+  type FoundryMorphCapability,
+} from "@/components/3d/AvatarLobbyCanvas";
 
-export type CanisterExpression = "neutral" | "smile" | "hype";
+export type CanisterExpression = AvatarExpressionId;
 
 export interface FanAvatarCanisterProps {
   pure3dAvatarOnly?: boolean;
@@ -110,14 +114,18 @@ export default function FanAvatarCanister({
     startAvatarSeatBindingEngine(userId),
   );
   const [expression, setExpression] = useState<CanisterExpression>("neutral");
+  const [morphCap, setMorphCap] = useState<FoundryMorphCapability | null>(null);
 
   const viewport = useMemo(() => resolveAvatarViewportBinding(glbSlotId), [glbSlotId]);
   const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
-  // Registry may certify ARKit targets on the GLB, but AvatarViewer has no morph-weight
-  // driver yet — keep NEUTRAL/SMILE honest (disabled) until that wires. HYPE uses isPlaying bounce.
-  const facialMorphUiWired = false;
-  const facialOk = viewport.facialTargetsSupported && facialMorphUiWired;
   const motionOk = viewport.motionPackageSupported;
+  // NEUTRAL always safe (all weights 0). SMILE only when post-sanitize deltas remain.
+  const smileOk = Boolean(morphCap?.smileUsable);
+  const facialDriverWired = morphCap !== null;
+
+  const onMorphCapability = useCallback((cap: FoundryMorphCapability) => {
+    setMorphCap(cap);
+  }, []);
 
   useEffect(() => {
     if (roomId && seatId) {
@@ -143,13 +151,15 @@ export default function FanAvatarCanister({
 
   const expressionHint = !isBound
     ? "Requires certified Foundry AvatarRig GLB"
-    : !facialOk && (expression === "neutral" || expression === "smile")
-      ? "Facial morph UI not wired to AvatarViewer yet — ARKit targets exist on GLB"
-      : !motionOk && expression === "hype"
-        ? "Motion package unsupported — body clip pending"
-        : expression === "hype" && motionOk && !facialOk
-          ? "HYPE = body motion bounce (facial morph driver pending)"
-          : null;
+    : !facialDriverWired
+      ? "Probing Foundry morph targets…"
+      : expression === "smile" && !smileOk
+        ? morphCap?.reason ?? "Smile morph deltas unusable after sanitize"
+        : expression === "hype" && motionOk && !morphCap?.hypeFacialUsable
+          ? "HYPE = body motion bounce (jaw/eyeWide morph deltas corrupt on this GLB)"
+          : morphCap?.reason && !smileOk
+            ? morphCap.reason
+            : null;
 
   return (
     <div
@@ -196,13 +206,15 @@ export default function FanAvatarCanister({
               visorColor={tierColor}
               crown={tierColor === "#FFD700"}
               isPlaying={expression === "hype" && motionOk}
-              isSeated={Boolean(binding.seatId)}
-              size={200}
+              isSeated={false}
+              size={220}
               glbSlotId={viewport.slotId}
               glbUrl={viewport.glbUrl}
               certifiedOnly
               enableOrbit
               cameraFocus="body"
+              expression={expression}
+              onMorphCapability={onMorphCapability}
             />
             <div
               className="absolute inset-0 rounded-xl pointer-events-none"
@@ -225,12 +237,12 @@ export default function FanAvatarCanister({
       <div className="flex flex-col items-center gap-1 z-10 mb-2 w-full">
         <div className="flex items-center gap-1">
           {(["neutral", "smile", "hype"] as const).map((expr) => {
-            const facialExpr = expr === "neutral" || expr === "smile";
             const disabled =
               !isBound ||
-              (facialExpr && !facialOk) ||
-              (expr === "hype" && !motionOk && !facialOk);
-            const partialHype = expr === "hype" && isBound && motionOk && !facialOk;
+              (expr === "smile" && (!facialDriverWired || !smileOk)) ||
+              (expr === "hype" && !motionOk);
+            const partialHype =
+              expr === "hype" && isBound && motionOk && !morphCap?.hypeFacialUsable;
             return (
               <button
                 key={expr}
@@ -240,7 +252,7 @@ export default function FanAvatarCanister({
                   disabled
                     ? expressionHint ?? "Unavailable"
                     : partialHype
-                      ? "Body motion bounce only — facial morph UI not wired yet"
+                      ? "Body motion bounce — jaw/eyeWide morph deltas corrupt on this GLB"
                       : `Set expression: ${expr}`
                 }
                 onClick={() => {
