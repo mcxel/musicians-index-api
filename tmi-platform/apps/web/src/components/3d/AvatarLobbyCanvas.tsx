@@ -10,6 +10,7 @@ import {
   type SocketAttachmentDef,
 } from '@/components/3d/AvatarSocketAttachment';
 import {
+  FOUNDRY_AVATAR_AUTHORITY,
   resolveCertifiedAvatarGlbUrl,
   type AvatarGlbSlotId,
 } from '@/lib/avatars/AvatarGlbRegistry';
@@ -19,6 +20,31 @@ function CertifiedAvatarGlbMesh({ url }: { url: string }) {
   const { scene } = useGLTF(url);
   const cloned = useMemo(() => scene.clone(true), [scene]);
   return <primitive object={cloned} scale={1} />;
+}
+
+/** Rule 28 fail-visible — never present capsule as finished when certifiedOnly. */
+function CanonicalAvatarNotBoundMarker() {
+  return (
+    <Html center style={{ pointerEvents: 'none', width: 160 }}>
+      <div
+        data-avatar-binding="CANONICAL_AVATAR_NOT_BOUND"
+        style={{
+          textAlign: 'center',
+          color: '#FF2DAA',
+          fontSize: 9,
+          fontWeight: 900,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          lineHeight: 1.35,
+        }}
+      >
+        CANONICAL_AVATAR_NOT_BOUND
+        <div style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 600, marginTop: 4, fontSize: 7 }}>
+          {FOUNDRY_AVATAR_AUTHORITY.rigVersion} · Foundry asset missing
+        </div>
+      </div>
+    </Html>
+  );
 }
 
 function Seat({ position }: { position: [number, number, number] }) {
@@ -199,10 +225,15 @@ export type AvatarRigProps = {
   /**
    * Optional certified GLB from AvatarGlbRegistry. Only loads when
    * resolveCertifiedAvatarGlbUrl returns a path (certified=true). Procedural
-   * capsule remains the default — no fake photoreal claim.
+   * capsule remains the default for lobbies — no fake photoreal claim.
    */
   glbSlotId?: AvatarGlbSlotId | null;
   glbUrl?: string | null;
+  /**
+   * Production surfaces (Fan Canister, Quick Panel): never fall back to capsule.
+   * Shows CANONICAL_AVATAR_NOT_BOUND when no certified GLB is bound.
+   */
+  certifiedOnly?: boolean;
 };
 
 export function AvatarRig({
@@ -222,6 +253,7 @@ export function AvatarRig({
   bobbleheadRatio,
   glbSlotId = null,
   glbUrl = null,
+  certifiedOnly = false,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -241,6 +273,8 @@ export function AvatarRig({
   const resolvedGlb =
     glbUrl ??
     (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
+  const showCapsuleFallback = !resolvedGlb && !certifiedOnly;
+  const showUnboundMarker = !resolvedGlb && certifiedOnly;
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
@@ -293,9 +327,11 @@ export function AvatarRig({
         <Suspense fallback={null}>
           <CertifiedAvatarGlbMesh url={resolvedGlb} />
         </Suspense>
-      ) : (
+      ) : showUnboundMarker ? (
+        <CanonicalAvatarNotBoundMarker />
+      ) : showCapsuleFallback ? (
         <>
-          {/* Body capsule — Primitive3D / 3D_MESH v0 (stockier when bobblehead) */}
+          {/* Body capsule — Primitive3D / 3D_MESH v0 (lobby/dev fallback only) */}
           <mesh position={[0, isSeated ? 0.28 : 0.4, 0]} castShadow receiveShadow>
             <capsuleGeometry args={[bodyCapsuleRadius, bodyCapsuleLen, 12, 24]} />
             <meshStandardMaterial
@@ -356,7 +392,7 @@ export function AvatarRig({
             </mesh>
           )}
         </>
-      )}
+      ) : null}
 
       {showCrown && (
         <mesh ref={crownRef} position={[0, headY + headRadius + 0.08, 0]} castShadow>
@@ -408,6 +444,7 @@ export function AvatarViewer({
   bobbleheadRatio,
   glbSlotId,
   glbUrl,
+  certifiedOnly = false,
   enableOrbit = true,
   fill = false,
   cameraFocus = "body",
@@ -451,6 +488,7 @@ export function AvatarViewer({
             bodyMass={bodyMass}
             glbSlotId={glbSlotId}
             glbUrl={glbUrl}
+            certifiedOnly={certifiedOnly}
           />
           <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={8} blur={2.5} far={4} />
 

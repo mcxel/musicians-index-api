@@ -2,20 +2,33 @@
 
 /**
  * FanAvatarCanister.tsx
- * Canonical 3D Fan Avatar Canister surface.
- * Pipeline: Authenticated Fan → Canonical Identity → Face Scan Binding → Avatar DNA → 3D Canister → Seat Assignment
- * Invariant: Fan avatars only; Performers retain live camera/video presentation.
+ * Canonical 3D Fan Avatar Canister surface (Rule 26 + 28).
+ * Pipeline: Authenticated Fan → AvatarGlbRegistry → Foundry GLB → AvatarViewer
+ * When unbound: honest CANONICAL_AVATAR_NOT_BOUND diagnostic — never a production capsule.
+ * Performers retain live camera/video presentation (no avatar ownership UI).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { bindAvatarToSeat, startAvatarSeatBindingEngine, type AvatarSeatBinding } from "@/lib/avatar/AvatarSeatBindingEngine";
+import {
+  bindAvatarToSeat,
+  startAvatarSeatBindingEngine,
+  type AvatarSeatBinding,
+} from "@/lib/avatar/AvatarSeatBindingEngine";
+import {
+  DEFAULT_FAN_AVATAR_GLB_SLOT,
+  FOUNDRY_AVATAR_AUTHORITY,
+  resolveAvatarViewportBinding,
+  type AvatarGlbSlotId,
+} from "@/lib/avatars/AvatarGlbRegistry";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((mod) => mod.AvatarViewer),
-  { ssr: false }
+  { ssr: false },
 );
+
+export type CanisterExpression = "neutral" | "smile" | "hype";
 
 export interface FanAvatarCanisterProps {
   pure3dAvatarOnly?: boolean;
@@ -27,25 +40,86 @@ export interface FanAvatarCanisterProps {
   roomId?: string;
   seatId?: string;
   tierColor?: string;
+  /** Override default Fan GLB slot (must still be certified to mount mesh). */
+  glbSlotId?: AvatarGlbSlotId;
   onSeatBound?: (binding: AvatarSeatBinding) => void;
   className?: string;
+}
+
+function UnboundAvatarViewport({
+  tierColor,
+  diagnostic,
+  message,
+  missingArtifact,
+}: {
+  tierColor: string;
+  diagnostic: string;
+  message: string;
+  missingArtifact: string | null;
+}) {
+  return (
+    <div
+      data-avatar-binding={diagnostic}
+      className="relative w-full h-full min-h-[160px] flex flex-col items-center justify-center gap-2 px-3"
+      style={{
+        background: `radial-gradient(ellipse at center, ${tierColor}12 0%, transparent 70%)`,
+      }}
+    >
+      {/* Honest silhouette — not a finished mesh, not a glowing capsule */}
+      <div
+        aria-hidden
+        style={{
+          width: 56,
+          height: 110,
+          borderRadius: "28px 28px 18px 18px",
+          border: `1.5px dashed ${tierColor}55`,
+          background: "transparent",
+          opacity: 0.55,
+        }}
+      />
+      <span
+        className="text-[9px] font-black uppercase tracking-widest text-center"
+        style={{ color: "#FF2DAA" }}
+      >
+        {diagnostic}
+      </span>
+      <span className="text-[8px] text-white/45 text-center leading-snug max-w-[240px]">
+        {message}
+      </span>
+      {missingArtifact && (
+        <span className="text-[7px] font-mono text-white/30 text-center break-all max-w-[260px]">
+          Missing: {missingArtifact}
+        </span>
+      )}
+      <span className="text-[7px] text-cyan-400/50 uppercase tracking-wider">
+        {FOUNDRY_AVATAR_AUTHORITY.rigVersion} · {FOUNDRY_AVATAR_AUTHORITY.recipeId}
+      </span>
+    </div>
+  );
 }
 
 export default function FanAvatarCanister({
   userId,
   displayName,
   role,
-  avatarUrl,
   faceScanActive = true,
   roomId,
   seatId,
   tierColor = "#00FFFF",
+  glbSlotId = DEFAULT_FAN_AVATAR_GLB_SLOT,
   onSeatBound,
   className = "",
 }: FanAvatarCanisterProps) {
   const isFanRole = ["FAN", "USER", "SUPERADMIN", "ADMIN"].includes(role.toUpperCase());
-  const [binding, setBinding] = useState<AvatarSeatBinding>(() => startAvatarSeatBindingEngine(userId));
-  const [expression, setExpression] = useState<"neutral" | "smile" | "hype">("neutral");
+  const [binding, setBinding] = useState<AvatarSeatBinding>(() =>
+    startAvatarSeatBindingEngine(userId),
+  );
+  const [expression, setExpression] = useState<CanisterExpression>("neutral");
+
+  const viewport = useMemo(() => resolveAvatarViewportBinding(glbSlotId), [glbSlotId]);
+  const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
+  const facialOk = viewport.facialTargetsSupported;
+  const motionOk = viewport.motionPackageSupported;
 
   useEffect(() => {
     if (roomId && seatId) {
@@ -69,9 +143,18 @@ export default function FanAvatarCanister({
     );
   }
 
+  const expressionHint = !isBound
+    ? "Requires certified Foundry AvatarRig GLB"
+    : !facialOk && expression !== "hype"
+      ? "Facial targets unsupported until ARKit step certified"
+      : !motionOk && expression === "hype"
+        ? "Motion package unsupported — body clip pending"
+        : null;
+
   return (
     <div
       data-fan-avatar-canister={userId}
+      data-avatar-binding={viewport.diagnostic}
       className={`relative flex flex-col items-center justify-between p-4 rounded-2xl border bg-gradient-to-b from-[#0a0a1f] to-[#04040d] text-white overflow-hidden ${className}`}
       style={{
         borderColor: `${tierColor}44`,
@@ -81,51 +164,104 @@ export default function FanAvatarCanister({
     >
       <div className="w-full flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span
+            className={`w-2 h-2 rounded-full ${isBound ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
+          />
           <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400">
             AVATAR CANISTER
           </span>
         </div>
         <span
           className="text-[8px] font-extrabold px-2 py-0.5 rounded border"
-          style={{ borderColor: `${tierColor}55`, color: tierColor, background: `${tierColor}10` }}
+          style={{
+            borderColor: isBound ? `${tierColor}55` : "#FF2DAA55",
+            color: isBound ? tierColor : "#FF2DAA",
+            background: isBound ? `${tierColor}10` : "#FF2DAA10",
+          }}
         >
-          {faceScanActive ? "FACE SCAN BOUND" : "GENERIC DNA"}
+          {isBound
+            ? faceScanActive
+              ? "FACE SCAN BOUND"
+              : "FOUNDRY BOUND"
+            : "ASSET MISSING"}
         </span>
       </div>
 
       <div className="relative w-full flex-1 flex items-center justify-center my-2 min-h-[160px]">
-        <AvatarViewer
-          active={true}
-          color={tierColor}
-          visorColor={tierColor}
-          crown={tierColor === "#FFD700"}
-          isPlaying={expression === "hype"}
-          size={140}
-        />
-        <div
-          className="absolute inset-0 rounded-xl pointer-events-none"
-          style={{
-            border: `1px solid ${tierColor}30`,
-            background: `radial-gradient(ellipse at center, ${tierColor}10 0%, transparent 70%)`,
-          }}
-        />
+        {isBound && viewport.glbUrl ? (
+          <>
+            <AvatarViewer
+              active={true}
+              color={tierColor}
+              visorColor={tierColor}
+              crown={tierColor === "#FFD700"}
+              isPlaying={expression === "hype" && motionOk}
+              isSeated={Boolean(binding.seatId)}
+              size={140}
+              glbSlotId={viewport.slotId}
+              glbUrl={viewport.glbUrl}
+              certifiedOnly
+              enableOrbit
+              cameraFocus="body"
+            />
+            <div
+              className="absolute inset-0 rounded-xl pointer-events-none"
+              style={{
+                border: `1px solid ${tierColor}30`,
+                background: `radial-gradient(ellipse at center, ${tierColor}10 0%, transparent 70%)`,
+              }}
+            />
+          </>
+        ) : (
+          <UnboundAvatarViewport
+            tierColor={tierColor}
+            diagnostic={viewport.diagnostic}
+            message={viewport.message}
+            missingArtifact={viewport.missingArtifact}
+          />
+        )}
       </div>
 
-      <div className="flex items-center gap-1 z-10 mb-2">
-        {(["neutral", "smile", "hype"] as const).map((expr) => (
-          <button
-            key={expr}
-            onClick={() => setExpression(expr)}
-            className={`text-[8px] font-black uppercase px-2.5 py-1 rounded transition-all ${
-              expression === expr
-                ? "bg-cyan-400 text-black shadow-md"
-                : "bg-white/5 text-white/50 hover:bg-white/10"
-            }`}
-          >
-            {expr}
-          </button>
-        ))}
+      <div className="flex flex-col items-center gap-1 z-10 mb-2 w-full">
+        <div className="flex items-center gap-1">
+          {(["neutral", "smile", "hype"] as const).map((expr) => {
+            const facialExpr = expr === "neutral" || expr === "smile";
+            const disabled =
+              !isBound ||
+              (facialExpr && !facialOk) ||
+              (expr === "hype" && !motionOk && !facialOk);
+            const partialHype = expr === "hype" && isBound && motionOk && !facialOk;
+            return (
+              <button
+                key={expr}
+                type="button"
+                disabled={disabled}
+                title={
+                  disabled
+                    ? expressionHint ?? "Unavailable"
+                    : partialHype
+                      ? "Body motion only — facial ARKit not certified"
+                      : `Set expression: ${expr}`
+                }
+                onClick={() => {
+                  if (!disabled) setExpression(expr);
+                }}
+                className={`text-[8px] font-black uppercase px-2.5 py-1 rounded transition-all ${
+                  disabled
+                    ? "bg-white/5 text-white/25 cursor-not-allowed opacity-60"
+                    : expression === expr
+                      ? "bg-cyan-400 text-black shadow-md"
+                      : "bg-white/5 text-white/50 hover:bg-white/10"
+                }`}
+              >
+                {expr}
+              </button>
+            );
+          })}
+        </div>
+        {expressionHint && (
+          <span className="text-[7px] text-amber-400/80 text-center px-2">{expressionHint}</span>
+        )}
       </div>
 
       <div className="w-full flex items-center justify-between z-10 pt-2 border-t border-white/10">

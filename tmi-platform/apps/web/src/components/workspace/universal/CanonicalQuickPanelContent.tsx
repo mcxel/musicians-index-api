@@ -25,6 +25,10 @@ import {
   BOBBLEHEAD_RUNTIME_LABEL,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
+  DEFAULT_FAN_AVATAR_GLB_SLOT,
+  resolveAvatarViewportBinding,
+} from "@/lib/avatars/AvatarGlbRegistry";
+import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
   type PlaylistNowPlayingPayload,
@@ -141,8 +145,10 @@ function AvatarQuickPanel({
   const [expression, setExpression] = useState<"neutral" | "smile" | "hype">("neutral");
   const isFan = role === "fan";
   const character = resolveBobbleheadRuntimeCharacter(baseId);
+  const viewport = useMemo(() => resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT), []);
+  const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
   const rig = bobbleheadRuntimeToRigProps(character, {
-    isPlaying: expression === "hype",
+    isPlaying: expression === "hype" && viewport.motionPackageSupported,
     extraAccessoryIds: activeOutfit ? [activeOutfit] : [],
   });
 
@@ -163,8 +169,37 @@ function AvatarQuickPanel({
             border: "1px solid rgba(0,229,255,0.2)",
             position: "relative",
           }}
+          data-avatar-binding={viewport.diagnostic}
         >
-          <AvatarViewer {...rig} size={140} enableOrbit={false} />
+          {isBound ? (
+            <AvatarViewer
+              {...rig}
+              size={140}
+              enableOrbit={false}
+              glbSlotId={viewport.slotId}
+              glbUrl={viewport.glbUrl}
+              certifiedOnly
+            />
+          ) : (
+            <div style={{ textAlign: "center", padding: 12, maxWidth: 220 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 80,
+                  margin: "0 auto 8px",
+                  borderRadius: "20px 20px 12px 12px",
+                  border: `1.5px dashed ${accentColor}66`,
+                  opacity: 0.5,
+                }}
+              />
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.08em" }}>
+                {viewport.diagnostic}
+              </div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", marginTop: 4, lineHeight: 1.35 }}>
+                Foundry GLB not certified — capsule disabled on production surfaces.
+              </div>
+            </div>
+          )}
           <div
             style={{
               position: "absolute",
@@ -176,7 +211,7 @@ function AvatarQuickPanel({
               letterSpacing: "0.06em",
             }}
           >
-            {BOBBLEHEAD_RUNTIME_LABEL}
+            {isBound ? BOBBLEHEAD_RUNTIME_LABEL : viewport.diagnostic}
           </div>
         </div>
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>BASES</div>
@@ -227,44 +262,72 @@ function AvatarQuickPanel({
           ))}
         </div>
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>EMOTES</div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {(["neutral", "smile", "hype"] as const).map((expr) => (
-            <button
-              key={expr}
-              type="button"
-              onClick={() => setExpression(expr)}
-              style={{
-                fontSize: 8,
-                fontWeight: 800,
-                padding: "4px 10px",
-                borderRadius: 6,
-                border: `1px solid ${expression === expr ? accentColor : "rgba(255,255,255,0.15)"}`,
-                background: expression === expr ? accentColor : "rgba(255,255,255,0.04)",
-                color: expression === expr ? "#050510" : "rgba(255,255,255,0.7)",
-                cursor: "pointer",
-                textTransform: "uppercase",
-              }}
-            >
-              {expr}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["neutral", "smile", "hype"] as const).map((expr) => {
+            const facialExpr = expr === "neutral" || expr === "smile";
+            const disabled =
+              !isBound ||
+              (facialExpr && !viewport.facialTargetsSupported) ||
+              (expr === "hype" && !viewport.motionPackageSupported && !viewport.facialTargetsSupported);
+            return (
+              <button
+                key={expr}
+                type="button"
+                disabled={disabled}
+                title={
+                  disabled
+                    ? "Requires certified Foundry AvatarRig GLB + facial/motion targets"
+                    : `Set expression: ${expr}`
+                }
+                onClick={() => {
+                  if (!disabled) setExpression(expr);
+                }}
+                style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: `1px solid ${expression === expr && !disabled ? accentColor : "rgba(255,255,255,0.15)"}`,
+                  background: expression === expr && !disabled ? accentColor : "rgba(255,255,255,0.04)",
+                  color: disabled
+                    ? "rgba(255,255,255,0.25)"
+                    : expression === expr
+                      ? "#050510"
+                      : "rgba(255,255,255,0.7)",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  textTransform: "uppercase",
+                  opacity: disabled ? 0.6 : 1,
+                }}
+              >
+                {expr}
+              </button>
+            );
+          })}
           {props.slice(0, 2).map((p) => (
             <button
               key={p.id}
               type="button"
+              disabled
+              title="Prop sockets require certified AvatarRig GLB"
               style={{
                 fontSize: 8,
                 padding: "4px 8px",
                 borderRadius: 6,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.04)",
-                cursor: "pointer",
+                cursor: "not-allowed",
+                opacity: 0.45,
               }}
             >
               {p.icon ?? "🎭"}
             </button>
           ))}
         </div>
+        {!isBound && (
+          <div style={{ fontSize: 7, color: "rgba(255,180,0,0.85)" }}>
+            Emotes disabled until Foundry certifies {viewport.slot.publicPath}.
+          </div>
+        )}
         <Link
           href="/settings/avatar"
           style={{ fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700 }}
