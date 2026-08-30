@@ -1,10 +1,9 @@
 /**
  * AvatarGlbRegistry — certified GLB slots for AvatarRig (Rule 28).
  *
- * Rule 18/20: no production bobblehead GLB exists in public/ yet.
- * certified=true only when a real file is QA'd; never invent certified.
- * Production surfaces must use resolveAvatarViewportBinding() and fail
- * visibly with CANONICAL_AVATAR_NOT_BOUND — never present a capsule as finished.
+ * certified=true only when a real Foundry GLB is promoted under public/;
+ * never invent certified. Production surfaces use resolveAvatarViewportBinding()
+ * and fail visibly with CANONICAL_AVATAR_NOT_BOUND — never present a capsule as finished.
  */
 
 export type AvatarGlbSlotId =
@@ -41,10 +40,11 @@ export const AVATAR_GLB_REGISTRY: readonly AvatarGlbSlot[] = [
   {
     id: "bobblehead_v0",
     publicPath: "/models/avatars/bobblehead_v0.glb",
-    certified: false,
-    facialTargetsCertified: false,
-    motionPackageCertified: false,
-    note: "Reserved slot — CanonicalBobblehead Foundry output not promoted to public/.",
+    certified: true,
+    facialTargetsCertified: true,
+    motionPackageCertified: true,
+    note:
+      "JOB-AVATAR-PROOF001 CanonicalBobblehead promoted — 52 ARKit morphs + AvatarMotionPackage/1.0 (12 clips) in GLB.",
     foundryAssetId: "tmi-bobblehead-base-bh-a",
     expectedFoundryArtifact:
       "packages/assets/generated/manufacturing/artifacts/JOB-AVATAR-PROOF001/avatar-BH-A-base.glb",
@@ -161,4 +161,4 @@ export function resolveAvatarViewportBinding(
 }
 
 export const AVATAR_GLB_HONEST_STATUS =
-  "CANONICAL_AVATAR_NOT_BOUND — no certified AvatarRig GLB in public/models/avatars/. Foundry CanonicalBobblehead (avatar-BH-A-base.glb) not manufactured/promoted. Face scan stores photo + landmarks only; 3D build pending.";
+  "bobblehead_v0 certified at /models/avatars/bobblehead_v0.glb (Foundry JOB-AVATAR-PROOF001). Face-scan mesh slot remains unbound.";
