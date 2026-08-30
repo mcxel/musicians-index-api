@@ -20,21 +20,33 @@ import {
 /** Module-level GLB cache — load outside R3F Canvas (Canvas useEffect loaders were hanging). */
 const foundryGlbCache = new Map<string, Promise<THREE.Group>>();
 
+/**
+ * Fetch bytes then GLTFLoader.parse — more reliable than loader.load XHR under Next
+ * cold-serve + morph-heavy bobblehead_v0 (~2MB).
+ */
 function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
   const hit = foundryGlbCache.get(url);
   if (hit) return hit;
-  const pending = new Promise<THREE.Group>((resolve, reject) => {
-    const loader = new GLTFLoader();
-    loader.load(
-      url,
-      (gltf) => resolve(gltf.scene as THREE.Group),
-      undefined,
-      (err) => {
-        foundryGlbCache.delete(url);
-        reject(err instanceof Error ? err : new Error(String(err)));
-      },
-    );
-  });
+  const pending = (async () => {
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`Foundry GLB HTTP ${res.status}`);
+      const buf = await res.arrayBuffer();
+      const loader = new GLTFLoader();
+      const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
+        loader.parse(
+          buf,
+          "",
+          (g) => resolve(g as { scene: THREE.Group }),
+          (err) => reject(err instanceof Error ? err : new Error(String(err))),
+        );
+      });
+      return gltf.scene;
+    } catch (err) {
+      foundryGlbCache.delete(url);
+      throw err instanceof Error ? err : new Error(String(err));
+    }
+  })();
   foundryGlbCache.set(url, pending);
   return pending;
 }
@@ -593,7 +605,13 @@ export function AvatarRig({
       position={[0, resolvedGlb ? 0 : isSeated ? -0.55 : -0.4, 0]}
       scale={groupScale}
     >
-      {resolvedGlb && foundryLoadError ? (
+      {resolvedGlb && foundryScene ? (
+        <CertifiedAvatarGlbMesh
+          scene={foundryScene}
+          expression={expression}
+          onMorphCapability={onMorphCapability}
+        />
+      ) : resolvedGlb && foundryLoadError ? (
         <Html center style={{ pointerEvents: "none", width: 180 }}>
           <div
             data-foundry-glb-error={foundryLoadError}
@@ -612,12 +630,6 @@ export function AvatarRig({
             </div>
           </div>
         </Html>
-      ) : resolvedGlb && foundryScene ? (
-        <CertifiedAvatarGlbMesh
-          scene={foundryScene}
-          expression={expression}
-          onMorphCapability={onMorphCapability}
-        />
       ) : resolvedGlb ? (
         <Html center style={{ pointerEvents: "none" }}>
           <div
@@ -769,14 +781,20 @@ export function AvatarViewer({
       return;
     }
     let cancelled = false;
+    setFoundryScene(null);
     setFoundryLoadError(null);
+    // Dev cold-serve of bobblehead_v0 (~2MB + morphs) often exceeds 15s; do not sticky-timeout
+    // after a late success (error previously won over foundryScene and blocked SMILE).
     const timer = window.setTimeout(() => {
-      if (!cancelled) setFoundryLoadError("Foundry GLB load timed out (20s)");
-    }, 20_000);
+      if (!cancelled) setFoundryLoadError("Foundry GLB load timed out (60s)");
+    }, 60_000);
     loadFoundryGlbScene(resolvedGlb)
       .then((scene) => {
         window.clearTimeout(timer);
-        if (!cancelled) setFoundryScene(scene);
+        if (!cancelled) {
+          setFoundryLoadError(null);
+          setFoundryScene(scene);
+        }
       })
       .catch((err) => {
         window.clearTimeout(timer);
