@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { VENUE_SKINS } from './venueSkinEngine';
-import { venueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
+import { venueSkinSku, type CommerceProduct } from '@/lib/commerce/CommerceCatalogContract';
+import { OwnershipRuntime } from '@/lib/commerce/OwnershipRuntime';
 import { resolveBaseVenueSkin, type TierBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
 import type { UserTier } from '@/lib/auth/UserStore';
 
@@ -115,14 +116,17 @@ export async function listOwnedVenueSkins(userId: string) {
   });
 }
 
-export function listCatalogProducts() {
+export function listCatalogProducts(): CommerceProduct[] {
   return Object.keys(VENUE_SKINS).map((skinId) => ({
+    id: venueSkinSku(skinId),
     sku: venueSkinSku(skinId),
     type: 'VENUE_SKIN' as const,
-    entitlementId: skinId,
-    priceCents: getSkinPriceCents(skinId),
-    priceType: 'ONE_TIME' as const,
     name: VENUE_SKINS[skinId].name,
+    entitlementType: 'VENUE_SKIN' as const,
+    entitlementId: skinId,
+    priceType: 'ONE_TIME' as const,
+    priceCents: getSkinPriceCents(skinId),
+    stripePriceId: null,
     active: true,
   }));
 }
@@ -139,6 +143,7 @@ export async function fulfillPurchasedVenueSkin(input: {
   customColors?: object;
 }): Promise<{ sku: string; skinId: string; permanent: true }> {
   const skinId = input.skinId;
+  const sku = venueSkinSku(skinId);
   await prisma.venueSkinOwnership.upsert({
     where: { userId_skinId: { userId: input.buyerId, skinId } },
     create: {
@@ -150,7 +155,17 @@ export async function fulfillPurchasedVenueSkin(input: {
     },
     update: { stripePaymentId: input.stripePaymentId },
   });
-  return { sku: venueSkinSku(skinId), skinId, permanent: true };
+  // Stripe confirms money; OwnershipRuntime records platform entitlement (not a second catalog).
+  OwnershipRuntime.grantEntitlement({
+    userId: input.buyerId,
+    skuId: sku,
+    title: VENUE_SKINS[skinId as keyof typeof VENUE_SKINS]?.name ?? skinId,
+    category: 'skin',
+    provenance: 'PURCHASED',
+    pricePaidCents: getSkinPriceCents(skinId),
+    orderId: input.stripePaymentId,
+  });
+  return { sku, skinId, permanent: true };
 }
 
 /**

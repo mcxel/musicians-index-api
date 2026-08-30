@@ -95,3 +95,22 @@ export function lookupStripeCatalogPrice(skuId: string): CommerceCatalogPrice | 
   }
   return null;
 }
+
+/** Map a Stripe catalog row into the canonical CommerceProduct entitlement shape. */
+export function stripeEntryToCommerceProduct(
+  skuId: string,
+  price: CommerceCatalogPrice,
+): CommerceProduct {
+  return {
+    id: skuId,
+    sku: price.sku,
+    type: price.type,
+    name: price.title,
+    entitlementType: price.type,
+    entitlementId: skuId,
+    priceType: price.type === "SUBSCRIPTION_TIER" ? "RECURRING" : "ONE_TIME",
+    priceCents: price.priceCents,
+    stripePriceId: price.stripePriceId,
+    active: true,
+  };
+}
