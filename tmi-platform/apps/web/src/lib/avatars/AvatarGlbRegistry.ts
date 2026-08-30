@@ -44,7 +44,7 @@ export const AVATAR_GLB_REGISTRY: readonly AvatarGlbSlot[] = [
     facialTargetsCertified: true,
     motionPackageCertified: true,
     note:
-      "JOB-AVATAR-PROOF001 CanonicalBobblehead promoted — 52 ARKit morphs + AvatarMotionPackage/1.0 (12 clips) in GLB.",
+      "JOB-AVATAR-PROOF001 CanonicalBobblehead remanufactured (from_mix=False) + promoted — 52 ARKit morphs sane (|Δ|≪0.12m) + AvatarMotionPackage/1.0 (12 clips).",
     foundryAssetId: "tmi-bobblehead-base-bh-a",
     expectedFoundryArtifact:
       "packages/assets/generated/manufacturing/artifacts/JOB-AVATAR-PROOF001/avatar-BH-A-base.glb",

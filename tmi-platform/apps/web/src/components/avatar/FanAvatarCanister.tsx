@@ -156,7 +156,7 @@ export default function FanAvatarCanister({
       : expression === "smile" && !smileOk
         ? morphCap?.reason ?? "Smile morph deltas unusable after sanitize"
         : expression === "hype" && motionOk && !morphCap?.hypeFacialUsable
-          ? "HYPE = body motion bounce (jaw/eyeWide morph deltas corrupt on this GLB)"
+          ? "HYPE = body motion bounce (jaw/eyeWide morphs unusable after sanitize)"
           : morphCap?.reason && !smileOk
             ? morphCap.reason
             : null;
@@ -252,7 +252,7 @@ export default function FanAvatarCanister({
                   disabled
                     ? expressionHint ?? "Unavailable"
                     : partialHype
-                      ? "Body motion bounce — jaw/eyeWide morph deltas corrupt on this GLB"
+                      ? "Body motion bounce — jaw/eyeWide morphs unusable after sanitize"
                       : `Set expression: ${expr}`
                 }
                 onClick={() => {

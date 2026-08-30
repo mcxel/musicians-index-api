@@ -140,10 +140,16 @@ function sanitizeFoundryMorphAttributes(root: THREE.Object3D): FoundryMorphCapab
       smileUsable: false,
       hypeFacialUsable,
       reason:
-        "ARKit smile/jaw morph deltas corrupt on LOD0 (Foundry proof cascade) — remanufacture with from_mix=False required",
+        "ARKit smile/jaw morph deltas unusable after sanitize (max |delta| > 0.12 m) — remanufacture ARKit keys with from_mix=False",
     };
   }
-  return { smileUsable: true, hypeFacialUsable, reason: null };
+  return {
+    smileUsable: true,
+    hypeFacialUsable,
+    reason: hypeFacialUsable
+      ? null
+      : "Smile morphs OK; jaw/eyeWide deltas zeroed by sanitize — HYPE uses body motion only",
+  };
 }
 
 function applyFoundryExpression(root: THREE.Object3D, expression: AvatarExpressionId) {
@@ -786,7 +792,7 @@ export function AvatarViewer({
 
   const cam = CAMERA_BY_FOCUS[cameraFocus] ?? CAMERA_BY_FOCUS.body;
   const bodyCam = resolvedGlb
-    ? { position: [0, 0.85, 2.85] as [number, number, number], target: [0, 0.75, 0] as [number, number, number] }
+    ? { position: [0, 0.82, 2.55] as [number, number, number], target: [0, 0.72, 0] as [number, number, number] }
     : cam;
   const focusCam = cameraFocus === "body" && resolvedGlb ? bodyCam : cam;
   const seatedCam: [number, number, number] = isSeated ? [0, 0.15, 2.5] : focusCam.position;
