@@ -23,6 +23,7 @@ import {
 } from "@/lib/avatars/AvatarGlbRegistry";
 import {
   AvatarViewer,
+  preloadFoundryAvatarGlb,
   type AvatarExpressionId,
   type FoundryMorphCapability,
 } from "@/components/3d/AvatarLobbyCanvas";
@@ -126,6 +127,15 @@ export default function FanAvatarCanister({
   const onMorphCapability = useCallback((cap: FoundryMorphCapability) => {
     setMorphCap(cap);
   }, []);
+
+  // Start Foundry GLB fetch as soon as binding is OK — before/alongside Canvas mount —
+  // so drawer remounts hit a ready (or in-flight) cache instead of a fresh hang.
+  useEffect(() => {
+    if (isBound && viewport.glbUrl) {
+      setMorphCap(null);
+      preloadFoundryAvatarGlb(viewport.glbUrl);
+    }
+  }, [isBound, viewport.glbUrl]);
 
   useEffect(() => {
     if (roomId && seatId) {

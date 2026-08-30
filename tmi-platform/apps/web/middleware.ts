@@ -513,6 +513,9 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|google27b9fc359205edb8\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Static 3D/binary assets must bypass middleware — bobblehead_v0.glb (~2MB) was
+    // starved under hub telemetry load when routed through auth/visibility checks,
+    // so Fan Avatar Canister never received a GLB response (Playwright glb:[] / 60s timeout).
+    '/((?!_next/static|_next/image|favicon\\.ico|google27b9fc359205edb8\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|bin|hdr|ktx2|wasm)$).*)',
   ],
 };

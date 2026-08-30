@@ -17,38 +17,151 @@ import {
   type AvatarGlbSlotId,
 } from '@/lib/avatars/AvatarGlbRegistry';
 
-/** Module-level GLB cache — load outside R3F Canvas (Canvas useEffect loaders were hanging). */
-const foundryGlbCache = new Map<string, Promise<THREE.Group>>();
+/**
+ * Module-level Foundry GLB cache — load OUTSIDE R3F Canvas.
+ *
+ * Prior bug: a single pending Promise was cached forever. When Next :3000 stalled
+ * the fetch (no response), drawer remounts reused the hanging promise → 60s UI
+ * timeout, SMILE stuck on "Probing…", and Playwright saw glb responses = [].
+ * Fix: abortable fetch, evict on failure, cache resolved scene for instant remounts.
+ */
+type FoundryGlbCacheEntry =
+  | { status: "ready"; scene: THREE.Group }
+  | { status: "loading"; promise: Promise<THREE.Group>; abort: AbortController };
+
+const foundryGlbCache = new Map<string, FoundryGlbCacheEntry>();
+
+const FOUNDRY_FETCH_ATTEMPT_MS = 45_000;
+const FOUNDRY_FETCH_MAX_ATTEMPTS = 3;
+
+function invalidateFoundryGlbCache(url: string): void {
+  const hit = foundryGlbCache.get(url);
+  if (hit?.status === "loading") {
+    try {
+      hit.abort.abort();
+    } catch {
+      /* ignore */
+    }
+  }
+  foundryGlbCache.delete(url);
+}
+
+function ensureFoundryGlbPreloadLink(url: string): void {
+  if (typeof document === "undefined") return;
+  const href = url;
+  const id = `foundry-glb-preload:${href}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "preload";
+  link.as = "fetch";
+  link.href = href;
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
+}
+
+async function fetchAndParseFoundryGlb(
+  url: string,
+  signal: AbortSignal,
+): Promise<THREE.Group> {
+  // Prefer relative publicPath so HTTP cache matches <link rel=preload href="/models/...">.
+  // Absolute URLs previously bypassed the preload cache and competed for the
+  // browser's 6-connection-per-host pool behind hub telemetry floods.
+  ensureFoundryGlbPreloadLink(url);
+  const fetchInit = (cache: RequestCache): RequestInit => ({
+    cache,
+    mode: "cors",
+    credentials: "omit",
+    signal,
+    // Chromium: prefer GLB over background telemetry when pool is saturated.
+    priority: "high",
+  } as RequestInit);
+
+  let res: Response | null = null;
+  try {
+    res = await fetch(url, fetchInit("force-cache"));
+  } catch {
+    res = null;
+  }
+  if (!res?.ok) {
+    res = await fetch(url, fetchInit("no-cache"));
+  }
+  if (!res.ok) throw new Error(`Foundry GLB HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+  const loader = new GLTFLoader();
+  const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+    loader.parse(
+      buf,
+      "",
+      (g) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(g as { scene: THREE.Group });
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      },
+    );
+  });
+  return gltf.scene;
+}
 
 /**
- * Fetch bytes then GLTFLoader.parse — more reliable than loader.load XHR under Next
- * cold-serve + morph-heavy bobblehead_v0 (~2MB).
+ * Load certified Foundry GLB (fetch + parse). Safe to call from Canister before Canvas mounts.
+ * Remounts after a successful load resolve synchronously from the ready scene cache.
  */
-function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
+export function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
   const hit = foundryGlbCache.get(url);
-  if (hit) return hit;
+  if (hit?.status === "ready") return Promise.resolve(hit.scene);
+  if (hit?.status === "loading") return hit.promise;
+
+  const abort = new AbortController();
   const pending = (async () => {
-    try {
-      const res = await fetch(url, { cache: "force-cache" });
-      if (!res.ok) throw new Error(`Foundry GLB HTTP ${res.status}`);
-      const buf = await res.arrayBuffer();
-      const loader = new GLTFLoader();
-      const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
-        loader.parse(
-          buf,
-          "",
-          (g) => resolve(g as { scene: THREE.Group }),
-          (err) => reject(err instanceof Error ? err : new Error(String(err))),
-        );
-      });
-      return gltf.scene;
-    } catch (err) {
-      foundryGlbCache.delete(url);
-      throw err instanceof Error ? err : new Error(String(err));
+    let lastErr: Error | null = null;
+    for (let attempt = 1; attempt <= FOUNDRY_FETCH_MAX_ATTEMPTS; attempt++) {
+      if (abort.signal.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+      const attemptAbort = new AbortController();
+      const onParentAbort = () => attemptAbort.abort();
+      abort.signal.addEventListener("abort", onParentAbort);
+      const timer = setTimeout(() => attemptAbort.abort(), FOUNDRY_FETCH_ATTEMPT_MS);
+      try {
+        const scene = await fetchAndParseFoundryGlb(url, attemptAbort.signal);
+        clearTimeout(timer);
+        abort.signal.removeEventListener("abort", onParentAbort);
+        foundryGlbCache.set(url, { status: "ready", scene });
+        return scene;
+      } catch (err) {
+        clearTimeout(timer);
+        abort.signal.removeEventListener("abort", onParentAbort);
+        lastErr = err instanceof Error ? err : new Error(String(err));
+        if (abort.signal.aborted) break;
+        // Brief backoff before retry (Next cold-serve / connection stall).
+        await new Promise((r) => setTimeout(r, 250 * attempt));
+      }
     }
+    foundryGlbCache.delete(url);
+    throw lastErr ?? new Error("Foundry GLB failed to load");
   })();
-  foundryGlbCache.set(url, pending);
+
+  foundryGlbCache.set(url, { status: "loading", promise: pending, abort });
   return pending;
+}
+
+/** Kick off Foundry GLB fetch as early as binding resolves (before R3F Canvas). */
+export function preloadFoundryAvatarGlb(url: string | null | undefined): void {
+  if (!url || typeof window === "undefined") return;
+  void loadFoundryGlbScene(url).catch(() => {
+    /* AvatarViewer surfaces errors; preload is best-effort */
+  });
 }
 
 /** Max mesh extent (meters) accepted for camera fit — Foundry LOD0 morph outliers are ~1e12. */
@@ -264,7 +377,6 @@ function CertifiedAvatarGlbMesh({
   expression?: AvatarExpressionId;
   onMorphCapability?: (cap: FoundryMorphCapability) => void;
 }) {
-  const reportedRef = useRef(false);
   const { root, capability } = useMemo(() => {
     const cloned = cloneSkinned(scene) as THREE.Object3D;
     const cap = sanitizeFoundryMorphAttributes(cloned);
@@ -272,8 +384,6 @@ function CertifiedAvatarGlbMesh({
   }, [scene]);
 
   useEffect(() => {
-    if (reportedRef.current) return;
-    reportedRef.current = true;
     onMorphCapability?.(capability);
   }, [capability, onMorphCapability]);
 
@@ -772,6 +882,8 @@ export function AvatarViewer({
     glbUrl ?? (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
   const [foundryScene, setFoundryScene] = useState<THREE.Object3D | null>(null);
   const [foundryLoadError, setFoundryLoadError] = useState<string | null>(null);
+  const onMorphCapabilityRef = useRef(onMorphCapability);
+  onMorphCapabilityRef.current = onMorphCapability;
 
   // Load OUTSIDE the R3F Canvas — Canvas-local GLTFLoader effects were hanging (no network).
   useEffect(() => {
@@ -783,28 +895,54 @@ export function AvatarViewer({
     let cancelled = false;
     setFoundryScene(null);
     setFoundryLoadError(null);
-    // Dev cold-serve of bobblehead_v0 (~2MB + morphs) often exceeds 15s; do not sticky-timeout
-    // after a late success (error previously won over foundryScene and blocked SMILE).
-    const timer = window.setTimeout(() => {
-      if (!cancelled) setFoundryLoadError("Foundry GLB load timed out (60s)");
+
+    const mount = (scene: THREE.Group) => {
+      if (cancelled) return;
+      setFoundryLoadError(null);
+      setFoundryScene(scene);
+    };
+
+    const fail = (err: unknown) => {
+      if (cancelled) return;
+      const msg = err instanceof Error ? err.message : "Foundry GLB failed to load";
+      const timedOut = /abort/i.test(msg) || err instanceof DOMException;
+      setFoundryLoadError(timedOut ? "Foundry GLB load timed out — retrying…" : msg);
+      onMorphCapabilityRef.current?.({
+        smileUsable: false,
+        hypeFacialUsable: false,
+        reason: timedOut
+          ? "Foundry GLB load timed out (fetch aborted) — SMILE unavailable until mesh loads"
+          : msg,
+      });
+    };
+
+    // Overall budget covers multi-attempt fetch+parse; success clears any interim error.
+    const overallTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      invalidateFoundryGlbCache(resolvedGlb);
+      setFoundryLoadError("Foundry GLB load timed out (60s)");
+      onMorphCapabilityRef.current?.({
+        smileUsable: false,
+        hypeFacialUsable: false,
+        reason: "Foundry GLB load timed out (60s) — SMILE unavailable until mesh loads",
+      });
+      // One hard retry after cache eviction (drawer remounts used to stick on hanging Promise).
+      void loadFoundryGlbScene(resolvedGlb).then(mount).catch(fail);
     }, 60_000);
+
     loadFoundryGlbScene(resolvedGlb)
       .then((scene) => {
-        window.clearTimeout(timer);
-        if (!cancelled) {
-          setFoundryLoadError(null);
-          setFoundryScene(scene);
-        }
+        window.clearTimeout(overallTimer);
+        mount(scene);
       })
       .catch((err) => {
-        window.clearTimeout(timer);
-        if (!cancelled) {
-          setFoundryLoadError(err instanceof Error ? err.message : "Foundry GLB failed to load");
-        }
+        window.clearTimeout(overallTimer);
+        fail(err);
       });
+
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      window.clearTimeout(overallTimer);
     };
   }, [resolvedGlb]);
 
