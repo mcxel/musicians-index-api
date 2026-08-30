@@ -241,6 +241,8 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     minWidth: 280,
     minHeight: 300,
     phase1Content: false,
+    /** Maps Command Center / quick-tool "avatar" → FanAvatarCanister DRAWER */
+    legacyDrawerId: "avatar",
   },
   "inventory-quick": {
     id: "inventory-quick",

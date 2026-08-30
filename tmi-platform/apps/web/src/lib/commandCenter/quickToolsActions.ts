@@ -19,6 +19,7 @@ import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import type { MobileCommandCenterRole, MobileQuickPanelActionId } from "./mobileCommandCenterCapabilities";
 import {
   incrementFunctionCaller,
@@ -78,7 +79,8 @@ export function runQuickToolAction(
       openCanonicalWorkspaceQuick("playlist", "DRAWER");
       break;
     case "avatar":
-      ctx.togglePanel("avatar", "bottom-left");
+      // Fan Avatar Canister (Foundry GLB) — DRAWER, not CompactQuickPanel stub HUD
+      presentCanonicalWorkspace("avatar-quick", "DRAWER");
       break;
     case "inventory":
       presentCanonicalWorkspace("inventory", "DRAWER");
@@ -147,7 +149,9 @@ export function isQuickToolActive(
   if (id === "stream-win") return ctx.activePanel === "stream-win" || isStreamWinActive();
   if (id === "remote") return ctx.activePanel === "remote";
   if (id === "yopho") return ctx.activePanel === "yopho";
-  if (id === "avatar") return ctx.activePanel === "avatar";
+  if (id === "avatar") {
+    return useWorkspacePresentationStore.getState().drawerWorkspace === "avatar-quick";
+  }
   if (id === "venue-tools") return ctx.activePanel === "venue";
   if (id === "share-screen") return Boolean(ctx.screenShareActive);
   return false;

@@ -25,13 +25,12 @@ import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { isVenueToolsReadOnly, isVenueToolsEnabled, resolveVenueToolsPolicy } from "@/lib/venue/VenueToolsRegistry";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
 
 const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/PerformerBioMagazineDrawer"), {
   ssr: false,
   loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading…</div>,
 });
-
-const FanAvatarCanister = dynamic(() => import("@/components/avatar/FanAvatarCanister"), { ssr: false });
 
 const ROLODEX_TOOLS: { id: UniversalWorkspaceId; label: string }[] = [
   { id: "avatar-quick", label: "👤 AVATAR" },

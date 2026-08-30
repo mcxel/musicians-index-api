@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Html, useGLTF } from '@react-three/drei';
+import { useFrame, useLoader } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, Html } from '@react-three/drei';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import * as THREE from 'three';
 import {
@@ -15,11 +16,63 @@ import {
   type AvatarGlbSlotId,
 } from '@/lib/avatars/AvatarGlbRegistry';
 
+function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  let hasMesh = false;
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    mesh.geometry.computeBoundingBox();
+    const local = mesh.geometry.boundingBox;
+    if (!local) return;
+    const world = local.clone().applyMatrix4(mesh.matrixWorld);
+    const size = world.getSize(new THREE.Vector3());
+    if (![size.x, size.y, size.z].every((n) => Number.isFinite(n) && n >= 0 && n < 50)) return;
+    if (size.length() < 1e-4) return;
+    box.union(world);
+    hasMesh = true;
+    mesh.frustumCulled = false;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+  });
+  if (hasMesh && !box.isEmpty()) {
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1e-3);
+    root.scale.setScalar(1.6 / maxDim);
+    root.updateMatrixWorld(true);
+    const fitted = new THREE.Box3();
+    root.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      mesh.geometry.computeBoundingBox();
+      const local = mesh.geometry.boundingBox;
+      if (!local) return;
+      fitted.union(local.clone().applyMatrix4(mesh.matrixWorld));
+    });
+    if (!fitted.isEmpty()) {
+      const center = fitted.getCenter(new THREE.Vector3());
+      const h = fitted.getSize(new THREE.Vector3()).y;
+      root.position.sub(center);
+      root.position.y += h * 0.5;
+    }
+  }
+  return root;
+}
+
 /** Loads a certified AvatarRig GLB when registry marks it certified — else never mounted. */
 function CertifiedAvatarGlbMesh({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-  const cloned = useMemo(() => scene.clone(true), [scene]);
-  return <primitive object={cloned} scale={1} />;
+  const resolvedUrl =
+    typeof window !== "undefined" ? new URL(url, window.location.origin).href : url;
+  const gltf = useLoader(GLTFLoader, resolvedUrl);
+  const root = useMemo(() => {
+    try {
+      return fitFoundryAvatarRoot(gltf.scene.clone(true));
+    } catch {
+      return gltf.scene.clone(true);
+    }
+  }, [gltf]);
+  return <primitive object={root} />;
 }
 
 /** Rule 28 fail-visible — never present capsule as finished when certifiedOnly. */
@@ -324,7 +377,15 @@ export function AvatarRig({
       scale={[massScale, heightScale, massScale]}
     >
       {resolvedGlb ? (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <Html center style={{ pointerEvents: "none" }}>
+              <div style={{ color: "#00FFFF", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em" }}>
+                LOADING FOUNDRY GLB…
+              </div>
+            </Html>
+          }
+        >
           <CertifiedAvatarGlbMesh url={resolvedGlb} />
         </Suspense>
       ) : showUnboundMarker ? (
@@ -467,9 +528,10 @@ export function AvatarViewer({
         style={{ background: "transparent", width: "100%", height: "100%" }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.55} />
-          <hemisphereLight intensity={0.35} groundColor="#12002b" color="#88ccff" />
-          <spotLight position={[5, 5, 5]} intensity={1.5} color="#fff" />
+          <ambientLight intensity={1.05} />
+          <hemisphereLight intensity={0.55} groundColor="#12002b" color="#88ccff" />
+          <directionalLight position={[3, 6, 4]} intensity={1.8} color="#ffffff" castShadow />
+          <spotLight position={[5, 5, 5]} intensity={1.2} color="#fff" />
 
           <AvatarRig
             bobbleheadRatio={bobbleheadRatio}

@@ -9,7 +9,6 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   bindAvatarToSeat,
@@ -22,11 +21,7 @@ import {
   resolveAvatarViewportBinding,
   type AvatarGlbSlotId,
 } from "@/lib/avatars/AvatarGlbRegistry";
-
-const AvatarViewer = dynamic(
-  () => import("@/components/3d/AvatarLobbyCanvas").then((mod) => mod.AvatarViewer),
-  { ssr: false },
-);
+import { AvatarViewer } from "@/components/3d/AvatarLobbyCanvas";
 
 export type CanisterExpression = "neutral" | "smile" | "hype";
 
@@ -118,7 +113,10 @@ export default function FanAvatarCanister({
 
   const viewport = useMemo(() => resolveAvatarViewportBinding(glbSlotId), [glbSlotId]);
   const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
-  const facialOk = viewport.facialTargetsSupported;
+  // Registry may certify ARKit targets on the GLB, but AvatarViewer has no morph-weight
+  // driver yet — keep NEUTRAL/SMILE honest (disabled) until that wires. HYPE uses isPlaying bounce.
+  const facialMorphUiWired = false;
+  const facialOk = viewport.facialTargetsSupported && facialMorphUiWired;
   const motionOk = viewport.motionPackageSupported;
 
   useEffect(() => {
@@ -145,11 +143,13 @@ export default function FanAvatarCanister({
 
   const expressionHint = !isBound
     ? "Requires certified Foundry AvatarRig GLB"
-    : !facialOk && expression !== "hype"
-      ? "Facial targets unsupported until ARKit step certified"
+    : !facialOk && (expression === "neutral" || expression === "smile")
+      ? "Facial morph UI not wired to AvatarViewer yet — ARKit targets exist on GLB"
       : !motionOk && expression === "hype"
         ? "Motion package unsupported — body clip pending"
-        : null;
+        : expression === "hype" && motionOk && !facialOk
+          ? "HYPE = body motion bounce (facial morph driver pending)"
+          : null;
 
   return (
     <div
@@ -187,7 +187,7 @@ export default function FanAvatarCanister({
         </span>
       </div>
 
-      <div className="relative w-full flex-1 flex items-center justify-center my-2 min-h-[160px]">
+      <div className="relative w-full flex items-center justify-center my-2" style={{ height: 220, minHeight: 220 }}>
         {isBound && viewport.glbUrl ? (
           <>
             <AvatarViewer
@@ -197,7 +197,7 @@ export default function FanAvatarCanister({
               crown={tierColor === "#FFD700"}
               isPlaying={expression === "hype" && motionOk}
               isSeated={Boolean(binding.seatId)}
-              size={140}
+              size={200}
               glbSlotId={viewport.slotId}
               glbUrl={viewport.glbUrl}
               certifiedOnly
@@ -240,7 +240,7 @@ export default function FanAvatarCanister({
                   disabled
                     ? expressionHint ?? "Unavailable"
                     : partialHype
-                      ? "Body motion only — facial ARKit not certified"
+                      ? "Body motion bounce only — facial morph UI not wired yet"
                       : `Set expression: ${expr}`
                 }
                 onClick={() => {
