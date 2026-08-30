@@ -64,6 +64,8 @@ function runVenuePlatformGlueTest() {
     SCENE_FACTORY_AUDIT.parallelGeneratorForbidden === true &&
     VENUE_AUTHORITIES.roomOrchestrator.includes("never builds PlaneGeometry");
   results["expand_cooldown_present"] = typeof ELASTIC_SHARD_THRESHOLDS.expandCooldownMs === "number";
+  results["expand_dwell_present"] = typeof ELASTIC_SHARD_THRESHOLDS.expandDwellMs === "number";
+  results["expand_above_ratio_present"] = ELASTIC_SHARD_THRESHOLDS.expandAboveRatio === 0.75;
 
   const lockedAnchors = [
     "STAGE_CENTER",

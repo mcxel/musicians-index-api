@@ -165,7 +165,7 @@ export function requestVenueSceneInstance(req: VenueSceneFactoryRequest): VenueS
     meshAddress: req.shardAddress,
     environmentVariant: req.environmentVariant,
     appearance: { ...req.appearance, structureUnchanged: true },
-    lifecycle: "ACTIVE",
+    lifecycle: "WARMING",
     geometryStatus: "MISSING",
     glbAssetUrl: null,
     worldXyz: null,
