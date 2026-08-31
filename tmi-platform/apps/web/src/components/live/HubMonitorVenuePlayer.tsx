@@ -3,6 +3,7 @@
 /**
  * Monitor B — BOH house viewport of the SAME canonical room (UVR inside player only).
  * Lounge rooms: group/room view, no avatar stadium fill.
+ * Audience count = real humans from /api/live/audience (Rule 20 — no bot inflation).
  */
 
 import dynamic from "next/dynamic";
@@ -18,6 +19,7 @@ import {
   subscribeStage,
 } from "@/lib/live/StageLifecycleEngine";
 import { resolveCurtainAdCampaign } from "@/lib/presentation/CurtainRuntimeManager";
+import { countHumanAttendance } from "@/lib/venues/venuePresenceMetrics";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -107,32 +109,44 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
     });
   }, []);
 
+  // Real human occupancy whenever a room is bound (host OR watcher) — not gated on isLivePublished.
   useEffect(() => {
-    if (!isLivePublished) {
+    if (!roomId) {
       setWatching(0);
       return;
     }
     let cancelled = false;
     const poll = async () => {
       try {
-        const res = await fetch("/api/live/go", { cache: "no-store" });
+        const res = await fetch(
+          `/api/live/audience?venue=${encodeURIComponent(roomId)}`,
+          { credentials: "include", cache: "no-store" },
+        );
         if (!res.ok) return;
         const data = (await res.json()) as {
-          sessions?: Array<{ roomId: string; viewerCount: number }>;
+          activeMembers?: Array<{ role?: string; displayName?: string; active?: boolean }>;
         };
-        const session = data.sessions?.find((s) => s.roomId === roomId);
-        if (!cancelled) setWatching(session?.viewerCount ?? 0);
+        const members = Array.isArray(data.activeMembers) ? data.activeMembers : [];
+        const humans = countHumanAttendance(members);
+        if (!cancelled) {
+          setWatching(humans);
+          window.dispatchEvent(
+            new CustomEvent("tmi:watch-audience-count", {
+              detail: { roomId, viewers: humans },
+            }),
+          );
+        }
       } catch {
         /* honest empty */
       }
     };
     void poll();
-    const id = window.setInterval(() => void poll(), 5000);
+    const id = window.setInterval(() => void poll(), 2500);
     return () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [isLivePublished, roomId]);
+  }, [roomId]);
 
   if (!roomId) {
     return <HubMonitorIdle label="Stage ready — press GO LIVE" />;
@@ -157,6 +171,7 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       data-spatial-units={scenePlan?.spatialMap.units ?? "ft"}
       data-spatial-area-sqft={scenePlan?.spatialMap.floor.areaSqFt}
       data-intermission={intermission ? "true" : "false"}
+      data-audience-watching={watching}
       style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#010308" }}
     >
       <div
@@ -228,7 +243,10 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
             {lounge ? "LOUNGE READY" : "STAGE READY"}
           </span>
         )}
-        <span style={{ fontSize: 9, color: "#00FFFF", fontWeight: 800 }}>
+        <span
+          data-audience-count="true"
+          style={{ fontSize: 9, color: "#00FFFF", fontWeight: 800 }}
+        >
           {watching} watching
         </span>
       </div>

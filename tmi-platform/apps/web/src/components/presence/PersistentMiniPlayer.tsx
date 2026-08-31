@@ -15,7 +15,7 @@ import { useWatchSession } from '@/lib/presence/WatchSessionContext';
 import { mediaPlayerWatchHref } from '@/lib/media/universalMediaPlayerWatchRoute';
 
 export default function PersistentMiniPlayer() {
-  const { current, minimized, minimize, restore, stopWatching, startWatching } = useWatchSession();
+  const { current, minimized, minimize, restore, stopWatching, startWatching, updateViewers } = useWatchSession();
   const pathname = usePathname();
 
   const isInsideTrackedRoom =
@@ -39,9 +39,18 @@ export default function PersistentMiniPlayer() {
         viewers: detail.viewers ?? 0,
       });
     };
+    const onCount = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as { roomId?: string; viewers?: number };
+      if (typeof detail?.viewers !== "number") return;
+      updateViewers(detail.viewers);
+    };
     window.addEventListener("tmi:watch-session-bind", onBind);
-    return () => window.removeEventListener("tmi:watch-session-bind", onBind);
-  }, [startWatching]);
+    window.addEventListener("tmi:watch-audience-count", onCount);
+    return () => {
+      window.removeEventListener("tmi:watch-session-bind", onBind);
+      window.removeEventListener("tmi:watch-audience-count", onCount);
+    };
+  }, [startWatching, updateViewers]);
 
   // The room itself only sets minimized=false on entry; nothing else flips
   // it automatically. Route changes are the real signal: leaving the

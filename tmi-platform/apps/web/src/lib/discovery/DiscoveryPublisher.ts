@@ -219,6 +219,29 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
       byId.set(anchor.id, anchor);
     }
   }
+
+  // Preserve very recent client upserts during registry hydrate lag (POST→GET race).
+  // Prevents Lobby Wall flicker / connection-reset loops wiping LIVE_SESSION tiles.
+  const GRACE_MS = 12_000;
+  const now = Date.now();
+  for (const existing of DiscoveryBus.getAll()) {
+    if (byId.has(existing.id)) {
+      const polled = byId.get(existing.id)!;
+      // Prefer higher honest human count when poll lags join sync
+      if (existing.humanViewerCount > polled.humanViewerCount) {
+        byId.set(existing.id, {
+          ...polled,
+          humanViewerCount: existing.humanViewerCount,
+          updatedAt: Math.max(polled.updatedAt, existing.updatedAt),
+        });
+      }
+      continue;
+    }
+    if (now - existing.updatedAt < GRACE_MS) {
+      byId.set(existing.id, existing);
+    }
+  }
+
   DiscoveryBus.replaceAll([...byId.values()]);
 }
 
@@ -235,40 +258,46 @@ export function projectLiveSurfaceFromDiscoveryBus(): LiveSurfaceCard[] {
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollRefCount = 0;
+let pollIntervalMs = 4000;
+let pollFetchImpl: typeof fetch = fetch;
+
+async function discoveryPollTick(): Promise<void> {
+  if (pollRefCount <= 0 || typeof window === "undefined") return;
+  try {
+    const res = await pollFetchImpl("/api/live/go", { credentials: "include", cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { sessions?: LiveSession[] };
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    syncDiscoveryFromSessions(sessions);
+  } catch {
+    /* keep last honest snapshot — no reset loop */
+  }
+}
 
 /**
  * Client poll of GET /api/live/go → DiscoveryBus.
- * Use until WebSocket discovery channel is ready. No mock seed.
+ * Ref-counted so multiple useDiscoveryBus mounts share one interval
+ * (unmount of one subscriber must not kill polling for the rest).
  */
 export function startDiscoveryPoll(opts?: {
   intervalMs?: number;
   fetchImpl?: typeof fetch;
 }): () => void {
-  const intervalMs = opts?.intervalMs ?? 4000;
-  const fetchFn = opts?.fetchImpl ?? fetch;
+  if (typeof opts?.intervalMs === "number" && opts.intervalMs > 0) {
+    pollIntervalMs = opts.intervalMs;
+  }
+  if (opts?.fetchImpl) pollFetchImpl = opts.fetchImpl;
 
-  let stopped = false;
-
-  const tick = async () => {
-    if (stopped || typeof window === "undefined") return;
-    try {
-      const res = await fetchFn("/api/live/go", { credentials: "include", cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as { sessions?: LiveSession[] };
-      const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-      syncDiscoveryFromSessions(sessions);
-    } catch {
-      /* keep last honest snapshot */
-    }
-  };
-
-  void tick();
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(() => void tick(), intervalMs);
+  pollRefCount += 1;
+  if (!pollTimer) {
+    void discoveryPollTick();
+    pollTimer = setInterval(() => void discoveryPollTick(), pollIntervalMs);
+  }
 
   return () => {
-    stopped = true;
-    if (pollTimer) {
+    pollRefCount = Math.max(0, pollRefCount - 1);
+    if (pollRefCount === 0 && pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;
     }

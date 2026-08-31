@@ -32,6 +32,7 @@ import { removeSessionNow, ensureHydrated } from "@/lib/broadcast/GlobalLiveSess
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
 import { datingAccessPayload, isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
 import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
+import { countHumanAttendance } from "@/lib/venues/venuePresenceMetrics";
 
 // Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),
 // but GlobalLiveSessionRegistry — the source every discovery surface (Home 1/3,
@@ -40,9 +41,24 @@ import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceG
 // never moves the viewer count shown anywhere on the platform. Match on
 // roomId === venueSlug since both the ad-hoc go-live roomId and the fixed
 // venue ids (cypher, battle-arena, etc.) are passed as venueSlug by callers.
-function syncViewerCountToBroadcastRegistry(venueSlug: string, present: number): void {
-  const session = getActiveSessions().find((s) => s.roomId === venueSlug);
-  if (session) updateViewerCount(session.userId, present);
+//
+// Rule 20 / DiscoveryPublisher contract: viewerCount === humans only.
+// Seeded support bots must never inflate Lobby Wall / Home / media-player counts.
+function humanPresentCount(occupancy: { members: AudienceMember[] }): number {
+  return countHumanAttendance(occupancy.members.filter((m) => m.active));
+}
+
+function syncViewerCountToBroadcastRegistry(
+  venueSlug: string,
+  occupancy: { members: AudienceMember[] },
+  aliasSlug?: string | null,
+): void {
+  const humans = humanPresentCount(occupancy);
+  const slugs = new Set([venueSlug, aliasSlug].filter(Boolean) as string[]);
+  for (const slug of slugs) {
+    const session = getActiveSessions().find((s) => s.roomId === slug);
+    if (session) updateViewerCount(session.userId, humans);
+  }
 }
 
 function hasModeratorAccess(req: NextRequest): boolean {
@@ -125,7 +141,7 @@ export async function POST(req: NextRequest) {
         }
         const assignedSeatId = member.seatId ?? assignNextSeat(joinSlug, member.groupId ?? null);
         const occupancy = joinAudience(joinSlug, { ...member, seatId: assignedSeatId });
-        syncViewerCountToBroadcastRegistry(joinSlug, occupancy.present);
+        syncViewerCountToBroadcastRegistry(joinSlug, occupancy, venueSlug !== joinSlug ? venueSlug : null);
 
         const placement = rememberAttendeePlacement({
           userId: member.userId,
@@ -192,7 +208,7 @@ export async function POST(req: NextRequest) {
         const leavingRole = leavingMember?.role ?? "fan";
 
         const afterLeave = leaveAudience(leaveSlug, userId);
-        syncViewerCountToBroadcastRegistry(leaveSlug, afterLeave.present);
+        syncViewerCountToBroadcastRegistry(leaveSlug, afterLeave, venueSlug !== leaveSlug ? venueSlug : null);
         forgetAttendeePlacement(userId);
 
         try {
@@ -208,20 +224,15 @@ export async function POST(req: NextRequest) {
           /* non-fatal */
         }
 
-        // Auto-close: performer leaving ends the session; or close when all real humans gone
-        const realHumansRemaining = afterLeave.members.filter(
-          (m) => m.active && m.role !== "bot"
-        ).length;
+        // Auto-close only when the published host/artist leaves occupancy.
+        // Empty audience must NOT end a GO LIVE registry session — host ends via
+        // END LIVE / DELETE /api/live/go (media-player host may never sit in audience).
         const performerLeft = leavingRole === "artist" || leavingRole === "host";
-        const roomEmpty = realHumansRemaining === 0;
 
         let sessionEnded = false;
-        if (performerLeft || roomEmpty) {
+        if (performerLeft) {
           await ensureHydrated();
-          const activeSessions = getActiveSessions();
-          const matchedSession = performerLeft
-            ? activeSessions.find((s) => s.userId === userId)
-            : activeSessions.find((s) => s.roomId === leaveSlug);
+          const matchedSession = getActiveSessions().find((s) => s.userId === userId);
           if (matchedSession) {
             endLiveSession(matchedSession.userId);
             await removeSessionNow(matchedSession.userId).catch(() => {});

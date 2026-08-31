@@ -17,7 +17,9 @@ import {
 } from "@/lib/dock/presentInstantGoLiveInPlace";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import { useMediaPlayerAudiencePresence } from "@/lib/media/useMediaPlayerAudiencePresence";
 import { DEFAULT_MONITOR_A } from "@/lib/personal-media";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import CommandCenterMediaStack, {
@@ -212,6 +214,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     );
     useGoLiveTransition.getState().clearWarp();
 
+    // Bind chrome with honest 0 until presence poll/join updates viewers.
     window.dispatchEvent(
       new CustomEvent("tmi:watch-session-bind", {
         detail: {
@@ -225,6 +228,23 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
     router.replace(pathname);
   }, [searchParams, role, pathname, router]);
+
+  const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const isPublishedHost =
+    Boolean(isLivePublished && publishedRoomId && inPlaceRoomId && publishedRoomId === inPlaceRoomId);
+
+  // Real audience occupancy on media-player watch path (Fan SOCIAL_LIVE join allowed).
+  // Host GO LIVE path skips join — END LIVE remains session authority.
+  useMediaPlayerAudiencePresence({
+    roomId: inPlaceRoomId,
+    userId,
+    displayName: liveDisplayName || displayName,
+    accountRole: role,
+    isPublishedHost,
+    enabled: Boolean(inPlaceRoomId),
+  });
 
   const resolvedDisplayName = liveDisplayName;
   const { activePerformer, setActivePerformer } = useActivePerformer();
