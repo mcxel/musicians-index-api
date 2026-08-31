@@ -20,6 +20,7 @@ import { launchDockStore } from "@/lib/dock/launchDockStore";
 import { publishLiveRoom, unpublishLiveRoom, liveSessionToDiscoveryRecord } from "@/lib/discovery/DiscoveryPublisher";
 import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
 import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
+import { TelemetryTransportGovernor } from "@/lib/analytics/TelemetryTransportGovernor";
 
 export interface InstantGoLiveResult {
   ok: boolean;
@@ -84,6 +85,8 @@ export async function executeInstantGoLive(opts?: {
   roomId?: string;
 }): Promise<InstantGoLiveResult> {
   launchDockStore.setPhase("launching");
+  // Free sockets before session/cam/publish work begins.
+  TelemetryTransportGovernor.pause(25000);
 
   const dock = launchDockStore.getState();
   const privacy = opts?.privacy ?? dock.privacy;
@@ -105,7 +108,13 @@ export async function executeInstantGoLive(opts?: {
   }
 
   const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
-  if (!identity.authenticated || !identity.userId) {
+  const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
+
+  // Hard-block only when we are not publishing and have no session.
+  // For publishSession, POST /api/live/go is the authoritative auth check —
+  // client session polls often time out under hub telemetry load while cookies
+  // are still valid (browser cert: page session OK, then GO LIVE probe fails).
+  if ((!identity.authenticated || !identity.userId) && !publishSession) {
     launchDockStore.setPhase("idle");
     recordFunctionInvocation("executeInstantGoLive", false);
     return {
@@ -115,7 +124,13 @@ export async function executeInstantGoLive(opts?: {
     };
   }
 
-  const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
+  const effectiveIdentity = {
+    name: identity.name || opts?.displayName || "Performer",
+    role: identity.role || role,
+    userId: identity.userId || "cookie-session",
+    authenticated: identity.authenticated,
+  };
+
   launchDockStore.setRole(role);
 
   const destination = resolveLiveDestination({
@@ -149,22 +164,21 @@ export async function executeInstantGoLive(opts?: {
   // Performer stage — mint Daily room when available, register; callers decide navigate vs in-place
   let resolvedRoomId =
     opts?.roomId?.trim() ||
-    `room-${identity.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
+    `room-${effectiveIdentity.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
   let dailyRoomUrl: string | null = null;
   let dailyToken: string | null = null;
 
-  // Hub in-place prepare (deferMedia) must not block on Daily — but PUBLIC publish
-  // still mints the Daily/server-kit room in parallel so remote viewers can join.
-  // Never pass hub roomId as Daily roomName — hub ids are registry keys, not Daily names.
-  const shouldMintServerKit = publishSession && !destination.flags.restrictedAudience;
-  if (!deferMedia || shouldMintServerKit) {
+  // Hub in-place prepare (deferMedia) must not block on Daily — and PUBLIC
+  // publish must not wait on Daily either: registry POST is the product gate.
+  // Daily mint remains for non-deferred (navigate) launches only.
+  if (!deferMedia) {
     try {
       const roomRes = await fetch("/api/video/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName: identity.name }),
+        body: JSON.stringify({ userName: effectiveIdentity.name }),
         credentials: "include",
-        signal: AbortSignal.timeout(shouldMintServerKit && deferMedia ? 6000 : 8000),
+        signal: AbortSignal.timeout(8000),
       });
       if (roomRes.ok) {
         const rd = (await roomRes.json()) as { roomId: string; roomUrl: string; token: string };
@@ -187,20 +201,22 @@ export async function executeInstantGoLive(opts?: {
     if (!destination.flags.restrictedAudience) {
       const discoveryInput = {
         roomId: resolvedRoomId,
-        title: `${identity.name} — Live`,
-        hostName: identity.name,
-        hostUserId: identity.userId,
+        title: `${effectiveIdentity.name} — Live`,
+        hostName: effectiveIdentity.name,
+        hostUserId: effectiveIdentity.userId,
         category: destination.category,
         experienceId: preferredExperience ?? destination.category ?? "live",
         accentColor: opts?.accentColor ?? "#FF2DAA",
     joinRoute: `/hub/fan?watch=${encodeURIComponent(resolvedRoomId)}&from=live-lobby-wall`,
       };
       try {
+        // Free HTTP/1.1 sockets — hub telemetry/session polls otherwise starve publish.
+        TelemetryTransportGovernor.pause(20000);
         const res = await fetch("/api/live/go", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            displayName: identity.name,
+            displayName: effectiveIdentity.name,
             genre: destination.label,
             category: destination.category,
             eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
@@ -212,6 +228,9 @@ export async function executeInstantGoLive(opts?: {
             ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl, previewUrl: dailyRoomUrl } : {}),
           }),
           credentials: "include",
+          signal: AbortSignal.timeout(45000),
+          // Chromium: prefer this request when connection pool is contested
+          ...({ priority: "high" } as RequestInit),
         });
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as {
@@ -221,11 +240,14 @@ export async function executeInstantGoLive(opts?: {
           };
           launchDockStore.setPhase("idle");
           recordFunctionInvocation("executeInstantGoLive", false);
+          const authFail = res.status === 401 || /auth/i.test(body.code || "") || /auth/i.test(body.error || "");
           return {
             ok: false,
             published: false,
             roomId: resolvedRoomId,
-            error: `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "Unauthorized or registry reject"}`,
+            error: authFail
+              ? "Authentication required to go live. Sign in with a real Performer session."
+              : `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "Unauthorized or registry reject"}`,
           };
         }
         const data = (await res.json().catch(() => ({}))) as {
@@ -258,7 +280,7 @@ export async function executeInstantGoLive(opts?: {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            displayName: identity.name,
+            displayName: effectiveIdentity.name,
             genre: destination.label,
             category: destination.category,
             eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,

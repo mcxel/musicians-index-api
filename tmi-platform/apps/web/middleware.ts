@@ -180,6 +180,13 @@ export function middleware(req: NextRequest) {
   const proofMode = req.nextUrl.searchParams.get('proof') === '1';
   const isLocalHost = req.nextUrl.hostname === 'localhost' || req.nextUrl.hostname === '127.0.0.1';
 
+  // Never intercept Next internals — matcher already excludes `_next/static` /
+  // `_next/image`, but keep an explicit short-circuit so auth/quarantine never
+  // rewrites chunks/CSS into HTML (hydration killer on hubs).
+  if (pathname.startsWith('/_next') || pathname === '/favicon.ico') {
+    return NextResponse.next();
+  }
+
   // Local visual-cert bypass for performer command center proof runs.
   // Never active outside localhost.
   if (proofMode && isLocalHost && (pathname === '/hub/performer' || pathname.startsWith('/hub/performer/'))) {

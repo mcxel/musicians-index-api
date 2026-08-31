@@ -21,6 +21,17 @@ class TelemetryGovernor {
   private cooldownMs = 60000;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private isSending = false;
+  /** When set, drop/ defer flushes so critical same-origin POSTs (GO LIVE) get a socket. */
+  private pausedUntil = 0;
+
+  /** Pause outbound telemetry so HTTP/1.1 connection slots free for publish. */
+  public pause(ms = 15000): void {
+    this.pausedUntil = Math.max(this.pausedUntil, Date.now() + ms);
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
 
   public dispatch(event: TelemetryEventPayload): void {
     if (typeof window === "undefined") return;
@@ -28,6 +39,9 @@ class TelemetryGovernor {
     // Check circuit breaker
     if (Date.now() < this.circuitOpenUntil) {
       return; // Circuit open: silently drop
+    }
+    if (Date.now() < this.pausedUntil) {
+      return;
     }
 
     if (this.queue.length >= this.maxQueueSize) {
@@ -49,6 +63,10 @@ class TelemetryGovernor {
   private async flushQueue(): Promise<void> {
     if (this.queue.length === 0 || this.isSending) return;
     if (Date.now() < this.circuitOpenUntil) return;
+    if (Date.now() < this.pausedUntil) {
+      this.scheduleFlush(Math.max(250, this.pausedUntil - Date.now()));
+      return;
+    }
 
     this.isSending = true;
     const batch = [...this.queue];

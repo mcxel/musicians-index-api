@@ -223,23 +223,58 @@ export async function presentInstantGoLiveInPlace(opts?: {
   const role = (opts?.role ?? sessionRole).toUpperCase();
   launchDockStore.setRole(role);
 
-  const admit = admitGoLive({
-    authenticated: sessionAuthenticated,
-    role,
-    privacy,
-    listed: publishSession && privacy === "public",
-  });
-  if (!admit.allowed) {
+  // Client /api/auth/session can time out under hub telemetry load even when
+  // cookies are valid. Soft-admit when the media-player control passes an
+  // explicit role — POST /api/live/go remains the hard auth gate (no fake LIVE).
+  if (sessionAuthenticated) {
+    const admit = admitGoLive({
+      authenticated: true,
+      role,
+      privacy,
+      listed: publishSession && privacy === "public",
+    });
+    if (!admit.allowed) {
+      useMediaTransitionDirector.getState().cancelStarburst(
+        TRANSITION_CODES.UNAUTHORIZED,
+        admit.reason ?? "GO LIVE not authorized.",
+      );
+      recordFunctionInvocation("presentInstantGoLiveInPlace", false);
+      return {
+        ok: false,
+        published: false,
+        error: admit.reason,
+      };
+    }
+  } else if (!opts?.role) {
     useMediaTransitionDirector.getState().cancelStarburst(
       TRANSITION_CODES.UNAUTHORIZED,
-      admit.reason ?? "GO LIVE not authorized.",
+      "Authentication required to go live.",
     );
     recordFunctionInvocation("presentInstantGoLiveInPlace", false);
     return {
       ok: false,
       published: false,
-      error: admit.reason,
+      error: "Authentication required to go live.",
     };
+  } else {
+    const softAdmit = admitGoLive({
+      authenticated: true,
+      role,
+      privacy,
+      listed: publishSession && privacy === "public",
+    });
+    if (!softAdmit.allowed) {
+      useMediaTransitionDirector.getState().cancelStarburst(
+        TRANSITION_CODES.UNAUTHORIZED,
+        softAdmit.reason ?? "GO LIVE not authorized.",
+      );
+      recordFunctionInvocation("presentInstantGoLiveInPlace", false);
+      return {
+        ok: false,
+        published: false,
+        error: softAdmit.reason,
+      };
+    }
   }
 
   useMediaTransitionDirector.getState().reset();

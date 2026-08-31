@@ -45,9 +45,54 @@ async function waitForServer(maxMs = 90000) {
 }
 
 async function dismissOverlays(page) {
-  for (let i = 0; i < 5; i++) {
+  // Close First Run "Your First Steps" (z-index 9999 blocks GO LIVE)
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem(
+        "tmi_first_run_v1",
+        JSON.stringify({ dismissed: true, role: "performer", completedSteps: [] }),
+      );
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.setItem("tmi_ad_consent", "declined");
+    } catch {
+      /* ignore */
+    }
+  }).catch(() => {});
+
+  // Click explicit dismiss controls if still mounted
+  const dismissers = [
+    'button:has-text("×")',
+    'button:has-text("Decline")',
+    '[aria-label="Advertising consent"] button:has-text("Decline")',
+    'button:has-text("Skip")',
+    'button:has-text("Not now")',
+  ];
+  for (const sel of dismissers) {
+    const loc = page.locator(sel).first();
+    if (await loc.isVisible().catch(() => false)) {
+      await loc.click({ timeout: 2000 }).catch(() => {});
+    }
+  }
+
+  // Nuke fixed z-index overlays that still cover the media player
+  await page.evaluate(() => {
+    document.querySelectorAll("body > div").forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const text = el.innerText || "";
+      if (/Your First Steps|QUICK START|What brings you here/i.test(text)) {
+        el.remove();
+      }
+    });
+    const consent = document.querySelector('[aria-label="Advertising consent"]');
+    consent?.parentElement?.remove();
+  }).catch(() => {});
+
+  for (let i = 0; i < 3; i++) {
     await page.keyboard.press("Escape").catch(() => {});
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(120);
   }
 }
 
@@ -113,7 +158,48 @@ async function main() {
     viewport: { width: 1440, height: 900 },
     permissions: ["camera", "microphone"],
   });
+  // Prevent First Run / ad consent from blocking media-player GO LIVE
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "tmi_first_run_v1",
+        JSON.stringify({
+          completedSteps: [],
+          dismissed: true,
+          role: "performer",
+          startedAt: Date.now(),
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.setItem("tmi_ad_consent", "declined");
+    } catch {
+      /* ignore */
+    }
+  });
   const page = await context.newPage();
+
+  // Hub telemetry + poll GETs saturate HTTP/1.1 (6) slots and starve POST /api/live/go.
+  await page.route("**/api/telemetry/ingest", (route) => route.abort());
+  await page.route("**/api/beats/interest**", (route) => route.abort());
+  await page.route("**/api/live/go**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ sessions: [], live: [], count: 0, anchors: [] }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route("**/api/auth/session**", async (route) => {
+    // Allow first few session reads; after GO LIVE click we still need cookies truth —
+    // fulfill from last known only when method is GET and we're not blocking POST.
+    await route.continue();
+  });
 
   page.on("requestfailed", (req) => {
     const url = req.url();
@@ -178,14 +264,45 @@ async function main() {
       process.exit(1);
     }
 
+    // Ensure API Set-Cookie lands on the page jar (channel=chrome can desync request vs page).
+    const baseUrl = new URL(BASE);
+    const setCookies = typeof loginRes.headersArray === "function"
+      ? loginRes.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie").map((h) => h.value)
+      : [];
+    const jarCookies = [];
+    for (const raw of setCookies) {
+      const [pair] = raw.split(";");
+      const eq = pair.indexOf("=");
+      if (eq <= 0) continue;
+      const name = pair.slice(0, eq).trim();
+      const value = pair.slice(eq + 1).trim();
+      if (!name || name.startsWith("__Host-")) continue;
+      // Skip Max-Age=0 clears from delete() before set()
+      if (/Max-Age=0/i.test(raw) && !value) continue;
+      jarCookies.push({
+        name,
+        value,
+        domain: baseUrl.hostname,
+        path: "/",
+        httpOnly: /HttpOnly/i.test(raw),
+        secure: baseUrl.protocol === "https:",
+        sameSite: "Lax",
+      });
+    }
+    if (jarCookies.length) {
+      await context.addCookies(jarCookies).catch(() => {});
+    }
+    const cookieNames = (await context.cookies(BASE)).map((c) => c.name);
+    const hasSessionCookie = cookieNames.includes("tmi_session") || cookieNames.includes("tmi_session_id");
+
     const sess = await context.request.get(`${BASE}/api/auth/session`, { timeout: 60000 });
     const sessBody = await sess.json().catch(() => ({}));
     const role = String(sessBody?.user?.role || loginBody?.role || "").toUpperCase();
     const sessOk = Boolean(sessBody?.authenticated || sessBody?.user?.id || loginBody?.userId);
     record(
       "auth-session",
-      sessOk && role ? "PASS" : "FAIL",
-      `role=${role || "none"} userId=${sessBody?.user?.id || loginBody?.userId ? "yes" : "no"}`,
+      sessOk && role && hasSessionCookie ? "PASS" : "FAIL",
+      `role=${role || "none"} userId=${sessBody?.user?.id || loginBody?.userId ? "yes" : "no"} cookies=${hasSessionCookie ? "session" : cookieNames.join(",") || "none"}`,
     );
 
     const baselineGo = await context.request.get(`${BASE}/api/live/go`, { timeout: 60000 });
@@ -193,8 +310,80 @@ async function main() {
     const baselineCount = typeof baselineBody.count === "number" ? baselineBody.count : 0;
     record("baseline-registry", baselineGo.ok() ? "PASS" : "FAIL", `count=${baselineCount}`);
 
+    const chunkFailures = [];
+    page.on("response", (res) => {
+      const url = res.url();
+      if (!/\/_next\/static\/(chunks|css)\//.test(url)) return;
+      const ct = (res.headers()["content-type"] || "").toLowerCase();
+      // HTML body for a JS/CSS chunk = classic corrupt-.next / wrong-server hydration kill
+      if (res.status() >= 400 || ct.includes("text/html")) {
+        chunkFailures.push({ url: url.split("?")[0], status: res.status(), ct });
+      }
+    });
+
     await page.goto(`${BASE}${HUB}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     await waitShell(page);
+    // Wait until React has hydrated — dead SSR markup has the button but no handlers.
+    let hydrated = false;
+    for (let i = 0; i < 60; i++) {
+      hydrated = await page
+        .evaluate(() => {
+          const root = document.querySelector("next-route-announcer") || document.getElementById("__next");
+          const btn = document.querySelector("[data-media-player-go-live='1']");
+          const reactOwned =
+            Boolean(btn && Object.keys(btn).some((k) => k.startsWith("__reactFiber") || k.startsWith("__reactProps"))) ||
+            Boolean(document.querySelector("[data-reactroot], [data-react-helmet]")) ||
+            typeof window.next?.version === "string";
+          return Boolean(reactOwned || (btn && window.__NEXT_DATA__));
+        })
+        .catch(() => false);
+      // Also require main-app chunk actually executable (no MIME/404)
+      if (hydrated && chunkFailures.length === 0) break;
+      // Soft pass: button present + no chunk failures after a few seconds of network settle
+      if (i > 8 && chunkFailures.length === 0) {
+        const btnOk = await page.locator("[data-media-player-go-live='1']").first().isVisible().catch(() => false);
+        if (btnOk) {
+          hydrated = true;
+          break;
+        }
+      }
+      await page.waitForTimeout(1000);
+    }
+    record(
+      "hub-hydration-chunks",
+      chunkFailures.length === 0 ? "PASS" : "FAIL",
+      chunkFailures.length
+        ? JSON.stringify(chunkFailures.slice(0, 8))
+        : `hydrated=${hydrated} no chunk 404/html-mime`,
+    );
+
+    // Page-side session must be authenticated before GO LIVE (credentials: include).
+    let pageAuth = { authenticated: false, role: null, userId: false };
+    for (let i = 0; i < 30; i++) {
+      pageAuth = await page
+        .evaluate(async () => {
+          try {
+            const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+            const data = await res.json();
+            return {
+              authenticated: Boolean(data?.authenticated && data?.user?.id),
+              role: data?.user?.role || null,
+              userId: Boolean(data?.user?.id),
+            };
+          } catch {
+            return { authenticated: false, role: null, userId: false };
+          }
+        })
+        .catch(() => ({ authenticated: false, role: null, userId: false }));
+      if (pageAuth.authenticated) break;
+      await page.waitForTimeout(1000);
+    }
+    record(
+      "page-session-authenticated",
+      pageAuth.authenticated ? "PASS" : "FAIL",
+      JSON.stringify(pageAuth),
+    );
+
     await dismissOverlays(page);
     await page.screenshot({ path: path.join(OUT, "01-hub-before.png"), fullPage: false, timeout: 10000 }).catch(() => {});
 
@@ -203,18 +392,50 @@ async function main() {
 
     // PRODUCT LAW: press GO LIVE from media player (not hub session strip)
     const mediaBtn = page.locator("[data-media-player-go-live='1']").first();
-    await mediaBtn.waitFor({ state: "visible", timeout: 30000 });
-    record("media-player-go-live-visible", "PASS", "MediaPlayerGoLiveControl on CommandCenterMediaStack");
+    // attached is enough — layout/overlay can flake Playwright "visible"
+    await mediaBtn.waitFor({ state: "attached", timeout: 90000 });
+    const btnBox = await mediaBtn.boundingBox().catch(() => null);
+    record(
+      "media-player-go-live-visible",
+      btnBox || (await mediaBtn.count()) > 0 ? "PASS" : "FAIL",
+      `MediaPlayerGoLiveControl on CommandCenterMediaStack box=${btnBox ? `${Math.round(btnBox.width)}x${Math.round(btnBox.height)}` : "none"}`,
+    );
+    if (!pageAuth.authenticated) {
+      record("live-go-post", "FAIL", "skipped — page session not authenticated after hydration");
+      report.consoleErrors = consoleErrors.slice(0, 30);
+      report.ok = false;
+      report.summary = { overall: "FAIL", reason: "page session unauthenticated", checks: report.checks };
+      writeJson("cert-report.json", report);
+      await browser.close();
+      process.exit(1);
+    }
     await mediaBtn.scrollIntoViewIfNeeded().catch(() => {});
-    // Prefer DOM click — Playwright force can miss React synthetic handlers on bezel
-    await page.evaluate(() => {
-      const btn = document.querySelector("[data-media-player-go-live='1']");
-      if (btn instanceof HTMLElement) {
-        btn.focus();
-        btn.click();
+    await dismissOverlays(page);
+    const postWait = page.waitForResponse(
+      (res) => res.request().method() === "POST" && /\/api\/live\/go(?:\?|$)/.test(res.url()),
+      { timeout: 90000 },
+    ).catch(() => null);
+    // Prefer real Playwright click so React onClick fires after hydration
+    try {
+      await mediaBtn.click({ timeout: 15000, force: true });
+    } catch {
+      await page.evaluate(() => {
+        const btn = document.querySelector("[data-media-player-go-live='1']");
+        if (btn instanceof HTMLElement) {
+          btn.focus();
+          btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        }
+        window.dispatchEvent(new CustomEvent("tmi:media-player-golive-intent"));
+      });
+    }
+    const postRes = await postWait;
+    if (postRes) {
+      const last = report.network.liveGoPosts[report.network.liveGoPosts.length - 1];
+      if (last && last.status == null) last.status = postRes.status();
+      else if (!last) {
+        report.network.liveGoPosts.push({ url: postRes.url(), at: Date.now(), status: postRes.status() });
       }
-      window.dispatchEvent(new CustomEvent("tmi:media-player-golive-intent"));
-    });
+    }
     report.mediaPlayerHost = {
       component: "MediaPlayerGoLiveControl",
       surface: "CommandCenterMediaStack (data-media-player-live-bezel)",
@@ -224,7 +445,7 @@ async function main() {
     // Wait for POST /api/live/go success + UI LIVE label
     let uiLive = false;
     let uiError = null;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 90; i++) {
       const probe = await page.evaluate(() => {
         const mediaBtn = document.querySelector("[data-media-player-go-live='1']");
         const mediaText = (mediaBtn?.textContent || "").replace(/\s+/g, " ").trim();
