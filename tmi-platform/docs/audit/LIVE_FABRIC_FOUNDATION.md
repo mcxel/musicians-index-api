@@ -63,12 +63,12 @@ Marcel addenda covered: epoch isolation, command idempotency, SessionClock, sour
 ## TESTS
 
 ```
-npx jest --config jest.config.ts src/lib/liveFabric/__tests__
-→ Test Suites: 3 passed
-→ Tests: 40 passed
+npx jest --config jest.config.ts src/lib/liveFabric/__tests__ src/tests/runUniversalLiveMediaFabric.test.ts
+→ Test Suites: 4 passed
+→ Tests: 55 passed
 ```
 
-Simulation: multi-participant REGULAR_GO_LIVE + BATTLE paths.  
+Simulation: multi-participant REGULAR_GO_LIVE + BATTLE paths (+ master harness goLiveHappyPath).  
 Chaos: camera loss, Voltron+network drop, duplicate END, CAST lost, rights loss, host succession, memory budget, Fan capability deny, isolation import guard.
 
 ---
@@ -77,11 +77,13 @@ Chaos: camera loss, Voltron+network drop, duplicate END, CAST lost, rights loss,
 
 | Gate | Result |
 |------|--------|
-| Tests PASS | ✅ 40/40 |
-| 0 TS errors on fabric | (see commit CI / local tsc filter) |
+| Tests PASS | ✅ 55/55 |
+| 0 TS errors on fabric | ✅ `FABRIC_RELATED_ERRORS=0` |
 | 0 legacy production callers | ✅ |
 | 0 production traffic using fabric | ✅ |
 | Isolation (no forbidden imports) | ✅ tested |
+
+**Commits pushed:** `5c083aec`, `cce260d8`, `e9d3798b` → `origin/eos/vocal-improv-clean`
 
 ---
 
