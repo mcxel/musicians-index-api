@@ -2,9 +2,8 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { endInstantGoLiveSession } from "@/lib/dock/executeInstantGoLive";
-import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { dispatchMediaPlayerGoLiveIntent } from "@/components/commandCenter/MediaPlayerGoLiveControl";
 
 type Props = {
   compact?: boolean;
@@ -31,24 +30,10 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
   const [micOn, setMicOn] = useState(false);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const [fullScreenOn, setFullScreenOn] = useState(false);
-  const [goLiveBusy, setGoLiveBusy] = useState(false);
 
-  const handleGoLive = async () => {
-    if (goLiveBusy) return;
-    setGoLiveBusy(true);
-    if (isLivePublished) {
-      await endInstantGoLiveSession();
-      setGoLiveBusy(false);
-      return;
-    }
-    await triggerCanonicalGoLive({
-      role: "PERFORMER",
-      preferredExperience: "live",
-      publishSession: true,
-    });
-    if (typeof window !== "undefined" && window.location.pathname.startsWith("/hub")) {
-      setGoLiveBusy(false);
-    }
+  const handleGoLive = () => {
+    // Deep-link to media-player GO LIVE authority — do not publish from this cluster
+    dispatchMediaPlayerGoLiveIntent();
   };
 
   const actions = useMemo(
@@ -67,9 +52,9 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
       },
       {
         id: "live",
-        label: isLivePublished ? "⏹ END LIVE" : goLiveBusy ? "⏳ GOING LIVE…" : "🔴 GO LIVE",
+        label: isLivePublished ? "⏹ END LIVE (PLAYER)" : "🔴 GO LIVE (PLAYER)",
         active: isLivePublished,
-        onClick: () => void handleGoLive(),
+        onClick: () => handleGoLive(),
       },
       {
         id: "share-screen",
@@ -98,7 +83,7 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
         onClick: () => setFullScreenOn((v) => !v),
       },
     ],
-    [cameraOn, micOn, isLivePublished, goLiveBusy, fullScreenOn],
+    [cameraOn, micOn, isLivePublished, fullScreenOn],
   );
 
   return (

@@ -18,6 +18,7 @@ import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLay
 import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
 import HubMonitorVenuePlayer from "@/components/live/HubMonitorVenuePlayer";
 import LiveDistributionBezel from "@/components/broadcast/LiveDistributionBezel";
+import MediaPlayerGoLiveControl from "@/components/commandCenter/MediaPlayerGoLiveControl";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
@@ -678,6 +679,12 @@ export default function CommandCenterMediaStack({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setCastPanelOpen((v) => !v);
+    window.addEventListener("tmi:cast-panel-toggle", handler);
+    return () => window.removeEventListener("tmi:cast-panel-toggle", handler);
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) {
       document.exitFullscreen().catch(() => undefined);
@@ -1033,7 +1040,8 @@ export default function CommandCenterMediaStack({
         borderRadius: 8,
       }}
     >
-      {/* Row 1 — monitor utility: VENUE TOOLS · CAST · ARTIST ID / FAN ID */}
+      {/* Row 1 — monitor utility: VENUE TOOLS · CAST · ARTIST ID / FAN ID
+          (canonical GO LIVE is on media-player live bezel above monitors — not duplicated here) */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
         <VenueToolsToggleButton
           role={role === "performer" ? "performer" : "fan"}
@@ -1307,8 +1315,25 @@ export default function CommandCenterMediaStack({
         </div>
       ) : null}
 
-      {/* External-only Live Distribution Bezel — ABOVE monitors, no TMI light */}
-      {role === "performer" ? <LiveDistributionBezel userId={userId} /> : null}
+      {/* Media-player live authority — always on performer stack (not orphan hub strip) */}
+      {role === "performer" ? (
+        <div
+          data-media-player-live-bezel="1"
+          style={{
+            flexShrink: 0,
+            marginBottom: 8,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            gap: 10,
+          }}
+        >
+          <MediaPlayerGoLiveControl role="performer" compact={compactHubLayout} />
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <LiveDistributionBezel userId={userId} />
+          </div>
+        </div>
+      ) : null}
 
       <div style={{ position: "relative", flex: naturalHeight ? undefined : 1, minHeight: 0 }}>
       <GoLiveBootstrapOverlay

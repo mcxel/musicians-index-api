@@ -12,12 +12,36 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWatchSession } from '@/lib/presence/WatchSessionContext';
+import { mediaPlayerWatchHref } from '@/lib/media/universalMediaPlayerWatchRoute';
 
 export default function PersistentMiniPlayer() {
-  const { current, minimized, minimize, restore, stopWatching } = useWatchSession();
+  const { current, minimized, minimize, restore, stopWatching, startWatching } = useWatchSession();
   const pathname = usePathname();
 
-  const isInsideTrackedRoom = !!current && !!pathname?.includes(`/live/rooms/${current.roomId}`);
+  const isInsideTrackedRoom =
+    !!current &&
+    (!!pathname?.includes(`/live/rooms/${current.roomId}`) ||
+      (!!pathname?.startsWith("/hub/") && pathname.includes("hub")));
+
+  useEffect(() => {
+    const onBind = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as {
+        roomId?: string;
+        title?: string;
+        accentColor?: string;
+        viewers?: number;
+      };
+      if (!detail?.roomId) return;
+      startWatching({
+        roomId: detail.roomId,
+        title: detail.title ?? `Live · ${detail.roomId}`,
+        accentColor: detail.accentColor ?? "#FF2DAA",
+        viewers: detail.viewers ?? 0,
+      });
+    };
+    window.addEventListener("tmi:watch-session-bind", onBind);
+    return () => window.removeEventListener("tmi:watch-session-bind", onBind);
+  }, [startWatching]);
 
   // The room itself only sets minimized=false on entry; nothing else flips
   // it automatically. Route changes are the real signal: leaving the
@@ -32,6 +56,8 @@ export default function PersistentMiniPlayer() {
   // Don't show the mini player while already inside the room it's tracking —
   // that would just duplicate the real room view.
   if (!current || !minimized || isInsideTrackedRoom) return null;
+
+  const restoreHref = mediaPlayerWatchHref(current.roomId, { from: "persistent-mini-player" });
 
   return (
     <div
@@ -71,14 +97,14 @@ export default function PersistentMiniPlayer() {
           👁 {current.viewers.toLocaleString()} watching
         </div>
         <Link
-          href={`/live/rooms/${current.roomId}?from=lobby-wall`}
+          href={restoreHref}
           style={{
             display: 'block', textAlign: 'center', padding: '8px 0', borderRadius: 8,
             background: current.accentColor, color: '#050310', fontSize: 10, fontWeight: 900,
             letterSpacing: '0.08em', textDecoration: 'none',
           }}
         >
-          ▶ RETURN TO SHOW
+          RETURN TO MEDIA PLAYER
         </Link>
       </div>
     </div>

@@ -1,0 +1,170 @@
+{
+  "gate": "LIVE_P0_1",
+  "ok": false,
+  "base": "http://localhost:3000",
+  "email": "suedejs2000@gmail.com",
+  "hub": "/hub/performer",
+  "testedAt": "2026-08-31T18:57:44.592Z",
+  "checks": [
+    {
+      "id": "auth-login",
+      "status": "PASS",
+      "detail": "status=200 ok=true userId=true role=performer"
+    },
+    {
+      "id": "auth-session",
+      "status": "PASS",
+      "detail": "role=PERFORMER userId=yes"
+    },
+    {
+      "id": "baseline-registry",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "id": "media-player-go-live-visible",
+      "status": "PASS",
+      "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack"
+    },
+    {
+      "id": "no-port-3002",
+      "status": "PASS",
+      "detail": "none"
+    },
+    {
+      "id": "no-connection-refused",
+      "status": "PASS",
+      "detail": "none"
+    },
+    {
+      "id": "live-go-post",
+      "status": "FAIL",
+      "detail": "posts=0 statuses="
+    },
+    {
+      "id": "ui-live-published",
+      "status": "FAIL",
+      "detail": "{\"uiLive\":false,\"uiError\":null,\"postOk\":false,\"postFail\":false}"
+    },
+    {
+      "id": "publish-from-media-player",
+      "status": "FAIL",
+      "detail": "{\"component\":\"MediaPlayerGoLiveControl\",\"surface\":\"CommandCenterMediaStack (data-media-player-live-bezel)\",\"selector\":\"[data-media-player-go-live='1']\",\"publishTriggeredFrom\":\"media-player\"}"
+    },
+    {
+      "id": "registry-session",
+      "status": "FAIL",
+      "detail": "count=0 sessions=0"
+    },
+    {
+      "id": "lobby-wall-discoverable",
+      "status": "FAIL",
+      "detail": "{\"wallOk\":true,\"liveCardCount\":0,\"matched\":false,\"sessionCount\":0}"
+    },
+    {
+      "id": "no-fake-green-light",
+      "status": "PASS",
+      "detail": "{\"uiClaimsLive\":false,\"postOk\":false}"
+    }
+  ],
+  "network": {
+    "refused": [],
+    "port3002": [],
+    "liveGoPosts": [],
+    "sessionGets": []
+  },
+  "publication": {
+    "count": 0,
+    "sessions": []
+  },
+  "lobbyWall": {
+    "status": 200,
+    "cardCount": 12,
+    "liveCardCount": 0,
+    "matched": false,
+    "sample": []
+  },
+  "mediaPlayerHost": {
+    "component": "MediaPlayerGoLiveControl",
+    "surface": "CommandCenterMediaStack (data-media-player-live-bezel)",
+    "selector": "[data-media-player-go-live='1']",
+    "publishTriggeredFrom": "media-player"
+  },
+  "consoleErrors": [
+    "Refused to apply style from 'http://localhost:3000/_next/static/css/app/layout.css?v=1788202685441' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/main-app.js?v=1788202685441' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app/error.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app-pages-internals.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app/global-error.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled."
+  ],
+  "summary": {
+    "overall": "FAIL",
+    "performerOnLobbyWall": false,
+    "checks": [
+      {
+        "id": "auth-login",
+        "status": "PASS",
+        "detail": "status=200 ok=true userId=true role=performer"
+      },
+      {
+        "id": "auth-session",
+        "status": "PASS",
+        "detail": "role=PERFORMER userId=yes"
+      },
+      {
+        "id": "baseline-registry",
+        "status": "PASS",
+        "detail": "count=0"
+      },
+      {
+        "id": "media-player-go-live-visible",
+        "status": "PASS",
+        "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack"
+      },
+      {
+        "id": "no-port-3002",
+        "status": "PASS",
+        "detail": "none"
+      },
+      {
+        "id": "no-connection-refused",
+        "status": "PASS",
+        "detail": "none"
+      },
+      {
+        "id": "live-go-post",
+        "status": "FAIL",
+        "detail": "posts=0 statuses="
+      },
+      {
+        "id": "ui-live-published",
+        "status": "FAIL",
+        "detail": "{\"uiLive\":false,\"uiError\":null,\"postOk\":false,\"postFail\":false}"
+      },
+      {
+        "id": "publish-from-media-player",
+        "status": "FAIL",
+        "detail": "{\"component\":\"MediaPlayerGoLiveControl\",\"surface\":\"CommandCenterMediaStack (data-media-player-live-bezel)\",\"selector\":\"[data-media-player-go-live='1']\",\"publishTriggeredFrom\":\"media-player\"}"
+      },
+      {
+        "id": "registry-session",
+        "status": "FAIL",
+        "detail": "count=0 sessions=0"
+      },
+      {
+        "id": "lobby-wall-discoverable",
+        "status": "FAIL",
+        "detail": "{\"wallOk\":true,\"liveCardCount\":0,\"matched\":false,\"sessionCount\":0}"
+      },
+      {
+        "id": "no-fake-green-light",
+        "status": "PASS",
+        "detail": "{\"uiClaimsLive\":false,\"postOk\":false}"
+      }
+    ]
+  }
+}

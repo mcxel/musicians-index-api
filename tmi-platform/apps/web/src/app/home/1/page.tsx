@@ -1,4 +1,5 @@
 import React from 'react';
+import { headers } from 'next/headers';
 
 export const dynamic = "force-dynamic";
 import Home1CoverPage from '@/components/home/Home1CoverPage';
@@ -11,6 +12,7 @@ import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
 import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
 import type { LiveSession } from '@/lib/broadcast/globalLiveSessionStore';
+import { resolveSameOriginApiAbsolute } from '@/lib/runtime/canonicalEndpointResolver';
 
 // Rule 12: No Empty Inventory — derive sponsor rail from registry, not hardcoded strings
 const RAIL_ZONES = [
@@ -34,8 +36,13 @@ function buildSponsorEntry(zone: string) {
 
 async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
-    const res = await fetch(`${baseUrl}/api/performers`, {
+    // Same-origin Next API only — never NEXT_PUBLIC_API_URL → localhost:3002
+    const h = await headers();
+    const url = resolveSameOriginApiAbsolute('/api/performers', {
+      host: h.get('x-forwarded-host') ?? h.get('host'),
+      proto: h.get('x-forwarded-proto'),
+    });
+    const res = await fetch(url, {
       cache: 'no-store', // Always fresh for avatar propagation
     });
     if (!res.ok) throw new Error('Failed to fetch performers');

@@ -16,6 +16,9 @@ import {
   presentInstantGoLiveInPlace,
 } from "@/lib/dock/presentInstantGoLiveInPlace";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import { DEFAULT_MONITOR_A } from "@/lib/personal-media";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
@@ -181,6 +184,45 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       roomId: pending?.roomId as string | undefined,
       publishSession: (pending?.publishSession as boolean | undefined) ?? true,
     });
+    router.replace(pathname);
+  }, [searchParams, role, pathname, router]);
+
+  // Lobby Wall / discovery → Universal Media Player watch (same session, hub surface)
+  useEffect(() => {
+    const watchId = searchParams?.get("watch")?.trim();
+    if (!watchId) return;
+
+    const media = useCanonicalMediaPlayerRuntime.getState();
+    media.setRoomId(watchId);
+    media.assignSource("a", role === "performer" ? "SELF_CAMERA" : "PERFORMER_FEED");
+    media.assignSource("b", "AUDIENCE_VIEW");
+    media.setLayout("SPLIT_2");
+    media.setPrimaryAudio("a");
+
+    useGoLiveTransition.getState().bindInPlace(
+      {
+        roomId: watchId,
+        category: "live",
+        privacy: "public",
+        href: `/hub/${role}?watch=${encodeURIComponent(watchId)}`,
+        roomUrl: null,
+        venueEnvironment: "indoor",
+      },
+      DEFAULT_MONITOR_A,
+    );
+    useGoLiveTransition.getState().clearWarp();
+
+    window.dispatchEvent(
+      new CustomEvent("tmi:watch-session-bind", {
+        detail: {
+          roomId: watchId,
+          title: `Live · ${watchId}`,
+          accentColor: "#FF2DAA",
+          viewers: 0,
+        },
+      }),
+    );
+
     router.replace(pathname);
   }, [searchParams, role, pathname, router]);
 

@@ -13,11 +13,15 @@
 import { NextResponse } from "next/server";
 import { getAllAnchors } from "@/lib/live/AnchorRoomRegistry";
 import { getVenueOccupancy } from "@/lib/live/audienceRuntimeEngine";
-import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import {
+  ensureHydrated,
+  getActiveSessionsDurable,
+} from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
 import {
   getAllOverflowRooms,
   readRealOccupancy,
 } from "@/lib/live/ElasticRoomOrchestrator";
+import { mediaPlayerWatchHref } from "@/lib/media/universalMediaPlayerWatchRoute";
 
 // ── Shared card type ──────────────────────────────────────────────────────────
 
@@ -58,7 +62,8 @@ export async function GET(): Promise<NextResponse> {
 
   // 1. Permanent anchor rooms ──────────────────────────────────────────────────
   const anchors = getAllAnchors();
-  const activeSessions = getActiveSessions();
+  await ensureHydrated();
+  const activeSessions = await getActiveSessionsDurable();
   const sessionByRoomId = new Map(activeSessions.map((s) => [s.roomId, s]));
 
   for (const anchor of anchors) {
@@ -117,7 +122,8 @@ export async function GET(): Promise<NextResponse> {
       category: session.category ?? "GENERAL",
       title: session.title,
       status: "LIVE",
-      route: `/live/rooms/${session.roomId}`,
+      // Primary watch = Universal Media Player (hub), not siloed room page
+      route: mediaPlayerWatchHref(session.roomId, { from: "live-lobby-wall" }),
       host: {
         userId: session.userId,
         displayName: session.displayName,

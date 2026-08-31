@@ -14,8 +14,7 @@ import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import { useMobileQuickPanelRuntime } from "@/lib/hud/mobileQuickPanelRuntime";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
-import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
-import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { dispatchMediaPlayerGoLiveIntent } from "@/components/commandCenter/MediaPlayerGoLiveControl";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { getPrimarySessionStripForRole } from "@/lib/commandCenter/sessionControlCapabilities";
 import {
@@ -74,7 +73,6 @@ export default function CommandCenterSessionControlStrip({
   const cameraPreviewActive = useLivePrivacyState((s) => s.cameraPreviewActive);
   const micPreviewActive = useLivePrivacyState((s) => s.micPreviewActive);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
-  const hubRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
 
   useEffect(() => {
     launchDockStore.setRole(isPerformer ? "PERFORMER" : "FAN");
@@ -102,55 +100,17 @@ export default function CommandCenterSessionControlStrip({
     await toggleHubMicPreview();
   };
 
-  const handleGoLive = async () => {
-    if (goLivePhase === "launching") return;
-
-    // Second tap while live → end session (registry + DiscoveryBus unpublish)
-    if (isLivePublished) {
-      setGoLivePhase("launching");
-      try {
-        const { endInstantGoLiveSession } = await import("@/lib/dock/executeInstantGoLive");
-        await endInstantGoLiveSession(hubRoomId);
-        setGoLivePhase("idle");
-      } catch (err) {
-        setGoLivePhase("error");
-        setGoLiveError(err instanceof Error ? err.message : "End live failed.");
-      }
-      return;
-    }
-
-    setGoLivePhase("launching");
+  const handleGoLive = () => {
+    // Hub strip is a deep-link only — media player owns publish / end
     setGoLiveError("");
     setMediaError("");
     registerShellButtonHealth("shell.go-live", "ok");
-
     const dockRole = isPerformer ? "PERFORMER" : "FAN";
     launchDockStore.setRole(dockRole);
-
-    try {
-      // ONE TAP in-place: camera + Monitor A/B + registry publish — never leave Command Center
-      const result = await presentInstantGoLiveInPlace({
-        role: dockRole,
-        preferredExperience: "live",
-        roomId: hubRoomId ?? undefined,
-        publishSession: true,
-      });
-
-      if (!result.ok || !result.roomId) {
-        setGoLivePhase("error");
-        setGoLiveError(result.error ?? "Go Live failed.");
-        return;
-      }
-
-      if (result.error) {
-        setMediaError(result.error);
-      }
-
-      setGoLivePhase("idle");
-    } catch (err) {
-      setGoLivePhase("error");
-      setGoLiveError(err instanceof Error ? err.message : "Go Live failed.");
-    }
+    setGoLivePhase("launching");
+    dispatchMediaPlayerGoLiveIntent();
+    // MediaPlayerGoLiveControl flips isLivePublished; clear launching shortly
+    window.setTimeout(() => setGoLivePhase("idle"), 2500);
   };
 
   const handleVideoShuffle = () => {
@@ -264,7 +224,7 @@ export default function CommandCenterSessionControlStrip({
             gradient="linear-gradient(135deg,#AA2DFF,#FF2DAA)"
             border="#FF2DAA"
             disabled={goLivePhase === "launching"}
-            onClick={() => void handleGoLive()}
+            onClick={() => handleGoLive()}
           />
         );
       default:

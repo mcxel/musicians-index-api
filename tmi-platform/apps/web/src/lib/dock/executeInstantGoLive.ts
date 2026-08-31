@@ -26,30 +26,40 @@ export interface InstantGoLiveResult {
   href?: string;
   roomId?: string;
   error?: string;
+  /** True only after POST /api/live/go succeeded (or private unlisted path accepted). */
+  published?: boolean;
   /** Canonical role entry for this session — same roomId/liveSessionId as every other role. */
   roleEntry?: RoleEntry;
 }
 
-async function resolveDisplayName(fallback: string): Promise<{ name: string; role: string; userId?: string }> {
+async function resolveDisplayName(fallback: string): Promise<{
+  name: string;
+  role: string;
+  userId?: string;
+  authenticated: boolean;
+}> {
   try {
     const sess = await fetch("/api/auth/session", {
       credentials: "include",
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
     });
-    if (!sess.ok) return { name: fallback, role: "FAN" };
+    if (!sess.ok) return { name: fallback, role: "FAN", authenticated: false };
     const data = (await sess.json()) as {
       authenticated?: boolean;
       user?: { id?: string; name?: string; email?: string; role?: string };
     };
+    if (!data.authenticated || !data.user?.id) {
+      return { name: fallback, role: "FAN", authenticated: false };
+    }
     const name =
       data.user?.name ??
       (data.user?.email ? data.user.email.split("@")[0] : undefined) ??
       fallback;
     const role = (data.user?.role ?? "FAN").toUpperCase();
-    return { name, role, userId: data.user?.id };
+    return { name, role, userId: data.user.id, authenticated: true };
   } catch {
-    return { name: fallback, role: "FAN" };
+    return { name: fallback, role: "FAN", authenticated: false };
   }
 }
 
@@ -95,6 +105,16 @@ export async function executeInstantGoLive(opts?: {
   }
 
   const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
+  if (!identity.authenticated || !identity.userId) {
+    launchDockStore.setPhase("idle");
+    recordFunctionInvocation("executeInstantGoLive", false);
+    return {
+      ok: false,
+      published: false,
+      error: "Authentication required to go live. Sign in with a real Performer session.",
+    };
+  }
+
   const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
   launchDockStore.setRole(role);
 
@@ -117,7 +137,13 @@ export async function executeInstantGoLive(opts?: {
           privacy !== "public",
         )
       : undefined;
-    return { ok: true, href: destination.route, roomId: staticRoomId ?? undefined, roleEntry };
+    return {
+      ok: true,
+      published: false,
+      href: destination.route,
+      roomId: staticRoomId ?? undefined,
+      roleEntry,
+    };
   }
 
   // Performer stage — mint Daily room when available, register; callers decide navigate vs in-place
@@ -155,18 +181,19 @@ export async function executeInstantGoLive(opts?: {
   }
 
   // Publication to GlobalLiveSessionRegistry — ONLY when publishSession is true (explicit GO LIVE).
-  // Instant DiscoveryBus publish on success so Live Lobby Wall + Home LIVE NOW update without waiting on poll.
+  // isLivePublished / DiscoveryBus listing require a real POST /api/live/go success — no fake green light.
+  let published = false;
   if (publishSession) {
     if (!destination.flags.restrictedAudience) {
       const discoveryInput = {
         roomId: resolvedRoomId,
         title: `${identity.name} — Live`,
         hostName: identity.name,
-        hostUserId: identity.userId ?? "performer-1",
+        hostUserId: identity.userId,
         category: destination.category,
         experienceId: preferredExperience ?? destination.category ?? "live",
         accentColor: opts?.accentColor ?? "#FF2DAA",
-        joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
+    joinRoute: `/hub/fan?watch=${encodeURIComponent(resolvedRoomId)}&from=live-lobby-wall`,
       };
       try {
         const res = await fetch("/api/live/go", {
@@ -186,27 +213,48 @@ export async function executeInstantGoLive(opts?: {
           }),
           credentials: "include",
         });
-        if (res.ok) {
-          const data = (await res.json().catch(() => ({}))) as {
-            session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            message?: string;
+            code?: string;
           };
-          if (data.session) {
-            const rec = liveSessionToDiscoveryRecord(data.session);
-            if (rec) DiscoveryBus.upsert(rec);
-            else publishLiveRoom(discoveryInput);
-          } else {
-            publishLiveRoom(discoveryInput);
-          }
+          launchDockStore.setPhase("idle");
+          recordFunctionInvocation("executeInstantGoLive", false);
+          return {
+            ok: false,
+            published: false,
+            roomId: resolvedRoomId,
+            error: `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "Unauthorized or registry reject"}`,
+          };
+        }
+        const data = (await res.json().catch(() => ({}))) as {
+          session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
+        };
+        published = true;
+        if (data.session) {
+          const rec = liveSessionToDiscoveryRecord(data.session);
+          if (rec) DiscoveryBus.upsert(rec);
+          else publishLiveRoom(discoveryInput);
         } else {
-          // Registry write failed — still list locally so broadcaster sees own panel (honest local tile).
           publishLiveRoom(discoveryInput);
         }
-      } catch {
-        publishLiveRoom(discoveryInput);
+      } catch (err) {
+        launchDockStore.setPhase("idle");
+        recordFunctionInvocation("executeInstantGoLive", false);
+        return {
+          ok: false,
+          published: false,
+          roomId: resolvedRoomId,
+          error:
+            err instanceof Error
+              ? `Network error publishing live session: ${err.message}`
+              : "Network error publishing live session.",
+        };
       }
     } else {
       try {
-        await fetch("/api/live/go", {
+        const res = await fetch("/api/live/go", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -224,8 +272,34 @@ export async function executeInstantGoLive(opts?: {
           }),
           credentials: "include",
         });
-      } catch {
-        /* private stage still opens */
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            message?: string;
+            code?: string;
+          };
+          launchDockStore.setPhase("idle");
+          recordFunctionInvocation("executeInstantGoLive", false);
+          return {
+            ok: false,
+            published: false,
+            roomId: resolvedRoomId,
+            error: `Private stage publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "registry"}`,
+          };
+        }
+        published = true;
+      } catch (err) {
+        launchDockStore.setPhase("idle");
+        recordFunctionInvocation("executeInstantGoLive", false);
+        return {
+          ok: false,
+          published: false,
+          roomId: resolvedRoomId,
+          error:
+            err instanceof Error
+              ? `Network error publishing private stage: ${err.message}`
+              : "Network error publishing private stage.",
+        };
       }
     }
   }
@@ -251,7 +325,7 @@ export async function executeInstantGoLive(opts?: {
   launchDockStore.setPhase("idle");
   launchDockStore.close();
   recordFunctionInvocation("executeInstantGoLive", true);
-  return { ok: true, href, roomId: resolvedRoomId, roleEntry };
+  return { ok: true, published, href, roomId: resolvedRoomId, roleEntry };
 }
 
 /** Registry publish only — call after hub stage is bound (explicit GO LIVE). */
@@ -264,6 +338,13 @@ export async function publishInstantGoLiveSession(opts: {
   accentColor?: string;
 }): Promise<InstantGoLiveResult> {
   const identity = await resolveDisplayName(opts.displayName ?? "Performer");
+  if (!identity.authenticated || !identity.userId) {
+    return {
+      ok: false,
+      published: false,
+      error: "Authentication required to publish live session.",
+    };
+  }
   const role = (opts.role ?? "PERFORMER").toUpperCase();
   const privacy = opts.privacy ?? launchDockStore.getState().privacy ?? "public";
   const destination = resolveLiveDestination({
@@ -296,6 +377,7 @@ export async function publishInstantGoLiveSession(opts: {
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; code?: string };
       return {
         ok: false,
+        published: false,
         error: `Publish failed (${res.status}${body.code ? ` ${body.code}` : ""}): ${body.error ?? body.message ?? "registry"}`,
       };
     }
@@ -310,16 +392,17 @@ export async function publishInstantGoLiveSession(opts: {
         roomId: opts.roomId,
         title: `${identity.name} — Live`,
         hostName: identity.name,
-        hostUserId: identity.userId ?? "performer-1",
+        hostUserId: identity.userId,
         category: destination.category,
         accentColor: opts.accentColor ?? "#FF2DAA",
-        joinRoute: `/live/rooms/${encodeURIComponent(opts.roomId)}?from=live-lobby-wall`,
+        joinRoute: `/hub/fan?watch=${encodeURIComponent(opts.roomId)}&from=live-lobby-wall`,
       });
     }
-    return { ok: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
+    return { ok: true, published: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
   } catch (err) {
     return {
       ok: false,
+      published: false,
       error: err instanceof Error ? `Network error publishing live session: ${err.message}` : "Network error publishing live session.",
     };
   }

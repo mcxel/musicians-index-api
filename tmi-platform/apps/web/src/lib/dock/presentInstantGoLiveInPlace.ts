@@ -195,14 +195,36 @@ export async function presentInstantGoLiveInPlace(opts?: {
   publishSession?: boolean;
 }): Promise<InstantGoLiveResult> {
   const monitor = opts?.monitor ?? DEFAULT_MONITOR_A;
-  const role = (opts?.role ?? "PERFORMER").toUpperCase();
   const publishSession = opts?.publishSession !== false;
   const privacy = opts?.privacy ?? "public";
-  launchDockStore.setRole(role);
   const boot = useGoLiveBootstrapStore.getState();
 
+  // Real session truth — never assume authenticated:true
+  let sessionAuthenticated = false;
+  let sessionRole = (opts?.role ?? "PERFORMER").toUpperCase();
+  try {
+    const sess = await fetch("/api/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (sess.ok) {
+      const data = (await sess.json()) as {
+        authenticated?: boolean;
+        user?: { id?: string; role?: string };
+      };
+      sessionAuthenticated = Boolean(data.authenticated && data.user?.id);
+      if (data.user?.role) sessionRole = data.user.role.toUpperCase();
+    }
+  } catch {
+    sessionAuthenticated = false;
+  }
+
+  const role = (opts?.role ?? sessionRole).toUpperCase();
+  launchDockStore.setRole(role);
+
   const admit = admitGoLive({
-    authenticated: true,
+    authenticated: sessionAuthenticated,
     role,
     privacy,
     listed: publishSession && privacy === "public",
@@ -215,6 +237,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     recordFunctionInvocation("presentInstantGoLiveInPlace", false);
     return {
       ok: false,
+      published: false,
       error: admit.reason,
     };
   }
@@ -277,6 +300,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     recordFunctionInvocation("presentInstantGoLiveInPlace", true);
     return {
       ok: true,
+      published: true,
       href: existing.href,
       roomId: existing.roomId,
       error: cam.ok ? undefined : cam.error,
@@ -299,10 +323,27 @@ export async function presentInstantGoLiveInPlace(opts?: {
     useGoLiveTransition.getState().clearWarp();
     mediaDirector.failLaunch(result.error ?? "Stage room did not mint.");
     boot.fail("SESSION_MINT_FAILED", result.error ?? "Stage room did not mint.");
+    useLivePrivacyState.getState().clearLivePublished();
     recordFunctionInvocation("presentInstantGoLiveInPlace", false);
     return {
       ok: false,
+      published: false,
       error: result.error ?? "Stage room did not mint. Staying in this shell — no kick-out.",
+    };
+  }
+
+  // Publication state law: isLivePublished only after real registry success
+  if (publishSession && !result.published) {
+    useGoLiveTransition.getState().clearWarp();
+    mediaDirector.failLaunch(result.error ?? "Live registry publish did not succeed.");
+    boot.fail("SESSION_MINT_FAILED", result.error ?? "Live registry publish did not succeed.");
+    useLivePrivacyState.getState().clearLivePublished();
+    recordFunctionInvocation("presentInstantGoLiveInPlace", false);
+    return {
+      ok: false,
+      published: false,
+      roomId: result.roomId,
+      error: result.error ?? "Live registry publish did not succeed — not claiming LIVE.",
     };
   }
 
@@ -338,7 +379,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   // Curtain open deferred until READY below — do not open early
   boot.setPhase("HUD_MOUNTING");
 
-  if (publishSession) {
+  if (publishSession && result.published) {
     useLivePrivacyState.getState().markLivePublished(result.roomId);
   }
 
@@ -360,6 +401,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     recordFunctionInvocation("presentInstantGoLiveInPlace", true);
     return {
       ok: true,
+      published: Boolean(result.published),
       href: result.href,
       roomId: result.roomId,
       error: cam.error ?? "Broadcasting without local camera.",
@@ -382,5 +424,5 @@ export async function presentInstantGoLiveInPlace(opts?: {
     openCurtainForInstantGoLive({ reducedMotion });
   }
   recordFunctionInvocation("presentInstantGoLiveInPlace", true);
-  return result;
+  return { ...result, published: Boolean(result.published) };
 }
