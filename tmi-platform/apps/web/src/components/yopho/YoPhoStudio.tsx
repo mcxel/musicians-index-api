@@ -11,6 +11,7 @@ import {
   getYoPhoImageCapacity,
   normalizeYoPhoTier,
   trimYoPhoBlueprintToCapacity,
+  YOPHO_FREE_ALLOWANCE_COPY,
 } from "@/lib/yopho/YoPhoImageCapacity";
 import { ensureTripleLayerStack } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
@@ -35,7 +36,8 @@ function activeStorageKey(role: YoPhoStudioRole): string {
 
 /**
  * Canonical full-page YoPho triple-stage runtime — shared editor, role-specific assets.
- * Fan vs Performer keep separate storage + cardRole (Rule 26). FREE = 2 pictures + 1 background.
+ * Fan vs Performer keep separate storage + cardRole (Rule 26).
+ * FREE = 1 background + 2 content images (3 image slots) — layered, background-first.
  */
 export default function YoPhoStudio({
   role,
@@ -105,11 +107,11 @@ export default function YoPhoStudio({
   const accent = role === "fan" ? "#FF2DAA" : "#FFD700";
   const headline =
     role === "fan"
-      ? "FAN · TRIPLE STAGE · 2+1 IMAGE LAW"
-      : "PERFORMER · LIVING STAGE · 2+1 IMAGE LAW";
+      ? "FAN · TRIPLE STAGE · BACKGROUND FIRST"
+      : "PERFORMER · LIVING STAGE · BACKGROUND FIRST";
   const subline =
     role === "fan"
-      ? `Master · preview · compare — ${capacity.tierKey} image slots ${capacity.maxImages} (FREE = 2 pictures + 1 background)`
+      ? `Master · preview · compare — ${capacity.tierKey}: ${YOPHO_FREE_ALLOWANCE_COPY}`
       : `Living YoPho card — ${capacity.tierKey} image slots ${capacity.maxImages}; fan canvas stays separate`;
 
   return (

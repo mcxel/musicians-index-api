@@ -41,6 +41,7 @@ import {
   shareYoPhoToThread,
   type MessageThreadOption,
 } from "@/lib/yopho/shareYoPhoCard";
+import { claimYoPhoLearningXp } from "@/lib/yopho/YoPhoLearningTrack";
 import { exportYoPhoMotion, exportYoPhoStill } from "@/lib/yopho/exportYoPhoCard";
 import {
   compositionToDraft,
@@ -617,6 +618,7 @@ export default function YoPhoTradingCard({
           ? `Edition #${editionRec.editionNumber} published · ${path}`
           : `Interactive YoPho card live · ${path}`,
     );
+    void claimYoPhoLearningXp("yopho_save_composition");
     return res.cardId;
   }
 
@@ -668,8 +670,10 @@ export default function YoPhoTradingCard({
     if (res.skipped && !res.ok) {
       const copy = await copyYoPhoShareLink(artifact);
       setShareStatus(copy.ok ? "Interactive card link copied" : copy.error ?? "Copy failed");
+      if (copy.ok) void claimYoPhoLearningXp("yopho_share_card");
     } else {
       setShareStatus(res.ok ? "Shared interactive YoPho card" : res.error ?? "Share failed");
+      if (res.ok) void claimYoPhoLearningXp("yopho_share_card");
     }
     setTimeout(() => setShareStatus(null), 2500);
   }

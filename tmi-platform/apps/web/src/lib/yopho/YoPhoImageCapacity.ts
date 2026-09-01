@@ -204,15 +204,116 @@ export function yoPhoBudgetKindForAddLayer(kind: string): YoPhoBudgetKind | "uns
   return "image";
 }
 
-export type YoPhoAddBlockReason = "image" | "total" | "unsupported";
+export type YoPhoAddBlockReason = "image" | "total" | "unsupported" | "background_first";
 
 export type YoPhoAddVerdict =
   | { ok: true }
   | { ok: false; reason: YoPhoAddBlockReason; message: string };
 
+/** Free instructional copy — layered creation starts with background. */
+export const YOPHO_BACKGROUND_FIRST_MESSAGE =
+  "Add your background first, then add your images. Free YoPho starts with 1 background, then up to 2 user images.";
+
+export const YOPHO_FREE_ALLOWANCE_COPY =
+  "Free = 1 background + 2 user-imported images (3 image slots). System FX, filters, text, frames, and stickers use the separate total-layer budget — they do not burn image slots.";
+
+/**
+ * Soft skip ack — power users who already understand layer order may continue
+ * without a background. Tip strip stays visible until a background is set.
+ */
+export const YOPHO_BG_FIRST_ACK_KEY = "tmi_yopho_bg_first_ack_v1";
+
+export function hasYoPhoBackgroundFirstAck(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(YOPHO_BG_FIRST_ACK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function acknowledgeYoPhoBackgroundFirst(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(YOPHO_BG_FIRST_ACK_KEY, "1");
+  } catch {
+    /* quota */
+  }
+}
+
+/** Background slot = role "background", else lowest-z image layer. */
+export function getYoPhoBackgroundLayer(bp: YoPhoPortraitBlueprint): PortraitLayer | null {
+  const all = [bp.primaryLayer, ...bp.secondaryLayers];
+  const byRole = all.find((layer) => layer.role === "background");
+  if (byRole) return byRole;
+  const imageLayers = all
+    .filter(yoPhoLayerConsumesImageSlot)
+    .sort((a, b) => a.zIndex - b.zIndex);
+  return imageLayers[0] ?? null;
+}
+
+export function hasYoPhoBackgroundSet(bp: YoPhoPortraitBlueprint): boolean {
+  const bg = getYoPhoBackgroundLayer(bp);
+  if (!bg) return false;
+  if (bg.mediaMode === "animated") return Boolean(bg.videoUrl?.trim());
+  return Boolean(bg.imageUrl?.trim());
+}
+
+export function isYoPhoBackgroundLayer(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+): boolean {
+  return getYoPhoBackgroundLayer(bp)?.id === layerId;
+}
+
+export interface YoPhoBackgroundFirstOptions {
+  /** When true, honor soft-skip ack so power users are not hard-blocked. */
+  allowSkipAck?: boolean;
+}
+
+/**
+ * Soft background-first gate: photo/cutout prefer a set background.
+ * With allowSkipAck + local ack, returns ok so power users can continue.
+ * Background itself and non-image kinds (FX, text, stickers) are never blocked.
+ */
+export function evaluateYoPhoBackgroundFirst(
+  bp: YoPhoPortraitBlueprint,
+  kind: string,
+  options?: YoPhoBackgroundFirstOptions,
+): YoPhoAddVerdict {
+  if (kind === "background") return { ok: true };
+  if (kind === "photo" || kind === "cutout") {
+    if (!hasYoPhoBackgroundSet(bp)) {
+      if (options?.allowSkipAck && hasYoPhoBackgroundFirstAck()) return { ok: true };
+      return { ok: false, reason: "background_first", message: YOPHO_BACKGROUND_FIRST_MESSAGE };
+    }
+  }
+  return { ok: true };
+}
+
+/** Soft-block filling a non-background image slot until background media exists (or ack). */
+export function canSetYoPhoLayerMedia(
+  bp: YoPhoPortraitBlueprint,
+  layerId: string,
+  options?: YoPhoBackgroundFirstOptions,
+): YoPhoAddVerdict {
+  if (isYoPhoBackgroundLayer(bp, layerId)) return { ok: true };
+  const layer =
+    bp.primaryLayer.id === layerId
+      ? bp.primaryLayer
+      : bp.secondaryLayers.find((l) => l.id === layerId);
+  if (!layer || !yoPhoLayerConsumesImageSlot(layer)) return { ok: true };
+  if (!hasYoPhoBackgroundSet(bp)) {
+    if (options?.allowSkipAck && hasYoPhoBackgroundFirstAck()) return { ok: true };
+    return { ok: false, reason: "background_first", message: YOPHO_BACKGROUND_FIRST_MESSAGE };
+  }
+  return { ok: true };
+}
+
 /**
  * Triple-Stage ADD gate. Image-slot and total-layer are separate:
  * photo/background/cutout must pass both; text/stickers/masks/effects pass total-layer only.
+ * Content images (photo/cutout) also require background-first.
  */
 export function evaluateYoPhoAdd(
   bp: YoPhoPortraitBlueprint,
@@ -230,6 +331,9 @@ export function evaluateYoPhoAdd(
     // Media is a separate budget — never steals image slots or total layers.
     return { ok: true };
   }
+
+  const bgGate = evaluateYoPhoBackgroundFirst(bp, kind, { allowSkipAck: true });
+  if (!bgGate.ok) return bgGate;
 
   const consumesImage = yoPhoAddKindConsumesImageSlot(kind);
   if (consumesImage && !canAddYoPhoImage(countYoPhoImageSlots(bp), tierOrRole)) {
