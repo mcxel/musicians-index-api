@@ -8,14 +8,20 @@
 
 | Gate | Result |
 |------|--------|
-| Background-first hard gate | PASS (code) |
-| Instructional / first-run guide | PASS (code) |
+| Background-first hard gate | PASS (code + `runYoPhoFreeLayerGate.test.ts`) |
+| Instructional / first-run guide | PASS (code — `YoPhoFreeOnboardingGuide`) |
 | Free limits 1 bg + 2 images | PASS (existing capacity + copy) |
 | FX / filters (system layers) | PASS (existing FX tab + learning claim) |
-| Share / QR path | PASS (wired save + share strip + branding footer QR) |
+| Share / QR path | PASS (save + share strip + branding footer QR) |
 | Learning track 500 XP | PASS (XpActionRegistry + `/api/yopho/learn-xp`) |
 | Rule 20 honest empty/auth | PASS (unauthenticated → granted 0) |
-| Browser physical cert | PENDING (run when `/fan/canvas` server available) |
+| HTTP `/fan/canvas` | PASS (200, YoPho markers in response) |
+| Browser screenshots | BLOCKED (Playwright Chromium missing; MCP browser had no tab) |
+
+## Commits
+
+- `035c4ab2` — Free onboarding, background-first gate, 500 XP learning track (on branch)
+- `81b12ccf` — Free layer cert note + gate smoke test (pushed)
 
 ## Routes / surfaces
 
@@ -45,5 +51,5 @@
 
 ## Open blockers
 
-- Browser screenshots under `.cursor/artifacts/yopho-free/` require a running web server + session.
+- Full interactive screenshots under `.cursor/artifacts/yopho-free/` need Playwright Chromium (or MCP browser tab). HTTP `/fan/canvas` returned 200 with YoPho markers.
 - Durable XP requires signed-in cookies (`tmi_session_id` / `tmi_user_email`); local progress still records for UI honesty.
