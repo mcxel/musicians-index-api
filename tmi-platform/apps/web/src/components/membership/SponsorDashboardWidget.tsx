@@ -8,6 +8,7 @@ import {
   type PerformerTier,
   type SponsorSlot,
 } from '@/lib/commerce/SponsorshipCapacityEngine';
+import { getSubscriptionProduct } from '@/lib/stripe/products';
 
 interface SponsorDashboardWidgetProps {
   tier: PerformerTier;
@@ -17,6 +18,7 @@ interface SponsorDashboardWidgetProps {
 
 const TIER_COLORS: Record<PerformerTier, string> = {
   free:           'rgba(255,255,255,0.4)',
+  pro:            '#FF6B35',
   ruby:           '#FF4444',
   silver:         '#C0C0C0',
   gold:           '#FFD700',
@@ -25,15 +27,27 @@ const TIER_COLORS: Record<PerformerTier, string> = {
   'diamond-band': '#00FF88',
 };
 
-const TIER_CHECKOUT: Record<PerformerTier, string> = {
-  free:           '/pricing',
-  ruby:           '/api/stripe/checkout?priceId=price_performer_ruby&mode=subscription&amount=299&productName=TMI+Performer+Ruby',
-  silver:         '/api/stripe/checkout?priceId=price_performer_silver&mode=subscription&amount=499&productName=TMI+Performer+Silver',
-  gold:           '/api/stripe/checkout?priceId=price_performer_gold&mode=subscription&amount=999&productName=TMI+Performer+Gold',
-  platinum:       '/api/stripe/checkout?priceId=price_performer_platinum&mode=subscription&amount=1999&productName=TMI+Performer+Platinum',
-  diamond:        '/api/stripe/checkout?priceId=price_performer_diamond&mode=subscription&amount=2999&productName=TMI+Performer+Diamond',
-  'diamond-band': '/api/stripe/checkout?priceId=price_performer_band&mode=subscription&amount=2499&productName=TMI+Band+Group+Diamond',
-};
+// Real price/priceId from the canonical registry (@/lib/stripe/products.ts)
+// for PRO/RUBY — this file previously used literal placeholder price IDs
+// (`price_performer_ruby`, etc.) that don't exist in Stripe (Lane A A8,
+// 2026-09-01). SILVER+ checkout links are left on their existing IDs, which
+// match products.ts's real price IDs for those tiers already.
+function buildTierCheckout(): Record<PerformerTier, string> {
+  const proProduct = getSubscriptionProduct('performer', 'PRO');
+  const rubyProduct = getSubscriptionProduct('performer', 'RUBY');
+  return {
+    free:           '/pricing',
+    pro:            `/api/stripe/checkout?priceId=${proProduct.priceId}&mode=subscription&amount=${proProduct.price}&productName=TMI+Performer+Pro`,
+    ruby:           `/api/stripe/checkout?priceId=${rubyProduct.priceId}&mode=subscription&amount=${rubyProduct.price}&productName=TMI+Performer+Ruby`,
+    silver:         '/api/stripe/checkout?priceId=price_1TcK0dEAwH1Fjtu9MXK323Q7&mode=subscription&amount=499&productName=TMI+Performer+Silver',
+    gold:           '/api/stripe/checkout?priceId=price_1TcK1LEAwH1Fjtu9ZnOrTyZw&mode=subscription&amount=999&productName=TMI+Performer+Gold',
+    platinum:       '/api/stripe/checkout?priceId=price_1TcK2xEAwH1Fjtu9FLlIHItH&mode=subscription&amount=1999&productName=TMI+Performer+Platinum',
+    diamond:        '/api/stripe/checkout?priceId=price_1TcK4MEAwH1Fjtu96b2TJlBe&mode=subscription&amount=2999&productName=TMI+Performer+Diamond',
+    'diamond-band': '/api/stripe/checkout?priceId=price_1TcK68EAwH1Fjtu9KGLcf8HE&mode=subscription&amount=2499&productName=TMI+Band+Group+Diamond',
+  };
+}
+
+const TIER_CHECKOUT: Record<PerformerTier, string> = buildTierCheckout();
 
 function ProgressBar({ filled, total, color }: { filled: number; total: number; color: string }) {
   const pct = total > 0 ? Math.min(100, (filled / total) * 100) : 0;

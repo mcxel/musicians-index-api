@@ -48,32 +48,24 @@ const nextConfig = {
     // Confine Watchpack strictly to the repository boundary during development.
     // This stops Watchpack from escaping to C:\ and triggering EINVAL errors on
     // locked Windows root files (DumpStack.log.tmp, hiberfil.sys, pagefile.sys, etc.).
+    //
+    // webpack's watchOptions.ignored schema accepts a glob string, an array of
+    // glob strings, or a RegExp — NOT a function (a function value here throws
+    // a hard webpack ValidationError on every cold `next dev`/`next build`,
+    // found 2026-09-01 when a from-scratch dev server failed to start at all).
+    // A single RegExp expresses the same "outside repo root OR inside
+    // node_modules/.git/.next/Windows-system-paths" test the function did,
+    // tested case-insensitively so Windows drive-letter casing never matters.
     if (dev || process.env.NODE_ENV === 'development') {
       const repoRoot = path.resolve(__dirname, "../..");
-      const repoRootNorm = repoRoot.replace(/\\/g, "/").toLowerCase();
+      const escapedRoot = repoRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
       config.watchOptions = {
         ...(config.watchOptions ?? {}),
-        ignored: (pathname) => {
-          if (!pathname) return true;
-          const norm = pathname.replace(/\\/g, "/").toLowerCase();
-          // 1. Strictly ignore anything outside the workspace repository root
-          if (!norm.startsWith(repoRootNorm)) {
-            return true;
-          }
-          // 2. Ignore node_modules, .git, .next, and Windows system paths inside the repo
-          if (
-            /[\\/]node_modules([\\/]|$)/.test(norm) ||
-            /[\\/]\.git([\\/]|$)/.test(norm) ||
-            /[\\/]\.next([\\/]|$)/.test(norm) ||
-            norm.includes("system volume information") ||
-            norm.includes("$recycle.bin") ||
-            norm.endsWith(".tmp")
-          ) {
-            return true;
-          }
-          return false;
-        },
+        ignored: new RegExp(
+          `^(?!${escapedRoot})|[\\\\/]node_modules([\\\\/]|$)|[\\\\/]\\.git([\\\\/]|$)|[\\\\/]\\.next([\\\\/]|$)|system volume information|\\$recycle\\.bin|\\.tmp$`,
+          "i",
+        ),
       };
     }
 

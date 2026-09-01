@@ -701,6 +701,6 @@ export default function OnboardingFanPage() {
 }
 
 // Hidden canvas helper for image cropping and rendering
-export function CropCanvasHelper() {
+function CropCanvasHelper() {
   return <canvas style={{ display: "none" }} />;
 }

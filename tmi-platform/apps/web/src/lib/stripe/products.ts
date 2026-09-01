@@ -6,13 +6,26 @@
 
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
-  FAN_RUBY_MONTHLY: {
-    productId: "prod_fan_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_1TcJnFEAwH1Fjtu98MhoEGqG",
-    name:      "TMI Fan — Ruby",
+  // PRO is the real entry paid tier (Lane A "Option A", locked 2026-09-01) —
+  // RUBY sits above it. RUBY's price/priceId below were migrated 2026-09-01:
+  // the original Stripe object was mislabeled at PRO's amount ($4.99); the
+  // legacy price ID stays mapped to RUBY in tierMapping.ts for reconciliation
+  // only, never used for new checkout.
+  FAN_PRO_MONTHLY: {
+    productId: "prod_fan_pro",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PRO ?? "price_1UAj28EAwH1Fjtu9zQ4dTJv2",
+    name:      "TMI Fan — Pro",
     price:     499,  // $4.99/mo
     interval:  "month" as const,
     features:  ["All live rooms","Chat + reactions","Tip performers","Monthly magazine","XP + achievements"],
+  },
+  FAN_RUBY_MONTHLY: {
+    productId: "prod_fan_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_1UAj29EAwH1Fjtu9FPDD0MO4",
+    name:      "TMI Fan — Ruby",
+    price:     999,  // $9.99/mo
+    interval:  "month" as const,
+    features:  ["Everything in Pro","Early access drops","Fan leaderboard placement","Ruby avatar glow"],
   },
   FAN_SILVER_MONTHLY: {
     productId: "prod_fan_silver",
@@ -56,13 +69,21 @@ export const STRIPE_PRODUCTS = {
   },
 
   // ── Performer subscriptions ───────────────────────────────────────────────
-  PERFORMER_RUBY_MONTHLY: {
-    productId: "prod_performer_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_1TcJzdEAwH1Fjtu9Nx5DsRzL",
-    name:      "TMI Performer — Ruby",
+  PERFORMER_PRO_MONTHLY: {
+    productId: "prod_performer_pro",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PRO ?? "price_1UAj28EAwH1Fjtu9eB1IOCcN",
+    name:      "TMI Performer — Pro",
     price:     299,  // $2.99/mo
     interval:  "month" as const,
     features:  ["Go live anytime","Beat marketplace access","Booking requests","Analytics dashboard"],
+  },
+  PERFORMER_RUBY_MONTHLY: {
+    productId: "prod_performer_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_1UAj28EAwH1Fjtu9fleIQ1Lb",
+    name:      "TMI Performer — Ruby",
+    price:     799,  // $7.99/mo
+    interval:  "month" as const,
+    features:  ["Everything in Pro","Fan club tools","Tipping enabled","Ruby badge"],
   },
   PERFORMER_SILVER_MONTHLY: {
     productId: "prod_performer_silver",
@@ -562,6 +583,62 @@ export const REVENUE_SPLITS = {
 } as const;
 
 export type StripeProductKey = keyof typeof STRIPE_PRODUCTS;
+
+// ── Canonical subscription tier ladder (Lane A A5, 2026-09-01) ─────────────────
+// Single source of truth for FAN/PERFORMER tier pricing — every checkout
+// trigger (pricing pages, upgrade modals, nudges) must read from here rather
+// than hardcoding its own price/priceId table. This is what tierMapping.ts's
+// webhook-facing PRICE_TO_TIER is generated from below, so the price a user
+// sees, the price Stripe charges, and the tier the webhook grants can never
+// drift apart again. FREE has no Stripe product (no checkout needed).
+export type SubscriptionAccountType = "fan" | "performer";
+export type SubscriptionTierKey = "PRO" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
+
+export const SUBSCRIPTION_TIER_ORDER: SubscriptionTierKey[] = [
+  "PRO", "RUBY", "SILVER", "GOLD", "PLATINUM", "DIAMOND",
+];
+
+export const SUBSCRIPTION_TIER_PRODUCT_KEYS: Record<SubscriptionAccountType, Record<SubscriptionTierKey, StripeProductKey>> = {
+  fan: {
+    PRO: "FAN_PRO_MONTHLY",
+    RUBY: "FAN_RUBY_MONTHLY",
+    SILVER: "FAN_SILVER_MONTHLY",
+    GOLD: "FAN_GOLD_MONTHLY",
+    PLATINUM: "FAN_PLATINUM_MONTHLY",
+    DIAMOND: "FAN_DIAMOND_MONTHLY",
+  },
+  performer: {
+    PRO: "PERFORMER_PRO_MONTHLY",
+    RUBY: "PERFORMER_RUBY_MONTHLY",
+    SILVER: "PERFORMER_SILVER_MONTHLY",
+    GOLD: "PERFORMER_GOLD_MONTHLY",
+    PLATINUM: "PERFORMER_PLATINUM_MONTHLY",
+    DIAMOND: "PERFORMER_DIAMOND_MONTHLY",
+  },
+};
+
+// All 12 tier-ladder STRIPE_PRODUCTS entries (FAN/PERFORMER × PRO..DIAMOND)
+// share this shape — asserted here since TS can't otherwise narrow a lookup
+// keyed by the widened StripeProductKey union.
+export interface SubscriptionTierProduct {
+  key: StripeProductKey;
+  productId: string;
+  priceId: string;
+  name: string;
+  price: number;
+  interval: "month";
+  features: readonly string[];
+}
+
+export function getSubscriptionProduct(accountType: SubscriptionAccountType, tier: SubscriptionTierKey): SubscriptionTierProduct {
+  const key = SUBSCRIPTION_TIER_PRODUCT_KEYS[accountType][tier];
+  return { key, ...STRIPE_PRODUCTS[key] } as SubscriptionTierProduct;
+}
+
+/** Full tier ladder for one account type, in canonical FREE→...→DIAMOND order (FREE excluded — no product). */
+export function getAllSubscriptionProducts(accountType: SubscriptionAccountType) {
+  return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
+}
 
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
 export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey> = {

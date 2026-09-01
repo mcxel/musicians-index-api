@@ -219,6 +219,10 @@ async function ensureUserDatabaseSchema() {
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_room_id" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_genre" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_started_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "billing_status" TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "billing_grace_ends_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "last_canceled_stripe_subscription_id" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "last_canceled_at" TIMESTAMP(3);
     `);
     console.info('[TMI register] Database schema self-healing completed successfully.');
   } catch (err) {

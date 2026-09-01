@@ -16,6 +16,7 @@ import {
 } from '@/lib/stripe/webhookIdempotency';
 import { fulfillPurchasedVenueSkin } from '@/lib/venue/VenueSkinCommerce';
 import { parseVenueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
+import { enterGracePeriod, clearGracePeriod, expireGraceAndDowngrade } from '@/lib/stripe/billingGraceEngine';
 
 /**
  * Canonical Stripe webhook — configure this URL in Stripe Dashboard:
@@ -25,6 +26,27 @@ import { parseVenueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
  */
 
 const stripe = getStripe();
+
+// Stripe restructured invoice→subscription linkage onto a nested
+// `invoice.parent.subscription_details.subscription` path in newer API
+// versions (this app targets 2026-02-25.clover); `invoice.subscription` is
+// no longer populated there. Read both so this keeps working across the
+// field migration instead of silently finding nothing. Found via P0-A4
+// dunning certification: invoice.paid's subscriptionId was always undefined
+// on this API version, so successful-payment tier (re)grants were a no-op.
+function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | undefined {
+  const legacy = (invoice as unknown as { subscription?: string }).subscription;
+  const nested = (invoice as unknown as { parent?: { subscription_details?: { subscription?: string } } })
+    .parent?.subscription_details?.subscription;
+  return legacy ?? nested ?? undefined;
+}
+
+function subscriptionMetadataFromInvoice(invoice: Stripe.Invoice): Record<string, string> | undefined {
+  const legacy = (invoice as unknown as { subscription_details?: { metadata?: Record<string, string> } }).subscription_details;
+  const nested = (invoice as unknown as { parent?: { subscription_details?: { metadata?: Record<string, string> } } })
+    .parent?.subscription_details;
+  return legacy?.metadata ?? nested?.metadata;
+}
 
 async function grantSubscriptionTier(
   customerEmail: string,
@@ -47,12 +69,13 @@ async function grantSubscriptionTier(
   }).catch(() => {});
 }
 
-async function revokeSubscriptionTier(customerEmail: string) {
-  updateUserTier(customerEmail, 'FREE');
-  await prisma.user.updateMany({
-    where: { email: customerEmail },
-    data: { tier: 'FREE' },
-  }).catch(() => {});
+// Delegates to billingGraceEngine so cancellation always clears the live
+// Stripe subscription refs (not just `tier`) and archives the canceled
+// subscription ID instead of leaving it stale — see P0-A4 cancellation
+// hygiene fix. Kept as a thin wrapper so every existing call site
+// (subscription.deleted, charge.refunded) picks up the fix automatically.
+async function revokeSubscriptionTier(customerEmail: string, opts?: { canceledSubscriptionId?: string }) {
+  await expireGraceAndDowngrade(customerEmail, opts);
 }
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -347,7 +370,10 @@ export async function POST(req: NextRequest) {
           if (!seasonPass) {
             const now = new Date();
             const end = new Date(now);
-            end.setFullYear(end.getFullYear() + 1);
+            // Season Pass is a 3-month entitlement (Rule 23 / CLAUDE.md), not
+            // a full year — one-time purchase, TMI-owned expiration, never
+            // Stripe-recurring (see SeasonPassCatalog.seasonPassCheckoutHref).
+            end.setMonth(end.getMonth() + 3);
             seasonPass = await prisma.seasonPass.create({
               data: {
                 name: passName,
@@ -815,10 +841,30 @@ export async function POST(req: NextRequest) {
       if (email) {
         const priceId = sub.items.data[0]?.price?.id ?? '';
         const periodEndTs = (sub as unknown as { current_period_end?: number }).current_period_end;
-        await grantSubscriptionTier(email, priceId, sub.customer as string, {
-          subscriptionId: sub.id,
-          currentPeriodEnd: periodEndTs ? new Date(periodEndTs * 1000) : null,
-        });
+
+        // Billing status vs. access status (P0-A4): Stripe's own `sub.status`
+        // is the clearest signal of payment health on an update event.
+        // `active`/`trialing` clears any grace; `past_due` enters/holds grace
+        // (access unchanged); `unpaid`/`incomplete_expired`/`canceled` is
+        // Stripe's own final word that the subscription is dead — downgrade
+        // immediately rather than waiting on TMI's grace clock.
+        if (sub.status === 'past_due') {
+          await enterGracePeriod(email);
+        } else if (sub.status === 'unpaid' || sub.status === 'incomplete_expired' || sub.status === 'canceled') {
+          await revokeSubscriptionTier(email, { canceledSubscriptionId: sub.id });
+        } else {
+          await clearGracePeriod(email);
+        }
+
+        // Only (re)grant the tier on a real payment-healthy status — a
+        // past_due/unpaid update must never re-affirm stripeSubscriptionId
+        // as if the subscription were current.
+        if (sub.status === 'active' || sub.status === 'trialing') {
+          await grantSubscriptionTier(email, priceId, sub.customer as string, {
+            subscriptionId: sub.id,
+            currentPeriodEnd: periodEndTs ? new Date(periodEndTs * 1000) : null,
+          });
+        }
       }
     }
 
@@ -835,7 +881,7 @@ export async function POST(req: NextRequest) {
         const customer = await stripe.customers.retrieve(sub.customer as string);
         const email = 'deleted' in customer ? null : customer.email;
         if (email) {
-          await revokeSubscriptionTier(email);
+          await revokeSubscriptionTier(email, { canceledSubscriptionId: sub.id });
           // current_period_end is a numeric unix timestamp on the subscription object
           // but the TypeScript type for the clover API version doesn't expose it directly;
           // cast through unknown to access it safely.
@@ -863,11 +909,15 @@ export async function POST(req: NextRequest) {
       const customerId = invoice.customer as string;
       const customer = await stripe.customers.retrieve(customerId);
       const email = 'deleted' in customer ? null : customer.email;
-      const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+      const subscriptionId = subscriptionIdFromInvoice(invoice);
       if (email && subscriptionId) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = sub.items.data[0]?.price?.id ?? '';
         const periodEndTsInv = (sub as unknown as { current_period_end?: number }).current_period_end;
+        // Recovery path: a successful invoice — whether the first one or a
+        // dunning retry — clears any grace state before (re)granting the
+        // tier, so the entitlement and billing-status fields never disagree.
+        await clearGracePeriod(email);
         await grantSubscriptionTier(email, priceId, customerId, {
           subscriptionId: sub.id,
           currentPeriodEnd: periodEndTsInv ? new Date(periodEndTsInv * 1000) : null,
@@ -875,20 +925,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (event.type === 'invoice.payment_failed') {
+    // invoice.payment_failed / invoice.payment_action_required both mean
+    // "this invoice did not collect payment yet" — one is a hard decline,
+    // the other is SCA/3DS needing the customer's confirmation. Both get
+    // the same treatment: enter grace, keep current access, ask the user to
+    // act. Access is only downgraded once the grace window truly expires
+    // (see billingGraceEngine.expireGraceAndDowngrade / subscription.updated
+    // reaching a terminal status) — never on the first failed attempt.
+    if (event.type === 'invoice.payment_failed' || event.type === 'invoice.payment_action_required') {
       const invoice = event.data.object as Stripe.Invoice;
       const customer = await stripe.customers.retrieve(invoice.customer as string);
       const email = 'deleted' in customer ? null : customer.email;
       if (email) {
-        updateUserTier(email, 'FREE');
-        await prisma.user.updateMany({ where: { email }, data: { tier: 'FREE' } }).catch(() => {});
+        const { graceEndsAt } = await enterGracePeriod(email);
         waitUntil(sendEmail({
           to: email,
           type: 'payment_failed',
           data: {
-            plan: (invoice as Stripe.Invoice & { subscription_details?: { metadata?: { plan?: string } } }).subscription_details?.metadata?.plan ?? 'TMI',
+            plan: subscriptionMetadataFromInvoice(invoice)?.plan ?? 'TMI',
             updateUrl: `${process.env.NEXTAUTH_URL ?? 'https://themusiciansindex.com'}/settings/billing`,
-            failureReason: invoice.last_finalization_error?.message ?? '',
+            failureReason: invoice.last_finalization_error?.message ?? (event.type === 'invoice.payment_action_required' ? 'Payment requires additional verification.' : ''),
+            graceEndsAt: graceEndsAt?.toISOString() ?? '',
           },
         }).catch(() => {}));
       }

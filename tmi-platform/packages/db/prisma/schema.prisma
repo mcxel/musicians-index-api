@@ -111,6 +111,21 @@ model User {
   stripePriceId          String?        @map("stripe_price_id")
   stripeCurrentPeriodEnd DateTime?      @map("stripe_current_period_end")
 
+  // Billing status vs. access status (Lane A P0-A4, dunning/grace):
+  // `tier` is the access status a user actually receives; `billingStatus`
+  // tracks the underlying payment health without forcing an immediate
+  // downgrade. A failed/action-required invoice enters "past_due" and starts
+  // a TMI-owned grace clock — access stays at the current tier until the
+  // grace period is confirmed expired. Distinct from the Trust & Safety
+  // `accountStatus` field (moderation-only; never reused for billing).
+  billingStatus                    String    @default("active") @map("billing_status")
+  billingGraceEndsAt               DateTime? @map("billing_grace_ends_at")
+  // Archival, not live state: preserved on cancel/refund so support/reconciliation
+  // can see the last subscription this user held, without leaving a stale
+  // reference in the live stripeSubscriptionId/stripePriceId fields above.
+  lastCanceledStripeSubscriptionId String?   @map("last_canceled_stripe_subscription_id")
+  lastCanceledAt                   DateTime? @map("last_canceled_at")
+
   // Ledger
   ledgerEntries LedgerEntry[]
 

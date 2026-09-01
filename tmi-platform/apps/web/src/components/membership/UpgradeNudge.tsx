@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { TIER_CAPACITY, type PerformerTier } from '@/lib/commerce/SponsorshipCapacityEngine';
+import { getSubscriptionProduct, SUBSCRIPTION_TIER_ORDER, type SubscriptionTierKey } from '@/lib/stripe/products';
 
 export type MemberTier =
   | 'FREE'
+  | 'PRO'
   | 'RUBY'
   | 'SILVER'
   | 'GOLD'
@@ -21,10 +23,16 @@ interface UpgradeNudgeProps {
   displayName?: string;
 }
 
-const TIER_ORDER: MemberTier[] = ['FREE', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+// Real price/priceId/checkout URL for every tier are built from the
+// canonical registry (@/lib/stripe/products.ts), not hand-maintained here —
+// this component previously used literal placeholder price IDs
+// (`price_fan_ruby`, etc.) that would have failed at Stripe outright had a
+// real checkout ever been attempted through it (Lane A A8, 2026-09-01).
+const TIER_ORDER: MemberTier[] = ['FREE', ...SUBSCRIPTION_TIER_ORDER];
 
 const TIER_COLORS: Record<MemberTier, string> = {
   FREE:            'rgba(255,255,255,0.3)',
+  PRO:             '#FF6B35',
   RUBY:            '#FF4444',
   SILVER:          '#C0C0C0',
   GOLD:            '#FFD700',
@@ -33,32 +41,38 @@ const TIER_COLORS: Record<MemberTier, string> = {
   FOUNDER_DIAMOND: '#00FF88',
 };
 
-const FAN_TIER_PRICES: Record<string, string> = {
-  RUBY: '$4.99/mo', SILVER: '$9.99/mo', GOLD: '$14.99/mo',
-  PLATINUM: '$24.99/mo', DIAMOND: '$49.99/mo',
-};
-const FAN_TIER_CHECKOUT: Record<string, string> = {
-  RUBY:     '/api/stripe/checkout?priceId=price_fan_ruby&mode=subscription&amount=499&productName=TMI+Fan+Ruby',
-  SILVER:   '/api/stripe/checkout?priceId=price_fan_silver&mode=subscription&amount=999&productName=TMI+Fan+Silver',
-  GOLD:     '/api/stripe/checkout?priceId=price_fan_gold&mode=subscription&amount=1499&productName=TMI+Fan+Gold',
-  PLATINUM: '/api/stripe/checkout?priceId=price_fan_platinum&mode=subscription&amount=2499&productName=TMI+Fan+Platinum',
-  DIAMOND:  '/api/stripe/checkout?priceId=price_fan_diamond&mode=subscription&amount=4999&productName=TMI+Fan+Diamond',
-};
+function buildTierPrices(accountType: 'fan' | 'performer'): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const tier of SUBSCRIPTION_TIER_ORDER) {
+    out[tier] = `$${(getSubscriptionProduct(accountType, tier).price / 100).toFixed(2)}/mo`;
+  }
+  return out;
+}
 
-const PERFORMER_TIER_PRICES: Record<string, string> = {
-  RUBY: '$2.99/mo', SILVER: '$4.99/mo', GOLD: '$9.99/mo',
-  PLATINUM: '$19.99/mo', DIAMOND: '$29.99/mo',
-};
-const PERFORMER_TIER_CHECKOUT: Record<string, string> = {
-  RUBY:     '/api/stripe/checkout?priceId=price_performer_ruby&mode=subscription&amount=299&productName=TMI+Performer+Ruby',
-  SILVER:   '/api/stripe/checkout?priceId=price_performer_silver&mode=subscription&amount=499&productName=TMI+Performer+Silver',
-  GOLD:     '/api/stripe/checkout?priceId=price_performer_gold&mode=subscription&amount=999&productName=TMI+Performer+Gold',
-  PLATINUM: '/api/stripe/checkout?priceId=price_performer_platinum&mode=subscription&amount=1999&productName=TMI+Performer+Platinum',
-  DIAMOND:  '/api/stripe/checkout?priceId=price_performer_diamond&mode=subscription&amount=2999&productName=TMI+Performer+Diamond',
-};
+function buildTierCheckout(accountType: 'fan' | 'performer', productLabel: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const tier of SUBSCRIPTION_TIER_ORDER) {
+    const product = getSubscriptionProduct(accountType, tier);
+    const params = new URLSearchParams({
+      priceId: product.priceId,
+      mode: 'subscription',
+      amount: String(product.price),
+      productName: `TMI ${productLabel} ${tier}`,
+    });
+    out[tier] = `/api/stripe/checkout?${params.toString()}`;
+  }
+  return out;
+}
+
+const FAN_TIER_PRICES = buildTierPrices('fan');
+const FAN_TIER_CHECKOUT = buildTierCheckout('fan', 'Fan');
+
+const PERFORMER_TIER_PRICES = buildTierPrices('performer');
+const PERFORMER_TIER_CHECKOUT = buildTierCheckout('performer', 'Performer');
 
 const TIER_PERKS: Record<string, string[]> = {
-  RUBY:     ['All live rooms', 'Chat + reactions', 'Tip performers', 'XP + achievements'],
+  PRO:      ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements'],
+  RUBY:     ['Everything in Pro', 'Early access drops', 'Fan leaderboard placement', 'Ruby avatar glow'],
   SILVER:   ['Everything in Ruby', 'Early access drops', 'Leaderboard placement', 'Silver avatar glow'],
   GOLD:     ['Everything in Silver', 'Exclusive rooms', 'Gold avatar glow', 'Priority drops'],
   PLATINUM: ['Everything in Gold', 'Backstage passes', 'Direct artist DMs', 'Platinum badge'],
@@ -66,7 +80,8 @@ const TIER_PERKS: Record<string, string[]> = {
 };
 
 const PERFORMER_PERKS: Record<string, string[]> = {
-  RUBY:     ['Go live anytime', 'Beat marketplace', 'Booking requests', 'Analytics dashboard'],
+  PRO:      ['Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard'],
+  RUBY:     ['Everything in Pro', 'Fan club tools', 'Tipping enabled', 'Ruby badge'],
   SILVER:   ['Everything in Ruby', 'Fan club tools', 'Tipping enabled', 'Merch store access'],
   GOLD:     ['Everything in Silver', 'Priority placement', 'Billboard rotation', 'Gold badge'],
   PLATINUM: ['Everything in Gold', 'NFT minting', 'Unlimited uploads', 'Tour booking tools'],

@@ -14,10 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { getStripe } from "@/lib/stripe/client";
 import prisma from "@/lib/prisma";
-import {
-  getArtistProductById,
-  decrementArtistProductInventory,
-} from "@/lib/commerce/ArtistCommerceCatalog";
+import { getArtistProductById } from "@/lib/commerce/ArtistCommerceCatalog";
 import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
 import {
   calculateCreatorCommerceSplit,
@@ -242,6 +239,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "checkout_failed" }, { status: 500 });
   }
 }
-
-/** Inventory touch helper exported for webhook — re-export path. */
-export { decrementArtistProductInventory };

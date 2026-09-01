@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 const PACKAGES = [
@@ -32,37 +31,6 @@ const PACKAGES = [
 ];
 
 export default function SponsorPaymentsPage() {
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCheckout = async (priceId: string, pkgId: string) => {
-    setLoading(pkgId);
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          items: [{ priceId, quantity: 1 }],
-          successUrl: "/sponsor/payments?success=1",
-          cancelUrl: "/sponsor/payments?cancelled=1",
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        setError(err.error ?? "Checkout failed. Please try again.");
-        return;
-      }
-      const data = await res.json() as { url?: string };
-      if (data.url) window.location.href = data.url;
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(null);
-    }
-  };
-
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "32px 24px 80px" }}>
       <div style={{ marginBottom: 10 }}>
@@ -73,12 +41,6 @@ export default function SponsorPaymentsPage() {
         <h1 style={{ fontSize: "clamp(22px,4vw,38px)", fontWeight: 900, letterSpacing: 2, margin: 0 }}>GET YOUR BRAND ON STAGE</h1>
         <p style={{ color: "#666", fontSize: 13, marginTop: 8 }}>Sponsor live events, battles, and release parties seen by thousands of fans.</p>
       </div>
-
-      {error && (
-        <div style={{ background: "rgba(255,45,100,0.12)", border: "1px solid rgba(255,45,100,0.4)", borderRadius: 8, padding: "12px 16px", marginBottom: 24, color: "#FF4466", fontSize: 13 }}>
-          {error}
-        </div>
-      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16, maxWidth: 960, margin: "0 auto" }}>
         {PACKAGES.map((pkg) => (
@@ -105,24 +67,30 @@ export default function SponsorPaymentsPage() {
                 </li>
               ))}
             </ul>
-            <button
-              onClick={() => void handleCheckout(pkg.priceId, pkg.id)}
-              disabled={loading !== null}
+            {/* priceId values here (price_sponsor_RUBY/silver/gold) are not
+                real Stripe objects — checkout would fail. Route to the real
+                sponsor inquiry surface (Rule 12's Advertise CTA fallback)
+                instead of a broken checkout button (Lane A A8, 2026-09-01). */}
+            <Link
+              href="/sponsors/advertise"
               style={{
+                display: "block",
                 width: "100%",
                 padding: "13px",
-                background: loading === pkg.id ? "#333" : `linear-gradient(90deg, ${pkg.color}, ${pkg.color}99)`,
+                background: `linear-gradient(90deg, ${pkg.color}, ${pkg.color}99)`,
                 border: "none",
                 borderRadius: 8,
                 color: "#000",
                 fontWeight: 900,
                 fontSize: 13,
                 letterSpacing: 1,
-                cursor: loading !== null ? "not-allowed" : "pointer",
+                textAlign: "center",
+                textDecoration: "none",
+                boxSizing: "border-box",
               }}
             >
-              {loading === pkg.id ? "REDIRECTING..." : "SELECT PACKAGE"}
-            </button>
+              CONTACT SALES
+            </Link>
           </div>
         ))}
       </div>
