@@ -89,4 +89,8 @@ Chaos: camera loss, Voltron+network drop, duplicate END, CAST lost, rights loss,
 
 ## NEXT INTEGRATION TARGET
 
-**Regular GO LIVE canary** — wire fabric beside `executeInstantGoLive` / `presentInstantGoLiveInPlace` without cutting over. Do **not** route production traffic yet.
+**Regular GO LIVE canary — LANDED.** See [`LIVE_CANARY_REGULAR_GO_LIVE.md`](./LIVE_CANARY_REGULAR_GO_LIVE.md).
+
+Thin bridge: `apps/web/src/lib/live/canary/regularGoLiveFabricCanary.ts` (outside `liveFabric/`).  
+Flag: `NEXT_PUBLIC_LIVE_FABRIC_REGULAR_CANARY` (default ON; `0` = rollback).  
+Do **not** start Experience #2 until physical media-player re-cert PASS.

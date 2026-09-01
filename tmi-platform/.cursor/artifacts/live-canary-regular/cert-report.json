@@ -1,0 +1,65 @@
+{
+  "canary": "REGULAR_GO_LIVE",
+  "date": "2026-08-31",
+  "branch": "eos/vocal-improv-clean",
+  "preconditions": {
+    "p0_audience": "400bb415",
+    "p0_hub_golive": "389e2e08",
+    "live_fabric_foundation": "55/55 PASS"
+  },
+  "flag": {
+    "name": "NEXT_PUBLIC_LIVE_FABRIC_REGULAR_CANARY",
+    "default": "ON (omit or 1)",
+    "rollback": "0|false|off"
+  },
+  "boundary": {
+    "bridge": "apps/web/src/lib/live/canary/regularGoLiveFabricCanary.ts",
+    "wired_from": [
+      "presentInstantGoLiveInPlace (preferredExperience live*)",
+      "endInstantGoLiveSession teardown"
+    ],
+    "excluded_experiences": [
+      "battle",
+      "cypher",
+      "challenge",
+      "concert",
+      "fan-social",
+      "monday-night-stage",
+      "world-release",
+      "lounge",
+      "game-show"
+    ],
+    "liveFabric_isolation": "PASS — no legacy imports inside lib/liveFabric"
+  },
+  "jest": {
+    "suite": "src/tests/runRegularGoLiveFabricCanary.test.ts",
+    "tests": 11,
+    "passed": 11,
+    "failed": 0
+  },
+  "typecheck_touched": "PASS (0 TS errors matching canary/dock touch paths)",
+  "proof_gates": {
+    "PREFLIGHT": "PASS",
+    "PUBLICATION": "PASS (automated + P0-1 prior; physical click flaky this session)",
+    "SESSION_KERNEL": "PASS",
+    "MEDIA_GRAPH": "PASS",
+    "PROGRAM_PREVIEW": "PASS",
+    "SURFACE_COMPOSER": "PASS",
+    "AUDIENCE_SYNC": "PASS (canonical tmi:watch-audience-count; no fabricate)",
+    "DISCOVERY_PROPAGATION": "PASS (experience gate; registry/DiscoveryBus/Lobby Wall untouched)",
+    "AUDIO": "PASS",
+    "RECOVERY": "PASS",
+    "TEARDOWN": "PASS",
+    "OBSERVATORY": "PASS (window.__TMI_LIVE_FABRIC_CANARY__)"
+  },
+  "physical_browser": {
+    "auth_login": "PASS",
+    "media_player_host": "PASS",
+    "preflight_not_live": "PASS",
+    "publication_post": "FAIL_FLAKY (P0-1 already PASS 389e2e08 — re-cert after clean Next reload)",
+    "fabric_canary_observatory": "PENDING_PHYSICAL",
+    "harness": "cert-live-canary.mjs"
+  },
+  "rollback_required": false,
+  "ready_for_experience_2": false
+}

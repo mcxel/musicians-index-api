@@ -28,6 +28,16 @@ import {
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
 import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
+import {
+  advanceRegularGoLiveCanaryPublishing,
+  advanceRegularGoLiveCanaryReady,
+  beginRegularGoLiveCanary,
+  markRegularGoLiveCanaryLive,
+  prepareThenTakeRegularGoLiveProgram,
+  shouldAttachRegularGoLiveFabricCanary,
+  syncRegularGoLiveCanaryAudience,
+  teardownRegularGoLiveCanary,
+} from "@/lib/live/canary/regularGoLiveFabricCanary";
 
 function paramFromHref(href: string | undefined, key: string, fallback: string): string {
   if (!href) return fallback;
@@ -292,6 +302,20 @@ export async function presentInstantGoLiveInPlace(opts?: {
   boot.begin(roomId);
 
   const mediaDirector = useMediaTransitionDirector.getState();
+  const fabricCanary = shouldAttachRegularGoLiveFabricCanary(
+    opts?.preferredExperience ?? "live",
+  );
+  if (fabricCanary) {
+    // PREFLIGHT — MIC/CAM/privacy remain OFF until explicit preview (livePrivacyState defaults).
+    beginRegularGoLiveCanary({
+      roomId,
+      hostUserId: sessionAuthenticated ? "session-host" : role,
+      cameraPreviewActive: privacyState.cameraPreviewActive,
+      micPreviewActive: privacyState.micPreviewActive,
+      isLivePublished: privacyState.isLivePublished,
+    });
+    advanceRegularGoLiveCanaryReady();
+  }
 
   // T+0 — getUserMedia immediately (parallel with session mint/publish)
   const camPromise = requestHubCameraPreview().then((cam) => {
@@ -355,6 +379,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   });
 
   if (!result.ok || !result.roomId) {
+    if (fabricCanary) teardownRegularGoLiveCanary({ reason: "session-mint-failed" });
     useGoLiveTransition.getState().clearWarp();
     mediaDirector.failLaunch(result.error ?? "Stage room did not mint.");
     boot.fail("SESSION_MINT_FAILED", result.error ?? "Stage room did not mint.");
@@ -369,6 +394,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
 
   // Publication state law: isLivePublished only after real registry success
   if (publishSession && !result.published) {
+    if (fabricCanary) teardownRegularGoLiveCanary({ reason: "registry-publish-failed" });
     useGoLiveTransition.getState().clearWarp();
     mediaDirector.failLaunch(result.error ?? "Live registry publish did not succeed.");
     boot.fail("SESSION_MINT_FAILED", result.error ?? "Live registry publish did not succeed.");
@@ -380,6 +406,16 @@ export async function presentInstantGoLiveInPlace(opts?: {
       roomId: result.roomId,
       error: result.error ?? "Live registry publish did not succeed — not claiming LIVE.",
     };
+  }
+
+  if (fabricCanary && result.roomId) {
+    advanceRegularGoLiveCanaryPublishing({ hasCamera: true, hasMic: true });
+    prepareThenTakeRegularGoLiveProgram("FLAT");
+    // Audience count stays 0 until real presence sync — never fabricate.
+    syncRegularGoLiveCanaryAudience(0);
+    if (publishSession && result.published) {
+      markRegularGoLiveCanaryLive();
+    }
   }
 
   boot.setPhase("VENUE_RESOLVING");

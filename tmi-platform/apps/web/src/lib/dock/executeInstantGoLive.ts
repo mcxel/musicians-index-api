@@ -441,6 +441,15 @@ export async function endInstantGoLiveSession(roomId?: string | null): Promise<v
   }
   if (rid) unpublishLiveRoom(rid);
   useLivePrivacyState.getState().clearLivePublished();
+  // Regular GO LIVE fabric canary teardown (no-op when flag off / no active canary).
+  try {
+    const { teardownRegularGoLiveCanary } = await import(
+      "@/lib/live/canary/regularGoLiveFabricCanary"
+    );
+    teardownRegularGoLiveCanary({ reason: "end-live" });
+  } catch {
+    /* canary optional */
+  }
   recordFunctionInvocation("endInstantGoLiveSession", true);
   try {
     const { stopAllExternalDestinations } = await import(
