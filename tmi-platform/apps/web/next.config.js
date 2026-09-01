@@ -12,7 +12,7 @@ const nextConfig = {
     "@tmi/hud-tmi",
     "@bernout/agent-network",
   ],
-  webpack(config, { isServer, nextRuntime }) {
+  webpack(config, { isServer, nextRuntime, dev }) {
     // Point each workspace package to its TypeScript source so Vercel can
     // resolve and transpile them without needing a pre-built dist/ directory.
     const pkgRoot = path.resolve(__dirname, "../../packages");
@@ -45,13 +45,35 @@ const nextConfig = {
       };
     }
 
-    // Add watchOptions to ignore noisy system files on Windows during `next dev`.
-    // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information,
-    // which can cause the dev server to hang and Playwright tests to time out.
-    if (process.env.NODE_ENV === 'development') {
+    // Confine Watchpack strictly to the repository boundary during development.
+    // This stops Watchpack from escaping to C:\ and triggering EINVAL errors on
+    // locked Windows root files (DumpStack.log.tmp, hiberfil.sys, pagefile.sys, etc.).
+    if (dev || process.env.NODE_ENV === 'development') {
+      const repoRoot = path.resolve(__dirname, "../..");
+      const repoRootNorm = repoRoot.replace(/\\/g, "/").toLowerCase();
+
       config.watchOptions = {
         ...(config.watchOptions ?? {}),
-        ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**", "**/System Volume Information/**", "**/$RECYCLE.BIN/**", "**/hiberfil.sys", "**/pagefile.sys", "**/swapfile.sys"],
+        ignored: (pathname) => {
+          if (!pathname) return true;
+          const norm = pathname.replace(/\\/g, "/").toLowerCase();
+          // 1. Strictly ignore anything outside the workspace repository root
+          if (!norm.startsWith(repoRootNorm)) {
+            return true;
+          }
+          // 2. Ignore node_modules, .git, .next, and Windows system paths inside the repo
+          if (
+            /[\\/]node_modules([\\/]|$)/.test(norm) ||
+            /[\\/]\.git([\\/]|$)/.test(norm) ||
+            /[\\/]\.next([\\/]|$)/.test(norm) ||
+            norm.includes("system volume information") ||
+            norm.includes("$recycle.bin") ||
+            norm.endsWith(".tmp")
+          ) {
+            return true;
+          }
+          return false;
+        },
       };
     }
 

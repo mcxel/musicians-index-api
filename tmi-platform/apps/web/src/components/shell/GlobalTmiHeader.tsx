@@ -15,7 +15,7 @@ export interface GlobalTmiHeaderProps {
   } | null;
 }
 
-export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
+export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
   const pathname = usePathname();
   const [sessionUser, setSessionUser] = useState(user ?? null);
 

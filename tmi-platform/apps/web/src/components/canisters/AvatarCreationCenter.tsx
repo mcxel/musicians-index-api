@@ -14,7 +14,6 @@ import {
   getBobbleheadBaseById,
   type BobbleheadBase,
 } from "@/lib/avatars/BobbleheadBaseRegistry";
-import { persistBobbleheadBaseId } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
   FAN_SKIN_TONE_CONTINUUM,
   getFanCosmeticCatalogStats,
@@ -33,6 +32,26 @@ import {
 } from "@/lib/avatars/FanCosmeticCatalog";
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import {
+  AVATAR_GLB_REGISTRY,
+  type AvatarGlbSlotId,
+} from "@/lib/avatars/AvatarGlbRegistry";
+import {
+  bobbleheadRuntimeToRigProps,
+  persistBobbleheadBaseId,
+  persistFaceIdentityProfile,
+  readPersistedBobbleheadBaseId,
+  readPersistedFaceIdentityProfile,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { AvatarFaceIdentityDirector } from "@/lib/avatar/AvatarFaceIdentityDirector";
+import type { AvatarFaceIdentityProfile } from "@/lib/avatar/AvatarFaceIdentityContract";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
 
 interface AvatarCreationCenterProps {
   accentColor?: string;
@@ -290,6 +309,93 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Certified Avatar Asset Inventory */}
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 8 }}>
+            CERTIFIED AVATAR ASSETS (FOUNDRY & MANUFACTURING REGISTRY)
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+            {AVATAR_GLB_REGISTRY.map((slot) => (
+              <div
+                key={slot.id}
+                style={{
+                  background: "rgba(0,0,0,0.4)",
+                  border: `1px solid ${slot.certified ? "#00FF8855" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#fff" }}>{slot.id}</span>
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 900,
+                      color: slot.certified ? "#00FF88" : "#FF9900",
+                      background: slot.certified ? "rgba(0,255,136,0.1)" : "rgba(255,153,0,0.1)",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {slot.certified ? "PASS (CERTIFIED)" : "UNBOUND (FOUNDRY)"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+                  {slot.note}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Live 3D Canvas Viewport */}
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FFFF", fontWeight: 800 }}>
+              3D CANVAS PREVIEW (AvatarRig/1.0 · ARKit-52 · LOD0-2)
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                persistBobbleheadBaseId(baseId);
+                persistFanSkinT(skinT);
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("bb:loadout:changed", { detail: { baseId, skinT } }));
+                  window.dispatchEvent(new CustomEvent("tmi:avatar:equipped", { detail: { baseId, skinT } }));
+                }
+              }}
+              style={{
+                background: "linear-gradient(135deg, #00FFFF, #AA2DFF)",
+                color: "#050510",
+                fontWeight: 900,
+                fontSize: 10,
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              💾 SAVE & EQUIP TO RUNTIME
+            </button>
+          </div>
+          <div
+            style={{
+              height: 240,
+              borderRadius: 12,
+              border: `1px solid ${accentColor}33`,
+              background: "radial-gradient(ellipse at center, rgba(170,45,255,0.1) 0%, rgba(5,5,16,0.8) 70%)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <AvatarViewer
+              {...bobbleheadRuntimeToRigProps(resolveBobbleheadRuntimeCharacter(baseId), { skinT })}
+              size={240}
+              enableOrbit={true}
+            />
           </div>
         </div>
 
