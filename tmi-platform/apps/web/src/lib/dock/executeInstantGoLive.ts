@@ -232,7 +232,7 @@ export async function executeInstantGoLive(opts?: {
             ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl, previewUrl: dailyRoomUrl } : {}),
           }),
           credentials: "include",
-          signal: AbortSignal.timeout(45000),
+          signal: AbortSignal.timeout(120000),
           // Chromium: prefer this request when connection pool is contested
           ...({ priority: "high" } as RequestInit),
         });

@@ -1,41 +1,65 @@
 {
-  "timestamp": "2026-09-02T05:52:02.813Z",
+  "timestamp": "2026-09-02T07:19:16.005Z",
   "base": "http://localhost:3000",
+  "fanEmail": "micah@themusiciansindex.com",
+  "performerEmail": "suedejs2000@gmail.com",
+  "registerNote": "Programmatic register skipped — cert uses existing DB accounts. Prior fan-mosaic-cert@tmi.local register 500 root cause: roles:[{role:'FAN'}] object shape throws .toUpperCase() TypeError (400 expected fields: dateOfBirth, termsAccepted, password>=8).",
   "performer": {
     "role": "performer",
-    "hubRoute": "/hub/performer",
-    "email": "suedejs2000@gmail.com",
-    "steps": {
-      "login": "PASS",
-      "goLiveControlVisible": "PASS",
-      "mosaicRailVisible": "PASS",
-      "mosaicHonestEmpty": "PASS",
-      "domWiring": "PASS"
-    },
+    "skipped": true,
     "pass": true,
-    "wiring": {
-      "goLiveHost": true,
-      "mosaicRail": true,
-      "mediaStack": true
-    }
+    "publishPass": true,
+    "steps": {}
   },
   "fan": {
     "role": "fan",
     "hubRoute": "/hub/fan",
-    "email": "fan-mosaic-cert@tmi.local",
+    "email": "micah@themusiciansindex.com",
     "steps": {
-      "login": "FAIL",
+      "login": "PASS",
+      "hydration": "PASS",
       "goLiveControlVisible": "PASS",
       "mosaicRailVisible": "PASS",
-      "mosaicHonestEmpty": "PASS",
-      "domWiring": "PASS"
+      "domWiring": "PASS",
+      "pageSession": "PASS",
+      "liveGoPost": "PASS",
+      "mosaicSelfTile": "PASS",
+      "liveBadge": "PASS",
+      "registryListed": "PASS"
     },
-    "pass": false,
+    "network": {
+      "liveGoPosts": [
+        {
+          "status": 200,
+          "at": 1788333466580
+        },
+        {
+          "status": 200,
+          "via": "click"
+        }
+      ]
+    },
+    "pass": true,
+    "publishPass": true,
+    "userId": "519a745e-df15-4a60-9138-2b4620b8ac29",
     "wiring": {
       "goLiveHost": true,
       "mosaicRail": true,
       "mediaStack": true
-    }
+    },
+    "liveUi": {
+      "mediaText": "● LIVE · END BROADCAST",
+      "liveLabel": true,
+      "going": false,
+      "err": null,
+      "youBadge": false,
+      "youAreLive": true,
+      "mosaicSnippet": "LIVE LOBBY WALL · MOSAIC24 live · scroll · tap opens media playerYOU ARE LIVELIVEYOUPerformer — LivePerformer2PREVIEW BIND · Active performerLIVERock Fan Avatar Lobby24/7 · Rock Fan Avatar Lobby · Amb"
+    },
+    "uiError": null,
+    "registryRoomId": "room-hub-1788333342510"
   },
-  "pass": false
+  "pass": true,
+  "fanPublishPass": true,
+  "performerPublishPass": true
 }
