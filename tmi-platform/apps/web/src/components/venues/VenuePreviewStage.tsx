@@ -70,6 +70,11 @@ export default function VenuePreviewStage({
   );
   const [occupancy, setOccupancy] = useState<TestOccupancyLevel>(initialOccupancy);
   const [viewMode, setViewMode] = useState<VenuePreviewViewMode>(initialViewMode);
+  /** LOOK UP reveals world Jumbotron; RETURN restores stage — no seat/session restart. */
+  const [jumbotronLookUpActive, setJumbotronLookUpActive] = useState(false);
+  const [lookUpSessionToken] = useState(
+    () => `jumbotron-presence-${roomId}-${Date.now().toString(36)}`,
+  );
 
   const scenePlan = useMemo(
     () =>
@@ -223,11 +228,42 @@ export default function VenuePreviewStage({
             <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>
               Prefer FREE_ROAM_3D · HUD overlays all modes
             </span>
+            <button
+              type="button"
+              data-testid="btn-venue-look-up-jumbotron"
+              onClick={() => setJumbotronLookUpActive((v) => !v)}
+              style={{
+                padding: "4px 10px",
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.12em",
+                cursor: "pointer",
+                borderRadius: 6,
+                border: jumbotronLookUpActive
+                  ? `1px solid ${FUCHSIA}`
+                  : `1px solid ${CYAN}`,
+                background: jumbotronLookUpActive
+                  ? "rgba(255,45,170,0.18)"
+                  : "rgba(0,255,255,0.1)",
+                color: jumbotronLookUpActive ? FUCHSIA : CYAN,
+              }}
+            >
+              {jumbotronLookUpActive ? "RETURN TO STAGE" : "LOOK UP / FOCUS JUMBOTRON"}
+            </button>
+            <span
+              data-testid="venue-look-up-focus-indicator"
+              data-session-token={lookUpSessionToken}
+              style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", fontWeight: 700 }}
+            >
+              {jumbotronLookUpActive ? "JUMBOTRON FOCUS" : "STAGE VIEW"}
+            </span>
           </div>
 
           <div
             className="venue-preview-viewport"
             data-view-mode={viewMode}
+            data-jumbotron-look-up={jumbotronLookUpActive ? "true" : "false"}
+            data-presence-session={lookUpSessionToken}
             style={{
               position: "relative",
               minHeight: "58vh",
@@ -252,6 +288,7 @@ export default function VenuePreviewStage({
               testOccupancyLabel={scenePlan.crowdPolicy.testLabel ?? testLabel}
               viewMode={renderFromPlan.viewMode}
               spatialMap={renderFromPlan.spatialMap}
+              jumbotronLookUpActive={jumbotronLookUpActive}
             />
           </div>
 

@@ -82,15 +82,37 @@ export function VenueAutomatedJumbotronMount({
   const [cam] = useState(() => cameraDirector ?? new AvatarCameraDirector());
   const physical = director.getPhysicalJumbotronDescriptor();
   const pack = director.getPresentationPack();
-  const event = director.getActiveEvent();
+  const [event, setEvent] = useState(() => director.getActiveEvent());
   const sightline = useMemo(() => director.certifySightlines(), [director]);
 
   // Seed experience-appropriate program content (real director events, not fake crowds)
   useEffect(() => {
     if (experienceType === "BATTLE_ARENA") {
-      director.postRoundTimerUpdate(60, false);
+      const scored = director.postBattleScoreboard({
+        participantA: "MC Nova",
+        scoreA: 84,
+        participantB: "DJ Phantom",
+        scoreB: 79,
+      });
+      // Keep scoreboard on-air; attach timer fields so both pack surfaces render.
+      const withTimer = {
+        ...scored,
+        roundTimerSeconds: 60,
+        headline: scored.headline,
+        title: "BATTLE LIVE",
+      };
+      setEvent(withTimer);
     } else if (experienceType === "CYPHER") {
-      director.postCypherNextUp("Next Performer", "On Deck");
+      const next = director.postCypherNextUp("Next Performer", "On Deck");
+      setEvent(next ?? director.getActiveEvent());
+    } else if (experienceType === "WORLD_DANCE_PARTY") {
+      const welcome = director.triggerSafetyAlert(
+        "WELCOME TO WORLD DANCE PARTY",
+        "DISCO ORB ONLINE • DANCE FLOOR ACTIVE"
+      );
+      setEvent(welcome ?? director.getActiveEvent());
+    } else {
+      setEvent(director.getActiveEvent());
     }
     return () => {
       director.teardown();
@@ -150,11 +172,18 @@ export function VenueAutomatedJumbotronMount({
     );
   }
 
+  const tierClasses = sightline.tierResults
+    .map((t) => t.tierClass)
+    .filter(Boolean)
+    .join(",");
+
   return (
     <div
       data-testid="venue-jumbotron-world-mount"
       data-architecture={physical.architecture}
+      data-experience-type={experienceType}
       data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+      data-sightline-tiers={tierClasses}
       data-camera-focus={focused ? "JUMBOTRON" : "STAGE"}
       className={className}
       style={{

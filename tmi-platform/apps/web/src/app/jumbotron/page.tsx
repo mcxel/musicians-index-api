@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { AutomatedJumbotronDirector } from "@/lib/jumbotron/AutomatedJumbotronDirector";
 import { JumbotronSurfaceRenderer } from "@/components/jumbotron/JumbotronSurfaceRenderer";
 import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
+import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
 import type {
   JumbotronExperienceType,
   JumbotronEvent,
@@ -15,6 +16,8 @@ export default function JumbotronDirectorDemoPage() {
   const [isJumbotronFocused, setIsJumbotronFocused] = useState(false);
   const [curtainState, setCurtainState] = useState("OPEN");
   const [log, setLog] = useState<string[]>([]);
+  const [feedAssignStatus, setFeedAssignStatus] = useState("UNASSIGNED");
+  const [playerFabric] = useState(() => new CanonicalUniversalPlayerFabric());
 
   const director = React.useMemo(() => {
     const d = new AutomatedJumbotronDirector({
@@ -202,6 +205,20 @@ export default function JumbotronDirectorDemoPage() {
       setIsJumbotronFocused(true);
       addLog(`Camera focused on JUMBOTRON from ${currentTier?.tierClass ?? "LOWER_BOWL"} (Pitch: ${currentTier?.pitchAngleDegrees.toFixed(1)}°)`);
     }
+  };
+
+  const handleAssignJumbotronFeed = () => {
+    const feed = director.createJumbotronFeedSource();
+    const result = playerFabric.mirrorJumbotronFeedToPlayer(feed, "slot-7");
+    const ok = Boolean(result?.success);
+    setFeedAssignStatus(
+      ok ? `ASSIGNED → slot-7 (${feed.sourceType})` : `FAILED: ${result?.reason ?? "unknown"}`
+    );
+    addLog(
+      ok
+        ? `JUMBOTRON_FEED mirrored to slot-7 (mutable, not dedicated slot)`
+        : `JUMBOTRON_FEED assign failed: ${result?.reason ?? "unknown"}`
+    );
   };
 
   const spatial = director.getSpatialDimensions();
@@ -433,6 +450,19 @@ export default function JumbotronDirectorDemoPage() {
               >
                 {isJumbotronFocused ? "RETURN TO STAGE VIEW" : "LOOK UP / FOCUS JUMBOTRON"}
               </button>
+              <button
+                data-testid="btn-assign-jumbotron-feed"
+                onClick={handleAssignJumbotronFeed}
+                className="w-full mt-2 text-center font-mono text-xs py-2 px-3 rounded bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-500/50 hover:bg-fuchsia-900/80 font-bold"
+              >
+                ASSIGN JUMBOTRON_FEED → SLOT 7
+              </button>
+              <div
+                data-testid="jumbotron-feed-assign-status"
+                className="mt-2 font-mono text-[10px] text-fuchsia-200/80"
+              >
+                FEED: {feedAssignStatus}
+              </div>
             </div>
           </div>
 

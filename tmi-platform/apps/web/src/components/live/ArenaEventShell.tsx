@@ -28,6 +28,7 @@ import type {
   CompetitionParticipantView,
   CompetitionPhase,
 } from "@/components/competition/presentation/competitionPresentation.types";
+import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import { MemoryLedger } from "@/core/eos/memoryLedger";
@@ -54,11 +55,6 @@ const TMIInteractiveVenueHud = dynamic(
 
 const AvatarVenueAnchor = dynamic(
   () => import("@/components/avatar/AvatarVenueAnchor"),
-  { ssr: false },
-);
-
-const VenueAutomatedJumbotronMount = dynamic(
-  () => import("@/components/jumbotron/VenueAutomatedJumbotronMount"),
   { ssr: false },
 );
 
@@ -195,6 +191,12 @@ interface ArenaEventShellProps {
   readonly viewMode?: WorldViewMode;
   /** Square-feet spatial map — falls back to stored WorldScenePlan. */
   readonly spatialMap?: VenueSpatialMap | null;
+  /**
+   * LOOK UP / Jumbotron focus — reveals world-space Jumbotron without seat/session reset.
+   * When omitted: panorama/spherical modes auto-reveal; FREE_ROAM stays stage until LOOK UP.
+   * Certification must toggle this explicitly (never force always-on).
+   */
+  readonly jumbotronLookUpActive?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -248,10 +250,22 @@ export default function ArenaEventShell({
   testOccupancyLabel = null,
   viewMode: viewModeProp,
   spatialMap: spatialMapProp,
+  jumbotronLookUpActive,
 }: ArenaEventShellProps) {
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
   const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
+  /** Internal LOOK UP when parent does not drive focus (public shells). */
+  const [internalLookUp, setInternalLookUp] = useState(false);
+  const lookUpActive =
+    jumbotronLookUpActive === true ||
+    (jumbotronLookUpActive !== false && internalLookUp) ||
+    viewMode === "PANORAMA_180" ||
+    viewMode === "SPHERICAL_360";
+  const lookUpSessionToken = useMemo(
+    () => `jumbotron-presence-${roomId}`,
+    [roomId],
+  );
   const venueKindForEnv =
     eventType === "monday-stage"
       ? "monday-night-stage"
@@ -427,12 +441,56 @@ export default function ArenaEventShell({
             roomId={roomId}
             eventType={eventType}
             venueId={venueSlug}
-            lookUpActive={
-              viewMode === "PANORAMA_180" ||
-              viewMode === "SPHERICAL_360" ||
-              isCertification === true
-            }
+            lookUpActive={lookUpActive}
           />
+        )}
+        {!suppressPresentation && jumbotronLookUpActive === undefined && (
+          <div
+            data-presence-session={lookUpSessionToken}
+            data-jumbotron-look-up={lookUpActive ? "true" : "false"}
+            style={{
+              position: "absolute",
+              right: 10,
+              bottom: 10,
+              zIndex: 8,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              alignItems: "flex-end",
+              pointerEvents: "auto",
+            }}
+          >
+            <a
+              href={lookUpActive ? "?jumboLookUp=0" : "?jumboLookUp=1"}
+              data-testid="btn-venue-look-up-jumbotron"
+              onClick={(e) => {
+                // Prefer soft toggle when hydrated; native href remains the fallback.
+                e.preventDefault();
+                setInternalLookUp((v) => !v);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: "0.12em",
+                cursor: "pointer",
+                borderRadius: 6,
+                textDecoration: "none",
+                border: lookUpActive ? "1px solid #FF2DAA" : "1px solid #00FFFF",
+                background: lookUpActive ? "rgba(255,45,170,0.2)" : "rgba(0,255,255,0.12)",
+                color: lookUpActive ? "#FF2DAA" : "#00FFFF",
+              }}
+            >
+              {lookUpActive ? "RETURN TO STAGE" : "LOOK UP / FOCUS JUMBOTRON"}
+            </a>
+            <span
+              data-testid="venue-look-up-focus-indicator"
+              data-session-token={lookUpSessionToken}
+              style={{ fontSize: 8, color: "rgba(255,255,255,0.55)", fontWeight: 700 }}
+            >
+              {lookUpActive ? "JUMBOTRON FOCUS" : "STAGE VIEW"}
+            </span>
+          </div>
         )}
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer

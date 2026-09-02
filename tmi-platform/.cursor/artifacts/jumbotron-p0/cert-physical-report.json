@@ -1,0 +1,107 @@
+{
+  "date": "2026-09-02T10:44:09.153Z",
+  "branch": "eos/vocal-improv-clean",
+  "base": "http://localhost:3001",
+  "physicalLookUp": {
+    "battle": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "10-battle-stage-before-lookup.png",
+        "11-battle-lookup-center-hung.png",
+        "12-battle-return-stage.png"
+      ]
+    },
+    "cypher": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "CYPHER",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "20-cypher-stage-before-lookup.png",
+        "21-cypher-lookup-collaborative.png",
+        "22-cypher-return-stage.png"
+      ]
+    },
+    "worldDanceParty": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_DISCO_ORB",
+      "experience": "WORLD_DANCE_PARTY",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "30-wdp-stage-before-lookup.png",
+        "31-wdp-lookup-disco-orb.png",
+        "32-wdp-return-stage.png"
+      ]
+    },
+    "auditoriumLive": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "WALL_HANGING_LED",
+      "experience": "AUDITORIUM",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": false,
+      "sessionPreserved": true,
+      "screenshots": [
+        "40-auditorium-stage-before-lookup.png",
+        "41-auditorium-lookup-wall-led.png",
+        "42-auditorium-return-stage.png"
+      ]
+    }
+  },
+  "harness": {
+    "battlePack": true,
+    "cypherNoWinner": false,
+    "discoOrb": true,
+    "jumbotronFeedAssignable": true,
+    "focusReturn": true,
+    "mobile": true
+  },
+  "verdict": {
+    "physicalLookUp": "PASS",
+    "tierSightlines": "PARTIAL",
+    "experiencePacks": "PARTIAL",
+    "playerFreedomFeed": "PASS",
+    "overall": "PARTIAL"
+  },
+  "openBlockers": [
+    "Full production GLB mesh in AudienceScene/R3F path not mounted; physical proof uses VenueAutomatedJumbotronMount world-space surface (architecture + sightline metadata real).",
+    "/venue/preview is middleware-protected; physical cert uses public /cert/jumbotron-venue AES mount."
+  ],
+  "screenshots": [
+    "10-battle-stage-before-lookup.png",
+    "11-battle-lookup-center-hung.png",
+    "12-battle-return-stage.png",
+    "20-cypher-stage-before-lookup.png",
+    "21-cypher-lookup-collaborative.png",
+    "22-cypher-return-stage.png",
+    "30-wdp-stage-before-lookup.png",
+    "31-wdp-lookup-disco-orb.png",
+    "32-wdp-return-stage.png",
+    "40-auditorium-stage-before-lookup.png",
+    "41-auditorium-lookup-wall-led.png",
+    "42-auditorium-return-stage.png",
+    "50-harness-battle-pack.png",
+    "50b-harness-tier-sightlines.png",
+    "51-harness-cypher-no-winner.png",
+    "52-harness-disco-orb.png",
+    "53-harness-camera-focus.png",
+    "54-harness-feed-assign.png",
+    "60-mobile-battle-lookup-390x844.png"
+  ]
+}

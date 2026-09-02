@@ -81,6 +81,10 @@ const VISIBILITY_WHITELIST = [
   '/favicon.ico',
   '/api/stripe/webhook',
   '/api/stripe/webhook-health',
+  '/cert',
+  '/jumbotron',
+  '/battles',
+  '/cypher',
 ];
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
