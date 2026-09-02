@@ -26,6 +26,7 @@ import {
   type ChallengeObjectiveSnapshot,
   type ChallengeProgramComposition,
 } from "@/lib/experiencePresentation/composeChallengeProgram";
+import { planChallengeJumbotronFaces } from "@/lib/acgbr";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -75,6 +76,7 @@ export default function ChallengeRoomByIdPage() {
   );
 
   // Production Challenge PROGRAM — same upward pattern as composeBattleProgram.
+  // ACGBR face plan is derived read-only from phase (never writes Challenge truth).
   useEffect(() => {
     const composed = composeChallengeProgram({
       sessionId: `challenge-session:${challengeId}`,
@@ -89,9 +91,34 @@ export default function ChallengeRoomByIdPage() {
     });
     setChallengeProgram(composed);
 
+    const facePlan = planChallengeJumbotronFaces(phase, {
+      sessionId: `challenge-session:${challengeId}`,
+      objectiveLabel: objective.objective,
+      activeParticipantId:
+        phase === "ATTEMPT_1_ACTIVE"
+          ? actor.userId
+          : phase === "ATTEMPT_2_ACTIVE"
+            ? challenged?.id ?? null
+            : null,
+    });
+    if (typeof window !== "undefined") {
+      (
+        window as unknown as {
+          __TMI_CHALLENGE_ACGBR_FACES__?: ReturnType<typeof planChallengeJumbotronFaces>;
+        }
+      ).__TMI_CHALLENGE_ACGBR_FACES__ = facePlan;
+    }
+
     return () => {
       if (getActiveChallengeProgram()?.challengeId === challengeId) {
         clearChallengeProgram("challenge-room-unmount");
+      }
+      if (typeof window !== "undefined") {
+        (
+          window as unknown as {
+            __TMI_CHALLENGE_ACGBR_FACES__?: unknown;
+          }
+        ).__TMI_CHALLENGE_ACGBR_FACES__ = null;
       }
     };
   }, [actor.userId, actor.displayName, challengeId, roomId, objective, challenged, phase, result]);
