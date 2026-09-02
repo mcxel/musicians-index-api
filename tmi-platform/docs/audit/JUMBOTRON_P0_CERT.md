@@ -112,3 +112,27 @@ git checkout eos/vocal-improv-clean -- \
   docs/audit/UNIVERSAL_PLAYER_FREEDOM_LAW.md \
   docs/audit/DYNAMIC_COMMUNICATION_PLAYER_LAW.md
 ```
+
+---
+
+## Appendix A — Four-sided advertising + Show Director + Spotlight (2026-09-02)
+
+**Spec:** [`JUMBOTRON_AD_AND_SHOW_DIRECTOR.md`](./JUMBOTRON_AD_AND_SHOW_DIRECTOR.md)
+
+| Capability | Status |
+|------------|--------|
+| Four independent face Display Targets | **DONE** — `JumbotronFaceTargetRegistry` |
+| Venue ad surface inventory IDs | **DONE** — `VenueAdSurfaceRegistry` |
+| VenueAdDirector (safety → assign) | **DONE** |
+| Per-face content queues | **DONE** — `JumbotronContentScheduler` |
+| Automated Show Director (bus choreography) | **DONE** — does not create sessions |
+| People Spotlight + consent | **DONE** — `JumbotronSpotlightDirector` |
+| Impression ledger (assign ≠ view) | **DONE** |
+| Sellable packages + template stubs | **DONE** (data contracts) |
+| Observatory Control Room UI | **OPEN** (TAKE/HOLD/NEXT types only) |
+| AdSense as in-world 3D texture | **OPEN** / not default |
+| Commerce click-through | **OPEN** |
+
+```
+pnpm exec jest --config jest.config.ts --testPathPatterns=runJumbotronAdAndShowDirectorCertification --runInBand
+```
