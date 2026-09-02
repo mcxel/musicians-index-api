@@ -231,6 +231,14 @@ interface Props {
   viewMode?: WorldViewMode;
   /** Square-feet spatial map from WorldScenePlan (registry estimate until measured GLB). */
   spatialMap?: VenueSpatialMap | null;
+  /**
+   * Automated Jumbotron Director — event type drives INDOOR/OUTDOOR/WDP/wall geometry
+   * mounted inside AudienceScene (world-space, not HUD).
+   */
+  eventType?: string | null;
+  /** LOOK UP / focus Jumbotron — presence-preserving camera aim from parent AES. */
+  jumbotronLookUpActive?: boolean;
+  venueId?: string;
 }
 
 function publicName(name: string): string {
@@ -269,7 +277,7 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null, eventType = null, jumbotronLookUpActive = false, venueId }: Props) {
   const canonicalView = canonicalizeWorldViewMode(viewMode);  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
@@ -288,6 +296,15 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   const loungePresentIdsRef = useRef<Set<string>>(new Set());
   const performerPresentIdsRef = useRef<Set<string>>(new Set());
   const revealActive = useShowtimeReveal(liveSession?.stageState);
+  const jumbotronScene = useMemo(
+    () => ({
+      roomId,
+      eventType: eventType ?? null,
+      venueId: venueId ?? `venue-${roomId}`,
+      lookUpActive: jumbotronLookUpActive === true,
+    }),
+    [roomId, eventType, venueId, jumbotronLookUpActive],
+  );
   const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
   const isPerformerLobby = isPerformerLobbyExperience(roomId, canonicalZone);
   const isLoungeSideRoom =
@@ -784,6 +801,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
               hideControls
               accentColor={accentCol}
               bobbleheadSeating={instantEmptyStage ? undefined : bobbleheadSeating}
+              jumbotron={jumbotronScene}
               screenLabel={
                 liveSession || !instantEmptyStage
                   ? undefined
@@ -1074,6 +1092,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             hideControls
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
             bobbleheadSeating={bobbleheadSeating}
+            jumbotron={jumbotronScene}
           />
           {/* Comic speech bubbles over the crowd */}
           <RoomBubbleRail bubbles={[...speechBubbles, ...whisperBubbles]} variant="comic" maxVisible={14} />

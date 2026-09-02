@@ -10,11 +10,22 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { AutomatedJumbotronDirector } from "@/lib/jumbotron/AutomatedJumbotronDirector";
 import type { JumbotronExperienceType } from "@/lib/jumbotron/JumbotronContracts";
 import { JumbotronSurfaceRenderer } from "@/components/jumbotron/JumbotronSurfaceRenderer";
 import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
 import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
+
+const SafeReactThreeCanvas = dynamic(
+  () => import("@/components/3d/SafeReactThreeCanvas"),
+  { ssr: false },
+);
+const VenueJumbotronGeometry3D = dynamic(
+  () =>
+    import("@/components/jumbotron/VenueJumbotronGeometry3D").then((m) => m.VenueJumbotronGeometry3D),
+  { ssr: false },
+);
 
 export function mapArenaEventToJumbotronExperience(
   eventType: string | undefined | null
@@ -27,6 +38,9 @@ export function mapArenaEventToJumbotronExperience(
   if (t.includes("feud") || t.includes("game") || t.includes("tune") || t.includes("square")) {
     return "GAME_SHOW";
   }
+  if (t.includes("fan-lobby") || t.includes("fan_lobby") || t.includes("lobby")) return "FAN_LOBBY";
+  if (t.includes("lounge") || t.includes("club")) return "LOUNGE";
+  if (t.includes("performer-lobby") || t.includes("performer_lobby")) return "PERFORMER_LOBBY";
   return "REGULAR_LIVE";
 }
 
@@ -64,7 +78,14 @@ export function VenueAutomatedJumbotronMount({
       sessionId: `session:${roomId}`,
       experienceType,
       venueId: venueId ?? `venue-${roomId}`,
-      venueClass: experienceType === "WORLD_DANCE_PARTY" ? "CLUB" : "ARENA",
+      venueClass:
+        experienceType === "WORLD_DANCE_PARTY" ||
+        experienceType === "LOUNGE" ||
+        experienceType === "FAN_LOBBY"
+          ? "CLUB"
+          : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
+            ? "AUDITORIUM"
+            : "ARENA",
       venueSkin: "default",
       isCurtainClosed: false,
       participantCount: 0, // honest empty until real presence wired
@@ -72,9 +93,15 @@ export function VenueAutomatedJumbotronMount({
       venueEnvironment:
         experienceType === "WORLD_DANCE_PARTY"
           ? "WORLD_DANCE_PARTY"
-          : experienceType === "AUDITORIUM"
+          : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
             ? "PROSCENIUM_THEATER"
-            : "INDOOR_ARENA",
+            : experienceType === "WORLD_CONCERT"
+              ? "OUTDOOR_STADIUM"
+              : experienceType === "LOUNGE" ||
+                  experienceType === "FAN_LOBBY" ||
+                  experienceType === "PERFORMER_LOBBY"
+                ? "CLUB_SMALL_ROOM"
+                : "INDOOR_ARENA",
     });
   }, [roomId, experienceType, venueId]);
 
@@ -148,62 +175,105 @@ export function VenueAutomatedJumbotronMount({
     Math.min(28, 100 - (physical.bottomClearanceMeters / Math.max(1, physical.safeRiggingElevationMeters)) * 55)
   );
 
-  if (!lookUpActive && !focused) {
-    // Still mount a zero-opacity world anchor so geometry is present for cert/DOM
-    return (
-      <div
-        data-testid="venue-jumbotron-world-anchor"
-        data-architecture={physical.architecture}
-        data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
-        data-fov={director.getSpatialDimensions().cameraSphereFovDegrees}
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: `${hangTopPercent}%`,
-          transform: "translate(-50%, -50%)",
-          width: 1,
-          height: 1,
-          opacity: 0,
-          pointerEvents: "none",
-          zIndex: 4,
-        }}
-      />
-    );
-  }
-
   const tierClasses = sightline.tierResults
     .map((t) => t.tierClass)
     .filter(Boolean)
     .join(",");
 
+  const showSurface = lookUpActive || focused;
+  const ceiling = director.getSpatialDimensions().ceilingElevationMeters;
+
   return (
-    <div
-      data-testid="venue-jumbotron-world-mount"
-      data-architecture={physical.architecture}
-      data-experience-type={experienceType}
-      data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
-      data-sightline-tiers={tierClasses}
-      data-camera-focus={focused ? "JUMBOTRON" : "STAGE"}
-      className={className}
-      style={{
-        position: "absolute",
-        left: "50%",
-        top: `${hangTopPercent}%`,
-        transform: "translate(-50%, -50%)",
-        width: "min(42vw, 420px)",
-        zIndex: 6,
-        pointerEvents: "none",
-        filter: "drop-shadow(0 12px 28px rgba(0,255,255,0.25))",
-      }}
-    >
-      <JumbotronSurfaceRenderer
-        event={event}
-        pack={pack}
-        is3DViewportOverlay={false}
-        className="pointer-events-none"
-      />
-    </div>
+    <>
+      {/* R3F architecture mesh — always mounted in production AES/UVR shells */}
+      <div
+        data-testid="audience-scene-jumbotron-layer"
+        data-aes-jumbotron-geometry="true"
+        data-architecture={physical.architecture}
+        data-experience-type={experienceType}
+        data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+        data-jumbotron-look-up={showSurface ? "true" : "false"}
+        data-audience-scene-jumbotron-mounted="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: showSurface ? 5 : 3,
+          opacity: showSurface ? 1 : 0.55,
+          minHeight: 160,
+        }}
+      >
+        <SafeReactThreeCanvas
+          faultContext="AES Jumbotron Geometry"
+          fallbackLabel="Jumbotron geometry paused"
+          style={{ width: "100%", height: "100%", background: "transparent" }}
+          gl={{ alpha: true, antialias: true }}
+          camera={{
+            position: showSurface ? [0, 14, 38] : [0, 6, 42],
+            fov: showSurface ? 42 : 50,
+            near: 0.1,
+            far: 200,
+          }}
+        >
+          <ambientLight intensity={0.55} />
+          <directionalLight position={[8, 24, 12]} intensity={1.1} />
+          <VenueJumbotronGeometry3D
+            descriptor={physical}
+            pack={pack}
+            event={event}
+            ceilingElevationMeters={ceiling}
+          />
+        </SafeReactThreeCanvas>
+      </div>
+
+      {!showSurface ? (
+        <div
+          data-testid="venue-jumbotron-world-anchor"
+          data-architecture={physical.architecture}
+          data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+          data-fov={director.getSpatialDimensions().cameraSphereFovDegrees}
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `${hangTopPercent}%`,
+            transform: "translate(-50%, -50%)",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: 4,
+          }}
+        />
+      ) : (
+        <div
+          data-testid="venue-jumbotron-world-mount"
+          data-architecture={physical.architecture}
+          data-experience-type={experienceType}
+          data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+          data-sightline-tiers={tierClasses}
+          data-camera-focus={focused ? "JUMBOTRON" : "STAGE"}
+          className={className}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `${hangTopPercent}%`,
+            transform: "translate(-50%, -50%)",
+            width: "min(42vw, 420px)",
+            zIndex: 6,
+            pointerEvents: "none",
+            filter: "drop-shadow(0 12px 28px rgba(0,255,255,0.25))",
+          }}
+        >
+          <JumbotronSurfaceRenderer
+            event={event}
+            pack={pack}
+            is3DViewportOverlay={false}
+            className="pointer-events-none"
+          />
+        </div>
+      )}
+    </>
   );
 }
 

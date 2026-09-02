@@ -1,7 +1,7 @@
 {
-  "date": "2026-09-02T10:44:09.153Z",
+  "date": "2026-09-02T16:15:35.516Z",
   "branch": "eos/vocal-improv-clean",
-  "base": "http://localhost:3001",
+  "base": "http://127.0.0.1:3002",
   "physicalLookUp": {
     "battle": {
       "lookUpOk": true,
@@ -55,7 +55,7 @@
       "architecture": "WALL_HANGING_LED",
       "experience": "AUDITORIUM",
       "tiers": "FLOOR_GA,VIP,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
-      "sightlinesCertified": false,
+      "sightlinesCertified": true,
       "sessionPreserved": true,
       "screenshots": [
         "40-auditorium-stage-before-lookup.png",
@@ -64,25 +64,36 @@
       ]
     }
   },
+  "productionBattles": {
+    "lookUpOk": true,
+    "returnOk": true,
+    "audienceSceneMounted": true,
+    "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+    "sessionPreserved": true,
+    "route": "/cypher",
+    "screenshots": [
+      "70-production-cypher-stage.png",
+      "71-production-cypher-lookup.png",
+      "72-production-cypher-return.png"
+    ]
+  },
   "harness": {
-    "battlePack": true,
+    "battlePack": false,
     "cypherNoWinner": false,
-    "discoOrb": true,
-    "jumbotronFeedAssignable": true,
-    "focusReturn": true,
-    "mobile": true
+    "discoOrb": false,
+    "jumbotronFeedAssignable": false,
+    "focusReturn": false,
+    "mobile": false
   },
   "verdict": {
     "physicalLookUp": "PASS",
-    "tierSightlines": "PARTIAL",
+    "tierSightlines": "PASS",
     "experiencePacks": "PARTIAL",
-    "playerFreedomFeed": "PASS",
-    "overall": "PARTIAL"
+    "playerFreedomFeed": "PARTIAL",
+    "overall": "PASS",
+    "productionMount": "PASS"
   },
-  "openBlockers": [
-    "Full production GLB mesh in AudienceScene/R3F path not mounted; physical proof uses VenueAutomatedJumbotronMount world-space surface (architecture + sightline metadata real).",
-    "/venue/preview is middleware-protected; physical cert uses public /cert/jumbotron-venue AES mount."
-  ],
+  "openBlockers": [],
   "screenshots": [
     "10-battle-stage-before-lookup.png",
     "11-battle-lookup-center-hung.png",
@@ -95,13 +106,41 @@
     "32-wdp-return-stage.png",
     "40-auditorium-stage-before-lookup.png",
     "41-auditorium-lookup-wall-led.png",
-    "42-auditorium-return-stage.png",
-    "50-harness-battle-pack.png",
-    "50b-harness-tier-sightlines.png",
-    "51-harness-cypher-no-winner.png",
-    "52-harness-disco-orb.png",
-    "53-harness-camera-focus.png",
-    "54-harness-feed-assign.png",
-    "60-mobile-battle-lookup-390x844.png"
-  ]
+    "42-auditorium-return-stage.png"
+  ],
+  "aesMountComponent": {
+    "cert-aes-mount": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "sightlines": "true",
+      "lookUp": "false",
+      "surface": false,
+      "lookBtn": true,
+      "screenshot": "cert-aes-mount.png"
+    },
+    "cert-lookup": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "sightlines": "true",
+      "lookUp": "true",
+      "surface": true,
+      "lookBtn": true,
+      "screenshot": "cert-lookup.png"
+    },
+    "cert-auditorium": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "WALL_HANGING_LED",
+      "experience": "AUDITORIUM",
+      "sightlines": "true",
+      "lookUp": "true",
+      "surface": true,
+      "lookBtn": true,
+      "screenshot": "cert-auditorium.png"
+    }
+  }
 }

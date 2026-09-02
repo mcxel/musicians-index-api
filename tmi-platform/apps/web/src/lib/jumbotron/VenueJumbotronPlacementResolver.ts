@@ -308,6 +308,8 @@ export class VenueJumbotronPlacementResolver {
     }
 
     // Club / Small Room / Dance Floor / Proscenium
+    // House is +Z (audience). Wall/disco primary faces the house — never seat VIP
+    // behind the upstage wall LED (prior cz-16 NORTH sat behind WALL_HANGING_LED).
     return [
       {
         tierId: "dance-floor-center",
@@ -322,10 +324,10 @@ export class VenueJumbotronPlacementResolver {
         tierId: "vip-mezzanine",
         tierName: "VIP Mezzanine Lounge",
         tierClass: "VIP",
-        quadrant: "NORTH",
+        quadrant: "SOUTH",
         elevationMeters: cy + 3.5,
-        radialDistanceMeters: 16.0,
-        representativeEyePositions: [[cx, cy + 3.5, cz - 16]],
+        radialDistanceMeters: 14.0,
+        representativeEyePositions: [[cx, cy + 3.5, cz + 14]],
       },
       {
         tierId: "lower-rail",
@@ -362,8 +364,8 @@ export class VenueJumbotronPlacementResolver {
         elevationMeters: cy + 1.5,
         radialDistanceMeters: 10.0,
         representativeEyePositions: [
-          [cx + 10, cy + 1.5, cz],
-          [cx - 10, cy + 1.5, cz],
+          [cx + 10, cy + 1.5, cz + 6],
+          [cx - 10, cy + 1.5, cz + 6],
         ],
       },
       {

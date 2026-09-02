@@ -58,6 +58,7 @@ import {
   loungeSideRoomEntryHref,
 } from "@/lib/live/canonicalWorldViewport";
 import { useAuth } from "@/lib/hooks/useAuth";
+import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -163,6 +164,7 @@ export default function FanLobbyVenue({
   const [reportOpen, setReportOpen] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [jumbotronLookUp, setJumbotronLookUp] = useState(false);
   const joinedRef = useRef(false);
 
   useEffect(() => {
@@ -462,6 +464,45 @@ export default function FanLobbyVenue({
             filter: "saturate(0.85) contrast(1.05)",
           }}
         />
+      ) : null}
+
+      {/* Club / cinema wall-LED Jumbotron — AutomatedJumbotronDirector geometry (not HUD chrome) */}
+      <div
+        data-fan-lobby-jumbotron="true"
+        style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}
+      >
+        <VenueAutomatedJumbotronMount
+          roomId={roomId}
+          eventType="fan-lobby"
+          venueId={`fan-lobby-${roomId}`}
+          lookUpActive={jumbotronLookUp}
+        />
+      </div>
+      {!embedded ? (
+        <button
+          type="button"
+          data-testid="btn-venue-look-up-jumbotron"
+          data-presence-session={`jumbotron-presence-${roomId}`}
+          onClick={() => setJumbotronLookUp((v) => !v)}
+          style={{
+            position: "absolute",
+            right: 12,
+            bottom: 72,
+            zIndex: 45,
+            pointerEvents: "auto",
+            padding: "6px 10px",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            cursor: "pointer",
+            borderRadius: 6,
+            border: jumbotronLookUp ? "1px solid #FF2DAA" : "1px solid #00FFFF",
+            background: jumbotronLookUp ? "rgba(255,45,170,0.2)" : "rgba(0,255,255,0.12)",
+            color: jumbotronLookUp ? "#FF2DAA" : "#00FFFF",
+          }}
+        >
+          {jumbotronLookUp ? "RETURN TO LOBBY" : "LOOK UP / FOCUS JUMBOTRON"}
+        </button>
       ) : null}
 
       <header

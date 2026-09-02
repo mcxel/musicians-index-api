@@ -257,6 +257,17 @@ export default function ArenaEventShell({
   const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
   /** Internal LOOK UP when parent does not drive focus (public shells). */
   const [internalLookUp, setInternalLookUp] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyQuery = () => {
+      const q = new URLSearchParams(window.location.search).get("jumboLookUp");
+      if (q === "1" || q === "true") setInternalLookUp(true);
+      if (q === "0" || q === "false") setInternalLookUp(false);
+    };
+    applyQuery();
+    window.addEventListener("popstate", applyQuery);
+    return () => window.removeEventListener("popstate", applyQuery);
+  }, []);
   const lookUpActive =
     jumbotronLookUpActive === true ||
     (jumbotronLookUpActive !== false && internalLookUp) ||
@@ -434,6 +445,9 @@ export default function ArenaEventShell({
           previewCapacity={testCapacity}
           viewMode={viewMode}
           spatialMap={spatialMap}
+          eventType={eventType}
+          jumbotronLookUpActive={lookUpActive}
+          venueId={venueSlug}
         />
         {/* World-space Automated Jumbotron — geometry from venue dims; LOOK UP reveals surface */}
         {!suppressPresentation && (
