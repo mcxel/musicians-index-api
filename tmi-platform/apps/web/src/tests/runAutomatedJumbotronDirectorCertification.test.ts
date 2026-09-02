@@ -673,7 +673,7 @@ export function runAutomatedJumbotronDirectorCertification(): {
     );
 
     const classes = new Set(tiers.map((t) => t.tierClass));
-    const required = [
+    const required: Array<(typeof tiers)[number]["tierClass"]> = [
       "LOWER_BOWL",
       "MID_BOWL",
       "UPPER_BOWL",
@@ -682,7 +682,7 @@ export function runAutomatedJumbotronDirectorCertification(): {
       "SIDE_SECTIONS",
       "REAR_SECTIONS",
     ];
-    const hasAllTiers = required.every((c) => classes.has(c as any));
+    const hasAllTiers = required.every((c) => classes.has(c));
 
     const passed =
       hasAllTiers &&
@@ -748,14 +748,12 @@ export function runAutomatedJumbotronDirectorCertification(): {
     const passed =
       arena120.cameraSphereFovDegrees === 120 &&
       outdoorDefault.cameraSphereFovDegrees === 140 &&
-      invalid360Rejected.cameraSphereFovDegrees === 120 &&
-      (arena120.cameraSphereFovDegrees as number) !== 160 &&
-      (outdoorDefault.cameraSphereFovDegrees as number) !== 160;
+      invalid360Rejected.cameraSphereFovDegrees === 120;
 
     results.push({
       passed: Boolean(passed),
       name: "Gate 21: Dynamic FOV & Sphere Envelope (Never Hardcoded 160/360)",
-      evidence: `Override=120, OutdoorRuntime=${outdoorDefault.cameraSphereFovDegrees}, Rejected360Fallback=${invalid360Rejected.cameraSphereFovDegrees}`,
+      evidence: `Override=120, OutdoorRuntime=${outdoorDefault.cameraSphereFovDegrees}, Rejected360Fallback=${invalid360Rejected.cameraSphereFovDegrees} (not 160)`,
     });
   }
 
