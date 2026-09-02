@@ -4,7 +4,7 @@
 **Branch:** `eos/vocal-improv-clean`  
 **Stance:** Screenshots prove **logic/routing**. Videos are **experience targets**. Build **upward** on frozen Live Fabric / Universal Media Player / Jumbotron / Battle lifecycle. **NO green/debug surface** may satisfy production visual (`experienceCert`) certification.
 
-**Companion laws:** [`EXPERIENCE_PRESENTATION_DNA.md`](./EXPERIENCE_PRESENTATION_DNA.md) · [`VENUE_WORLD_RUNTIME_SPEC.md`](./VENUE_WORLD_RUNTIME_SPEC.md) · [`AVATAR_STUDIO_TO_WORLD_PIPELINE.md`](./AVATAR_STUDIO_TO_WORLD_PIPELINE.md) · [`UNIVERSAL_PLAYER_FREEDOM_LAW.md`](./UNIVERSAL_PLAYER_FREEDOM_LAW.md) · [`LIVE_UNIVERSAL_MEDIA_PLAYER_LAW.md`](./LIVE_UNIVERSAL_MEDIA_PLAYER_LAW.md)
+**Companion laws:** [`EXPERIENCE_PRESENTATION_DNA.md`](./EXPERIENCE_PRESENTATION_DNA.md) · [`VENUE_WORLD_RUNTIME_SPEC.md`](./VENUE_WORLD_RUNTIME_SPEC.md) · [`AVATAR_STUDIO_TO_WORLD_PIPELINE.md`](./AVATAR_STUDIO_TO_WORLD_PIPELINE.md) · [`AVATAR_PREVIEW_PARITY_LAW.md`](./AVATAR_PREVIEW_PARITY_LAW.md) · [`UNIVERSAL_PLAYER_FREEDOM_LAW.md`](./UNIVERSAL_PLAYER_FREEDOM_LAW.md) · [`LIVE_UNIVERSAL_MEDIA_PLAYER_LAW.md`](./LIVE_UNIVERSAL_MEDIA_PLAYER_LAW.md)
 
 **Code contracts:** `apps/web/src/lib/experiencePresentation/`
 
@@ -40,6 +40,7 @@
 7. **Monday Night Stage ≠ Regular GO LIVE.**
 8. **Battle vs Challenge:** VS/corners vs objective/contract central.
 9. **Presentation Event Bus** only spectacularizes authoritative domain events — never manufactures them.
+10. **Avatar Preview Parity** — Studio / Quick preview is a subset of production Fan rig capability (same draft, same Foundry rig). LOD ok; invented smile/dance/prop forbidden. Lounge lighting preview never enables occupancy. See [`AVATAR_PREVIEW_PARITY_LAW.md`](./AVATAR_PREVIEW_PARITY_LAW.md). ACGBR Authoritative-Truth Boundary applies here; Challenge ACGBR lane files are not modified.
 
 ---
 
@@ -120,16 +121,17 @@
 | signature DNA | `Challenge` — OBJECTIVE_FOCUS, ChallengeContract primitive, result vs objective |
 | PROGRAM source id | `PROGRAM.CHALLENGE_PRIMARY` |
 | ISO/viewpoints | PERFORMER, CONTRACT_CARD, JUDGE, TIMER, AUDIENCE |
-| Jumbotron support | PARTIAL (reads real Challenge PROGRAM — objective headline; no VS scoreboard seed) |
-| Universal Player support | PARTIAL (PROGRAM bound; no second LiveSession) |
+| Jumbotron support | PARTIAL→STRONG (reads Challenge PROGRAM + four-face plan via ACGBR `ChallengeJumbotronFacePlan`; no VS scoreboard seed) |
+| Universal Player support | PARTIAL→STRONG (PROGRAM bound; lifecycle fabric Gates 8–9; no second LiveSession) |
 | queue/game requirements | Objective contract, timer, pass/fail ledger |
 | world interactions | Real votes/judging only |
-| commerce | Sponsor prize (Rule 23 gated) |
-| logic cert | PARTIAL (compose + semantic unit tests; lifecycle engines exist) |
-| architecture cert | **DONE** (Challenge pack + `composeChallengeProgram` wired on `/rooms/challenge/[roomId]`; Jumbotron objective-first; no default VS) |
-| experience cert | **OPEN** — production physical cert pending; Phase 1 is NOT full cinematic |
-| desktop/mobile | FOCUS / FLAT |
-| notes | **Not** Battle. No mandatory corner VS. Slice: `docs/audit/CHALLENGE_WORLD_PRESENTATION_SLICE.md` |
+| commerce | Sponsor prize (Rule 23 gated); settlement **separate** from result finalize |
+| ACGBR | **DONE** contracts + Challenge bridge (read-only snapshot; certified templates; neural OUT OF SCOPE) — `docs/audit/ACGBR_ARCHITECTURE_CONTRACT.md` |
+| logic cert | **STRONG** (lifecycle + Lane C Gates 1–16 + ACGBR boundary jest + compose semantic tests) |
+| architecture cert | **DONE** (Challenge pack + `composeChallengeProgram` + ACGBR one-way boundary + result≠settlement) |
+| experience cert | **OPEN** — production physical Chromium cert pending; do **not** treat logic green as experienceCert PASS |
+| desktop/mobile | FOCUS / FLAT · pacing FULL/FAST/RECONNECT/REDUCED_MOTION/LOW_DEVICE |
+| notes | **Not** Battle. No mandatory corner VS. Phase 1: `CHALLENGE_WORLD_PRESENTATION_SLICE.md`. Lane C: `LANE_C_CHALLENGE_OPERATIONAL_ACTIVATION.md` |
 
 ### Cypher
 
@@ -441,13 +443,13 @@
 | Jumbotron support | N/A |
 | Universal Player support | Studio viewport ≠ live session |
 | queue/game requirements | None |
-| world interactions | Equip → LiveAvatarSync into authorized rooms |
+| world interactions | Equip → `FanEquippedLookBridge` into Fan Lobby presence + local venue seat (LiveAvatarSync all-rooms OPEN) |
 | commerce | Wardrobe packs, cosmetics |
-| logic cert | PARTIAL (Canister SMILE / bobblehead_v0) |
-| architecture cert | PARTIAL (Herser binding in progress) |
+| logic cert | PARTIAL (Canister SMILE / bobblehead_v0 + FAN-only look-bridge + Preview Parity unit tests) |
+| architecture cert | **PARTIAL** — Phase 1 studio→lobby/seat glue + Preview Parity contracts; Herser wardrobe / LiveAvatarSync / QA Lab / facial+motion packages not complete. See [`AVATAR_STUDIO_WORLD_PHASE1_SLICE.md`](./AVATAR_STUDIO_WORLD_PHASE1_SLICE.md) · [`AVATAR_PREVIEW_PARITY_LAW.md`](./AVATAR_PREVIEW_PARITY_LAW.md) |
 | experience cert | OPEN |
 | desktop/mobile | Both |
-| notes | See [`AVATAR_STUDIO_TO_WORLD_PIPELINE.md`](./AVATAR_STUDIO_TO_WORLD_PIPELINE.md). |
+| notes | Face-scan / lip-sync not stubbed. Closet/looks/test bookmark-redirect to `/avatar/studio`. One Canonical Avatar Draft for Studio + Quick Panel. Do not claim architectureCert DONE. |
 
 ### Rehearsal
 
@@ -521,7 +523,7 @@
 | Fan Live | PARTIAL | **DONE** | OPEN |
 | Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
 | Battle | PARTIAL | **DONE** | OPEN |
-| Challenge | PARTIAL | **DONE** | OPEN |
+| Challenge | **STRONG** | **DONE** | OPEN |
 | Cypher | PARTIAL | **DONE** | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
 | Monday Night Stage | PARTIAL | **DONE** | OPEN |
@@ -556,7 +558,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **0** | Matrix + contracts + semantic tests | This document + `experiencePresentation/` tests PASS |
 | **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE — **architecture DONE**; experienceCert OPEN until production physical |
 | **2** | **Battle world** presentation (not new lifecycle) | VS pack + `composeBattleProgram` + BattlePresentationShell — **architecture DONE**; experienceCert OPEN until production physical; no fake crowd/score; Cypher uncontaminated |
-| **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE** Phase 1 (`composeChallengeProgram` + shell); experienceCert OPEN |
+| **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE**; Lane C ACGBR + lifecycle logicCert **STRONG**; experienceCert OPEN (`LANE_C_CHALLENGE_OPERATIONAL_ACTIVATION.md`) |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts — **architecture DONE** Phase 1 (`composeCypherProgram` + shell); experienceCert OPEN |
 | **5** | **Concert / World Concert** | Stage + audience; Mini vs World badges — **architecture DONE** Phase 1 (`composeConcertProgram` + shell); experienceCert OPEN |
 | **6** | **World Release** | Premiere drop choreography on real schedule — **architecture DONE** Phase 1 (`composeReleaseProgram` + shell); experienceCert OPEN |
@@ -564,7 +566,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **7b** | **Monday Night Stage** | Show package + Who's Next — **architecture DONE** Phase 1 (`composeMondayNightStageProgram` + shell); experienceCert OPEN |
 | **7c** | **Game Show** | Host + board + turn + prize ledger — **architecture DONE** Phase 1 (`composeGameShowProgram` + shell); experienceCert OPEN |
 | **8** | **Lounges** (+ Playlist Lounge) / **Fan Lobby** | Panel-only presence; avatar model rejected for Lounge; Fan Lobby avatars OK — **architecture DONE** Phase 1 (`composeFanLobbyProgram` + `composeLoungeProgram` + shells); experienceCert OPEN |
-| **9** | **Avatar Studio → World** | Looks equip → presence bridge into Fan Lobby / WDP / concert |
+| **9** | **Avatar Studio → World** | Looks equip → Fan Lobby / local seat via `FanEquippedLookBridge` + Preview Parity (one draft → `AvatarPreviewRuntime`) — **architecture PARTIAL** Phase 1 (Herser/LiveAvatarSync/facial+motion incomplete); experienceCert OPEN. Slice: `docs/audit/AVATAR_STUDIO_WORLD_PHASE1_SLICE.md` · law: `docs/audit/AVATAR_PREVIEW_PARITY_LAW.md` |
 
 Do **not** start full cinematic Battle renderer until Phase 0–1 landed and Phase 2 scoped against frozen Battle lifecycle.
 
