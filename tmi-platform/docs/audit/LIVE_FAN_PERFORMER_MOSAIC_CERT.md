@@ -14,10 +14,10 @@
 | 2 | Publish → registry + wall + home | PASS | `executeInstantGoLive` → POST `/api/live/go` → `DiscoveryBus.upsert`; fan category `fan-lobby` |
 | 3 | Mosaic scroll panel | PASS | `LiveLobbyMosaicScrollRail.tsx` — WebRTC tiles, horizontal scroll, tap → `/hub/*?watch=` |
 | 4 | Self-discovery | PASS | `YOU` badge + `scrollIntoView` when `publishedRoomId` / `hostUserId` matches |
-| 5 | Browser cert | PENDING | Requires signed-in Fan + Performer sessions on running dev server |
-| 6 | Artifacts | PASS | `.cursor/artifacts/live-mosaic-wall/WIRING_MAP.md` |
+| 5 | Browser cert | PARTIAL | Performer DOM wiring PASS; Fan DOM wiring PASS (login blocked — register 500 on test account) |
+| 6 | Artifacts | PASS | `.cursor/artifacts/live-mosaic-wall/` — WIRING_MAP, cert-live-mosaic.mjs, cert-report.json, screenshots |
 | 7 | This doc | PASS | `docs/audit/LIVE_FAN_PERFORMER_MOSAIC_CERT.md` |
-| 8 | Typecheck | PENDING | Run `pnpm typecheck` after commit |
+| 8 | Typecheck | PASS | `pnpm typecheck` exit 0 (2026-09-02) |
 
 ---
 
@@ -78,13 +78,31 @@ EXPECTED: Performer stage on wall + homepage; END LIVE clears registry
 
 ---
 
+## Browser cert results (2026-09-02)
+
+Script: `.cursor/artifacts/live-mosaic-wall/cert-live-mosaic.mjs`
+
+| Role | Login | GO LIVE control | Mosaic rail | DOM wiring | Result |
+|------|-------|-----------------|-------------|------------|--------|
+| Performer | PASS | PASS | PASS | PASS | **PASS** |
+| Fan | FAIL (test account) | PASS | PASS | PASS | **PARTIAL** |
+
+Evidence: `performer-01-hub-before.png`, `fan-01-hub-before.png`, `cert-report.json`
+
+Fan hub renders GO LIVE + mosaic rail without auth (public shell); authenticated Fan GO LIVE publish requires valid session — test fan register returned HTTP 500.
+
+---
+
 ## Blockers
 
-1. **Physical browser cert** — needs running `pnpm dev` + authenticated Fan and Performer accounts with camera permission.
-2. **Daily/WebRTC preview** — tiles show honest "Connecting preview…" when no peer stream bound (not a wiring failure).
+1. **Fan auth test account** — `/api/auth/register` returns 500 for programmatic fan signup; use existing Fan credentials for full publish cert.
+2. **Camera / WebRTC preview** — tiles show honest empty/connecting state when no peer stream bound (not a wiring failure).
 
 ---
 
 ## Commits
 
-Recorded after `pnpm typecheck` + git commit on branch `eos/vocal-improv-clean`.
+| SHA | Message |
+|-----|---------|
+| `45b197e9` | Wire Fan + Performer GO LIVE mosaic rail to DiscoveryBus |
+| *(pending)* | cert script + audit doc update |

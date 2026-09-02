@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-09-02T05:52:02.813Z",
+  "base": "http://localhost:3000",
+  "performer": {
+    "role": "performer",
+    "hubRoute": "/hub/performer",
+    "email": "suedejs2000@gmail.com",
+    "steps": {
+      "login": "PASS",
+      "goLiveControlVisible": "PASS",
+      "mosaicRailVisible": "PASS",
+      "mosaicHonestEmpty": "PASS",
+      "domWiring": "PASS"
+    },
+    "pass": true,
+    "wiring": {
+      "goLiveHost": true,
+      "mosaicRail": true,
+      "mediaStack": true
+    }
+  },
+  "fan": {
+    "role": "fan",
+    "hubRoute": "/hub/fan",
+    "email": "fan-mosaic-cert@tmi.local",
+    "steps": {
+      "login": "FAIL",
+      "goLiveControlVisible": "PASS",
+      "mosaicRailVisible": "PASS",
+      "mosaicHonestEmpty": "PASS",
+      "domWiring": "PASS"
+    },
+    "pass": false,
+    "wiring": {
+      "goLiveHost": true,
+      "mosaicRail": true,
+      "mediaStack": true
+    }
+  },
+  "pass": false
+}
