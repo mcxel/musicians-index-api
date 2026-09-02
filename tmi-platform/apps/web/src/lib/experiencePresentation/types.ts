@@ -114,6 +114,18 @@ export const FORBIDDEN_CONCERT_COMPOSITIONS: readonly BroadcastCompositionLayout
   "CIRCLE_FOCUS",
 ] as const;
 
+/**
+ * World / Mini Release forbid Battle VS corners + Cypher circle + game board.
+ * Premiere/listening DNA — not combat, not objective challenge.
+ */
+export const FORBIDDEN_RELEASE_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+  "GAME_BOARD",
+] as const;
+
 /** Dance Party / WDP forbid Battle VS corners + Cypher circle + game/objective DNA. */
 export const FORBIDDEN_DANCE_PARTY_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
   "DUAL",

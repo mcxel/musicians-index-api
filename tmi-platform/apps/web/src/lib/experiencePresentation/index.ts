@@ -25,6 +25,7 @@ export {
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
+  FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
   OBJECTIVE_COMPOSITIONS,
 } from "./types";
@@ -205,6 +206,29 @@ export {
   mapMondayNightStagePhaseToComposition,
 } from "./composeMondayNightStageProgram";
 
+export type {
+  ReleaseProgramComposition,
+  ReleaseArtist,
+  ReleaseMedia,
+  ReleaseMerchCta,
+  ReleaseScope,
+  ReleaseLifecyclePhase,
+} from "./composeReleaseProgram";
+export {
+  PROGRAM_WORLD_RELEASE,
+  PROGRAM_RELEASE_PREMIERE,
+  ISO_PREMIERE,
+  ISO_ARTIST,
+  ISO_COUNTDOWN,
+  ISO_MERCH,
+  composeReleaseProgram,
+  getActiveReleaseProgram,
+  clearReleaseProgram,
+  isReleaseProgramProductionSurface,
+  isReleaseVsFree,
+  mapReleasePhaseToComposition,
+} from "./composeReleaseProgram";
+
 export {
   PerformerLivePack,
   BattlePack,
@@ -212,6 +236,7 @@ export {
   CypherPack,
   ConcertPack,
   WorldConcertPack,
+  WorldReleasePack,
   DancePartyPack,
   MondayNightStagePack,
 } from "./packs";

@@ -303,7 +303,9 @@ export async function POST(req: NextRequest) {
         performerTier: normalizeTier(auth.user.tier),
       });
       await persistSessionNow(session).catch(() => null);
-      liveRoomUrl = `/live/rooms/${encodeURIComponent(roomId)}?from=shows-releases&eventId=${encodeURIComponent(event.id)}`;
+      liveRoomUrl = isReleaseKind(kind)
+        ? `/rooms/release/${encodeURIComponent(roomId)}?eventId=${encodeURIComponent(event.id)}&scope=mini`
+        : `/live/rooms/${encodeURIComponent(roomId)}?from=shows-releases&eventId=${encodeURIComponent(event.id)}`;
     }
 
     return NextResponse.json({

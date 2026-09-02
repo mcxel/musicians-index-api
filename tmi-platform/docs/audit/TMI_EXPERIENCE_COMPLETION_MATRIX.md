@@ -242,22 +242,22 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | World Release Party |
+| route(s) | `/rooms/release/[roomId]` · Shows & Releases catalog (`MINI_RELEASE` / `WORLD_RELEASE`) |
 | presence model | Premiere focus; lighter audience (reactions OK) |
 | center of gravity | Release media + countdown + artist |
 | signature DNA | `WorldRelease` — premiere card, drop moment, commerce |
-| PROGRAM source id | `PROGRAM.WORLD_RELEASE` |
-| ISO/viewpoints | PREMIERE, ARTIST, COUNTDOWN, LYRICS, MERCH |
-| Jumbotron support | OPEN |
-| Universal Player support | OPEN |
-| queue/game requirements | Drop schedule |
-| world interactions | Listen-along sync |
-| commerce | Pre-save, merch, tips |
-| logic cert | OPEN |
-| architecture cert | OPEN |
+| PROGRAM source id | `PROGRAM.WORLD_RELEASE` (🌍) / `PROGRAM.RELEASE_PREMIERE` (⭐) |
+| ISO/viewpoints | PREMIERE, ARTIST, COUNTDOWN, MERCH (real inventory only) |
+| Jumbotron support | PARTIAL (same Release PROGRAM path; `WORLD_RELEASE` experience type) |
+| Universal Player support | PARTIAL |
+| queue/game requirements | Drop schedule via Shows & Releases + ReleasePartyDirectorEngine |
+| world interactions | Listen-along sync (OPEN) |
+| commerce | Real merch/preorder CTAs only when supplied; tips via existing paths |
+| logic cert | PARTIAL (catalog + director countdown + compose) |
+| architecture cert | **DONE** (shared `composeReleaseProgram` Mini/World) |
 | experience cert | OPEN |
 | desktop/mobile | FLAT / PIP |
-| notes | Distinct from Listening Party (social sync). |
+| notes | Distinct from Listening Party (social sync). 🌍/⭐ from kind/scope — never invent World. No fake streams/preorders/attendance. |
 
 ### Listening Party
 
@@ -527,7 +527,7 @@
 | Monday Night Stage | PARTIAL | **DONE** | OPEN |
 | Concert | PARTIAL | **DONE** | OPEN |
 | World Concert | PARTIAL | **DONE** | OPEN |
-| World Release | OPEN | OPEN | OPEN |
+| World Release | PARTIAL | **DONE** | OPEN |
 | Listening Party | PARTIAL | PARTIAL | OPEN |
 | Watch Party | OPEN | OPEN | OPEN |
 | World Dance Party | PARTIAL | **DONE** | OPEN |
@@ -559,7 +559,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE** Phase 1 (`composeChallengeProgram` + shell); experienceCert OPEN |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts — **architecture DONE** Phase 1 (`composeCypherProgram` + shell); experienceCert OPEN |
 | **5** | **Concert / World Concert** | Stage + audience; Mini vs World badges — **architecture DONE** Phase 1 (`composeConcertProgram` + shell); experienceCert OPEN |
-| **6** | **World Release** | Premiere drop choreography on real schedule |
+| **6** | **World Release** | Premiere drop choreography on real schedule — **architecture DONE** Phase 1 (`composeReleaseProgram` + shell); experienceCert OPEN |
 | **7** | **World Dance Party** | Floor avatars + DJ composite — **architecture DONE** Phase 1 (`composeDancePartyProgram` + shell); experienceCert OPEN |
 | **7b** | **Monday Night Stage** | Show package + Who's Next — **architecture DONE** Phase 1 (`composeMondayNightStageProgram` + shell); experienceCert OPEN |
 | **8** | **Lounges** (+ Playlist Lounge) | Panel-only presence; avatar model rejected |

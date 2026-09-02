@@ -14,6 +14,7 @@ import {
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
+  FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
 } from "./types";
 import { ALL_PACKS } from "./packs";
@@ -135,6 +136,19 @@ export function assertPackAllowsComposition(
     }
     if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
       throw new Error("MondayNightStage pack semantic flags forbid VS/winner/elimination");
+    }
+  }
+
+  // Hard semantic: World / Mini Release = premiere — never Battle VS / Cypher circle / game board
+  if (packId === "WorldRelease") {
+    if (pack.isRegularGoLive) {
+      throw new Error("WorldRelease pack must not alias Regular GO LIVE");
+    }
+    if ((FORBIDDEN_RELEASE_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("WorldRelease pack rejects Battle VS / Cypher circle / game-board compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("WorldRelease pack semantic flags forbid VS/winner/elimination");
     }
   }
 }

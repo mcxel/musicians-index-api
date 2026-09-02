@@ -71,6 +71,8 @@ Videos define **experience targets**. Screenshots prove **logic**. Borrow choreo
 ### World Release
 - **DNA:** Premiere drop; countdown; release media hero; lighter social.
 - **Moment:** TRACK_CHANGE / COUNTDOWN_COMPLETE driven scenes.
+- **World / Mini:** shared `composeReleaseProgram` — 🌍 `PROGRAM.WORLD_RELEASE` vs ⭐ `PROGRAM.RELEASE_PREMIERE`; never invent World.
+- **Hard forbid:** Battle VS corners, Cypher circle combat, invented streams/preorders/attendance.
 
 ### Dance Party (WDP)
 - **DNA:** DJ + dance floor; BPM; emotes; hybrid composition.

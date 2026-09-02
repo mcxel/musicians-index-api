@@ -206,21 +206,36 @@ export const WorldConcertPack: ExperiencePresentationPack = {
 
 export const WorldReleasePack: ExperiencePresentationPack = {
   packId: "WorldRelease",
-  signatureDna: "Premiere drop + countdown",
+  signatureDna:
+    "Premiere drop + countdown + artist/release focus + real merch CTAs — never Battle VS / Cypher combat",
   presenceModel: "GRID_TILES",
   allowedCompositions: ["STAGE_WIDE", "HOST_CLOSE", "PIP"],
-  forbiddenCompositions: ["DUAL", "CIRCLE_FOCUS", "GAME_BOARD"],
+  forbiddenCompositions: ["DUAL", "A_DOMINANT", "B_DOMINANT", "CIRCLE_FOCUS", "GAME_BOARD"],
   requiredPrimitives: ["LiveVideoPanel", "TimerRing", "IdentityPanel"],
-  optionalPrimitives: ["LowerThird", "ReactionEmitter"],
+  optionalPrimitives: ["LowerThird", "ReactionEmitter", "QueueRail"],
   allowsVsLayout: false,
   allowsWinnerFinale: false,
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("world_release", "WorldRelease", ["/releases/world"], "GRID_TILES", {
-    logicCert: "OPEN",
-    architectureCert: "OPEN",
-  }),
+  routeCapability: baseRoute(
+    "world_release",
+    "WorldRelease",
+    [
+      "/rooms/release",
+      "/rooms/release/[roomId]",
+      "/releases/world",
+      "/live/world-release",
+    ],
+    "GRID_TILES",
+    {
+      requiresJumbotron: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const DancePartyPack: ExperiencePresentationPack = {

@@ -417,6 +417,40 @@ export class ExperiencePresentationPacks {
       },
     }),
 
+    WORLD_RELEASE: (ctx) => ({
+      id: `pack.world_release.${ctx.venueSkin ?? "default"}`,
+      name: "World Release Premiere Pack",
+      experienceType: "WORLD_RELEASE",
+      supportedTargets: ["JUMBOTRON", "VENUE_WALL", "STAGE_RAIL", "OVERLAY", "LOWER_THIRD"],
+      primaryTarget: "JUMBOTRON",
+      lightingProfile: ctx.lightingProfile ?? "PREMIERE_SPOT_WARM",
+      animationProfile: ctx.animationProfile ?? "COUNTDOWN_REVEAL",
+      brandPalette: ctx.brandPalette ?? {
+        primary: "#FF8C00",
+        secondary: "#00FFFF",
+        accent: "#FFD700",
+        background: "#050510",
+      },
+      allowedEventTypes: [
+        "SAFETY_ALERT",
+        "EMERGENCY_BROADCAST",
+        "GIFT_ALERT",
+        "REWARD_AWARDED",
+        "DIRECT_SPONSOR_CAMPAIGN",
+        "HOUSE_PROMOTION",
+        "AMBIENT_UPCOMING_SCHEDULE",
+      ],
+      proceduralFeatures: {
+        hasScoreboard: false,
+        hasRoundTimer: true,
+        hasCrowdMeter: false,
+        hasDiscoOrb: false,
+        hasTheaterCurtain: true,
+        hasCollaborativeRotation: false,
+        allowWinnerPresentation: false,
+      },
+    }),
+
     FAN_LOBBY: (ctx) => ({
       id: `pack.fan_lobby.${ctx.venueSkin ?? "default"}`,
       name: "Fan Lobby Social Wall Pack",

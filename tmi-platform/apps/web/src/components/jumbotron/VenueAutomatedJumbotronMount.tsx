@@ -24,6 +24,7 @@ import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCyph
 import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeConcertProgram";
 import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/composeDancePartyProgram";
 import { getActiveMondayNightStageProgram } from "@/lib/experiencePresentation/composeMondayNightStageProgram";
+import { getActiveReleaseProgram } from "@/lib/experiencePresentation/composeReleaseProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -48,6 +49,15 @@ export function mapArenaEventToJumbotronExperience(
   // Concert before monday/auditorium — world/mini concert map to WORLD_CONCERT PROGRAM.
   if (t.includes("concert") || t.includes("mini-concert") || t.includes("world-concert")) {
     return "WORLD_CONCERT";
+  }
+  // Release premiere before generic auditorium — bind PROGRAM.WORLD_RELEASE / RELEASE_PREMIERE.
+  if (
+    t.includes("world-release") ||
+    t.includes("mini-release") ||
+    t.includes("release-party") ||
+    t.includes("release")
+  ) {
+    return "WORLD_RELEASE";
   }
   // Monday Night Stage before generic auditorium — bind PROGRAM.MNS_SHOW.
   if (t.includes("monday") || t.includes("monday-stage") || t.includes("monday_night")) {
@@ -331,6 +341,37 @@ export function VenueAutomatedJumbotronMount({
         targetClass: pack.primaryTarget,
         sourceEventId: programId,
         title: "MONDAY NIGHT STAGE",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "WORLD_RELEASE") {
+      // Real Release PROGRAM — artist + premiere title; never invent streams / preorders / attendance.
+      const prog = getActiveReleaseProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ MINI";
+      const artistName = prog?.artist?.displayName?.trim() || "Waiting for artist";
+      const releaseTitle = prog?.release?.title?.trim() || null;
+      const countdown = prog?.countdownRemainingSec;
+      const programId =
+        prog?.programSourceId ??
+        (prog?.scope === "WORLD" ? "PROGRAM.WORLD_RELEASE" : "PROGRAM.RELEASE_PREMIERE");
+      const headline = releaseTitle
+        ? countdown != null && countdown > 0
+          ? `${artistName} · ${releaseTitle} · DROP ${countdown}s`
+          : `${artistName} · ${releaseTitle}`
+        : artistName;
+      setEvent({
+        id: `evt-release-${roomId}`,
+        traceId: `tr-release-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_RELEASE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD RELEASE" : "MINI RELEASE",
         headline,
         subline: `${badge} · ${programId}`,
         durationMs: 120_000,

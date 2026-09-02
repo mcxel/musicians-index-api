@@ -23,6 +23,7 @@ export enum JumbotronPriority {
 
 export type JumbotronExperienceType =
   | "BATTLE_ARENA"
+  | "CHALLENGE_ARENA"
   | "CYPHER"
   | "REGULAR_LIVE"
   | "WORLD_DANCE_PARTY"
@@ -31,12 +32,17 @@ export type JumbotronExperienceType =
   | "LOUNGE"
   | "MONDAY_NIGHT_STAGE"
   | "WORLD_CONCERT"
+  | "WORLD_RELEASE"
   | "FAN_LOBBY"
   | "PERFORMER_LOBBY";
 
 export type JumbotronEventType =
   | "SAFETY_ALERT"
   | "EMERGENCY_BROADCAST"
+  | "CHALLENGE_OBJECTIVE_REVEAL"
+  | "CHALLENGE_ATTEMPT_TICK"
+  | "CHALLENGE_JUDGMENT_OPEN"
+  | "CHALLENGE_RESULT"
   | "ROUND_TIMER_TICK"
   | "ROUND_TIMER_CRITICAL"
   | "ROUND_WINNER"

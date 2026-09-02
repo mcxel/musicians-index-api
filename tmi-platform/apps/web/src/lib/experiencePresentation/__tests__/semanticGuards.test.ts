@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack, WorldReleasePack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -74,6 +74,16 @@ import {
   mapMondayNightStagePhaseToComposition,
   PROGRAM_MNS_SHOW,
 } from "../composeMondayNightStageProgram";
+import {
+  clearReleaseProgram,
+  composeReleaseProgram,
+  getActiveReleaseProgram,
+  isReleaseProgramProductionSurface,
+  isReleaseVsFree,
+  mapReleasePhaseToComposition,
+  PROGRAM_RELEASE_PREMIERE,
+  PROGRAM_WORLD_RELEASE,
+} from "../composeReleaseProgram";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 
 describe("experiencePresentation semantic guards", () => {
@@ -825,6 +835,113 @@ describe("experiencePresentation semantic guards", () => {
 
     clearMondayNightStageProgram("test-done");
     expect(getActiveMondayNightStageProgram()).toBeNull();
+  });
+
+  test("composeReleaseProgram: premiere focus; never VS/circle; Cypher/Battle/MNS clean", () => {
+    clearReleaseProgram("test-reset");
+
+    const empty = composeReleaseProgram({
+      sessionId: "sess-release-empty",
+      releaseId: "rel-empty",
+      roomId: "release-open",
+      scope: "MINI",
+      bindJumbotron: true,
+    });
+    expect(empty.packId).toBe("WorldRelease");
+    expect(empty.scope).toBe("MINI");
+    expect(empty.worldMiniBadge).toBe("⭐ MINI");
+    expect(empty.programSourceId).toBe(PROGRAM_RELEASE_PREMIERE);
+    expect(empty.artist).toBeNull();
+    expect(empty.release).toBeNull();
+    expect(empty.merchCtas).toEqual([]);
+    expect(empty.countdownRemainingSec).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(empty.winnerId).toBeNull();
+    expect(isReleaseVsFree(empty)).toBe(true);
+    expect(isReleaseProgramProductionSurface()).toBe(true);
+
+    expect(WorldReleasePack.allowsVsLayout).toBe(false);
+    expect(WorldReleasePack.isRegularGoLive).toBe(false);
+    expect(() => assertPackAllowsComposition("WorldRelease", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldRelease", "A_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldRelease", "B_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldRelease", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldRelease", "GAME_BOARD")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldRelease", "STAGE_WIDE")).not.toThrow();
+    expect(mapReleasePhaseToComposition("countdown")).toBe("PIP");
+    expect(mapReleasePhaseToComposition("performing")).toBe("STAGE_WIDE");
+    expect(mapReleasePhaseToComposition("PREMIERE_DROP")).toBe("STAGE_WIDE");
+
+    const live = composeReleaseProgram({
+      sessionId: "sess-release-live",
+      releaseId: "rel-world-1",
+      roomId: "world-release-1",
+      eventId: "evt-1",
+      scope: "WORLD",
+      artistId: "artist-1",
+      artistDisplayName: "Real Artist",
+      releaseTitle: "Midnight Drop",
+      artworkUrl: "/art/midnight.jpg",
+      countdownRemainingSec: 12,
+      merchCtas: [
+        {
+          productId: "merch-1",
+          title: "Vinyl Preorder",
+          href: "/store/merch-1",
+          priceLabel: "$29",
+        },
+      ],
+      lifecyclePhase: "countdown",
+      bindJumbotron: true,
+    });
+    expect(live.packId).toBe("WorldRelease");
+    expect(live.scope).toBe("WORLD");
+    expect(live.worldMiniBadge).toBe("🌍 WORLD");
+    expect(live.programSourceId).toBe(PROGRAM_WORLD_RELEASE);
+    expect(live.artist?.displayName).toBe("Real Artist");
+    expect(live.release?.title).toBe("Midnight Drop");
+    expect(live.countdownRemainingSec).toBe(12);
+    expect(live.merchCtas).toHaveLength(1);
+    expect(live.composition).toBe("PIP");
+    expect(isReleaseVsFree(live)).toBe(true);
+
+    // Invented / invalid merch href rejected
+    const bogusMerch = composeReleaseProgram({
+      sessionId: "sess-release-live",
+      releaseId: "rel-world-1",
+      roomId: "world-release-1",
+      scope: "WORLD",
+      artistId: "artist-1",
+      artistDisplayName: "Real Artist",
+      releaseTitle: "Midnight Drop",
+      merchCtas: [{ productId: "x", title: "Fake", href: "#" }],
+    });
+    expect(bogusMerch.merchCtas).toEqual([]);
+
+    // Negative countdown rejected
+    const bogusCd = composeReleaseProgram({
+      sessionId: "sess-release-live",
+      releaseId: "rel-world-1",
+      roomId: "world-release-1",
+      scope: "WORLD",
+      countdownRemainingSec: -5,
+    });
+    expect(bogusCd.countdownRemainingSec).toBeNull();
+
+    // Prior slices untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(ConcertPack.allowsVsLayout).toBe(false);
+    expect(DancePartyPack.allowsVsLayout).toBe(false);
+    expect(MondayNightStagePack.allowsVsLayout).toBe(false);
+    expect(getPresentationPack("WorldRelease").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("WorldRelease").routeCapability.experienceCert).toBe("OPEN");
+
+    clearReleaseProgram("test-done");
+    expect(getActiveReleaseProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

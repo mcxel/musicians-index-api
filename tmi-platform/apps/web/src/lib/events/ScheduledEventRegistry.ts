@@ -382,8 +382,9 @@ export function toShowsReleasePublicCard(
   else if (ticketed) primaryCta = "GET_TICKET";
   else if (phase === "CLOSED") primaryCta = "GET_ACCESS";
 
-  const joinHref =
-    phase === "LIVE" || phase === "PRESHOW" || (phase === "POSTSHOW" && record.replayAllowed)
+  const joinHref = isReleaseShowsKind(record.kind)
+    ? `/rooms/release/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=${authorityForKind(record.kind) === "world" ? "world" : "mini"}`
+    : phase === "LIVE" || phase === "PRESHOW" || (phase === "POSTSHOW" && record.replayAllowed)
       ? `/live/rooms/${encodeURIComponent(record.roomId)}?from=shows-releases&eventId=${encodeURIComponent(record.eventId)}`
       : `/concerts/${encodeURIComponent(record.eventId)}`;
 

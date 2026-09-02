@@ -106,5 +106,6 @@ Asserts: MNS rejects DUAL/CIRCLE_FOCUS; hosts resolve from registry; Who's Next 
 | Audience presence count from seat/presence engines | OPEN (shell shows honest "unknown") |
 | experienceCert physical | OPEN |
 | EOS mill path still has no real submission queue (room owns it) | OPEN / intentional split |
-| **World Release** presentation | **Next recommended slice** |
+| **World Release** presentation | **DONE** Phase 1 architecture — see `WORLD_RELEASE_PRESENTATION_SLICE.md` |
+| **Game Show** or **Fan Lobby / Lounge** presentation | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |
