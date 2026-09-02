@@ -18,6 +18,7 @@ export interface GlobalTmiHeaderProps {
 export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
   const pathname = usePathname();
   const [sessionUser, setSessionUser] = useState(user ?? null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     if (user !== undefined) {
@@ -43,6 +44,26 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
       active = false;
     };
   }, [user]);
+
+  // Cart badge — real count from the persistent server-authoritative cart
+  // (GET /api/cart → itemCount), refreshed on sign-in and on navigation so
+  // an add-to-cart on any page shows up here without a full reload.
+  useEffect(() => {
+    if (!sessionUser?.id) {
+      setCartCount(0);
+      return;
+    }
+    let active = true;
+    fetch("/api/cart", { cache: "no-store", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && typeof data?.itemCount === "number") setCartCount(data.itemCount);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [sessionUser?.id, pathname]);
 
   const navLinks = [
     { label: "1", href: "/home/1", title: "Home 1: Crown Orbit" },
@@ -104,6 +125,51 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
 
         {/* Auth or Account Controls (Strictly isolated in right corner) */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {sessionUser && (
+            <Link
+              href="/cart"
+              title="Cart"
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                textDecoration: "none",
+                fontSize: 14,
+                flexShrink: 0,
+              }}
+            >
+              🛒
+              {cartCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -5,
+                    right: -5,
+                    minWidth: 15,
+                    height: 15,
+                    padding: "0 3px",
+                    borderRadius: 8,
+                    background: "#00FFFF",
+                    color: "#050510",
+                    fontSize: 9,
+                    fontWeight: 900,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    lineHeight: 1,
+                  }}
+                >
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </Link>
+          )}
           {sessionUser ? (
             <AccountCommandMenu
               userId={sessionUser.id ?? "session"}

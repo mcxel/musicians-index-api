@@ -34,6 +34,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [isMobile, setIsMobile] = useState(true); // mobile-first: nav links collapse on phones
 
@@ -87,6 +88,28 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
     }
     void pollMessages();
     const id = setInterval(pollMessages, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [userId]);
+
+  // Cart badge — real count from the persistent server-authoritative cart
+  // (GET /api/cart → itemCount), not a client-side/in-memory estimate.
+  useEffect(() => {
+    let cancelled = false;
+    async function pollCart() {
+      try {
+        const res = await fetch("/api/cart", { cache: "no-store", credentials: "include" });
+        if (cancelled || !res.ok) return;
+        const d = await res.json();
+        setCartCount(typeof d.itemCount === "number" ? d.itemCount : 0);
+      } catch {
+        /* leave count at last-known value */
+      }
+    }
+    void pollCart();
+    const id = setInterval(pollCart, 30_000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -213,6 +236,34 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       <div style={{ flexShrink: 0 }}>
         <TokenBalance userId={userId} accentColor={theme.primary} compact />
       </div>
+
+      {/* Cart — real persistent count from GET /api/cart, never fabricated */}
+      <Link
+        href="/cart"
+        aria-label={`Cart${cartCount > 0 ? `, ${cartCount} item${cartCount === 1 ? "" : "s"}` : ""}`}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, textDecoration: "none" }}
+      >
+        🛒
+        {cartCount > 0 ? (
+          <span
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -7,
+              background: theme.primary,
+              color: "#050510",
+              fontSize: 8,
+              fontWeight: 900,
+              borderRadius: 999,
+              padding: "1px 4px",
+              minWidth: 14,
+              textAlign: "center",
+            }}
+          >
+            {cartCount > 99 ? "99+" : cartCount}
+          </span>
+        ) : null}
+      </Link>
 
       {/* Notifications */}
       <button
