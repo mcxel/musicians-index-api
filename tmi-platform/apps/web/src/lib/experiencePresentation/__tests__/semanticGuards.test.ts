@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -56,6 +56,16 @@ import {
   PROGRAM_CONCERT_STAGE,
   PROGRAM_WORLD_CONCERT,
 } from "../composeConcertProgram";
+import {
+  clearDancePartyProgram,
+  composeDancePartyProgram,
+  getActiveDancePartyProgram,
+  isDancePartyProgramProductionSurface,
+  isDancePartyVsFree,
+  mapDancePartyPhaseToComposition,
+  PROGRAM_WDP_COMPOSITE,
+} from "../composeDancePartyProgram";
+import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -612,6 +622,113 @@ describe("experiencePresentation semantic guards", () => {
 
     clearConcertProgram("test-done");
     expect(getActiveConcertProgram()).toBeNull();
+  });
+
+  test("composeDancePartyProgram: DJ+floor; never VS/circle; Cypher/Battle/Challenge/Concert clean", () => {
+    clearDancePartyProgram("test-reset");
+
+    const empty = composeDancePartyProgram({
+      sessionId: "sess-wdp-empty",
+      partyId: "wdp-1",
+      roomId: "world-dance-party",
+      scope: "WORLD",
+      lifecyclePhase: "VENUE_OPENING",
+      bindJumbotron: true,
+    });
+
+    expect(empty.packId).toBe("DanceParty");
+    expect(empty.programSourceId).toBe(PROGRAM_WDP_COMPOSITE);
+    expect(empty.worldMiniBadge).toBe("🌍 WORLD");
+    expect(empty.surfaceKind).toBe("production");
+    expect(empty.composition).toBe("HOST_CLOSE");
+    expect(empty.dj?.id).toBe(RECORD_RALPH_BOT_ID);
+    expect(empty.dj?.isBot).toBe(true);
+    expect(empty.nowPlaying).toBeNull();
+    expect(empty.floorPresenceCount).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(empty.winnerId).toBeNull();
+    expect(isDancePartyVsFree(empty)).toBe(true);
+    expect(isDancePartyProgramProductionSurface()).toBe(true);
+    expect(empty.sources.find((s) => s.sourceId === PROGRAM_WDP_COMPOSITE)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // DanceParty rejects Battle VS + Cypher circle
+    expect(DancePartyPack.allowsVsLayout).toBe(false);
+    expect(DancePartyPack.allowsWinnerFinale).toBe(false);
+    expect(() => assertPackAllowsComposition("DanceParty", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("DanceParty", "A_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("DanceParty", "B_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("DanceParty", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("DanceParty", "FLOOR_WIDE")).not.toThrow();
+    expect(mapDancePartyPhaseToComposition("DANCE_SESSION")).toBe("FLOOR_WIDE");
+    expect(mapDancePartyPhaseToComposition("SPONSOR_MOMENT")).toBe("SPLIT");
+
+    // Non-Ralph World host coerced to Record Ralph
+    const coerced = composeDancePartyProgram({
+      sessionId: "sess-wdp-live",
+      partyId: "wdp-2",
+      roomId: "world-dance-party",
+      scope: "WORLD",
+      djId: "fake-dj",
+      djDisplayName: "Fake DJ",
+      lifecyclePhase: "DANCE_SESSION",
+      nowPlaying: {
+        trackId: "t-1",
+        title: "Floor Cut",
+        artistName: "Real Artist",
+        bpm: 128,
+      },
+      floorPresenceCount: 12,
+    });
+    expect(coerced.dj?.id).toBe(RECORD_RALPH_BOT_ID);
+    expect(coerced.nowPlaying?.title).toBe("Floor Cut");
+    expect(coerced.floorPresenceCount).toBe(12);
+    expect(coerced.composition).toBe("FLOOR_WIDE");
+    expect(isDancePartyVsFree(coerced)).toBe(true);
+
+    // Mini scope — human DJ allowed; no invented World badge
+    const mini = composeDancePartyProgram({
+      sessionId: "sess-wdp-mini",
+      partyId: "mini-1",
+      roomId: "mini-dance-party-1",
+      scope: "MINI",
+      djId: "gold-dj-1",
+      djDisplayName: "Gold DJ One",
+      djIsBot: false,
+      lifecyclePhase: "WARMUP",
+    });
+    expect(mini.worldMiniBadge).toBe("⭐ MINI");
+    expect(mini.dj?.id).toBe("gold-dj-1");
+    expect(mini.dj?.isBot).toBe(false);
+    expect(mini.programSourceId).toBe(PROGRAM_WDP_COMPOSITE);
+
+    // Invented floor count rejected
+    const bogusFloor = composeDancePartyProgram({
+      sessionId: "sess-wdp-mini",
+      partyId: "mini-1",
+      roomId: "mini-dance-party-1",
+      scope: "MINI",
+      djId: "gold-dj-1",
+      djDisplayName: "Gold DJ One",
+      floorPresenceCount: -5,
+    });
+    expect(bogusFloor.floorPresenceCount).toBeNull();
+
+    // Battle + Challenge + Cypher + Concert untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(ChallengePack.prefersChallengeContract).toBe(true);
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(ConcertPack.allowsVsLayout).toBe(false);
+    expect(WorldConcertPack.allowsVsLayout).toBe(false);
+    expect(getPresentationPack("DanceParty").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("DanceParty").routeCapability.experienceCert).toBe("OPEN");
+
+    clearDancePartyProgram("test-done");
+    expect(getActiveDancePartyProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

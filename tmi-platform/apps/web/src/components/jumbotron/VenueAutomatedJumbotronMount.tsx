@@ -22,6 +22,7 @@ import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBatt
 import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeChallengeProgram";
 import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCypherProgram";
 import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeConcertProgram";
+import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/composeDancePartyProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -275,11 +276,34 @@ export function VenueAutomatedJumbotronMount({
         accentColor: pack.brandPalette.accent,
       });
     } else if (experienceType === "WORLD_DANCE_PARTY") {
-      const welcome = director.triggerSafetyAlert(
-        "WELCOME TO WORLD DANCE PARTY",
-        "DISCO ORB ONLINE • DANCE FLOOR ACTIVE"
-      );
-      setEvent(welcome ?? director.getActiveEvent());
+      // Real WDP PROGRAM — DJ + now-playing; never invent dancer counts / tips / scores.
+      const prog = getActiveDancePartyProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const djName = prog?.dj?.displayName?.trim() || "DJ Record Ralph";
+      const nowTitle = prog?.nowPlaying?.title?.trim() || null;
+      const nowArtist = prog?.nowPlaying?.artistName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.WDP_COMPOSITE";
+      const headline = nowTitle
+        ? nowArtist
+          ? `${djName} · ${nowTitle} · ${nowArtist}`
+          : `${djName} · ${nowTitle}`
+        : djName;
+      setEvent({
+        id: `evt-wdp-${roomId}`,
+        traceId: `tr-wdp-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_DANCE_PARTY",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD DANCE PARTY" : "MINI DANCE PARTY",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
     } else if (experienceType === "REGULAR_LIVE") {
       // Same PROGRAM as Performer Live — host identity only, never fake scores/crowd.
       const prog = getActivePerformerLiveProgram();

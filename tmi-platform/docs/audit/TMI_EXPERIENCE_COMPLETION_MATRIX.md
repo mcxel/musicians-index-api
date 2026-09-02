@@ -305,23 +305,23 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | World Dance Party (DJ Record Ralph) |
+| route(s) | `/rooms/world-dance-party` (DJ Record Ralph · 🌍 WORLD) |
 | presence model | **Fan avatars on dance floor**; DJ cam |
 | center of gravity | Floor energy + DJ |
 | signature DNA | `DanceParty` — BPM sync, dance emotes, hybrid DJ/floor |
 | PROGRAM source id | `PROGRAM.WDP_COMPOSITE` |
-| ISO/viewpoints | DJ, DANCE_FLOOR, CROWD, HOST, SPONSOR |
-| Jumbotron support | OPEN |
+| ISO/viewpoints | DJ, DANCE_FLOOR, CROWD, TRACK_QUEUE |
+| Jumbotron support | **DONE** Phase 1 — reads `getActiveDancePartyProgram()` (DJ + now-playing; no invented counts) |
 | adInventory | PARTIAL — disco-orb / rotating faces; group-action spotlight (consent); house ambient fallback |
-| Universal Player support | OPEN |
-| queue/game requirements | Track queue; DJ bot schedule |
+| Universal Player support | PARTIAL — PROGRAM bound to Universal Player targets (no second fabric) |
+| queue/game requirements | Track queue via RotationPool; DJ bot schedule |
 | world interactions | Dance emotes, group actions (real users) |
 | commerce | Tips, cosmetics |
-| logic cert | PARTIAL (WDP exists) |
-| architecture cert | PARTIAL |
+| logic cert | PARTIAL (WDP lifecycle + RotationPool + compose unit tests) |
+| architecture cert | **DONE** Phase 1 (`composeDancePartyProgram` + `DancePartyPresentationShell`) |
 | experience cert | OPEN |
 | desktop/mobile | HYBRID / FLAT |
-| notes | World = Ralph bot only; Mini Dance Party = Gold DJ. Avatars authorized for fans. |
+| notes | World = Ralph bot only; Mini Dance Party = Gold DJ (compose scope flag; no dedicated Mini room route yet). Avatars authorized for fans. ≠ Battle VS / Cypher combat. |
 
 ### Game Show (Deal or Feud)
 
@@ -530,7 +530,7 @@
 | World Release | OPEN | OPEN | OPEN |
 | Listening Party | PARTIAL | PARTIAL | OPEN |
 | Watch Party | OPEN | OPEN | OPEN |
-| World Dance Party | PARTIAL | PARTIAL | OPEN |
+| World Dance Party | PARTIAL | **DONE** | OPEN |
 | Game Show | OPEN | OPEN | OPEN |
 | Fan Lobby | PARTIAL | PARTIAL | OPEN |
 | Performer Lobby | PARTIAL | PARTIAL | OPEN |
@@ -560,7 +560,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts — **architecture DONE** Phase 1 (`composeCypherProgram` + shell); experienceCert OPEN |
 | **5** | **Concert / World Concert** | Stage + audience; Mini vs World badges — **architecture DONE** Phase 1 (`composeConcertProgram` + shell); experienceCert OPEN |
 | **6** | **World Release** | Premiere drop choreography on real schedule |
-| **7** | **World Dance Party** | Floor avatars + DJ composite |
+| **7** | **World Dance Party** | Floor avatars + DJ composite — **architecture DONE** Phase 1 (`composeDancePartyProgram` + shell); experienceCert OPEN |
 | **8** | **Lounges** (+ Playlist Lounge) | Panel-only presence; avatar model rejected |
 | **9** | **Avatar Studio → World** | Looks equip → presence bridge into Fan Lobby / WDP / concert |
 

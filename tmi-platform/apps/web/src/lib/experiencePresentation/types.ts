@@ -113,3 +113,13 @@ export const FORBIDDEN_CONCERT_COMPOSITIONS: readonly BroadcastCompositionLayout
   "B_DOMINANT",
   "CIRCLE_FOCUS",
 ] as const;
+
+/** Dance Party / WDP forbid Battle VS corners + Cypher circle + game/objective DNA. */
+export const FORBIDDEN_DANCE_PARTY_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+  "OBJECTIVE_FOCUS",
+  "GAME_BOARD",
+] as const;

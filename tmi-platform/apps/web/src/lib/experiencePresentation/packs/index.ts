@@ -225,10 +225,17 @@ export const WorldReleasePack: ExperiencePresentationPack = {
 
 export const DancePartyPack: ExperiencePresentationPack = {
   packId: "DanceParty",
-  signatureDna: "DJ + dance floor — fan avatars authorized",
+  signatureDna: "DJ + dance floor — fan avatars authorized; never Battle VS / Cypher combat",
   presenceModel: "FAN_AVATARS",
   allowedCompositions: ["FLOOR_WIDE", "HOST_CLOSE", "PIP", "SPLIT"],
-  forbiddenCompositions: ["OBJECTIVE_FOCUS", "GAME_BOARD"],
+  forbiddenCompositions: [
+    "DUAL",
+    "A_DOMINANT",
+    "B_DOMINANT",
+    "CIRCLE_FOCUS",
+    "OBJECTIVE_FOCUS",
+    "GAME_BOARD",
+  ],
   requiredPrimitives: ["LiveVideoPanel", "AudioVisualizer", "ReactionEmitter"],
   optionalPrimitives: ["IdentityPanel", "LowerThird", "QueueRail"],
   allowsVsLayout: false,
@@ -236,7 +243,20 @@ export const DancePartyPack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("world_dance_party", "DanceParty", ["/dance/world"], "FAN_AVATARS"),
+  routeCapability: baseRoute(
+    "world_dance_party",
+    "DanceParty",
+    ["/rooms/world-dance-party", "/dance/world", "/live/dance-party"],
+    "FAN_AVATARS",
+    {
+      requiresJumbotron: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const LoungePack: ExperiencePresentationPack = {

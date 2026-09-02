@@ -12,6 +12,7 @@ import type {
 import {
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_CYPHER_COMPOSITIONS,
+  FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
   VS_COMPOSITIONS,
 } from "./types";
 import { ALL_PACKS } from "./packs";
@@ -110,6 +111,16 @@ export function assertPackAllowsComposition(
     }
     if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
       throw new Error(`${packId} pack semantic flags forbid VS/winner/elimination`);
+    }
+  }
+
+  // Hard semantic: Dance Party / WDP never Battle VS corners or Cypher circle combat
+  if (packId === "DanceParty") {
+    if ((FORBIDDEN_DANCE_PARTY_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("DanceParty pack rejects Battle VS / Cypher circle / objective-board compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("DanceParty pack semantic flags forbid VS/winner/elimination");
     }
   }
 }

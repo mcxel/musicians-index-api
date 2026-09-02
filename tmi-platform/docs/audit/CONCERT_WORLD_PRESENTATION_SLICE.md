@@ -96,6 +96,7 @@ Asserts: Concert/WorldConcert reject DUAL/CIRCLE_FOCUS; Mini vs World PROGRAM id
 | Mini Concert one-click creation flow (Rule 21 gap) | OPEN |
 | experienceCert physical | OPEN |
 | Legacy `/rooms/world-concert` remaining cosmetic debt | OPEN (PROGRAM surfaces cleaned; page not fully redesigned) |
-| **World Dance Party** presentation | **Next recommended slice** (matrix Phase 6–7; WDP already PARTIAL logic/arch) |
-| Monday Night Stage / World Release | Alternates if WDP blocked |
+| **World Dance Party** presentation | Shipped Phase 1 — see [`WORLD_DANCE_PARTY_PRESENTATION_SLICE.md`](./WORLD_DANCE_PARTY_PRESENTATION_SLICE.md) |
+| **Monday Night Stage** presentation | **Next recommended slice** (flagship broadcast package) |
+| **World Release** presentation | Alternate next if Monday Night Stage blocked |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |

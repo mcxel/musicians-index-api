@@ -160,6 +160,27 @@ export {
   mapConcertPhaseToComposition,
 } from "./composeConcertProgram";
 
+export type {
+  DancePartyProgramComposition,
+  DancePartyDj,
+  DancePartyTrack,
+  DancePartyScope,
+  DancePartyLifecyclePhase,
+} from "./composeDancePartyProgram";
+export {
+  PROGRAM_WDP_COMPOSITE,
+  ISO_DJ,
+  ISO_DANCE_FLOOR,
+  ISO_CROWD,
+  ISO_TRACK_QUEUE,
+  composeDancePartyProgram,
+  getActiveDancePartyProgram,
+  clearDancePartyProgram,
+  isDancePartyProgramProductionSurface,
+  isDancePartyVsFree,
+  mapDancePartyPhaseToComposition,
+} from "./composeDancePartyProgram";
+
 export {
   PerformerLivePack,
   BattlePack,
@@ -167,4 +188,5 @@ export {
   CypherPack,
   ConcertPack,
   WorldConcertPack,
+  DancePartyPack,
 } from "./packs";
