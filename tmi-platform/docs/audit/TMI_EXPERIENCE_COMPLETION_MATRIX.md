@@ -121,7 +121,7 @@
 | signature DNA | `Challenge` — OBJECTIVE_FOCUS, ChallengeContract primitive, result vs objective |
 | PROGRAM source id | `PROGRAM.CHALLENGE_PRIMARY` |
 | ISO/viewpoints | PERFORMER, CONTRACT_CARD, JUDGE, TIMER, AUDIENCE |
-| Jumbotron support | PARTIAL→STRONG (reads Challenge PROGRAM + four-face plan via ACGBR `ChallengeJumbotronFacePlan`; no VS scoreboard seed) |
+| Jumbotron support | **STRONG** (logic) — room `__TMI_CHALLENGE_ACGBR_FACES__` + PROGRAM → `VenueAutomatedJumbotronMount` applies plan via `JumbotronShowDirector`/`FaceTargetRegistry` (N attempt / S objective+timer / E sponsor / W audience); no VS scoreboard seed; experienceCert OPEN |
 | Universal Player support | PARTIAL→STRONG (PROGRAM bound; lifecycle fabric Gates 8–9; no second LiveSession) |
 | queue/game requirements | Objective contract, timer, pass/fail ledger |
 | world interactions | Real votes/judging only |

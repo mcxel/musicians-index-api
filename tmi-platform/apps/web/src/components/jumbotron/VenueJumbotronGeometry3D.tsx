@@ -11,12 +11,15 @@ import type {
   JumbotronPresentationPack,
   JumbotronEvent,
 } from "@/lib/jumbotron/JumbotronContracts";
+import type { ChallengeFaceAssignment } from "@/lib/acgbr";
 import { ArenaCenterHungJumbotron3D } from "@/components/jumbotron/ArenaCenterHungJumbotron3D";
 
 interface VenueJumbotronGeometry3DProps {
   descriptor: PhysicalJumbotronDescriptor;
   pack: JumbotronPresentationPack;
   event?: JumbotronEvent | null;
+  /** Challenge ACGBR plan — distinct N/E/S/W roles (optional; other experiences omit). */
+  challengeFacePlan?: readonly ChallengeFaceAssignment[] | null;
   ceilingElevationMeters?: number;
 }
 
@@ -124,6 +127,7 @@ export function VenueJumbotronGeometry3D({
   descriptor,
   pack,
   event: _event = null,
+  challengeFacePlan = null,
   ceilingElevationMeters,
 }: VenueJumbotronGeometry3DProps) {
   switch (descriptor.architecture) {
@@ -133,6 +137,7 @@ export function VenueJumbotronGeometry3D({
           descriptor={descriptor}
           event={_event}
           pack={pack}
+          challengeFacePlan={challengeFacePlan}
           ceilingElevationMeters={ceilingElevationMeters}
         />
       );

@@ -21,12 +21,13 @@
 | composeChallengeProgram / shell / `/rooms/challenge/[roomId]` | **DONE** | Prior Phase 1 · `3df0dff0` |
 | ACGBR contracts + Challenge cinematic/scene/timeline/bridge | **DONE** | `apps/web/src/lib/acgbr/**` |
 | Four-face Jumbotron plan (N attempt / S objective+timer / E sponsor / W audience) | **DONE** | `ChallengeJumbotronFacePlan.ts` via `JumbotronFaceTargetRegistry` |
+| Live mount applies ACGBR face plan | **DONE** (logic) | `VenueAutomatedJumbotronMount` + `resolveChallengeAcgbrFacePlanForMount` + room `__TMI_CHALLENGE_ACGBR_FACES__` + `/rooms/challenge/[roomId]` mount |
 | Universal Player PROGRAM audio authority | **DONE** | Lifecycle `initializeOperationalSources` · Gates 8–9 |
 | Automated Lane C cert (Gates 1–16) | **DONE** (logic) | `runLaneCChallengeOperationalCertification.test.ts` |
-| ACGBR one-way boundary jest suite | **DONE** (logic) | `lib/acgbr/__tests__/acgbrOneWayBoundary.test.ts` |
+| ACGBR one-way boundary jest suite | **DONE** (logic) | `lib/acgbr/__tests__/acgbrOneWayBoundary.test.ts` (incl. mount resolver + ShowDirector apply) |
 | architectureCert | **DONE** | Pack + compose + ACGBR boundary wired |
 | logicCert | **PARTIAL→STRONG** | Lifecycle + ACGBR + compose unit tests |
-| **experienceCert (physical Chromium)** | **OPEN** | No browser PASS claimed this session |
+| **experienceCert (physical Chromium)** | **OPEN** | No browser PASS claimed this session — mount wired; physical LOOK-UP four-face observation still required |
 | Neural Generation Foundry / lip-sync | **OUT OF SCOPE** | `NEURAL_GENERATION_UNAVAILABLE` |
 | Fake crowd fill | **FORBIDDEN** | Rule 20 |
 
@@ -55,7 +56,7 @@ Policy-driven skip: `ATTEMPT_1_COMPLETE` → `ATTEMPT_2_COUNTDOWN` **or** `JUDGM
 | Shell | `ChallengePresentationShell` |
 | Pack DNA | `ChallengePack` + `ChallengePresentationPack` |
 | ACGBR | `lib/acgbr` |
-| Jumbotron faces | `JumbotronFaceTargetRegistry` + `ChallengeJumbotronFacePlan` |
+| Jumbotron faces | `JumbotronFaceTargetRegistry` + `ChallengeJumbotronFacePlan` + live `VenueAutomatedJumbotronMount` |
 | Universal Player | `CanonicalUniversalPlayerFabric` |
 | Matrix | `TMI_EXPERIENCE_COMPLETION_MATRIX.md` § Challenge |
 
@@ -98,10 +99,13 @@ npx jest --config jest.config.ts src/lib/experiencePresentation/__tests__/semant
 
 ## Next step after Challenge
 
-1. Physical Chromium experienceCert on `/rooms/challenge/[roomId]` (record PASS evidence)  
-2. Wire `ChallengeAcgbrBridge.applyJumbotronPlan` into live venue mount path where `VenueAutomatedJumbotronMount` already reads `getActiveChallengeProgram()`  
-3. Next experience DNA under ACGBR (recommended: deepen Cypher circle presentation **or** Concert stage-forward — do **not** start Avatar Studio overwrite / AdSense-3D)  
-4. Keep Generation Foundry neural surfaces OUT OF SCOPE until real assets exist  
+1. Physical Chromium experienceCert on `/rooms/challenge/[roomId]` (LOOK UP Jumbotron — confirm four distinct face roles; record PASS evidence)  
+2. Next experience DNA under ACGBR (recommended: deepen Cypher circle presentation **or** Concert stage-forward — do **not** start Avatar Studio overwrite / AdSense-3D)  
+3. Keep Generation Foundry neural surfaces OUT OF SCOPE until real assets exist  
+
+### Live Jumbotron face wiring (2026-09-02 assembly)
+
+**DONE (logic):** Challenge room publishes `__TMI_CHALLENGE_ACGBR_FACES__` → `resolveChallengeAcgbrFacePlanForMount` (hook first, else `getActiveChallengeProgram`) → `applyChallengeJumbotronFacePlan` on existing `JumbotronShowDirector.getFaceRegistry()` inside `VenueAutomatedJumbotronMount` (CHALLENGE_ARENA only). Geometry + surface renderer receive the plan for distinct N/E/S/W role tints/strip. P1 ACTIVE_ATTEMPT / RESULT outranks sponsor ads (P4). No second Jumbotron runtime. experienceCert remains **OPEN** until Chromium evidence.
 
 ---
 

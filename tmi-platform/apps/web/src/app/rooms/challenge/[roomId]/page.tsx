@@ -27,6 +27,7 @@ import {
   type ChallengeProgramComposition,
 } from "@/lib/experiencePresentation/composeChallengeProgram";
 import { planChallengeJumbotronFaces } from "@/lib/acgbr";
+import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -244,7 +245,20 @@ export default function ChallengeRoomByIdPage() {
       </div>
 
       <div style={{ position: "relative", minHeight: 420 }}>
-        <UniversalVenueRenderer roomId={roomId} mode="audience" venueIndex={0} instantEmptyStage />
+        <UniversalVenueRenderer
+          roomId={roomId}
+          mode="audience"
+          venueIndex={0}
+          instantEmptyStage
+          eventType="challenge"
+          venueId={`challenge-${challengeId}`}
+        />
+        <VenueAutomatedJumbotronMount
+          roomId={roomId}
+          eventType="challenge"
+          venueId={`challenge-${challengeId}`}
+          lookUpActive
+        />
         <div
           style={{
             position: "absolute",

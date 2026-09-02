@@ -17,6 +17,9 @@ import {
   CANONICAL_RESULT_BRANCHES,
   planChallengeJumbotronFaces,
   assertFourDistinctFaceRoles,
+  applyChallengeJumbotronFacePlan,
+  resolveChallengeAcgbrFacePlanForMount,
+  TMI_CHALLENGE_ACGBR_FACES_HOOK,
   adaptChallengeResultForPresentation,
   resultFinalizedDoesNotImplyPayout,
   NEURAL_GENERATION_UNAVAILABLE,
@@ -30,6 +33,8 @@ import {
 } from "../../challenge/ChallengeOperationalLifecycle";
 import type { ParticipantEntranceProfile } from "../../battle/CinematicParticipantArrivalDirector";
 import { JumbotronFaceTargetRegistry } from "../../jumbotron/JumbotronFaceTargetRegistry";
+import { JumbotronShowDirector } from "../../jumbotron/JumbotronShowDirector";
+import { VenueAdPriority } from "../../jumbotron/JumbotronAdContracts";
 
 const challenger: ParticipantEntranceProfile = {
   participantId: "p-a",
@@ -163,6 +168,51 @@ describe("ACGBR one-way boundary + Challenge operational activation", () => {
     bridge.applyJumbotronPlan(registry, plan);
     expect(registry.getFace("NORTH").creativeId).toContain("active");
     expect(registry.getAllFaces()).toHaveLength(4);
+  });
+
+  test("mount resolver prefers room hook then PROGRAM; ShowDirector applies plan", () => {
+    const hookPlan = planChallengeJumbotronFaces("ATTEMPT_1_ACTIVE", {
+      sessionId: "sess-mount",
+      objectiveLabel: "Objective from hook",
+      activeParticipantId: "p-hook",
+    });
+    const host = globalThis as unknown as Record<string, unknown>;
+    host[TMI_CHALLENGE_ACGBR_FACES_HOOK] = hookPlan;
+
+    const fromHook = resolveChallengeAcgbrFacePlanForMount();
+    expect(fromHook?.find((f) => f.face === "NORTH")?.role).toBe("ACTIVE_ATTEMPT");
+    expect(fromHook?.find((f) => f.face === "NORTH")?.creativeId).toContain("p-hook");
+
+    host[TMI_CHALLENGE_ACGBR_FACES_HOOK] = null;
+    const fromProgram = resolveChallengeAcgbrFacePlanForMount({
+      program: {
+        sessionId: "sess-prog",
+        lifecyclePhase: "JUDGMENT_OPEN",
+        objective: { objective: "Prog objective" },
+        challenger: { id: "c1" },
+        challenged: { id: "c2" },
+      },
+    });
+    expect(fromProgram?.find((f) => f.face === "NORTH")?.role).toBe("CONTRACT");
+    expect(assertFourDistinctFaceRoles(fromProgram!)).toBe(true);
+
+    const show = new JumbotronShowDirector("challenge-dome", "sess-mount");
+    applyChallengeJumbotronFacePlan(show.getFaceRegistry(), hookPlan);
+    for (const a of hookPlan) {
+      show.updateFaceState(a.face, {
+        sourceId: a.creativeId,
+        overlayText: a.role,
+      });
+    }
+    expect(show.getFaceState("NORTH")?.overlayText).toBe("ACTIVE_ATTEMPT");
+    expect(show.getFaceRegistry().getFace("NORTH").priorityState).toBe(
+      VenueAdPriority.P1_CRITICAL_LIVE
+    );
+    expect(show.getFaceRegistry().getFace("EAST").priorityState).toBe(
+      VenueAdPriority.P4_DIRECT_AD
+    );
+
+    delete host[TMI_CHALLENGE_ACGBR_FACES_HOOK];
   });
 
   test("Generation Foundry honesty + dialogue fact envelope", () => {

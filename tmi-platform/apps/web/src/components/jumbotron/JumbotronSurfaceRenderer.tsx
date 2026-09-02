@@ -5,12 +5,18 @@ import type {
   JumbotronEvent,
   JumbotronPresentationPack,
 } from "@/lib/jumbotron/JumbotronContracts";
+import {
+  challengeFaceRoleAccent,
+  type ChallengeFaceAssignment,
+} from "@/lib/acgbr";
 
 interface JumbotronSurfaceRendererProps {
   event: JumbotronEvent | null;
   pack: JumbotronPresentationPack;
   className?: string;
   is3DViewportOverlay?: boolean;
+  /** Challenge ACGBR N/E/S/W roles — never invents scores. */
+  challengeFacePlan?: readonly ChallengeFaceAssignment[] | null;
 }
 
 export function JumbotronSurfaceRenderer({
@@ -18,6 +24,7 @@ export function JumbotronSurfaceRenderer({
   pack,
   className = "",
   is3DViewportOverlay = false,
+  challengeFacePlan = null,
 }: JumbotronSurfaceRendererProps) {
   const [pulse, setPulse] = useState(false);
 
@@ -37,6 +44,11 @@ export function JumbotronSurfaceRenderer({
       data-testid="canonical-jumbotron-surface"
       data-experience-type={pack.experienceType}
       data-target-class={event?.targetClass ?? pack.primaryTarget}
+      data-challenge-acgbr-faces={
+        challengeFacePlan
+          ? challengeFacePlan.map((f) => `${f.face}:${f.role}`).join("|")
+          : ""
+      }
       className={`relative flex flex-col justify-between overflow-hidden rounded-xl border p-4 select-none ${className}`}
       style={{
         background: `linear-gradient(135deg, ${palette.background} 0%, #0c081e 100%)`,
@@ -150,6 +162,30 @@ export function JumbotronSurfaceRenderer({
               >
                 {event.subline}
               </p>
+            )}
+
+            {/* Challenge ACGBR four-face strip — roles only, never fake scores */}
+            {challengeFacePlan && challengeFacePlan.length === 4 && (
+              <div
+                data-testid="jumbotron-challenge-face-strip"
+                className="mt-3 grid w-full max-w-sm grid-cols-2 gap-1.5"
+              >
+                {challengeFacePlan.map((face) => (
+                  <div
+                    key={face.face}
+                    data-face={face.face}
+                    data-face-role={face.role}
+                    className="rounded border px-2 py-1 text-left font-mono text-[9px] font-bold uppercase tracking-wider"
+                    style={{
+                      borderColor: `${challengeFaceRoleAccent(face.role)}66`,
+                      color: challengeFaceRoleAccent(face.role),
+                      background: `${challengeFaceRoleAccent(face.role)}14`,
+                    }}
+                  >
+                    {face.face} · {face.role.replace(/_/g, " ")}
+                  </div>
+                ))}
+              </div>
             )}
 
             {/* Dedicated Disco Orb Segment Visual for World Dance Party */}

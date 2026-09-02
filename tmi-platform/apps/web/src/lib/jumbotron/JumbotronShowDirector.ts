@@ -278,4 +278,26 @@ export class JumbotronShowDirector {
   public listBeats(): ShowBeat[] {
     return [...this.beats];
   }
+
+  public updateFaceState(
+    direction: JumbotronCardinalFace,
+    updates: Partial<ShowFaceState>
+  ): ShowFaceState | undefined {
+    const current = this.faceStates.get(direction);
+    if (!current) return undefined;
+    const next: ShowFaceState = {
+      ...current,
+      ...updates,
+    };
+    this.faceStates.set(direction, next);
+    return next;
+  }
+
+  /** Existing FaceTargetRegistry — never mint a parallel Jumbotron runtime. */
+  public getFaceRegistry(): JumbotronFaceTargetRegistry {
+    if (!this.facesRegistry) {
+      this.facesRegistry = new JumbotronFaceTargetRegistry(this.roomId, this.venueId);
+    }
+    return this.facesRegistry;
+  }
 }

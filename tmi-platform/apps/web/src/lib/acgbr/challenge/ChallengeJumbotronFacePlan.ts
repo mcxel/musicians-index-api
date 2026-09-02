@@ -4,6 +4,7 @@
  */
 
 import type { ChallengeLifecyclePhase } from "../../challenge/ChallengeOperationalLifecycle";
+import { getActiveChallengeProgram } from "../../experiencePresentation/composeChallengeProgram";
 import {
   JumbotronFaceTargetRegistry,
   type CardinalFaceDirection,
@@ -217,4 +218,92 @@ export function assertFourDistinctFaceRoles(
     faces.has("EAST") &&
     faces.has("WEST")
   );
+}
+
+/** Window hook published by `/rooms/challenge/[roomId]` — read-only plan for live mount. */
+export const TMI_CHALLENGE_ACGBR_FACES_HOOK = "__TMI_CHALLENGE_ACGBR_FACES__" as const;
+
+export type ChallengeAcgbrFacesHookHost = {
+  [TMI_CHALLENGE_ACGBR_FACES_HOOK]?: readonly ChallengeFaceAssignment[] | null;
+};
+
+function isValidFacePlan(
+  plan: unknown
+): plan is readonly ChallengeFaceAssignment[] {
+  return (
+    Array.isArray(plan) &&
+    plan.length === 4 &&
+    assertFourDistinctFaceRoles(plan as readonly ChallengeFaceAssignment[])
+  );
+}
+
+/**
+ * Resolve Challenge four-face plan for VenueAutomatedJumbotronMount.
+ * Prefer room hook `__TMI_CHALLENGE_ACGBR_FACES__`; else derive from active Challenge PROGRAM.
+ * Never invents scores/impressions — roles only.
+ */
+export function resolveChallengeAcgbrFacePlanForMount(opts?: {
+  roomHookPlan?: readonly ChallengeFaceAssignment[] | null;
+  /** Injected for tests — omit in production (uses getActiveChallengeProgram). */
+  program?: {
+    sessionId: string;
+    lifecyclePhase: ChallengeLifecyclePhase;
+    objective: { objective: string };
+    challenger?: { id: string } | null;
+    challenged?: { id: string } | null;
+  } | null;
+}): readonly ChallengeFaceAssignment[] | null {
+  if (isValidFacePlan(opts?.roomHookPlan)) {
+    return opts!.roomHookPlan!;
+  }
+
+  if (typeof globalThis !== "undefined") {
+    const host = globalThis as unknown as ChallengeAcgbrFacesHookHost;
+    const hook = host[TMI_CHALLENGE_ACGBR_FACES_HOOK];
+    if (isValidFacePlan(hook)) {
+      return hook;
+    }
+  }
+
+  const prog =
+    opts && "program" in opts ? opts.program ?? null : getActiveChallengeProgram();
+
+  if (!prog) return null;
+
+  const phase = prog.lifecyclePhase;
+  const activeParticipantId =
+    phase === "ATTEMPT_1_ACTIVE"
+      ? prog.challenger?.id ?? null
+      : phase === "ATTEMPT_2_ACTIVE"
+        ? prog.challenged?.id ?? null
+        : null;
+
+  const plan = planChallengeJumbotronFaces(phase, {
+    sessionId: prog.sessionId,
+    objectiveLabel: prog.objective.objective,
+    activeParticipantId,
+  });
+  return assertFourDistinctFaceRoles(plan) ? plan : null;
+}
+
+/** Role → face emissive color (visual DNA only — not fake metrics). */
+export function challengeFaceRoleAccent(
+  role: ChallengeFaceAssignment["role"]
+): string {
+  switch (role) {
+    case "ACTIVE_ATTEMPT":
+      return "#FFD700";
+    case "OBJECTIVE_TIMER":
+      return "#FFAA33";
+    case "SPONSOR":
+      return "#00FFFF";
+    case "AUDIENCE":
+      return "#FF2DAA";
+    case "CONTRACT":
+      return "#AA2DFF";
+    case "RESULT":
+      return "#FFD700";
+    default:
+      return "#00FFFF";
+  }
 }

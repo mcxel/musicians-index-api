@@ -104,9 +104,15 @@ export type { ChallengeResultPresentationView } from "./challenge/ChallengeResul
 export {
   applyChallengeJumbotronFacePlan,
   assertFourDistinctFaceRoles,
+  challengeFaceRoleAccent,
   planChallengeJumbotronFaces,
+  resolveChallengeAcgbrFacePlanForMount,
+  TMI_CHALLENGE_ACGBR_FACES_HOOK,
 } from "./challenge/ChallengeJumbotronFacePlan";
-export type { ChallengeFaceAssignment } from "./challenge/ChallengeJumbotronFacePlan";
+export type {
+  ChallengeAcgbrFacesHookHost,
+  ChallengeFaceAssignment,
+} from "./challenge/ChallengeJumbotronFacePlan";
 
 export {
   ChallengeAcgbrBridge,

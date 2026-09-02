@@ -6,12 +6,17 @@ import type {
   JumbotronEvent,
   JumbotronPresentationPack,
 } from "@/lib/jumbotron/JumbotronContracts";
-import { JumbotronSurfaceRenderer } from "./JumbotronSurfaceRenderer";
+import {
+  challengeFaceRoleAccent,
+  type ChallengeFaceAssignment,
+} from "@/lib/acgbr";
 
 interface ArenaCenterHungJumbotron3DProps {
   descriptor: PhysicalJumbotronDescriptor;
   event: JumbotronEvent | null;
   pack: JumbotronPresentationPack;
+  /** Challenge ACGBR four-face roles — distinct tint per face when present. */
+  challengeFacePlan?: readonly ChallengeFaceAssignment[] | null;
   ceilingElevationMeters?: number;
 }
 
@@ -25,8 +30,9 @@ interface ArenaCenterHungJumbotron3DProps {
  */
 export function ArenaCenterHungJumbotron3D({
   descriptor,
-  event,
+  event: _event,
   pack,
+  challengeFacePlan = null,
   ceilingElevationMeters = 24.0,
 }: ArenaCenterHungJumbotron3DProps) {
   const [cx, cy, cz] = descriptor.centerPosition;
@@ -39,10 +45,23 @@ export function ArenaCenterHungJumbotron3D({
 
   const hoistCableLength = Math.max(1.0, ceilingElevationMeters - (cy + halfH));
 
+  const roleByFace = (face: ChallengeFaceAssignment["face"]) =>
+    challengeFacePlan?.find((a) => a.face === face)?.role ?? null;
+
+  const faceTint = (face: ChallengeFaceAssignment["face"]) => {
+    const role = roleByFace(face);
+    return role ? challengeFaceRoleAccent(role) : "#000005";
+  };
+
   return (
     <group
       data-testid="3d-center-hung-jumbotron-root"
       position={[cx, cy, cz]}
+      userData={{
+        challengeAcgbrFaces: challengeFacePlan
+          ? challengeFacePlan.map((f) => `${f.face}:${f.role}`).join("|")
+          : "",
+      }}
     >
       {/* ── 1. CEILING RIGGING & HOIST CABLES ── */}
       <group position={[0, halfH, 0]}>
@@ -99,10 +118,11 @@ export function ArenaCenterHungJumbotron3D({
         position={[0, 0, -halfD]}
         rotation={[cantRad, Math.PI, 0]}
         data-testid="jumbotron-face-north"
+        userData={{ faceRole: roleByFace("NORTH") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[widthMeters * 0.92, heightMeters * 0.9]} />
-          <meshBasicMaterial color="#000005" />
+          <meshBasicMaterial color={faceTint("NORTH")} />
         </mesh>
       </group>
 
@@ -111,10 +131,11 @@ export function ArenaCenterHungJumbotron3D({
         position={[0, 0, halfD]}
         rotation={[-cantRad, 0, 0]}
         data-testid="jumbotron-face-south"
+        userData={{ faceRole: roleByFace("SOUTH") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[widthMeters * 0.92, heightMeters * 0.9]} />
-          <meshBasicMaterial color="#000005" />
+          <meshBasicMaterial color={faceTint("SOUTH")} />
         </mesh>
       </group>
 
@@ -123,10 +144,11 @@ export function ArenaCenterHungJumbotron3D({
         position={[halfW, 0, 0]}
         rotation={[0, Math.PI / 2, -cantRad]}
         data-testid="jumbotron-face-east"
+        userData={{ faceRole: roleByFace("EAST") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[depthMeters * 0.92, heightMeters * 0.9]} />
-          <meshBasicMaterial color="#000005" />
+          <meshBasicMaterial color={faceTint("EAST")} />
         </mesh>
       </group>
 
@@ -135,10 +157,11 @@ export function ArenaCenterHungJumbotron3D({
         position={[-halfW, 0, 0]}
         rotation={[0, -Math.PI / 2, cantRad]}
         data-testid="jumbotron-face-west"
+        userData={{ faceRole: roleByFace("WEST") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[depthMeters * 0.92, heightMeters * 0.9]} />
-          <meshBasicMaterial color="#000005" />
+          <meshBasicMaterial color={faceTint("WEST")} />
         </mesh>
       </group>
 

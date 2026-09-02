@@ -29,6 +29,12 @@ import { getActiveGameShowProgram } from "@/lib/experiencePresentation/composeGa
 import { getActiveFanLobbyProgram } from "@/lib/experiencePresentation/composeFanLobbyProgram";
 import { getActiveLoungeProgram } from "@/lib/experiencePresentation/composeLoungeProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
+import {
+  applyChallengeJumbotronFacePlan,
+  assertFourDistinctFaceRoles,
+  resolveChallengeAcgbrFacePlanForMount,
+  type ChallengeFaceAssignment,
+} from "@/lib/acgbr";
 
 const SafeReactThreeCanvas = dynamic(
   () => import("@/components/3d/SafeReactThreeCanvas"),
@@ -142,6 +148,9 @@ export function VenueAutomatedJumbotronMount({
   const physical = director.getPhysicalJumbotronDescriptor();
   const pack = director.getPresentationPack();
   const [event, setEvent] = useState(() => director.getActiveEvent());
+  const [challengeFacePlan, setChallengeFacePlan] = useState<
+    readonly ChallengeFaceAssignment[] | null
+  >(null);
   const sightline = useMemo(() => director.certifySightlines(), [director]);
 
   // Seed experience-appropriate program content (real director events, not fake crowds/scores)
@@ -219,17 +228,31 @@ export function VenueAutomatedJumbotronMount({
       const objectiveText = prog?.objective.objective?.trim() || "Waiting for objective";
       const programId = prog?.programSourceId ?? "PROGRAM.CHALLENGE_PRIMARY";
       const challengerName = prog?.challenger?.displayName?.trim() || null;
+      const phase = prog?.lifecyclePhase ?? "OBJECTIVE_CONTRACT_ASSEMBLY";
+      const isActiveAttempt =
+        phase === "ATTEMPT_1_ACTIVE" || phase === "ATTEMPT_2_ACTIVE";
       setEvent({
         id: `evt-challenge-obj-${roomId}`,
         traceId: `tr-challenge-${roomId}`,
         priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
-        eventType: "CHALLENGE_OBJECTIVE_REVEAL",
+        eventType: isActiveAttempt
+          ? "CHALLENGE_ATTEMPT_TICK"
+          : phase === "JUDGMENT_OPEN"
+            ? "CHALLENGE_JUDGMENT_OPEN"
+            : phase === "RESULT_PRESENTATION" ||
+                phase === "RESULT_FINALIZED" ||
+                phase === "SETTLEMENT" ||
+                phase === "COMPLETE"
+              ? "CHALLENGE_RESULT"
+              : "CHALLENGE_OBJECTIVE_REVEAL",
         experienceType: "CHALLENGE_ARENA",
         targetClass: pack.primaryTarget,
         sourceEventId: programId,
         title: "CHALLENGE",
         headline: objectiveText,
-        subline: challengerName ? `${challengerName} · ${programId}` : programId,
+        subline: challengerName
+          ? `${challengerName} · ${phase} · ${programId}`
+          : `${phase} · ${programId}`,
         durationMs: 120_000,
         createdAtMs: Date.now(),
         expiresAtMs: Date.now() + 120_000,
@@ -497,6 +520,46 @@ export function VenueAutomatedJumbotronMount({
     };
   }, [director, experienceType, pack.brandPalette.accent, pack.primaryTarget, roomId, venueId]);
 
+  // Challenge ACGBR four-face plan → existing ShowDirector / FaceTargetRegistry (not a parallel Jumbotron).
+  // P1/P2 Challenge state outranks ads via applyChallengeJumbotronFacePlan priorities.
+  useEffect(() => {
+    if (experienceType !== "CHALLENGE_ARENA") {
+      setChallengeFacePlan(null);
+      return;
+    }
+
+    const syncFaces = () => {
+      const plan = resolveChallengeAcgbrFacePlanForMount();
+      if (!plan || !assertFourDistinctFaceRoles(plan)) {
+        setChallengeFacePlan(null);
+        return;
+      }
+      try {
+        const show = new JumbotronShowDirector(
+          venueId ?? `venue-${roomId}`,
+          `session:${roomId}`
+        );
+        applyChallengeJumbotronFacePlan(show.getFaceRegistry(), plan);
+        for (const assignment of plan) {
+          show.updateFaceState(assignment.face, {
+            sourceId: assignment.creativeId,
+            sponsorCampaignId: assignment.campaignId,
+            overlayText: assignment.role,
+            currentComposition: "FULL",
+          });
+        }
+        setChallengeFacePlan(plan);
+      } catch {
+        /* ShowDirector optional — PROGRAM event still holds P2 objective truth */
+        setChallengeFacePlan(plan);
+      }
+    };
+
+    syncFaces();
+    const timer = window.setInterval(syncFaces, 750);
+    return () => window.clearInterval(timer);
+  }, [experienceType, roomId, venueId]);
+
   // LOOK UP / DOUBLE-UP focus — aims camera at best face; no session restart
   useEffect(() => {
     if (!lookUpActive) {
@@ -542,6 +605,9 @@ export function VenueAutomatedJumbotronMount({
         data-aes-jumbotron-geometry="true"
         data-architecture={physical.architecture}
         data-experience-type={experienceType}
+        data-challenge-acgbr-faces={
+          challengeFacePlan ? challengeFacePlan.map((f) => `${f.face}:${f.role}`).join("|") : ""
+        }
         data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
         data-jumbotron-look-up={showSurface ? "true" : "false"}
         data-audience-scene-jumbotron-mounted="true"
@@ -572,6 +638,7 @@ export function VenueAutomatedJumbotronMount({
             descriptor={physical}
             pack={pack}
             event={event}
+            challengeFacePlan={challengeFacePlan}
             ceilingElevationMeters={ceiling}
           />
         </SafeReactThreeCanvas>
@@ -619,6 +686,7 @@ export function VenueAutomatedJumbotronMount({
           <JumbotronSurfaceRenderer
             event={event}
             pack={pack}
+            challengeFacePlan={challengeFacePlan}
             is3DViewportOverlay={false}
             className="pointer-events-none"
           />
