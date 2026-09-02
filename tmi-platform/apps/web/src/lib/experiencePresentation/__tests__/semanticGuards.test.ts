@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -46,6 +46,16 @@ import {
   mapCypherPhaseToComposition,
   PROGRAM_CYPHER_FOCUS,
 } from "../composeCypherProgram";
+import {
+  clearConcertProgram,
+  composeConcertProgram,
+  getActiveConcertProgram,
+  isConcertProgramProductionSurface,
+  isConcertVsFree,
+  mapConcertPhaseToComposition,
+  PROGRAM_CONCERT_STAGE,
+  PROGRAM_WORLD_CONCERT,
+} from "../composeConcertProgram";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -511,6 +521,97 @@ describe("experiencePresentation semantic guards", () => {
 
     clearCypherProgram("test-done");
     expect(getActiveCypherProgram()).toBeNull();
+  });
+
+  test("composeConcertProgram: stage-forward; never VS/circle; Cypher/Battle/Challenge clean", () => {
+    clearConcertProgram("test-reset");
+
+    const empty = composeConcertProgram({
+      sessionId: "sess-concert-empty",
+      concertId: "con-1",
+      roomId: "room-concert-1",
+      scope: "MINI",
+      lifecyclePhase: "VENUE_PREP",
+      bindJumbotron: true,
+    });
+
+    expect(empty.packId).toBe("Concert");
+    expect(empty.programSourceId).toBe(PROGRAM_CONCERT_STAGE);
+    expect(empty.worldMiniBadge).toBe("⭐ MINI");
+    expect(empty.surfaceKind).toBe("production");
+    expect(empty.composition).toBe("STAGE_WIDE");
+    expect(empty.headliner).toBeNull();
+    expect(empty.setlist).toEqual([]);
+    expect(empty.nowPlaying).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(empty.winnerId).toBeNull();
+    expect(isConcertVsFree(empty)).toBe(true);
+    expect(isConcertProgramProductionSurface()).toBe(true);
+    expect(empty.sources.find((s) => s.sourceId === PROGRAM_CONCERT_STAGE)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // Concert packs reject Battle VS + Cypher circle
+    expect(ConcertPack.allowsVsLayout).toBe(false);
+    expect(WorldConcertPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Concert", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("Concert", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldConcert", "A_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("WorldConcert", "CIRCLE_FOCUS")).toThrow();
+    expect(mapConcertPhaseToComposition("PERFORMANCE_ACTIVE", "MINI")).toBe("STAGE_WIDE");
+    expect(mapConcertPhaseToComposition("SPONSOR_MOMENT", "WORLD")).toBe("SPLIT");
+
+    const live = composeConcertProgram({
+      sessionId: "sess-concert-live",
+      concertId: "con-2",
+      roomId: "room-concert-2",
+      scope: "WORLD",
+      headlinerId: "h-1",
+      headlinerDisplayName: "Headliner One",
+      setlist: [
+        { trackId: "t-1", title: "Opener" },
+        { trackId: "t-2", title: "Encore Cut", isEncoreTrack: true },
+      ],
+      nowPlayingIndex: 0,
+      lifecyclePhase: "PERFORMANCE_ACTIVE",
+    });
+    expect(live.packId).toBe("WorldConcert");
+    expect(live.programSourceId).toBe(PROGRAM_WORLD_CONCERT);
+    expect(live.worldMiniBadge).toBe("🌍 WORLD");
+    expect(live.composition).toBe("STAGE_WIDE");
+    expect(live.headliner?.id).toBe("h-1");
+    expect(live.nowPlaying?.title).toBe("Opener");
+    expect(live.winnerId).toBeNull();
+    expect(isConcertVsFree(live)).toBe(true);
+
+    // Out-of-bounds nowPlayingIndex dropped
+    const bogusIdx = composeConcertProgram({
+      sessionId: "sess-concert-live",
+      concertId: "con-2",
+      roomId: "room-concert-2",
+      scope: "WORLD",
+      headlinerId: "h-1",
+      headlinerDisplayName: "Headliner One",
+      setlist: [{ trackId: "t-1", title: "Opener" }],
+      nowPlayingIndex: 99,
+      lifecyclePhase: "PERFORMANCE_ACTIVE",
+    });
+    expect(bogusIdx.nowPlaying).toBeNull();
+
+    // Battle + Challenge + Cypher untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(ChallengePack.prefersChallengeContract).toBe(true);
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(getPresentationPack("Concert").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("WorldConcert").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("Concert").routeCapability.experienceCert).toBe("OPEN");
+    expect(getPresentationPack("WorldConcert").routeCapability.experienceCert).toBe("OPEN");
+
+    clearConcertProgram("test-done");
+    expect(getActiveConcertProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

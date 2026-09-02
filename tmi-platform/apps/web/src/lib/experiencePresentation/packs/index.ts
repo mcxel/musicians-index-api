@@ -151,7 +151,7 @@ export const ConcertPack: ExperiencePresentationPack = {
   signatureDna: "Mini concert — stage-forward + commerce",
   presenceModel: "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
   allowedCompositions: ["STAGE_WIDE", "HOST_CLOSE", "PIP"],
-  forbiddenCompositions: ["DUAL", "GAME_BOARD", "CIRCLE_FOCUS"],
+  forbiddenCompositions: ["DUAL", "A_DOMINANT", "B_DOMINANT", "GAME_BOARD", "CIRCLE_FOCUS", "SPLIT"],
   requiredPrimitives: ["LiveVideoPanel", "IdentityPanel", "LowerThird"],
   optionalPrimitives: ["QueueRail", "ReactionEmitter", "AudioVisualizer"],
   allowsVsLayout: false,
@@ -159,10 +159,20 @@ export const ConcertPack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("concert", "Concert", ["/concerts/mini"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    logicCert: "OPEN",
-    architectureCert: "OPEN",
-  }),
+  routeCapability: baseRoute(
+    "concert",
+    "Concert",
+    ["/concerts/mini", "/rooms/concert", "/rooms/live-concert"],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresJumbotron: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const WorldConcertPack: ExperiencePresentationPack = {
@@ -170,7 +180,7 @@ export const WorldConcertPack: ExperiencePresentationPack = {
   signatureDna: "World concert — producer-directed multi-cam stadium",
   presenceModel: "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
   allowedCompositions: ["STAGE_WIDE", "HOST_CLOSE", "PIP", "SPLIT"],
-  forbiddenCompositions: ["CIRCLE_FOCUS", "GAME_BOARD"],
+  forbiddenCompositions: ["DUAL", "A_DOMINANT", "B_DOMINANT", "CIRCLE_FOCUS", "GAME_BOARD"],
   requiredPrimitives: ["LiveVideoPanel", "IdentityPanel", "LowerThird", "ReactionEmitter"],
   optionalPrimitives: ["QueueRail", "AudioVisualizer"],
   allowsVsLayout: false,
@@ -178,10 +188,20 @@ export const WorldConcertPack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("world_concert", "WorldConcert", ["/concerts/world"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    requiresJumbotron: true,
-    architectureCert: "OPEN",
-  }),
+  routeCapability: baseRoute(
+    "world_concert",
+    "WorldConcert",
+    ["/concerts/world", "/rooms/world-concert", "/rooms/concert"],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresJumbotron: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const WorldReleasePack: ExperiencePresentationPack = {

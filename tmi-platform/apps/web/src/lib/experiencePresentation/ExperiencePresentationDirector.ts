@@ -9,7 +9,11 @@ import type {
   PresentationPrimitiveKind,
   RouteCapabilityContract,
 } from "./types";
-import { FORBIDDEN_CYPHER_COMPOSITIONS, VS_COMPOSITIONS } from "./types";
+import {
+  FORBIDDEN_CONCERT_COMPOSITIONS,
+  FORBIDDEN_CYPHER_COMPOSITIONS,
+  VS_COMPOSITIONS,
+} from "./types";
 import { ALL_PACKS } from "./packs";
 
 export interface ExperiencePresentationPack {
@@ -96,6 +100,16 @@ export function assertPackAllowsComposition(
     // Challenge may use SPLIT for host/guest moments but not DUAL corner VS as signature
     if (layout === "DUAL" || layout === "A_DOMINANT" || layout === "B_DOMINANT") {
       throw new Error("Challenge pack prefers contract/objective — rejects corner VS as primary");
+    }
+  }
+
+  // Hard semantic: Concert / World Concert never Battle VS corners or Cypher circle
+  if (packId === "Concert" || packId === "WorldConcert") {
+    if ((FORBIDDEN_CONCERT_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error(`${packId} pack rejects Battle VS / Cypher circle compositions`);
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error(`${packId} pack semantic flags forbid VS/winner/elimination`);
     }
   }
 }

@@ -105,3 +105,11 @@ export const FORBIDDEN_CYPHER_COMPOSITIONS: readonly BroadcastCompositionLayout[
   "B_DOMINANT",
   "SPLIT",
 ] as const;
+
+/** Concert / World Concert forbid Battle VS corners + Cypher circle combat framing. */
+export const FORBIDDEN_CONCERT_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+] as const;

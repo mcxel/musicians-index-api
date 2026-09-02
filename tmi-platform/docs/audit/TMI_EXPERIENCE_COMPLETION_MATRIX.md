@@ -200,43 +200,43 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Mini Concert creation / concert wall |
+| route(s) | `/rooms/concert/[roomId]` (⭐ Mini default), `/rooms/live-concert`, `/concerts` |
 | presence model | Stage performer + seated fan avatars |
 | center of gravity | Stage performance + set energy |
 | signature DNA | `Concert` — stage-forward, commerce strip, audience wall |
 | PROGRAM source id | `PROGRAM.CONCERT_STAGE` |
 | ISO/viewpoints | STAGE, WIDE, AUDIENCE, SETLIST, MERCH |
-| Jumbotron support | OPEN |
-| Universal Player support | OPEN |
+| Jumbotron support | PARTIAL (reads `getActiveConcertProgram()` — headliner / now-playing; no fake impressions) |
+| Universal Player support | PARTIAL (PROGRAM bound; no second player runtime) |
 | queue/game requirements | Setlist queue |
 | world interactions | Seat claim, real reactions, tip |
 | commerce | Tips, merch, tickets if Venue/Promoter issued |
-| logic cert | OPEN (creation flow incomplete per Rule 21 audit) |
-| architecture cert | OPEN |
+| logic cert | PARTIAL (`ConcertRuntimeEngine` + `composeConcertProgram`) |
+| architecture cert | **DONE** (Phase 1 — pack + compose + shell + room consumer) |
 | experience cert | OPEN |
 | desktop/mobile | FLAT / PIP |
-| notes | Mini = user-qualified; World = bot/platform only. |
+| notes | Mini = user-qualified ⭐; World = bot/platform only 🌍. Phase 1 slice: `docs/audit/CONCERT_WORLD_PRESENTATION_SLICE.md`. |
 
 ### World Concert
 
 | Field | Value |
 |-------|-------|
-| route(s) | World Concert official |
+| route(s) | `/rooms/world-concert`, `/rooms/concert/world-*` or `?scope=world` |
 | presence model | Large venue; fan avatars; multi-cam |
 | center of gravity | Stadium broadcast + world-scale audience |
 | signature DNA | `WorldConcert` — multi-monitor aspirational, producer-directed |
 | PROGRAM source id | `PROGRAM.WORLD_CONCERT` |
 | ISO/viewpoints | STAGE, WIDE, CROWD, B-ROLL, SPONSOR, REPLAY |
-| Jumbotron support | OPEN |
-| Universal Player support | OPEN |
+| Jumbotron support | PARTIAL (same Concert PROGRAM path; WORLD_CONCERT experience type) |
+| Universal Player support | PARTIAL |
 | queue/game requirements | Platform schedule |
 | world interactions | Progressive real fill; LOD |
 | commerce | Tickets Venue/Promoter; sponsors |
-| logic cert | PARTIAL (venue runtime pieces) |
-| architecture cert | OPEN |
+| logic cert | PARTIAL (venue runtime + compose) |
+| architecture cert | **DONE** (shared `composeConcertProgram` scope=WORLD) |
 | experience cert | OPEN |
 | desktop/mobile | HYBRID; FLAT fallback |
-| notes | 🌍 WORLD badge law; bot/platform-created only. |
+| notes | 🌍 WORLD badge law; bot/platform-created only. Legacy `/rooms/world-concert` still has pre-slice UI debt outside PROGRAM shell. |
 
 ### World Release
 
@@ -525,8 +525,8 @@
 | Cypher | PARTIAL | **DONE** | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
 | Monday Night Stage | PARTIAL | OPEN | OPEN |
-| Concert | OPEN | OPEN | OPEN |
-| World Concert | PARTIAL | OPEN | OPEN |
+| Concert | PARTIAL | **DONE** | OPEN |
+| World Concert | PARTIAL | **DONE** | OPEN |
 | World Release | OPEN | OPEN | OPEN |
 | Listening Party | PARTIAL | PARTIAL | OPEN |
 | Watch Party | OPEN | OPEN | OPEN |
@@ -558,7 +558,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **2** | **Battle world** presentation (not new lifecycle) | VS pack + `composeBattleProgram` + BattlePresentationShell — **architecture DONE**; experienceCert OPEN until production physical; no fake crowd/score; Cypher uncontaminated |
 | **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE** Phase 1 (`composeChallengeProgram` + shell); experienceCert OPEN |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts — **architecture DONE** Phase 1 (`composeCypherProgram` + shell); experienceCert OPEN |
-| **5** | **Concert / World Concert** | Stage + audience avatar LOD; Mini vs World badges |
+| **5** | **Concert / World Concert** | Stage + audience; Mini vs World badges — **architecture DONE** Phase 1 (`composeConcertProgram` + shell); experienceCert OPEN |
 | **6** | **World Release** | Premiere drop choreography on real schedule |
 | **7** | **World Dance Party** | Floor avatars + DJ composite |
 | **8** | **Lounges** (+ Playlist Lounge) | Panel-only presence; avatar model rejected |

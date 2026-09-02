@@ -22,6 +22,7 @@ export type {
 
 export {
   FORBIDDEN_CYPHER_COMPOSITIONS,
+  FORBIDDEN_CONCERT_COMPOSITIONS,
   VS_COMPOSITIONS,
   OBJECTIVE_COMPOSITIONS,
 } from "./types";
@@ -138,4 +139,32 @@ export {
   mapCypherPhaseToComposition,
 } from "./composeCypherProgram";
 
-export { PerformerLivePack, BattlePack, ChallengePack, CypherPack } from "./packs";
+export type {
+  ConcertProgramComposition,
+  ConcertHeadliner,
+  ConcertSetlistTrack,
+  ConcertScope,
+  ConcertLifecyclePhase,
+} from "./composeConcertProgram";
+export {
+  PROGRAM_CONCERT_STAGE,
+  PROGRAM_WORLD_CONCERT,
+  ISO_STAGE,
+  ISO_AUDIENCE_WIDE,
+  ISO_SETLIST,
+  composeConcertProgram,
+  getActiveConcertProgram,
+  clearConcertProgram,
+  isConcertProgramProductionSurface,
+  isConcertVsFree,
+  mapConcertPhaseToComposition,
+} from "./composeConcertProgram";
+
+export {
+  PerformerLivePack,
+  BattlePack,
+  ChallengePack,
+  CypherPack,
+  ConcertPack,
+  WorldConcertPack,
+} from "./packs";

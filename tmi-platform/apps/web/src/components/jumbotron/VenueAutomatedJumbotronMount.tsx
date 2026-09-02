@@ -21,6 +21,7 @@ import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/comp
 import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBattleProgram";
 import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeChallengeProgram";
 import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCypherProgram";
+import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeConcertProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -42,7 +43,11 @@ export function mapArenaEventToJumbotronExperience(
   if (t.includes("challenge")) return "CHALLENGE_ARENA";
   if (t.includes("cypher") || t.includes("cipher")) return "CYPHER";
   if (t.includes("dance")) return "WORLD_DANCE_PARTY";
-  if (t.includes("monday") || t.includes("concert") || t.includes("auditorium")) return "AUDITORIUM";
+  // Concert before monday/auditorium — world/mini concert map to WORLD_CONCERT PROGRAM.
+  if (t.includes("concert") || t.includes("mini-concert") || t.includes("world-concert")) {
+    return "WORLD_CONCERT";
+  }
+  if (t.includes("monday") || t.includes("auditorium")) return "AUDITORIUM";
   if (t.includes("feud") || t.includes("game") || t.includes("tune") || t.includes("square")) {
     return "GAME_SHOW";
   }
@@ -244,6 +249,31 @@ export function VenueAutomatedJumbotronMount({
           accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
         });
       }
+    } else if (experienceType === "WORLD_CONCERT") {
+      // Real Concert PROGRAM — headliner + now-playing; never invent attendance/tips/scores.
+      const prog = getActiveConcertProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ MINI";
+      const headlinerName = prog?.headliner?.displayName?.trim() || "Waiting for headliner";
+      const nowTitle = prog?.nowPlaying?.title?.trim() || null;
+      const programId =
+        prog?.programSourceId ??
+        (prog?.scope === "WORLD" ? "PROGRAM.WORLD_CONCERT" : "PROGRAM.CONCERT_STAGE");
+      setEvent({
+        id: `evt-concert-${roomId}`,
+        traceId: `tr-concert-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_CONCERT",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD CONCERT" : "MINI CONCERT",
+        headline: nowTitle ? `${headlinerName} · ${nowTitle}` : headlinerName,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
     } else if (experienceType === "WORLD_DANCE_PARTY") {
       const welcome = director.triggerSafetyAlert(
         "WELCOME TO WORLD DANCE PARTY",

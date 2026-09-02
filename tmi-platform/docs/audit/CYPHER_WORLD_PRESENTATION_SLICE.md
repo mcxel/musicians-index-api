@@ -89,5 +89,6 @@ Asserts: Cypher rejects DUAL/SPLIT/A_DOMINANT; circle + mic compose; stranger mi
 |------|--------|
 | Full cinematic CipherArenaShell polish / competitive-ending cleanup | OPEN (out of scope Phase 1; DNA ignores Cypher Base.mp4 competitive ending) |
 | experienceCert physical | OPEN |
-| Concert / World Concert presentation | **Next recommended slice** |
+| Concert / World Concert presentation | **DONE** Phase 1 — see `CONCERT_WORLD_PRESENTATION_SLICE.md` |
+| World Dance Party presentation | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |
