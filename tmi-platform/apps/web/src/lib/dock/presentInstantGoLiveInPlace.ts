@@ -32,12 +32,16 @@ import {
   advanceRegularGoLiveCanaryPublishing,
   advanceRegularGoLiveCanaryReady,
   beginRegularGoLiveCanary,
+  getRegularGoLiveCanaryObservatory,
   markRegularGoLiveCanaryLive,
   prepareThenTakeRegularGoLiveProgram,
   shouldAttachRegularGoLiveFabricCanary,
   syncRegularGoLiveCanaryAudience,
   teardownRegularGoLiveCanary,
 } from "@/lib/live/canary/regularGoLiveFabricCanary";
+import {
+  composePerformerLiveProgram,
+} from "@/lib/experiencePresentation/composePerformerLiveProgram";
 
 function paramFromHref(href: string | undefined, key: string, fallback: string): string {
   if (!href) return fallback;
@@ -198,6 +202,8 @@ export async function presentInstantGoLiveInPlace(opts?: {
   monitor?: MonitorTarget;
   /** Reuse room already on monitors / strip. */
   roomId?: string;
+  /** Host identity for production presentation shell (never fabricated). */
+  displayName?: string | null;
   /**
    * Default true for one-tap GO LIVE (publish-first for fan discovery).
    * Pass false only for silent stage-prepare without listing.
@@ -212,6 +218,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   // Real session truth — never assume authenticated:true
   let sessionAuthenticated = false;
   let sessionRole = (opts?.role ?? "PERFORMER").toUpperCase();
+  let sessionDisplayName = opts?.displayName?.trim() || "";
   try {
     const sess = await fetch("/api/auth/session", {
       credentials: "include",
@@ -221,10 +228,14 @@ export async function presentInstantGoLiveInPlace(opts?: {
     if (sess.ok) {
       const data = (await sess.json()) as {
         authenticated?: boolean;
-        user?: { id?: string; role?: string };
+        user?: { id?: string; role?: string; name?: string; displayName?: string };
       };
       sessionAuthenticated = Boolean(data.authenticated && data.user?.id);
       if (data.user?.role) sessionRole = data.user.role.toUpperCase();
+      if (!sessionDisplayName) {
+        sessionDisplayName =
+          data.user?.displayName?.trim() || data.user?.name?.trim() || "";
+      }
     }
   } catch {
     sessionAuthenticated = false;
@@ -345,6 +356,20 @@ export async function presentInstantGoLiveInPlace(opts?: {
       category: existing.category,
       source: "session-resume",
     });
+    // Re-compose production PROGRAM for resumed live (same session, no restart).
+    try {
+      const obs = getRegularGoLiveCanaryObservatory();
+      const sessionId = obs.sessionId ?? `sess-${roomId}`;
+      composePerformerLiveProgram({
+        sessionId,
+        roomId,
+        hostDisplayName: sessionDisplayName || null,
+        composition: "HOST_CLOSE",
+        bindJumbotron: true,
+      });
+    } catch {
+      /* additive */
+    }
     boot.setPhase("HUD_MOUNTING");
     const cam = await camPromise;
     if (cam.ok) boot.markSelfPreview(true);
@@ -380,6 +405,14 @@ export async function presentInstantGoLiveInPlace(opts?: {
 
   if (!result.ok || !result.roomId) {
     if (fabricCanary) teardownRegularGoLiveCanary({ reason: "session-mint-failed" });
+    try {
+      const { clearPerformerLiveProgram } = await import(
+        "@/lib/experiencePresentation/composePerformerLiveProgram"
+      );
+      clearPerformerLiveProgram("session-mint-failed");
+    } catch {
+      /* optional */
+    }
     useGoLiveTransition.getState().clearWarp();
     mediaDirector.failLaunch(result.error ?? "Stage room did not mint.");
     boot.fail("SESSION_MINT_FAILED", result.error ?? "Stage room did not mint.");
@@ -395,6 +428,14 @@ export async function presentInstantGoLiveInPlace(opts?: {
   // Publication state law: isLivePublished only after real registry success
   if (publishSession && !result.published) {
     if (fabricCanary) teardownRegularGoLiveCanary({ reason: "registry-publish-failed" });
+    try {
+      const { clearPerformerLiveProgram } = await import(
+        "@/lib/experiencePresentation/composePerformerLiveProgram"
+      );
+      clearPerformerLiveProgram("registry-publish-failed");
+    } catch {
+      /* optional */
+    }
     useGoLiveTransition.getState().clearWarp();
     mediaDirector.failLaunch(result.error ?? "Live registry publish did not succeed.");
     boot.fail("SESSION_MINT_FAILED", result.error ?? "Live registry publish did not succeed.");
@@ -415,6 +456,20 @@ export async function presentInstantGoLiveInPlace(opts?: {
     syncRegularGoLiveCanaryAudience(0);
     if (publishSession && result.published) {
       markRegularGoLiveCanaryLive();
+    }
+    // Production presentation upward — same session PROGRAM, no second runtime.
+    try {
+      const obs = getRegularGoLiveCanaryObservatory();
+      const sessionId = obs.sessionId ?? `sess-${result.roomId}`;
+      composePerformerLiveProgram({
+        sessionId,
+        roomId: result.roomId,
+        hostDisplayName: sessionDisplayName || null,
+        composition: "HOST_CLOSE",
+        bindJumbotron: true,
+      });
+    } catch {
+      /* presentation compose is additive; canary publication remains authority */
     }
   }
 

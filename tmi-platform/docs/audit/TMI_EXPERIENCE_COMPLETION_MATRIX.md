@@ -20,6 +20,7 @@
 | **PROGRAM source** | Canonical PROGRAM bus source kind id |
 | **ISO/viewpoints** | Available alternate sources without new session |
 | **Jumbotron** | Dual role (discovery preview + in-venue big screen) readiness |
+| **adInventory** | In-venue physical ad surfaces (`venue:{id}:jumbotron:{face}` + LED/ribbon/scoreboard) — see [`JUMBOTRON_AD_AND_SHOW_DIRECTOR.md`](./JUMBOTRON_AD_AND_SHOW_DIRECTOR.md) |
 | **Universal Player** | Freedom law / multi-target support |
 | **logic cert** | Routing, lifecycle, engines (screenshots OK) |
 | **architecture cert** | Contracts wired, SOURCE≠DECODER≠TARGET, no semantic violations |
@@ -75,16 +76,17 @@
 | signature DNA | `PerformerLive` — flat/PIP host-first; **≠ Monday Night Stage** |
 | PROGRAM source id | `PROGRAM.PERFORMER_CAMERA` |
 | ISO/viewpoints | SELF, AUDIENCE, SECONDARY, COMMERCE, CAST |
-| Jumbotron support | PARTIAL (Lobby Wall / discovery) |
-| Universal Player support | PARTIAL → P0 publication chain |
+| Jumbotron support | PARTIAL → same PROGRAM bind (`JUMBOTRON_IN_VENUE`) when venue shell mounts |
+| adInventory | PARTIAL — stage-facing face prioritizes performer cues; house/artist sponsor PiP in breaks (`VenueAdDirector`) |
+| Universal Player support | PARTIAL → PROGRAM bound to any Universal Player slot (Freedom Law) |
 | queue/game requirements | None (not competitive) |
 | world interactions | Audience presence, reactions, CAST targets |
 | commerce | Tips, merch, fan club |
-| logic cert | PARTIAL (canary path exists; E2E publication OPEN) |
-| architecture cert | PARTIAL (Live Fabric foundation frozen) |
-| experience cert | OPEN |
+| logic cert | PARTIAL (canary path + presentation compose) |
+| architecture cert | **DONE** (PerformerLive pack + `composePerformerLiveProgram` wired on Regular GO LIVE; no second LiveSession) |
+| experience cert | **OPEN** → physical production surface pending / in-progress (green/debug cannot PASS) |
 | desktop/mobile | Both; single-screen FLAT fallback mandatory |
-| notes | **Do not** rebuild; upward presentation only. Canary must stay green. |
+| notes | **Do not** rebuild; upward presentation only. Canary must stay green. Phase 1 slice: `docs/audit/PERFORMER_LIVE_PRESENTATION_SLICE.md` |
 
 ### Battle
 
@@ -97,6 +99,7 @@
 | PROGRAM source id | `PROGRAM.BATTLE_COMPOSITE` (or A/B take) |
 | ISO/viewpoints | CORNER_A, CORNER_B, HOST, JUDGE, AUDIENCE, REPLAY |
 | Jumbotron support | PARTIAL (P0 LOOK UP closed; cinematic OPEN) |
+| adInventory | **DONE** (contracts) — 4 independent faces; P1 final-countdown preempts ads; packages: Round Timer Frame / Scoreboard Ribbon / Winner Spotlight |
 | Universal Player support | PARTIAL |
 | queue/game requirements | Bracket/queue; round clock; score; winner (authoritative) |
 | world interactions | Seat fill real-only; hype from real reactions |
@@ -139,6 +142,7 @@
 | PROGRAM source id | `PROGRAM.CYPHER_FOCUS` |
 | ISO/viewpoints | ACTIVE_MIC, CIRCLE_WIDE, NEXT_UP, AUDIENCE, HOST |
 | Jumbotron support | PARTIAL (collaborative lookup evidence) |
+| adInventory | PARTIAL — mic-handoff show beats + house/artist faces; **no** winner-spotlight packages |
 | Universal Player support | PARTIAL |
 | queue/game requirements | Mic queue / pass-the-mic — **no** elimination bracket |
 | world interactions | Collaborative reactions only |
@@ -181,6 +185,7 @@
 | PROGRAM source id | `PROGRAM.MNS_SHOW` |
 | ISO/viewpoints | HOST, FEATURED, BACKSTAGE, AUDIENCE, SPONSOR, LOWER_THIRD |
 | Jumbotron support | OPEN (flagship target) |
+| adInventory | PARTIAL — four-face takeover packages + lower-thirds; Intermission Takeover during breaks |
 | Universal Player support | OPEN |
 | queue/game requirements | Official schedule, lineup queue, host succession |
 | world interactions | Bot-operated Official event (Rule 21) — real outcomes |
@@ -307,6 +312,7 @@
 | PROGRAM source id | `PROGRAM.WDP_COMPOSITE` |
 | ISO/viewpoints | DJ, DANCE_FLOOR, CROWD, HOST, SPONSOR |
 | Jumbotron support | OPEN |
+| adInventory | PARTIAL — disco-orb / rotating faces; group-action spotlight (consent); house ambient fallback |
 | Universal Player support | OPEN |
 | queue/game requirements | Track queue; DJ bot schedule |
 | world interactions | Dance emotes, group actions (real users) |
@@ -349,6 +355,7 @@
 | PROGRAM source id | `PROGRAM.FAN_LOBBY` (ambient) |
 | ISO/viewpoints | SELF_AVATAR, FRIENDS, LOBBY_WALL, PLAYLIST |
 | Jumbotron support | Lobby wall mosaic |
+| adInventory | PARTIAL — `venue:{id}:lobby` surface + wall mosaic; personalized ads stay in personal UI only |
 | Universal Player support | PARTIAL |
 | queue/game requirements | Seat assignment on join show |
 | world interactions | Emotes, walk, invite |
@@ -512,7 +519,7 @@
 | Experience | Logic | Architecture | Experience (prod visual) |
 |------------|-------|--------------|---------------------------|
 | Fan Live | PARTIAL | PARTIAL | OPEN |
-| Performer Live | PARTIAL | PARTIAL | OPEN |
+| Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
 | Battle | PARTIAL | PARTIAL | OPEN |
 | Challenge | PARTIAL | PARTIAL | OPEN |
 | Cypher | PARTIAL | PARTIAL | OPEN |
@@ -547,7 +554,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | Phase | Slice | Exit criteria |
 |-------|-------|---------------|
 | **0** | Matrix + contracts + semantic tests | This document + `experiencePresentation/` tests PASS |
-| **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE without breaking canary |
+| **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE — **architecture DONE**; experienceCert OPEN until production physical |
 | **2** | **Battle world** presentation (not new lifecycle) | VS pack + BroadcastComposition DUAL/A\|B; real occupancy; no fake crowd events |
 | **3** | **Challenge** | Contract/objective center; no default VS |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts |

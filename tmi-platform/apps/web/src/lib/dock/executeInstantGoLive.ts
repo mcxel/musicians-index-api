@@ -454,6 +454,14 @@ export async function endInstantGoLiveSession(roomId?: string | null): Promise<v
   } catch {
     /* canary optional */
   }
+  try {
+    const { clearPerformerLiveProgram } = await import(
+      "@/lib/experiencePresentation/composePerformerLiveProgram"
+    );
+    clearPerformerLiveProgram("end-live");
+  } catch {
+    /* presentation optional */
+  }
   recordFunctionInvocation("endInstantGoLiveSession", true);
   try {
     const { stopAllExternalDestinations } = await import(

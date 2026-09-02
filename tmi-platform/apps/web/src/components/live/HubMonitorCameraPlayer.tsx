@@ -3,12 +3,18 @@
 /**
  * Monitor A — FOH stage viewport: local performer camera ONLY after explicit CAM ON / GO LIVE.
  * Never auto-requests getUserMedia on mount. Not a second UVR instance.
+ * Production presentation: PerformerLivePresentationShell (host-first DNA).
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
+import PerformerLivePresentationShell from "@/components/live/PerformerLivePresentationShell";
+import {
+  getActivePerformerLiveProgram,
+  type PerformerLiveProgramComposition,
+} from "@/lib/experiencePresentation/composePerformerLiveProgram";
 
 const FOH = resolveHubMonitorViewport("A");
 
@@ -47,11 +53,19 @@ function HubMonitorIdle({ label, hint }: { label: string; hint?: string }) {
   );
 }
 
-export default function HubMonitorCameraPlayer() {
+export default function HubMonitorCameraPlayer({
+  displayName = null,
+  watchingCount: watchingCountProp,
+}: {
+  displayName?: string | null;
+  watchingCount?: number;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewActive = useLivePrivacyState((s) => s.cameraPreviewActive);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const previewStream = useLivePrivacyState((s) => s.previewStream);
+  const [program, setProgram] = useState<PerformerLiveProgramComposition | null>(null);
+  const [watchingCount, setWatchingCount] = useState(watchingCountProp ?? 0);
 
   const hasLiveVideo =
     Boolean(previewStream) &&
@@ -59,6 +73,28 @@ export default function HubMonitorCameraPlayer() {
 
   // Self preview ASAP when track exists — GO LIVE or CAM ON
   const showPreview = hasLiveVideo;
+
+  useEffect(() => {
+    if (typeof watchingCountProp === "number") setWatchingCount(watchingCountProp);
+  }, [watchingCountProp]);
+
+  useEffect(() => {
+    const onAudience = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ viewers?: number }>).detail;
+      if (typeof detail?.viewers === "number" && detail.viewers >= 0) {
+        setWatchingCount(Math.floor(detail.viewers));
+      }
+    };
+    window.addEventListener("tmi:watch-audience-count", onAudience as EventListener);
+    return () => window.removeEventListener("tmi:watch-audience-count", onAudience as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setProgram(getActivePerformerLiveProgram());
+    refresh();
+    const id = window.setInterval(refresh, 1000);
+    return () => window.clearInterval(id);
+  }, [isLivePublished]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -73,7 +109,7 @@ export default function HubMonitorCameraPlayer() {
   }, [showPreview, previewStream]);
 
   if (!showPreview) {
-    return (
+    const idle = (
       <HubMonitorIdle
         label={isLivePublished || cameraPreviewActive ? "Camera starting…" : "Camera idle"}
         hint={
@@ -83,60 +119,65 @@ export default function HubMonitorCameraPlayer() {
         }
       />
     );
+    // When published / previewing, still mount production identity shell (not green diagnostic).
+    if (isLivePublished || cameraPreviewActive) {
+      return (
+        <PerformerLivePresentationShell
+          displayName={displayName}
+          isLivePublished={isLivePublished}
+          cameraPreviewActive={cameraPreviewActive}
+          hasLiveVideo={false}
+          watchingCount={watchingCount}
+          composition={program}
+        >
+          {idle}
+        </PerformerLivePresentationShell>
+      );
+    }
+    return idle;
   }
 
   return (
-    <div
-      data-hub-monitor-camera-player="true"
-      data-canonical-viewport={FOH.role}
-      data-canonical-zone={FOH.zone}
-      style={{ position: "absolute", inset: 0, background: "#000" }}
+    <PerformerLivePresentationShell
+      displayName={displayName}
+      isLivePublished={isLivePublished}
+      cameraPreviewActive={cameraPreviewActive}
+      hasLiveVideo={hasLiveVideo}
+      watchingCount={watchingCount}
+      composition={program}
     >
       <div
-        style={{
-          position: "absolute",
-          top: 8,
-          left: 8,
-          zIndex: 4,
-          padding: "2px 8px",
-          borderRadius: 4,
-          background: "rgba(0,0,0,0.65)",
-          fontSize: 8,
-          fontWeight: 900,
-          letterSpacing: "0.12em",
-          color: "#FFD700",
-          pointerEvents: "none",
-        }}
+        data-hub-monitor-camera-player="true"
+        data-canonical-viewport={FOH.role}
+        data-canonical-zone={FOH.zone}
+        style={{ position: "absolute", inset: 0, background: "#000" }}
       >
-        {FOH.shortLabel} · STAGE
-      </div>
-      <video
-        ref={videoRef}
-        muted
-        playsInline
-        autoPlay
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      />
-      {!isLivePublished ? (
         <div
           style={{
             position: "absolute",
             top: 8,
             left: 8,
-            padding: "3px 8px",
+            zIndex: 4,
+            padding: "2px 8px",
             borderRadius: 4,
-            background: "rgba(0,0,0,0.72)",
-            border: "1px solid rgba(0,255,136,0.45)",
+            background: "rgba(0,0,0,0.65)",
             fontSize: 8,
             fontWeight: 900,
-            letterSpacing: "0.1em",
-            color: "#00FF88",
+            letterSpacing: "0.12em",
+            color: "#FFD700",
             pointerEvents: "none",
           }}
         >
-          LOCAL PREVIEW · NOT LIVE
+          {FOH.shortLabel} · STAGE
         </div>
-      ) : null}
-    </div>
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          autoPlay
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+    </PerformerLivePresentationShell>
   );
 }

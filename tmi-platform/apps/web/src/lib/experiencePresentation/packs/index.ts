@@ -282,7 +282,13 @@ export const PerformerLivePack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: true,
-  routeCapability: baseRoute("performer_live", "PerformerLive", ["/hub/performer"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE"),
+  routeCapability: baseRoute("performer_live", "PerformerLive", ["/hub/performer"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
+    requiresJumbotron: true,
+    logicCert: "PARTIAL",
+    architectureCert: "DONE",
+    // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+    experienceCert: "OPEN",
+  }),
 };
 
 export const ALL_PACKS: Record<ExperiencePackId, ExperiencePresentationPack> = {

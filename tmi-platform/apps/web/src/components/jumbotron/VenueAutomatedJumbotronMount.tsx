@@ -13,9 +13,11 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AutomatedJumbotronDirector } from "@/lib/jumbotron/AutomatedJumbotronDirector";
 import type { JumbotronExperienceType } from "@/lib/jumbotron/JumbotronContracts";
+import { JumbotronPriority } from "@/lib/jumbotron/JumbotronContracts";
 import { JumbotronSurfaceRenderer } from "@/components/jumbotron/JumbotronSurfaceRenderer";
 import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
 import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
+import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/composePerformerLiveProgram";
 
 const SafeReactThreeCanvas = dynamic(
   () => import("@/components/3d/SafeReactThreeCanvas"),
@@ -138,6 +140,27 @@ export function VenueAutomatedJumbotronMount({
         "DISCO ORB ONLINE • DANCE FLOOR ACTIVE"
       );
       setEvent(welcome ?? director.getActiveEvent());
+    } else if (experienceType === "REGULAR_LIVE") {
+      // Same PROGRAM as Performer Live — host identity only, never fake scores/crowd.
+      const prog = getActivePerformerLiveProgram();
+      const hostName = prog?.hostDisplayName?.trim() || "LIVE NOW";
+      const programId = prog?.programSourceId ?? "PROGRAM.PERFORMER_CAMERA";
+      setEvent({
+        id: `evt-regular-live-${roomId}`,
+        traceId: `tr-performer-live-${roomId}`,
+        priority: JumbotronPriority.P6_AMBIENT,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "REGULAR_LIVE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "PERFORMER LIVE",
+        headline: hostName,
+        subline: programId,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
     } else {
       setEvent(director.getActiveEvent());
     }

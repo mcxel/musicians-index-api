@@ -423,6 +423,8 @@ function MonitorMediaBody({
   hubLiveMonitor,
   cellIndex,
   goLiveBootActive,
+  displayName,
+  watchingCount,
 }: {
   slot: CommandCenterMediaSlot;
   sponsorOverlay?: ActiveSponsorOverlay | null;
@@ -430,6 +432,8 @@ function MonitorMediaBody({
   hubLiveMonitor?: "A" | "B" | null;
   cellIndex?: number;
   goLiveBootActive?: boolean;
+  displayName?: string | null;
+  watchingCount?: number;
 }) {
   const videoSrc = slot.videoUrl?.trim() || "";
   const [videoFailed, setVideoFailed] = useState(false);
@@ -445,7 +449,7 @@ function MonitorMediaBody({
       return (
         <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
           {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
-          <HubMonitorCameraPlayer />
+          <HubMonitorCameraPlayer displayName={displayName} watchingCount={watchingCount ?? 0} />
         </div>
       );
     }
@@ -507,6 +511,7 @@ function MonitorChrome({
   hubLiveMonitor,
   cellIndex,
   goLiveBootActive,
+  displayName,
 }: {
   slot: CommandCenterMediaSlot;
   onSwap?: () => void;
@@ -516,6 +521,7 @@ function MonitorChrome({
   hubLiveMonitor?: "A" | "B" | null;
   cellIndex?: number;
   goLiveBootActive?: boolean;
+  displayName?: string | null;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -537,6 +543,7 @@ function MonitorChrome({
       hubLiveMonitor={hubLiveMonitor}
       cellIndex={cellIndex}
       goLiveBootActive={goLiveBootActive}
+      displayName={displayName}
     />
   );
 
@@ -916,6 +923,7 @@ export default function CommandCenterMediaStack({
             hubLiveRoomId={hubLiveRoomId}
             hubLiveMonitor={i === 0 ? "A" : "B"}
             goLiveBootActive={goLiveBootActive}
+            displayName={displayName}
           />
         ),
       }),
@@ -1584,6 +1592,7 @@ export default function CommandCenterMediaStack({
                   hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="A"
                   goLiveBootActive={goLiveBootActive}
+                  displayName={displayName}
                 />
               ),
             cells: topSlots.map((slot, ci) =>

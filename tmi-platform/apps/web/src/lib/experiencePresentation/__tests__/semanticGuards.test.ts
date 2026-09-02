@@ -14,6 +14,13 @@ import {
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
 import { LoungePack, CypherPack, BattlePack, ChallengePack } from "../packs";
+import {
+  clearPerformerLiveProgram,
+  composePerformerLiveProgram,
+  getActivePerformerLiveProgram,
+  isPerformerLiveProgramProductionSurface,
+  PROGRAM_PERFORMER_CAMERA,
+} from "../composePerformerLiveProgram";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -147,6 +154,52 @@ describe("experiencePresentation semantic guards", () => {
   test("PerformerLive is Regular GO LIVE; MondayNightStage is not", () => {
     expect(getPresentationPack("PerformerLive").isRegularGoLive).toBe(true);
     expect(getPresentationPack("MondayNightStage").isRegularGoLive).toBe(false);
+    expect(() => assertPackAllowsComposition("PerformerLive", "HOST_CLOSE")).not.toThrow();
+    expect(() => assertPackAllowsComposition("PerformerLive", "DUAL")).toThrow();
+    expect(getPresentationPack("PerformerLive").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("PerformerLive").routeCapability.experienceCert).toBe("OPEN");
+  });
+
+  test("composePerformerLiveProgram binds PROGRAM to Universal Player without new session", () => {
+    clearPerformerLiveProgram("test-reset");
+    const sessionId = "sess-performer-live-test";
+    const composed = composePerformerLiveProgram({
+      sessionId,
+      roomId: "room-test-1",
+      hostDisplayName: "Test Host",
+      composition: "HOST_CLOSE",
+      bindJumbotron: true,
+    });
+
+    expect(composed.packId).toBe("PerformerLive");
+    expect(composed.programSourceId).toBe(PROGRAM_PERFORMER_CAMERA);
+    expect(composed.surfaceKind).toBe("production");
+    expect(composed.sessionId).toBe(sessionId);
+    expect(composed.jumbotronBound).toBe(true);
+    expect(isPerformerLiveProgramProductionSurface()).toBe(true);
+
+    const targets = composed.sources.find((s) => s.sourceId === PROGRAM_PERFORMER_CAMERA)?.boundTargets ?? [];
+    expect(targets).toEqual(
+      expect.arrayContaining([
+        "UNIVERSAL_PLAYER_PRIMARY",
+        "UNIVERSAL_PLAYER_SECONDARY",
+        "JUMBOTRON_IN_VENUE",
+      ])
+    );
+
+    // Rebind same session — no id mutation
+    const again = composePerformerLiveProgram({
+      sessionId,
+      roomId: "room-test-1",
+      hostDisplayName: "Test Host",
+      composition: "PIP",
+      bindJumbotron: true,
+    });
+    expect(again.sessionId).toBe(sessionId);
+    expect(getActivePerformerLiveProgram()?.composition).toBe("PIP");
+
+    clearPerformerLiveProgram("test-done");
+    expect(getActivePerformerLiveProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

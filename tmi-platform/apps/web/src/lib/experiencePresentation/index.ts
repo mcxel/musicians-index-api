@@ -1,13 +1,14 @@
 /**
  * experiencePresentation — production presentation packs + venue world contracts.
- * Isolated scaffold (liveFabric pattern). Does NOT alter Regular GO LIVE canary path.
+ * Isolated scaffold (liveFabric pattern). Presentation composes upward on Regular GO LIVE
+ * without minting a second LiveSession / WebRTC / player runtime.
  *
  * Laws: Cypher collaborative; Lounges/Performer Lobby = panels not avatars;
  * Battle VS vs Challenge contract; MNS ≠ Regular GO LIVE;
  * PresentationEventBus never fabricates crowds; green/debug ≠ experienceCert PASS.
  */
 
-export const EXPERIENCE_PRESENTATION_MODULE_VERSION = "2026.09.02.0";
+export const EXPERIENCE_PRESENTATION_MODULE_VERSION = "2026.09.02.1";
 
 export type {
   PresenceModel,
@@ -73,3 +74,15 @@ export {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "./CertificationGuards";
+
+export type { PerformerLiveProgramComposition } from "./composePerformerLiveProgram";
+export {
+  PROGRAM_PERFORMER_CAMERA,
+  FABRIC_PERFORMER_CAM,
+  composePerformerLiveProgram,
+  getActivePerformerLiveProgram,
+  clearPerformerLiveProgram,
+  isPerformerLiveProgramProductionSurface,
+} from "./composePerformerLiveProgram";
+
+export { PerformerLivePack } from "./packs";
