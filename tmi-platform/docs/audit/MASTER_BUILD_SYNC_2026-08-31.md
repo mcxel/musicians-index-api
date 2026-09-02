@@ -387,4 +387,27 @@ apps/web/middleware.ts                              # GLB bypass
 
 ---
 
-*Written 2026-08-31 for Marcel Dickens / next-session handoff. Analysis only — no Go Live implementation in this pass.*
+## Appendix D — Experience Completion Matrix + Presentation DNA (2026-09-02)
+
+**Append-only pointer — does not rewrite §0–§4 above.**
+
+Marcel video cross-reference lock on `eos/vocal-improv-clean`:
+
+| Doc | Purpose |
+|-----|---------|
+| [`TMI_EXPERIENCE_COMPLETION_MATRIX.md`](./TMI_EXPERIENCE_COMPLETION_MATRIX.md) | Per-experience route / presence / DNA / cert honesty + phased slices |
+| [`EXPERIENCE_PRESENTATION_DNA.md`](./EXPERIENCE_PRESENTATION_DNA.md) | Pack signatures + shared primitives + SOURCE≠DECODER≠TARGET |
+| [`VENUE_WORLD_RUNTIME_SPEC.md`](./VENUE_WORLD_RUNTIME_SPEC.md) | Geometry, occupancy, social/reaction/group/world interactables |
+| [`AVATAR_STUDIO_TO_WORLD_PIPELINE.md`](./AVATAR_STUDIO_TO_WORLD_PIPELINE.md) | Create→equip→enter venue (Fan-only) |
+
+**Code scaffold (does not break Regular GO LIVE canary):**  
+`apps/web/src/lib/experiencePresentation/` — packs, PresentationEventBus, ExperienceSourceRegistry, composition/queue/game/occupancy contracts + semantic unit tests.
+
+**Hard laws encoded:** Cypher collaborative (no VS/winner); Lounges + Performer Lobby = WebRTC panels not avatars; Battle VS vs Challenge contract; MNS ≠ Regular GO LIVE; PresentationEventBus never fabricates crowds; green/debug UI cannot mark `experienceCert` PASS.
+
+**Next vertical slice:** Performer Live presentation polish on frozen canary → then Battle world presentation (not new Battle lifecycle).
+
+---
+
+*Written 2026-08-31 for Marcel Dickens / next-session handoff. Analysis only — no Go Live implementation in this pass.*  
+*Appendix D added 2026-09-02 — experience matrix lock.*
