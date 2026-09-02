@@ -113,6 +113,15 @@ import {
   PROGRAM_PLAYLIST_LOUNGE,
 } from "../composeLoungeProgram";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
+import {
+  isFanAvatarOwnershipRole,
+  isPerformerIdentityRole,
+} from "@/lib/avatars/fanAvatarOwnership";
+import {
+  catalogCosmeticIds,
+  clearFanEquippedLookCache,
+  resolveFanEquippedLook,
+} from "@/lib/avatars/FanEquippedLookBridge";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -1264,6 +1273,48 @@ describe("experiencePresentation semantic guards", () => {
 
     clearLoungeProgram("test-done");
     expect(getActiveLoungeProgram()).toBeNull();
+  });
+
+  test("Avatar Studio → World: FAN-only look bridge; no fake occupancy; architecture stays PARTIAL", () => {
+    clearFanEquippedLookCache();
+    expect(isFanAvatarOwnershipRole("FAN")).toBe(true);
+    expect(isFanAvatarOwnershipRole("USER")).toBe(true);
+    expect(isFanAvatarOwnershipRole("ADMIN")).toBe(true);
+    expect(isFanAvatarOwnershipRole("PERFORMER")).toBe(false);
+    expect(isFanAvatarOwnershipRole("BAND")).toBe(false);
+    expect(isPerformerIdentityRole("PERFORMER")).toBe(true);
+    expect(isPerformerIdentityRole("FAN")).toBe(false);
+
+    expect(catalogCosmeticIds(["street_fit", "gold_chain", "not-a-sku", "", "none"])).toEqual([
+      "street_fit",
+      "gold_chain",
+    ]);
+    const look = resolveFanEquippedLook({
+      displayName: "Todd",
+      skinTone: "#c07848",
+      hairStyle: "Fade",
+      outfitLabel: "Street Fit",
+      equippedCosmeticIds: ["street_fit", "invented-mesh"],
+    });
+    expect(look.equippedCosmeticIds).toEqual(["street_fit"]);
+    expect(look.glbSlotId).toBe("bobblehead_v0");
+    expect(look.loadoutId.startsWith("fan-look:")).toBe(true);
+    expect((look as { presenceCount?: number }).presenceCount).toBeUndefined();
+    expect((look as { occupancy?: number }).occupancy).toBeUndefined();
+    if (look.viewportDiagnostic === "OK") {
+      expect(look.glbUrl).toBe("/models/avatars/bobblehead_v0.glb");
+    } else {
+      expect(look.glbUrl).toBeNull();
+    }
+
+    expect(LoungePack.presenceModel).toBe("WEBRTC_PANELS");
+    expect(FanLivePack.presenceModel).toBe("FAN_AVATARS");
+    expect(getPresentationPack("FanLive").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("FanLive").routeCapability.experienceCert).toBe("OPEN");
+    expect(listPresentationPacks()).toHaveLength(14);
+    expect(canMarkExperienceCertPass({ surfaceKind: "green_debug", physicalObserved: true })).toBe(
+      false,
+    );
   });
 
   test("registry lists all DNA packs", () => {

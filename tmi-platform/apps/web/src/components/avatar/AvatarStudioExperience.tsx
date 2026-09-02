@@ -19,9 +19,18 @@ import {
 import {
   FAN_COSMETIC_CATALOG,
   FORGE_OUTFIT_TO_SKU,
+  FORGE_PROP_TO_SKU,
   listFanCosmeticsBySlot,
 } from "@/lib/avatars/FanCosmeticCatalog";
 import { CanonicalAvatarProfile } from "@/lib/avatars/CanonicalAvatarRegistry";
+import {
+  publishFanEquippedLook,
+  resolveFanEquippedLook,
+} from "@/lib/avatars/FanEquippedLookBridge";
+import {
+  hydrateCanonicalAvatarDraft,
+  patchCanonicalAvatarDraft,
+} from "@/lib/avatars/CanonicalAvatarDraft";
 
 export interface AvatarStudioExperienceProps {
   onSaveProfile?: (profile: CanonicalAvatarProfile) => void;
@@ -124,6 +133,7 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     } catch {
       /* localStorage unavailable */
     }
+    hydrateCanonicalAvatarDraft();
 
     async function hydrate() {
       try {
@@ -253,7 +263,10 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
             hairStyle: hair,
             eyeStyle: eyes,
           },
-          loadout: { outfit, prop: propName },
+          loadout: {
+            outfit: FORGE_OUTFIT_TO_SKU[outfit] ?? outfit,
+            prop: FORGE_PROP_TO_SKU[propName] ?? propName,
+          },
         }),
       });
       if (saveResponse.ok) {
@@ -266,11 +279,18 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     } catch {
       setSavedAt(sync.syncedAt);
     }
-    try {
-      const snapshot = { displayName: profileName, skin, hair, outfit, bodyHeight, bodyMass };
-      window.localStorage.setItem(SNAPSHOT_LS, JSON.stringify(snapshot));
-      window.dispatchEvent(new CustomEvent("tmi:avatar-changed", { detail: snapshot }));
-    } catch { /* skip */ }
+    const look = resolveFanEquippedLook({
+      displayName: profileName,
+      skinTone: skin,
+      hairStyle: hair,
+      outfitLabel: outfit,
+      equippedCosmeticIds,
+    });
+    publishFanEquippedLook(look, { bodyHeight, bodyMass });
+    patchCanonicalAvatarDraft({
+      displayName: profileName,
+      equippedCosmeticIds: look.equippedCosmeticIds,
+    });
   };
 
   const panel = renderCategoryPanel({

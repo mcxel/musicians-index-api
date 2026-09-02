@@ -101,6 +101,11 @@ Videos define **experience targets**. Screenshots prove **logic**. Borrow choreo
 - **HARD FORBID:** Battle VS, Cypher circle, Game Show board, WDP floor as signature.
 - **Phase 1:** `composeFanLobbyProgram` → `FanLobbyPresentationShell` (`PROGRAM.FAN_LOBBY` via FanLive pack).
 
+### Avatar Studio (not a PROGRAM pack)
+- **DNA:** Create → customize → preview → save looks → enter authorized Fan worlds.
+- **Preview Parity:** Studio + Quick Panel share one Canonical Avatar Draft; preview is a **subset** of production Fan rig capability. See [`AVATAR_PREVIEW_PARITY_LAW.md`](./AVATAR_PREVIEW_PARITY_LAW.md).
+- **HARD FORBID:** fake neural Foundry, performer ownership UI, Lounge occupancy from studio lighting preview, claiming experienceCert from editor.
+
 ### Performer Live
 - **DNA:** Host camera primary; audience secondary; Regular GO LIVE canary.
 - **Lobby mode:** WebRTC panels only (see Performer Lobby matrix row).

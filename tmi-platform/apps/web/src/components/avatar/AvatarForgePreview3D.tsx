@@ -3,10 +3,14 @@
 import dynamic from "next/dynamic";
 import type { AvatarCameraFocus } from "@/components/3d/AvatarLobbyCanvas";
 import {
-  forgeSelectionToCosmeticIds,
   cosmeticIdsToAttachments,
+  forgeSelectionToCosmeticIds,
   resolveOutfitTint,
 } from "@/lib/avatars/fanAvatarLoadout";
+import {
+  DEFAULT_FAN_AVATAR_GLB_SLOT,
+  resolveAvatarViewportBinding,
+} from "@/lib/avatars/AvatarGlbRegistry";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -70,6 +74,7 @@ export default function AvatarForgePreview3D({
   });
   const attachments = cosmeticIdsToAttachments(ids);
   const outfitTint = resolveOutfitTint(ids);
+  const viewport = resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
   const heightLabel = bodyHeight < 33 ? "Short" : bodyHeight < 66 ? "Average" : "Tall";
   const massLabel =
     bodyMass < 25 ? "Slim" : bodyMass < 50 ? "Athletic" : bodyMass < 75 ? "Average" : "Solid";
@@ -100,6 +105,8 @@ export default function AvatarForgePreview3D({
       fill={hero}
       cameraFocus={cameraFocus}
       enableOrbit
+      glbSlotId={viewport.glbUrl ? viewport.slotId : undefined}
+      glbUrl={viewport.glbUrl ?? undefined}
     />
   );
 
@@ -155,7 +162,9 @@ export default function AvatarForgePreview3D({
             pointerEvents: "none",
           }}
         >
-          Capsule + socket costumes · drag to orbit · not a photoreal mesh
+            {viewport.glbUrl
+              ? "Foundry bobblehead_v0 · socket costumes · drag to orbit"
+              : "Capsule + socket costumes · drag to orbit · Foundry GLB not bound"}
         </div>
       </section>
     );

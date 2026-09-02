@@ -8,7 +8,7 @@
  * PresentationEventBus never fabricates crowds; green/debug ≠ experienceCert PASS.
  */
 
-export const EXPERIENCE_PRESENTATION_MODULE_VERSION = "2026.09.02.1";
+export const EXPERIENCE_PRESENTATION_MODULE_VERSION = "2026.09.02.3";
 
 export type {
   PresenceModel,

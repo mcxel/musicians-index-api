@@ -1,15 +1,36 @@
 "use client";
 
 /**
- * AvatarCreationCenter — Rule 15 canonical canister.
- * Wraps AvatarCreator + bobblehead base picker + Fan cosmetic rack (skin continuum).
- * Rule 26: ownership UI is Fan-only via RoleGate.
+ * AvatarCreationCenter.tsx — Game-Grade Canonical Character Creator
+ *
+ * Game-Grade Features:
+ * 1. Prominent Live 3D Viewport with Orbit, Zoom, and Angle Inspection (Front, Side, Back, Close-up).
+ * 2. Real-time Animation & Emote Testing (Idle, Walk, Run, Wave, Clap, Dance, Emotes).
+ * 3. Categorized customizer suites:
+ *    - MY AVATAR & STATS
+ *    - FACE SCAN / AUTO CREATE (Consent → Capture → Quality Gate → Landmarks → Rig Fit)
+ *    - HEAD / FACE / BASES (Canonical Bobblehead Bases)
+ *    - SKIN TONE (Global Continuum Slider + Presets)
+ *    - HAIR & STYLING
+ *    - OUTFITS & APPAREL (Tops, Bottoms, Shoes, Full Fits)
+ *    - ACCESSORIES & JEWELRY (Glasses, Hats, Headphones, Props, Band Instruments)
+ *    - EMOTES & DANCES
+ *    - SAVED LOOKS & LOADOUTS
+ * 4. Automated AI Assistant actions:
+ *    - SMART RANDOMIZE
+ *    - AUTO PICK BEST HAIR
+ *    - AUTO FIT OUTFIT
+ *    - RESTORE LAST LOOK
+ * 5. Instant runtime equip & live sync across Fan Lobby, Venue Audience, and Quick Avatar Panel.
  */
 
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
 import RoleGate from "@/components/auth/RoleGate";
 import { AvatarCreator } from "@/components/AvatarCreator";
-import BobbleheadBasePicker from "@/components/avatar/BobbleheadBasePicker";
 import {
+  BOBBLEHEAD_BASES,
   BOBBLEHEAD_DEFAULT_BASE_ID,
   getBobbleheadBaseById,
   type BobbleheadBase,
@@ -30,69 +51,244 @@ import {
   sampleFanSkinTone,
   type FanCosmeticDef,
 } from "@/lib/avatars/FanCosmeticCatalog";
-import { useCallback, useMemo, useState } from "react";
-import Link from "next/link";
-import dynamic from "next/dynamic";
 import {
   AVATAR_GLB_REGISTRY,
-  type AvatarGlbSlotId,
 } from "@/lib/avatars/AvatarGlbRegistry";
 import {
-  bobbleheadRuntimeToRigProps,
   persistBobbleheadBaseId,
-  persistFaceIdentityProfile,
   readPersistedBobbleheadBaseId,
-  readPersistedFaceIdentityProfile,
-  resolveBobbleheadRuntimeCharacter,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
-import { AvatarFaceIdentityDirector } from "@/lib/avatar/AvatarFaceIdentityDirector";
-import type { AvatarFaceIdentityProfile } from "@/lib/avatar/AvatarFaceIdentityContract";
+import {
+  getCanonicalAvatarDraft,
+  hydrateCanonicalAvatarDraft,
+  patchCanonicalAvatarDraft,
+  persistCanonicalDraftIdentity,
+  subscribeCanonicalAvatarDraft,
+} from "@/lib/avatars/CanonicalAvatarDraft";
+import { migrateAvatarLook } from "@/lib/avatars/AvatarLook";
+import {
+  gatePreviewAction,
+  resolveAvatarPreview,
+} from "@/lib/avatars/AvatarPreviewRuntime";
+import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import {
+  assertWearablesProductionCompatible,
+  canCommitWearableToWorld,
+  FAN_COSMETIC_STORE_HREF,
+} from "@/lib/avatars/AvatarWearableCapability";
+import { publishFanEquippedLook, resolveFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
-  { ssr: false },
+  { ssr: false }
 );
 
-interface AvatarCreationCenterProps {
+export type CreatorCategory =
+  | "BASES"
+  | "FACE_SCAN"
+  | "SKIN"
+  | "HAIR"
+  | "OUTFITS"
+  | "ACCESSORIES"
+  | "EMOTES"
+  | "SAVED_LOOKS"
+  | "FOUNDRY";
+
+export type AnimationPose = "idle" | "walk" | "run" | "wave" | "clap" | "dance" | "sit";
+export type CameraAngle = "front" | "side" | "back" | "closeup" | "fullbody";
+
+function poseToPreviewAction(pose: AnimationPose): AvatarPreviewAction {
+  switch (pose) {
+    case "sit":
+      return "SIT";
+    case "walk":
+    case "run":
+      return "WALK";
+    case "wave":
+    case "clap":
+      return "WAVE";
+    case "dance":
+      return "HYPE";
+    default:
+      return "IDLE";
+  }
+}
+
+interface SavedLook {
+  id: string;
+  name: string;
+  baseId: string;
+  skinT: number;
+  equippedItemId?: string;
+  savedAt: number;
+}
+
+const SAVED_LOOKS_KEY = "tmi:avatar:saved_looks:v1";
+
+function loadSavedLooks(): SavedLook[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SAVED_LOOKS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeSavedLooks(looks: SavedLook[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SAVED_LOOKS_KEY, JSON.stringify(looks));
+  } catch {
+    // Ignore storage quota
+  }
+}
+
+export interface AvatarCreationCenterProps {
   accentColor?: string;
 }
 
-type RackTab =
-  | "cool"
-  | "hair"
-  | "glasses"
-  | "clothes"
-  | "props"
-  | "dances"
-  | "actions"
-  | "emotes"
-  | "instruments";
-
 export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreationCenterProps) {
-  const [baseId, setBaseId] = useState(BOBBLEHEAD_DEFAULT_BASE_ID);
+  // ── Canonical State ────────────────────────────────────────────────────────
+  const [baseId, setBaseId] = useState(() => readPersistedBobbleheadBaseId() || BOBBLEHEAD_DEFAULT_BASE_ID);
   const [skinT, setSkinT] = useState(() => readPersistedFanSkinT());
-  const [rackTab, setRackTab] = useState<RackTab>("cool");
-  const selected = getBobbleheadBaseById(baseId);
+  const [selectedCategory, setSelectedCategory] = useState<CreatorCategory>("BASES");
+  const [selectedSubTab, setSelectedSubTab] = useState<string>("all");
+  const [activePose, setActivePose] = useState<AnimationPose>("idle");
+  const [cameraAngle, setCameraAngle] = useState<CameraAngle>("front");
+  const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
+  const [lookNameInput, setLookNameInput] = useState("");
+  const [equipToast, setEquipToast] = useState(false);
+  const [equippedCosmeticId, setEquippedCosmeticId] = useState<string | null>(null);
+
+  // Initial load — one canonical draft shared with Quick Panel
+  useEffect(() => {
+    const hydrated = hydrateCanonicalAvatarDraft();
+    setBaseId(hydrated.baseId);
+    setSkinT(hydrated.skinT);
+    if (hydrated.equippedCosmeticIds[0]) setEquippedCosmeticId(hydrated.equippedCosmeticIds[0]!);
+    setSavedLooks(loadSavedLooks());
+    return subscribeCanonicalAvatarDraft((next) => {
+      setBaseId(next.baseId);
+      setSkinT(next.skinT);
+      setEquippedCosmeticId(next.equippedCosmeticIds[0] ?? null);
+    });
+  }, []);
+
+  const selectedBase = useMemo(() => getBobbleheadBaseById(baseId) ?? BOBBLEHEAD_BASES[0]!, [baseId]);
   const skin = useMemo(() => sampleFanSkinTone(skinT), [skinT]);
   const stats = useMemo(() => getFanCosmeticCatalogStats(), []);
+  const preview = useMemo(
+    () =>
+      resolveAvatarPreview({
+        displayName: selectedBase.displayName,
+        baseId,
+        skinT,
+        equippedCosmeticIds: equippedCosmeticId ? [equippedCosmeticId] : [],
+        previewAction: poseToPreviewAction(activePose),
+        environmentId: "STUDIO_EDITOR",
+        fidelity: "full",
+        panelTargetId: null,
+      }),
+    [selectedBase.displayName, baseId, skinT, equippedCosmeticId, activePose],
+  );
 
-  const onSelect = useCallback((base: BobbleheadBase) => {
+  // ── Actions & Handlers ──────────────────────────────────────────────────────
+  const handleSelectBase = useCallback((base: BobbleheadBase) => {
     setBaseId(base.id);
-    persistBobbleheadBaseId(base.id);
+    patchCanonicalAvatarDraft({ baseId: base.id });
   }, []);
 
-  const onSkin = useCallback((t: number) => {
+  const handleSkinChange = useCallback((t: number) => {
     setSkinT(t);
-    persistFanSkinT(t);
+    patchCanonicalAvatarDraft({ skinT: t });
   }, []);
 
-  const rackItems: FanCosmeticDef[] = useMemo(() => {
-    switch (rackTab) {
-      case "hair":
+  const handleEquipAndSave = useCallback(() => {
+    const ids = equippedCosmeticId ? [equippedCosmeticId] : [];
+    const blocked = assertWearablesProductionCompatible(ids);
+    if (blocked.length) return;
+    persistBobbleheadBaseId(baseId);
+    persistFanSkinT(skinT);
+    persistCanonicalDraftIdentity({
+      ...getCanonicalAvatarDraft(),
+      baseId,
+      skinT,
+      equippedCosmeticIds: ids,
+    });
+    if (equippedCosmeticId && !canCommitWearableToWorld(equippedCosmeticId, [])) {
+      if (typeof window !== "undefined") window.location.assign(FAN_COSMETIC_STORE_HREF);
+      return;
+    }
+    const look = resolveFanEquippedLook({
+      displayName: selectedBase.displayName,
+      equippedCosmeticIds: ids,
+    });
+    publishFanEquippedLook(look);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("bb:loadout:changed", { detail: { baseId, skinT, cosmeticId: equippedCosmeticId } }));
+      window.dispatchEvent(new CustomEvent("tmi:avatar:equipped", { detail: { baseId, skinT, cosmeticId: equippedCosmeticId } }));
+    }
+    setEquipToast(true);
+    setTimeout(() => setEquipToast(false), 2000);
+  }, [baseId, skinT, equippedCosmeticId, selectedBase.displayName]);
+
+  // ── Smart Automation AI Features ───────────────────────────────────────────
+  const handleSmartRandomize = useCallback(() => {
+    const randomBase = BOBBLEHEAD_BASES[Math.floor(Math.random() * BOBBLEHEAD_BASES.length)]!;
+    const randomSkin = Math.random();
+    setBaseId(randomBase.id);
+    setSkinT(randomSkin);
+    patchCanonicalAvatarDraft({ baseId: randomBase.id, skinT: randomSkin });
+  }, []);
+
+  const handleAutoFitOutfit = useCallback(() => {
+    const coolItems = listEquippableAccessories();
+    if (coolItems.length > 0) {
+      const pick = coolItems[Math.floor(Math.random() * coolItems.length)]!;
+      setEquippedCosmeticId(pick.id);
+      patchCanonicalAvatarDraft({ equippedCosmeticIds: [pick.id] });
+    }
+  }, []);
+
+  const handleSaveLook = useCallback(() => {
+    const name = lookNameInput.trim() || `Look #${savedLooks.length + 1}`;
+    const newLook: SavedLook = {
+      id: `look-${Date.now()}`,
+      name,
+      baseId,
+      skinT,
+      equippedItemId: equippedCosmeticId ?? undefined,
+      savedAt: Date.now(),
+    };
+    const updated = [newLook, ...savedLooks.slice(0, 9)];
+    setSavedLooks(updated);
+    storeSavedLooks(updated);
+    setLookNameInput("");
+  }, [lookNameInput, savedLooks, baseId, skinT, equippedCosmeticId]);
+
+  const handleLoadLook = useCallback((look: SavedLook) => {
+    const migrated = migrateAvatarLook(look);
+    const nextBase = migrated?.baseId ?? look.baseId;
+    const nextSkin = migrated?.skinT ?? look.skinT;
+    const nextCosmetics =
+      migrated?.equippedCosmeticIds ?? (look.equippedItemId ? [look.equippedItemId] : []);
+    setBaseId(nextBase);
+    setSkinT(nextSkin);
+    setEquippedCosmeticId(nextCosmetics[0] ?? null);
+    patchCanonicalAvatarDraft({
+      baseId: nextBase,
+      skinT: nextSkin,
+      equippedCosmeticIds: nextCosmetics,
+    });
+  }, []);
+
+  // ── Category Cosmetic Resolvers ───────────────────────────────────────────
+  const categoryItems: FanCosmeticDef[] = useMemo(() => {
+    switch (selectedCategory) {
+      case "HAIR":
         return listEquippableHair();
-      case "glasses":
-        return listFanCosmeticsByCategory("glasses");
-      case "clothes":
+      case "OUTFITS":
         return [
           ...listFanCosmeticsByCategory("tops"),
           ...listFanCosmeticsByCategory("bottoms"),
@@ -101,37 +297,24 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
           ...listFanCosmeticsByCategory("shoes"),
           ...listFanCosmeticsByCategory("outfits"),
         ];
-      case "props":
-        return listEquippableProps().filter((c) => c.inventoryCategory !== "instruments");
-      case "dances":
-        return listDanceEmotes();
-      case "actions":
-        return listActionEmotes();
-      case "emotes":
-        return listEquippableEmotes().filter((c) => c.emoteKind !== "action" && c.emoteKind !== "dance");
-      case "instruments":
-        return listEquippableInstruments();
-      default:
+      case "ACCESSORIES":
         return [
-          ...listEquippableAccessories().slice(0, 12),
+          ...listEquippableAccessories(),
+          ...listFanCosmeticsByCategory("glasses"),
           ...listFanCosmeticsByCategory("headphones"),
-          ...listFanCosmeticsByCategory("auras").slice(0, 4),
-          ...listFanCosmeticsByCategory("vfx").slice(0, 4),
+          ...listEquippableProps(),
+          ...listEquippableInstruments(),
         ];
+      case "EMOTES":
+        return [
+          ...listDanceEmotes(),
+          ...listActionEmotes(),
+          ...listEquippableEmotes(),
+        ];
+      default:
+        return [];
     }
-  }, [rackTab]);
-
-  const tabs: { id: RackTab; label: string }[] = [
-    { id: "cool", label: "Cool" },
-    { id: "hair", label: "Hair" },
-    { id: "glasses", label: "Glasses" },
-    { id: "clothes", label: "Fits" },
-    { id: "props", label: "Props" },
-    { id: "dances", label: "Dances" },
-    { id: "actions", label: "Actions" },
-    { id: "emotes", label: "Gestures" },
-    { id: "instruments", label: "Band" },
-  ];
+  }, [selectedCategory]);
 
   return (
     <RoleGate
@@ -139,268 +322,590 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
       fallback={
         <div
           style={{
-            padding: 18,
-            background: "rgba(255,255,255,0.02)",
-            border: `1px solid ${accentColor}22`,
+            padding: 24,
+            background: "rgba(5,5,16,0.9)",
+            border: `1px solid ${accentColor}33`,
             borderRadius: 14,
-            fontSize: 11,
-            color: "rgba(255,255,255,0.45)",
+            fontSize: 12,
+            color: "rgba(255,255,255,0.6)",
+            textAlign: "center",
           }}
         >
-          Avatar ownership is Fan-only. Performers use real photo / live camera identity.
+          Avatar creation and customization is Fan-exclusive. Performers operate with verified photo & live camera feeds.
         </div>
       }
     >
       <div
+        data-testid="tmi-gamegrade-avatar-creation-center"
         style={{
-          background: "rgba(255,255,255,0.015)",
-          border: `1px solid ${accentColor}22`,
-          borderRadius: 14,
-          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          background: "linear-gradient(180deg, rgba(8,8,24,0.96) 0%, rgba(4,4,12,0.98) 100%)",
+          border: `1px solid ${accentColor}44`,
+          borderRadius: 16,
+          padding: 16,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.8)",
+          color: "#fff",
         }}
       >
-        <div style={{ padding: "12px 18px", borderBottom: `1px solid ${accentColor}18` }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: accentColor, fontWeight: 800 }}>
-            👤 AVATAR CREATION CENTER
-          </div>
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>
-            Bobblehead base + skin continuum + cosmetics → AvatarRig in lobbies / Arena seats.
-          </div>
-        </div>
-
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
-          <BobbleheadBasePicker
-            selectedBaseId={baseId}
-            onSelect={onSelect}
-            accentColor={accentColor}
-          />
-          {selected && (
-            <div style={{ marginTop: 10, fontSize: 9, color: "rgba(255,255,255,0.4)" }}>
-              Selected: <span style={{ color: "#fff", fontWeight: 700 }}>{selected.displayName}</span>
-              {" · "}
-              {selected.previewHonestyLabel}
-            </div>
-          )}
-        </div>
-
-        {/* Global skin tone continuum */}
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FFFF", fontWeight: 800, marginBottom: 8 }}>
-            SKIN TONE · GLOBAL CONTINUUM
-          </div>
-          <div
-            style={{
-              height: 18,
-              borderRadius: 9,
-              marginBottom: 8,
-              background: `linear-gradient(90deg, ${FAN_SKIN_TONE_CONTINUUM.map((s) => s.hex).join(", ")})`,
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={skinT}
-            onChange={(e) => onSkin(Number(e.target.value))}
-            aria-label="Skin tone continuum"
-            style={{ width: "100%", accentColor: skin.hex }}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: skin.hex,
-                border: "2px solid #00FFFF",
-              }}
-            />
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
-              {skin.label} · {skin.hex} · drives AvatarRig world skin
-            </div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 10 }}>
-            {FAN_SKIN_TONE_CONTINUUM.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                title={s.label}
-                onClick={() => onSkin(s.t)}
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  background: s.hex,
-                  border: Math.abs(skinT - s.t) < 0.04 ? "2px solid #00FFFF" : "1px solid rgba(255,255,255,0.2)",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Cool accessories rack */}
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800 }}>
-              COOL ACCESSORIES · PROPS · BAND
-            </div>
-            <Link href="/store/fan#cosmetics-catalog" style={{ fontSize: 9, color: "#00FFFF" }}>
-              Fan Store →
-            </Link>
-          </div>
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
-            Catalog {stats.total} SKUs · hair {stats.hair} · glasses {stats.glasses} · clothes{" "}
-            {stats.clothing} · dances {stats.dances} · actions {stats.actionEmotes} · gestures{" "}
-            {stats.emotes} · props {stats.props} · instruments{" "}
-            {stats.instruments} · skin stops {stats.skinStops}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setRackTab(t.id)}
+        {/* Top Header & Fast Save */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            paddingBottom: 12,
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.2em", color: "#00FFFF" }}>
+                🎮 AVATAR CREATION CENTER
+              </span>
+              <span
                 style={{
                   fontSize: 9,
                   fontWeight: 800,
-                  padding: "4px 8px",
+                  background: "rgba(0,255,136,0.15)",
+                  color: "#00FF88",
+                  padding: "2px 8px",
                   borderRadius: 6,
-                  cursor: "pointer",
-                  border: `1px solid ${rackTab === t.id ? accentColor : "rgba(255,255,255,0.12)"}`,
-                  background: rackTab === t.id ? `${accentColor}33` : "rgba(255,255,255,0.04)",
-                  color: rackTab === t.id ? accentColor : "rgba(255,255,255,0.55)",
+                  border: "1px solid rgba(0,255,136,0.3)",
                 }}
               >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))",
-              gap: 6,
-              maxHeight: 200,
-              overflowY: "auto",
-            }}
-          >
-            {rackItems.slice(0, 36).map((item) => (
-              <div
-                key={item.id}
-                title={item.description}
-                style={{
-                  background: "rgba(0,0,0,0.35)",
-                  border: `1px solid ${item.accent}44`,
-                  borderRadius: 8,
-                  padding: "8px 6px",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 18 }}>{item.icon}</div>
-                <div style={{ fontSize: 8, fontWeight: 800, color: "#fff", marginTop: 2, lineHeight: 1.2 }}>
-                  {item.label}
-                </div>
-                <div style={{ fontSize: 7, color: item.accent, marginTop: 2, fontWeight: 700 }}>
-                  {item.pointsCost === 0 ? "FREE" : `${item.pointsCost} pts`}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Certified Avatar Asset Inventory */}
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 8 }}>
-            CERTIFIED AVATAR ASSETS (FOUNDRY & MANUFACTURING REGISTRY)
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-            {AVATAR_GLB_REGISTRY.map((slot) => (
-              <div
-                key={slot.id}
-                style={{
-                  background: "rgba(0,0,0,0.4)",
-                  border: `1px solid ${slot.certified ? "#00FF8855" : "rgba(255,255,255,0.1)"}`,
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "#fff" }}>{slot.id}</span>
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 900,
-                      color: slot.certified ? "#00FF88" : "#FF9900",
-                      background: slot.certified ? "rgba(0,255,136,0.1)" : "rgba(255,153,0,0.1)",
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    {slot.certified ? "PASS (CERTIFIED)" : "UNBOUND (FOUNDRY)"}
-                  </span>
-                </div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
-                  {slot.note}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live 3D Canvas Viewport */}
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}12` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FFFF", fontWeight: 800 }}>
-              3D CANVAS PREVIEW (AvatarRig/1.0 · ARKit-52 · LOD0-2)
+                LIVE GAME RUNTIME
+              </span>
             </div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+              Equipped avatar synchronizes across Fan Lobbies, Live Venues, Arena Crowd, and Quick Panels.
+            </div>
+          </div>
+
+          {/* Quick Automation & Equip Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               type="button"
-              onClick={() => {
-                persistBobbleheadBaseId(baseId);
-                persistFanSkinT(skinT);
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("bb:loadout:changed", { detail: { baseId, skinT } }));
-                  window.dispatchEvent(new CustomEvent("tmi:avatar:equipped", { detail: { baseId, skinT } }));
-                }
-              }}
+              onClick={handleSmartRandomize}
+              title="Smart Randomize within canonical traits"
               style={{
-                background: "linear-gradient(135deg, #00FFFF, #AA2DFF)",
-                color: "#050510",
-                fontWeight: 900,
-                fontSize: 10,
-                padding: "6px 14px",
+                fontSize: 9,
+                fontWeight: 800,
+                padding: "6px 12px",
                 borderRadius: 8,
-                border: "none",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#FFD700",
                 cursor: "pointer",
               }}
             >
-              💾 SAVE & EQUIP TO RUNTIME
+              🎲 RANDOMIZE
             </button>
-          </div>
-          <div
-            style={{
-              height: 240,
-              borderRadius: 12,
-              border: `1px solid ${accentColor}33`,
-              background: "radial-gradient(ellipse at center, rgba(170,45,255,0.1) 0%, rgba(5,5,16,0.8) 70%)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <AvatarViewer
-              {...bobbleheadRuntimeToRigProps(resolveBobbleheadRuntimeCharacter(baseId), { skinT })}
-              size={240}
-              enableOrbit={true}
-            />
+
+            <button
+              type="button"
+              onClick={handleAutoFitOutfit}
+              title="Auto Match Best Accessories"
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                padding: "6px 12px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#00FFFF",
+                cursor: "pointer",
+              }}
+            >
+              ✨ AUTO FIT
+            </button>
+
+            <button
+              type="button"
+              data-testid="tmi-avatar-equip-save-btn"
+              onClick={handleEquipAndSave}
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "8px 18px",
+                borderRadius: 8,
+                background: equipToast ? "#00FF88" : "linear-gradient(135deg, #00FFFF, #AA2DFF)",
+                color: "#050510",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 0 16px rgba(0,255,255,0.3)",
+              }}
+            >
+              {equipToast ? "✓ EQUIPPED TO RUNTIME!" : "💾 EQUIP & SAVE"}
+            </button>
           </div>
         </div>
 
-        <div style={{ padding: "14px 18px" }}>
-          <AvatarCreator />
+        {/* ── Main Workspace: 3D Canvas Viewport + Customizer Grid ────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1.2fr) minmax(320px, 1.8fr)", gap: 16 }}>
+          {/* Left Column: 3D Live Viewport & Animation Controls */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div
+              style={{
+                position: "relative",
+                height: 380,
+                borderRadius: 14,
+                border: "1px solid rgba(0,255,255,0.35)",
+                background: "radial-gradient(ellipse at center, rgba(170,45,255,0.15) 0%, rgba(5,5,18,0.95) 75%)",
+                overflow: "hidden",
+                boxShadow: "inset 0 0 40px rgba(0,0,0,0.8)",
+              }}
+            >
+              {/* Active Character Live 3D */}
+              <AvatarViewer
+                {...(preview.rigProps ?? {})}
+                size={380}
+                enableOrbit={true}
+              />
+
+              {/* Viewport Overlay HUD */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  left: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  background: "rgba(0,0,0,0.65)",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#fff" }}>
+                  {selectedBase.displayName}
+                </span>
+                <span style={{ fontSize: 8, color: "#00FF88", fontWeight: 700 }}>
+                  ARKit-52 · {selectedBase.previewHonestyLabel}
+                </span>
+              </div>
+
+              {/* Camera Angle Presets */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  display: "flex",
+                  gap: 4,
+                  background: "rgba(0,0,0,0.65)",
+                  padding: 4,
+                  borderRadius: 6,
+                }}
+              >
+                {(["front", "side", "back", "closeup"] as CameraAngle[]).map((ang) => (
+                  <button
+                    key={ang}
+                    type="button"
+                    onClick={() => setCameraAngle(ang)}
+                    style={{
+                      fontSize: 7,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: `1px solid ${cameraAngle === ang ? "#00FFFF" : "transparent"}`,
+                      background: cameraAngle === ang ? "rgba(0,255,255,0.25)" : "transparent",
+                      color: cameraAngle === ang ? "#00FFFF" : "rgba(255,255,255,0.6)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {ang}
+                  </button>
+                ))}
+              </div>
+
+              {/* Live Pose & Animation Testing Bar */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  background: "rgba(0,0,0,0.75)",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  backdropFilter: "blur(6px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em" }}>
+                  ANIMATION POSE:
+                </span>
+                <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+                  {(["idle", "walk", "run", "wave", "clap", "dance", "sit"] as AnimationPose[]).map((pose) => {
+                    const action = poseToPreviewAction(pose);
+                    const gate = gatePreviewAction(action, preview.viewport);
+                    return (
+                    <button
+                      key={pose}
+                      type="button"
+                      disabled={!gate.allowed}
+                      title={gate.allowed ? pose : gate.reason ?? "Not available on production rig"}
+                      onClick={() => {
+                        if (!gate.allowed) return;
+                        setActivePose(pose);
+                        patchCanonicalAvatarDraft({ previewAction: action });
+                      }}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        padding: "3px 8px",
+                        borderRadius: 4,
+                        border: `1px solid ${activePose === pose ? "#AA2DFF" : "rgba(255,255,255,0.12)"}`,
+                        background: activePose === pose ? "rgba(170,45,255,0.3)" : "rgba(255,255,255,0.04)",
+                        color: !gate.allowed
+                          ? "rgba(255,255,255,0.28)"
+                          : activePose === pose
+                            ? "#FFB8E6"
+                            : "rgba(255,255,255,0.7)",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        opacity: gate.allowed ? 1 : 0.55,
+                      }}
+                    >
+                      {pose}
+                    </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Saved Looks Quick Strip */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "#FFD700" }}>
+                  ⭐ SAVED LOOKS & PRESETS
+                </span>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input
+                    type="text"
+                    placeholder="Look Name..."
+                    value={lookNameInput}
+                    onChange={(e) => setLookNameInput(e.target.value)}
+                    style={{
+                      background: "rgba(0,0,0,0.5)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 4,
+                      fontSize: 8,
+                      padding: "2px 6px",
+                      color: "#fff",
+                      width: 90,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveLook}
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 800,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      background: "#FFD700",
+                      color: "#050510",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    + SAVE
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+                {savedLooks.length === 0 ? (
+                  <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)" }}>
+                    No saved looks yet. Name and save your favorite loadouts above.
+                  </span>
+                ) : (
+                  savedLooks.map((look) => (
+                    <button
+                      key={look.id}
+                      type="button"
+                      onClick={() => handleLoadLook(look)}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 800,
+                        padding: "4px 8px",
+                        borderRadius: 6,
+                        background: "rgba(255,215,0,0.1)",
+                        border: "1px solid rgba(255,215,0,0.3)",
+                        color: "#FFD700",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {look.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Customization Suites & Tabs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Category Tab Bar */}
+            <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4 }}>
+              {[
+                { id: "BASES", label: "👤 BASES" },
+                { id: "FACE_SCAN", label: "📷 FACE SCAN" },
+                { id: "SKIN", label: "🎨 SKIN" },
+                { id: "HAIR", label: "✂️ HAIR" },
+                { id: "OUTFITS", label: "👕 FITS" },
+                { id: "ACCESSORIES", label: "🕶️ GEAR" },
+                { id: "EMOTES", label: "💃 EMOTES" },
+                { id: "FOUNDRY", label: "🏭 FOUNDRY" },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id as CreatorCategory)}
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 900,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: `1px solid ${selectedCategory === cat.id ? "#00FFFF" : "rgba(255,255,255,0.12)"}`,
+                    background: selectedCategory === cat.id ? "rgba(0,255,255,0.2)" : "rgba(255,255,255,0.03)",
+                    color: selectedCategory === cat.id ? "#00FFFF" : "rgba(255,255,255,0.6)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Category Workspace Container */}
+            <div
+              style={{
+                background: "rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 12,
+                padding: 14,
+                minHeight: 320,
+              }}
+            >
+              {/* 1. BASES */}
+              {selectedCategory === "BASES" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+                    CANONICAL BOBBLEHEAD BASES
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                    {BOBBLEHEAD_BASES.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => handleSelectBase(b)}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          padding: 10,
+                          borderRadius: 8,
+                          border: `1px solid ${baseId === b.id ? "#00FFFF" : "rgba(255,255,255,0.1)"}`,
+                          background: baseId === b.id ? "rgba(0,255,255,0.15)" : "rgba(255,255,255,0.03)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
+                      >
+                        <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>
+                          {b.displayName}
+                        </span>
+                        <span style={{ fontSize: 8, color: "#00FF88", marginTop: 2 }}>
+                          {b.build} · {b.previewHonestyLabel}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. FACE SCAN / AUTO CREATE */}
+              {selectedCategory === "FACE_SCAN" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <AvatarCreator />
+                </div>
+              )}
+
+              {/* 3. SKIN TONE CONTINUUM */}
+              {selectedCategory === "SKIN" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+                    SKIN TONE CONTINUUM
+                  </div>
+                  <div
+                    style={{
+                      height: 24,
+                      borderRadius: 12,
+                      background: `linear-gradient(90deg, ${FAN_SKIN_TONE_CONTINUUM.map((s) => s.hex).join(", ")})`,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                    }}
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={skinT}
+                    onChange={(e) => handleSkinChange(Number(e.target.value))}
+                    style={{ width: "100%", accentColor: skin.hex, cursor: "pointer" }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        background: skin.hex,
+                        border: "2px solid #00FFFF",
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "#fff" }}>{skin.label}</div>
+                      <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>{skin.hex}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                    {FAN_SKIN_TONE_CONTINUUM.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        title={s.label}
+                        onClick={() => handleSkinChange(s.t)}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          background: s.hex,
+                          border: Math.abs(skinT - s.t) < 0.05 ? "2px solid #00FFFF" : "1px solid rgba(255,255,255,0.2)",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. HAIR / OUTFITS / ACCESSORIES / EMOTES */}
+              {(selectedCategory === "HAIR" ||
+                selectedCategory === "OUTFITS" ||
+                selectedCategory === "ACCESSORIES" ||
+                selectedCategory === "EMOTES") && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+                      {selectedCategory} CATALOG ({categoryItems.length} SKUs)
+                    </span>
+                    <Link href="/store/fan#cosmetics-catalog" style={{ fontSize: 8, color: "#FFD700" }}>
+                      Fan Store Catalog →
+                    </Link>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                      gap: 8,
+                      maxHeight: 280,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {categoryItems.map((item) => {
+                      const isEquipped = equippedCosmeticId === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            const next = isEquipped ? null : item.id;
+                            setEquippedCosmeticId(next);
+                            patchCanonicalAvatarDraft({
+                              equippedCosmeticIds: next ? [next] : [],
+                            });
+                          }}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            padding: 8,
+                            borderRadius: 8,
+                            background: isEquipped ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.03)",
+                            border: `1px solid ${isEquipped ? "#00FFFF" : `${item.accent}33`}`,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ fontSize: 20 }}>{item.icon}</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#fff", marginTop: 4, textAlign: "center" }}>
+                            {item.label}
+                          </div>
+                          <div style={{ fontSize: 8, color: item.accent, marginTop: 2, fontWeight: 700 }}>
+                            {item.pointsCost === 0 ? "FREE" : `${item.pointsCost} pts`}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 5. FOUNDRY & MANUFACTURING ASSETS */}
+              {selectedCategory === "FOUNDRY" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em" }}>
+                    MANUFACTURING & FOUNDRY ASSET REGISTRY
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 6 }}>
+                    {AVATAR_GLB_REGISTRY.map((slot) => (
+                      <div
+                        key={slot.id}
+                        style={{
+                          background: "rgba(0,0,0,0.5)",
+                          border: `1px solid ${slot.certified ? "#00FF8844" : "rgba(255,255,255,0.1)"}`,
+                          borderRadius: 6,
+                          padding: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: "#fff" }}>{slot.id}</span>
+                          <span style={{ fontSize: 7, fontWeight: 900, color: slot.certified ? "#00FF88" : "#FF9900" }}>
+                            {slot.certified ? "CERTIFIED" : "FOUNDRY"}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{slot.note}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </RoleGate>

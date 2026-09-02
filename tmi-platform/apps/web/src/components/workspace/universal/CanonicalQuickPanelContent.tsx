@@ -14,20 +14,17 @@ import {
   listEquippableCostumes,
   listEquippableProps,
 } from "@/lib/avatars/FanCosmeticCatalog";
+import { listFanSelectableBases } from "@/lib/avatars/BobbleheadBaseRegistry";
+import { BOBBLEHEAD_RUNTIME_LABEL } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
-  BOBBLEHEAD_DEFAULT_BASE_ID,
-  listFanSelectableBases,
-} from "@/lib/avatars/BobbleheadBaseRegistry";
-import {
-  bobbleheadRuntimeToRigProps,
-  persistBobbleheadBaseId,
-  resolveBobbleheadRuntimeCharacter,
-  BOBBLEHEAD_RUNTIME_LABEL,
-} from "@/lib/avatars/BobbleheadRuntimeCharacter";
-import {
-  DEFAULT_FAN_AVATAR_GLB_SLOT,
-  resolveAvatarViewportBinding,
-} from "@/lib/avatars/AvatarGlbRegistry";
+  getCanonicalAvatarDraft,
+  hydrateCanonicalAvatarDraft,
+  patchCanonicalAvatarDraft,
+  persistCanonicalDraftIdentity,
+  subscribeCanonicalAvatarDraft,
+} from "@/lib/avatars/CanonicalAvatarDraft";
+import { gatePreviewAction, resolveAvatarPreview } from "@/lib/avatars/AvatarPreviewRuntime";
+import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
 import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
@@ -140,17 +137,23 @@ function AvatarQuickPanel({
   const outfits = useMemo(() => listEquippableCostumes().slice(0, 5), []);
   const props = useMemo(() => listEquippableProps().slice(0, 4), []);
   const bases = useMemo(() => listFanSelectableBases().slice(0, 6), []);
-  const [activeOutfit, setActiveOutfit] = useState(outfits[0]?.id ?? "");
-  const [baseId, setBaseId] = useState(BOBBLEHEAD_DEFAULT_BASE_ID);
-  const [expression, setExpression] = useState<"neutral" | "smile" | "hype">("neutral");
+  const [draft, setDraft] = useState(() => getCanonicalAvatarDraft());
   const isFan = role === "fan";
-  const character = resolveBobbleheadRuntimeCharacter(baseId);
-  const viewport = useMemo(() => resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT), []);
+
+  useEffect(() => {
+    const hydrated = hydrateCanonicalAvatarDraft();
+    setDraft(hydrated);
+    return subscribeCanonicalAvatarDraft(setDraft);
+  }, []);
+
+  const preview = useMemo(() => resolveAvatarPreview(draft), [draft]);
+  const viewport = preview.viewport;
   const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
-  const rig = bobbleheadRuntimeToRigProps(character, {
-    isPlaying: expression === "hype" && viewport.motionPackageSupported,
-    extraAccessoryIds: activeOutfit ? [activeOutfit] : [],
-  });
+  const rig = preview.rigProps;
+  const baseId = draft.baseId;
+  const activeOutfit = draft.equippedCosmeticIds[0] ?? "";
+  const expression =
+    draft.previewAction === "SMILE" ? "smile" : draft.previewAction === "HYPE" ? "hype" : "neutral";
 
   if (!isFan) {
     return null;
@@ -221,8 +224,8 @@ function AvatarQuickPanel({
               key={b.id}
               type="button"
               onClick={() => {
-                setBaseId(b.id);
-                persistBobbleheadBaseId(b.id);
+                const next = patchCanonicalAvatarDraft({ baseId: b.id });
+                persistCanonicalDraftIdentity(next);
               }}
               style={{
                 fontSize: 8,
@@ -245,7 +248,7 @@ function AvatarQuickPanel({
             <button
               key={o.id}
               type="button"
-              onClick={() => setActiveOutfit(o.id)}
+              onClick={() => patchCanonicalAvatarDraft({ equippedCosmeticIds: [o.id] })}
               style={{
                 fontSize: 8,
                 fontWeight: 800,
@@ -264,11 +267,10 @@ function AvatarQuickPanel({
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>EMOTES</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {(["neutral", "smile", "hype"] as const).map((expr) => {
-            const facialExpr = expr === "neutral" || expr === "smile";
-            const disabled =
-              !isBound ||
-              (facialExpr && !viewport.facialTargetsSupported) ||
-              (expr === "hype" && !viewport.motionPackageSupported && !viewport.facialTargetsSupported);
+            const action: AvatarPreviewAction =
+              expr === "smile" ? "SMILE" : expr === "hype" ? "HYPE" : "IDLE";
+            const gate = gatePreviewAction(action, viewport);
+            const disabled = !gate.allowed;
             return (
               <button
                 key={expr}
@@ -276,11 +278,11 @@ function AvatarQuickPanel({
                 disabled={disabled}
                 title={
                   disabled
-                    ? "Requires certified Foundry AvatarRig GLB + facial/motion targets"
+                    ? gate.reason ?? "Not available on production rig"
                     : `Set expression: ${expr}`
                 }
                 onClick={() => {
-                  if (!disabled) setExpression(expr);
+                  if (!disabled) patchCanonicalAvatarDraft({ previewAction: action });
                 }}
                 style={{
                   fontSize: 8,
@@ -329,10 +331,10 @@ function AvatarQuickPanel({
           </div>
         )}
         <Link
-          href="/settings/avatar"
+          href="/avatar/studio"
           style={{ fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700 }}
         >
-          Open Avatar Settings →
+          Open Avatar Studio →
         </Link>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
           {displayName} · {userId.slice(0, 8)}
@@ -344,7 +346,7 @@ function AvatarQuickPanel({
 
   return (
     <QuickPanelShell
-      title="AVATAR QUICK · FAN BASES"
+      title="AVATAR QUICK · SHARED DRAFT"
       accentColor={accentColor}
       onClose={onClose}
       onOpenDeep={() => openCanonicalDeepStudio("inventory")}

@@ -30,6 +30,7 @@ import {
   readPersistedBobbleheadBaseId,
   resolveBobbleheadRuntimeCharacter,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { FAN_EQUIPPED_LOOK_EVENT, readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 import { syncLobbyJamFromPresence } from "@/lib/lobby/FanLobbyJamAudio";
 
 const AvatarViewer = dynamic(
@@ -96,16 +97,35 @@ export function LobbyFreeRoamAvatars({
       setLoadoutIds(equippedProp);
       return;
     }
+    const applyLook = (ids: string[]) => {
+      if (ids.length) setLoadoutIds(ids);
+    };
+    const persisted = readPersistedFanEquippedLook()?.equippedCosmeticIds ?? [];
+    if (persisted.length) applyLook(persisted);
+
     let cancelled = false;
-    fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { AvatarInventory?: { items?: AvatarInventoryItem[] } } | null) => {
-        if (cancelled || !data?.AvatarInventory?.items) return;
-        setLoadoutIds(equippedIdsFromInventory(data.AvatarInventory.items));
-      })
-      .catch(() => {});
+    const hydrateFromInventory = () => {
+      fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { AvatarInventory?: { items?: AvatarInventoryItem[] } } | null) => {
+          if (cancelled || !data?.AvatarInventory?.items) return;
+          setLoadoutIds(equippedIdsFromInventory(data.AvatarInventory.items));
+        })
+        .catch(() => {});
+    };
+    hydrateFromInventory();
+    const onLook = (e: Event) => {
+      const detail = (e as CustomEvent<{ equippedCosmeticIds?: string[] }>).detail;
+      const fromEvent = Array.isArray(detail?.equippedCosmeticIds) ? detail.equippedCosmeticIds : [];
+      const fromStore = readPersistedFanEquippedLook()?.equippedCosmeticIds ?? [];
+      const next = fromEvent.length ? fromEvent : fromStore;
+      if (next.length) setLoadoutIds(next);
+      else hydrateFromInventory();
+    };
+    window.addEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
     return () => {
       cancelled = true;
+      window.removeEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
     };
   }, [equippedProp]);
 

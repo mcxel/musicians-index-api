@@ -25,6 +25,7 @@ import {
   readPersistedFanSkinT,
   sampleFanSkinTone,
 } from "@/lib/avatars/FanCosmeticCatalog";
+import type { AvatarFaceIdentityProfile } from "@/lib/avatar/AvatarFaceIdentityContract";
 
 export const BOBBLEHEAD_RUNTIME_LABEL =
   "3D Avatar Runtime v0 — procedural bobblehead (not photoreal GLB)" as const;
@@ -175,17 +176,47 @@ export function resolveBobbleheadRuntimeCharacter(
   };
 }
 
+let memoryFallbackBaseId: string | null = null;
+
+export const BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY = "tmi_avatar_face_identity";
+let memoryFallbackFaceIdentity: AvatarFaceIdentityProfile | null = null;
+
+export function readPersistedFaceIdentityProfile(): AvatarFaceIdentityProfile | null {
+  if (typeof window === "undefined") return memoryFallbackFaceIdentity;
+  try {
+    const raw = window.sessionStorage.getItem(BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : memoryFallbackFaceIdentity;
+  } catch {
+    return memoryFallbackFaceIdentity;
+  }
+}
+
+export function persistFaceIdentityProfile(profile: AvatarFaceIdentityProfile | null): void {
+  memoryFallbackFaceIdentity = profile;
+  if (typeof window === "undefined") return;
+  try {
+    if (profile) {
+      window.sessionStorage.setItem(BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY, JSON.stringify(profile));
+    } else {
+      window.sessionStorage.removeItem(BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Read Fan-selected base from session (creation center / picker). */
 export function readPersistedBobbleheadBaseId(): string {
-  if (typeof window === "undefined") return BOBBLEHEAD_DEFAULT_BASE_ID;
+  if (typeof window === "undefined") return memoryFallbackBaseId ?? BOBBLEHEAD_DEFAULT_BASE_ID;
   try {
-    return window.sessionStorage.getItem(BOBBLEHEAD_BASE_STORAGE_KEY) ?? BOBBLEHEAD_DEFAULT_BASE_ID;
+    return window.sessionStorage.getItem(BOBBLEHEAD_BASE_STORAGE_KEY) ?? memoryFallbackBaseId ?? BOBBLEHEAD_DEFAULT_BASE_ID;
   } catch {
-    return BOBBLEHEAD_DEFAULT_BASE_ID;
+    return memoryFallbackBaseId ?? BOBBLEHEAD_DEFAULT_BASE_ID;
   }
 }
 
 export function persistBobbleheadBaseId(baseId: string): void {
+  memoryFallbackBaseId = baseId;
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(BOBBLEHEAD_BASE_STORAGE_KEY, baseId);
@@ -207,17 +238,24 @@ export function bobbleheadRuntimeToRigProps(
     activePropId?: string;
     /** Override continuum t; default reads session skin slider. */
     skinT?: number;
+    faceIdentity?: AvatarFaceIdentityProfile | null;
   },
 ): AvatarRigProps & { bobbleheadRatio: number } {
+  const faceIdentity = opts?.faceIdentity !== undefined ? opts.faceIdentity : readPersistedFaceIdentityProfile();
+
   const skuIds = [
     ...character.palette.defaultAccessorySkuIds,
+    ...(faceIdentity?.appearance.hairRecommendationId ? [faceIdentity.appearance.hairRecommendationId] : []),
     ...(opts?.extraAccessoryIds ?? []),
   ];
   const attachments: SocketAttachmentDef[] = cosmeticIdsToAttachments(skuIds, {
     activePropId: opts?.activePropId,
   });
 
-  const skin = sampleFanSkinTone(opts?.skinT ?? readPersistedFanSkinT());
+  const skin = faceIdentity
+    ? { hex: faceIdentity.appearance.skinHex, label: "Fitted Likeness" }
+    : sampleFanSkinTone(opts?.skinT ?? readPersistedFanSkinT());
+
   let hairHex = character.palette.hairHex;
   let outfitTint = character.palette.outfitTint;
   for (const id of skuIds) {

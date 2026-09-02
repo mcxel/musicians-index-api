@@ -26,6 +26,7 @@ import {
   readPersistedBobbleheadBaseId,
   resolveBobbleheadRuntimeCharacter,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 import { listFreeBobbleheadBases } from "@/lib/avatars/BobbleheadBaseRegistry";
 
 const AvatarViewer = dynamic(
@@ -875,10 +876,14 @@ function AudienceSeatAvatarRig({
   isLocal: boolean;
 }) {
   const character = useMemo(() => resolveBobbleheadRuntimeCharacter(baseId), [baseId]);
-  const rig = useMemo(
-    () => bobbleheadRuntimeToRigProps(character, { isSeated: true, isPlaying: false }),
-    [character],
-  );
+  const rig = useMemo(() => {
+    const extras = isLocal ? readPersistedFanEquippedLook()?.equippedCosmeticIds : undefined;
+    return bobbleheadRuntimeToRigProps(character, {
+      isSeated: true,
+      isPlaying: false,
+      extraAccessoryIds: extras,
+    });
+  }, [character, isLocal]);
   const size = Math.max(36, Math.min(72, pin.sz * 3.2));
   const leftPct = (pin.x / AUDIENCE_SCENE_W) * 100;
   const topPct = (pin.y / AUDIENCE_SCENE_H) * 100;

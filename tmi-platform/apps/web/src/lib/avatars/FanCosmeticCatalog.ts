@@ -394,22 +394,26 @@ function lerpHex(a: string, b: string, u: number): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)}`;
 }
 
+let memoryFallbackSkinT: number | null = null;
+
 export function readPersistedFanSkinT(): number {
-  if (typeof window === "undefined") return 0.42;
+  if (typeof window === "undefined") return memoryFallbackSkinT ?? 0.42;
   try {
     const raw = window.sessionStorage.getItem(FAN_SKIN_STORAGE_KEY);
-    if (raw == null) return 0.42;
+    if (raw == null) return memoryFallbackSkinT ?? 0.42;
     const n = Number(raw);
-    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.42;
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : (memoryFallbackSkinT ?? 0.42);
   } catch {
-    return 0.42;
+    return memoryFallbackSkinT ?? 0.42;
   }
 }
 
 export function persistFanSkinT(t: number): void {
+  const val = Math.min(1, Math.max(0, t));
+  memoryFallbackSkinT = val;
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(FAN_SKIN_STORAGE_KEY, String(Math.min(1, Math.max(0, t))));
+    window.sessionStorage.setItem(FAN_SKIN_STORAGE_KEY, String(val));
   } catch {
     /* ignore */
   }

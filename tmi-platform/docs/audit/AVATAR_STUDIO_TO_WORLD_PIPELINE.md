@@ -67,10 +67,13 @@ One press equips full loadout. Operations: duplicate, rename, favorite, delete, 
 
 | Step | Status |
 |------|--------|
-| bobblehead_v0 Foundry + Canister SMILE | PARTIAL / certified for smile path |
+| bobblehead_v0 Foundry + Canister SMILE | PARTIAL / registry certified; mount only if GLB is served |
+| Studio save → Fan Lobby / local seat (`FanEquippedLookBridge`) | PARTIAL — Phase 1 glue (`AVATAR_STUDIO_WORLD_PHASE1_SLICE.md`) |
+| Preview Parity (one Canonical Avatar Draft → `AvatarPreviewRuntime`) | PARTIAL — contracts + Studio/Quick wiring (`AVATAR_PREVIEW_PARITY_LAW.md`); Herser motion/facial still fail-visible |
+| FAN-only ownership API (`requireFanAvatarSession`) | DONE (unit) — PERFORMER 403 |
 | Full wardrobe / props / collision | OPEN |
 | LiveAvatarSync into all rooms | OPEN |
-| QA Lab full matrix | OPEN |
+| QA Lab full matrix (`/avatar/test` redirects to studio) | OPEN |
 | Face-scan pipeline | OPEN (multi-specialist — do not stub) |
 
 ---
