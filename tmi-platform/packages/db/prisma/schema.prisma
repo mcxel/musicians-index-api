@@ -644,6 +644,13 @@ model Order {
   amountCents       Int?
   status            String? // PAID | REFUND_PENDING | REFUNDED
 
+  /// Fulfillment recovery observability (Lane D Phase 2, 2026-09-02) — set by
+  /// EntitlementFulfillmentEngine's reconciliation path when retrying a
+  /// PAID_PENDING_FULFILLMENT order. Never silently swallow a retry.
+  fulfillmentRetryCount    Int       @default(0)
+  lastFulfillmentAttemptAt DateTime?
+  lastFulfillmentError     String?
+
   tickets Ticket[]
   refunds Refund[]
 
