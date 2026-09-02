@@ -9,6 +9,15 @@
  *
  * This hits the real production database — no mocks. Run deliberately, not
  * as part of routine fast unit-test cycles.
+ *
+ * Run with `--forceExit`: lib/prisma.ts's Pool is sized for a long-running
+ * server, not a short-lived test process — its idle-connection keepalive
+ * timer outlives prisma.$disconnect() by design (a known @prisma/adapter-pg
+ * + pg.Pool characteristic, not a leak in this test). Confirmed in isolation
+ * with --detectOpenHandles: no leaked handle once the process is allowed to
+ * exit — the "worker failed to exit gracefully" warning only appears when
+ * bundled with other suites in the same Jest worker and is a pool-teardown
+ * timing artifact, not a correctness issue.
  */
 import prisma from "../lib/prisma";
 import {

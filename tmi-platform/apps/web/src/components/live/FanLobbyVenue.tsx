@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getFanLobbyPresence,
@@ -56,6 +57,7 @@ import {
   isSystemOperatedFanLobby,
   loungeSideRoomEntryHref,
 } from "@/lib/live/canonicalWorldViewport";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -99,6 +101,10 @@ export default function FanLobbyVenue({
   roomType = "FAN_LOBBY",
   authority: authorityProp,
 }: FanLobbyVenueProps) {
+  const router = useRouter();
+  // Presence identity — anonymous, per-browser, keyed to real-time sync/mod
+  // mechanics only (rejoin-check, block/mute, peer sync). Never the authority
+  // for paid commerce ownership (Lane D Phase 2) — see authenticatedUserId below.
   const userId = useMemo(() => getOrCreateLocalId(roomId), [roomId]);
   const authority = useMemo(
     () => authorityProp ?? defaultRoomAuthority(roomType),
@@ -107,6 +113,31 @@ export default function FanLobbyVenue({
   const emoji = useMemo(() => AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)], []);
   const selfFrame = getPresenceFrameById("frame-obsidian-free");
   const switchableSkins = useMemo(() => listSwitchableFanLobbySkins(), []);
+
+  // Authenticated identity — the real account, resolved via the same
+  // useAuth() session used by /account/finance and Stripe checkout. This,
+  // not the anonymous presence userId above, is what paid lobby-skin
+  // ownership is checked against.
+  const { user: authedUser } = useAuth();
+  const authenticatedUserId = authedUser?.id ?? null;
+  const [ownedSkinItemIds, setOwnedSkinItemIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!authenticatedUserId) {
+      setOwnedSkinItemIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/account/purchases", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { ownedStoreItems?: { itemId: string }[] } | null) => {
+        if (cancelled || !data?.ownedStoreItems) return;
+        setOwnedSkinItemIds(new Set(data.ownedStoreItems.map((i) => i.itemId)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticatedUserId]);
 
   const [skinId, setSkinId] = useState<FanLobbySkinId>(() => {
     const locked = authorityProp?.lockedSkinId ?? (authorityProp?.mode === "BOT_AUTOMATED" ? authorityProp.lockedSkinId : null);
@@ -710,11 +741,22 @@ export default function FanLobbyVenue({
             {switchableSkins.map((s) => {
               const d = getFanLobbySkinDressing(s.id);
               const active = s.id === skinId;
+              // Real ownership gate (Lane D Phase 2): a premium skin the
+              // authenticated account hasn't purchased is locked. The
+              // already-active skin never re-locks mid-session — this only
+              // gates switching to a *different* unowned skin, so nobody's
+              // current/default skin is yanked out from under them.
+              const locked =
+                !active && s.isPremium && !!s.storeItemId && !ownedSkinItemIds.has(s.storeItemId);
               return (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => {
+                    if (locked) {
+                      router.push("/store/lobbies");
+                      return;
+                    }
                     setSkinId(s.id);
                     if (roomType === "FAN_LOBBY") persistFanLobbySkinId(s.id);
                     setThemePanelOpen(false);
@@ -726,15 +768,21 @@ export default function FanLobbyVenue({
                     borderRadius: 10,
                     border: `1.5px solid ${active ? d.accent : "rgba(255,255,255,0.15)"}`,
                     background: active ? `${d.accent}22` : "rgba(255,255,255,0.04)",
-                    color: d.accent,
+                    color: locked ? "rgba(255,255,255,0.35)" : d.accent,
                     padding: "8px 12px",
                     fontSize: 10,
                     fontWeight: 800,
                     cursor: "pointer",
                     letterSpacing: "0.04em",
+                    opacity: locked ? 0.7 : 1,
                   }}
-                  title={s.tagline}
+                  title={
+                    locked
+                      ? `Locked — ${s.priceCents != null ? `$${(s.priceCents / 100).toFixed(2)}` : "buy"} in the Lobby Store`
+                      : s.tagline
+                  }
                 >
+                  {locked ? "🔒 " : ""}
                   {s.label}
                 </button>
               );
