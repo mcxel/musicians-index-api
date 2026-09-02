@@ -159,19 +159,15 @@ export default function LiveFeedbackPanel() {
 
   if (dismissed) return null;
 
-  const anchorStyle = hubSafe
-    ? {
-        top: "calc(56px + env(safe-area-inset-top, 0px))",
-        left: 12,
-        bottom: "auto" as const,
-        right: "auto" as const,
-      }
-    : {
-        bottom: 24,
-        right: 20,
-        top: "auto" as const,
-        left: "auto" as const,
-      };
+  // Position toward center-left of the usable content area, safely above the persistent bottom rail
+  // and avoiding collision with bottom navigation docks, side rails, and top headers on all viewports (desktop and 390x844).
+  const anchorStyle = {
+    bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
+    left: "max(16px, env(safe-area-inset-left, 0px))",
+    top: "auto" as const,
+    right: "auto" as const,
+  };
+
 
   return (
     <div

@@ -6,8 +6,21 @@
  * Legacy L/R in-flow side rails excised (2026-08-28). Role-gated drawers (Rule 26).
  */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+  type ReadonlyURLSearchParams,
+} from "next/navigation";
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
@@ -20,6 +33,8 @@ import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
 import { useMediaPlayerAudiencePresence } from "@/lib/media/useMediaPlayerAudiencePresence";
+import { inferWatchCategoryFromRoomId } from "@/lib/media/universalMediaPlayerWatchRoute";
+import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { DEFAULT_MONITOR_A } from "@/lib/personal-media";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import CommandCenterMediaStack, {
@@ -69,6 +84,7 @@ import {
   isUniversalWorkspaceOpenForModule,
 } from "@/lib/commandCenter/hubQuickLaunch";
 import CompactQuickPanelHost, { SnipsOverlayHost } from "@/components/hud/CompactQuickPanelHost";
+import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
@@ -138,18 +154,37 @@ const HUB_DRAWER_DEEPLINK_KEY = "tmi_hub_drawer_deeplink_v1";
 const BIO_MAGAZINE_TAB_EVENT = "tmi:performer-bio-magazine-open-tab";
 type PerformerBioTab = "profile" | "biography" | "magazine" | "gallery" | "music" | "interviews";
 
+/**
+ * Isolates useSearchParams behind Suspense so CommandCenterShell can hydrate
+ * without Next.js CSR-bailout wiping the SSR hub tree (YoPho cert blocker).
+ */
+function HubSearchParamsBridge({
+  onParams,
+}: {
+  onParams: (params: ReadonlyURLSearchParams) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    onParams(searchParams);
+  }, [searchParams, onParams]);
+  return null;
+}
+
 function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
   const isDevBuild = process.env.NODE_ENV === "development";
   const router = useRouter();
   const pathname = usePathname() ?? "";
-  const searchParams = useSearchParams();
+  const [searchParams, setSearchParams] = useState<ReadonlyURLSearchParams | null>(null);
+  const onHubSearchParams = useCallback((params: ReadonlyURLSearchParams) => {
+    setSearchParams(params);
+  }, []);
   const isProofReplay = searchParams?.get("proof") === "1";
   const proofAdsOverride = searchParams?.get("proofAds");
-  const diagnosticsEnabled = isDevBuild || isProofReplay;
+  const diagnosticsEnabled = isDevBuild || Boolean(isProofReplay);
   // Dev-only isolation switch for /hub/performer?proof=1 crash triage.
   const suppressProofPerformerAd =
     role === "performer" &&
-    isProofReplay &&
+    Boolean(isProofReplay) &&
     proofAdsOverride !== "on";
   const theme = useTheme();
   const [liveDisplayName, setLiveDisplayName] = useState(displayName);
@@ -167,7 +202,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   // Off-hub GO LIVE taps land here with ?golive=1 + optional sessionStorage payload.
   useEffect(() => {
-    if (searchParams?.get("golive") !== "1") return;
+    if (!searchParams || searchParams.get("golive") !== "1") return;
     let pending: Record<string, unknown> | null = null;
     try {
       const raw = sessionStorage.getItem(PENDING_GO_LIVE_KEY);
@@ -189,32 +224,42 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     router.replace(pathname);
   }, [searchParams, role, pathname, router]);
 
+  const { stopWatching } = useWatchSession();
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+
   // Lobby Wall / discovery → Universal Media Player watch (same session, hub surface)
   useEffect(() => {
     const watchId = searchParams?.get("watch")?.trim();
     if (!watchId) return;
 
     const media = useCanonicalMediaPlayerRuntime.getState();
-    media.setRoomId(watchId);
+    const boundRoomId = media.roomId;
+    if (boundRoomId && boundRoomId !== watchId) {
+      media.reset();
+    }
+    if (!useCanonicalMediaPlayerRuntime.getState().roomId) {
+      media.setRoomId(watchId);
+    }
     media.assignSource("a", role === "performer" ? "SELF_CAMERA" : "PERFORMER_FEED");
     media.assignSource("b", "AUDIENCE_VIEW");
     media.setLayout("SPLIT_2");
     media.setPrimaryAudio("a");
 
+    const category = inferWatchCategoryFromRoomId(watchId);
     useGoLiveTransition.getState().bindInPlace(
       {
         roomId: watchId,
-        category: "live",
+        category,
         privacy: "public",
         href: `/hub/${role}?watch=${encodeURIComponent(watchId)}`,
         roomUrl: null,
-        venueEnvironment: "indoor",
+        venueEnvironment: category === "lounge" ? "indoor" : "indoor",
       },
       DEFAULT_MONITOR_A,
     );
     useGoLiveTransition.getState().clearWarp();
 
-    // Bind chrome with honest 0 until presence poll/join updates viewers.
     window.dispatchEvent(
       new CustomEvent("tmi:watch-session-bind", {
         detail: {
@@ -229,9 +274,22 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     router.replace(pathname);
   }, [searchParams, role, pathname, router]);
 
+  // Switch-away: release watch/MNS binding when hub loads without ?watch= (never drop published host).
+  useEffect(() => {
+    // Wait until Suspense bridge delivers params — null means "not ready", not "no watch".
+    if (!searchParams) return;
+    if (searchParams.get("watch")?.trim()) return;
+    if (useLivePrivacyState.getState().isLivePublished) return;
+
+    const inPlace = useGoLiveTransition.getState().inPlace;
+    if (!inPlace?.roomId) return;
+
+    useGoLiveTransition.getState().releaseInPlace();
+    useCanonicalMediaPlayerRuntime.getState().reset();
+    stopWatching();
+  }, [searchParams, pathname, stopWatching]);
+
   const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
-  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
-  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const isPublishedHost =
     Boolean(isLivePublished && publishedRoomId && inPlaceRoomId && publishedRoomId === inPlaceRoomId);
 
@@ -275,7 +333,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   useEffect(() => {
     document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-27-canonical-slice1");
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      (window as Window & { __TMI_WORKSPACE_STORE__?: typeof useWorkspacePresentationStore }).__TMI_WORKSPACE_STORE__ =
+        useWorkspacePresentationStore;
+    }
   }, []);
+  // Also stamp during render so cert can observe hydrate without waiting an extra effect tick.
+  if (typeof window !== "undefined") {
+    document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-27-canonical-slice1");
+  }
   const [monitorLayoutMode, setMonitorLayoutMode] = useState<MonitorLayoutMode>("DUAL");
   const [monitorStagePhase, setMonitorStagePhase] = useState<MonitorStagePhase>("VISIBLE");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -790,6 +856,31 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     });
   };
 
+  const openYophoInPlace = useCallback(() => {
+    try {
+      document.documentElement.setAttribute("data-yopho-open-intent", "1");
+      useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
+      setAppearanceOpen(false);
+      setActivePanel("yopho");
+      drawerStateStore.setLastPanel(role, "yopho");
+      presentCanonicalWorkspace("yopho", "DRAWER");
+    } catch (err) {
+      console.error("[TMI] openYophoInPlace failed", err);
+      document.documentElement.setAttribute("data-yopho-open-error", String(err));
+    }
+  }, [role]);
+
+  // Cert/debug + cast-button bridge — assign every render so HMR cannot leave window hook undefined.
+  if (typeof window !== "undefined") {
+    (window as Window & { __TMI_OPEN_YOPHO__?: () => void }).__TMI_OPEN_YOPHO__ = openYophoInPlace;
+  }
+
+  useEffect(() => {
+    const onCastYopho = () => openYophoInPlace();
+    window.addEventListener("tmi:hub-cast-yopho", onCastYopho);
+    return () => window.removeEventListener("tmi:hub-cast-yopho", onCastYopho);
+  }, [openYophoInPlace]);
+
   const isModuleActive = (moduleId: CommandCenterPanelId) =>
     activePanel === moduleId || isUniversalWorkspaceOpenForModule(moduleId);
 
@@ -884,6 +975,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       data-command-center-shell
       data-canonical-shell={role === "performer" ? "performer" : "fan"}
       data-role={role}
+      data-active-command-panel={activePanel ?? "none"}
+      data-drawer-workspace={drawerWorkspace ?? "none"}
+      data-drawer-expanded={isDrawerExpanded ? "1" : "0"}
       style={{
         minHeight: "100vh",
         width: "100%",
@@ -897,6 +991,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         overflowX: "clip",
       }}
     >
+      <Suspense fallback={null}>
+        <HubSearchParamsBridge onParams={onHubSearchParams} />
+      </Suspense>
       <style>{`
         @keyframes tmiMonitorExit {
           from { opacity: 1; transform: translateY(0) scale(1); }
@@ -1088,6 +1185,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     role={role === "performer" ? "performer" : "fan"}
                     userId={userId}
                     displayName={resolvedDisplayName}
+                    onOpenYopho={openYophoInPlace}
                     seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                   />
                 </GlobalErrorBoundary>
@@ -1238,6 +1336,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       role={role === "performer" ? "performer" : "fan"}
                       userId={userId}
                       displayName={resolvedDisplayName}
+                      onOpenYopho={openYophoInPlace}
                       seriesLabel={
                         role === "performer"
                           ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"

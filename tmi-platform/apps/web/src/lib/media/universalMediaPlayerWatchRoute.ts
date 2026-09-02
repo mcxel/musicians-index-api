@@ -24,6 +24,18 @@ export function hubPathForWatchRole(role?: string | null): "/hub/fan" | "/hub/pe
   return "/hub/fan";
 }
 
+/** Infer discovery category from room id slug (watch binding — not rank authority). */
+export function inferWatchCategoryFromRoomId(roomId: string): string {
+  const s = roomId.trim().toLowerCase();
+  if (!s) return "live";
+  if (s.includes("lounge")) return "lounge";
+  if (s.includes("battle")) return "battle";
+  if (s.includes("cypher")) return "cypher";
+  if (s.includes("challenge")) return "challenge";
+  if (s.includes("monday") || s.includes("monday-night")) return "monday-night-stage";
+  return "live";
+}
+
 /** Canonical watch href — opens hub Command Center media stack with session bound. */
 export function mediaPlayerWatchHref(
   roomId: string,

@@ -289,6 +289,8 @@ interface CommandCenterMediaStackProps {
   userId?: string | null;
   /** Display name for Fan ID / Artist ID strip. */
   displayName?: string | null;
+  /** Shell-owned YoPho launch (canonical drawer / workspace — never a route). */
+  onOpenYopho?: () => void;
   /** Optional dev-only continuity context supplied by the route/runtime layer. */
   continuityContext?: {
     venueInstanceId?: string;
@@ -654,7 +656,25 @@ export default function CommandCenterMediaStack({
   role = "fan",
   userId = null,
   displayName = null,
+  onOpenYopho,
 }: CommandCenterMediaStackProps) {
+  // Assign every render — cert must not depend on effect timing / StrictMode cleanup races.
+  if (typeof window !== "undefined") {
+    document.documentElement.dataset.tmiMediaStackBoot = String(Date.now());
+    (window as Window & { __TMI_OPEN_YOPHO__?: () => void }).__TMI_OPEN_YOPHO__ = () => {
+      document.documentElement.setAttribute("data-yopho-btn-click", "1");
+      useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
+      if (onOpenYopho) onOpenYopho();
+      else presentCanonicalWorkspace("yopho", "DRAWER");
+    };
+    try {
+      // Mirror onto documentElement so Playwright can detect boot without window enumeration issues.
+      document.documentElement.setAttribute("data-tmi-open-yopho-fn", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
@@ -939,14 +959,6 @@ export default function CommandCenterMediaStack({
     setSwapOrder((prev) => !prev);
   };
 
-  const openGpsNav = useCallback(() => {
-    presentCanonicalWorkspace("live-destinations", "LEFT_PANEL");
-  }, []);
-
-  const openChatPanel = useCallback(() => {
-    openCanonicalWorkspaceQuick("messaging", "DRAWER");
-  }, []);
-
   const utilityBtn = (
     active: boolean,
     accent: string,
@@ -1118,12 +1130,24 @@ export default function CommandCenterMediaStack({
             })}
 
             {/* 4. YOPHO */}
-            {utilityBtn(false, "#FFD700", "YOPHO", () => {
-              useCompactQuickPanelStore.getState().togglePanel("yopho");
+            {utilityBtn(false, "#FF2DAA", "YOPHO", () => {
+              document.documentElement.setAttribute("data-yopho-btn-click", "1");
+              useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
+              if (onOpenYopho) {
+                onOpenYopho();
+                return;
+              }
+              presentCanonicalWorkspace("yopho", "DRAWER");
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("tmi:hub-cast-yopho"));
+                (
+                  window as Window & { __TMI_OPEN_YOPHO__?: () => void }
+                ).__TMI_OPEN_YOPHO__?.();
+              }
             }, {
               testId: "tmi-cast-yopho-btn",
-              title: "Cast YoPho profile card",
-              icon: "⚡",
+              title: "Open YoPho living canvas (background-first Free tier)",
+              icon: "📱",
             })}
 
             {/* 5. SHARE SCREEN */}
@@ -1428,6 +1452,7 @@ export default function CommandCenterMediaStack({
   return (
     <div
       ref={containerRef}
+      data-command-center-media-stack
       data-tmi-dev-runtime-instance-id={isDevDiagnostics ? continuitySnapshot.runtimeInstanceId : undefined}
       data-tmi-dev-venue-instance-id={isDevDiagnostics ? continuitySnapshot.venueInstanceId : undefined}
       data-tmi-dev-room-session-id={isDevDiagnostics ? continuitySnapshot.roomSessionId : undefined}

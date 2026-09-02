@@ -99,7 +99,7 @@ function YoPhoSlot({
   slug?: string;
 }) {
   return (
-    <div key={bindKey ?? userId} style={{ height: "100%", minHeight: 360 }}>
+    <div key={bindKey ?? userId} data-yopho-canonical-workspace data-yopho-surface="command-center-drawer" style={{ height: "100%", minHeight: 360 }}>
       <YoPhoActivityHub role={role} displayName={displayName} userId={userId} slug={slug} />
     </div>
   );

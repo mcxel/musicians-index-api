@@ -65,6 +65,8 @@ export default function YoPhoFanPortraitWorkspace({
   if (!blueprint) {
     return (
       <div
+        data-yopho-canonical-workspace
+        data-yopho-tier={tierKey}
         style={{
           padding: compact ? 16 : 32,
           color: "#00FFFF",
@@ -80,7 +82,7 @@ export default function YoPhoFanPortraitWorkspace({
   }
 
   return (
-    <div style={{ padding: compact ? "8px 12px 16px" : "16px 20px 24px" }}>
+    <div data-yopho-canonical-workspace data-yopho-tier={tierKey} style={{ padding: compact ? "8px 12px 16px" : "16px 20px 24px" }}>
       {!compact ? (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FF2DAA" }}>

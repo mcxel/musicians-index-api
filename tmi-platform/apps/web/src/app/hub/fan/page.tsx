@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import FanHubMount from "@/components/auth/FanHubMount";
@@ -12,10 +13,11 @@ export const dynamic = "force-dynamic";
 /**
  * Fan hub — prefer cookie role (no ROLE_RESOLVING). Static FanShell only.
  * Client SessionRoleGate only when role cookie is missing/unclassified.
+ * Suspense boundary keeps SSR hub chrome mounted while searchParams bridge resolves.
  */
 
-export default async function FanHubPage() {
-  const store = await cookies();
+export default function FanHubPage() {
+  const store = cookies();
   const sessionToken = store.get("tmi_session")?.value;
   const sessionUserId = store.get("tmi_session_id")?.value;
   if (!sessionToken && !sessionUserId) {
@@ -35,15 +37,16 @@ export default async function FanHubPage() {
   if (identity === "FAN") {
     const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
     const displayName = store.get("tmi_display_name")?.value?.trim() || "Fan";
+    const session = {
+      identity: "FAN" as const,
+      rawRole: (roleCookie ?? "FAN").toUpperCase(),
+      userId,
+      displayName,
+    };
     return (
-      <FanHubMount
-        session={{
-          identity: "FAN",
-          rawRole: (roleCookie ?? "FAN").toUpperCase(),
-          userId,
-          displayName,
-        }}
-      />
+      <Suspense fallback={<FanHubMount session={session} />}>
+        <FanHubMount session={session} />
+      </Suspense>
     );
   }
 
