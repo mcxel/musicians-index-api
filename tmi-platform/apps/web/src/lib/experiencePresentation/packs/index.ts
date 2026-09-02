@@ -86,7 +86,7 @@ export const CypherPack: ExperiencePresentationPack = {
   signatureDna: "Collaborative circle + mic handoff — NO VS/winner/elimination",
   presenceModel: "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
   allowedCompositions: ["CIRCLE_FOCUS", "HOST_CLOSE", "PIP"],
-  forbiddenCompositions: ["DUAL", "A_DOMINANT", "B_DOMINANT", "OBJECTIVE_FOCUS", "GAME_BOARD"],
+  forbiddenCompositions: ["DUAL", "A_DOMINANT", "B_DOMINANT", "SPLIT", "OBJECTIVE_FOCUS", "GAME_BOARD"],
   requiredPrimitives: ["LiveVideoPanel", "CypherCircle", "MicHandoff", "IdentityPanel"],
   optionalPrimitives: ["EnergyArc", "ReactionEmitter", "AudioVisualizer", "QueueRail"],
   allowsVsLayout: false,
@@ -94,10 +94,20 @@ export const CypherPack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("cypher", "Cypher", ["/cypher"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    requiresJumbotron: true,
-    requiresQueue: true,
-  }),
+  routeCapability: baseRoute(
+    "cypher",
+    "Cypher",
+    ["/cypher", "/rooms/cypher", "/cyphers"],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresJumbotron: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const GauntletPack: ExperiencePresentationPack = {

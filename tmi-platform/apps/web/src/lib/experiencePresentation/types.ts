@@ -98,8 +98,10 @@ export const OBJECTIVE_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
   "HOST_CLOSE",
 ] as const;
 
+/** Cypher forbids all Battle VS corner compositions (incl. SPLIT clash framing). */
 export const FORBIDDEN_CYPHER_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
   "DUAL",
   "A_DOMINANT",
   "B_DOMINANT",
+  "SPLIT",
 ] as const;

@@ -20,6 +20,7 @@ import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPl
 import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/composePerformerLiveProgram";
 import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBattleProgram";
 import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeChallengeProgram";
+import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCypherProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -211,8 +212,38 @@ export function VenueAutomatedJumbotronMount({
         accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
       });
     } else if (experienceType === "CYPHER") {
-      const next = director.postCypherNextUp("Next Performer", "On Deck");
-      setEvent(next ?? director.getActiveEvent());
+      // Real Cypher PROGRAM — mic + next-up; never fake Battle scoreboard.
+      const prog = getActiveCypherProgram();
+      const onMic = prog?.activeMic?.displayName?.trim() || "Waiting for mic";
+      const nextName = prog?.nextUp?.displayName?.trim() || "Awaiting handoff";
+      const programId = prog?.programSourceId ?? "PROGRAM.CYPHER_FOCUS";
+      if (prog?.activeMic) {
+        const next = director.postCypherNextUp(onMic, nextName);
+        setEvent({
+          ...next,
+          sourceEventId: programId,
+          title: "CYPHER",
+          headline: `ON MIC: ${onMic.toUpperCase()}`,
+          subline: `NEXT UP: ${nextName.toUpperCase()} · ${programId}`,
+        });
+      } else {
+        setEvent({
+          id: `evt-cypher-lobby-${roomId}`,
+          traceId: `tr-cypher-${roomId}`,
+          priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+          eventType: "CYPHER_ROTATION_NEXT",
+          experienceType: "CYPHER",
+          targetClass: pack.primaryTarget,
+          sourceEventId: programId,
+          title: "CYPHER",
+          headline: onMic,
+          subline: programId,
+          durationMs: 120_000,
+          createdAtMs: Date.now(),
+          expiresAtMs: Date.now() + 120_000,
+          accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
+        });
+      }
     } else if (experienceType === "WORLD_DANCE_PARTY") {
       const welcome = director.triggerSafetyAlert(
         "WELCOME TO WORLD DANCE PARTY",

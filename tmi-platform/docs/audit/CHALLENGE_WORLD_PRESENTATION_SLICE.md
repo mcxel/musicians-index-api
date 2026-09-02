@@ -88,5 +88,6 @@ Asserts: Challenge rejects DUAL/A_DOMINANT; objective-first compose; unauthorize
 |------|--------|
 | Full cinematic Challenge arena polish / fake-data cleanup in `CinematicChallengeArenaStage` | OPEN (out of scope Phase 1) |
 | experienceCert physical | OPEN |
-| Cypher deep presentation (circle + mic handoff) | **Next recommended slice** |
+| Cypher deep presentation (circle + mic handoff) | **DONE** Phase 1 — see `CYPHER_WORLD_PRESENTATION_SLICE.md` |
+| Concert / World Concert presentation | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |

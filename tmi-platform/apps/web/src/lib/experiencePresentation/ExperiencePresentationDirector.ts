@@ -65,9 +65,17 @@ export function assertPackAllowsComposition(
     throw new Error(`${packId} does not allow composition ${layout}`);
   }
 
-  // Hard semantic: Cypher never VS / winner path via composition
-  if (packId === "Cypher" && (FORBIDDEN_CYPHER_COMPOSITIONS as readonly string[]).includes(layout)) {
-    throw new Error("Cypher pack rejects VS/winner layouts");
+  // Hard semantic: Cypher never VS / winner / elimination path via composition
+  if (packId === "Cypher") {
+    if ((FORBIDDEN_CYPHER_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("Cypher pack rejects VS/winner layouts");
+    }
+    if ((VS_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("Cypher pack rejects VS / dual combat compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("Cypher pack semantic flags forbid VS/winner/elimination");
+    }
   }
 
   // Hard semantic: Lounge never avatar presence (checked on pack.presenceModel elsewhere)

@@ -37,6 +37,15 @@ import {
   isChallengeVsFree,
   PROGRAM_CHALLENGE_PRIMARY,
 } from "../composeChallengeProgram";
+import {
+  clearCypherProgram,
+  composeCypherProgram,
+  getActiveCypherProgram,
+  isCypherProgramProductionSurface,
+  isCypherVsFree,
+  mapCypherPhaseToComposition,
+  PROGRAM_CYPHER_FOCUS,
+} from "../composeCypherProgram";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -46,6 +55,7 @@ describe("experiencePresentation semantic guards", () => {
     expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow(/VS|forbids|does not allow/i);
     expect(() => assertPackAllowsComposition("Cypher", "A_DOMINANT")).toThrow();
     expect(() => assertPackAllowsComposition("Cypher", "B_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("Cypher", "SPLIT")).toThrow();
     expect(() => assertPackAllowsComposition("Cypher", "CIRCLE_FOCUS")).not.toThrow();
   });
 
@@ -425,6 +435,82 @@ describe("experiencePresentation semantic guards", () => {
 
     clearChallengeProgram("test-done");
     expect(getActiveChallengeProgram()).toBeNull();
+  });
+
+  test("composeCypherProgram: circle + mic; never VS/winner; Battle/Challenge clean", () => {
+    clearCypherProgram("test-reset");
+
+    const empty = composeCypherProgram({
+      sessionId: "sess-cypher-empty",
+      cypherId: "cyp-1",
+      roomId: "room-cypher-1",
+      circle: [],
+      lifecyclePhase: "LOBBY_OPEN",
+      bindJumbotron: true,
+    });
+
+    expect(empty.packId).toBe("Cypher");
+    expect(empty.programSourceId).toBe(PROGRAM_CYPHER_FOCUS);
+    expect(empty.surfaceKind).toBe("production");
+    expect(empty.composition).toBe("CIRCLE_FOCUS");
+    expect(empty.activeMic).toBeNull();
+    expect(empty.nextUp).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(empty.winnerId).toBeNull();
+    expect(isCypherVsFree(empty)).toBe(true);
+    expect(isCypherProgramProductionSurface()).toBe(true);
+    expect(empty.sources.find((s) => s.sourceId === PROGRAM_CYPHER_FOCUS)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // Cypher pack must reject Battle VS compositions
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("Cypher", "SPLIT")).toThrow();
+    expect(mapCypherPhaseToComposition("SPLIT_CLASH")).toBe("CIRCLE_FOCUS");
+    expect(mapCypherPhaseToComposition("WINNER_DECLARED")).toBe("CIRCLE_FOCUS");
+
+    const live = composeCypherProgram({
+      sessionId: "sess-cypher-live",
+      cypherId: "cyp-2",
+      roomId: "room-cypher-2",
+      circle: [
+        { id: "m-1", displayName: "MC One" },
+        { id: "m-2", displayName: "MC Two" },
+        { id: "m-3", displayName: "MC Three" },
+      ],
+      activeMicId: "m-1",
+      lifecyclePhase: "VERSE_ACTIVE",
+    });
+    expect(live.composition).toBe("HOST_CLOSE");
+    expect(live.activeMic?.id).toBe("m-1");
+    expect(live.nextUp?.id).toBe("m-2");
+    expect(live.winnerId).toBeNull();
+    expect(isCypherVsFree(live)).toBe(true);
+
+    // Stranger mic id dropped when circle is authoritative
+    const bogusMic = composeCypherProgram({
+      sessionId: "sess-cypher-live",
+      cypherId: "cyp-2",
+      roomId: "room-cypher-2",
+      circle: [
+        { id: "m-1", displayName: "MC One" },
+        { id: "m-2", displayName: "MC Two" },
+      ],
+      activeMicId: "not-in-circle",
+      lifecyclePhase: "VERSE_ACTIVE",
+    });
+    expect(bogusMic.activeMic).toBeNull();
+
+    // Battle + Challenge untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(ChallengePack.prefersChallengeContract).toBe(true);
+    expect(getPresentationPack("Cypher").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("Cypher").routeCapability.experienceCert).toBe("OPEN");
+
+    clearCypherProgram("test-done");
+    expect(getActiveCypherProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

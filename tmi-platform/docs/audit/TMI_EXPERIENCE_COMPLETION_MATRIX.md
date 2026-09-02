@@ -135,23 +135,23 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | `/cypher`, Cypher Live Wall |
+| route(s) | `/cypher`, `/rooms/cypher`, `/rooms/cypher/[roomId]`, Cypher Live Wall |
 | presence model | Circle of live performers; collaborative mic handoff |
 | center of gravity | **Active mic / circle** — shared energy, not elimination |
 | signature DNA | `Cypher` — CypherCircle, MicHandoff; **FORBIDS** VS/winner/champion/elimination layouts |
 | PROGRAM source id | `PROGRAM.CYPHER_FOCUS` |
 | ISO/viewpoints | ACTIVE_MIC, CIRCLE_WIDE, NEXT_UP, AUDIENCE, HOST |
-| Jumbotron support | PARTIAL (collaborative lookup evidence) |
+| Jumbotron support | PARTIAL — reads `getActiveCypherProgram()` (on-mic + next-up; never Battle scores) |
 | adInventory | PARTIAL — mic-handoff show beats + house/artist faces; **no** winner-spotlight packages |
-| Universal Player support | PARTIAL |
+| Universal Player support | PARTIAL — PROGRAM bound; no second LiveSession |
 | queue/game requirements | Mic queue / pass-the-mic — **no** elimination bracket |
 | world interactions | Collaborative reactions only |
 | commerce | Tips shared pool optional |
 | logic cert | PARTIAL |
-| architecture cert | PARTIAL (semantic guards encode NO VS/winner) |
-| experience cert | OPEN — **ignore** competitive ending of Cypher Base.mp4 |
+| architecture cert | **DONE** — `composeCypherProgram` + CypherPresentationShell + `/rooms/cypher/[roomId]` |
+| experience cert | **OPEN** — production physical cert pending; Phase 1 is NOT full cinematic; **ignore** competitive ending of Cypher Base.mp4 |
 | desktop/mobile | GRID / FOCUS |
-| notes | Hard law: collaborative forever. |
+| notes | Hard law: collaborative forever. Slice: `docs/audit/CYPHER_WORLD_PRESENTATION_SLICE.md` |
 
 ### Gauntlet
 
@@ -522,7 +522,7 @@
 | Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
 | Battle | PARTIAL | **DONE** | OPEN |
 | Challenge | PARTIAL | **DONE** | OPEN |
-| Cypher | PARTIAL | PARTIAL | OPEN |
+| Cypher | PARTIAL | **DONE** | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
 | Monday Night Stage | PARTIAL | OPEN | OPEN |
 | Concert | OPEN | OPEN | OPEN |
@@ -557,7 +557,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE — **architecture DONE**; experienceCert OPEN until production physical |
 | **2** | **Battle world** presentation (not new lifecycle) | VS pack + `composeBattleProgram` + BattlePresentationShell — **architecture DONE**; experienceCert OPEN until production physical; no fake crowd/score; Cypher uncontaminated |
 | **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE** Phase 1 (`composeChallengeProgram` + shell); experienceCert OPEN |
-| **4** | **Cypher** | Circle + mic handoff; reject winner layouts |
+| **4** | **Cypher** | Circle + mic handoff; reject winner layouts — **architecture DONE** Phase 1 (`composeCypherProgram` + shell); experienceCert OPEN |
 | **5** | **Concert / World Concert** | Stage + audience avatar LOD; Mini vs World badges |
 | **6** | **World Release** | Premiere drop choreography on real schedule |
 | **7** | **World Dance Party** | Floor avatars + DJ composite |

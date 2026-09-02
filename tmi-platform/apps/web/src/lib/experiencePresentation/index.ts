@@ -120,4 +120,22 @@ export {
   mapChallengePhaseToComposition,
 } from "./composeChallengeProgram";
 
-export { PerformerLivePack, BattlePack, ChallengePack } from "./packs";
+export type {
+  CypherProgramComposition,
+  CypherCircleParticipant,
+  CypherLifecyclePhase,
+} from "./composeCypherProgram";
+export {
+  PROGRAM_CYPHER_FOCUS,
+  ISO_ACTIVE_MIC,
+  ISO_NEXT_UP,
+  ISO_CIRCLE_WIDE,
+  composeCypherProgram,
+  getActiveCypherProgram,
+  clearCypherProgram,
+  isCypherProgramProductionSurface,
+  isCypherVsFree,
+  mapCypherPhaseToComposition,
+} from "./composeCypherProgram";
+
+export { PerformerLivePack, BattlePack, ChallengePack, CypherPack } from "./packs";
