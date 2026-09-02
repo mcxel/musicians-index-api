@@ -49,14 +49,52 @@ function run(): { admit: boolean; slices: SliceResult[] } {
   return { admit, slices };
 }
 
-const report = run();
-for (const s of report.slices) {
-  console.log(`${s.pass ? "PASS" : "FAIL"} ${s.id} — ${s.evidence}`);
-}
-console.log(report.admit ? "ADMIT Security Stability Certification Slices A+B" : "DENY — do not admit");
+describe("Security Stability Certification — Slices A+B", () => {
+  it("Slice A: workspace identity from session membership only (never ?workspace=)", () => {
+    expect(securityStabilitySliceA_noQueryWorkspaceAuth()).toBe(true);
+  });
 
-if (!report.admit) {
-  process.exitCode = 1;
+  it("Slice A (403): unauthorized outsider session produces 403 status", () => {
+    const denied = resolveWorkspaceFromSession({ email: "outsider@example.com" });
+    expect(denied.ok).toBe(false);
+    // Real control-flow narrowing (not just the runtime assertion above) —
+    // TS can't infer from expect().toBe() that the union narrowed, so prove
+    // it structurally: if resolution unexpectedly succeeded, fail loudly
+    // here rather than accessing `.status` on the wrong branch.
+    if (denied.ok) {
+      throw new Error("Expected unauthorized workspace resolution to fail, but it succeeded");
+    }
+    expect(denied.status).toBe(403);
+  });
+
+  it("Slice B: partner switcher off by default and governance override audited", () => {
+    expect(securityStabilitySliceB_partnerSwitcherOffByDefault()).toBe(true);
+  });
+
+  it("Slice B (Default): AdminConcierge includeWorkspaces defaults to false", () => {
+    expect(partnerWorkspaceSwitcherAllowed()).toBe(false);
+  });
+
+  it("Full Certification: all slices pass and system admits", () => {
+    const report = run();
+    for (const s of report.slices) {
+      expect(s.pass).toBe(true);
+    }
+    expect(report.admit).toBe(true);
+  });
+});
+
+if (typeof describe === "undefined") {
+  const report = run();
+  for (const s of report.slices) {
+    console.log(`${s.pass ? "PASS" : "FAIL"} ${s.id} — ${s.evidence}`);
+  }
+  console.log(report.admit ? "ADMIT Security Stability Certification Slices A+B" : "DENY — do not admit");
+  if (!report.admit) {
+    process.exitCode = 1;
+  }
 }
 
 export { run };
+
+

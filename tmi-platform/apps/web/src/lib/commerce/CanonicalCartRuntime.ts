@@ -11,8 +11,10 @@
 import {
   lookupStripeCatalogPrice,
   parseMediaPlayerChassisSku,
+  parseStoreItemSku,
   parseVenueSkinSku,
 } from "./CommerceCatalogContract";
+import { findStoreItemById, findStoreItemByPriceId } from "@/lib/store/StoreItemEngine";
 import { VENUE_SKINS } from "../venue/venueSkinEngine";
 import { getSkinPriceCents } from "../venue/VenueSkinCommerce";
 import {
@@ -70,6 +72,19 @@ class CanonicalCartRuntimeImpl {
    * ("browser prices are NEVER trusted"). Unknown SKUs are rejected.
    */
   validatePrice(skuId: string, clientPriceCents?: number): { valid: boolean; canonicalPriceCents: number; title: string } {
+    const storeItemId = parseStoreItemSku(skuId);
+    if (storeItemId) {
+      const item = findStoreItemById(storeItemId);
+      if (item) {
+        return { valid: true, canonicalPriceCents: item.price, title: item.name };
+      }
+    }
+
+    const storeItemByPrice = findStoreItemByPriceId(skuId);
+    if (storeItemByPrice) {
+      return { valid: true, canonicalPriceCents: storeItemByPrice.price, title: storeItemByPrice.name };
+    }
+
     const stripeHit = lookupStripeCatalogPrice(skuId);
     if (stripeHit) {
       return { valid: true, canonicalPriceCents: stripeHit.priceCents, title: stripeHit.title };

@@ -4,7 +4,6 @@ import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { updateUserTier } from '@/lib/auth/UserStore';
 import { tierForPriceId } from '@/lib/stripe/tierMapping';
-import { syncInventory } from '@/lib/commerce/commerceEngine';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { waitUntil } from '@vercel/functions';
 import { getStripe } from '@/lib/stripe/client';
@@ -718,36 +717,43 @@ export async function POST(req: NextRequest) {
       }
 
       // ─── 5. STORE/MERCH FULFILLMENT ─────────────────────────────────────
-      // Inventory sync only when items metadata is present. Physical/digital
-      // ownership beyond inventory decrement is not claimed here.
       if (metadata.type === 'store') {
+        const paymentRef = (session.payment_intent as string) || session.id;
+        const purchasedItems = JSON.parse(metadata.items || '[]') as { itemId: string; qty: number }[];
         let inventorySynced = false;
-        try {
-          const purchasedItems = JSON.parse(metadata.items || '[]') as { itemId: string; qty: number }[];
-          if (purchasedItems.length > 0) {
-            for (const item of purchasedItems) {
-              syncInventory(item.itemId, item.qty);
-            }
-            inventorySynced = true;
-          }
-        } catch {
-          inventorySynced = false;
+        let fulfillmentOk = false;
+
+        if (purchasedItems.length > 0 && metadata.buyerId) {
+          const { fulfillStorePurchase } = await import('@/lib/commerce/EntitlementFulfillmentEngine');
+          const fulfillment = await fulfillStorePurchase({
+            buyerId: metadata.buyerId,
+            items: purchasedItems,
+            stripePaymentId: paymentRef,
+          }).catch(() => ({ inventorySynced: false, fulfillmentOk: false, lines: [] }));
+          inventorySynced = fulfillment.inventorySynced;
+          fulfillmentOk = fulfillment.fulfillmentOk;
         }
+
+        const orderStatus =
+          inventorySynced && fulfillmentOk && metadata.buyerId
+            ? 'PAID'
+            : 'PAID_PENDING_FULFILLMENT';
 
         await prisma.order.create({
           data: {
             provider: 'STRIPE',
-            providerPaymentId: (session.payment_intent as string) || session.id,
+            providerPaymentId: paymentRef,
             amountCents: session.amount_total || 0,
             currency: session.currency || 'usd',
-            status: inventorySynced ? 'PAID' : 'PAID_PENDING_FULFILLMENT',
+            status: orderStatus,
             buyerUserId: metadata.buyerId || null,
           },
         }).catch(() => {});
 
-        if (!inventorySynced) {
+        if (!inventorySynced || !fulfillmentOk) {
           console.warn(
-            `[Stripe Webhook] Store checkout ${session.id} paid but item ownership/fulfillment metadata missing — not claiming delivery.`,
+            `[Stripe Webhook] Store checkout ${session.id} paid but fulfillment incomplete — ` +
+              `inventorySynced=${inventorySynced} fulfillmentOk=${fulfillmentOk} buyerId=${metadata.buyerId || 'missing'}`,
           );
         }
       }

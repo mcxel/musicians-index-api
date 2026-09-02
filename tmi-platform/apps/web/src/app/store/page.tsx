@@ -1,9 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { CREATOR_ITEMS, FAN_ITEMS, VENUE_ITEMS, LOBBY_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
+import { CanonicalCartRuntime } from '@/lib/commerce/CanonicalCartRuntime';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const SECTIONS = [
   { label: 'Creator Tools',    items: CREATOR_ITEMS.slice(0, 4),  accent: '#FF2DAA', icon: '🎤', href: '/store/creator' },
@@ -17,6 +20,21 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 export default function StorePage() {
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const [purchaseNotice, setPurchaseNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const status = searchParams?.get('status');
+    if (status === 'purchased') {
+      setPurchaseNotice('Payment confirmed — your purchase is being fulfilled.');
+      const cartId = user?.id ? `cart-${user.id}` : 'cart-guest';
+      CanonicalCartRuntime.clearCart(cartId);
+    } else if (status === 'cancelled') {
+      setPurchaseNotice('Checkout cancelled — your cart is unchanged.');
+    }
+  }, [searchParams, user?.id]);
+
   return (
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 55%), #050510', color: '#fff', paddingBottom: 80 }}>
       {/* Hero */}
@@ -30,12 +48,17 @@ export default function StorePage() {
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.55)', maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.7 }}>
             Beats, boosts, venues, skins, tickets, tips, fan clubs. Everything to grow, perform, and earn.
           </p>
+          {purchaseNotice && (
+            <p style={{ fontSize: 12, color: '#00FF88', marginBottom: 16, fontWeight: 700 }}>{purchaseNotice}</p>
+          )}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/store/flex" style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #00E5FF, #FF2DAA)', borderRadius: 10, color: '#000', fontWeight: 900, fontSize: 13, textDecoration: 'none', letterSpacing: '0.06em', boxShadow: '0 0 20px rgba(0,229,255,0.6)' }}>
               🏛️ ENTER 3D FLEX STORE SHOWROOM
             </Link>
             {[
               { label: '⭐ Buy Points', href: '/store/points', accent: '#FFD700' },
+              { label: '🛒 Cart', href: '/cart', accent: '#00FF88' },
+              { label: '📦 Purchases', href: '/account/finance?tab=purchases', accent: '#00FFFF' },
               { label: '🎤 Creator Store', href: '/store/creator', accent: '#FF2DAA' },
               { label: '🎧 Fan Store', href: '/store/fan', accent: '#00FFFF' },
               { label: '🏟️ Venues', href: '/store/venues', accent: '#AA2DFF' },

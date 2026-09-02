@@ -65,6 +65,16 @@ export function parseMediaPlayerChassisSku(sku: string): string | null {
   return sku.slice("MEDIA_PLAYER_CHASSIS:".length);
 }
 
+/** StoreItemEngine catalog SKU — cart + OwnershipRuntime identity. */
+export function storeItemSku(itemId: string): string {
+  return `STORE_ITEM:${itemId}`;
+}
+
+export function parseStoreItemSku(sku: string): string | null {
+  if (!sku.startsWith("STORE_ITEM:")) return null;
+  return sku.slice("STORE_ITEM:".length);
+}
+
 type StripeCatalogEntry = (typeof STRIPE_PRODUCTS)[keyof typeof STRIPE_PRODUCTS];
 
 function asStripeEntry(value: unknown): StripeCatalogEntry | null {

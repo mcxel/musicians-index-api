@@ -18,6 +18,7 @@ import {
   resolveTipArtistUserId,
 } from '@/lib/tips/tipFulfillment';
 import { getFanCosmetic } from '@/lib/avatars/FanCosmeticCatalog';
+import { findStoreItemByPriceId } from '@/lib/store/StoreItemEngine';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -238,6 +239,10 @@ export async function GET(req: NextRequest) {
 
   // Read user email from non-httpOnly cookie set at login/register
   const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+  const buyer = userEmail
+    ? await prisma.user.findFirst({ where: { email: userEmail.toLowerCase() }, select: { id: true } })
+    : null;
+  const storeCatalogItem = findStoreItemByPriceId(resolvedPriceId);
 
   // Build success URL — include sponsor params so payment-success can auto-attach
   let successUrl = `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`;
@@ -266,6 +271,15 @@ export async function GET(req: NextRequest) {
           : { product_data: { name: productName } }),
       },
     };
+  } else if (storeCatalogItem) {
+    lineItem = {
+      quantity: 1 as const,
+      price_data: {
+        currency: 'usd' as const,
+        unit_amount: storeCatalogItem.price,
+        product_data: { name: storeCatalogItem.name },
+      },
+    };
   } else {
     // No real price ID and no amount — avoid passing placeholder to Stripe
     console.warn('[stripe/checkout:GET] Unresolved placeholder priceId, no amount provided:', resolvedPriceId);
@@ -286,6 +300,14 @@ export async function GET(req: NextRequest) {
         plan: planKey,
         tierUpgrade,
         userEmail,
+        ...(storeCatalogItem
+          ? {
+              type: 'store',
+              items: JSON.stringify([{ itemId: storeCatalogItem.id, qty: 1 }]),
+              buyerId: buyer?.id ?? '',
+              fanEmail: userEmail,
+            }
+          : {}),
         ...(passType || purchaseType === 'season_pass'
           ? { type: 'season_pass', passType: passType || 'starter', ...(amount ? { amountCents: String(amount) } : {}) }
           : {}),

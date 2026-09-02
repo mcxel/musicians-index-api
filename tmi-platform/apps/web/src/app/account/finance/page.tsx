@@ -21,6 +21,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CanonicalCartRuntime, type CartState } from "@/lib/commerce/CanonicalCartRuntime";
 import { useAuth } from "@/lib/hooks/useAuth";
 
@@ -50,6 +51,7 @@ interface AccountPurchasesResponse {
   ownedVenueSkins?: { skinId: string; sku: string; priceCents: number; rarity: string; unlockedVia: string | null }[];
   ownedChassis?: { chassisId: string; unlockedVia: string; purchasedAt: string }[];
   seasonPasses?: { name: string; tier: string; endDate: string; purchasedAt: string }[];
+  ownedStoreItems?: { itemId: string; title: string; category: string; purchasedAt: string; pricePaidCents: number }[];
   recentOrders?: AccountOrder[];
 }
 
@@ -59,7 +61,13 @@ const GOLD = "#FFD700";
 const GREEN = "#00FF88";
 
 export default function AccountFinanceHubPage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "cart" | "billing" | "purchases" | "wallet">("overview");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams?.get("tab");
+  const initialTab =
+    tabParam === "cart" || tabParam === "billing" || tabParam === "purchases" || tabParam === "wallet"
+      ? tabParam
+      : "overview";
+  const [activeTab, setActiveTab] = useState<"overview" | "cart" | "billing" | "purchases" | "wallet">(initialTab);
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id ?? null;
   const cartId = userId ? `cart-${userId}` : "cart-guest";
@@ -69,9 +77,13 @@ export default function AccountFinanceHubPage() {
   const [provenanceFilter, setProvenanceFilter] = useState<string>("ALL");
 
   // Cart is a real, price-validated session cart (CanonicalCartRuntime) with
-  // no fake seed data — it starts genuinely empty because no add-to-cart
-  // button anywhere in the app currently feeds it (Rule 20: honest empty
-  // state, not fabricated inventory).
+  // no fake seed data — it starts genuinely empty until add-to-cart feeds it.
+  useEffect(() => {
+    if (tabParam === "cart" || tabParam === "billing" || tabParam === "purchases" || tabParam === "wallet") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   useEffect(() => {
     setCartState(CanonicalCartRuntime.getOrCreateCart(cartId, userId ?? undefined));
   }, [cartId, userId]);
@@ -117,6 +129,13 @@ export default function AccountFinanceHubPage() {
       category: "chassis",
       provenance: c.unlockedVia === "purchase" ? "PURCHASED" : c.unlockedVia.toUpperCase(),
       obtainedAt: c.purchasedAt,
+    })),
+    ...(purchases?.ownedStoreItems ?? []).map((s) => ({
+      id: `store-${s.itemId}`,
+      title: s.title,
+      category: s.category,
+      provenance: "PURCHASED",
+      obtainedAt: s.purchasedAt,
     })),
     ...(purchases?.seasonPasses ?? []).map((sp) => ({
       id: `pass-${sp.name}`,

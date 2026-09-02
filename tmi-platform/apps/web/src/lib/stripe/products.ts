@@ -147,8 +147,13 @@ export const STRIPE_PRODUCTS = {
   },
 
   // ── Tips ─────────────────────────────────────────────────────────────────
+  // TIP_MEDIUM previously hardcoded "price_1TUWKrEL7B8tMf4NVceVcW4i" as if it
+  // were a verified real Stripe object — direct Stripe API lookup (Lane D,
+  // 2026-09-01) proved it 404s in both test and live mode ("No such price").
+  // Reverted to the same placeholder + price_data fallback pattern its three
+  // sibling tip amounts already use safely — not a new invented ID.
   TIP_SMALL:  { productId: "prod_tip", priceId: "price_tip_small",  name: "Tip $1",   price: 100  },
-  TIP_MEDIUM: { productId: "prod_tip", priceId: "price_1TUWKrEL7B8tMf4NVceVcW4i", name: "Tip $5",   price: 500  },
+  TIP_MEDIUM: { productId: "prod_tip", priceId: process.env.STRIPE_PRICE_TIP_MEDIUM ?? "price_tip_medium", name: "Tip $5",   price: 500  },
   TIP_LARGE:  { productId: "prod_tip", priceId: "price_tip_large",  name: "Tip $10",  price: 1000 },
   TIP_XL:     { productId: "prod_tip", priceId: "price_tip_xl",     name: "Tip $25",  price: 2500 },
   TIP_XXL:    { productId: "prod_tip", priceId: "price_tip_xxl",    name: "Tip $50",  price: 5000 },
@@ -553,6 +558,113 @@ export const STRIPE_PRODUCTS = {
     name: "VIP Season Pass — Season 1",
     price: 4999, // $49.99 — always last in ASC display
     interval: "one_time" as const,
+  },
+
+  // ── Performer Venue Store (StoreItemEngine.VENUE_ITEMS, `/store/venues`) ──
+  // NOTE (Lane D, 2026-09-01): a second, more sophisticated venue-skin system
+  // already exists at VenueSkinCommerce.ts / VENUE_SKINS (10 real skins,
+  // $4.99–$11.99 rarity pricing, DB ownership, season-pass entitlement,
+  // sold at /store/venue-skins). These 5 entries are NOT that system — they
+  // are the pre-existing, differently-priced /store/venues catalog. Flagged
+  // for a Marcel business decision on whether the two should converge; not
+  // silently merged here. This pass only makes /store/venues non-fake.
+  VENUE_UNDERGROUND_CLUB: {
+    productId: "prod_venue_underground_club",
+    priceId: process.env.STRIPE_PRICE_VENUE_UNDERGROUND_CLUB ?? "price_venue_underground_club",
+    name: "Venue — Underground Club",
+    price: 1999,
+    interval: "one_time" as const,
+  },
+  VENUE_DIGITAL_THEATER: {
+    productId: "prod_venue_digital_theater",
+    priceId: process.env.STRIPE_PRICE_VENUE_DIGITAL_THEATER ?? "price_venue_digital_theater",
+    name: "Venue — Digital Theater",
+    price: 3999,
+    interval: "one_time" as const,
+  },
+  VENUE_TMI_ARENA: {
+    productId: "prod_venue_tmi_arena",
+    priceId: process.env.STRIPE_PRICE_VENUE_TMI_ARENA ?? "price_venue_tmi_arena",
+    name: "Venue — TMI Arena",
+    price: 9999,
+    interval: "one_time" as const,
+  },
+  VENUE_OUTDOOR_STAGE: {
+    productId: "prod_venue_outdoor_stage",
+    priceId: process.env.STRIPE_PRICE_VENUE_OUTDOOR_STAGE ?? "price_venue_outdoor_stage",
+    name: "Venue — Outdoor Stage",
+    price: 2999,
+    interval: "one_time" as const,
+  },
+  VENUE_CIPHER_PIT: {
+    productId: "prod_venue_cipher_pit",
+    priceId: process.env.STRIPE_PRICE_VENUE_CIPHER_PIT ?? "price_venue_cipher_pit",
+    name: "Venue — Cipher Pit",
+    price: 1499,
+    interval: "one_time" as const,
+  },
+
+  // ── Fan Lobby Skins (StoreItemEngine.LOBBY_ITEMS, `/store/lobbies`) ───────
+  // Prices must stay equal to FanLobbySkinRegistry.ts's FAN_LOBBY_SKIN_CANON
+  // priceCents — that file is the visual/product vocabulary, this is the
+  // commerce layer (see its own header comment: "do not invent a second store").
+  FAN_LOBBY_SKIN_NEON: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_NEON ?? "price_fan_lobby_skin_neon",
+    name: "Lobby Skin — Neon Lounge",
+    price: 499,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CINEMA: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CINEMA ?? "price_fan_lobby_skin_cinema",
+    name: "Lobby Skin — Movie Theater",
+    price: 799,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_FUTURISTIC: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_FUTURISTIC ?? "price_fan_lobby_skin_futuristic",
+    name: "Lobby Skin — Futuristic Space",
+    price: 999,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CYPHER: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CYPHER ?? "price_fan_lobby_skin_cypher",
+    name: "Lobby Skin — Underground Cipher",
+    price: 499,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CHILL: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CHILL ?? "price_fan_lobby_skin_chill",
+    name: "Lobby Skin — Chill Lounge",
+    price: 299,
+    interval: "one_time" as const,
+  },
+
+  // ── Fan Club tiers (per-performer recurring support — REVENUE_SPLITS.FAN_CLUB) ──
+  FAN_CLUB_RUBY_MONTHLY: {
+    productId: "prod_fan_club_ruby",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_RUBY ?? "price_fan_club_ruby_monthly",
+    name: "Fan Club — Ruby",
+    price: 299,
+    interval: "month" as const,
+  },
+  FAN_CLUB_SILVER_MONTHLY: {
+    productId: "prod_fan_club_silver",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_SILVER ?? "price_fan_club_silver_monthly",
+    name: "Fan Club — Silver",
+    price: 499,
+    interval: "month" as const,
+  },
+  FAN_CLUB_GOLD_MONTHLY: {
+    productId: "prod_fan_club_gold",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_GOLD ?? "price_fan_club_gold_monthly",
+    name: "Fan Club — Gold",
+    price: 999,
+    interval: "month" as const,
   },
 } as const;
 
