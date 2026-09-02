@@ -244,6 +244,9 @@ model User {
   // StoreItemEngine catalog ownership (lobby/venue skins from /store/*)
   storeItemOwnerships    StoreItemOwnership[]
 
+  // Persistent Universal Cart (Lane D Phase 2, 2026-09-02)
+  cart Cart?
+
   // Media Player chassis ownership + equipped preference (Stage 2)
   mediaPlayerChassisOwnerships MediaPlayerChassisOwnership[]
   mediaPlayerPreference        MediaPlayerPreference?
@@ -3604,6 +3607,40 @@ model StoreItemOwnership {
   @@unique([userId, itemId])
   @@index([userId])
   @@map("store_item_ownerships")
+}
+
+/// Persistent Universal Cart (Lane D Phase 2, 2026-09-02). One cart per
+/// authenticated user, server-authoritative — replaces CanonicalCartRuntime's
+/// prior in-memory Map so cart contents survive reload, redeploy, and a new
+/// device/session. CartItem.unitPriceCents is a display-only snapshot taken
+/// when the item was added; checkout always re-resolves the current
+/// canonical price via StoreItemEngine.findStoreItemById — never trusts this
+/// snapshot for charging (Rule: browser/stored prices are never authoritative).
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id             String   @id @default(cuid())
+  cartId         String
+  cart           Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  itemId         String   // StoreItemEngine item id, e.g. "lobby-neon"
+  quantity       Int      @default(1)
+  unitPriceCents Int      // display snapshot only — see model doc comment
+  addedAt        DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([cartId, itemId])
+  @@index([cartId])
+  @@map("cart_items")
 }
 
 /// Durable Media Player chassis ownership (separate from Playlist Artifact ownership).

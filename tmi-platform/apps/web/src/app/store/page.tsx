@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CREATOR_ITEMS, FAN_ITEMS, LOBBY_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
-import { CanonicalCartRuntime } from '@/lib/commerce/CanonicalCartRuntime';
-import { useAuth } from '@/lib/hooks/useAuth';
 
 // "Performer Venues" section removed (Dead Venue Product Revenue Guard,
 // Lane D Phase 2, 2026-09-02): it rendered StoreItemEngine.VENUE_ITEMS,
@@ -24,19 +22,19 @@ const BADGE_COLORS: Record<string, string> = {
 
 export default function StorePage() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
   const [purchaseNotice, setPurchaseNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const status = searchParams?.get('status');
     if (status === 'purchased') {
+      // Cart-clearing for purchased items now happens server-side, in the
+      // Stripe webhook itself (CartService.removePurchasedItems) — real and
+      // reliable, unlike a client-side guess made on redirect-back.
       setPurchaseNotice('Payment confirmed — your purchase is being fulfilled.');
-      const cartId = user?.id ? `cart-${user.id}` : 'cart-guest';
-      CanonicalCartRuntime.clearCart(cartId);
     } else if (status === 'cancelled') {
       setPurchaseNotice('Checkout cancelled — your cart is unchanged.');
     }
-  }, [searchParams, user?.id]);
+  }, [searchParams]);
 
   return (
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 55%), #050510', color: '#fff', paddingBottom: 80 }}>

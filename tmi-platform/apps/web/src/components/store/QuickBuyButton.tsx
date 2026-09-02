@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import type { StoreItem } from '@/lib/store/StoreItemEngine';
 import { formatPrice, getCheckoutUrl } from '@/lib/store/StoreItemEngine';
-import { storeItemSku } from '@/lib/commerce/CommerceCatalogContract';
-import { CanonicalCartRuntime } from '@/lib/commerce/CanonicalCartRuntime';
 import { useAuth } from '@/lib/hooks/useAuth';
 import PointsDiscountField from '@/components/store/PointsDiscountField';
 
@@ -28,24 +26,33 @@ export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
   const accent = accentColor;
   const isOneTime = item.mode === 'payment';
-  const cartCategory = item.category === 'lobby' || item.category === 'venue' ? 'skin' as const
-    : item.category === 'subscription' ? 'subscription' as const
-    : 'cosmetic' as const;
 
-  function handleAddToCart() {
-    const cartId = user?.id ? `cart-${user.id}` : 'cart-guest';
-    CanonicalCartRuntime.addItem(cartId, {
-      id: item.id,
-      skuId: storeItemSku(item.id),
-      title: item.name,
-      category: cartCategory,
-      clientPriceCents: item.price,
-      quantity: 1,
-    }, user?.id);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+  async function handleAddToCart() {
+    setCartError(null);
+    if (!user?.id) {
+      setCartError('Sign in to use the cart');
+      return;
+    }
+    try {
+      const res = await fetch('/api/cart/items', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, quantity: 1 }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setCartError(data.error ?? 'Could not add to cart');
+        return;
+      }
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch {
+      setCartError('Could not add to cart');
+    }
   }
 
   async function checkoutWithPoints() {
@@ -226,7 +233,7 @@ export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact 
                 {isOneTime && (
                   <button
                     type="button"
-                    onClick={handleAddToCart}
+                    onClick={() => void handleAddToCart()}
                     style={{
                       padding: '13px 14px',
                       background: addedToCart ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.06)',
@@ -250,6 +257,9 @@ export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact 
                   Cancel
                 </button>
               </div>
+              {cartError && (
+                <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: '#FF2DAA', fontWeight: 700 }}>{cartError}</div>
+              )}
               {addedToCart && (
                 <Link href="/cart" style={{ display: 'block', textAlign: 'center', marginTop: 12, fontSize: 11, color: accent, fontWeight: 700, textDecoration: 'none' }}>
                   View cart →

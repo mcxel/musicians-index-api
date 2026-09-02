@@ -6,7 +6,7 @@
  * User-facing Name: Account Settings → Billing & Money
  * Technical Engine: /api/account/purchases (real Prisma-backed ownership —
  * venue skins, media chassis, season passes, subscription tier, orders) +
- * CanonicalCartRuntime (real, price-validated, honestly-empty session cart).
+ * /api/cart (persistent, server-authoritative, price-revalidated-at-checkout cart).
  * Identity comes from the canonical useAuth() session — never a hardcoded
  * userId. This is the account checkpoint every real Stripe-webhook-fulfilled
  * purchase must show up in.
@@ -19,11 +19,29 @@
  *   5. WALLET & PAYOUTS: TMI Points ledger, earnings balance, & Stripe Connect setup
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CanonicalCartRuntime, type CartState } from "@/lib/commerce/CanonicalCartRuntime";
 import { useAuth } from "@/lib/hooks/useAuth";
+
+interface CartItemView {
+  itemId: string;
+  name: string;
+  icon: string;
+  category: string;
+  quantity: number;
+  unitPriceCents: number;
+  priceChanged: boolean;
+}
+
+interface CartView {
+  authenticated: boolean;
+  items: CartItemView[];
+  subtotalCents: number;
+  itemCount: number;
+}
+
+const EMPTY_CART: CartView = { authenticated: false, items: [], subtotalCents: 0, itemCount: 0 };
 
 interface AccountEntitlement {
   id: string;
@@ -70,23 +88,40 @@ export default function AccountFinanceHubPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "cart" | "billing" | "purchases" | "wallet">(initialTab);
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id ?? null;
-  const cartId = userId ? `cart-${userId}` : "cart-guest";
-  const [cartState, setCartState] = useState<CartState | null>(null);
+  const [cart, setCart] = useState<CartView>(EMPTY_CART);
   const [purchases, setPurchases] = useState<AccountPurchasesResponse | null>(null);
   const [purchasesLoading, setPurchasesLoading] = useState(true);
   const [provenanceFilter, setProvenanceFilter] = useState<string>("ALL");
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
 
-  // Cart is a real, price-validated session cart (CanonicalCartRuntime) with
-  // no fake seed data — it starts genuinely empty until add-to-cart feeds it.
+  // Cart is real, persistent, server-authoritative (/api/cart) — no fake
+  // seed data, starts genuinely empty until add-to-cart feeds it, and is the
+  // same cart on any device the user signs in from.
   useEffect(() => {
     if (tabParam === "cart" || tabParam === "billing" || tabParam === "purchases" || tabParam === "wallet") {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
 
+  const loadCart = useCallback(async () => {
+    if (!userId) {
+      setCart(EMPTY_CART);
+      return;
+    }
+    try {
+      const res = await fetch("/api/cart", { credentials: "include", cache: "no-store" });
+      const data = (await res.json()) as CartView;
+      setCart(data);
+    } catch {
+      setCart(EMPTY_CART);
+    }
+  }, [userId]);
+
   useEffect(() => {
-    setCartState(CanonicalCartRuntime.getOrCreateCart(cartId, userId ?? undefined));
-  }, [cartId, userId]);
+    if (authLoading) return;
+    void loadCart();
+  }, [authLoading, userId, loadCart]);
 
   // Real purchases/ownership, fetched from the canonical account checkpoint —
   // the same Prisma tables the Stripe webhook actually writes to. No seeding.
@@ -146,24 +181,56 @@ export default function AccountFinanceHubPage() {
     })),
   ];
 
-  function handleQuantityChange(skuId: string, delta: number) {
-    if (!cartState) return;
-    const item = cartState.items.find((i) => i.skuId === skuId);
+  async function handleQuantityChange(itemId: string, delta: number) {
+    const item = cart.items.find((i) => i.itemId === itemId);
     if (!item) return;
-    const updated = CanonicalCartRuntime.updateQuantity(cartId, skuId, item.quantity + delta);
-    setCartState({ ...updated });
+    const res = await fetch("/api/cart/items", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId, quantity: item.quantity + delta }),
+    });
+    const data = (await res.json()) as CartView & { ok?: boolean };
+    if (data.ok) setCart(data);
   }
 
-  function handleRemoveItem(skuId: string) {
-    if (!cartState) return;
-    const updated = CanonicalCartRuntime.removeItem(cartId, skuId);
-    setCartState({ ...updated });
+  async function handleRemoveItem(itemId: string) {
+    const res = await fetch("/api/cart/items", {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId }),
+    });
+    const data = (await res.json()) as CartView & { ok?: boolean };
+    if (data.ok) setCart(data);
   }
 
   async function handleProceedToCheckout() {
-    if (!cartState || cartState.items.length === 0) return;
-    const skuId = cartState.items[0].skuId;
-    window.location.href = `/api/stripe/checkout?priceId=${encodeURIComponent(skuId)}&mode=payment`;
+    if (cart.items.length === 0) return;
+    setCartNotice(null);
+    setCheckingOut(true);
+    try {
+      const res = await fetch("/api/cart/checkout", { method: "POST", credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setCartNotice(
+          data.error === "cart_prices_changed"
+            ? "Some prices changed since you added these items — updated below. Review and try again."
+            : "Some items are no longer available and were removed. Review your cart and try again.",
+        );
+        await loadCart();
+        return;
+      }
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setCartNotice(data?.error ?? "Checkout failed — try again.");
+    } catch {
+      setCartNotice("Checkout failed — try again.");
+    } finally {
+      setCheckingOut(false);
+    }
   }
 
   const filteredEntitlements = entitlements.filter((e) => {
@@ -171,7 +238,7 @@ export default function AccountFinanceHubPage() {
     return e.provenance === provenanceFilter;
   });
 
-  const cartItemCount = cartState?.items.length ?? 0;
+  const cartItemCount = cart.itemCount;
   const isSignedIn = Boolean(userId) && purchases?.authenticated;
   const accountReady = !authLoading && !purchasesLoading;
 
@@ -219,7 +286,7 @@ export default function AccountFinanceHubPage() {
           <div style={cardStyle}>
             <div style={cardLabel}>MY CART</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: CYAN }}>{cartItemCount} ITEMS</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>${((cartState?.totalCents ?? 0) / 100).toFixed(2)} Total</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>${(cart.subtotalCents / 100).toFixed(2)} Total</div>
           </div>
 
           <div style={cardStyle}>
@@ -291,45 +358,53 @@ export default function AccountFinanceHubPage() {
         {/* CART TAB */}
         {activeTab === "cart" && (
           <div style={panelStyle}>
-            <div style={panelTitle}>CANONICAL SHOPPING CART</div>
-            {!cartState || cartState.items.length === 0 ? (
+            <div style={panelTitle}>UNIVERSAL CART</div>
+            {cartNotice && (
+              <div style={{ fontSize: 11, color: GOLD, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
+                {cartNotice}
+              </div>
+            )}
+            {cart.items.length === 0 ? (
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", padding: 20, textAlign: "center" }}>
-                Your cart is empty. Most TMI purchases (skins, media players, tips) are instant one-tap
-                buys from their store page rather than a multi-item cart.
+                Your cart is empty. Add items from the store, or use BUY NOW for an instant one-tap purchase.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {cartState.items.map((item) => (
-                  <div key={item.skuId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
+                {cart.items.map((item) => (
+                  <div key={item.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.25)" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{item.title}</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{item.icon} {item.name}</div>
                       <div style={{ fontSize: 10, color: GOLD }}>Category: {item.category.toUpperCase()}</div>
+                      {item.priceChanged && (
+                        <div style={{ fontSize: 10, color: GOLD, marginTop: 2 }}>Price updated since added</div>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button type="button" onClick={() => handleQuantityChange(item.skuId, -1)} style={qtyBtn}>-</button>
+                        <button type="button" onClick={() => void handleQuantityChange(item.itemId, -1)} style={qtyBtn}>-</button>
                         <span style={{ fontSize: 12, fontWeight: 800, minWidth: 20, textAlign: "center" }}>{item.quantity}</span>
-                        <button type="button" onClick={() => handleQuantityChange(item.skuId, 1)} style={qtyBtn}>+</button>
+                        <button type="button" onClick={() => void handleQuantityChange(item.itemId, 1)} style={qtyBtn}>+</button>
                       </div>
 
                       <div style={{ fontSize: 13, fontWeight: 900, color: GREEN, minWidth: 60, textAlign: "right" }}>
                         ${((item.unitPriceCents * item.quantity) / 100).toFixed(2)}
                       </div>
 
-                      <button type="button" onClick={() => handleRemoveItem(item.skuId)} style={{ background: "none", border: "none", color: "#FF7070", cursor: "pointer", fontSize: 12 }}>✕</button>
+                      <button type="button" onClick={() => void handleRemoveItem(item.itemId)} style={{ background: "none", border: "none", color: "#FF7070", cursor: "pointer", fontSize: 12 }}>✕</button>
                     </div>
                   </div>
                 ))}
 
                 <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Subtotal: ${(cartState.subtotalCents / 100).toFixed(2)}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Subtotal: ${(cart.subtotalCents / 100).toFixed(2)}</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Tax: Calculated at checkout</div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginTop: 4 }}>Total: ${(cartState.totalCents / 100).toFixed(2)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginTop: 4 }}>Total: ${(cart.subtotalCents / 100).toFixed(2)}</div>
 
                   <button
                     type="button"
-                    onClick={handleProceedToCheckout}
+                    disabled={checkingOut}
+                    onClick={() => void handleProceedToCheckout()}
                     style={{
                       marginTop: 12,
                       padding: "12px 24px",
@@ -343,7 +418,7 @@ export default function AccountFinanceHubPage() {
                       boxShadow: `0 0 16px ${CYAN}44`,
                     }}
                   >
-                    💳 PROCEED TO STRIPE CHECKOUT
+                    {checkingOut ? "…" : "💳 PROCEED TO STRIPE CHECKOUT"}
                   </button>
                 </div>
               </div>

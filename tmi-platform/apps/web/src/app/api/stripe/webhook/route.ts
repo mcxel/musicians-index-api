@@ -732,6 +732,19 @@ export async function POST(req: NextRequest) {
           }).catch(() => ({ inventorySynced: false, fulfillmentOk: false, lines: [] }));
           inventorySynced = fulfillment.inventorySynced;
           fulfillmentOk = fulfillment.fulfillmentOk;
+
+          if (fulfillmentOk) {
+            // Move purchased lines out of the active cart (if this checkout
+            // originated from /api/cart/checkout) so they land in purchase
+            // history/receipt instead of lingering as if still unpurchased.
+            // Never runs on a failed/cancelled/still-pending fulfillment —
+            // the item must stay in the cart so the user can retry.
+            const { removePurchasedItems } = await import('@/lib/commerce/CartService');
+            await removePurchasedItems(
+              metadata.buyerId,
+              purchasedItems.map((i) => i.itemId),
+            ).catch(() => {});
+          }
         }
 
         const orderStatus =
