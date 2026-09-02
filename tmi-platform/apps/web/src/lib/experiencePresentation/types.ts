@@ -123,3 +123,14 @@ export const FORBIDDEN_DANCE_PARTY_COMPOSITIONS: readonly BroadcastCompositionLa
   "OBJECTIVE_FOCUS",
   "GAME_BOARD",
 ] as const;
+
+/**
+ * Monday Night Stage forbids Battle VS corners + Cypher circle.
+ * SPLIT remains allowed for host/featured / sponsor dual-panel — not corner VS.
+ */
+export const FORBIDDEN_MNS_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+] as const;

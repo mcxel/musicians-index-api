@@ -178,23 +178,23 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Official MNS / Monday Night Stage flagship |
+| route(s) | `/rooms/monday-stage` (canonical), `/shows/monday-night-stage` (EOS mill) |
 | presence model | Hosted show; performer + audience avatars; system host |
-| center of gravity | Broadcast show package — host + featured act |
-| signature DNA | `MondayNightStage` — producer-directed; **≠ Regular GO LIVE** |
+| center of gravity | Broadcast show package — host + featured act + Who's Next |
+| signature DNA | `MondayNightStage` — producer-directed; **≠ Regular GO LIVE**; **≠ Battle VS** |
 | PROGRAM source id | `PROGRAM.MNS_SHOW` |
-| ISO/viewpoints | HOST, FEATURED, BACKSTAGE, AUDIENCE, SPONSOR, LOWER_THIRD |
-| Jumbotron support | OPEN (flagship target) |
+| ISO/viewpoints | HOST, FEATURED, WHOS_NEXT, AUDIENCE, SPONSOR, LOWER_THIRD |
+| Jumbotron support | PARTIAL — reads `getActiveMondayNightStageProgram()` (featured / Who's Next; no fake scores) |
 | adInventory | PARTIAL — four-face takeover packages + lower-thirds; Intermission Takeover during breaks |
-| Universal Player support | OPEN |
-| queue/game requirements | Official schedule, lineup queue, host succession |
+| Universal Player support | PARTIAL (PROGRAM bound; no second player runtime) |
+| queue/game requirements | Official schedule, lineup queue (`/api/events/submissions`), host succession |
 | world interactions | Bot-operated Official event (Rule 21) — real outcomes |
 | commerce | Tickets (Venue/Promoter), sponsors |
-| logic cert | PARTIAL (host registries exist) |
-| architecture cert | OPEN |
+| logic cert | PARTIAL (`MondayNightStageEngine` + `HostShowAssignment` + `composeMondayNightStageProgram`) |
+| architecture cert | **DONE** (Phase 1 — pack + compose + shell + room/EOS consumers) |
 | experience cert | OPEN |
 | desktop/mobile | HYBRID / MULTI_MONITOR aspirational |
-| notes | Never reuse Regular GO LIVE DNA pack. |
+| notes | Never reuse Regular GO LIVE DNA pack. Do not force Battle VS onto whole show. |
 
 ### Concert (Mini Concert)
 
@@ -524,7 +524,7 @@
 | Challenge | PARTIAL | **DONE** | OPEN |
 | Cypher | PARTIAL | **DONE** | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
-| Monday Night Stage | PARTIAL | OPEN | OPEN |
+| Monday Night Stage | PARTIAL | **DONE** | OPEN |
 | Concert | PARTIAL | **DONE** | OPEN |
 | World Concert | PARTIAL | **DONE** | OPEN |
 | World Release | OPEN | OPEN | OPEN |
@@ -561,6 +561,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **5** | **Concert / World Concert** | Stage + audience; Mini vs World badges — **architecture DONE** Phase 1 (`composeConcertProgram` + shell); experienceCert OPEN |
 | **6** | **World Release** | Premiere drop choreography on real schedule |
 | **7** | **World Dance Party** | Floor avatars + DJ composite — **architecture DONE** Phase 1 (`composeDancePartyProgram` + shell); experienceCert OPEN |
+| **7b** | **Monday Night Stage** | Show package + Who's Next — **architecture DONE** Phase 1 (`composeMondayNightStageProgram` + shell); experienceCert OPEN |
 | **8** | **Lounges** (+ Playlist Lounge) | Panel-only presence; avatar model rejected |
 | **9** | **Avatar Studio → World** | Looks equip → presence bridge into Fan Lobby / WDP / concert |
 

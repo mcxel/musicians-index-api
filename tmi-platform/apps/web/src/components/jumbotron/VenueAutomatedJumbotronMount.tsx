@@ -23,6 +23,7 @@ import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeC
 import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCypherProgram";
 import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeConcertProgram";
 import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/composeDancePartyProgram";
+import { getActiveMondayNightStageProgram } from "@/lib/experiencePresentation/composeMondayNightStageProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -48,7 +49,11 @@ export function mapArenaEventToJumbotronExperience(
   if (t.includes("concert") || t.includes("mini-concert") || t.includes("world-concert")) {
     return "WORLD_CONCERT";
   }
-  if (t.includes("monday") || t.includes("auditorium")) return "AUDITORIUM";
+  // Monday Night Stage before generic auditorium — bind PROGRAM.MNS_SHOW.
+  if (t.includes("monday") || t.includes("monday-stage") || t.includes("monday_night")) {
+    return "MONDAY_NIGHT_STAGE";
+  }
+  if (t.includes("auditorium")) return "AUDITORIUM";
   if (t.includes("feud") || t.includes("game") || t.includes("tune") || t.includes("square")) {
     return "GAME_SHOW";
   }
@@ -297,6 +302,35 @@ export function VenueAutomatedJumbotronMount({
         targetClass: pack.primaryTarget,
         sourceEventId: programId,
         title: badge.includes("WORLD") ? "WORLD DANCE PARTY" : "MINI DANCE PARTY",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "MONDAY_NIGHT_STAGE") {
+      // Real MNS PROGRAM — featured + Who's Next; never invent winners / attendance / scores.
+      const prog = getActiveMondayNightStageProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const featuredName = prog?.featured?.displayName?.trim() || null;
+      const hostName = prog?.mainHost?.displayName?.trim() || "Monday Night Stage";
+      const nextName = prog?.whosNext?.displayName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.MNS_SHOW";
+      const headline = featuredName
+        ? nextName
+          ? `${featuredName} · NEXT: ${nextName}`
+          : featuredName
+        : hostName;
+      setEvent({
+        id: `evt-mns-${roomId}`,
+        traceId: `tr-mns-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "MONDAY_NIGHT_STAGE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "MONDAY NIGHT STAGE",
         headline,
         subline: `${badge} · ${programId}`,
         durationMs: 120_000,

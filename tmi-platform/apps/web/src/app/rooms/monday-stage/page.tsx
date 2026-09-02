@@ -8,12 +8,20 @@ import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import StageCurtain, { type StageState } from '@/components/stage/StageCurtain';
 import ArenaEventShell from "@/components/live/ArenaEventShell";
+import MondayNightStagePresentationShell from '@/components/live/MondayNightStagePresentationShell';
 import { MondayNightStageEngine } from '@/lib/shows/MondayNightStageEngine';
 import type { MondayNightStageState } from '@/lib/shows/MondayNightStageEngine';
 import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel';
 import FollowButton from '@/components/social/FollowButton';
 import BookmarkButton from '@/components/common/BookmarkButton';
 import { getMondayNightStageSchedule } from '@/lib/events/ScheduledEventRegistry';
+import {
+  clearMondayNightStageProgram,
+  composeMondayNightStageProgram,
+  getActiveMondayNightStageProgram,
+  type MondayNightStageLifecyclePhase,
+  type MondayNightStageProgramComposition,
+} from '@/lib/experiencePresentation/composeMondayNightStageProgram';
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -321,6 +329,50 @@ export default function MondayStagePage() {
     refreshGame();
   }, [stageEngine, refreshGame]);
 
+  // Phase 1 presentation — PROGRAM.MNS_SHOW from real queue + hosts (never invent lineup/winners).
+  const [mnsProgram, setMnsProgram] = useState<MondayNightStageProgramComposition | null>(null);
+  useEffect(() => {
+    const nextUp =
+      callState === 'calling' && calledArtist
+        ? calledArtist
+        : lineup.find((l) => l.status === 'NEXT') ??
+          lineup.find((l) => l.status === 'UPCOMING');
+
+    let lifecyclePhase: MondayNightStageLifecyclePhase = 'PRESHOW';
+    if (stageState === 'ENDED') lifecyclePhase = 'POST_SHOW';
+    else if (stageState === 'CURTAIN_CLOSED' || stageState === 'CURTAIN_OPENING' || stageState === 'CURTAIN_CLOSING') {
+      lifecyclePhase = currentArtist ? 'FEATURED_ACT' : 'HOST_OPEN';
+    } else if (stageState === 'LIVE') {
+      if (currentArtist) lifecyclePhase = 'FEATURED_ACT';
+      else if (nextUp) lifecyclePhase = 'WHOS_NEXT';
+      else lifecyclePhase = 'HOST_OPEN';
+    } else if (callState === 'calling') {
+      lifecyclePhase = 'WHOS_NEXT';
+    }
+
+    const composed = composeMondayNightStageProgram({
+      sessionId: `mns-session:${ROOM_ID}`,
+      showId: 'monday-night-stage',
+      roomId: ROOM_ID,
+      featuredId: currentArtist?.id ?? null,
+      featuredDisplayName: currentArtist?.artist ?? null,
+      whosNextId: nextUp && nextUp.id !== currentArtist?.id ? nextUp.id : null,
+      whosNextDisplayName:
+        nextUp && nextUp.id !== currentArtist?.id ? nextUp.artist : null,
+      // Presence unknown until seat engines publish — never invent attendance.
+      audiencePresenceCount: null,
+      lifecyclePhase,
+      bindJumbotron: true,
+    });
+    setMnsProgram(composed);
+
+    return () => {
+      if (getActiveMondayNightStageProgram()?.roomId === ROOM_ID) {
+        clearMondayNightStageProgram('monday-stage-room-unmount');
+      }
+    };
+  }, [currentArtist, calledArtist, lineup, callState, stageState]);
+
   // Poll stage status
   useEffect(() => {
     const poll = async () => {
@@ -414,7 +466,10 @@ export default function MondayStagePage() {
             </div>
           </div>
 
-          {/* ── MAIN GRID ── */}
+          {/* ── PRESENTATION (PROGRAM.MNS_SHOW) + MAIN GRID ── */}
+          <div style={{ padding: '16px 32px 0' }}>
+            <MondayNightStagePresentationShell composition={mnsProgram} />
+          </div>
           <ArenaEventShell
             roomId="monday-stage"
             eventType="monday-stage"

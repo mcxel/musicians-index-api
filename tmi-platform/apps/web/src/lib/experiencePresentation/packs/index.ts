@@ -282,19 +282,28 @@ export const MondayNightStagePack: ExperiencePresentationPack = {
   signatureDna: "Flagship broadcast show — NOT Regular GO LIVE",
   presenceModel: "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
   allowedCompositions: ["HOST_CLOSE", "STAGE_WIDE", "PIP", "SPLIT"],
-  forbiddenCompositions: ["CIRCLE_FOCUS"],
+  forbiddenCompositions: ["CIRCLE_FOCUS", "DUAL", "A_DOMINANT", "B_DOMINANT", "OBJECTIVE_FOCUS", "GAME_BOARD", "FLOOR_WIDE"],
   requiredPrimitives: ["LiveVideoPanel", "IdentityPanel", "LowerThird", "QueueRail"],
-  optionalPrimitives: ["TimerRing", "ReactionEmitter", "GameBoard"],
+  optionalPrimitives: ["TimerRing", "ReactionEmitter"],
   allowsVsLayout: false,
   allowsWinnerFinale: false,
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("monday_night_stage", "MondayNightStage", ["/monday-night-stage"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    requiresJumbotron: true,
-    requiresQueue: true,
-    architectureCert: "OPEN",
-  }),
+  routeCapability: baseRoute(
+    "monday_night_stage",
+    "MondayNightStage",
+    ["/rooms/monday-stage", "/shows/monday-night-stage", "/live/monday-night-stage"],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresJumbotron: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const GameShowPack: ExperiencePresentationPack = {

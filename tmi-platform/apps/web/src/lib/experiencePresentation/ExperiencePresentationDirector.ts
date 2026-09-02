@@ -13,6 +13,7 @@ import {
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_MNS_COMPOSITIONS,
   VS_COMPOSITIONS,
 } from "./types";
 import { ALL_PACKS } from "./packs";
@@ -121,6 +122,19 @@ export function assertPackAllowsComposition(
     }
     if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
       throw new Error("DanceParty pack semantic flags forbid VS/winner/elimination");
+    }
+  }
+
+  // Hard semantic: Monday Night Stage ≠ Regular GO LIVE; never Battle VS / Cypher circle
+  if (packId === "MondayNightStage") {
+    if (pack.isRegularGoLive) {
+      throw new Error("MondayNightStage pack must not alias Regular GO LIVE");
+    }
+    if ((FORBIDDEN_MNS_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("MondayNightStage pack rejects Battle VS / Cypher circle compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("MondayNightStage pack semantic flags forbid VS/winner/elimination");
     }
   }
 }

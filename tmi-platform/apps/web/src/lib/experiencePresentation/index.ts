@@ -23,6 +23,8 @@ export type {
 export {
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_CONCERT_COMPOSITIONS,
+  FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_MNS_COMPOSITIONS,
   VS_COMPOSITIONS,
   OBJECTIVE_COMPOSITIONS,
 } from "./types";
@@ -181,6 +183,28 @@ export {
   mapDancePartyPhaseToComposition,
 } from "./composeDancePartyProgram";
 
+export type {
+  MondayNightStageProgramComposition,
+  MondayNightStageHost,
+  MondayNightStagePerformer,
+  MondayNightStageScope,
+  MondayNightStageLifecyclePhase,
+} from "./composeMondayNightStageProgram";
+export {
+  PROGRAM_MNS_SHOW,
+  ISO_HOST,
+  ISO_FEATURED,
+  ISO_WHOS_NEXT,
+  ISO_AUDIENCE,
+  ISO_SPONSOR,
+  composeMondayNightStageProgram,
+  getActiveMondayNightStageProgram,
+  clearMondayNightStageProgram,
+  isMondayNightStageProgramProductionSurface,
+  isMondayNightStageVsFree,
+  mapMondayNightStagePhaseToComposition,
+} from "./composeMondayNightStageProgram";
+
 export {
   PerformerLivePack,
   BattlePack,
@@ -189,4 +213,5 @@ export {
   ConcertPack,
   WorldConcertPack,
   DancePartyPack,
+  MondayNightStagePack,
 } from "./packs";

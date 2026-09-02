@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -65,6 +65,15 @@ import {
   mapDancePartyPhaseToComposition,
   PROGRAM_WDP_COMPOSITE,
 } from "../composeDancePartyProgram";
+import {
+  clearMondayNightStageProgram,
+  composeMondayNightStageProgram,
+  getActiveMondayNightStageProgram,
+  isMondayNightStageProgramProductionSurface,
+  isMondayNightStageVsFree,
+  mapMondayNightStagePhaseToComposition,
+  PROGRAM_MNS_SHOW,
+} from "../composeMondayNightStageProgram";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 
 describe("experiencePresentation semantic guards", () => {
@@ -729,6 +738,93 @@ describe("experiencePresentation semantic guards", () => {
 
     clearDancePartyProgram("test-done");
     expect(getActiveDancePartyProgram()).toBeNull();
+  });
+
+  test("composeMondayNightStageProgram: featured+Who's Next; never VS/circle/GO LIVE; prior packs clean", () => {
+    clearMondayNightStageProgram("test-reset");
+
+    const empty = composeMondayNightStageProgram({
+      sessionId: "sess-mns-empty",
+      roomId: "monday-stage",
+      lifecyclePhase: "PRESHOW",
+      bindJumbotron: true,
+    });
+
+    expect(empty.packId).toBe("MondayNightStage");
+    expect(empty.programSourceId).toBe(PROGRAM_MNS_SHOW);
+    expect(empty.worldMiniBadge).toBe("🌍 WORLD");
+    expect(empty.scope).toBe("WORLD");
+    expect(empty.surfaceKind).toBe("production");
+    expect(empty.composition).toBe("HOST_CLOSE");
+    expect(empty.isRegularGoLive).toBe(false);
+    expect(empty.mainHost?.id).toBe("bobby-stanley");
+    expect(empty.mainHost?.isBot).toBe(true);
+    expect(empty.coHosts.map((h) => h.id)).toEqual(expect.arrayContaining(["kira", "bebo"]));
+    expect(empty.featured).toBeNull();
+    expect(empty.whosNext).toBeNull();
+    expect(empty.audiencePresenceCount).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(empty.winnerId).toBeNull();
+    expect(isMondayNightStageVsFree(empty)).toBe(true);
+    expect(isMondayNightStageProgramProductionSurface()).toBe(true);
+    expect(empty.sources.find((s) => s.sourceId === PROGRAM_MNS_SHOW)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // MNS rejects Battle VS + Cypher circle; SPLIT allowed for sponsor/host dual-panel
+    expect(MondayNightStagePack.allowsVsLayout).toBe(false);
+    expect(MondayNightStagePack.allowsWinnerFinale).toBe(false);
+    expect(MondayNightStagePack.isRegularGoLive).toBe(false);
+    expect(() => assertPackAllowsComposition("MondayNightStage", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("MondayNightStage", "A_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("MondayNightStage", "B_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("MondayNightStage", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("MondayNightStage", "STAGE_WIDE")).not.toThrow();
+    expect(() => assertPackAllowsComposition("MondayNightStage", "SPLIT")).not.toThrow();
+    expect(mapMondayNightStagePhaseToComposition("FEATURED_ACT")).toBe("STAGE_WIDE");
+    expect(mapMondayNightStagePhaseToComposition("WHOS_NEXT")).toBe("PIP");
+    expect(mapMondayNightStagePhaseToComposition("SPONSOR_BREAK")).toBe("SPLIT");
+
+    const live = composeMondayNightStageProgram({
+      sessionId: "sess-mns-live",
+      roomId: "monday-stage",
+      featuredId: "act-1",
+      featuredDisplayName: "Real Act One",
+      whosNextId: "act-2",
+      whosNextDisplayName: "Real Act Two",
+      audiencePresenceCount: 40,
+      lifecyclePhase: "FEATURED_ACT",
+    });
+    expect(live.featured?.displayName).toBe("Real Act One");
+    expect(live.whosNext?.displayName).toBe("Real Act Two");
+    expect(live.audiencePresenceCount).toBe(40);
+    expect(live.composition).toBe("STAGE_WIDE");
+    expect(isMondayNightStageVsFree(live)).toBe(true);
+
+    // Invented negative attendance rejected
+    const bogusAudience = composeMondayNightStageProgram({
+      sessionId: "sess-mns-live",
+      roomId: "monday-stage",
+      audiencePresenceCount: -3,
+    });
+    expect(bogusAudience.audiencePresenceCount).toBeNull();
+
+    // Battle + Challenge + Cypher + Concert + DanceParty untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(ChallengePack.prefersChallengeContract).toBe(true);
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(ConcertPack.allowsVsLayout).toBe(false);
+    expect(DancePartyPack.allowsVsLayout).toBe(false);
+    expect(getPresentationPack("MondayNightStage").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("MondayNightStage").routeCapability.experienceCert).toBe("OPEN");
+    expect(getPresentationPack("PerformerLive").isRegularGoLive).toBe(true);
+    expect(getPresentationPack("MondayNightStage").isRegularGoLive).toBe(false);
+
+    clearMondayNightStageProgram("test-done");
+    expect(getActiveMondayNightStageProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

@@ -99,6 +99,6 @@ Asserts: DanceParty rejects DUAL/CIRCLE_FOCUS; World Ralph coercion; Mini badge;
 | Mini Dance Party dedicated room route + one-click Gold DJ create | OPEN (Rule 21 gap) |
 | Floor presence count from seat/presence engines | OPEN (shell shows honest "unknown") |
 | experienceCert physical | OPEN |
-| **Monday Night Stage** presentation | **Next recommended slice** |
-| **World Release** presentation | Alternate if Monday Night Stage blocked |
+| **Monday Night Stage** presentation | **DONE** Phase 1 (`MONDAY_NIGHT_STAGE_PRESENTATION_SLICE.md`) |
+| **World Release** presentation | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |
