@@ -57,6 +57,11 @@ const AvatarVenueAnchor = dynamic(
   { ssr: false },
 );
 
+const VenueAutomatedJumbotronMount = dynamic(
+  () => import("@/components/jumbotron/VenueAutomatedJumbotronMount"),
+  { ssr: false },
+);
+
 // NOTE (2026-07-23): components/competition/CompetitionAudienceViewport is
 // NOT wired in here and never should be as a default render path - every
 // performer/chat/viewer-count value inside it is still hardcoded mock data
@@ -416,6 +421,19 @@ export default function ArenaEventShell({
           viewMode={viewMode}
           spatialMap={spatialMap}
         />
+        {/* World-space Automated Jumbotron — geometry from venue dims; LOOK UP reveals surface */}
+        {!suppressPresentation && (
+          <VenueAutomatedJumbotronMount
+            roomId={roomId}
+            eventType={eventType}
+            venueId={venueSlug}
+            lookUpActive={
+              viewMode === "PANORAMA_180" ||
+              viewMode === "SPHERICAL_360" ||
+              isCertification === true
+            }
+          />
+        )}
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
             format={competitionFormat}
