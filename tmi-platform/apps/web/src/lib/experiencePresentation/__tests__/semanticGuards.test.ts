@@ -29,6 +29,14 @@ import {
   isBattleProgramProductionSurface,
   PROGRAM_BATTLE_COMPOSITE,
 } from "../composeBattleProgram";
+import {
+  clearChallengeProgram,
+  composeChallengeProgram,
+  getActiveChallengeProgram,
+  isChallengeProgramProductionSurface,
+  isChallengeVsFree,
+  PROGRAM_CHALLENGE_PRIMARY,
+} from "../composeChallengeProgram";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -313,6 +321,110 @@ describe("experiencePresentation semantic guards", () => {
 
     clearBattleProgram("test-done");
     expect(getActiveBattleProgram()).toBeNull();
+  });
+
+  test("composeChallengeProgram: objective-first; never VS; no invented result; Cypher/Battle clean", () => {
+    clearChallengeProgram("test-reset");
+
+    const baseObjective = {
+      objectiveId: "obj-test-1",
+      objective: "Hit the measurable mark in 60s",
+      category: "TECHNICAL",
+      timeLimitSec: 60,
+      attemptCount: 1,
+      judgingPolicy: "MEASURABLE_RESULT" as const,
+      realStakeOrReward: "NONE",
+      qualificationRules: ["Real attempt only"],
+    };
+
+    const solo = composeChallengeProgram({
+      sessionId: "sess-challenge-solo",
+      challengeId: "chal-1",
+      roomId: "room-challenge-1",
+      objective: baseObjective,
+      challenger: { id: "c-1", displayName: "Challenger One" },
+      challenged: null,
+      lifecyclePhase: "OBJECTIVE_CONTRACT_ASSEMBLY",
+      bindJumbotron: true,
+    });
+
+    expect(solo.packId).toBe("Challenge");
+    expect(solo.programSourceId).toBe(PROGRAM_CHALLENGE_PRIMARY);
+    expect(solo.surfaceKind).toBe("production");
+    expect(solo.composition).toBe("OBJECTIVE_FOCUS");
+    expect(solo.hasBothParticipants).toBe(false);
+    expect(solo.winnerId).toBeNull();
+    expect(solo.result).toBeNull();
+    expect(isChallengeVsFree(solo)).toBe(true);
+    expect(isChallengeProgramProductionSurface()).toBe(true);
+    expect(solo.sources.find((s) => s.sourceId === PROGRAM_CHALLENGE_PRIMARY)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // Challenge pack must reject Battle VS compositions
+    expect(() => assertPackAllowsComposition("Challenge", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("Challenge", "A_DOMINANT")).toThrow();
+
+    // Both participants still do NOT force DUAL / VS
+    const both = composeChallengeProgram({
+      sessionId: "sess-challenge-both",
+      challengeId: "chal-2",
+      roomId: "room-challenge-2",
+      objective: baseObjective,
+      challenger: { id: "c-1", displayName: "A" },
+      challenged: { id: "d-1", displayName: "B" },
+      lifecyclePhase: "ATTEMPT_1_ACTIVE",
+    });
+    expect(both.hasBothParticipants).toBe(true);
+    expect(both.composition).toBe("HOST_CLOSE");
+    expect(isChallengeVsFree(both)).toBe(true);
+
+    // Unauthorized winner dropped
+    const bogus = composeChallengeProgram({
+      sessionId: "sess-challenge-both",
+      challengeId: "chal-2",
+      roomId: "room-challenge-2",
+      objective: baseObjective,
+      challenger: { id: "c-1", displayName: "A" },
+      challenged: { id: "d-1", displayName: "B" },
+      lifecyclePhase: "RESULT_PRESENTATION",
+      result: {
+        outcome: "WIN",
+        winnerId: "not-a-participant",
+        summaryText: "Bogus",
+      },
+    });
+    expect(bogus.winnerId).toBeNull();
+    expect(bogus.result?.winnerId).toBeNull();
+
+    // Authorized result only when winner matches participant
+    const settled = composeChallengeProgram({
+      sessionId: "sess-challenge-settle",
+      challengeId: "chal-3",
+      roomId: "room-challenge-3",
+      objective: baseObjective,
+      challenger: { id: "c-1", displayName: "A" },
+      challenged: { id: "d-1", displayName: "B" },
+      result: {
+        outcome: "WIN",
+        winnerId: "c-1",
+        summaryText: "Measurable criteria met by A",
+        challengerScore: 10,
+        challengedScore: 7,
+      },
+    });
+    expect(settled.winnerId).toBe("c-1");
+    expect(settled.result?.challengerScore).toBe(10);
+
+    // Cypher + Battle untouched
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(getPresentationPack("Challenge").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("Challenge").routeCapability.experienceCert).toBe("OPEN");
+
+    clearChallengeProgram("test-done");
+    expect(getActiveChallengeProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

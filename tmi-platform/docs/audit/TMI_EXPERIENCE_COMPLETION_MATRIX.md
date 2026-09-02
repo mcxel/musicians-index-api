@@ -114,22 +114,22 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Challenge arena / wall routes; Mini Challenge |
+| route(s) | `/rooms/challenge/[roomId]`, `/live/challenge/[id]`, Challenges wall |
 | presence model | Challenger focus; judges optional; audience reactions |
 | center of gravity | **Contract / objective card** — not VS corners |
 | signature DNA | `Challenge` — OBJECTIVE_FOCUS, ChallengeContract primitive, result vs objective |
 | PROGRAM source id | `PROGRAM.CHALLENGE_PRIMARY` |
 | ISO/viewpoints | PERFORMER, CONTRACT_CARD, JUDGE, TIMER, AUDIENCE |
-| Jumbotron support | OPEN |
-| Universal Player support | OPEN |
+| Jumbotron support | PARTIAL (reads real Challenge PROGRAM — objective headline; no VS scoreboard seed) |
+| Universal Player support | PARTIAL (PROGRAM bound; no second LiveSession) |
 | queue/game requirements | Objective contract, timer, pass/fail ledger |
 | world interactions | Real votes/judging only |
 | commerce | Sponsor prize (Rule 23 gated) |
-| logic cert | PARTIAL |
-| architecture cert | PARTIAL (pack prefers contract, rejects VS-as-default) |
-| experience cert | OPEN |
+| logic cert | PARTIAL (compose + semantic unit tests; lifecycle engines exist) |
+| architecture cert | **DONE** (Challenge pack + `composeChallengeProgram` wired on `/rooms/challenge/[roomId]`; Jumbotron objective-first; no default VS) |
+| experience cert | **OPEN** — production physical cert pending; Phase 1 is NOT full cinematic |
 | desktop/mobile | FOCUS / FLAT |
-| notes | **Not** Battle. No mandatory corner VS. |
+| notes | **Not** Battle. No mandatory corner VS. Slice: `docs/audit/CHALLENGE_WORLD_PRESENTATION_SLICE.md` |
 
 ### Cypher
 
@@ -521,7 +521,7 @@
 | Fan Live | PARTIAL | PARTIAL | OPEN |
 | Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
 | Battle | PARTIAL | **DONE** | OPEN |
-| Challenge | PARTIAL | PARTIAL | OPEN |
+| Challenge | PARTIAL | **DONE** | OPEN |
 | Cypher | PARTIAL | PARTIAL | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
 | Monday Night Stage | PARTIAL | OPEN | OPEN |
@@ -556,7 +556,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **0** | Matrix + contracts + semantic tests | This document + `experiencePresentation/` tests PASS |
 | **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE — **architecture DONE**; experienceCert OPEN until production physical |
 | **2** | **Battle world** presentation (not new lifecycle) | VS pack + `composeBattleProgram` + BattlePresentationShell — **architecture DONE**; experienceCert OPEN until production physical; no fake crowd/score; Cypher uncontaminated |
-| **3** | **Challenge** | Contract/objective center; no default VS |
+| **3** | **Challenge** | Contract/objective center; no default VS — **architecture DONE** Phase 1 (`composeChallengeProgram` + shell); experienceCert OPEN |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts |
 | **5** | **Concert / World Concert** | Stage + audience avatar LOD; Mini vs World badges |
 | **6** | **World Release** | Premiere drop choreography on real schedule |

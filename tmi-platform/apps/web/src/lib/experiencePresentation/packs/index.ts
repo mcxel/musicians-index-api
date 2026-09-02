@@ -65,9 +65,20 @@ export const ChallengePack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: true,
   isRegularGoLive: false,
-  routeCapability: baseRoute("challenge", "Challenge", ["/challenges"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    requiresQueue: true,
-  }),
+  routeCapability: baseRoute(
+    "challenge",
+    "Challenge",
+    ["/challenges", "/rooms/challenge", "/live/challenge"],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresQueue: true,
+      requiresJumbotron: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const CypherPack: ExperiencePresentationPack = {

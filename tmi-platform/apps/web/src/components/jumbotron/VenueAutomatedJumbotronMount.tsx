@@ -19,6 +19,7 @@ import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
 import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
 import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/composePerformerLiveProgram";
 import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBattleProgram";
+import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeChallengeProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -36,6 +37,8 @@ export function mapArenaEventToJumbotronExperience(
 ): JumbotronExperienceType {
   const t = (eventType ?? "").toLowerCase();
   if (t.includes("battle") || t.includes("gauntlet")) return "BATTLE_ARENA";
+  // Challenge before cypher — "challenge" must not fall through to REGULAR_LIVE.
+  if (t.includes("challenge")) return "CHALLENGE_ARENA";
   if (t.includes("cypher") || t.includes("cipher")) return "CYPHER";
   if (t.includes("dance")) return "WORLD_DANCE_PARTY";
   if (t.includes("monday") || t.includes("concert") || t.includes("auditorium")) return "AUDITORIUM";
@@ -185,6 +188,28 @@ export function VenueAutomatedJumbotronMount({
           accentColor: pack.brandPalette.accent,
         });
       }
+    } else if (experienceType === "CHALLENGE_ARENA") {
+      // Objective-first PROGRAM — never Battle VS scoreboard seed.
+      const prog = getActiveChallengeProgram();
+      const objectiveText = prog?.objective.objective?.trim() || "Waiting for objective";
+      const programId = prog?.programSourceId ?? "PROGRAM.CHALLENGE_PRIMARY";
+      const challengerName = prog?.challenger?.displayName?.trim() || null;
+      setEvent({
+        id: `evt-challenge-obj-${roomId}`,
+        traceId: `tr-challenge-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "CHALLENGE_OBJECTIVE_REVEAL",
+        experienceType: "CHALLENGE_ARENA",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "CHALLENGE",
+        headline: objectiveText,
+        subline: challengerName ? `${challengerName} · ${programId}` : programId,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
+      });
     } else if (experienceType === "CYPHER") {
       const next = director.postCypherNextUp("Next Performer", "On Deck");
       setEvent(next ?? director.getActiveEvent());

@@ -101,4 +101,23 @@ export {
   hasRealDualOccupancy,
 } from "./composeBattleProgram";
 
-export { PerformerLivePack, BattlePack } from "./packs";
+export type {
+  ChallengeProgramComposition,
+  ChallengeParticipant,
+  ChallengeObjectiveSnapshot,
+  ChallengeAuthorizedResult,
+} from "./composeChallengeProgram";
+export {
+  PROGRAM_CHALLENGE_PRIMARY,
+  ISO_CHALLENGER,
+  ISO_CHALLENGED,
+  ISO_CONTRACT_CARD,
+  composeChallengeProgram,
+  getActiveChallengeProgram,
+  clearChallengeProgram,
+  isChallengeProgramProductionSurface,
+  isChallengeVsFree,
+  mapChallengePhaseToComposition,
+} from "./composeChallengeProgram";
+
+export { PerformerLivePack, BattlePack, ChallengePack } from "./packs";
