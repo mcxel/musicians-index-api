@@ -199,15 +199,19 @@ export async function executeInstantGoLive(opts?: {
   let published = false;
   if (publishSession) {
     if (!destination.flags.restrictedAudience) {
+      const hubRole = role === "FAN" ? "fan" : "performer";
       const discoveryInput = {
         roomId: resolvedRoomId,
         title: `${effectiveIdentity.name} — Live`,
         hostName: effectiveIdentity.name,
         hostUserId: effectiveIdentity.userId,
         category: destination.category,
-        experienceId: preferredExperience ?? destination.category ?? "live",
-        accentColor: opts?.accentColor ?? "#FF2DAA",
-    joinRoute: `/hub/fan?watch=${encodeURIComponent(resolvedRoomId)}&from=live-lobby-wall`,
+        experienceId:
+          role === "FAN"
+            ? "fan-social-live"
+            : preferredExperience ?? destination.category ?? "live",
+        accentColor: opts?.accentColor ?? (role === "FAN" ? "#00FF88" : "#FF2DAA"),
+        joinRoute: `/hub/${hubRole}?watch=${encodeURIComponent(resolvedRoomId)}&from=live-lobby-wall`,
       };
       try {
         // Free HTTP/1.1 sockets — hub telemetry/session polls otherwise starve publish.
@@ -417,7 +421,7 @@ export async function publishInstantGoLiveSession(opts: {
         hostUserId: identity.userId,
         category: destination.category,
         accentColor: opts.accentColor ?? "#FF2DAA",
-        joinRoute: `/hub/fan?watch=${encodeURIComponent(opts.roomId)}&from=live-lobby-wall`,
+        joinRoute: `/hub/${(opts.role ?? "PERFORMER").toUpperCase() === "FAN" ? "fan" : "performer"}?watch=${encodeURIComponent(opts.roomId)}&from=live-lobby-wall`,
       });
     }
     return { ok: true, published: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };

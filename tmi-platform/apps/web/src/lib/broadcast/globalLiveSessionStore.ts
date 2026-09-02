@@ -12,7 +12,7 @@ export type StageState   = "pre-show" | "live" | "intermission" | "post-show";
 // "lounge" added 2026-08-12 — DestinationResolver.ts's LobbyWallKind already
 // routed to lounges (?mode=lounge on /live/rooms/[roomId]) before this session
 // could store/filter a session AS a lounge. Now first-class here too.
-export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge";
+export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby";
 
 export interface AudienceCountrySlice {
   countryCode: string;

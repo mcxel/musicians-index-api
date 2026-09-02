@@ -185,7 +185,10 @@ export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscover
     posterUrl: session.thumbnailUrl ?? session.avatarUrl,
     previewUrl: session.previewUrl,
     accentColor: session.accentColor,
-    joinRoute: `/hub/fan?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`,
+    joinRoute:
+      session.category === "fan-lobby"
+        ? `/hub/fan?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`
+        : `/hub/performer?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`,
     joinGate: paid ? "paid" : "none",
     entryPriceUsd: session.entryPriceUsd,
     startedAt: session.startedAt,

@@ -48,6 +48,13 @@ import {
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
+import CompactAudioMixer from "@/components/audio/CompactAudioMixer";
+import FastPlaylistCastPicker from "@/components/playlists/FastPlaylistCastPicker";
+import AvatarQuickChangeDrawer from "@/components/avatar/AvatarQuickChangeDrawer";
+import ExploreMatrixDiscoveryHost, { type ExploreColumnType } from "@/components/explore/ExploreMatrixDiscoveryHost";
+import MiniLiveLobbyWallRuntime from "@/components/lobby/MiniLiveLobbyWallRuntime";
+import LiveLobbyMosaicScrollRail from "@/components/live/LiveLobbyMosaicScrollRail";
+import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 
 /** Bootstrap / error chrome over dual monitors during Instant GO LIVE. */
 function GoLiveBootstrapOverlay({
@@ -660,7 +667,12 @@ export default function CommandCenterMediaStack({
   const [swapOrder, setSwapOrder] = useState(false);
   const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
   const [castPanelOpen, setCastPanelOpen] = useState(false);
+  const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
+  const [avatarQuickOpen, setAvatarQuickOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [exploreMatrixOpen, setExploreMatrixOpen] = useState(false);
+  const [exploreInitialColumn, setExploreInitialColumn] = useState<ExploreColumnType>("SNIPS");
+  const [miniLobbyWallOpen, setMiniLobbyWallOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
@@ -683,6 +695,25 @@ export default function CommandCenterMediaStack({
     const handler = () => setCastPanelOpen((v) => !v);
     window.addEventListener("tmi:cast-panel-toggle", handler);
     return () => window.removeEventListener("tmi:cast-panel-toggle", handler);
+  }, []);
+
+  useEffect(() => {
+    const onOpenExplore = (e: Event) => {
+      const customEvent = e as CustomEvent<{ column?: ExploreColumnType }>;
+      const col = customEvent.detail?.column ?? "SNIPS";
+      setExploreInitialColumn(col);
+      setExploreMatrixOpen(true);
+    };
+    window.addEventListener("tmi:open-explore-matrix", onOpenExplore);
+    return () => window.removeEventListener("tmi:open-explore-matrix", onOpenExplore);
+  }, []);
+
+  useEffect(() => {
+    const onToggleLobbyWall = () => {
+      setMiniLobbyWallOpen((v) => !v);
+    };
+    window.addEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
+    return () => window.removeEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -945,8 +976,8 @@ export default function CommandCenterMediaStack({
         whiteSpace: "nowrap",
       }}
     >
-      {opts?.icon ? <span>{opts.icon}</span> : null}
-      <span>{label}</span>
+      {opts?.icon ? <span style={{ pointerEvents: "none" }}>{opts.icon}</span> : null}
+      <span style={{ pointerEvents: "none" }}>{label}</span>
     </button>
   );
 
@@ -1032,233 +1063,365 @@ export default function CommandCenterMediaStack({
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
-        gap: 6,
-        padding: "6px 10px",
+        gap: 8,
+        padding: "8px 10px",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
-        background: "rgba(0,0,0,0.35)",
+        background: "rgba(0,0,0,0.45)",
         marginBottom: 8,
-        borderRadius: 8,
+        borderRadius: 10,
       }}
     >
-      {/* Row 1 — monitor utility: VENUE TOOLS · CAST · ARTIST ID / FAN ID
-          (canonical GO LIVE is on media-player live bezel above monitors — not duplicated here) */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-        <VenueToolsToggleButton
-          role={role === "performer" ? "performer" : "fan"}
-          accent={role === "performer" ? "#AA2DFF" : "#00FF88"}
-          corner="bottom-right"
-          roomId={hubLiveRoomId ?? undefined}
-          testId="tmi-venue-tools-media-stack"
-          policyContext={{
-            isLive: Boolean(publishedRoomId),
-            isGoLiveContext: Boolean(hubInPlaceRoomId),
-          }}
-        />
-
-        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ ...sectionLabel, marginBottom: 0, width: "auto" }}>CAST BUTTONS</span>
-          {utilityBtn(castPanelOpen || shareActive || isFullscreen, "#AA2DFF", "CAST", () => setCastPanelOpen((v) => !v), {
-            testId: "tmi-cast-panel-trigger",
-            title: "Screen share · big screen",
-            icon: "📡",
-          })}
-          {castPanelOpen ? (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 8px)",
-                left: 0,
-                zIndex: 14,
-                width: 280,
-                background: "#0d1117",
-                border: "1px solid rgba(170,45,255,0.45)",
-                borderRadius: 10,
-                padding: 8,
-                boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
-                CAST BUTTONS
-              </span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                <button
-                  type="button"
-                  data-testid="tmi-share-screen-cycle"
-                  onClick={() => void cycleSharePress()}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    void addShareSource();
-                  }}
-                  title={
-                    shareActive
-                      ? "Cycle share sources (right-click to add another)"
-                      : "Share screen / window / tab"
-                  }
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    letterSpacing: "0.08em",
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    border: shareActive ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
-                    background: shareActive ? "rgba(0,255,136,0.15)" : "transparent",
-                    color: "#00FF88",
-                    fontFamily: "inherit",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <span>⬡</span>
-                  <span>SHARE SCREEN</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleFullscreen();
-                    setCastPanelOpen(false);
-                  }}
-                  title={isFullscreen ? "Exit big screen" : "Big screen — native fullscreen"}
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    letterSpacing: "0.08em",
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(0,255,255,0.4)",
-                    background: isFullscreen ? "rgba(0,255,255,0.18)" : "transparent",
-                    color: "#00FFFF",
-                    fontFamily: "inherit",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <span>⛶</span>
-                  <span>{isFullscreen ? "EXIT BIG SCREEN" : "BIG SCREEN"}</span>
-                </button>
-              </div>
-              {shareActive ? (
-                <button
-                  type="button"
-                  onClick={stopScreenShare}
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    padding: "5px 8px",
-                    borderRadius: 5,
-                    border: "1px solid rgba(255,68,68,0.5)",
-                    background: "rgba(255,68,68,0.12)",
-                    color: "#FF6B6B",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  STOP SHARE
-                </button>
-              ) : null}
-              {shareError ? (
-                <ScreenShareErrorBanner
-                  code={shareError}
-                  onDismiss={clearShareError}
-                  onRetry={() => void cycleSharePress()}
+      {/* Action Row: CAST Group, QUICK Group, VENUE TOOLS */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12 }}>
+        {/* CAST GROUP */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#AA2DFF" }}>
+            CAST
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+            {/* 1. PLAYLIST */}
+            <div style={{ position: "relative" }}>
+              {utilityBtn(playlistCastOpen, "#00FFFF", "PLAYLIST", () => setPlaylistCastOpen((v) => !v), {
+                testId: "tmi-cast-playlist-btn",
+                title: "Cast playlist / song to room",
+                icon: "🎵",
+              })}
+              {playlistCastOpen ? (
+                <FastPlaylistCastPicker
+                  onClose={() => setPlaylistCastOpen(false)}
+                  targetSlotId={topSlots[0]?.id ?? "mon-a"}
                 />
               ) : null}
-              <AnimatePresence>
-                {slotPickerOpen && screenStream ? (
-                  <MonitorShareSlotPicker
-                    activeSlot={shareSlot}
-                    onPick={pickShareSlot}
-                    onClose={() => setSlotPickerOpen(false)}
-                  />
-                ) : null}
-              </AnimatePresence>
-              <button
-                type="button"
-                onClick={() => setCastPanelOpen(false)}
-                style={{
-                  marginTop: 2,
-                  padding: "5px 8px",
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 8,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                CLOSE
-              </button>
             </div>
-          ) : null}
+
+            {/* 2. GO LIVE */}
+            {utilityBtn(Boolean(publishedRoomId), "#FF4444", "GO LIVE", () => {
+              void presentInstantGoLiveInPlace({
+                role: role === "performer" ? "PERFORMER" : "FAN",
+                preferredExperience: "live",
+                roomId: hubLiveRoomId ?? undefined,
+                publishSession: true,
+              });
+            }, {
+              testId: "tmi-cast-golive-btn",
+              title: "Go Live / broadcast to stage",
+              icon: "🔴",
+            })}
+
+            {/* 3. MEMORY */}
+            {utilityBtn(false, "#AA2DFF", "MEMORY", () => {
+              useCompactQuickPanelStore.getState().togglePanel("memory-wall");
+            }, {
+              testId: "tmi-cast-memory-btn",
+              title: "Cast photos & memories to room display",
+              icon: "🧠",
+            })}
+
+            {/* 4. YOPHO */}
+            {utilityBtn(false, "#FFD700", "YOPHO", () => {
+              useCompactQuickPanelStore.getState().togglePanel("yopho");
+            }, {
+              testId: "tmi-cast-yopho-btn",
+              title: "Cast YoPho profile card",
+              icon: "⚡",
+            })}
+
+            {/* 5. SHARE SCREEN */}
+            <div style={{ position: "relative" }}>
+              {utilityBtn(castPanelOpen || shareActive || isFullscreen, "#00FF88", "SHARE SCREEN", () => setCastPanelOpen((v) => !v), {
+                testId: "tmi-cast-sharescreen-btn",
+                title: "Share screen / window / tab",
+                icon: "🖥️",
+              })}
+              {castPanelOpen ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    left: 0,
+                    zIndex: 40,
+                    width: 280,
+                    background: "#0d1117",
+                    border: "1px solid rgba(0,255,136,0.45)",
+                    borderRadius: 10,
+                    padding: 8,
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
+                    SCREEN CAST OPTIONS
+                  </span>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    <button
+                      type="button"
+                      data-testid="tmi-share-screen-cycle"
+                      onClick={() => void cycleSharePress()}
+                      title={shareActive ? "Cycle share sources" : "Share screen / window / tab"}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        padding: "8px 10px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        border: shareActive ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
+                        background: shareActive ? "rgba(0,255,136,0.15)" : "transparent",
+                        color: "#00FF88",
+                        fontFamily: "inherit",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>⬡</span>
+                      <span>{shareActive ? "CYCLE SHARE" : "START SHARE"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleFullscreen();
+                        setCastPanelOpen(false);
+                      }}
+                      title={isFullscreen ? "Exit big screen" : "Big screen — native fullscreen"}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        padding: "8px 10px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(0,255,255,0.4)",
+                        background: isFullscreen ? "rgba(0,255,255,0.18)" : "transparent",
+                        color: "#00FFFF",
+                        fontFamily: "inherit",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>⛶</span>
+                      <span>{isFullscreen ? "EXIT FULL" : "FULLSCREEN"}</span>
+                    </button>
+                  </div>
+                  {shareActive ? (
+                    <button
+                      type="button"
+                      onClick={stopScreenShare}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        padding: "5px 8px",
+                        borderRadius: 5,
+                        border: "1px solid rgba(255,68,68,0.5)",
+                        background: "rgba(255,68,68,0.12)",
+                        color: "#FF6B6B",
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      STOP SHARE
+                    </button>
+                  ) : null}
+                  {shareError ? (
+                    <ScreenShareErrorBanner
+                      code={shareError}
+                      onDismiss={clearShareError}
+                      onRetry={() => void cycleSharePress()}
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setCastPanelOpen(false)}
+                    style={{
+                      marginTop: 2,
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.55)",
+                      fontSize: 8,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    CLOSE
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {/* 6. SPONSOR */}
+            {utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSOR", () => setSponsorPanelOpen((v) => !v), {
+              testId: "tmi-cast-sponsor-btn",
+              title: "Cast sponsor overlay or creative to audience",
+              icon: "🏷️",
+            })}
+          </div>
         </div>
 
-        <div style={{ position: "relative" }}>
-          {utilityBtn(
-            identityOpen,
-            "#FFD700",
-            role === "performer" ? "ARTIST ID" : "FAN ID",
-            () => setIdentityOpen((v) => !v),
-            {
-              testId: role === "performer" ? "tmi-artist-id-rail" : "tmi-fan-id-rail",
-              title: role === "performer" ? "Artist ID / QR — same live session" : "Fan ID / QR — share your profile",
-              icon: "👤",
-            },
-          )}
-          {identityOpen ? (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 8px)",
-                left: 0,
-                zIndex: 30,
-                width: 280,
-                padding: 10,
-                borderRadius: 10,
-                background: "rgba(5,5,16,0.96)",
-                border: "1px solid rgba(255,215,0,0.45)",
-                boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ArtistIdShareStrip
-                userId={userId ?? "local"}
-                displayName={displayName ?? (role === "performer" ? "Artist" : "Fan")}
-                role={role}
-              />
-              <button
-                type="button"
-                onClick={() => setIdentityOpen(false)}
-                style={{
-                  marginTop: 8,
-                  width: "100%",
-                  fontSize: 8,
-                  fontWeight: 900,
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.65)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                CLOSE
-              </button>
+        {/* QUICK GROUP */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#00FFFF" }}>
+            QUICK
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+            {/* AVATAR QUICK PANEL */}
+            <div style={{ position: "relative" }}>
+              {utilityBtn(avatarQuickOpen, "#00FFFF", "AVATAR", () => setAvatarQuickOpen((v) => !v), {
+                testId: "tmi-quick-avatar-btn",
+                title: "Quick avatar customizer & loadouts",
+                icon: "👤",
+              })}
+              {avatarQuickOpen ? (
+                <AvatarQuickChangeDrawer
+                  onClose={() => setAvatarQuickOpen(false)}
+                />
+              ) : null}
             </div>
-          ) : null}
+
+            {/* FAN ID / PERFORMER ID */}
+            <div style={{ position: "relative" }}>
+              {utilityBtn(
+                identityOpen,
+                role === "performer" ? "#FFD700" : "#00FF88",
+                role === "performer" ? "PERFORMER ID" : "FAN ID",
+                () => setIdentityOpen((v) => !v),
+                {
+                  testId: role === "performer" ? "tmi-artist-id-rail" : "tmi-fan-id-rail",
+                  title: role === "performer" ? "Performer ID / QR credentials" : "Fan ID / QR card",
+                  icon: "🪪",
+                },
+              )}
+              {identityOpen ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    left: 0,
+                    zIndex: 30,
+                    width: 280,
+                    padding: 10,
+                    borderRadius: 10,
+                    background: "rgba(5,5,16,0.96)",
+                    border: `1px solid ${role === "performer" ? "rgba(255,215,0,0.45)" : "rgba(0,255,136,0.45)"}`,
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ArtistIdShareStrip
+                    userId={userId ?? "local"}
+                    displayName={displayName ?? (role === "performer" ? "Performer" : "Fan")}
+                    role={role}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIdentityOpen(false)}
+                    style={{
+                      marginTop: 8,
+                      width: "100%",
+                      fontSize: 8,
+                      fontWeight: 900,
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.65)",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    CLOSE
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* EXPLORE GROUP */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#FFD700" }}>
+            EXPLORE
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+            {/* 1. SNIPS */}
+            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "SNIPS", "#FFD700", "SNIPS", () => {
+              setExploreInitialColumn("SNIPS");
+              setExploreMatrixOpen(true);
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "SNIPS" } }));
+              }
+            }, {
+              testId: "tmi-explore-snips-btn",
+              title: "Explore short reels & live clips",
+              icon: "🎬",
+            })}
+
+            {/* 2. VIDEO SHUFFLE */}
+            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "VIDEO_SHUFFLE", "#AA2DFF", "VIDEO SHUFFLE", () => {
+              setExploreInitialColumn("VIDEO_SHUFFLE");
+              setExploreMatrixOpen(true);
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "VIDEO_SHUFFLE" } }));
+              }
+            }, {
+              testId: "tmi-explore-videoshuffle-btn",
+              title: "Explore full music videos & performances",
+              icon: "🎥",
+            })}
+
+            {/* 3. PUBLIC PROFILES */}
+            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "PUBLIC_PROFILES", "#00FF88", "PUBLIC PROFILES", () => {
+              setExploreInitialColumn("PUBLIC_PROFILES");
+              setExploreMatrixOpen(true);
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "PUBLIC_PROFILES" } }));
+              }
+            }, {
+              testId: "tmi-explore-profiles-btn",
+              title: "Explore creators & fan public profiles",
+              icon: "👥",
+            })}
+          </div>
+        </div>
+
+        {/* VENUE & LOBBIES */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: "auto" }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)" }}>
+            VENUE & LOBBIES
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {utilityBtn(miniLobbyWallOpen, "#FF2DAA", "LOBBY WALL", () => {
+              setMiniLobbyWallOpen((v) => !v);
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("tmi:toggle-mini-lobby-wall"));
+              }
+            }, {
+              testId: "tmi-lobby-wall-trigger",
+              title: "Open phone-sized Live Lobby Wall",
+              icon: "🏛️",
+            })}
+            <VenueToolsToggleButton
+              role={role === "performer" ? "performer" : "fan"}
+              accent={role === "performer" ? "#AA2DFF" : "#00FF88"}
+              corner="bottom-right"
+              roomId={hubLiveRoomId ?? undefined}
+              testId="tmi-venue-tools-media-stack"
+              policyContext={{
+                isLive: Boolean(publishedRoomId),
+                isGoLiveContext: Boolean(hubInPlaceRoomId),
+              }}
+            />
+          </div>
         </div>
       </div>
+
+      {/* 3-Bus Audio Mixer Strip */}
+      <CompactAudioMixer />
     </div>
   );
 
@@ -1315,25 +1478,37 @@ export default function CommandCenterMediaStack({
         </div>
       ) : null}
 
-      {/* Media-player live authority — always on performer stack (not orphan hub strip) */}
-      {role === "performer" ? (
-        <div
-          data-media-player-live-bezel="1"
-          style={{
-            flexShrink: 0,
-            marginBottom: 8,
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            gap: 10,
-          }}
-        >
-          <MediaPlayerGoLiveControl role="performer" compact={compactHubLayout} />
+      {/* Media-player live authority — Fan + Performer (Marcel product law) */}
+      <div
+        data-media-player-live-bezel="1"
+        style={{
+          flexShrink: 0,
+          marginBottom: 8,
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-end",
+          gap: 10,
+        }}
+      >
+        <MediaPlayerGoLiveControl
+          role={role === "performer" ? "performer" : "fan"}
+          compact={compactHubLayout}
+        />
+        {role === "performer" ? (
           <div style={{ flex: 1, minWidth: 160 }}>
             <LiveDistributionBezel userId={userId} />
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+
+      <LiveLobbyMosaicScrollRail
+        role={role === "performer" ? "performer" : "fan"}
+        viewerUserId={userId}
+        accentColor={role === "performer" ? "#FFD700" : "#00FF88"}
+      />
+
+      {/* Top Command Strip & 3-Bus Mixer */}
+      {toolbar}
 
       <div style={{ position: "relative", flex: naturalHeight ? undefined : 1, minHeight: 0 }}>
       <GoLiveBootstrapOverlay
@@ -1352,7 +1527,6 @@ export default function CommandCenterMediaStack({
       <CanonicalDualMonitorStack
         variant={bezelVariant}
         seriesLabel={seriesLabel}
-        toolbar={compactHubLayout ? undefined : toolbar}
         minMonitorCount={monitorLayoutMode === "primary" ? 1 : 2}
         enableMediaRuntime
         monitors={[
@@ -1466,6 +1640,22 @@ export default function CommandCenterMediaStack({
       </div>
 
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}
+
+      {/* Overlays / Runtimes (Root-Level Mounting) */}
+      {exploreMatrixOpen && (
+        <ExploreMatrixDiscoveryHost
+          initialColumn={exploreInitialColumn}
+          onClose={() => setExploreMatrixOpen(false)}
+        />
+      )}
+
+      {miniLobbyWallOpen && (
+        <MiniLiveLobbyWallRuntime
+          role={role === "performer" ? "performer" : "fan"}
+          isOpen={miniLobbyWallOpen}
+          onClose={() => setMiniLobbyWallOpen(false)}
+        />
+      )}
     </div>
   );
 }

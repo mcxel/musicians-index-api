@@ -176,7 +176,9 @@ export async function POST(req: NextRequest) {
     rawCategory === "live-online-concert" ||
     rawCategory === "concert"
       ? ("concert" as const)
-      : ((body.category ?? "live") as import("@/lib/broadcast/globalLiveSessionStore").StreamCategory);
+      : rawCategory === "fan-lobby" || rawCategory === "fan_lobby" || rawCategory === "fan-social-live"
+        ? ("fan-lobby" as const)
+        : ((body.category ?? "live") as import("@/lib/broadcast/globalLiveSessionStore").StreamCategory);
 
   // Persist indoor|outdoor (+ skin) on the session so joiners without URL params resolve correctly.
   const bodyEnv = parseVenueEnvironment((body as { venueEnvironment?: unknown }).venueEnvironment);

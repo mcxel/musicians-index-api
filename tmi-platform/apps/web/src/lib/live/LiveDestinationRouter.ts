@@ -204,6 +204,30 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
     };
   }
 
+  // ── Fan explicit GO LIVE → FAN_SOCIAL_LIVE (hangout — not battles/concerts) ─
+  if (!isPerformerLike(role) && isExplicitGoLive) {
+    const restricted =
+      privacy === "private" || privacy === "friends" || privacy === "invite";
+    const category = restricted ? "lounge" : "fan-lobby";
+    return {
+      experienceId: "fan-social-live",
+      route: `/live/rooms/{roomId}?mode=fan&auto=true&privacy=${privacy}&category=${category}&from=launch-dock`,
+      label: restricted ? "Fan Hangout" : "Fan Social Live",
+      category,
+      flags: {
+        emptyStage: true,
+        fanLobby: true,
+        privateRoom: restricted,
+        restrictedAudience: restricted,
+      },
+      lobbyPlacement: restricted
+        ? null
+        : routeLivePlacement({ category: "live", eventType: "LIVE_GENERAL" }),
+      entitlements,
+      roleEntryProfile,
+    };
+  }
+
   // ── Performer private / invite → rehearsal studio ─────────────────────────
   if (privacy === "private" || privacy === "invite") {
     return {
