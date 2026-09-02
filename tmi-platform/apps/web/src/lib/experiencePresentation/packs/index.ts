@@ -42,9 +42,13 @@ export const BattlePack: ExperiencePresentationPack = {
   allowsEliminationFinale: true,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("battle", "Battle", ["/battles", "/battles/arena"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
+  routeCapability: baseRoute("battle", "Battle", ["/battles", "/battles/arena", "/rooms/battle"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
     requiresJumbotron: true,
     requiresQueue: true,
+    logicCert: "PARTIAL",
+    architectureCert: "DONE",
+    // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+    experienceCert: "OPEN",
   }),
 };
 

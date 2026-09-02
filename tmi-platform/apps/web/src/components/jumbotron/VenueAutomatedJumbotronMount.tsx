@@ -18,6 +18,8 @@ import { JumbotronSurfaceRenderer } from "@/components/jumbotron/JumbotronSurfac
 import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
 import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
 import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/composePerformerLiveProgram";
+import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBattleProgram";
+import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
   () => import("@/components/3d/SafeReactThreeCanvas"),
@@ -114,23 +116,75 @@ export function VenueAutomatedJumbotronMount({
   const [event, setEvent] = useState(() => director.getActiveEvent());
   const sightline = useMemo(() => director.certifySightlines(), [director]);
 
-  // Seed experience-appropriate program content (real director events, not fake crowds)
+  // Seed experience-appropriate program content (real director events, not fake crowds/scores)
   useEffect(() => {
     if (experienceType === "BATTLE_ARENA") {
-      const scored = director.postBattleScoreboard({
-        participantA: "MC Nova",
-        scoreA: 84,
-        participantB: "DJ Phantom",
-        scoreB: 79,
-      });
-      // Keep scoreboard on-air; attach timer fields so both pack surfaces render.
-      const withTimer = {
-        ...scored,
-        roundTimerSeconds: 60,
-        headline: scored.headline,
-        title: "BATTLE LIVE",
-      };
-      setEvent(withTimer);
+      const prog = getActiveBattleProgram();
+      // Show-critical Battle state outranks ads (P2). Never invent MC Nova / fake scores.
+      if (prog?.dualOccupancy && prog.cornerA && prog.cornerB) {
+        if (prog.scores) {
+          const scored = director.postBattleScoreboard({
+            participantA: prog.cornerA.displayName,
+            scoreA: prog.scores.scoreA,
+            participantB: prog.cornerB.displayName,
+            scoreB: prog.scores.scoreB,
+          });
+          setEvent({
+            ...scored,
+            sourceEventId: prog.programSourceId,
+            title: "BATTLE LIVE",
+            headline: `${prog.cornerA.displayName} VS ${prog.cornerB.displayName}`,
+          });
+        } else {
+          setEvent({
+            id: `evt-battle-vs-${roomId}`,
+            traceId: `tr-battle-${roomId}`,
+            priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+            eventType: "ROUND_TIMER_TICK",
+            experienceType: "BATTLE_ARENA",
+            targetClass: pack.primaryTarget,
+            sourceEventId: prog.programSourceId,
+            title: "BATTLE LIVE",
+            headline: `${prog.cornerA.displayName} VS ${prog.cornerB.displayName}`,
+            subline: prog.programSourceId,
+            durationMs: 120_000,
+            createdAtMs: Date.now(),
+            expiresAtMs: Date.now() + 120_000,
+            accentColor: pack.brandPalette.accent,
+            battleScores: {
+              participantA: prog.cornerA.displayName,
+              scoreA: Number.NaN,
+              participantB: prog.cornerB.displayName,
+              scoreB: Number.NaN,
+            },
+          });
+        }
+        // Face preempt via ShowDirector when hooks exist — P2 show-critical over ads.
+        try {
+          const show = new JumbotronShowDirector(venueId ?? `venue-${roomId}`, `session:${roomId}`);
+          show.handleBusEvent({ type: "ROUND_START", roundId: prog.battleId });
+        } catch {
+          /* show director optional — AutomatedJumbotronDirector already holds P2 event */
+        }
+      } else {
+        const name = prog?.cornerA?.displayName?.trim() || "Waiting for competitor";
+        setEvent({
+          id: `evt-battle-solo-${roomId}`,
+          traceId: `tr-battle-solo-${roomId}`,
+          priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+          eventType: "ROUND_TIMER_TICK",
+          experienceType: "BATTLE_ARENA",
+          targetClass: pack.primaryTarget,
+          sourceEventId: prog?.programSourceId ?? "PROGRAM.BATTLE_COMPOSITE",
+          title: "BATTLE",
+          headline: name,
+          subline: "Corner B unlocks when a real competitor joins",
+          durationMs: 120_000,
+          createdAtMs: Date.now(),
+          expiresAtMs: Date.now() + 120_000,
+          accentColor: pack.brandPalette.accent,
+        });
+      }
     } else if (experienceType === "CYPHER") {
       const next = director.postCypherNextUp("Next Performer", "On Deck");
       setEvent(next ?? director.getActiveEvent());
@@ -167,7 +221,7 @@ export function VenueAutomatedJumbotronMount({
     return () => {
       director.teardown();
     };
-  }, [director, experienceType]);
+  }, [director, experienceType, pack.brandPalette.accent, pack.primaryTarget, roomId, venueId]);
 
   // LOOK UP / DOUBLE-UP focus — aims camera at best face; no session restart
   useEffect(() => {

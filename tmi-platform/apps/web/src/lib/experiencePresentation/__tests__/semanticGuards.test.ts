@@ -21,6 +21,14 @@ import {
   isPerformerLiveProgramProductionSurface,
   PROGRAM_PERFORMER_CAMERA,
 } from "../composePerformerLiveProgram";
+import {
+  clearBattleProgram,
+  composeBattleProgram,
+  getActiveBattleProgram,
+  hasRealDualOccupancy,
+  isBattleProgramProductionSurface,
+  PROGRAM_BATTLE_COMPOSITE,
+} from "../composeBattleProgram";
 
 describe("experiencePresentation semantic guards", () => {
   test("Cypher pack rejects VS/winner layouts", () => {
@@ -200,6 +208,111 @@ describe("experiencePresentation semantic guards", () => {
 
     clearPerformerLiveProgram("test-done");
     expect(getActivePerformerLiveProgram()).toBeNull();
+  });
+
+  test("composeBattleProgram: dual only when real; never invents winner; Cypher untouched", () => {
+    clearBattleProgram("test-reset");
+
+    const solo = composeBattleProgram({
+      sessionId: "sess-battle-solo",
+      battleId: "battle-solo-1",
+      roomId: "room-battle-1",
+      cornerA: { id: "champ-1", displayName: "Champion One" },
+      cornerB: null,
+      bindJumbotron: true,
+      broadcastEntry: {
+        battleId: "battle-solo-1",
+        state: "SOLO_WAITING",
+        competitorAId: "champ-1",
+        updatedAt: Date.now(),
+      },
+    });
+
+    expect(solo.packId).toBe("Battle");
+    expect(solo.programSourceId).toBe(PROGRAM_BATTLE_COMPOSITE);
+    expect(solo.surfaceKind).toBe("production");
+    expect(solo.dualOccupancy).toBe(false);
+    expect(hasRealDualOccupancy(solo)).toBe(false);
+    expect(solo.winnerId).toBeNull();
+    expect(solo.scores).toBeNull();
+    expect(solo.composition).toBe("A_DOMINANT");
+    expect(isBattleProgramProductionSurface()).toBe(true);
+
+    clearBattleProgram("solo-done");
+
+    const dual = composeBattleProgram({
+      sessionId: "sess-battle-dual",
+      battleId: "battle-dual-1",
+      roomId: "room-battle-2",
+      cornerA: { id: "a-1", displayName: "Corner A" },
+      cornerB: { id: "b-1", displayName: "Corner B" },
+      bindJumbotron: true,
+      broadcastEntry: {
+        battleId: "battle-dual-1",
+        state: "BATTLE_LIVE",
+        competitorAId: "a-1",
+        competitorBId: "b-1",
+        updatedAt: Date.now(),
+      },
+    });
+
+    expect(dual.dualOccupancy).toBe(true);
+    expect(hasRealDualOccupancy(dual)).toBe(true);
+    expect(dual.composition).toBe("DUAL");
+    expect(dual.winnerId).toBeNull();
+    expect(dual.scores).toBeNull();
+    expect(dual.sources.find((s) => s.sourceId === PROGRAM_BATTLE_COMPOSITE)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // Foreign / unauthorized winner id must not surface
+    const bogus = composeBattleProgram({
+      sessionId: "sess-battle-dual",
+      battleId: "battle-dual-1",
+      roomId: "room-battle-2",
+      cornerA: { id: "a-1", displayName: "Corner A" },
+      cornerB: { id: "b-1", displayName: "Corner B" },
+      broadcastEntry: {
+        battleId: "battle-dual-1",
+        state: "WINNER_REVEAL",
+        competitorAId: "a-1",
+        competitorBId: "b-1",
+        winnerId: "not-a-participant",
+        updatedAt: Date.now(),
+      },
+    });
+    expect(bogus.winnerId).toBeNull();
+
+    // Authorized winner from broadcast machine only (no invented settle path in unit test)
+    const withWinner = composeBattleProgram({
+      sessionId: "sess-battle-settle",
+      battleId: "battle-dual-settle",
+      roomId: "room-battle-3",
+      cornerA: { id: "a-1", displayName: "Corner A" },
+      cornerB: { id: "b-1", displayName: "Corner B" },
+      scores: { scoreA: 12, scoreB: 9 },
+      broadcastEntry: {
+        battleId: "battle-dual-settle",
+        state: "WINNER_REVEAL",
+        competitorAId: "a-1",
+        competitorBId: "b-1",
+        winnerId: "a-1",
+        updatedAt: Date.now(),
+      },
+    });
+    expect(withWinner.winnerId).toBe("a-1");
+    expect(withWinner.scores).toEqual({ scoreA: 12, scoreB: 9 });
+    expect(withWinner.composition).toBe("A_DOMINANT");
+
+    // Cypher pack must remain free of VS / winner patterns
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(CypherPack.allowsWinnerFinale).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(getPresentationPack("Battle").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("Battle").routeCapability.experienceCert).toBe("OPEN");
+
+    clearBattleProgram("test-done");
+    expect(getActiveBattleProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

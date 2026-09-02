@@ -90,7 +90,7 @@ export function JumbotronSurfaceRenderer({
               {event.title}
             </span>
 
-            {/* Scoreboard Layout for Battles & Game Shows */}
+            {/* Scoreboard Layout for Battles & Game Shows — never invent MC Nova / scores */}
             {pack.proceduralFeatures.hasScoreboard && (
               <div
                 data-testid="jumbotron-battle-scoreboard"
@@ -99,32 +99,36 @@ export function JumbotronSurfaceRenderer({
               >
                 <div className="flex flex-col items-center">
                   <span className="font-mono text-sm text-cyan-400 font-bold uppercase">
-                    {event.battleScores?.participantA ?? "MC NOVA"}
+                    {event.battleScores?.participantA ?? "CORNER A"}
                   </span>
                   <span className="font-mono text-3xl font-black text-white">
-                    {event.battleScores?.scoreA ?? 84}
+                    {event.battleScores && Number.isFinite(event.battleScores.scoreA)
+                      ? event.battleScores.scoreA
+                      : "—"}
                   </span>
                 </div>
                 <span className="font-mono text-lg font-black text-fuchsia-500">VS</span>
                 <div className="flex flex-col items-center">
                   <span className="font-mono text-sm text-fuchsia-400 font-bold uppercase">
-                    {event.battleScores?.participantB ?? "DJ PHANTOM"}
+                    {event.battleScores?.participantB ?? "CORNER B"}
                   </span>
                   <span className="font-mono text-3xl font-black text-white">
-                    {event.battleScores?.scoreB ?? 79}
+                    {event.battleScores && Number.isFinite(event.battleScores.scoreB)
+                      ? event.battleScores.scoreB
+                      : "—"}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Round Clock / Countdown */}
-            {(event.roundTimerSeconds !== undefined || pack.proceduralFeatures.hasRoundTimer) && (
+            {/* Round Clock / Countdown — only when real timer supplied */}
+            {event.roundTimerSeconds !== undefined && (
               <div
                 data-testid="jumbotron-round-timer"
                 className="my-1 font-mono text-4xl font-black tracking-tight"
                 style={{ color: accent }}
               >
-                {event.roundTimerSeconds ?? 45}s
+                {event.roundTimerSeconds}s
               </div>
             )}
 

@@ -9,12 +9,20 @@ import ChallengeThisPerformanceButton from "@/components/battles/ChallengeThisPe
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
+import BattlePresentationShell from "@/components/live/BattlePresentationShell";
 import {
   winnerStaysLifecycleEngine,
   type WinnerStaysSession,
 } from "@/lib/competition/WinnerStaysLifecycleEngine";
+import { battleBroadcastStateMachine } from "@/lib/competition/BattleBroadcastStateMachine";
 import { battleChallengeEconomyEngine } from "@/lib/competition/BattleChallengeEconomyEngine";
 import { getGuestId } from "@/lib/identity/getGuestId";
+import {
+  clearBattleProgram,
+  composeBattleProgram,
+  getActiveBattleProgram,
+  type BattleProgramComposition,
+} from "@/lib/experiencePresentation/composeBattleProgram";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -31,6 +39,7 @@ export default function BattleRoomByIdPage() {
   const roomId = typeof params?.roomId === "string" ? params.roomId : "battle-open";
   const battleId = roomId.startsWith("battle-") ? roomId.replace(/^battle-/, "") : roomId;
   const [session, setSession] = useState<WinnerStaysSession | null>(null);
+  const [battleProgram, setBattleProgram] = useState<BattleProgramComposition | null>(null);
   const [voterId] = useState(() => getGuestId());
 
   const actor = useMemo(
@@ -44,15 +53,18 @@ export default function BattleRoomByIdPage() {
     [],
   );
 
+  /** Real roster only — challenger appears when lifecycle locks one; never invent dual. */
   const matchRoster = useMemo(() => {
     const championId = session?.championId?.trim() || actor.userId;
-    const challengerId = session?.challengerId?.trim() || CHALLENGER_SLOT.userId;
-    const ids = [championId, challengerId].filter((id, i, arr) => arr.indexOf(id) === i);
+    const challengerId = session?.challengerId?.trim() || "";
+    const ids = [championId, challengerId].filter(Boolean).filter((id, i, arr) => arr.indexOf(id) === i);
     const labels: Record<string, string> = {
       [championId]: session?.championName?.trim() || actor.displayName,
-      [challengerId]: session?.challengerName?.trim() || CHALLENGER_SLOT.displayName,
     };
-    return { ids, labels };
+    if (challengerId) {
+      labels[challengerId] = session?.challengerName?.trim() || CHALLENGER_SLOT.displayName;
+    }
+    return { ids, labels, championId, challengerId };
   }, [session, actor.userId, actor.displayName]);
 
   const rubricOpen =
@@ -62,10 +74,44 @@ export default function BattleRoomByIdPage() {
     if (!winnerStaysLifecycleEngine.getSession(battleId)) {
       winnerStaysLifecycleEngine.startMatch(battleId, roomId, actor.userId, actor.displayName);
     }
+    // Drive broadcast machine with real corner A (read by compose — no fake B).
+    if (!battleBroadcastStateMachine.getState(battleId)) {
+      battleBroadcastStateMachine.competitorAJoins(battleId, actor.userId);
+    }
     // Seed earned points so CHALLENGE eligibility is real for the demo actor.
     battleChallengeEconomyEngine.seedUser(actor.userId, 100);
     return winnerStaysLifecycleEngine.subscribe(battleId, (s) => setSession({ ...s }));
   }, [actor.userId, actor.displayName, battleId, roomId]);
+
+  // Production Battle PROGRAM — same pattern as composePerformerLiveProgram on Regular GO LIVE.
+  useEffect(() => {
+    const championId = session?.championId?.trim() || actor.userId;
+    const championName = session?.championName?.trim() || actor.displayName;
+    const challengerId = session?.challengerId?.trim() || "";
+    const challengerName = session?.challengerName?.trim() || "";
+
+    if (challengerId && !battleBroadcastStateMachine.getState(battleId)?.competitorBId) {
+      battleBroadcastStateMachine.competitorBJoins(battleId, challengerId);
+    }
+
+    const composed = composeBattleProgram({
+      sessionId: `battle-session:${battleId}`,
+      battleId,
+      roomId,
+      cornerA: { id: championId, displayName: championName },
+      cornerB: challengerId
+        ? { id: challengerId, displayName: challengerName || CHALLENGER_SLOT.displayName }
+        : null,
+      bindJumbotron: true,
+    });
+    setBattleProgram(composed);
+
+    return () => {
+      if (getActiveBattleProgram()?.battleId === battleId) {
+        clearBattleProgram("battle-room-unmount");
+      }
+    };
+  }, [session, actor.userId, actor.displayName, battleId, roomId]);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", position: "relative" }}>
@@ -143,6 +189,20 @@ export default function BattleRoomByIdPage() {
 
       <div style={{ position: "relative", minHeight: 420 }}>
         <UniversalVenueRenderer roomId={roomId} mode="audience" venueIndex={0} instantEmptyStage />
+        <div
+          style={{
+            position: "absolute",
+            left: 12,
+            right: 12,
+            top: 12,
+            zIndex: 4,
+            maxWidth: 720,
+            margin: "0 auto",
+            pointerEvents: "none",
+          }}
+        >
+          <BattlePresentationShell composition={battleProgram} />
+        </div>
         <WinnerStaysChallengerHUD battleId={battleId} actor={actor} />
         <TMIInteractiveVenueHud
           roomId={roomId}

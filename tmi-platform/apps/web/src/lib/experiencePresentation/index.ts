@@ -85,4 +85,20 @@ export {
   isPerformerLiveProgramProductionSurface,
 } from "./composePerformerLiveProgram";
 
-export { PerformerLivePack } from "./packs";
+export type {
+  BattleProgramComposition,
+  BattleCornerParticipant,
+  BattleScoreboard,
+} from "./composeBattleProgram";
+export {
+  PROGRAM_BATTLE_COMPOSITE,
+  ISO_CORNER_A,
+  ISO_CORNER_B,
+  composeBattleProgram,
+  getActiveBattleProgram,
+  clearBattleProgram,
+  isBattleProgramProductionSurface,
+  hasRealDualOccupancy,
+} from "./composeBattleProgram";
+
+export { PerformerLivePack, BattlePack } from "./packs";

@@ -92,23 +92,23 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | `/battles/*`, arena shells, Home 5; Jumbotron battle lookup |
+| route(s) | `/battles/*`, `/rooms/battle/[roomId]`, arena shells, Home 5; Jumbotron battle lookup |
 | presence model | Two corners (A/B) live video; audience avatars |
 | center of gravity | **VS split / corners** — adversarial symmetry |
 | signature DNA | `Battle` — DUAL / A\|B dominant / VS energy arcs / score cards / winner takeover |
 | PROGRAM source id | `PROGRAM.BATTLE_COMPOSITE` (or A/B take) |
 | ISO/viewpoints | CORNER_A, CORNER_B, HOST, JUDGE, AUDIENCE, REPLAY |
-| Jumbotron support | PARTIAL (P0 LOOK UP closed; cinematic OPEN) |
-| adInventory | **DONE** (contracts) — 4 independent faces; P1 final-countdown preempts ads; packages: Round Timer Frame / Scoreboard Ribbon / Winner Spotlight |
+| Jumbotron support | PARTIAL (P0 LOOK UP closed; P2 show-critical from real PROGRAM; cinematic OPEN) |
+| adInventory | **DONE** (contracts) — 4 independent faces; P1/P2 battle state preempts ads; packages: Round Timer Frame / Scoreboard Ribbon / Winner Spotlight |
 | Universal Player support | PARTIAL |
 | queue/game requirements | Bracket/queue; round clock; score; winner (authoritative) |
 | world interactions | Seat fill real-only; hype from real reactions |
 | commerce | Tips, sponsor slots via Rule 12 |
-| logic cert | PARTIAL (lifecycle engines exist) |
-| architecture cert | PARTIAL (pack allows VS) |
-| experience cert | OPEN — video target; do not start full cinematic renderer until packs land |
+| logic cert | PARTIAL (lifecycle engines + presentation compose unit tests) |
+| architecture cert | **DONE** (Battle pack + `composeBattleProgram` wired on `/rooms/battle/[roomId]`; Jumbotron reads real PROGRAM — no invented scores; no second LiveSession) |
+| experience cert | **OPEN** — production physical cert pending; Phase 1 is NOT full cinematic Voltron |
 | desktop/mobile | SPLIT fallback on single screen |
-| notes | VS layouts **allowed**. Distinct from Challenge. |
+| notes | VS layouts **allowed**. Distinct from Challenge/Cypher. Slice: `docs/audit/BATTLE_WORLD_PRESENTATION_SLICE.md` |
 
 ### Challenge
 
@@ -520,7 +520,7 @@
 |------------|-------|--------------|---------------------------|
 | Fan Live | PARTIAL | PARTIAL | OPEN |
 | Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
-| Battle | PARTIAL | PARTIAL | OPEN |
+| Battle | PARTIAL | **DONE** | OPEN |
 | Challenge | PARTIAL | PARTIAL | OPEN |
 | Cypher | PARTIAL | PARTIAL | OPEN |
 | Gauntlet | OPEN | OPEN | OPEN |
@@ -555,7 +555,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 |-------|-------|---------------|
 | **0** | Matrix + contracts + semantic tests | This document + `experiencePresentation/` tests PASS |
 | **1** | **Performer Live** presentation polish | Host-first DNA on canary Regular GO LIVE — **architecture DONE**; experienceCert OPEN until production physical |
-| **2** | **Battle world** presentation (not new lifecycle) | VS pack + BroadcastComposition DUAL/A\|B; real occupancy; no fake crowd events |
+| **2** | **Battle world** presentation (not new lifecycle) | VS pack + `composeBattleProgram` + BattlePresentationShell — **architecture DONE**; experienceCert OPEN until production physical; no fake crowd/score; Cypher uncontaminated |
 | **3** | **Challenge** | Contract/objective center; no default VS |
 | **4** | **Cypher** | Circle + mic handoff; reject winner layouts |
 | **5** | **Concert / World Concert** | Stage + audience avatar LOD; Mini vs World badges |
