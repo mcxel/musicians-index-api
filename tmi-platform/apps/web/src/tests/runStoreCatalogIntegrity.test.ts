@@ -14,6 +14,8 @@ import {
   FAN_ITEMS,
   VENUE_ITEMS,
   LOBBY_ITEMS,
+  findStoreItemById,
+  findStoreItemByPriceId,
 } from "../lib/store/StoreItemEngine";
 import { STRIPE_PRODUCTS, isRealPriceId, type StripeProductKey } from "../lib/stripe/products";
 import { CanonicalCartRuntime } from "../lib/commerce/CanonicalCartRuntime";
@@ -156,5 +158,27 @@ describe("Server Price Revalidation Authority — CanonicalCartRuntime agrees wi
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+describe("Dead Venue Product Revenue Guard — VENUE_ITEMS cannot be purchased", () => {
+  // No runtime consumes a VENUE_ITEMS purchase (audited: zero hits in
+  // lib/venue, lib/live, components/live) while a real, wired equivalent
+  // already sells at /store/venue-skins. The registry record stays exported
+  // for a future repricing/convergence decision, but must be unreachable
+  // through every real checkout path until that decision is made.
+  it("VENUE_ITEMS is preserved as a record but excluded from the purchasable catalog", () => {
+    expect(VENUE_ITEMS.length).toBe(5);
+    const purchasableIds = getAllStoreItems().map((i) => i.id);
+    for (const item of VENUE_ITEMS) {
+      expect(purchasableIds).not.toContain(item.id);
+    }
+  });
+
+  it("findStoreItemById / findStoreItemByPriceId — the exact lookups checkout uses — cannot resolve any venue item", () => {
+    for (const item of VENUE_ITEMS) {
+      expect(findStoreItemById(item.id)).toBeUndefined();
+      expect(findStoreItemByPriceId(item.priceId)).toBeUndefined();
+    }
   });
 });

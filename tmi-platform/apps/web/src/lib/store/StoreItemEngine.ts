@@ -93,10 +93,26 @@ export const FAN_ITEMS: StoreItem[] = [
   ...SEASON_PASSES,
 ];
 
-// ─── Venue Store (Performer Stages) ────────────────────────────────────────
-// NOTE: a second, more sophisticated venue-skin commerce system exists at
-// VenueSkinCommerce.ts / VENUE_SKINS (/store/venue-skins) — flagged for a
-// Marcel convergence decision, not merged here (see products.ts comment).
+// ─── Venue Store (Performer Stages) — NOT CURRENTLY SELLABLE ───────────────
+// Dead Venue Product Revenue Guard (Lane D Phase 2, 2026-09-02): audited
+// every VENUE_ITEMS id against lib/venue and lib/live for a runtime consumer
+// — zero hits anywhere. Buying "TMI Arena" for $99.99 charges a real card
+// and writes a real StoreItemOwnership row, but nothing ever reads it: no
+// venue actually becomes available to a performer who buys one. Meanwhile
+// each of these 5 has a real, already-wired semantic twin already selling in
+// VenueSkinCommerce.ts / VENUE_SKINS (/store/venue-skins — DB ownership,
+// UniversalVenueRenderer, season-pass entitlement):
+//   venue-club    "Underground Club" $19.99 ↔ neon-club          "Neon Club"                $4.99
+//   venue-theater "Digital Theater"  $39.99 ↔ red-theater        "Red Theater"               $4.99
+//   venue-arena   "TMI Arena"        $99.99 ↔ underground-battle "Underground Battle Arena"  $7.99  (weakest match — TMI Arena reads as a flagship/massive venue, the skin as "minimal basement")
+//   venue-outdoor "Outdoor Stage"    $29.99 ↔ festival           "Outdoor Festival"          $11.99
+//   venue-cypher  "Cipher Pit"       $14.99 ↔ warehouse          "Warehouse Cypher"           $4.99
+// This is Case A (same underlying product, built twice) at a 3–8x price
+// disagreement — a pricing/convergence decision for Marcel, not something to
+// silently resolve here (same posture as the SILVER+ tier disagreement in
+// Lane A). Until that decision is made, VENUE_ITEMS is excluded from
+// getAllStoreItems() below so no checkout path can sell it — the array
+// itself stays exported so the registry record isn't lost.
 export const VENUE_ITEMS: StoreItem[] = [
   { id: 'venue-club',        name: 'Underground Club',         description: 'Dark, intimate neon-lit venue for ciphers and battles', price: STRIPE_PRODUCTS.VENUE_UNDERGROUND_CLUB.price, priceId: STRIPE_PRODUCTS.VENUE_UNDERGROUND_CLUB.priceId, icon: '🏚️', category: 'venue', mode: 'payment', badge: 'LAUNCH' },
   { id: 'venue-theater',     name: 'Digital Theater',          description: 'Full stage with curtains — perfect for showcases',   price: STRIPE_PRODUCTS.VENUE_DIGITAL_THEATER.price,  priceId: STRIPE_PRODUCTS.VENUE_DIGITAL_THEATER.priceId,  icon: '🎭', category: 'venue', mode: 'payment' },
@@ -117,8 +133,13 @@ export const LOBBY_ITEMS: StoreItem[] = [
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+// VENUE_ITEMS intentionally excluded — see the Dead Venue Product Revenue
+// Guard note above. Every checkout path (POST /api/store/checkout via
+// commerceEngine.ts, GET /api/stripe/checkout via findStoreItemByPriceId)
+// resolves items through this function, so excluding it here blocks the
+// purchase everywhere in one place rather than patching each surface.
 export function getAllStoreItems(): StoreItem[] {
-  return [...CREATOR_ITEMS, ...FAN_ITEMS, ...VENUE_ITEMS, ...LOBBY_ITEMS];
+  return [...CREATOR_ITEMS, ...FAN_ITEMS, ...LOBBY_ITEMS];
 }
 
 export function getItemsByCategory(cat: StoreCategory): StoreItem[] {

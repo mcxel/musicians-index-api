@@ -16,7 +16,6 @@ import React, { useMemo, useState } from "react";
 import {
   FAN_ITEMS,
   LOBBY_ITEMS,
-  VENUE_ITEMS,
   formatPrice,
   getCheckoutUrl,
   type StoreItem,
@@ -31,12 +30,18 @@ interface TMIStorePanelProps {
   accentColor?: string;
 }
 
-type StoreShelf = "featured" | "fan" | "venue" | "lobby";
+// "venue" shelf removed (Dead Venue Product Revenue Guard, Lane D Phase 2,
+// 2026-09-02): it rendered StoreItemEngine.VENUE_ITEMS, which no runtime
+// consumes and is no longer sellable. The real, wired venue skin system
+// (VenueSkinCommerce, /store/venue-skins) uses a different checkout shape
+// (POST /api/stripe/checkout {product:'VENUE_SKIN', skinId}) than this
+// panel's StoreItem-based ItemCard — integrating it here is separate future
+// work, not a rename.
+type StoreShelf = "featured" | "fan" | "lobby";
 
 const SHELVES: { id: StoreShelf; label: string; icon: string; roles: string[] }[] = [
   { id: "featured", label: "FEATURED", icon: "⭐", roles: ["fan", "performer"] },
   { id: "fan", label: "AVATAR & COINS", icon: "🧑‍🎤", roles: ["fan"] },
-  { id: "venue", label: "VENUE SKINS", icon: "🏟️", roles: ["performer"] },
   { id: "lobby", label: "LOBBY THEMES", icon: "🌆", roles: ["fan", "performer"] },
 ];
 
@@ -158,8 +163,6 @@ export default function TMIStorePanel({
         return noTickets(FAN_ITEMS).filter((i) =>
           ["fan", "avatar", "emote", "subscription"].includes(i.category),
         );
-      case "venue":
-        return noTickets(VENUE_ITEMS);
       case "lobby":
         return noTickets(LOBBY_ITEMS);
       default:

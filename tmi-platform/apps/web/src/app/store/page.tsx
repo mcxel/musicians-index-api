@@ -3,15 +3,18 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { CREATOR_ITEMS, FAN_ITEMS, VENUE_ITEMS, LOBBY_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
+import { CREATOR_ITEMS, FAN_ITEMS, LOBBY_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
 import { CanonicalCartRuntime } from '@/lib/commerce/CanonicalCartRuntime';
 import { useAuth } from '@/lib/hooks/useAuth';
 
+// "Performer Venues" section removed (Dead Venue Product Revenue Guard,
+// Lane D Phase 2, 2026-09-02): it rendered StoreItemEngine.VENUE_ITEMS,
+// which is no longer sellable (see StoreItemEngine.ts's header comment).
+// The real venue-skin store is promoted via a plain link card below instead.
 const SECTIONS = [
   { label: 'Creator Tools',    items: CREATOR_ITEMS.slice(0, 4),  accent: '#FF2DAA', icon: '🎤', href: '/store/creator' },
   { label: 'Fan Experience',   items: FAN_ITEMS.slice(0, 4),      accent: '#00FFFF', icon: '🎧', href: '/store/fan' },
-  { label: 'Performer Venues', items: VENUE_ITEMS.slice(0, 3),    accent: '#AA2DFF', icon: '🏟️', href: '/store/venues' },
   { label: 'Lobby Skins',      items: LOBBY_ITEMS.slice(0, 3),    accent: '#FFD700', icon: '🌆', href: '/store/lobbies' },
 ];
 
@@ -61,7 +64,7 @@ export default function StorePage() {
               { label: '📦 Purchases', href: '/account/finance?tab=purchases', accent: '#00FFFF' },
               { label: '🎤 Creator Store', href: '/store/creator', accent: '#FF2DAA' },
               { label: '🎧 Fan Store', href: '/store/fan', accent: '#00FFFF' },
-              { label: '🏟️ Venues', href: '/store/venues', accent: '#AA2DFF' },
+              { label: '🏟️ Venue Skins', href: '/store/venue-skins', accent: '#AA2DFF' },
               { label: '🌆 Lobby Skins', href: '/store/lobbies', accent: '#FFD700' },
               { label: '🎛️ Media Players', href: '/store/media-players', accent: '#00FFFF' },
             ].map((s) => (
@@ -118,6 +121,19 @@ export default function StorePage() {
           </div>
         </section>
       ))}
+
+      {/* Venue skins link */}
+      <section style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 24px', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(170,45,255,0.07)', border: '1px solid rgba(170,45,255,0.25)', borderRadius: 12, padding: '24px' }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: '#AA2DFF', fontWeight: 800, marginBottom: 10 }}>🏟️ VENUE SKINS</div>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16, lineHeight: 1.6 }}>
+            Restyle your stage — cheap, collectible venue looks with real ownership and season pass access.
+          </p>
+          <Link href="/store/venue-skins" style={{ padding: '11px 28px', background: '#AA2DFF', color: '#000', borderRadius: 8, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>
+            Browse Venue Skins →
+          </Link>
+        </div>
+      </section>
 
       {/* Beat marketplace link */}
       <section style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 48px', textAlign: 'center' }}>
