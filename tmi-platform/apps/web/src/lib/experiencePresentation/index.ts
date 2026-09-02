@@ -24,6 +24,7 @@ export {
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_GAME_SHOW_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
   FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
@@ -229,6 +230,31 @@ export {
   mapReleasePhaseToComposition,
 } from "./composeReleaseProgram";
 
+export type {
+  GameShowProgramComposition,
+  GameShowHost,
+  GameShowContestantSnapshot,
+  GameShowBoardSnapshot,
+  GameShowPrizeSnapshot,
+  GameShowFormatId,
+  GameShowScope,
+  GameShowLifecyclePhase,
+} from "./composeGameShowProgram";
+export {
+  PROGRAM_GAME_SHOW,
+  ISO_GAME_HOST,
+  ISO_GAME_CONTESTANT,
+  ISO_GAME_BOARD,
+  ISO_GAME_AUDIENCE,
+  ISO_GAME_PRIZE,
+  composeGameShowProgram,
+  getActiveGameShowProgram,
+  clearGameShowProgram,
+  isGameShowProgramProductionSurface,
+  isGameShowVsFree,
+  mapGameShowPhaseToComposition,
+} from "./composeGameShowProgram";
+
 export {
   PerformerLivePack,
   BattlePack,
@@ -239,4 +265,5 @@ export {
   WorldReleasePack,
   DancePartyPack,
   MondayNightStagePack,
+  GameShowPack,
 } from "./packs";

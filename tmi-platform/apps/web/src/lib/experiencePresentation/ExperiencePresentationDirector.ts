@@ -13,6 +13,7 @@ import {
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_GAME_SHOW_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
   FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
@@ -149,6 +150,19 @@ export function assertPackAllowsComposition(
     }
     if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
       throw new Error("WorldRelease pack semantic flags forbid VS/winner/elimination");
+    }
+  }
+
+  // Hard semantic: Game Show = board/host — never Battle VS corners / Cypher circle
+  if (packId === "GameShow") {
+    if (pack.isRegularGoLive) {
+      throw new Error("GameShow pack must not alias Regular GO LIVE");
+    }
+    if ((FORBIDDEN_GAME_SHOW_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("GameShow pack rejects Battle VS / Cypher circle compositions");
+    }
+    if (pack.allowsVsLayout) {
+      throw new Error("GameShow pack semantic flags forbid VS layout");
     }
   }
 }

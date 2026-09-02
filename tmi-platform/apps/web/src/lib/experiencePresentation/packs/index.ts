@@ -326,7 +326,7 @@ export const GameShowPack: ExperiencePresentationPack = {
   signatureDna: "Host + board + turn + prize ledger (Deal or Feud class)",
   presenceModel: "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
   allowedCompositions: ["GAME_BOARD", "HOST_CLOSE", "SPLIT", "PIP"],
-  forbiddenCompositions: ["CIRCLE_FOCUS", "FLOOR_WIDE"],
+  forbiddenCompositions: ["CIRCLE_FOCUS", "FLOOR_WIDE", "DUAL", "A_DOMINANT", "B_DOMINANT"],
   requiredPrimitives: ["LiveVideoPanel", "GameBoard", "TimerRing", "PrizeLedgerView", "IdentityPanel"],
   optionalPrimitives: ["QueueRail", "ReactionEmitter", "ScoreCard"],
   allowsVsLayout: false,
@@ -334,12 +334,27 @@ export const GameShowPack: ExperiencePresentationPack = {
   allowsEliminationFinale: true,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("game_show", "GameShow", ["/game-shows/deal-or-feud"], "STAGE_LIVE_PLUS_AVATAR_AUDIENCE", {
-    requiresGameEngine: true,
-    requiresQueue: true,
-    logicCert: "OPEN",
-    architectureCert: "OPEN",
-  }),
+  routeCapability: baseRoute(
+    "game_show",
+    "GameShow",
+    [
+      "/shows/deal-or-feud",
+      "/rooms/deal-or-feud",
+      "/games/deal-or-feud",
+      "/shows/name-that-tune",
+      "/shows/circle-and-squares",
+    ],
+    "STAGE_LIVE_PLUS_AVATAR_AUDIENCE",
+    {
+      requiresJumbotron: true,
+      requiresGameEngine: true,
+      requiresQueue: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const FanLivePack: ExperiencePresentationPack = {

@@ -327,22 +327,22 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Official game show rooms |
+| route(s) | `/shows/deal-or-feud` (+ mill aliases `/rooms/deal-or-feud`, Name That Tune / Circle and Squares routes) |
 | presence model | Host + contestants + audience |
 | center of gravity | **Game board / turn / timer / prize ledger** |
 | signature DNA | `GameShow` — GAME_BOARD layout, Contestant/Round/Turn/Timer/PrizeLedger |
 | PROGRAM source id | `PROGRAM.GAME_SHOW` |
 | ISO/viewpoints | HOST, CONTESTANT_N, BOARD, AUDIENCE, PRIZE |
-| Jumbotron support | OPEN |
-| Universal Player support | OPEN |
-| queue/game requirements | Full GameShowEngine contract |
+| Jumbotron support | **DONE** Phase 1 — `VenueAutomatedJumbotronMount` reads `getActiveGameShowProgram()` |
+| Universal Player support | PARTIAL — bound as display target; no new player runtime |
+| queue/game requirements | Full GameShowEngine / DealOrFeudEngine contract when live roster exists |
 | world interactions | Real answers/votes only |
-| commerce | PrizeLedger Rule-23 gated |
-| logic cert | OPEN |
-| architecture cert | OPEN (engine contract scaffolded) |
+| commerce | PrizeLedger Rule-23 gated (awards need authoritativeGrantId) |
+| logic cert | PARTIAL (hosts + compose unit tests; live contestant roster OPEN) |
+| architecture cert | **DONE** Phase 1 (`composeGameShowProgram` + `GameShowPresentationShell`) |
 | experience cert | OPEN |
 | desktop/mobile | HYBRID / FLAT |
-| notes | Platform/bot-hosted Official only. |
+| notes | Platform/bot-hosted Official only. ≠ Battle VS / Cypher. Consumer: DealOrFeudExperience. |
 
 ### Fan Lobby
 
@@ -531,7 +531,7 @@
 | Listening Party | PARTIAL | PARTIAL | OPEN |
 | Watch Party | OPEN | OPEN | OPEN |
 | World Dance Party | PARTIAL | **DONE** | OPEN |
-| Game Show | OPEN | OPEN | OPEN |
+| Game Show | PARTIAL | **DONE** | OPEN |
 | Fan Lobby | PARTIAL | PARTIAL | OPEN |
 | Performer Lobby | PARTIAL | PARTIAL | OPEN |
 | Lounge | PARTIAL | PARTIAL | OPEN |
@@ -562,7 +562,8 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **6** | **World Release** | Premiere drop choreography on real schedule — **architecture DONE** Phase 1 (`composeReleaseProgram` + shell); experienceCert OPEN |
 | **7** | **World Dance Party** | Floor avatars + DJ composite — **architecture DONE** Phase 1 (`composeDancePartyProgram` + shell); experienceCert OPEN |
 | **7b** | **Monday Night Stage** | Show package + Who's Next — **architecture DONE** Phase 1 (`composeMondayNightStageProgram` + shell); experienceCert OPEN |
-| **8** | **Lounges** (+ Playlist Lounge) | Panel-only presence; avatar model rejected |
+| **7c** | **Game Show** | Host + board + turn + prize ledger — **architecture DONE** Phase 1 (`composeGameShowProgram` + shell); experienceCert OPEN |
+| **8** | **Lounges** (+ Playlist Lounge) / **Fan Lobby** | Panel-only presence; avatar model rejected for Lounge; Fan Lobby avatars OK |
 | **9** | **Avatar Studio → World** | Looks equip → presence bridge into Fan Lobby / WDP / concert |
 
 Do **not** start full cinematic Battle renderer until Phase 0–1 landed and Phase 2 scoped against frozen Battle lifecycle.

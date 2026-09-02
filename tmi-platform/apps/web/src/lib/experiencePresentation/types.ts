@@ -146,3 +146,14 @@ export const FORBIDDEN_MNS_COMPOSITIONS: readonly BroadcastCompositionLayout[] =
   "B_DOMINANT",
   "CIRCLE_FOCUS",
 ] as const;
+
+/**
+ * Game Show forbids Battle VS corners + Cypher circle.
+ * GAME_BOARD / SPLIT / HOST_CLOSE / PIP remain the signature — not corner VS.
+ */
+export const FORBIDDEN_GAME_SHOW_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+] as const;

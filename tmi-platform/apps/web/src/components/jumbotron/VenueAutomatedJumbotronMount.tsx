@@ -25,6 +25,7 @@ import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeCon
 import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/composeDancePartyProgram";
 import { getActiveMondayNightStageProgram } from "@/lib/experiencePresentation/composeMondayNightStageProgram";
 import { getActiveReleaseProgram } from "@/lib/experiencePresentation/composeReleaseProgram";
+import { getActiveGameShowProgram } from "@/lib/experiencePresentation/composeGameShowProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -372,6 +373,41 @@ export function VenueAutomatedJumbotronMount({
         targetClass: pack.primaryTarget,
         sourceEventId: programId,
         title: badge.includes("WORLD") ? "WORLD RELEASE" : "MINI RELEASE",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "GAME_SHOW") {
+      // Real Game Show PROGRAM — host + board/turn; never invent contestants / scores / prizes.
+      const prog = getActiveGameShowProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const hostName = prog?.mainHost?.displayName?.trim() || "Game Show";
+      const boardCat = prog?.board?.category?.trim() || null;
+      const activeName =
+        prog?.contestants.find((c) => c.id === prog.activeContestantId)?.displayName?.trim() ||
+        null;
+      const winnerName =
+        prog?.contestants.find((c) => c.id === prog.winnerId)?.displayName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.GAME_SHOW";
+      const headline = winnerName
+        ? `WINNER · ${winnerName}`
+        : activeName
+          ? `TURN · ${activeName}`
+          : boardCat
+            ? boardCat
+            : hostName;
+      setEvent({
+        id: `evt-game-show-${roomId}`,
+        traceId: `tr-game-show-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "GAME_SHOW",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "GAME SHOW",
         headline,
         subline: `${badge} · ${programId}`,
         durationMs: 120_000,

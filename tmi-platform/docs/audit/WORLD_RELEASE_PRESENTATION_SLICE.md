@@ -106,5 +106,6 @@ Asserts: Release rejects DUAL/CIRCLE_FOCUS/GAME_BOARD; Mini vs World PROGRAM ids
 | Listen-along sync / shared timeline | OPEN |
 | `/live/world-release/[id]` matrix alias route | OPEN (presentation lives at `/rooms/release`) |
 | experienceCert physical | OPEN |
-| **Game Show** or **Fan Lobby / Lounge** presentation | **Next recommended slice** |
+| **Game Show** presentation | **DONE** Phase 1 — see [`GAME_SHOW_PRESENTATION_SLICE.md`](./GAME_SHOW_PRESENTATION_SLICE.md) |
+| **Fan Lobby / Lounge** presentation | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |

@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack, WorldReleasePack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack, WorldReleasePack, GameShowPack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -84,6 +84,15 @@ import {
   PROGRAM_RELEASE_PREMIERE,
   PROGRAM_WORLD_RELEASE,
 } from "../composeReleaseProgram";
+import {
+  clearGameShowProgram,
+  composeGameShowProgram,
+  getActiveGameShowProgram,
+  isGameShowProgramProductionSurface,
+  isGameShowVsFree,
+  mapGameShowPhaseToComposition,
+  PROGRAM_GAME_SHOW,
+} from "../composeGameShowProgram";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 
 describe("experiencePresentation semantic guards", () => {
@@ -942,6 +951,145 @@ describe("experiencePresentation semantic guards", () => {
 
     clearReleaseProgram("test-done");
     expect(getActiveReleaseProgram()).toBeNull();
+  });
+
+  test("composeGameShowProgram: host+board; never VS/circle; winner only when real; prior packs clean", () => {
+    clearGameShowProgram("test-reset");
+
+    const empty = composeGameShowProgram({
+      sessionId: "sess-gs-empty",
+      roomId: "deal-vs-feud",
+      formatId: "DEAL_OR_FEUD",
+      lifecyclePhase: "HOST_OPEN",
+      bindJumbotron: true,
+    });
+
+    expect(empty.packId).toBe("GameShow");
+    expect(empty.programSourceId).toBe(PROGRAM_GAME_SHOW);
+    expect(empty.worldMiniBadge).toBe("🌍 WORLD");
+    expect(empty.scope).toBe("WORLD");
+    expect(empty.formatId).toBe("DEAL_OR_FEUD");
+    expect(empty.surfaceKind).toBe("production");
+    expect(empty.composition).toBe("HOST_CLOSE");
+    expect(empty.isRegularGoLive).toBe(false);
+    expect(empty.mainHost?.id).toBe("bobby-stanley");
+    expect(empty.mainHost?.isBot).toBe(true);
+    expect(empty.prizeHost?.id).toBe("mindy-jean-long");
+    expect(empty.contestants).toEqual([]);
+    expect(empty.board).toBeNull();
+    expect(empty.winnerId).toBeNull();
+    expect(empty.dualOccupancy).toBe(false);
+    expect(isGameShowVsFree(empty)).toBe(true);
+    expect(isGameShowProgramProductionSurface()).toBe(true);
+    expect(empty.sources.find((s) => s.sourceId === PROGRAM_GAME_SHOW)?.boundTargets).toEqual(
+      expect.arrayContaining(["UNIVERSAL_PLAYER_PRIMARY", "JUMBOTRON_IN_VENUE"])
+    );
+
+    // Game Show rejects Battle VS + Cypher circle; GAME_BOARD / SPLIT allowed
+    expect(GameShowPack.allowsVsLayout).toBe(false);
+    expect(GameShowPack.allowsWinnerFinale).toBe(true);
+    expect(GameShowPack.isRegularGoLive).toBe(false);
+    expect(() => assertPackAllowsComposition("GameShow", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("GameShow", "A_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("GameShow", "B_DOMINANT")).toThrow();
+    expect(() => assertPackAllowsComposition("GameShow", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("GameShow", "GAME_BOARD")).not.toThrow();
+    expect(() => assertPackAllowsComposition("GameShow", "SPLIT")).not.toThrow();
+    expect(mapGameShowPhaseToComposition("BOARD_LIVE")).toBe("GAME_BOARD");
+    expect(mapGameShowPhaseToComposition("CONTESTANT_TURN")).toBe("SPLIT");
+    expect(mapGameShowPhaseToComposition("HOST_OPEN")).toBe("HOST_CLOSE");
+
+    const live = composeGameShowProgram({
+      sessionId: "sess-gs-live",
+      roomId: "deal-vs-feud",
+      formatId: "DEAL_OR_FEUD",
+      contestants: [
+        { id: "c1", displayName: "Real Contestant A", score: 42 },
+        { id: "c2", displayName: "Real Contestant B", score: 18 },
+      ],
+      activeContestantId: "c1",
+      board: {
+        category: "Name something people do at a concert",
+        revealedCount: 2,
+        answerCount: 6,
+      },
+      turnRemainingMs: 15_000,
+      roundIndex: 1,
+      lifecyclePhase: "CONTESTANT_TURN",
+    });
+    expect(live.contestants).toHaveLength(2);
+    expect(live.activeContestantId).toBe("c1");
+    expect(live.board?.category).toContain("concert");
+    expect(live.turnRemainingMs).toBe(15_000);
+    expect(live.composition).toBe("SPLIT");
+    expect(live.winnerId).toBeNull();
+    expect(isGameShowVsFree(live)).toBe(true);
+
+    // Bogus active contestant / winner rejected
+    const bogus = composeGameShowProgram({
+      sessionId: "sess-gs-live",
+      roomId: "deal-vs-feud",
+      contestants: [{ id: "c1", displayName: "Real", score: 10 }],
+      activeContestantId: "not-in-roster",
+      winnerId: "invented-winner",
+    });
+    expect(bogus.activeContestantId).toBeNull();
+    expect(bogus.winnerId).toBeNull();
+
+    // Authoritative winner only when in roster
+    const withWinner = composeGameShowProgram({
+      sessionId: "sess-gs-live",
+      roomId: "deal-vs-feud",
+      contestants: [{ id: "c1", displayName: "Real", score: 200 }],
+      winnerId: "c1",
+      prizeLedger: [
+        {
+          entryId: "p1",
+          label: "Store credit",
+          currencyKind: "CREDIT",
+          amount: 50,
+          awardedToContestantId: "c1",
+          authoritativeGrantId: "grant-real-1",
+        },
+        {
+          entryId: "p2",
+          label: "Fake cash",
+          currencyKind: "CASH_GATED",
+          amount: 1000,
+          awardedToContestantId: "c1",
+          // no grant → intent only, award cleared
+        },
+      ],
+      lifecyclePhase: "WINNER_REVEAL",
+    });
+    expect(withWinner.winnerId).toBe("c1");
+    expect(withWinner.prizeLedger).toHaveLength(2);
+    expect(withWinner.prizeLedger[0].authoritativeGrantId).toBe("grant-real-1");
+    expect(withWinner.prizeLedger[1].awardedToContestantId).toBeNull();
+
+    // Negative timer rejected
+    const bogusTimer = composeGameShowProgram({
+      sessionId: "sess-gs-live",
+      roomId: "deal-vs-feud",
+      turnRemainingMs: -5,
+    });
+    expect(bogusTimer.turnRemainingMs).toBeNull();
+
+    // Prior slices untouched — Battle still VS; Cypher still clean
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(() => assertPackAllowsComposition("Battle", "DUAL")).not.toThrow();
+    expect(ChallengePack.allowsVsLayout).toBe(false);
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+    expect(ConcertPack.allowsVsLayout).toBe(false);
+    expect(DancePartyPack.allowsVsLayout).toBe(false);
+    expect(MondayNightStagePack.allowsVsLayout).toBe(false);
+    expect(WorldReleasePack.allowsVsLayout).toBe(false);
+    expect(getPresentationPack("GameShow").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("GameShow").routeCapability.experienceCert).toBe("OPEN");
+
+    clearGameShowProgram("test-done");
+    expect(getActiveGameShowProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {
