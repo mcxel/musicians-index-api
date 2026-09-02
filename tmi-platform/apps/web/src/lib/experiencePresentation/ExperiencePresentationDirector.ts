@@ -13,7 +13,9 @@ import {
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_FAN_LOBBY_COMPOSITIONS,
   FORBIDDEN_GAME_SHOW_COMPOSITIONS,
+  FORBIDDEN_LOUNGE_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
   FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
@@ -87,8 +89,29 @@ export function assertPackAllowsComposition(
   }
 
   // Hard semantic: Lounge never avatar presence (checked on pack.presenceModel elsewhere)
-  if (packId === "Lounge" && pack.presenceModel !== "WEBRTC_PANELS") {
-    throw new Error("Lounge pack rejects avatar presence model");
+  if (packId === "Lounge") {
+    if (pack.presenceModel !== "WEBRTC_PANELS") {
+      throw new Error("Lounge pack rejects avatar presence model");
+    }
+    if ((FORBIDDEN_LOUNGE_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("Lounge pack rejects Battle VS / Cypher / Game Show / floor-avatar compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("Lounge pack semantic flags forbid VS/winner/elimination");
+    }
+  }
+
+  // Hard semantic: Fan Lobby / FanLive = social hangout — never Battle VS / Cypher / Game Show / WDP floor
+  if (packId === "FanLive") {
+    if (pack.presenceModel !== "FAN_AVATARS" && pack.presenceModel !== "MIXED_SOCIAL") {
+      throw new Error("FanLive pack must authorize fan avatar / social presence");
+    }
+    if ((FORBIDDEN_FAN_LOBBY_COMPOSITIONS as readonly string[]).includes(layout)) {
+      throw new Error("FanLive pack rejects Battle VS / Cypher / Game Show / WDP floor compositions");
+    }
+    if (pack.allowsVsLayout || pack.allowsWinnerFinale || pack.allowsEliminationFinale) {
+      throw new Error("FanLive pack semantic flags forbid VS/winner/elimination");
+    }
   }
 
   // Battle must be able to accept at least one VS composition

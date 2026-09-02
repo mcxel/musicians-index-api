@@ -83,6 +83,7 @@ Videos define **experience targets**. Screenshots prove **logic**. Borrow choreo
 - **DNA:** Free-roam **WebRTC panels**; proximity talk.
 - **HARD FORBID:** avatar presence model.
 - **Playlist Lounge:** same presence + playlist skin center.
+- **Phase 1:** `composeLoungeProgram` → `LoungePresentationShell` (`PROGRAM.LOUNGE` / `PROGRAM.PLAYLIST_LOUNGE`).
 
 ### Monday Night Stage
 - **DNA:** Flagship broadcast package — host, featured, lower thirds, lineup.
@@ -94,9 +95,11 @@ Videos define **experience targets**. Screenshots prove **logic**. Borrow choreo
 - **Layouts:** GAME_BOARD, HOST_CLOSE, SPLIT.
 - **Engine:** Contestant / Round / Turn / Timer / PrizeLedger contracts.
 
-### Fan Live
-- **DNA:** Social-first; friend gravity; not championship stage.
-- **Presence:** fan avatars / social tiles.
+### Fan Live / Fan Lobby
+- **DNA:** Social-first hangout; friend gravity; not championship stage.
+- **Presence:** fan avatars authorized (Rule 26) — lobby wall + invite.
+- **HARD FORBID:** Battle VS, Cypher circle, Game Show board, WDP floor as signature.
+- **Phase 1:** `composeFanLobbyProgram` → `FanLobbyPresentationShell` (`PROGRAM.FAN_LOBBY` via FanLive pack).
 
 ### Performer Live
 - **DNA:** Host camera primary; audience secondary; Regular GO LIVE canary.

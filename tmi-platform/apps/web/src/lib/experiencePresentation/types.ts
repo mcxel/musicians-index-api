@@ -157,3 +157,31 @@ export const FORBIDDEN_GAME_SHOW_COMPOSITIONS: readonly BroadcastCompositionLayo
   "B_DOMINANT",
   "CIRCLE_FOCUS",
 ] as const;
+
+/**
+ * Fan Lobby / FanLive forbids Battle VS, Cypher circle, Game Show board, WDP floor.
+ * Social hangout — HOST_CLOSE / PIP / SPLIT only.
+ */
+export const FORBIDDEN_FAN_LOBBY_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+  "GAME_BOARD",
+  "OBJECTIVE_FOCUS",
+  "FLOOR_WIDE",
+] as const;
+
+/**
+ * Lounge forbids Battle VS, Cypher circle, Game Show board, WDP floor / avatar stadium.
+ * Panel roam — HOST_CLOSE / PIP / SPLIT only. Never FAN_AVATARS presence.
+ */
+export const FORBIDDEN_LOUNGE_COMPOSITIONS: readonly BroadcastCompositionLayout[] = [
+  "DUAL",
+  "A_DOMINANT",
+  "B_DOMINANT",
+  "CIRCLE_FOCUS",
+  "GAME_BOARD",
+  "OBJECTIVE_FOCUS",
+  "FLOOR_WIDE",
+] as const;

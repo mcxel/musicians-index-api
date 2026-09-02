@@ -108,5 +108,6 @@ Asserts: Game Show rejects DUAL/CIRCLE_FOCUS; GAME_BOARD/SPLIT allowed; invented
 | `/rooms/deal-vs-feud` full producer runtime page | OPEN (referenced, not present) |
 | Full cinematic board FX / buzzer polish | OPEN (out of scope Phase 1) |
 | experienceCert physical | OPEN |
-| **Fan Lobby / Lounge** presentation | **Next recommended slice** |
+| **Fan Lobby / Lounge** presentation | **DONE** Phase 1 — see `FAN_LOBBY_LOUNGE_PRESENTATION_SLICE.md` |
+| **Avatar Studio → World** | **Next recommended slice** |
 | Observatory Ad Control / AdSense-3D | Intentionally OPEN (do not start) |

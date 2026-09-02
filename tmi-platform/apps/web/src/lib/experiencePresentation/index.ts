@@ -24,7 +24,9 @@ export {
   FORBIDDEN_CYPHER_COMPOSITIONS,
   FORBIDDEN_CONCERT_COMPOSITIONS,
   FORBIDDEN_DANCE_PARTY_COMPOSITIONS,
+  FORBIDDEN_FAN_LOBBY_COMPOSITIONS,
   FORBIDDEN_GAME_SHOW_COMPOSITIONS,
+  FORBIDDEN_LOUNGE_COMPOSITIONS,
   FORBIDDEN_MNS_COMPOSITIONS,
   FORBIDDEN_RELEASE_COMPOSITIONS,
   VS_COMPOSITIONS,
@@ -255,6 +257,44 @@ export {
   mapGameShowPhaseToComposition,
 } from "./composeGameShowProgram";
 
+export type {
+  FanLobbyProgramComposition,
+  FanLobbyHostSnapshot,
+  FanLobbyLifecyclePhase,
+} from "./composeFanLobbyProgram";
+export {
+  PROGRAM_FAN_LOBBY,
+  ISO_SELF_AVATAR,
+  ISO_FRIENDS,
+  ISO_LOBBY_WALL,
+  ISO_LOBBY_PLAYLIST,
+  composeFanLobbyProgram,
+  getActiveFanLobbyProgram,
+  clearFanLobbyProgram,
+  isFanLobbyProgramProductionSurface,
+  isFanLobbyVsFree,
+  mapFanLobbyPhaseToComposition,
+} from "./composeFanLobbyProgram";
+
+export type {
+  LoungeProgramComposition,
+  LoungeMode,
+  LoungeLifecyclePhase,
+} from "./composeLoungeProgram";
+export {
+  PROGRAM_LOUNGE,
+  PROGRAM_PLAYLIST_LOUNGE,
+  ISO_SELF_PANEL,
+  ISO_ROOM_WIDE,
+  ISO_LOUNGE_PLAYLIST,
+  composeLoungeProgram,
+  getActiveLoungeProgram,
+  clearLoungeProgram,
+  isLoungeProgramProductionSurface,
+  isLoungeVsFree,
+  mapLoungePhaseToComposition,
+} from "./composeLoungeProgram";
+
 export {
   PerformerLivePack,
   BattlePack,
@@ -266,4 +306,6 @@ export {
   DancePartyPack,
   MondayNightStagePack,
   GameShowPack,
+  LoungePack,
+  FanLivePack,
 } from "./packs";

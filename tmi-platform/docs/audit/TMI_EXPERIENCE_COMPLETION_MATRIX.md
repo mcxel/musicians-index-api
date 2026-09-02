@@ -348,23 +348,23 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Fan lobby / avatar lobby / Lobby Wall entry |
+| route(s) | Fan lobby / avatar lobby / Lobby Wall entry (`FanLobbyVenue`, `/live/lobby/fans`, StageLoader `fan-lobby`) |
 | presence model | **Fan avatars** (Rule 26) |
 | center of gravity | Social space before show — theater lobby energy |
 | signature DNA | Avatar hangout + playlist; entry via LobbyEntryFlow |
 | PROGRAM source id | `PROGRAM.FAN_LOBBY` (ambient) |
 | ISO/viewpoints | SELF_AVATAR, FRIENDS, LOBBY_WALL, PLAYLIST |
-| Jumbotron support | Lobby wall mosaic |
+| Jumbotron support | **DONE** Phase 1 — `VenueAutomatedJumbotronMount` reads `getActiveFanLobbyProgram()` |
 | adInventory | PARTIAL — `venue:{id}:lobby` surface + wall mosaic; personalized ads stay in personal UI only |
-| Universal Player support | PARTIAL |
+| Universal Player support | PARTIAL — bound as display target; no new player runtime |
 | queue/game requirements | Seat assignment on join show |
 | world interactions | Emotes, walk, invite |
 | commerce | Cosmetics (Fan Store) |
 | logic cert | PARTIAL |
-| architecture cert | PARTIAL |
+| architecture cert | **DONE** Phase 1 (`composeFanLobbyProgram` + `FanLobbyPresentationShell` via FanLive pack) |
 | experience cert | OPEN |
 | desktop/mobile | Both |
-| notes | Avatars OK. Distinct from Lounge (no avatars). |
+| notes | Avatars OK. Distinct from Lounge (no avatars). Consumer: `FanLobbyVenue` when `roomType=FAN_LOBBY`. |
 
 ### Performer Lobby
 
@@ -391,42 +391,42 @@
 
 | Field | Value |
 |-------|-------|
-| route(s) | Lounge containers / venue HUD lounges |
+| route(s) | Lounge containers / venue HUD lounges (`LoungeExperience`, UVR lounge side-rooms) |
 | presence model | **NO avatars** — WebRTC free-roam panels only |
 | signature DNA | `Lounge` — panel roam, proximity, playlist optional |
 | PROGRAM source id | `PROGRAM.LOUNGE` |
 | ISO/viewpoints | SELF_PANEL, ROOM_WIDE, PLAYLIST |
-| Jumbotron support | Optional ambient |
-| Universal Player support | OPEN |
+| Jumbotron support | **DONE** Phase 1 — `VenueAutomatedJumbotronMount` reads `getActiveLoungeProgram()` |
+| Universal Player support | PARTIAL — bound as display target; no new player runtime |
 | queue/game requirements | None |
 | world interactions | Free-roam, talk proximity |
 | commerce | Optional tips |
 | logic cert | PARTIAL (`loungeVideoPresenceLaw`) |
-| architecture cert | PARTIAL (pack rejects avatar presence) |
+| architecture cert | **DONE** Phase 1 (`composeLoungeProgram` + `LoungePresentationShell`; pack rejects avatar presence) |
 | experience cert | OPEN |
 | desktop/mobile | Both |
-| notes | Hard law: avatar presence model → REJECT. |
+| notes | Hard law: avatar presence model → REJECT. Consumer: `LoungeExperience`. |
 
 ### Playlist Lounge
 
 | Field | Value |
 |-------|-------|
-| route(s) | Playlist-centric lounge variants |
+| route(s) | Playlist-centric lounge variants (`FanLobbyVenue` `PLAYLIST_LOUNGE`, `/rooms/playlist-lounge`) |
 | presence model | WebRTC panels (no avatars) + shared playlist skin |
 | center of gravity | Playlist + panel social |
 | signature DNA | Lounge + Playlist Skin Economy (Rule 19) |
 | PROGRAM source id | `PROGRAM.PLAYLIST_LOUNGE` |
 | ISO/viewpoints | PLAYLIST, PANEL_SELF, PANEL_OTHERS |
-| Jumbotron support | N/A |
+| Jumbotron support | **DONE** Phase 1 — same `getActiveLoungeProgram()` path (`loungeMode=PLAYLIST_LOUNGE`) |
 | Universal Player support | PARTIAL |
 | queue/game requirements | Playlist queue |
 | world interactions | Same as Lounge |
 | commerce | Skin purchase paths |
 | logic cert | PARTIAL |
-| architecture cert | OPEN |
+| architecture cert | **PARTIAL** Phase 1 (shared `composeLoungeProgram`; skin economy UI still OPEN) |
 | experience cert | OPEN |
 | desktop/mobile | Both |
-| notes | Skin economy UI still OPEN (Rule 19 gap). |
+| notes | Skin economy UI still OPEN (Rule 19 gap). Presentation PROGRAM wired; venue avatar mesh for this roomType remains a known tension — PROGRAM never claims avatar stadium DNA. |
 
 ### Avatar Studio
 
@@ -518,7 +518,7 @@
 
 | Experience | Logic | Architecture | Experience (prod visual) |
 |------------|-------|--------------|---------------------------|
-| Fan Live | PARTIAL | PARTIAL | OPEN |
+| Fan Live | PARTIAL | **DONE** | OPEN |
 | Performer Live | PARTIAL | **DONE** | **OPEN** (prod physical) |
 | Battle | PARTIAL | **DONE** | OPEN |
 | Challenge | PARTIAL | **DONE** | OPEN |
@@ -532,10 +532,10 @@
 | Watch Party | OPEN | OPEN | OPEN |
 | World Dance Party | PARTIAL | **DONE** | OPEN |
 | Game Show | PARTIAL | **DONE** | OPEN |
-| Fan Lobby | PARTIAL | PARTIAL | OPEN |
+| Fan Lobby | PARTIAL | **DONE** | OPEN |
 | Performer Lobby | PARTIAL | PARTIAL | OPEN |
-| Lounge | PARTIAL | PARTIAL | OPEN |
-| Playlist Lounge | PARTIAL | OPEN | OPEN |
+| Lounge | PARTIAL | **DONE** | OPEN |
+| Playlist Lounge | PARTIAL | PARTIAL | OPEN |
 | Avatar Studio | PARTIAL | PARTIAL | OPEN |
 | Rehearsal | PARTIAL | OPEN | OPEN |
 | Audition | OPEN | OPEN | OPEN |
@@ -563,7 +563,7 @@ Build **upward** presentation + venue world only. One slice at a time; certify l
 | **7** | **World Dance Party** | Floor avatars + DJ composite — **architecture DONE** Phase 1 (`composeDancePartyProgram` + shell); experienceCert OPEN |
 | **7b** | **Monday Night Stage** | Show package + Who's Next — **architecture DONE** Phase 1 (`composeMondayNightStageProgram` + shell); experienceCert OPEN |
 | **7c** | **Game Show** | Host + board + turn + prize ledger — **architecture DONE** Phase 1 (`composeGameShowProgram` + shell); experienceCert OPEN |
-| **8** | **Lounges** (+ Playlist Lounge) / **Fan Lobby** | Panel-only presence; avatar model rejected for Lounge; Fan Lobby avatars OK |
+| **8** | **Lounges** (+ Playlist Lounge) / **Fan Lobby** | Panel-only presence; avatar model rejected for Lounge; Fan Lobby avatars OK — **architecture DONE** Phase 1 (`composeFanLobbyProgram` + `composeLoungeProgram` + shells); experienceCert OPEN |
 | **9** | **Avatar Studio → World** | Looks equip → presence bridge into Fan Lobby / WDP / concert |
 
 Do **not** start full cinematic Battle renderer until Phase 0–1 landed and Phase 2 scoped against frozen Battle lifecycle.

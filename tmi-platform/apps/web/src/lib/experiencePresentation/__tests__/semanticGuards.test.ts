@@ -13,7 +13,7 @@ import {
   canMarkExperienceCertPass,
   isGreenOrDebugSurface,
 } from "../CertificationGuards";
-import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack, WorldReleasePack, GameShowPack } from "../packs";
+import { LoungePack, CypherPack, BattlePack, ChallengePack, ConcertPack, WorldConcertPack, DancePartyPack, MondayNightStagePack, WorldReleasePack, GameShowPack, FanLivePack } from "../packs";
 import {
   clearPerformerLiveProgram,
   composePerformerLiveProgram,
@@ -93,6 +93,25 @@ import {
   mapGameShowPhaseToComposition,
   PROGRAM_GAME_SHOW,
 } from "../composeGameShowProgram";
+import {
+  clearFanLobbyProgram,
+  composeFanLobbyProgram,
+  getActiveFanLobbyProgram,
+  isFanLobbyProgramProductionSurface,
+  isFanLobbyVsFree,
+  mapFanLobbyPhaseToComposition,
+  PROGRAM_FAN_LOBBY,
+} from "../composeFanLobbyProgram";
+import {
+  clearLoungeProgram,
+  composeLoungeProgram,
+  getActiveLoungeProgram,
+  isLoungeProgramProductionSurface,
+  isLoungeVsFree,
+  mapLoungePhaseToComposition,
+  PROGRAM_LOUNGE,
+  PROGRAM_PLAYLIST_LOUNGE,
+} from "../composeLoungeProgram";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 
 describe("experiencePresentation semantic guards", () => {
@@ -112,6 +131,23 @@ describe("experiencePresentation semantic guards", () => {
     expect(LoungePack.presenceModel).not.toBe("FAN_AVATARS");
     const pack = getPresentationPack("Lounge");
     expect(pack.presenceModel).toBe("WEBRTC_PANELS");
+    expect(pack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Lounge", "HOST_CLOSE")).not.toThrow();
+    expect(() => assertPackAllowsComposition("Lounge", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("Lounge", "FLOOR_WIDE")).toThrow();
+    expect(() => assertPackAllowsComposition("Lounge", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("Lounge", "GAME_BOARD")).toThrow();
+  });
+
+  test("FanLive pack authorizes fan avatars and rejects Battle/Cypher/GameShow DNA", () => {
+    expect(FanLivePack.presenceModel).toBe("FAN_AVATARS");
+    expect(FanLivePack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("FanLive", "HOST_CLOSE")).not.toThrow();
+    expect(() => assertPackAllowsComposition("FanLive", "PIP")).not.toThrow();
+    expect(() => assertPackAllowsComposition("FanLive", "DUAL")).toThrow();
+    expect(() => assertPackAllowsComposition("FanLive", "CIRCLE_FOCUS")).toThrow();
+    expect(() => assertPackAllowsComposition("FanLive", "GAME_BOARD")).toThrow();
+    expect(() => assertPackAllowsComposition("FanLive", "FLOOR_WIDE")).toThrow();
   });
 
   test("Battle pack allows VS; Challenge pack prefers contract/objective", () => {
@@ -1090,6 +1126,144 @@ describe("experiencePresentation semantic guards", () => {
 
     clearGameShowProgram("test-done");
     expect(getActiveGameShowProgram()).toBeNull();
+  });
+
+  test("Fan Lobby compose: social hangout DNA — avatars OK, never VS/Cypher/GameShow", () => {
+    clearFanLobbyProgram("test-setup");
+    clearLoungeProgram("test-setup");
+
+    expect(mapFanLobbyPhaseToComposition("HANGOUT")).toBe("HOST_CLOSE");
+    expect(mapFanLobbyPhaseToComposition("WALL_FOCUS")).toBe("PIP");
+    expect(() =>
+      composeFanLobbyProgram({
+        sessionId: "sess-fl",
+        roomId: "anchor-global-fan-lobby",
+        composition: "DUAL",
+      })
+    ).toThrow();
+    expect(() =>
+      composeFanLobbyProgram({
+        sessionId: "sess-fl",
+        roomId: "anchor-global-fan-lobby",
+        composition: "GAME_BOARD",
+      })
+    ).toThrow();
+
+    const idle = composeFanLobbyProgram({
+      sessionId: "sess-fl",
+      roomId: "anchor-global-fan-lobby",
+      presenceCount: null,
+      bindJumbotron: true,
+    });
+    expect(idle.programSourceId).toBe(PROGRAM_FAN_LOBBY);
+    expect(idle.packId).toBe("FanLive");
+    expect(idle.presenceModel).toBe("FAN_AVATARS");
+    expect(idle.presenceCount).toBeNull();
+    expect(idle.dualOccupancy).toBe(false);
+    expect(idle.winnerId).toBeNull();
+    expect(idle.surfaceKind).toBe("production");
+    expect(isFanLobbyProgramProductionSurface()).toBe(true);
+    expect(isFanLobbyVsFree(idle)).toBe(true);
+    expect(idle.jumbotronBound).toBe(true);
+
+    // Negative / invented occupancy rejected
+    const bogus = composeFanLobbyProgram({
+      sessionId: "sess-fl",
+      roomId: "anchor-global-fan-lobby",
+      presenceCount: -3,
+    });
+    expect(bogus.presenceCount).toBeNull();
+
+    const live = composeFanLobbyProgram({
+      sessionId: "sess-fl",
+      roomId: "anchor-global-fan-lobby",
+      skinId: "cinema",
+      skinLabel: "Cinema Lobby",
+      presenceCount: 4,
+      lifecyclePhase: "HANGOUT",
+    });
+    expect(live.presenceCount).toBe(4);
+    expect(live.skinLabel).toBe("Cinema Lobby");
+    expect(getActiveFanLobbyProgram()?.roomId).toBe("anchor-global-fan-lobby");
+
+    expect(getPresentationPack("FanLive").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("FanLive").routeCapability.experienceCert).toBe("OPEN");
+    // Prior slices untouched
+    expect(BattlePack.allowsVsLayout).toBe(true);
+    expect(GameShowPack.allowsVsLayout).toBe(false);
+    expect(LoungePack.presenceModel).toBe("WEBRTC_PANELS");
+
+    clearFanLobbyProgram("test-done");
+    expect(getActiveFanLobbyProgram()).toBeNull();
+  });
+
+  test("Lounge compose: panels only — rejects avatar stadium / VS / Cypher / GameShow", () => {
+    clearLoungeProgram("test-setup");
+    clearFanLobbyProgram("test-setup");
+
+    expect(mapLoungePhaseToComposition("ROAM")).toBe("HOST_CLOSE");
+    expect(mapLoungePhaseToComposition("PLAYLIST")).toBe("PIP");
+    expect(() =>
+      composeLoungeProgram({
+        sessionId: "sess-lg",
+        roomId: "vip-lounge",
+        composition: "DUAL",
+      })
+    ).toThrow();
+    expect(() =>
+      composeLoungeProgram({
+        sessionId: "sess-lg",
+        roomId: "vip-lounge",
+        composition: "FLOOR_WIDE",
+      })
+    ).toThrow();
+
+    const chill = composeLoungeProgram({
+      sessionId: "sess-lg",
+      roomId: "vip-lounge",
+      loungeMode: "CHILL_LOUNGE",
+      panelPresenceCount: null,
+      bindJumbotron: true,
+    });
+    expect(chill.programSourceId).toBe(PROGRAM_LOUNGE);
+    expect(chill.presenceModel).toBe("WEBRTC_PANELS");
+    expect(chill.avatarOccupancyAllowed).toBe(false);
+    expect(chill.panelPresenceCount).toBeNull();
+    expect(chill.dualOccupancy).toBe(false);
+    expect(chill.winnerId).toBeNull();
+    expect(isLoungeProgramProductionSurface()).toBe(true);
+    expect(isLoungeVsFree(chill)).toBe(true);
+
+    const playlist = composeLoungeProgram({
+      sessionId: "sess-pl",
+      roomId: "lounge-playlist",
+      loungeMode: "PLAYLIST_LOUNGE",
+      playlistId: "pl-real-1",
+      playlistTitle: "Night Drive",
+      panelPresenceCount: 2,
+    });
+    expect(playlist.programSourceId).toBe(PROGRAM_PLAYLIST_LOUNGE);
+    expect(playlist.worldMiniBadge).toBe("⭐ PLAYLIST");
+    expect(playlist.playlistTitle).toBe("Night Drive");
+    expect(playlist.panelPresenceCount).toBe(2);
+    expect(playlist.avatarOccupancyAllowed).toBe(false);
+
+    // Invented negative panel count rejected
+    const bogus = composeLoungeProgram({
+      sessionId: "sess-lg",
+      roomId: "vip-lounge",
+      panelPresenceCount: -1,
+    });
+    expect(bogus.panelPresenceCount).toBeNull();
+
+    expect(getPresentationPack("Lounge").routeCapability.architectureCert).toBe("DONE");
+    expect(getPresentationPack("Lounge").routeCapability.experienceCert).toBe("OPEN");
+    expect(FanLivePack.presenceModel).toBe("FAN_AVATARS");
+    expect(CypherPack.allowsVsLayout).toBe(false);
+    expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
+
+    clearLoungeProgram("test-done");
+    expect(getActiveLoungeProgram()).toBeNull();
   });
 
   test("registry lists all DNA packs", () => {

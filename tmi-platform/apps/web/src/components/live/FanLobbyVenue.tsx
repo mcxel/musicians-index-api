@@ -59,6 +59,20 @@ import {
 } from "@/lib/live/canonicalWorldViewport";
 import { useAuth } from "@/lib/hooks/useAuth";
 import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
+import FanLobbyPresentationShell from "@/components/live/FanLobbyPresentationShell";
+import LoungePresentationShell from "@/components/live/LoungePresentationShell";
+import {
+  clearFanLobbyProgram,
+  composeFanLobbyProgram,
+  getActiveFanLobbyProgram,
+  type FanLobbyProgramComposition,
+} from "@/lib/experiencePresentation/composeFanLobbyProgram";
+import {
+  clearLoungeProgram,
+  composeLoungeProgram,
+  getActiveLoungeProgram,
+  type LoungeProgramComposition,
+} from "@/lib/experiencePresentation/composeLoungeProgram";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -189,6 +203,63 @@ export default function FanLobbyVenue({
     emoji,
     theme: skinId,
   });
+
+  const [fanLobbyProgram, setFanLobbyProgram] = useState<FanLobbyProgramComposition | null>(null);
+  const [loungeProgram, setLoungeProgram] = useState<LoungeProgramComposition | null>(null);
+
+  // Phase 1 ExperiencePresentation — Fan Lobby avatars vs Lounge panels DNA (never invent occupancy).
+  useEffect(() => {
+    const sessionId = `social-lobby:${roomId}`;
+    const presenceCount = Array.isArray(sync.participants) ? sync.participants.length : null;
+
+    if (roomType === "FAN_LOBBY") {
+      clearLoungeProgram("fan-lobby-mode");
+      setLoungeProgram(null);
+      const next = composeFanLobbyProgram({
+        sessionId,
+        roomId,
+        skinId,
+        skinLabel,
+        presenceCount,
+        lifecyclePhase: "HANGOUT",
+        bindJumbotron: true,
+      });
+      setFanLobbyProgram(next);
+      return () => {
+        if (getActiveFanLobbyProgram()?.roomId === roomId) {
+          clearFanLobbyProgram("fan-lobby-unmount");
+        }
+        setFanLobbyProgram(null);
+      };
+    }
+
+    if (roomType === "PLAYLIST_LOUNGE") {
+      clearFanLobbyProgram("playlist-lounge-mode");
+      setFanLobbyProgram(null);
+      // Lounge DNA = panels only — do not pass avatar seat counts as panel occupancy (Rule 20).
+      const next = composeLoungeProgram({
+        sessionId,
+        roomId,
+        loungeMode: "PLAYLIST_LOUNGE",
+        panelPresenceCount: null,
+        lifecyclePhase: "PLAYLIST",
+        bindJumbotron: true,
+      });
+      setLoungeProgram(next);
+      return () => {
+        if (getActiveLoungeProgram()?.roomId === roomId) {
+          clearLoungeProgram("playlist-lounge-unmount");
+        }
+        setLoungeProgram(null);
+      };
+    }
+
+    clearFanLobbyProgram("non-fan-lobby-mode");
+    clearLoungeProgram("non-lounge-mode");
+    setFanLobbyProgram(null);
+    setLoungeProgram(null);
+    return undefined;
+  }, [roomId, roomType, skinId, skinLabel, sync.participants]);
 
   const peerMedia = useLobbyPeerMediaSession({
     roomId,
@@ -466,6 +537,31 @@ export default function FanLobbyVenue({
         />
       ) : null}
 
+      {roomType === "FAN_LOBBY" && fanLobbyProgram ? (
+        <div
+          data-fan-lobby-program-shell="true"
+          style={{
+            position: "relative",
+            zIndex: 41,
+            margin: embedded ? "6px 8px 0" : "10px 16px 0",
+          }}
+        >
+          <FanLobbyPresentationShell composition={fanLobbyProgram} />
+        </div>
+      ) : null}
+      {roomType === "PLAYLIST_LOUNGE" && loungeProgram ? (
+        <div
+          data-lounge-program-shell="true"
+          style={{
+            position: "relative",
+            zIndex: 41,
+            margin: embedded ? "6px 8px 0" : "10px 16px 0",
+          }}
+        >
+          <LoungePresentationShell composition={loungeProgram} />
+        </div>
+      ) : null}
+
       {/* Club / cinema wall-LED Jumbotron — AutomatedJumbotronDirector geometry (not HUD chrome) */}
       <div
         data-fan-lobby-jumbotron="true"
@@ -473,7 +569,7 @@ export default function FanLobbyVenue({
       >
         <VenueAutomatedJumbotronMount
           roomId={roomId}
-          eventType="fan-lobby"
+          eventType={roomType === "PLAYLIST_LOUNGE" ? "lounge" : "fan-lobby"}
           venueId={`fan-lobby-${roomId}`}
           lookUpActive={jumbotronLookUp}
         />

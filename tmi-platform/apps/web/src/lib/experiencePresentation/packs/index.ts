@@ -276,10 +276,19 @@ export const DancePartyPack: ExperiencePresentationPack = {
 
 export const LoungePack: ExperiencePresentationPack = {
   packId: "Lounge",
-  signatureDna: "WebRTC free-roam panels — NO avatars",
+  signatureDna:
+    "WebRTC free-roam panels + proximity — NO bobblehead avatars (Playlist Lounge same presence)",
   presenceModel: "WEBRTC_PANELS",
   allowedCompositions: ["HOST_CLOSE", "PIP", "SPLIT"],
-  forbiddenCompositions: ["DUAL", "GAME_BOARD", "FLOOR_WIDE"],
+  forbiddenCompositions: [
+    "DUAL",
+    "A_DOMINANT",
+    "B_DOMINANT",
+    "CIRCLE_FOCUS",
+    "GAME_BOARD",
+    "OBJECTIVE_FOCUS",
+    "FLOOR_WIDE",
+  ],
   requiredPrimitives: ["LiveVideoPanel", "IdentityPanel"],
   optionalPrimitives: ["AudioVisualizer", "QueueRail"],
   allowsVsLayout: false,
@@ -287,9 +296,25 @@ export const LoungePack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("lounge", "Lounge", ["/lounges"], "WEBRTC_PANELS", {
-    requiresUniversalPlayer: false,
-  }),
+  routeCapability: baseRoute(
+    "lounge",
+    "Lounge",
+    [
+      "/lounges",
+      "/rooms/lounge",
+      "/live/rooms/lounge-playlist",
+      "/rooms/playlist-lounge",
+    ],
+    "WEBRTC_PANELS",
+    {
+      requiresUniversalPlayer: true,
+      requiresJumbotron: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const MondayNightStagePack: ExperiencePresentationPack = {
@@ -359,10 +384,19 @@ export const GameShowPack: ExperiencePresentationPack = {
 
 export const FanLivePack: ExperiencePresentationPack = {
   packId: "FanLive",
-  signatureDna: "Social hangout gravity — not championship stage",
-  presenceModel: "MIXED_SOCIAL",
+  signatureDna:
+    "Fan Lobby social hangout — fan avatars + lobby wall + invite (Rule 26 FAN); not championship stage",
+  presenceModel: "FAN_AVATARS",
   allowedCompositions: ["PIP", "SPLIT", "HOST_CLOSE"],
-  forbiddenCompositions: ["GAME_BOARD", "OBJECTIVE_FOCUS", "DUAL"],
+  forbiddenCompositions: [
+    "GAME_BOARD",
+    "OBJECTIVE_FOCUS",
+    "DUAL",
+    "A_DOMINANT",
+    "B_DOMINANT",
+    "CIRCLE_FOCUS",
+    "FLOOR_WIDE",
+  ],
   requiredPrimitives: ["LiveVideoPanel", "IdentityPanel"],
   optionalPrimitives: ["ReactionEmitter", "AudioVisualizer"],
   allowsVsLayout: false,
@@ -370,7 +404,24 @@ export const FanLivePack: ExperiencePresentationPack = {
   allowsEliminationFinale: false,
   prefersChallengeContract: false,
   isRegularGoLive: false,
-  routeCapability: baseRoute("fan_live", "FanLive", ["/hub/fan"], "MIXED_SOCIAL"),
+  routeCapability: baseRoute(
+    "fan_lobby",
+    "FanLive",
+    [
+      "/live/lobby/fans",
+      "/lobbies/fan",
+      "/hub/fan",
+      "/rooms/fan-lobby",
+    ],
+    "FAN_AVATARS",
+    {
+      requiresJumbotron: true,
+      logicCert: "PARTIAL",
+      architectureCert: "DONE",
+      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
+      experienceCert: "OPEN",
+    }
+  ),
 };
 
 export const PerformerLivePack: ExperiencePresentationPack = {

@@ -26,6 +26,8 @@ import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/compose
 import { getActiveMondayNightStageProgram } from "@/lib/experiencePresentation/composeMondayNightStageProgram";
 import { getActiveReleaseProgram } from "@/lib/experiencePresentation/composeReleaseProgram";
 import { getActiveGameShowProgram } from "@/lib/experiencePresentation/composeGameShowProgram";
+import { getActiveFanLobbyProgram } from "@/lib/experiencePresentation/composeFanLobbyProgram";
+import { getActiveLoungeProgram } from "@/lib/experiencePresentation/composeLoungeProgram";
 import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
 
 const SafeReactThreeCanvas = dynamic(
@@ -410,6 +412,57 @@ export function VenueAutomatedJumbotronMount({
         title: "GAME SHOW",
         headline,
         subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "FAN_LOBBY") {
+      // Real Fan Lobby PROGRAM — skin + honest presence; never invent friends / occupancy.
+      const prog = getActiveFanLobbyProgram();
+      const skin = prog?.skinLabel?.trim() || "Fan Lobby";
+      const presence = prog?.presenceCount;
+      const programId = prog?.programSourceId ?? "PROGRAM.FAN_LOBBY";
+      const headline =
+        presence != null ? `${skin} · ${presence} present` : skin;
+      setEvent({
+        id: `evt-fan-lobby-${roomId}`,
+        traceId: `tr-fan-lobby-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "FAN_LOBBY",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "FAN LOBBY",
+        headline,
+        subline: `⭐ FAN · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "LOUNGE") {
+      // Real Lounge PROGRAM — panels only; never invent avatar stadium occupancy.
+      const prog = getActiveLoungeProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ LOUNGE";
+      const title =
+        prog?.playlistTitle?.trim() ||
+        (prog?.loungeMode === "PLAYLIST_LOUNGE" ? "Playlist Lounge" : "VIP Lounge");
+      const panels = prog?.panelPresenceCount;
+      const programId = prog?.programSourceId ?? "PROGRAM.LOUNGE";
+      const headline =
+        panels != null ? `${title} · ${panels} panels` : title;
+      setEvent({
+        id: `evt-lounge-${roomId}`,
+        traceId: `tr-lounge-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "LOUNGE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: prog?.loungeMode === "PLAYLIST_LOUNGE" ? "PLAYLIST LOUNGE" : "LOUNGE",
+        headline,
+        subline: `${badge} · ${programId} · NO AVATARS`,
         durationMs: 120_000,
         createdAtMs: Date.now(),
         expiresAtMs: Date.now() + 120_000,
