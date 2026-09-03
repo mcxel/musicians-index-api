@@ -68,18 +68,22 @@ async function waitReady(page) {
   await page.waitForSelector('[data-challenge-presentation="production"]', {
     timeout: NAV_TIMEOUT,
   });
+  // Playwright signature: waitForFunction(fn, arg, options) — options must be 3rd arg.
   await page.waitForFunction(
     () => {
       const shell = document.querySelector('[data-challenge-presentation="production"]');
       const text = shell?.textContent || "";
       const faces = window.__TMI_CHALLENGE_ACGBR_FACES__;
+      const programAttr = shell?.getAttribute("data-program-source") || "";
       return (
         text.includes("Complete the stated objective") &&
-        text.includes("PROGRAM.CHALLENGE_PRIMARY") &&
+        (programAttr === "PROGRAM.CHALLENGE_PRIMARY" ||
+          text.includes("PROGRAM.CHALLENGE_PRIMARY")) &&
         Array.isArray(faces) &&
         faces.length >= 4
       );
     },
+    undefined,
     { timeout: NAV_TIMEOUT },
   );
   // Dismiss beta / consent chrome if present
@@ -157,7 +161,7 @@ async function runDesktop(browser) {
   });
   await prepContext(context);
   const page = await context.newPage();
-  page.setDefaultTimeout(30000);
+  page.setDefaultTimeout(NAV_TIMEOUT);
 
   const consoleErrors = [];
   page.on("pageerror", (err) => consoleErrors.push(String(err.message || err)));
@@ -235,17 +239,19 @@ async function runDesktop(browser) {
         document
           .querySelector('[data-challenge-presentation="production"]')
           ?.getAttribute("data-lifecycle-phase") === "ATTEMPT_1_COUNTDOWN",
-      { timeout: 10000 },
-    );
+    undefined,
+    { timeout: 10000 },
+  );
     await shot(page, "02-desktop-attempt-countdown.png");
     const midCountdown = await probeDom(page);
     await page.waitForFunction(
-      () =>
+() =>
         document
           .querySelector('[data-challenge-presentation="production"]')
           ?.getAttribute("data-lifecycle-phase") === "ATTEMPT_1_ACTIVE",
-      { timeout: 10000 },
-    );
+    undefined,
+    { timeout: 10000 },
+  );
     await shot(page, "03-desktop-attempt-active.png");
     d = await probeDom(page);
     if (midCountdown.shellPhase === "ATTEMPT_1_COUNTDOWN" && d.shellPhase === "ATTEMPT_1_ACTIVE") {
@@ -289,17 +295,19 @@ async function runDesktop(browser) {
     // Gate 6 — result
     await clickControl(page, "challenge-add-challenged");
     await page.waitForFunction(
-      () => {
+() => {
         const b = document.querySelector('[data-testid="challenge-record-complete"]');
         return b && !b.disabled;
       },
-      { timeout: 5000 },
-    );
+    undefined,
+    { timeout: 5000 },
+  );
     await clickControl(page, "challenge-record-complete");
     await page.waitForFunction(
-      () => !!document.querySelector('[data-primitive="ResultCard"]'),
-      { timeout: 8000 },
-    );
+() => !!document.querySelector('[data-primitive="ResultCard"]'),
+    undefined,
+    { timeout: 8000 },
+  );
     await shot(page, "05-desktop-result-presentation.png");
     d = await probeDom(page);
     if (d.hasResultCard && /no invented winner/i.test(d.shellText)) {
@@ -321,12 +329,13 @@ async function runDesktop(browser) {
     // Gate 7 — Jumbotron LOOK-UP / four-face (re-enter active for ACTIVE_ATTEMPT north)
     await clickControl(page, "challenge-start-attempt");
     await page.waitForFunction(
-      () =>
+() =>
         document
           .querySelector('[data-challenge-presentation="production"]')
           ?.getAttribute("data-lifecycle-phase") === "ATTEMPT_1_ACTIVE",
-      { timeout: 12000 },
-    );
+    undefined,
+    { timeout: 12000 },
+  );
     await page.waitForTimeout(800);
     await shot(page, "06-desktop-jumbotron-lookup.png");
     d = await probeDom(page);
@@ -385,12 +394,13 @@ async function runDesktop(browser) {
     await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
     await waitReady(page);
     await page.waitForFunction(
-      () =>
+() =>
         document
           .querySelector('[data-challenge-presentation="production"]')
           ?.getAttribute("data-lifecycle-phase") === "ATTEMPT_1_ACTIVE",
-      { timeout: 10000 },
-    );
+    undefined,
+    { timeout: 10000 },
+  );
     await shot(page, "08-desktop-reload-resume.png");
     const afterReload = await probeDom(page);
     if (
@@ -501,7 +511,7 @@ async function runMobile(browser) {
   });
   await prepContext(context);
   const page = await context.newPage();
-  page.setDefaultTimeout(30000);
+  page.setDefaultTimeout(NAV_TIMEOUT);
 
   try {
     await page.goto(ROOM_URL, { waitUntil: "commit", timeout: NAV_TIMEOUT });
@@ -510,14 +520,15 @@ async function runMobile(browser) {
 
     await clickControl(page, "challenge-start-attempt");
     await page.waitForFunction(
-      () => {
+() => {
         const p = document
           .querySelector('[data-challenge-presentation="production"]')
           ?.getAttribute("data-lifecycle-phase");
         return p === "ATTEMPT_1_COUNTDOWN" || p === "ATTEMPT_1_ACTIVE";
       },
-      { timeout: 10000 },
-    );
+    undefined,
+    { timeout: 10000 },
+  );
     await shot(page, "12-mobile-attempt.png");
 
     const select = page.locator("select");

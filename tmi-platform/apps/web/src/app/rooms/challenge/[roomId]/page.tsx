@@ -63,9 +63,6 @@ export default function ChallengeRoomByIdPage() {
   const [policy, setPolicy] = useState<ChallengeJudgmentPolicy>("MEASURABLE_RESULT");
   const [challenged, setChallenged] = useState<{ id: string; displayName: string } | null>(null);
   const [result, setResult] = useState<ChallengeAuthorizedResult | null>(null);
-  const [challengeProgram, setChallengeProgram] = useState<ChallengeProgramComposition | null>(
-    null,
-  );
   const [sessionRestored, setSessionRestored] = useState(false);
 
   const sessionKey = `tmi.challenge.operational.${roomId}`;
@@ -78,6 +75,22 @@ export default function ChallengeRoomByIdPage() {
     }),
     [challengeId, policy],
   );
+
+  // Derive PROGRAM during render so the objective contract is present on first paint
+  // (useEffect-only compose left the shell on "Waiting for objective contract" in physical cert).
+  const challengeProgram = useMemo<ChallengeProgramComposition>(() => {
+    return composeChallengeProgram({
+      sessionId: `challenge-session:${challengeId}`,
+      challengeId,
+      roomId,
+      objective,
+      challenger: { id: actor.userId, displayName: actor.displayName },
+      challenged,
+      lifecyclePhase: phase,
+      result,
+      bindJumbotron: true,
+    });
+  }, [actor.userId, actor.displayName, challengeId, roomId, objective, challenged, phase, result]);
 
   // Mid-flow resume: restore last phase/participants/result for this room (no invented state).
   useEffect(() => {
@@ -122,22 +135,8 @@ export default function ChallengeRoomByIdPage() {
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  // Production Challenge PROGRAM — same upward pattern as composeBattleProgram.
   // ACGBR face plan is derived read-only from phase (never writes Challenge truth).
   useEffect(() => {
-    const composed = composeChallengeProgram({
-      sessionId: `challenge-session:${challengeId}`,
-      challengeId,
-      roomId,
-      objective,
-      challenger: { id: actor.userId, displayName: actor.displayName },
-      challenged,
-      lifecyclePhase: phase,
-      result,
-      bindJumbotron: true,
-    });
-    setChallengeProgram(composed);
-
     const facePlan = planChallengeJumbotronFaces(phase, {
       sessionId: `challenge-session:${challengeId}`,
       objectiveLabel: objective.objective,
@@ -148,27 +147,35 @@ export default function ChallengeRoomByIdPage() {
             ? challenged?.id ?? null
             : null,
     });
-    if (typeof window !== "undefined") {
+    (
+      window as unknown as {
+        __TMI_CHALLENGE_ACGBR_FACES__?: ReturnType<typeof planChallengeJumbotronFaces>;
+      }
+    ).__TMI_CHALLENGE_ACGBR_FACES__ = facePlan;
+
+    return () => {
       (
         window as unknown as {
-          __TMI_CHALLENGE_ACGBR_FACES__?: ReturnType<typeof planChallengeJumbotronFaces>;
+          __TMI_CHALLENGE_ACGBR_FACES__?: unknown;
         }
-      ).__TMI_CHALLENGE_ACGBR_FACES__ = facePlan;
-    }
+      ).__TMI_CHALLENGE_ACGBR_FACES__ = null;
+    };
+  }, [
+    actor.userId,
+    challengeId,
+    objective.objective,
+    challenged?.id,
+    phase,
+  ]);
 
+  // Clear module singleton only on room leave — not on phase ticks (PROGRAM is render-derived).
+  useEffect(() => {
     return () => {
       if (getActiveChallengeProgram()?.challengeId === challengeId) {
         clearChallengeProgram("challenge-room-unmount");
       }
-      if (typeof window !== "undefined") {
-        (
-          window as unknown as {
-            __TMI_CHALLENGE_ACGBR_FACES__?: unknown;
-          }
-        ).__TMI_CHALLENGE_ACGBR_FACES__ = null;
-      }
     };
-  }, [actor.userId, actor.displayName, challengeId, roomId, objective, challenged, phase, result]);
+  }, [challengeId]);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", position: "relative" }}>

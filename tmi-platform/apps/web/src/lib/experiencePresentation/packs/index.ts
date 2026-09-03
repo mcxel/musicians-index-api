@@ -75,8 +75,8 @@ export const ChallengePack: ExperiencePresentationPack = {
       requiresJumbotron: true,
       logicCert: "PARTIAL",
       architectureCert: "DONE",
-      // experienceCert stays OPEN until production physical cert (green/debug cannot PASS).
-      experienceCert: "OPEN",
+      // Physical Chromium PASS 2026-09-03 — LANE_C_CHALLENGE_PHYSICAL_CERT.md
+      experienceCert: "DONE",
     }
   ),
 };

@@ -121,7 +121,7 @@
 | signature DNA | `Challenge` — OBJECTIVE_FOCUS, ChallengeContract primitive, result vs objective |
 | PROGRAM source id | `PROGRAM.CHALLENGE_PRIMARY` |
 | ISO/viewpoints | PERFORMER, CONTRACT_CARD, JUDGE, TIMER, AUDIENCE |
-| Jumbotron support | **STRONG** (logic) — room `__TMI_CHALLENGE_ACGBR_FACES__` + PROGRAM → `VenueAutomatedJumbotronMount` applies plan via `JumbotronShowDirector`/`FaceTargetRegistry` (N attempt / S objective+timer / E sponsor / W audience); no VS scoreboard seed; experienceCert OPEN |
+| Jumbotron support | **STRONG** — room `__TMI_CHALLENGE_ACGBR_FACES__` + PROGRAM → `VenueAutomatedJumbotronMount` applies plan via `JumbotronShowDirector`/`FaceTargetRegistry` (N attempt / S objective+timer / E sponsor / W audience); physical LOOK-UP four-face PASS |
 | Universal Player support | PARTIAL→STRONG (PROGRAM bound; lifecycle fabric Gates 8–9; no second LiveSession) |
 | queue/game requirements | Objective contract, timer, pass/fail ledger |
 | world interactions | Real votes/judging only |
@@ -129,9 +129,9 @@
 | ACGBR | **DONE** contracts + Challenge bridge (read-only snapshot; certified templates; neural OUT OF SCOPE) — `docs/audit/ACGBR_ARCHITECTURE_CONTRACT.md` |
 | logic cert | **STRONG** (lifecycle + Lane C Gates 1–16 + ACGBR boundary jest + compose semantic tests) |
 | architecture cert | **DONE** (Challenge pack + `composeChallengeProgram` + ACGBR one-way boundary + result≠settlement) |
-| experience cert | **OPEN** — production physical Chromium cert pending; do **not** treat logic green as experienceCert PASS |
+| experience cert | **DONE** 🟢 PHYSICALLY CERTIFIED — `LANE_C_CHALLENGE_PHYSICAL_CERT.md` (Gates 1–12 + Mobile PASS) |
 | desktop/mobile | FOCUS / FLAT · pacing FULL/FAST/RECONNECT/REDUCED_MOTION/LOW_DEVICE |
-| notes | **Not** Battle. No mandatory corner VS. Phase 1: `CHALLENGE_WORLD_PRESENTATION_SLICE.md`. Lane C: `LANE_C_CHALLENGE_OPERATIONAL_ACTIVATION.md` |
+| notes | **Not** Battle. No mandatory corner VS. Phase 1: `CHALLENGE_WORLD_PRESENTATION_SLICE.md`. Lane C **CLOSED**: `LANE_C_CHALLENGE_OPERATIONAL_ACTIVATION.md` |
 
 ### Cypher
 

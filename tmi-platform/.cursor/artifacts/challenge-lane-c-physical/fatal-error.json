@@ -1,4 +1,0 @@
-{
-  "message": "TimeoutError: page.goto: Timeout 180000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3002/rooms/challenge/sess-challenge-prod-01\", waiting until \"domcontentloaded\"\n",
-  "stack": "page.goto: Timeout 180000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3002/rooms/challenge/sess-challenge-prod-01\", waiting until \"domcontentloaded\"\n\n    at runDesktop (C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\scripts\\cert-physical-lane-c-challenge.mjs:169:16)\n    at async main (C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\scripts\\cert-physical-lane-c-challenge.mjs:557:5)"
-}

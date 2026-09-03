@@ -524,7 +524,7 @@ describe("experiencePresentation semantic guards", () => {
     expect(() => assertPackAllowsComposition("Cypher", "DUAL")).toThrow();
     expect(BattlePack.allowsVsLayout).toBe(true);
     expect(getPresentationPack("Challenge").routeCapability.architectureCert).toBe("DONE");
-    expect(getPresentationPack("Challenge").routeCapability.experienceCert).toBe("OPEN");
+    expect(getPresentationPack("Challenge").routeCapability.experienceCert).toBe("DONE");
 
     clearChallengeProgram("test-done");
     expect(getActiveChallengeProgram()).toBeNull();

@@ -27,7 +27,7 @@
 | ACGBR one-way boundary jest suite | **DONE** (logic) | `lib/acgbr/__tests__/acgbrOneWayBoundary.test.ts` (incl. mount resolver + ShowDirector apply) |
 | architectureCert | **DONE** | Pack + compose + ACGBR boundary wired |
 | logicCert | **PARTIAL→STRONG** | Lifecycle + ACGBR + compose unit tests |
-| **experienceCert (physical Chromium)** | **OPEN** (🔴 FAIL attempt 2026-09-03 — Gate 1 re-cert) | See `LANE_C_CHALLENGE_PHYSICAL_CERT.md`. Prior partial DNA/Jumbotron probe while healthy; re-run blocked by Next webpack_modules Server Error + route timeouts after `.next` corruption. Lane C **not** CLOSED. |
+| **experienceCert (physical Chromium)** | **DONE** 🟢 CLOSED / PHYSICALLY CERTIFIED | `LANE_C_CHALLENGE_PHYSICAL_CERT.md` — Gates 1–12 + Mobile PASS on `:3002` (isolated `.next-lane-c-cert`). Runner: `scripts/cert-physical-lane-c-challenge.mjs`. |
 | Neural Generation Foundry / lip-sync | **OUT OF SCOPE** | `NEURAL_GENERATION_UNAVAILABLE` |
 | Fake crowd fill | **FORBIDDEN** | Rule 20 |
 
@@ -79,6 +79,8 @@ Physical / visual PASS requires observing **Challenge DNA**, not debug chrome:
 
 Until a Chromium session records these, **experienceCert stays OPEN**.
 
+> **UPDATE 2026-09-03:** Chromium physical cert **PASSED** (Gates 1–12 + Mobile). See `LANE_C_CHALLENGE_PHYSICAL_CERT.md`. experienceCert is **DONE**; Lane C is **CLOSED**.
+
 ---
 
 ## How to run automated certs
@@ -99,13 +101,13 @@ npx jest --config jest.config.ts src/lib/experiencePresentation/__tests__/semant
 
 ## Next step after Challenge
 
-1. Physical Chromium experienceCert on `/rooms/challenge/[roomId]` (LOOK UP Jumbotron — confirm four distinct face roles; record PASS evidence)  
-2. Next experience DNA under ACGBR (recommended: deepen Cypher circle presentation **or** Concert stage-forward — do **not** start Avatar Studio overwrite / AdSense-3D)  
-3. Keep Generation Foundry neural surfaces OUT OF SCOPE until real assets exist  
+1. ~~Physical Chromium experienceCert on `/rooms/challenge/[roomId]`~~ → **DONE** 🟢 (`LANE_C_CHALLENGE_PHYSICAL_CERT.md`)
+2. **Avatar Preview Parity deepen** — FULL STUDIO ↔ Canonical Draft ↔ QUICK AVATAR; PREVIEW→SAVE→FAN WORLD same look/motion; FAN-only; no fake Herser
+3. Keep Generation Foundry neural surfaces OUT OF SCOPE until real assets exist
 
 ### Live Jumbotron face wiring (2026-09-02 assembly)
 
-**DONE (logic):** Challenge room publishes `__TMI_CHALLENGE_ACGBR_FACES__` → `resolveChallengeAcgbrFacePlanForMount` (hook first, else `getActiveChallengeProgram`) → `applyChallengeJumbotronFacePlan` on existing `JumbotronShowDirector.getFaceRegistry()` inside `VenueAutomatedJumbotronMount` (CHALLENGE_ARENA only). Geometry + surface renderer receive the plan for distinct N/E/S/W role tints/strip. P1 ACTIVE_ATTEMPT / RESULT outranks sponsor ads (P4). No second Jumbotron runtime. experienceCert remains **OPEN** until Chromium evidence.
+**DONE (logic + physical):** Challenge room publishes `__TMI_CHALLENGE_ACGBR_FACES__` → `resolveChallengeAcgbrFacePlanForMount` → `applyChallengeJumbotronFacePlan` on existing `JumbotronShowDirector.getFaceRegistry()` inside `VenueAutomatedJumbotronMount` (CHALLENGE_ARENA only). Physical LOOK-UP four-face PASS recorded 2026-09-03.
 
 ---
 
