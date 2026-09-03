@@ -29,6 +29,7 @@ import {
   ChallengeCinematicProfile,
   ChallengeCinematicScene,
 } from '@/lib/challenge/ChallengeCinematicProfile';
+import { JumbotronImpulseSeenPrompt } from '@/components/jumbotron/JumbotronImpulseSeenPrompt';
 
 export interface CinematicChallengeArenaStageProps {
   challengeSessionId?: string;
@@ -243,11 +244,20 @@ export default function CinematicChallengeArenaStage({
           </div>
         </div>
 
-        {/* Pacing Mode Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>
-            DEVICE MODE:
-          </span>
+        {/* Jumbotron "You Want to Be Seen?" Impulse Prompt & Pacing Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <JumbotronImpulseSeenPrompt
+            roomId={challengeSessionId}
+            venueId="venue-challenge-arena-01"
+            performerId={challenger.participantId}
+            participantId="usr-fan-live-01"
+            participantName="Spotlight Fan"
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>
+              DEVICE MODE:
+            </span>
           {(['FULL', 'FAST', 'ACCESSIBLE'] as const).map((mode) => (
             <button
               key={mode}
@@ -268,6 +278,7 @@ export default function CinematicChallengeArenaStage({
           ))}
         </div>
       </div>
+    </div>
 
       {/* Main Challenge Visual Arena */}
       <div
