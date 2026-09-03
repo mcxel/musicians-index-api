@@ -6,7 +6,7 @@
     "dev": "node ../../node_modules/next/dist/bin/next dev",
     "dev:socket": "ts-node socket-server.ts",
     "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate",
-    "build": "node --max-old-space-size=5120 ../../node_modules/next/dist/bin/next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
