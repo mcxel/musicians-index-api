@@ -8,6 +8,7 @@ import {
   isPerformerIdentityRole,
 } from "@/lib/avatars/fanAvatarOwnership";
 import {
+  commitCanonicalDraftToFanWorld,
   getCanonicalAvatarDraft,
   hydrateCanonicalAvatarDraft,
   patchCanonicalAvatarDraft,
@@ -24,10 +25,15 @@ import {
 import { DEFAULT_FAN_AVATAR_GLB_SLOT, resolveAvatarViewportBinding } from "@/lib/avatars/AvatarGlbRegistry";
 import { canCommitWearableToWorld, resolveWearableCapability } from "@/lib/avatars/AvatarWearableCapability";
 import { migrateAvatarLook } from "@/lib/avatars/AvatarLook";
+import {
+  clearFanEquippedLookCache,
+  readPersistedFanEquippedLook,
+} from "@/lib/avatars/FanEquippedLookBridge";
 
 describe("Avatar Preview Parity Law", () => {
   beforeEach(() => {
     resetCanonicalAvatarDraftForTest();
+    clearFanEquippedLookCache();
   });
 
   test("Studio and Quick Panel share one Canonical Avatar Draft", () => {
@@ -42,6 +48,42 @@ describe("Avatar Preview Parity Law", () => {
     expect(quickRead.equippedCosmeticIds).toEqual(["street_fit"]);
     hydrateCanonicalAvatarDraft();
     expect(getCanonicalAvatarDraft().equippedCosmeticIds).toEqual(["street_fit"]);
+  });
+
+  test("PREVIEW → SAVE → FAN WORLD commits the same draft look fingerprint", () => {
+    hydrateCanonicalAvatarDraft();
+    patchCanonicalAvatarDraft({
+      displayName: "Parity Fan",
+      equippedCosmeticIds: ["street_fit"],
+      previewAction: "WAVE",
+    });
+    const preview = resolveAvatarPreview(getCanonicalAvatarDraft());
+    expect(preview.draft.equippedCosmeticIds).toEqual(["street_fit"]);
+    expect(preview.actionGate.action).toBe("WAVE");
+
+    const commit = commitCanonicalDraftToFanWorld({ outfitLabel: "Street Fit" });
+    expect(commit.ok).toBe(true);
+    if (!commit.ok) return;
+    expect(commit.look.equippedCosmeticIds).toEqual(["street_fit"]);
+    expect(commit.look.loadoutId).toContain("street_fit");
+
+    const world = readPersistedFanEquippedLook();
+    expect(world?.equippedCosmeticIds).toEqual(["street_fit"]);
+    expect(world?.loadoutId).toBe(commit.look.loadoutId);
+    // Quick surface still reads the same draft after save
+    expect(getCanonicalAvatarDraft().equippedCosmeticIds).toEqual(["street_fit"]);
+  });
+
+  test("commit refuses invented SKUs and locked-without-ownership (no fake Herser)", () => {
+    hydrateCanonicalAvatarDraft();
+    patchCanonicalAvatarDraft({ equippedCosmeticIds: ["invented-mesh"] });
+    const bad = commitCanonicalDraftToFanWorld();
+    expect(bad.ok).toBe(false);
+
+    patchCanonicalAvatarDraft({ equippedCosmeticIds: ["gold_chain"] });
+    const locked = commitCanonicalDraftToFanWorld({ ownedCosmeticIds: [] });
+    expect(locked.ok).toBe(false);
+    if (!locked.ok) expect(locked.storeHref).toBeTruthy();
   });
 
   test("FAN-only ownership; performers are identity roles", () => {

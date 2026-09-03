@@ -56,7 +56,7 @@
 | Local seat | `AudienceScene.tsx` | Local fan extras from look; no invented crowd |
 | Routes | `/avatar/closet` `/looks` `/test` | Redirect to studio |
 | Guards | `semanticGuards.test.ts` + hydration + `avatarPreviewParity.test.ts` | FAN-only; one draft; Lounge lighting occupancy false |
-| Preview Parity | `AvatarPreviewRuntime` · `CanonicalAvatarDraft` · `AvatarLook` | Studio + Quick share one draft → same Foundry rig |
+| Preview Parity | `AvatarPreviewRuntime` · `CanonicalAvatarDraft` · `AvatarLook` · `commitCanonicalDraftToFanWorld` | Studio + Quick share one draft → same Foundry rig → Fan World publish |
 
 **Hard laws:** no second LiveSession / player / fabric canary; Lounge still rejects avatars; no performer ownership UI; green/debug ≠ experienceCert; Herser unbound slots stay `certified: false`; preview never presents a capability production cannot perform.
 

@@ -127,6 +127,12 @@ Avatar Studio uses the **Authoritative-Truth Boundary** the same way Challenge A
 
 | Lane | Status |
 |------|--------|
-| logicCert | PARTIAL — unit tests for one draft, FAN-only, Lounge occupancy, productionCompatible save |
-| architectureCert | **PARTIAL** — contracts + Studio/Quick wiring; Herser motion/facial/wardrobe still fail-visible |
+| logicCert | **STRONG** — one draft, FAN-only, Lounge occupancy, productionCompatible save, PREVIEW→SAVE→FAN WORLD fingerprint |
+| architectureCert | **PARTIAL** — Studio + Quick + Creation Center share `commitCanonicalDraftToFanWorld`; Herser motion/facial/wardrobe still fail-visible when unbound |
 | experienceCert | **OPEN** — no physical evidence; do not claim PASS |
+
+### Deepen slice (2026-09-03)
+
+- `commitCanonicalDraftToFanWorld()` — single SAVE path from Canonical Draft → `publishFanEquippedLook`
+- Full Studio syncs draft on equip; Quick Avatar **Save → Fan World**; Creation Center equip uses same commit
+- No fake Herser: invented SKUs / locked-without-ownership refuse save; unbound GLB stays diagnostic

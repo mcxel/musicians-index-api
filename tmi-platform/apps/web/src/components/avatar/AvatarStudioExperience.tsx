@@ -24,10 +24,7 @@ import {
 } from "@/lib/avatars/FanCosmeticCatalog";
 import { CanonicalAvatarProfile } from "@/lib/avatars/CanonicalAvatarRegistry";
 import {
-  publishFanEquippedLook,
-  resolveFanEquippedLook,
-} from "@/lib/avatars/FanEquippedLookBridge";
-import {
+  commitCanonicalDraftToFanWorld,
   hydrateCanonicalAvatarDraft,
   patchCanonicalAvatarDraft,
 } from "@/lib/avatars/CanonicalAvatarDraft";
@@ -195,6 +192,14 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     return ids;
   }, [inventory, activePackId]);
 
+  // Keep Canonical Draft in lockstep with Full Studio so Quick Avatar sees the same look/motion.
+  useEffect(() => {
+    patchCanonicalAvatarDraft({
+      displayName: profileName,
+      equippedCosmeticIds,
+    });
+  }, [profileName, equippedCosmeticIds]);
+
   const cameraFocus = CATEGORIES.find((c) => c.id === category)?.focus ?? "body";
 
   const persistPortrait = useCallback(async (dataUrl: string) => {
@@ -279,18 +284,21 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     } catch {
       setSavedAt(sync.syncedAt);
     }
-    const look = resolveFanEquippedLook({
+    patchCanonicalAvatarDraft({
       displayName: profileName,
+      equippedCosmeticIds,
+    });
+    const commit = commitCanonicalDraftToFanWorld({
+      ownedCosmeticIds: [...ownedIds],
       skinTone: skin,
       hairStyle: hair,
       outfitLabel: outfit,
-      equippedCosmeticIds,
+      bodyHeight,
+      bodyMass,
     });
-    publishFanEquippedLook(look, { bodyHeight, bodyMass });
-    patchCanonicalAvatarDraft({
-      displayName: profileName,
-      equippedCosmeticIds: look.equippedCosmeticIds,
-    });
+    if (!commit.ok && commit.storeHref && typeof window !== "undefined") {
+      window.location.assign(commit.storeHref);
+    }
   };
 
   const panel = renderCategoryPanel({

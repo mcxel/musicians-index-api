@@ -17,6 +17,7 @@ import {
 import { listFanSelectableBases } from "@/lib/avatars/BobbleheadBaseRegistry";
 import { BOBBLEHEAD_RUNTIME_LABEL } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
+  commitCanonicalDraftToFanWorld,
   getCanonicalAvatarDraft,
   hydrateCanonicalAvatarDraft,
   patchCanonicalAvatarDraft,
@@ -138,6 +139,7 @@ function AvatarQuickPanel({
   const props = useMemo(() => listEquippableProps().slice(0, 4), []);
   const bases = useMemo(() => listFanSelectableBases().slice(0, 6), []);
   const [draft, setDraft] = useState(() => getCanonicalAvatarDraft());
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   const isFan = role === "fan";
 
   useEffect(() => {
@@ -154,6 +156,20 @@ function AvatarQuickPanel({
   const activeOutfit = draft.equippedCosmeticIds[0] ?? "";
   const expression =
     draft.previewAction === "SMILE" ? "smile" : draft.previewAction === "HYPE" ? "hype" : "neutral";
+
+  const handleSaveToFanWorld = () => {
+    const result = commitCanonicalDraftToFanWorld({
+      outfitLabel: activeOutfit || "Street Fit",
+    });
+    if (!result.ok) {
+      setSaveNote(result.reason);
+      if (result.storeHref && typeof window !== "undefined") {
+        window.location.assign(result.storeHref);
+      }
+      return;
+    }
+    setSaveNote(`Saved to Fan World · ${result.look.loadoutId}`);
+  };
 
   if (!isFan) {
     return null;
@@ -330,6 +346,28 @@ function AvatarQuickPanel({
             Emotes disabled until Foundry certifies {viewport.slot.publicPath}.
           </div>
         )}
+        <button
+          type="button"
+          data-testid="quick-avatar-save-fan-world"
+          onClick={handleSaveToFanWorld}
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            padding: "8px 10px",
+            borderRadius: 8,
+            border: `1px solid ${accentColor}`,
+            background: `${accentColor}22`,
+            color: accentColor,
+            cursor: "pointer",
+            textTransform: "uppercase",
+          }}
+        >
+          Save → Fan World
+        </button>
+        {saveNote ? (
+          <div style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", lineHeight: 1.35 }}>{saveNote}</div>
+        ) : null}
         <Link
           href="/avatar/studio"
           style={{ fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700 }}

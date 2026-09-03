@@ -59,6 +59,7 @@ import {
   readPersistedBobbleheadBaseId,
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import {
+  commitCanonicalDraftToFanWorld,
   getCanonicalAvatarDraft,
   hydrateCanonicalAvatarDraft,
   patchCanonicalAvatarDraft,
@@ -76,7 +77,6 @@ import {
   canCommitWearableToWorld,
   FAN_COSMETIC_STORE_HREF,
 } from "@/lib/avatars/AvatarWearableCapability";
-import { publishFanEquippedLook, resolveFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -208,10 +208,8 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
     const ids = equippedCosmeticId ? [equippedCosmeticId] : [];
     const blocked = assertWearablesProductionCompatible(ids);
     if (blocked.length) return;
-    persistBobbleheadBaseId(baseId);
-    persistFanSkinT(skinT);
-    persistCanonicalDraftIdentity({
-      ...getCanonicalAvatarDraft(),
+    patchCanonicalAvatarDraft({
+      displayName: selectedBase.displayName,
       baseId,
       skinT,
       equippedCosmeticIds: ids,
@@ -220,11 +218,13 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
       if (typeof window !== "undefined") window.location.assign(FAN_COSMETIC_STORE_HREF);
       return;
     }
-    const look = resolveFanEquippedLook({
-      displayName: selectedBase.displayName,
-      equippedCosmeticIds: ids,
-    });
-    publishFanEquippedLook(look);
+    const commit = commitCanonicalDraftToFanWorld();
+    if (!commit.ok) {
+      if (commit.storeHref && typeof window !== "undefined") {
+        window.location.assign(commit.storeHref);
+      }
+      return;
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("bb:loadout:changed", { detail: { baseId, skinT, cosmeticId: equippedCosmeticId } }));
       window.dispatchEvent(new CustomEvent("tmi:avatar:equipped", { detail: { baseId, skinT, cosmeticId: equippedCosmeticId } }));

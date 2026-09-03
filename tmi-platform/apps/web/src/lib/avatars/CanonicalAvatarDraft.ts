@@ -6,9 +6,21 @@
 import { persistBobbleheadBaseId, readPersistedBobbleheadBaseId } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import { BOBBLEHEAD_DEFAULT_BASE_ID } from "@/lib/avatars/BobbleheadBaseRegistry";
 import { persistFanSkinT, readPersistedFanSkinT } from "@/lib/avatars/FanCosmeticCatalog";
-import { readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
-import type { CanonicalAvatarDraftState } from "@/lib/avatars/AvatarPreviewRuntime";
+import {
+  publishFanEquippedLook,
+  readPersistedFanEquippedLook,
+  resolveFanEquippedLook,
+  type FanEquippedLook,
+} from "@/lib/avatars/FanEquippedLookBridge";
+import {
+  assertProductionCompatibleSave,
+  type CanonicalAvatarDraftState,
+} from "@/lib/avatars/AvatarPreviewRuntime";
 import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import {
+  canCommitWearableToWorld,
+  FAN_COSMETIC_STORE_HREF,
+} from "@/lib/avatars/AvatarWearableCapability";
 
 export const CANONICAL_AVATAR_DRAFT_EVENT = "tmi:canonical-avatar-draft";
 
@@ -76,6 +88,56 @@ export function setCanonicalDraftPreviewAction(action: AvatarPreviewAction): Can
 export function persistCanonicalDraftIdentity(next: CanonicalAvatarDraftState): void {
   persistBobbleheadBaseId(next.baseId);
   persistFanSkinT(next.skinT);
+}
+
+export type CommitCanonicalDraftToFanWorldResult =
+  | { ok: true; look: FanEquippedLook }
+  | { ok: false; reason: string; storeHref?: string };
+
+/**
+ * PREVIEW → SAVE → FAN WORLD: one commit from Canonical Draft.
+ * Studio and Quick Avatar must call this — never a second look store.
+ * Blocks invented SKUs and locked-without-ownership; never fakes Herser binds.
+ */
+export function commitCanonicalDraftToFanWorld(opts?: {
+  ownedCosmeticIds?: string[];
+  skinTone?: string;
+  hairStyle?: string;
+  outfitLabel?: string;
+  bodyHeight?: number;
+  bodyMass?: number;
+}): CommitCanonicalDraftToFanWorldResult {
+  const current = getCanonicalAvatarDraft();
+  try {
+    assertProductionCompatibleSave(current.equippedCosmeticIds);
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+
+  const owned = opts?.ownedCosmeticIds ?? [];
+  for (const id of current.equippedCosmeticIds) {
+    if (!canCommitWearableToWorld(id, owned)) {
+      return {
+        ok: false,
+        reason: `ownership required for ${id}`,
+        storeHref: FAN_COSMETIC_STORE_HREF,
+      };
+    }
+  }
+
+  persistCanonicalDraftIdentity(current);
+  const look = resolveFanEquippedLook({
+    displayName: current.displayName,
+    skinTone: opts?.skinTone,
+    hairStyle: opts?.hairStyle,
+    outfitLabel: opts?.outfitLabel,
+    equippedCosmeticIds: current.equippedCosmeticIds,
+  });
+  publishFanEquippedLook(look, {
+    bodyHeight: opts?.bodyHeight,
+    bodyMass: opts?.bodyMass,
+  });
+  return { ok: true, look };
 }
 
 export function subscribeCanonicalAvatarDraft(
