@@ -1,8 +1,8 @@
 # Avatar Preview Parity — Ownership Collision Report
 
-**Date:** 2026-09-03  
-**Branch:** `eos/vocal-improv-clean`  
-**Trigger:** Avatar Preview Parity Runtime Phase 1  
+**Date:** 2026-09-03
+**Branch:** `eos/vocal-improv-clean`
+**Trigger:** Avatar Preview Parity Runtime Phase 1
 **Prior commits:** `f4054d3a` (Preview Parity Law + shared draft) · `97876e19` (SAVE path Studio↔Quick↔Fan World)
 
 ---
@@ -61,6 +61,6 @@ No `AvatarMotionDirector` or `FacialPerformanceDirector` exists as a production 
 
 ## Phase 1 delivery bound to this report
 
-A–L deliver against **`lib/avatars/*` only**.  
-Performer Lobbies / Lounges remain **NO-AVATAR** (lounge = lighting preview only).  
+A–L deliver against **`lib/avatars/*` only**.
+Performer Lobbies / Lounges remain **NO-AVATAR** (lounge = lighting preview only).
 Frozen lanes untouched: Challenge, Battle, Universal Player, Jumbotron chassis, Sponsor Cabinet, Hardware Catalog, Live Fabric.
