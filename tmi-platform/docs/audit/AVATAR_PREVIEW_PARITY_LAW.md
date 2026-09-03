@@ -127,12 +127,17 @@ Avatar Studio uses the **Authoritative-Truth Boundary** the same way Challenge A
 
 | Lane | Status |
 |------|--------|
-| logicCert | **STRONG** — one draft, FAN-only, Lounge occupancy, productionCompatible save, PREVIEW→SAVE→FAN WORLD fingerprint |
+| logicCert | **STRONG** — one draftId, FAN-only, Lounge occupancy, productionCompatible save, PREVIEW→SAVE→FAN WORLD fingerprint, Phase 1 motion suite, ARMS_UP, FAN_LOBBY env, JUMBOTRON-from-draft, reduced-motion fidelity |
 | architectureCert | **PARTIAL** — Studio + Quick + Creation Center share `commitCanonicalDraftToFanWorld`; Herser motion/facial/wardrobe still fail-visible when unbound |
 | experienceCert | **OPEN** — no physical evidence; do not claim PASS |
+
+### Ownership (2026-09-03)
+
+Canonical owner locked in [`AVATAR_PREVIEW_PARITY_COLLISION_REPORT.md`](./AVATAR_PREVIEW_PARITY_COLLISION_REPORT.md): `lib/avatars/*` only. Reject untracked `lib/avatar/AvatarPreviewRuntime.ts` (singular) as a second state owner.
 
 ### Deepen slice (2026-09-03)
 
 - `commitCanonicalDraftToFanWorld()` — single SAVE path from Canonical Draft → `publishFanEquippedLook`
 - Full Studio syncs draft on equip; Quick Avatar **Save → Fan World**; Creation Center equip uses same commit
 - No fake Herser: invented SKUs / locked-without-ownership refuse save; unbound GLB stays diagnostic
+- Phase 1: stable `draftId`, production motion adapter (IDLE/WALK/DANCE/EMOTE), ARMS_UP fit, FAN_LOBBY env, JUMBOTRON uses draft, reduced-motion fidelity path

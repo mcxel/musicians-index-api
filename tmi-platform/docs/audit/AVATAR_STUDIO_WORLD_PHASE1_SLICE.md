@@ -87,18 +87,20 @@ PERFORMER /avatar/* or /api/avatar/*
 | Lane | Status | Notes |
 |------|--------|-------|
 | logicCert | PARTIAL | Unit guards for FAN-only + catalog SKUs + Preview Parity; live multiplayer look sync OPEN |
-| architectureCert | **PARTIAL** | Studio→Lobby/seat glue + Preview Parity contracts are real; full Herser wardrobe / LiveAvatarSync / QA Lab / facial+motion packages not bound. **Do not claim DONE.** |
+| architectureCert | **PARTIAL** | Studio→Lobby/seat glue + Preview Parity Phase 1 contracts are real (`draftId`, motion adapter, FAN_LOBBY, JUMBOTRON-from-draft, reduced-motion). Full Herser wardrobe / LiveAvatarSync / QA Lab / facial+motion packages not bound. **Do not claim DONE.** |
 | experienceCert | **OPEN** | Physical production cert not claimed. Face-scan / lip-sync not stubbed. |
+
+**Board (2026-09-03):** Challenge Lane C = **CLOSED / PHYSICALLY CERTIFIED / FROZEN** (`1087ba88`). Avatar Preview Parity Runtime Phase 1 = **DONE (logicCert)** — see collision report; experienceCert remains OPEN.
 
 ---
 
 ## Automated proof
 
 ```text
-npx jest --config jest.config.ts src/lib/experiencePresentation/__tests__/semanticGuards.test.ts src/lib/avatars/__tests__/avatarPreviewParity.test.ts
+npx jest --config jest.config.ts src/lib/avatars/__tests__/avatarPreviewParity.test.ts
 ```
 
-Asserts: FAN ownership allow; PERFORMER API 403; invented SKUs stripped; look has no occupancy; Lounge still WEBRTC_PANELS; Fan Lobby still FAN_AVATARS; pack count 14; experienceCert cannot PASS on green/debug; **Studio draft === Quick draft**; Lounge lighting occupancy false; `productionCompatible` save gate.
+Asserts: FAN ownership allow; invented SKUs stripped; Lounge lighting occupancy false; **same draftId Full↔Quick**; mutation both ways; production motion adapter; ARMS_UP; FAN_LOBBY env; JUMBOTRON uses draft; reduced-motion fidelity; Saved Look schemaVersion continuity; `productionCompatible` save gate.
 
 ---
 

@@ -106,9 +106,9 @@ function poseToPreviewAction(pose: AnimationPose): AvatarPreviewAction {
       return "WALK";
     case "wave":
     case "clap":
-      return "WAVE";
+      return "EMOTE";
     case "dance":
-      return "HYPE";
+      return "DANCE";
     default:
       return "IDLE";
   }
@@ -178,20 +178,20 @@ export function AvatarCreationCenter({ accentColor = "#AA2DFF" }: AvatarCreation
   const selectedBase = useMemo(() => getBobbleheadBaseById(baseId) ?? BOBBLEHEAD_BASES[0]!, [baseId]);
   const skin = useMemo(() => sampleFanSkinTone(skinT), [skinT]);
   const stats = useMemo(() => getFanCosmeticCatalogStats(), []);
-  const preview = useMemo(
-    () =>
-      resolveAvatarPreview({
-        displayName: selectedBase.displayName,
-        baseId,
-        skinT,
-        equippedCosmeticIds: equippedCosmeticId ? [equippedCosmeticId] : [],
-        previewAction: poseToPreviewAction(activePose),
-        environmentId: "STUDIO_EDITOR",
-        fidelity: "full",
-        panelTargetId: null,
-      }),
-    [selectedBase.displayName, baseId, skinT, equippedCosmeticId, activePose],
-  );
+  const preview = useMemo(() => {
+    const shared = getCanonicalAvatarDraft();
+    return resolveAvatarPreview({
+      ...shared,
+      displayName: selectedBase.displayName,
+      baseId,
+      skinT,
+      equippedCosmeticIds: equippedCosmeticId ? [equippedCosmeticId] : [],
+      previewAction: poseToPreviewAction(activePose),
+      environmentId: "STUDIO_EDITOR",
+      fidelity: "full",
+      panelTargetId: shared.panelTargetId,
+    });
+  }, [selectedBase.displayName, baseId, skinT, equippedCosmeticId, activePose]);
 
   // ── Actions & Handlers ──────────────────────────────────────────────────────
   const handleSelectBase = useCallback((base: BobbleheadBase) => {

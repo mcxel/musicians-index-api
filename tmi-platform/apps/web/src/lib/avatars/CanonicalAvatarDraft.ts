@@ -14,6 +14,7 @@ import {
 } from "@/lib/avatars/FanEquippedLookBridge";
 import {
   assertProductionCompatibleSave,
+  CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION,
   type CanonicalAvatarDraftState,
 } from "@/lib/avatars/AvatarPreviewRuntime";
 import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
@@ -24,7 +25,17 @@ import {
 
 export const CANONICAL_AVATAR_DRAFT_EVENT = "tmi:canonical-avatar-draft";
 
+/** Stable id for the single shared draft — Full Studio and Quick Avatar must read the same value. */
+let sharedDraftId = `cad_${Date.now().toString(36)}_shared`;
+
+function mintDraftId(): string {
+  sharedDraftId = `cad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return sharedDraftId;
+}
+
 const defaultDraft = (): CanonicalAvatarDraftState => ({
+  draftId: sharedDraftId,
+  schemaVersion: CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION,
   displayName: "Fan avatar",
   baseId: BOBBLEHEAD_DEFAULT_BASE_ID,
   skinT: 0.5,
@@ -52,8 +63,11 @@ export function hydrateCanonicalAvatarDraft(): CanonicalAvatarDraftState {
   const look = readPersistedFanEquippedLook();
   const baseId = readPersistedBobbleheadBaseId() || BOBBLEHEAD_DEFAULT_BASE_ID;
   const skinT = readPersistedFanSkinT();
+  // Keep the same draftId across Full Studio ↔ Quick Avatar for this session.
   draft = {
     ...defaultDraft(),
+    draftId: sharedDraftId,
+    schemaVersion: CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION,
     displayName: look?.displayName ?? "Fan avatar",
     baseId,
     skinT,
@@ -69,11 +83,15 @@ export function hydrateCanonicalAvatarDraft(): CanonicalAvatarDraftState {
 export function patchCanonicalAvatarDraft(
   patch: Partial<CanonicalAvatarDraftState>,
 ): CanonicalAvatarDraftState {
+  // draftId / schemaVersion are immutable for the session — surfaces cannot fork ownership.
+  const { draftId: _ignoreId, schemaVersion: _ignoreSchema, ...safePatch } = patch;
   draft = {
     ...draft,
-    ...patch,
-    equippedCosmeticIds: patch.equippedCosmeticIds
-      ? [...patch.equippedCosmeticIds]
+    ...safePatch,
+    draftId: draft.draftId,
+    schemaVersion: CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION,
+    equippedCosmeticIds: safePatch.equippedCosmeticIds
+      ? [...safePatch.equippedCosmeticIds]
       : [...draft.equippedCosmeticIds],
   };
   emit();
@@ -152,8 +170,9 @@ export function subscribeCanonicalAvatarDraft(
   return () => window.removeEventListener(CANONICAL_AVATAR_DRAFT_EVENT, handler);
 }
 
-/** Tests only. */
+/** Tests only — mints a fresh shared draftId so suites stay isolated. */
 export function resetCanonicalAvatarDraftForTest(): void {
+  mintDraftId();
   draft = defaultDraft();
   hydrated = false;
 }

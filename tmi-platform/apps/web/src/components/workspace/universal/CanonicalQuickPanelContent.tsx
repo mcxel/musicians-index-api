@@ -25,7 +25,7 @@ import {
   subscribeCanonicalAvatarDraft,
 } from "@/lib/avatars/CanonicalAvatarDraft";
 import { gatePreviewAction, resolveAvatarPreview } from "@/lib/avatars/AvatarPreviewRuntime";
-import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import { PHASE1_MOTION_SUITE, type AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
 import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
@@ -279,6 +279,47 @@ function AvatarQuickPanel({
               {o.icon ?? "👕"} {o.label}
             </button>
           ))}
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>MOTION</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {PHASE1_MOTION_SUITE.map((action) => {
+            const gate = gatePreviewAction(action, viewport);
+            const disabled = !gate.allowed;
+            const active = draft.previewAction === action;
+            return (
+              <button
+                key={action}
+                type="button"
+                disabled={disabled}
+                title={
+                  disabled
+                    ? gate.reason ?? "Not available on production rig"
+                    : `Preview ${action}`
+                }
+                onClick={() => {
+                  if (!disabled) patchCanonicalAvatarDraft({ previewAction: action });
+                }}
+                style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: `1px solid ${active && !disabled ? accentColor : "rgba(255,255,255,0.15)"}`,
+                  background: active && !disabled ? accentColor : "rgba(255,255,255,0.04)",
+                  color: disabled
+                    ? "rgba(255,255,255,0.25)"
+                    : active
+                      ? "#050510"
+                      : "rgba(255,255,255,0.7)",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  textTransform: "uppercase",
+                  opacity: disabled ? 0.6 : 1,
+                }}
+              >
+                {action}
+              </button>
+            );
+          })}
         </div>
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>EMOTES</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

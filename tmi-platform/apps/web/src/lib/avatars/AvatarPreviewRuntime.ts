@@ -2,6 +2,8 @@
  * AvatarPreviewRuntime — Studio + Quick Panel preview facade (Preview Parity Law).
  * Binds to existing Foundry GLB + bobblehead runtime. Never invents a second rig.
  * Lounge environment = lighting only (no occupancy).
+ *
+ * OWNER: apps/web/src/lib/avatars/ (plural). Do not use lib/avatar/AvatarPreviewRuntime.ts.
  */
 
 import {
@@ -16,7 +18,9 @@ import {
 import {
   FACIAL_PREVIEW_ACTIONS,
   MOTION_PACKAGE_PREVIEW_ACTIONS,
+  PHASE1_MOTION_SUITE,
   PRODUCTION_PROCEDURAL_ACTIONS,
+  resolveProductionMotionPath,
   type AvatarFitValidationAction,
   type AvatarPreviewAction,
 } from "@/lib/avatars/AvatarPreviewActions";
@@ -26,12 +30,20 @@ import {
   evaluateFoundryWearableCert,
   resolveWearableCapability,
 } from "@/lib/avatars/AvatarWearableCapability";
+import { AVATAR_RIG_VERSION } from "@/lib/avatars/AvatarRigSpec";
 import type { AvatarRigProps } from "@/components/3d/AvatarLobbyCanvas";
+
+/** Single ownership marker — tests assert Studio/Quick bind this module family only. */
+export const AVATAR_PREVIEW_RUNTIME_OWNER =
+  "apps/web/src/lib/avatars/AvatarPreviewRuntime.ts" as const;
+
+export const CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION = 1 as const;
 
 export type AvatarPreviewFidelity = "full" | "reduced";
 
 export type AvatarPreviewEnvironmentId =
   | "STUDIO_EDITOR"
+  | "FAN_LOBBY"
   | "FAN_LOBBY_AMBIENT"
   | "VENUE_SEAT"
   | "WDP_FLOOR"
@@ -68,6 +80,13 @@ export const AVATAR_PREVIEW_ENVIRONMENT_CATALOG: readonly AvatarPreviewEnvironme
     lightingOnly: false,
     avatarOccupancyAllowed: false,
     editorMannequinAllowed: true,
+  },
+  {
+    id: "FAN_LOBBY",
+    label: "Fan Lobby environment (lighting plate)",
+    lightingOnly: true,
+    avatarOccupancyAllowed: true,
+    editorMannequinAllowed: false,
   },
   {
     id: "FAN_LOBBY_AMBIENT",
@@ -151,10 +170,11 @@ export function gatePreviewAction(
   action: AvatarPreviewAction,
   viewport: AvatarViewportBinding,
 ): PreviewActionGate {
-  if ((PRODUCTION_PROCEDURAL_ACTIONS as readonly string[]).includes(action)) {
+  const productionAction = resolveProductionMotionPath(action);
+  if ((PRODUCTION_PROCEDURAL_ACTIONS as readonly string[]).includes(productionAction)) {
     return { action, allowed: true, reason: null };
   }
-  if ((FACIAL_PREVIEW_ACTIONS as readonly string[]).includes(action)) {
+  if ((FACIAL_PREVIEW_ACTIONS as readonly string[]).includes(productionAction)) {
     if (!viewport.facialTargetsSupported || viewport.diagnostic !== "OK") {
       return {
         action,
@@ -164,7 +184,7 @@ export function gatePreviewAction(
     }
     return { action, allowed: true, reason: null };
   }
-  if ((MOTION_PACKAGE_PREVIEW_ACTIONS as readonly string[]).includes(action)) {
+  if ((MOTION_PACKAGE_PREVIEW_ACTIONS as readonly string[]).includes(productionAction)) {
     if (!viewport.motionPackageSupported || viewport.diagnostic !== "OK") {
       return {
         action,
@@ -177,7 +197,42 @@ export function gatePreviewAction(
   return { action, allowed: false, reason: "UNKNOWN_PREVIEW_ACTION" };
 }
 
+/**
+ * Production motion adapter (thin) — routes IDLE/WALK/DANCE/EMOTE through the same
+ * gate + bobblehead path Fan Lobby uses. Not a second AvatarMotionDirector runtime.
+ */
+export type ProductionMotionDispatch = {
+  requested: AvatarPreviewAction;
+  productionPath: AvatarPreviewAction;
+  gate: PreviewActionGate;
+  rigFamily: typeof AVATAR_RIG_VERSION;
+  owner: typeof AVATAR_PREVIEW_RUNTIME_OWNER;
+};
+
+export function dispatchProductionPreviewMotion(
+  action: AvatarPreviewAction,
+  viewport?: AvatarViewportBinding,
+): ProductionMotionDispatch {
+  const binding = viewport ?? resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
+  const productionPath = resolveProductionMotionPath(action);
+  return {
+    requested: action,
+    productionPath,
+    gate: gatePreviewAction(action, binding),
+    rigFamily: AVATAR_RIG_VERSION,
+    owner: AVATAR_PREVIEW_RUNTIME_OWNER,
+  };
+}
+
+export function listPhase1MotionSuiteDispatches(
+  viewport?: AvatarViewportBinding,
+): ProductionMotionDispatch[] {
+  return PHASE1_MOTION_SUITE.map((action) => dispatchProductionPreviewMotion(action, viewport));
+}
+
 export type CanonicalAvatarDraftState = {
+  draftId: string;
+  schemaVersion: typeof CANONICAL_AVATAR_DRAFT_SCHEMA_VERSION;
   displayName: string;
   baseId: string;
   skinT: number;
@@ -188,33 +243,81 @@ export type CanonicalAvatarDraftState = {
   panelTargetId: AvatarPresentationPanelTargetId | null;
 };
 
+export type JumbotronPresentationPreview = {
+  usesDraft: true;
+  draftId: string;
+  panelTargetId: "JUMBOTRON";
+  status: "TEMPLATE";
+  resolvesTo: string;
+};
+
 export type AvatarPreviewResolution = {
   draft: CanonicalAvatarDraftState;
   viewport: AvatarViewportBinding;
   environment: AvatarPreviewEnvironment;
   actionGate: PreviewActionGate;
+  motion: ProductionMotionDispatch;
+  fidelity: AvatarPreviewFidelity;
+  jumbotron: JumbotronPresentationPreview | null;
   rigProps: (AvatarRigProps & { bobbleheadRatio: number }) | null;
   /** EDITOR mannequin only when environment allows and GLB unbound. */
   editorMannequin: boolean;
 };
 
+function detectPrefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
+/** Reduced-motion path: force fidelity=reduced; never invent a separate action set. */
+export function resolveEffectivePreviewFidelity(
+  draft: CanonicalAvatarDraftState,
+  prefersReduced?: boolean,
+): AvatarPreviewFidelity {
+  if (prefersReduced ?? detectPrefersReducedMotion()) return "reduced";
+  return draft.fidelity;
+}
+
+export function resolveJumbotronPresentationFromDraft(
+  draft: CanonicalAvatarDraftState,
+): JumbotronPresentationPreview | null {
+  if (draft.panelTargetId !== "JUMBOTRON") return null;
+  const target = AVATAR_PRESENTATION_PANEL_TARGETS.find((t) => t.id === "JUMBOTRON")!;
+  return {
+    usesDraft: true,
+    draftId: draft.draftId,
+    panelTargetId: "JUMBOTRON",
+    status: "TEMPLATE",
+    resolvesTo: target.resolvesTo,
+  };
+}
+
 export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPreviewResolution {
   const environment = getPreviewEnvironment(draft.environmentId);
   assertLoungeEnvironmentDoesNotEnableAvatarOccupancy(environment);
   const viewport = resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
-  const actionGate = gatePreviewAction(draft.previewAction, viewport);
+  const motion = dispatchProductionPreviewMotion(draft.previewAction, viewport);
+  const actionGate = motion.gate;
+  const productionPath = motion.productionPath;
   const character = resolveBobbleheadRuntimeCharacter(draft.baseId);
   const seated =
-    actionGate.allowed && (draft.previewAction === "SIT" || draft.previewAction === "DEEP_SIT");
+    actionGate.allowed && (productionPath === "SIT" || productionPath === "DEEP_SIT");
   const playing =
     actionGate.allowed &&
-    (draft.previewAction === "WALK" ||
-      draft.previewAction === "HYPE" ||
-      draft.previewAction === "DANCE_RANGE_TEST");
+    (productionPath === "WALK" ||
+      productionPath === "HYPE" ||
+      productionPath === "DANCE" ||
+      productionPath === "DANCE_RANGE_TEST" ||
+      productionPath === "WAVE");
   const bound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
+  const fidelity = resolveEffectivePreviewFidelity(draft);
   const rigBase = bobbleheadRuntimeToRigProps(character, {
     isSeated: seated,
-    isPlaying: playing,
+    isPlaying: playing && fidelity === "full",
     extraAccessoryIds: draft.equippedCosmeticIds,
     skinT: draft.skinT,
   });
@@ -231,6 +334,9 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
     viewport,
     environment,
     actionGate,
+    motion,
+    fidelity,
+    jumbotron: resolveJumbotronPresentationFromDraft(draft),
     rigProps,
     editorMannequin: !bound && environment.editorMannequinAllowed,
   };
@@ -293,4 +399,28 @@ export function fitValidationStatus(
     };
   }
   return { action, allowed: true, reason: "bound" };
+}
+
+/** ARMS_UP fit stress — production motion package path only (no fake clipping scores). */
+export type ArmsUpFitTestResult = {
+  action: "ARMS_UP";
+  gate: PreviewActionGate;
+  fit: ReturnType<typeof fitValidationStatus>;
+  allowed: boolean;
+  productionPath: AvatarPreviewAction;
+  owner: typeof AVATAR_PREVIEW_RUNTIME_OWNER;
+};
+
+export function runArmsUpFitTest(viewport?: AvatarViewportBinding): ArmsUpFitTestResult {
+  const binding = viewport ?? resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
+  const motion = dispatchProductionPreviewMotion("ARMS_UP", binding);
+  const fit = fitValidationStatus("SOCKET_FIT", binding);
+  return {
+    action: "ARMS_UP",
+    gate: motion.gate,
+    fit,
+    allowed: motion.gate.allowed && fit.allowed,
+    productionPath: motion.productionPath,
+    owner: AVATAR_PREVIEW_RUNTIME_OWNER,
+  };
 }
