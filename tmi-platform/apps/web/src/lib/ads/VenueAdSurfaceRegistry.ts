@@ -38,6 +38,8 @@ export interface SurfaceCommercePayload {
   clickThroughUrl?: string;
 }
 
+export type InteractiveCommercePayload = SurfaceCommercePayload;
+
 export interface VenueAdSurface {
   surfaceId: string;
   inventoryId: string;
