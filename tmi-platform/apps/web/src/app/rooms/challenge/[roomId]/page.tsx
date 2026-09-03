@@ -66,6 +66,9 @@ export default function ChallengeRoomByIdPage() {
   const [challengeProgram, setChallengeProgram] = useState<ChallengeProgramComposition | null>(
     null,
   );
+  const [sessionRestored, setSessionRestored] = useState(false);
+
+  const sessionKey = `tmi.challenge.operational.${roomId}`;
 
   const objective = useMemo<ChallengeObjectiveSnapshot>(
     () => ({
@@ -75,6 +78,49 @@ export default function ChallengeRoomByIdPage() {
     }),
     [challengeId, policy],
   );
+
+  // Mid-flow resume: restore last phase/participants/result for this room (no invented state).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(sessionKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          phase?: ChallengeLifecyclePhase;
+          policy?: ChallengeJudgmentPolicy;
+          challenged?: { id: string; displayName: string } | null;
+          result?: ChallengeAuthorizedResult | null;
+        };
+        if (parsed.phase) setPhase(parsed.phase);
+        if (parsed.policy) setPolicy(parsed.policy);
+        if (parsed.challenged !== undefined) setChallenged(parsed.challenged);
+        if (parsed.result !== undefined) setResult(parsed.result);
+      }
+    } catch {
+      /* ignore corrupt resume blob */
+    }
+    setSessionRestored(true);
+  }, [sessionKey]);
+
+  useEffect(() => {
+    if (!sessionRestored) return;
+    try {
+      sessionStorage.setItem(
+        sessionKey,
+        JSON.stringify({ phase, policy, challenged, result }),
+      );
+    } catch {
+      /* quota / private mode */
+    }
+  }, [sessionKey, sessionRestored, phase, policy, challenged, result]);
+
+  // Frozen SM: COUNTDOWN precedes ACTIVE — expose countdown, then advance.
+  useEffect(() => {
+    if (phase !== "ATTEMPT_1_COUNTDOWN" && phase !== "ATTEMPT_2_COUNTDOWN") return;
+    const timer = window.setTimeout(() => {
+      setPhase(phase === "ATTEMPT_1_COUNTDOWN" ? "ATTEMPT_1_ACTIVE" : "ATTEMPT_2_ACTIVE");
+    }, 2500);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
 
   // Production Challenge PROGRAM — same upward pattern as composeBattleProgram.
   // ACGBR face plan is derived read-only from phase (never writes Challenge truth).
@@ -127,6 +173,7 @@ export default function ChallengeRoomByIdPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", position: "relative" }}>
       <div
+        data-testid="challenge-room-controls"
         style={{
           padding: "16px 18px",
           display: "flex",
@@ -135,7 +182,8 @@ export default function ChallengeRoomByIdPage() {
           flexWrap: "wrap",
           borderBottom: "1px solid rgba(255,215,0,0.3)",
           position: "relative",
-          zIndex: 3,
+          zIndex: 30,
+          pointerEvents: "auto",
           background: "rgba(5,5,16,0.92)",
         }}
       >
@@ -151,6 +199,7 @@ export default function ChallengeRoomByIdPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
             type="button"
+            data-testid="challenge-add-challenged"
             onClick={() =>
               setChallenged((prev) =>
                 prev
@@ -173,7 +222,8 @@ export default function ChallengeRoomByIdPage() {
           </button>
           <button
             type="button"
-            onClick={() => setPhase("ATTEMPT_1_ACTIVE")}
+            data-testid="challenge-start-attempt"
+            onClick={() => setPhase("ATTEMPT_1_COUNTDOWN")}
             style={{
               padding: "8px 12px",
               borderRadius: 8,
@@ -189,6 +239,7 @@ export default function ChallengeRoomByIdPage() {
           </button>
           <button
             type="button"
+            data-testid="challenge-record-complete"
             onClick={() => {
               // Result only when both participants exist — never invent a winner alone.
               if (!challenged) return;

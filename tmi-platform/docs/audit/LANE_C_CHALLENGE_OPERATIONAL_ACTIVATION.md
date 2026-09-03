@@ -27,7 +27,7 @@
 | ACGBR one-way boundary jest suite | **DONE** (logic) | `lib/acgbr/__tests__/acgbrOneWayBoundary.test.ts` (incl. mount resolver + ShowDirector apply) |
 | architectureCert | **DONE** | Pack + compose + ACGBR boundary wired |
 | logicCert | **PARTIAL→STRONG** | Lifecycle + ACGBR + compose unit tests |
-| **experienceCert (physical Chromium)** | **OPEN** | No browser PASS claimed this session — mount wired; physical LOOK-UP four-face observation still required |
+| **experienceCert (physical Chromium)** | **OPEN** (🔴 FAIL attempt 2026-09-03 — Gate 1 re-cert) | See `LANE_C_CHALLENGE_PHYSICAL_CERT.md`. Prior partial DNA/Jumbotron probe while healthy; re-run blocked by Next webpack_modules Server Error + route timeouts after `.next` corruption. Lane C **not** CLOSED. |
 | Neural Generation Foundry / lip-sync | **OUT OF SCOPE** | `NEURAL_GENERATION_UNAVAILABLE` |
 | Fake crowd fill | **FORBIDDEN** | Rule 20 |
 
