@@ -13,7 +13,7 @@ main
 PRODUCTION DEPLOYED COMMIT
 e57c520d9ca43c859fdf7d7eea1f29450e1a6fce
 CANDIDATE CONVERGED COMMIT
-a491df5af05845eb01d6b8ad6df79f2ba75df648
+b6d949bc (tip; clean typecheck+build verified at a491df5a; docs-only follow-up)
 ROUTE OWNER
 apps/web/src/app/hub/fan/page.tsx
 /hub/fan -> exact component chain
