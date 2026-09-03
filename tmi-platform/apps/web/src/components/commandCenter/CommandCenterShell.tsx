@@ -165,7 +165,9 @@ function HubSearchParamsBridge({
 }) {
   const searchParams = useSearchParams();
   useEffect(() => {
-    onParams(searchParams);
+    if (searchParams) {
+      onParams(searchParams);
+    }
   }, [searchParams, onParams]);
   return null;
 }

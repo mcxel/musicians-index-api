@@ -196,9 +196,9 @@ export function runFourSidedJumbotronAndAdSurfaceCertification(): {
     seatId: 'SEC 112 · SEAT 14',
   });
   gates['Gate 7: Vibrant Presentation Templates & Look Up HUD Dispatch'] =
-    prizeSpotlight.template === 'CONFETTI' &&
-    prizeSpotlight.lookUpNoticeText.includes("BIG SCREEN") &&
-    prizeSpotlight.subline.includes('MAYA WON 2 VIP PASSES');
+    prizeSpotlight?.template === 'CONFETTI' &&
+    (prizeSpotlight?.lookUpNoticeText?.includes("BIG SCREEN") ?? false) &&
+    (prizeSpotlight?.subline?.includes('MAYA WON 2 VIP PASSES') ?? false);
 
   // --- GATE 8: Jumbotron Show Director & PiP Dynamic Re-composition ---
   const showDirector = new JumbotronShowDirector('thunder-dome', 'sess-battle-01');

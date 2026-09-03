@@ -59,7 +59,7 @@ export class JumbotronAdObservatoryControlRoom {
       this.faces.clearSafetyHold(face);
       this.faces.assignFace({
         orientation: face,
-        source: state.currentSource ?? "PROGRAM",
+        source: state.currentSourceKind ?? "PROGRAM",
         campaignId: state.campaignId,
         creativeId: state.creativeId,
         priority: VenueAdPriority.P2_RESULT_TIMER_SCORE,
