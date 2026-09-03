@@ -1,25 +1,16 @@
--- CreateTable
-CREATE TABLE "ArtistProfile" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "stageName" TEXT,
-    "slug" TEXT,
-    "genres" TEXT[],
-    "skills" TEXT[],
-    "label" TEXT,
-    "manager" TEXT,
-    "verified" BOOLEAN NOT NULL DEFAULT false,
-    "followers" INTEGER NOT NULL DEFAULT 0,
-    "views" INTEGER NOT NULL DEFAULT 0,
+-- RECONCILIATION NO-OP (P0 CI / P3018)
+--
+-- "ArtistProfile" (table, unique indexes on userId/slug, and userId FK) was already
+-- created by migration 20260326225501_profiles. This later migration previously
+-- re-ran identical CREATE TABLE / CREATE UNIQUE INDEX / ADD CONSTRAINT DDL and
+-- failed Prisma migrate deploy with P3018 (relation "ArtistProfile" already exists).
+--
+-- Diff vs 20260326225501_profiles ArtistProfile section:
+--   - Same columns, defaults, PK, and unique indexes (full duplicate).
+--   - FK was ON DELETE RESTRICT only here vs ON DELETE RESTRICT ON UPDATE CASCADE
+--     in 20260326 — no silent ON DELETE change; leave established 20260326 semantics.
+--   - No net-new columns or constraints to apply.
+--
+-- Intentionally no CREATE / ALTER / DROP. Marker statement so Prisma has executable SQL.
 
-    CONSTRAINT "ArtistProfile_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE UNIQUE INDEX "ArtistProfile_userId_key" ON "ArtistProfile"("userId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ArtistProfile_slug_key" ON "ArtistProfile"("slug");
-
--- AddForeignKey
-ALTER TABLE "ArtistProfile" ADD CONSTRAINT "ArtistProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT;
+SELECT 1;
