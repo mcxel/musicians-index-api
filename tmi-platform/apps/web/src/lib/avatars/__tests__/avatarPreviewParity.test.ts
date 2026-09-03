@@ -246,7 +246,26 @@ describe("Avatar Preview Parity Law", () => {
       "JUMBOTRON",
       "SPOTLIGHT",
       "PROGRAM_ISO",
+      "GROUP_CAM",
     ]);
+  });
+
+  test("Phase 2 WORLD_CONCERT + LOW_LIGHT_LOUNGE_STYLE adapters", () => {
+    const concert = getPreviewEnvironment("WORLD_CONCERT");
+    expect(concert.lightingOnly).toBe(true);
+    expect(concert.editorMannequinAllowed).toBe(false);
+
+    const lounge = getPreviewEnvironment("LOW_LIGHT_LOUNGE_STYLE");
+    expect(lounge.lightingOnly).toBe(true);
+    expect(lounge.avatarOccupancyAllowed).toBe(false);
+    expect(() => assertLoungeEnvironmentDoesNotEnableAvatarOccupancy(lounge)).not.toThrow();
+
+    hydrateCanonicalAvatarDraft();
+    patchCanonicalAvatarDraft({ panelTargetId: "GROUP_CAM", environmentId: "WORLD_CONCERT" });
+    const preview = resolveAvatarPreview(getCanonicalAvatarDraft());
+    expect(preview.environment.id).toBe("WORLD_CONCERT");
+    expect(preview.presentation?.panelTargetId).toBe("GROUP_CAM");
+    expect(preview.presentation?.editorMannequinsOnly).toBe(true);
   });
 
   test("Saved Look survives Full↔Quick with schemaVersion continuity", () => {

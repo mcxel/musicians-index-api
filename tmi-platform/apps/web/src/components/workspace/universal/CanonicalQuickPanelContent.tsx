@@ -24,8 +24,9 @@ import {
   persistCanonicalDraftIdentity,
   subscribeCanonicalAvatarDraft,
 } from "@/lib/avatars/CanonicalAvatarDraft";
-import { gatePreviewAction, resolveAvatarPreview } from "@/lib/avatars/AvatarPreviewRuntime";
-import { PHASE1_MOTION_SUITE, type AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import { gatePreviewAction, publishAvatarPreviewCertProbe, resolveAvatarPreview, AVATAR_PREVIEW_RUNTIME_OWNER } from "@/lib/avatars/AvatarPreviewRuntime";
+import { type AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import AvatarPreviewParityControls from "@/components/avatars/AvatarPreviewParityControls";
 import {
   sendPlaybackCommand,
   subscribePlaylistNowPlaying,
@@ -157,6 +158,10 @@ function AvatarQuickPanel({
   const expression =
     draft.previewAction === "SMILE" ? "smile" : draft.previewAction === "HYPE" ? "hype" : "neutral";
 
+  useEffect(() => {
+    publishAvatarPreviewCertProbe("quick-avatar", preview);
+  }, [preview]);
+
   const handleSaveToFanWorld = () => {
     const result = commitCanonicalDraftToFanWorld({
       outfitLabel: activeOutfit || "Street Fit",
@@ -176,7 +181,20 @@ function AvatarQuickPanel({
   }
 
   const avatarBody = (
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div
+      style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}
+      data-testid="avatar-quick-panel"
+      data-avatar-preview-surface="quick-avatar"
+      data-avatar-runtime-owner={AVATAR_PREVIEW_RUNTIME_OWNER}
+      data-draft-id={draft.draftId}
+      data-environment-id={draft.environmentId}
+      data-panel-target={draft.panelTargetId ?? ""}
+      data-preview-action={draft.previewAction}
+      data-fidelity={preview.fidelity}
+      data-occupancy-allowed={preview.environment.avatarOccupancyAllowed ? "true" : "false"}
+      data-lighting-only={preview.environment.lightingOnly ? "true" : "false"}
+      data-group-cam-editor-only={preview.presentation?.editorMannequinsOnly ? "true" : "false"}
+    >
         <div
           style={{
             height: 160,
@@ -190,7 +208,7 @@ function AvatarQuickPanel({
           }}
           data-avatar-binding={viewport.diagnostic}
         >
-          {isBound ? (
+          {isBound && rig ? (
             <AvatarViewer
               {...rig}
               size={140}
@@ -239,6 +257,7 @@ function AvatarQuickPanel({
             <button
               key={b.id}
               type="button"
+              data-testid={`avatar-quick-base-${b.id}`}
               onClick={() => {
                 const next = patchCanonicalAvatarDraft({ baseId: b.id });
                 persistCanonicalDraftIdentity(next);
@@ -264,6 +283,7 @@ function AvatarQuickPanel({
             <button
               key={o.id}
               type="button"
+              data-testid={`avatar-quick-outfit-${o.id}`}
               onClick={() => patchCanonicalAvatarDraft({ equippedCosmeticIds: [o.id] })}
               style={{
                 fontSize: 8,
@@ -280,47 +300,14 @@ function AvatarQuickPanel({
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>MOTION</div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {PHASE1_MOTION_SUITE.map((action) => {
-            const gate = gatePreviewAction(action, viewport);
-            const disabled = !gate.allowed;
-            const active = draft.previewAction === action;
-            return (
-              <button
-                key={action}
-                type="button"
-                disabled={disabled}
-                title={
-                  disabled
-                    ? gate.reason ?? "Not available on production rig"
-                    : `Preview ${action}`
-                }
-                onClick={() => {
-                  if (!disabled) patchCanonicalAvatarDraft({ previewAction: action });
-                }}
-                style={{
-                  fontSize: 8,
-                  fontWeight: 800,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: `1px solid ${active && !disabled ? accentColor : "rgba(255,255,255,0.15)"}`,
-                  background: active && !disabled ? accentColor : "rgba(255,255,255,0.04)",
-                  color: disabled
-                    ? "rgba(255,255,255,0.25)"
-                    : active
-                      ? "#050510"
-                      : "rgba(255,255,255,0.7)",
-                  cursor: disabled ? "not-allowed" : "pointer",
-                  textTransform: "uppercase",
-                  opacity: disabled ? 0.6 : 1,
-                }}
-              >
-                {action}
-              </button>
-            );
-          })}
-        </div>
+        <AvatarPreviewParityControls
+          environmentId={draft.environmentId}
+          panelTargetId={draft.panelTargetId}
+          previewAction={draft.previewAction}
+          viewport={viewport}
+          accentColor={accentColor}
+          density="compact"
+        />
         <div style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>EMOTES</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {(["neutral", "smile", "hype"] as const).map((expr) => {
@@ -333,6 +320,7 @@ function AvatarQuickPanel({
                 key={expr}
                 type="button"
                 disabled={disabled}
+                data-testid={`avatar-emote-${expr}`}
                 title={
                   disabled
                     ? gate.reason ?? "Not available on production rig"
@@ -409,6 +397,9 @@ function AvatarQuickPanel({
         {saveNote ? (
           <div style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", lineHeight: 1.35 }}>{saveNote}</div>
         ) : null}
+        <div data-testid="avatar-quick-draft-id" style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>
+          draftId={draft.draftId}
+        </div>
         <Link
           href="/avatar/studio"
           style={{ fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700 }}

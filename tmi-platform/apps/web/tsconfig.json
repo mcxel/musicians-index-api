@@ -32,7 +32,9 @@
     "src/**/*.tsx",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next-lane-c-cert/types/**/*.ts",
+    ".next-avatar-p2-cert/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

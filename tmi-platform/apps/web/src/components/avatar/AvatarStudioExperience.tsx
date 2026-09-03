@@ -25,9 +25,21 @@ import {
 import { CanonicalAvatarProfile } from "@/lib/avatars/CanonicalAvatarRegistry";
 import {
   commitCanonicalDraftToFanWorld,
+  getCanonicalAvatarDraft,
   hydrateCanonicalAvatarDraft,
   patchCanonicalAvatarDraft,
+  subscribeCanonicalAvatarDraft,
 } from "@/lib/avatars/CanonicalAvatarDraft";
+import {
+  AVATAR_PREVIEW_RUNTIME_OWNER,
+  createAvatarLookFromDraft,
+  publishAvatarPreviewCertProbe,
+  resolveAvatarPreview,
+} from "@/lib/avatars/AvatarPreviewRuntime";
+import AvatarPreviewParityControls from "@/components/avatars/AvatarPreviewParityControls";
+import CanonicalQuickPanelContent from "@/components/workspace/universal/CanonicalQuickPanelContent";
+import { canCommitWearableToWorld, resolveWearableCapability } from "@/lib/avatars/AvatarWearableCapability";
+import type { CanonicalAvatarDraftState } from "@/lib/avatars/AvatarPreviewRuntime";
 
 export interface AvatarStudioExperienceProps {
   onSaveProfile?: (profile: CanonicalAvatarProfile) => void;
@@ -109,6 +121,10 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   const [scanNote, setScanNote] = useState("");
   const [activePackId, setActivePackId] = useState<string | null>("street");
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [draft, setDraft] = useState<CanonicalAvatarDraftState>(() => getCanonicalAvatarDraft());
+  const [showQuickParity, setShowQuickParity] = useState(false);
+  const [lockedPreviewNote, setLockedPreviewNote] = useState<string | null>(null);
+  const [savedLookNote, setSavedLookNote] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -130,7 +146,9 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     } catch {
       /* localStorage unavailable */
     }
-    hydrateCanonicalAvatarDraft();
+    const hydrated = hydrateCanonicalAvatarDraft();
+    setDraft(hydrated);
+    const unsub = subscribeCanonicalAvatarDraft(setDraft);
 
     async function hydrate() {
       try {
@@ -158,7 +176,22 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
       }
     }
     void hydrate();
+    return unsub;
   }, []);
+
+  const preview = useMemo(() => resolveAvatarPreview(draft), [draft]);
+
+  useEffect(() => {
+    publishAvatarPreviewCertProbe("full-studio", preview);
+  }, [preview]);
+
+  // Sync UI pose chips with canonical draft motion (one action set).
+  useEffect(() => {
+    const action = draft.previewAction;
+    if (action === "DANCE" || action === "DANCE_RANGE_TEST") setPose("Dance");
+    else if (action === "SIT" || action === "DEEP_SIT") setPose("Sit");
+    else setPose("Idle");
+  }, [draft.previewAction]);
 
   const ownedIds = useMemo(
     () => new Set(inventory.filter((i) => i.owned !== false).map((i) => i.itemId)),
@@ -199,6 +232,47 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
       equippedCosmeticIds,
     });
   }, [profileName, equippedCosmeticIds]);
+
+  const previewLockedItem = useCallback(() => {
+    const cap = resolveWearableCapability("gold_chain");
+    if (!cap?.previewable) {
+      setLockedPreviewNote("gold_chain not previewable");
+      return;
+    }
+    // Preview without ownership — do not commit to world.
+    patchCanonicalAvatarDraft({
+      equippedCosmeticIds: [...new Set([...equippedCosmeticIds, "gold_chain"])],
+    });
+    const canOwn = canCommitWearableToWorld("gold_chain", ownedIds);
+    setLockedPreviewNote(
+      canOwn
+        ? "gold_chain owned — equip allowed"
+        : "LOCKED PREVIEW · gold_chain not owned · save blocked",
+    );
+  }, [equippedCosmeticIds, ownedIds]);
+
+  const equipOwnedStreetFit = useCallback(() => {
+    const next = equipItem(inventory, "street_fit");
+    setInventory(next);
+    setActivePackId("street");
+    patchCanonicalAvatarDraft({ equippedCosmeticIds: ["street_fit"] });
+    setLockedPreviewNote("OWNED EQUIP · street_fit");
+  }, [inventory]);
+
+  const saveLookContinuity = useCallback(() => {
+    try {
+      const look = createAvatarLookFromDraft(getCanonicalAvatarDraft(), "Phase2 Cert Look");
+      window.localStorage.setItem(
+        "tmi_avatar_phase2_saved_look",
+        JSON.stringify(look),
+      );
+      setSavedLookNote(
+        `Saved Look ${look.lookId} · cert=${look.certificationSnapshot.wearableCert}`,
+      );
+    } catch (err) {
+      setSavedLookNote(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
 
   const cameraFocus = CATEGORIES.find((c) => c.id === category)?.focus ?? "body";
 
@@ -328,15 +402,45 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
 
   return (
     <RoleGate allow={["FAN"]} fallback={FAN_FALLBACK}>
-      <div className="tmi-avatar-studio" data-embedded={embedded ? "true" : "false"}>
+      <div
+        className="tmi-avatar-studio"
+        data-embedded={embedded ? "true" : "false"}
+        data-testid="avatar-full-studio"
+        data-avatar-preview-surface="full-studio"
+        data-avatar-runtime-owner={AVATAR_PREVIEW_RUNTIME_OWNER}
+        data-draft-id={draft.draftId}
+        data-environment-id={draft.environmentId}
+        data-panel-target={draft.panelTargetId ?? ""}
+        data-preview-action={draft.previewAction}
+        data-fidelity={preview.fidelity}
+        data-occupancy-allowed={preview.environment.avatarOccupancyAllowed ? "true" : "false"}
+        data-lighting-only={preview.environment.lightingOnly ? "true" : "false"}
+        data-group-cam-editor-only={preview.presentation?.editorMannequinsOnly ? "true" : "false"}
+      >
         <style>{STUDIO_CSS}</style>
         <header className="tmi-avatar-studio-head">
           <div>
-            <div className="tmi-avatar-studio-kicker">AVATAR FIRST · 3D RUNTIME v0</div>
+            <div className="tmi-avatar-studio-kicker">AVATAR FIRST · 3D RUNTIME v0 · SHARED DRAFT</div>
             <h1>Avatar Studio</h1>
           </div>
           <div className="tmi-avatar-studio-head-actions">
-            <button type="button" className="tmi-avatar-studio-chip" onClick={() => setPose(pose === "Dance" ? "Idle" : "Dance")}>
+            <button
+              type="button"
+              className="tmi-avatar-studio-chip"
+              data-testid="avatar-studio-toggle-quick"
+              onClick={() => setShowQuickParity((v) => !v)}
+            >
+              {showQuickParity ? "Hide Quick" : "Quick Avatar"}
+            </button>
+            <button
+              type="button"
+              className="tmi-avatar-studio-chip"
+              onClick={() => {
+                const next = pose === "Dance" ? "Idle" : "Dance";
+                setPose(next);
+                patchCanonicalAvatarDraft({ previewAction: next === "Dance" ? "DANCE" : "IDLE" });
+              }}
+            >
               {pose === "Dance" ? "Idle" : "Dance"}
             </button>
             {onClose ? (
@@ -370,8 +474,8 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
               eyes={eyes}
               outfit={outfit}
               propName={propName}
-              background="Studio Alley"
-              lighting="Spotlight"
+              background={draft.environmentId}
+              lighting={draft.panelTargetId ?? "Spotlight"}
               pose={pose}
               accessories={selectedAccessories}
               bodyHeight={bodyHeight}
@@ -379,6 +483,99 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
               equippedCosmeticIds={equippedCosmeticIds}
               portraitUrl={portraitUrl ?? undefined}
             />
+            <div
+              style={{
+                marginTop: 10,
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid rgba(0,229,255,0.25)",
+                background: "rgba(5,5,16,0.85)",
+              }}
+            >
+              <AvatarPreviewParityControls
+                environmentId={draft.environmentId}
+                panelTargetId={draft.panelTargetId}
+                previewAction={draft.previewAction}
+                viewport={preview.viewport}
+                density="full"
+              />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                <button
+                  type="button"
+                  data-testid="avatar-preview-locked-item"
+                  className="tmi-avatar-studio-chip"
+                  onClick={previewLockedItem}
+                >
+                  Preview locked
+                </button>
+                <button
+                  type="button"
+                  data-testid="avatar-equip-owned-item"
+                  className="tmi-avatar-studio-chip"
+                  onClick={equipOwnedStreetFit}
+                >
+                  Equip owned
+                </button>
+                <button
+                  type="button"
+                  data-testid="avatar-save-look"
+                  className="tmi-avatar-studio-chip"
+                  onClick={saveLookContinuity}
+                >
+                  Save Look
+                </button>
+                <button
+                  type="button"
+                  data-testid="avatar-reduced-motion"
+                  className="tmi-avatar-studio-chip"
+                  onClick={() =>
+                    patchCanonicalAvatarDraft({
+                      fidelity: draft.fidelity === "reduced" ? "full" : "reduced",
+                    })
+                  }
+                >
+                  Fidelity: {draft.fidelity}
+                </button>
+              </div>
+              {lockedPreviewNote ? (
+                <div data-testid="avatar-locked-item-note" style={{ fontSize: 10, color: "#FFD700", marginTop: 8 }}>
+                  {lockedPreviewNote}
+                </div>
+              ) : null}
+              {savedLookNote ? (
+                <div data-testid="avatar-saved-look-note" style={{ fontSize: 10, color: "#00E5FF", marginTop: 6 }}>
+                  {savedLookNote}
+                </div>
+              ) : null}
+              <div
+                data-testid="avatar-draft-id-label"
+                style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 8 }}
+              >
+                draftId={draft.draftId}
+              </div>
+            </div>
+            {showQuickParity ? (
+              <div
+                data-testid="avatar-quick-parity-embed"
+                style={{
+                  marginTop: 12,
+                  border: "1px solid rgba(255,45,170,0.35)",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  background: "rgba(8,6,18,0.95)",
+                }}
+              >
+                <CanonicalQuickPanelContent
+                  workspaceId="inventory"
+                  userId="studio-parity-fan"
+                  displayName={profileName || "Fan avatar"}
+                  role="fan"
+                  accentColor="#FF2DAA"
+                  onClose={() => setShowQuickParity(false)}
+                  embedded
+                />
+              </div>
+            ) : null}
           </div>
 
           <aside className={`tmi-avatar-studio-panel${drawerOpen ? " is-open" : ""}`}>

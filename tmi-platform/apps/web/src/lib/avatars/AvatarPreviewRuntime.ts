@@ -25,13 +25,14 @@ import {
   type AvatarPreviewAction,
 } from "@/lib/avatars/AvatarPreviewActions";
 import type { AvatarLook } from "@/lib/avatars/AvatarLook";
-import { defaultMotionPersonality } from "@/lib/avatars/AvatarLook";
+import { defaultMotionPersonality, AVATAR_LOOK_SCHEMA_VERSION } from "@/lib/avatars/AvatarLook";
 import {
   evaluateFoundryWearableCert,
   resolveWearableCapability,
 } from "@/lib/avatars/AvatarWearableCapability";
-import { AVATAR_RIG_VERSION } from "@/lib/avatars/AvatarRigSpec";
+import { AVATAR_RIG_VERSION, MOTION_PACKAGE_VERSION } from "@/lib/avatars/AvatarRigSpec";
 import type { AvatarRigProps } from "@/components/3d/AvatarLobbyCanvas";
+import { patchCanonicalAvatarDraft } from "@/lib/avatars/CanonicalAvatarDraft";
 
 /** Single ownership marker — tests assert Studio/Quick bind this module family only. */
 export const AVATAR_PREVIEW_RUNTIME_OWNER =
@@ -47,13 +48,32 @@ export type AvatarPreviewEnvironmentId =
   | "FAN_LOBBY_AMBIENT"
   | "VENUE_SEAT"
   | "WDP_FLOOR"
-  | "LOUNGE_LIGHTING";
+  | "WORLD_CONCERT"
+  | "LOUNGE_LIGHTING"
+  /** Phase 2 cert alias — lighting/material only; production Lounge remains NO AVATARS. */
+  | "LOW_LIGHT_LOUNGE_STYLE";
 
 export type AvatarPresentationPanelTargetId =
   | "FAN_CAM"
   | "JUMBOTRON"
   | "SPOTLIGHT"
-  | "PROGRAM_ISO";
+  | "PROGRAM_ISO"
+  /** Editor-only mannequin composition — never real participants. */
+  | "GROUP_CAM";
+
+/** Phase 2 physical-cert environment selectors (adapters onto this runtime only). */
+export const PHASE2_CERT_ENVIRONMENTS = [
+  "FAN_LOBBY",
+  "WORLD_CONCERT",
+  "LOW_LIGHT_LOUNGE_STYLE",
+] as const satisfies readonly AvatarPreviewEnvironmentId[];
+
+/** Phase 2 physical-cert presentation selectors (TEMPLATE binds — no second director). */
+export const PHASE2_CERT_PANELS = [
+  "JUMBOTRON",
+  "FAN_CAM",
+  "GROUP_CAM",
+] as const satisfies readonly AvatarPresentationPanelTargetId[];
 
 export type AvatarPreviewEnvironment = {
   id: AvatarPreviewEnvironmentId;
@@ -110,8 +130,22 @@ export const AVATAR_PREVIEW_ENVIRONMENT_CATALOG: readonly AvatarPreviewEnvironme
     editorMannequinAllowed: false,
   },
   {
+    id: "WORLD_CONCERT",
+    label: "World Concert environment (lighting plate)",
+    lightingOnly: true,
+    avatarOccupancyAllowed: true,
+    editorMannequinAllowed: false,
+  },
+  {
     id: "LOUNGE_LIGHTING",
     label: "Lounge lighting (no avatars)",
+    lightingOnly: true,
+    avatarOccupancyAllowed: false,
+    editorMannequinAllowed: false,
+  },
+  {
+    id: "LOW_LIGHT_LOUNGE_STYLE",
+    label: "Low-light lounge style (lighting/material only)",
     lightingOnly: true,
     avatarOccupancyAllowed: false,
     editorMannequinAllowed: false,
@@ -143,6 +177,12 @@ export const AVATAR_PRESENTATION_PANEL_TARGETS: readonly AvatarPresentationPanel
     status: "TEMPLATE",
     resolvesTo: "ExperienceSourceRegistry ISO",
   },
+  {
+    id: "GROUP_CAM",
+    label: "Group cam (editor mannequins only)",
+    status: "TEMPLATE",
+    resolvesTo: "EDITOR_MANNEQUIN_COMPOSITION — never real participants",
+  },
 ] as const;
 
 export function getPreviewEnvironment(
@@ -151,13 +191,25 @@ export function getPreviewEnvironment(
   return AVATAR_PREVIEW_ENVIRONMENT_CATALOG.find((e) => e.id === id)!;
 }
 
+const LOUNGE_LIGHTING_ONLY_IDS: ReadonlySet<AvatarPreviewEnvironmentId> = new Set([
+  "LOUNGE_LIGHTING",
+  "LOW_LIGHT_LOUNGE_STYLE",
+]);
+
 /** Hard law: Lounge lighting preview must never flip occupancy on. */
 export function assertLoungeEnvironmentDoesNotEnableAvatarOccupancy(
   env: AvatarPreviewEnvironment,
 ): void {
-  if (env.id === "LOUNGE_LIGHTING" && env.avatarOccupancyAllowed) {
+  if (LOUNGE_LIGHTING_ONLY_IDS.has(env.id) && env.avatarOccupancyAllowed) {
     throw new Error("PREVIEW_PARITY: Lounge environment must not enable avatar occupancy");
   }
+}
+
+/** GROUP_CAM may only show labeled editor mannequins — never real participants. */
+export function isGroupCamEditorOnly(
+  panelTargetId: AvatarPresentationPanelTargetId | null,
+): boolean {
+  return panelTargetId === "GROUP_CAM";
 }
 
 export type PreviewActionGate = {
@@ -207,6 +259,9 @@ export type ProductionMotionDispatch = {
   gate: PreviewActionGate;
   rigFamily: typeof AVATAR_RIG_VERSION;
   owner: typeof AVATAR_PREVIEW_RUNTIME_OWNER;
+  productionCompatible: boolean;
+  motionSource: "PROCEDURAL_RUNTIME" | "MOTION_PACKAGE";
+  assetCertificationState: "CERTIFIED" | "UNBOUND" | "BLOCKED";
 };
 
 export function dispatchProductionPreviewMotion(
@@ -215,12 +270,21 @@ export function dispatchProductionPreviewMotion(
 ): ProductionMotionDispatch {
   const binding = viewport ?? resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
   const productionPath = resolveProductionMotionPath(action);
+  const gate = gatePreviewAction(action, binding);
+  const isProcedural = (PRODUCTION_PROCEDURAL_ACTIONS as readonly string[]).includes(productionPath);
   return {
     requested: action,
     productionPath,
-    gate: gatePreviewAction(action, binding),
+    gate,
     rigFamily: AVATAR_RIG_VERSION,
     owner: AVATAR_PREVIEW_RUNTIME_OWNER,
+    productionCompatible: gate.allowed,
+    motionSource: isProcedural ? "PROCEDURAL_RUNTIME" : "MOTION_PACKAGE",
+    assetCertificationState: gate.allowed
+      ? binding.diagnostic === "OK"
+        ? "CERTIFIED"
+        : "UNBOUND"
+      : "BLOCKED",
   };
 }
 
@@ -251,6 +315,16 @@ export type JumbotronPresentationPreview = {
   resolvesTo: string;
 };
 
+export type PresentationPanelPreview = {
+  usesDraft: true;
+  draftId: string;
+  panelTargetId: AvatarPresentationPanelTargetId;
+  status: "TEMPLATE";
+  resolvesTo: string;
+  /** GROUP_CAM only — labeled editor mannequins, never real participants. */
+  editorMannequinsOnly: boolean;
+};
+
 export type AvatarPreviewResolution = {
   draft: CanonicalAvatarDraftState;
   viewport: AvatarViewportBinding;
@@ -259,6 +333,7 @@ export type AvatarPreviewResolution = {
   motion: ProductionMotionDispatch;
   fidelity: AvatarPreviewFidelity;
   jumbotron: JumbotronPresentationPreview | null;
+  presentation: PresentationPanelPreview | null;
   rigProps: (AvatarRigProps & { bobbleheadRatio: number }) | null;
   /** EDITOR mannequin only when environment allows and GLB unbound. */
   editorMannequin: boolean;
@@ -293,6 +368,22 @@ export function resolveJumbotronPresentationFromDraft(
     panelTargetId: "JUMBOTRON",
     status: "TEMPLATE",
     resolvesTo: target.resolvesTo,
+  };
+}
+
+export function resolvePresentationPanelFromDraft(
+  draft: CanonicalAvatarDraftState,
+): PresentationPanelPreview | null {
+  if (!draft.panelTargetId) return null;
+  const target = AVATAR_PRESENTATION_PANEL_TARGETS.find((t) => t.id === draft.panelTargetId);
+  if (!target) return null;
+  return {
+    usesDraft: true,
+    draftId: draft.draftId,
+    panelTargetId: target.id,
+    status: "TEMPLATE",
+    resolvesTo: target.resolvesTo,
+    editorMannequinsOnly: isGroupCamEditorOnly(target.id),
   };
 }
 
@@ -337,8 +428,11 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
     motion,
     fidelity,
     jumbotron: resolveJumbotronPresentationFromDraft(draft),
+    presentation: resolvePresentationPanelFromDraft(draft),
     rigProps,
-    editorMannequin: !bound && environment.editorMannequinAllowed,
+    editorMannequin:
+      (!bound && environment.editorMannequinAllowed) ||
+      isGroupCamEditorOnly(draft.panelTargetId),
   };
 }
 
@@ -408,19 +502,120 @@ export type ArmsUpFitTestResult = {
   fit: ReturnType<typeof fitValidationStatus>;
   allowed: boolean;
   productionPath: AvatarPreviewAction;
+  rigFamily: typeof AVATAR_RIG_VERSION;
   owner: typeof AVATAR_PREVIEW_RUNTIME_OWNER;
+  productionCompatible: boolean;
+  motionSource: "MOTION_PACKAGE";
+  assetCertificationState: "CERTIFIED" | "UNBOUND" | "BLOCKED";
 };
 
 export function runArmsUpFitTest(viewport?: AvatarViewportBinding): ArmsUpFitTestResult {
   const binding = viewport ?? resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
   const motion = dispatchProductionPreviewMotion("ARMS_UP", binding);
   const fit = fitValidationStatus("SOCKET_FIT", binding);
+  const allowed = motion.gate.allowed && fit.allowed;
   return {
     action: "ARMS_UP",
     gate: motion.gate,
     fit,
-    allowed: motion.gate.allowed && fit.allowed,
+    allowed,
     productionPath: motion.productionPath,
+    rigFamily: AVATAR_RIG_VERSION,
     owner: AVATAR_PREVIEW_RUNTIME_OWNER,
+    productionCompatible: allowed,
+    motionSource: "MOTION_PACKAGE",
+    assetCertificationState: allowed ? "CERTIFIED" : "BLOCKED",
   };
+}
+
+/**
+ * Creates an authoritative AvatarLook from current CanonicalAvatarDraft.
+ * Enforces productionCompatible wearables before creating snapshot.
+ */
+export function createAvatarLookFromDraft(
+  draft: CanonicalAvatarDraftState,
+  name: string,
+): AvatarLook {
+  assertProductionCompatibleSave(draft.equippedCosmeticIds);
+  const viewport = resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
+  return {
+    schemaVersion: AVATAR_LOOK_SCHEMA_VERSION,
+    lookId: `look_${draft.draftId}_${Date.now()}`,
+    name,
+    rigVersion: AVATAR_RIG_VERSION,
+    motionPackageVersion: MOTION_PACKAGE_VERSION,
+    baseId: draft.baseId,
+    skinT: draft.skinT,
+    displayName: draft.displayName || name,
+    equippedCosmeticIds: [...draft.equippedCosmeticIds],
+    motionPersonality: lookMotionPersonalityFromViewport(viewport),
+    lastPreviewAction: draft.previewAction,
+    certificationSnapshot: certificationSnapshotFromPreview(draft.equippedCosmeticIds),
+    savedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Applies a canonical AvatarLook back onto the active CanonicalAvatarDraft.
+ * Studio and Quick Panel observe changes identically without state forks.
+ */
+export function applyAvatarLookToDraft(
+  look: AvatarLook,
+): CanonicalAvatarDraftState {
+  return patchCanonicalAvatarDraft({
+    baseId: look.baseId,
+    skinT: look.skinT,
+    displayName: look.displayName,
+    equippedCosmeticIds: [...look.equippedCosmeticIds],
+    previewAction: look.lastPreviewAction,
+  });
+}
+
+/** Browser cert probe — surfaces publish the same draft truth; never a second runtime. */
+export type AvatarPreviewCertProbe = {
+  surface: "full-studio" | "quick-avatar";
+  owner: typeof AVATAR_PREVIEW_RUNTIME_OWNER;
+  draftId: string;
+  environmentId: AvatarPreviewEnvironmentId;
+  panelTargetId: AvatarPresentationPanelTargetId | null;
+  previewAction: AvatarPreviewAction;
+  fidelity: AvatarPreviewFidelity;
+  lightingOnly: boolean;
+  occupancyAllowed: boolean;
+  loungeLightingLaw: boolean;
+  groupCamEditorOnly: boolean;
+  motionProductionCompatible: boolean;
+  motionPath: AvatarPreviewAction;
+  equippedCosmeticIds: string[];
+  viewportDiagnostic: string;
+};
+
+export function publishAvatarPreviewCertProbe(
+  surface: AvatarPreviewCertProbe["surface"],
+  resolution: AvatarPreviewResolution,
+): AvatarPreviewCertProbe {
+  const probe: AvatarPreviewCertProbe = {
+    surface,
+    owner: AVATAR_PREVIEW_RUNTIME_OWNER,
+    draftId: resolution.draft.draftId,
+    environmentId: resolution.draft.environmentId,
+    panelTargetId: resolution.draft.panelTargetId,
+    previewAction: resolution.draft.previewAction,
+    fidelity: resolution.fidelity,
+    lightingOnly: resolution.environment.lightingOnly,
+    occupancyAllowed: resolution.environment.avatarOccupancyAllowed,
+    loungeLightingLaw:
+      LOUNGE_LIGHTING_ONLY_IDS.has(resolution.environment.id) &&
+      !resolution.environment.avatarOccupancyAllowed,
+    groupCamEditorOnly: isGroupCamEditorOnly(resolution.draft.panelTargetId),
+    motionProductionCompatible: resolution.motion.productionCompatible,
+    motionPath: resolution.motion.productionPath,
+    equippedCosmeticIds: [...resolution.draft.equippedCosmeticIds],
+    viewportDiagnostic: resolution.viewport.diagnostic,
+  };
+  if (typeof window !== "undefined") {
+    (window as unknown as { __TMI_AVATAR_PREVIEW_CERT__?: AvatarPreviewCertProbe }).__TMI_AVATAR_PREVIEW_CERT__ =
+      probe;
+  }
+  return probe;
 }
