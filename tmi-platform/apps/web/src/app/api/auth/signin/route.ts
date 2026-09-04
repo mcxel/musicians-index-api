@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { loginUser, dbReady } from '@/lib/auth/UserStore';
-import { createSession } from '@/lib/auth/SessionManager';
+import { authSessionCookieOpts, createSession } from '@/lib/auth/SessionManager';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
@@ -10,14 +10,6 @@ import { compare } from 'bcryptjs';
 import prisma, { ensureUserDatabaseSchema } from '@/lib/prisma';
 import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
-
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60,
-  path: '/',
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -210,18 +202,13 @@ export async function POST(req: NextRequest) {
     response.cookies.delete('tmi_role');
     response.cookies.delete('tmi_tier');
     response.cookies.delete('tmi_roles');
+    const COOKIE_OPTS = authSessionCookieOpts();
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', resolvedUser.role, COOKIE_OPTS);
     response.cookies.set('tmi_roles', JSON.stringify(userRoles), COOKIE_OPTS);
     response.cookies.set('tmi_tier', resolvedUser.tier, COOKIE_OPTS);
-    response.cookies.set('tmi_user_email', email, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    });
+    response.cookies.set('tmi_user_email', email, authSessionCookieOpts({ httpOnly: false }));
     response.cookies.set('phase11_session', sessionToken, COOKIE_OPTS);
 
     return response;

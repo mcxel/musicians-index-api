@@ -7,7 +7,7 @@ import {
   dbReady,
   type UserRole,
 } from '@/lib/auth/UserStore';
-import { createSession } from '@/lib/auth/SessionManager';
+import { authSessionCookieOpts, createSession } from '@/lib/auth/SessionManager';
 import prisma from '@/lib/prisma';
 import {
   getMessagingEligibility,
@@ -31,14 +31,6 @@ function getGoogleClientSecret(): string {
     ?? ''
   ).trim();
 }
-
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure:   process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge:   7 * 24 * 60 * 60,
-  path:     '/',
-};
 
 const ROLE_TO_DB: Record<string, string> = {
   admin: 'ADMIN',
@@ -221,11 +213,12 @@ export async function GET(req: NextRequest) {
   res.cookies.delete('tmi_oauth_state');
   res.cookies.delete('tmi_role');
   res.cookies.delete('tmi_tier');
+  const COOKIE_OPTS = authSessionCookieOpts();
   res.cookies.set('tmi_session_id', sessionId,       COOKIE_OPTS);
   res.cookies.set('tmi_session',    sessionToken,     COOKIE_OPTS);
   res.cookies.set('tmi_role',       user.role,        COOKIE_OPTS);
   res.cookies.set('tmi_tier',       user.tier,        COOKIE_OPTS);
-  res.cookies.set('tmi_user_email', email, { ...COOKIE_OPTS, httpOnly: false });
+  res.cookies.set('tmi_user_email', email, authSessionCookieOpts({ httpOnly: false }));
 
   return res;
 }
