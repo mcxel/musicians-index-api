@@ -14,6 +14,10 @@ test('phase13.5 browser flows', async ({ page }) => {
 
   const push = (name: string) => results.push({ name, url: page.url() });
 
+  // Authed fan landing after signup+provision: login always goes /dashboard → role hub
+  // (onboarding enforcer gate is disabled in middleware).
+  const authedFanUrl = /\/hub\/fan(?:\/)?(?:\?.*)?$/;
+
   // Registration lives on /signup (not a Register button on /auth)
   await page.goto(`${baseUrl}/signup?role=fan`);
   await page.locator('input[type="email"]').first().waitFor({ state: 'visible', timeout: 15000 });
@@ -65,7 +69,7 @@ test('phase13.5 browser flows', async ({ page }) => {
   await page.getByRole('button', { name: 'Login' }).click();
   const loginResponse = await loginResponsePromise;
   expect(loginResponse.status()).toBe(200);
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(authedFanUrl, { timeout: 15000 });
   push('login_redirect');
 
   const cookiesAfterLogin = await page.context().cookies(baseUrl);
@@ -73,15 +77,15 @@ test('phase13.5 browser flows', async ({ page }) => {
   expect(cookieNamesAfterLogin).toContain('tmi_session_id');
 
   await page.reload();
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(authedFanUrl, { timeout: 15000 });
   push('refresh_session_restore');
 
   await page.goto(`${baseUrl}/dashboard`);
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(authedFanUrl, { timeout: 15000 });
   push('direct_protected_while_authed');
 
   await page.goto(`${baseUrl}/auth`);
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(authedFanUrl, { timeout: 15000 });
   push('auth_when_authed');
 
   await page.goto(`${baseUrl}/`);
