@@ -1,10 +1,4 @@
 {
-    "sonarlint.rules": {
-        "Web:InlineStyleCheck": { "level": "off" },
-        "javascript:S6819": { "level": "off" },
-        "typescript:S6571": { "level": "off" },
-        "javascript:S6571": { "level": "off" }
-    },
     "files.exclude": {
         "**/_converted_webp visual Blueprint/**": true,
         "**/.cache/**": true,
