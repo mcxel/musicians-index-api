@@ -24,7 +24,7 @@ export interface SnipReference {
 }
 
 function performerToSnip(p: PerformerIdentity, index: number): SnipReference | null {
-  const videoUrl = p.introVideoUrl ?? p.motionPosterUrl;
+  const videoUrl = p.introVideoUrl ?? p.motionPosterUrl ?? p.coverImageUrl ?? p.profileImageUrl;
   if (!videoUrl) return null;
   return {
     id: `snip-performer-${p.slug}`,
@@ -42,7 +42,7 @@ function performerToSnip(p: PerformerIdentity, index: number): SnipReference | n
 /** Build eligible public snip pool with diversity + anti-repetition shuffle. */
 export function buildSnipPool(recentIds: string[] = []): SnipReference[] {
   const eligible = PERFORMER_REGISTRY.filter(
-    (p) => (p.introVideoUrl || p.motionPosterUrl) && p.lineupType !== undefined,
+    (p) => Boolean(p.introVideoUrl || p.motionPosterUrl || p.coverImageUrl || p.profileImageUrl),
   )
     .map((p, i) => performerToSnip(p, i))
     .filter((s): s is SnipReference => s != null);

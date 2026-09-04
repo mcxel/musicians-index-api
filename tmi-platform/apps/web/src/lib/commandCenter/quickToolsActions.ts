@@ -133,6 +133,14 @@ export function runQuickToolAction(
     case "memory":
       ctx.onMemory?.();
       break;
+    case "cast":
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tmi:cast-panel-toggle"));
+      }
+      break;
+    case "user-id":
+      ctx.togglePanel("user-id", "bottom-right");
+      break;
     default:
       break;
   }
@@ -152,6 +160,8 @@ export function isQuickToolActive(
   if (id === "avatar") {
     return useWorkspacePresentationStore.getState().drawerWorkspace === "avatar-quick";
   }
+  if (id === "user-id") return ctx.activePanel === "user-id";
+  if (id === "cast") return false;
   if (id === "venue-tools") return ctx.activePanel === "venue";
   if (id === "share-screen") return Boolean(ctx.screenShareActive);
   return false;

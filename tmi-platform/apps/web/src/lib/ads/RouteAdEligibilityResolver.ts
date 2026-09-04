@@ -27,6 +27,11 @@ const PROTECTED_PREFIXES = [
   "/billing",
   "/account/finance",
   "/account",
+  "/settings",
+  "/hub",
+  "/dashboard",
+  "/wallet",
+  "/inventory",
   "/login",
   "/signup",
   "/password-reset",
@@ -56,6 +61,7 @@ const PUBLIC_EDITORIAL_PREFIXES = [
   "/privacy",
   "/terms",
   "/contact",
+  "/disclosures",
   "/refund-policy",
 ];
 

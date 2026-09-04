@@ -91,7 +91,7 @@
     },
     "M": {
       "status": "PASS",
-      "notes": "Mobile 390×844 retains shell+contract; phase=ATTEMPT_1_ACTIVE composition=HOST_CLOSE",
+      "notes": "Mobile 390×844 retains shell+contract; phase=ATTEMPT_1_COUNTDOWN composition=HOST_CLOSE",
       "evidence": [
         "11-mobile-mount.png",
         "12-mobile-attempt.png",
@@ -130,5 +130,5 @@
     "12",
     "M"
   ],
-  "at": "2026-09-03T03:21:07.613Z"
+  "at": "2026-09-03T06:15:43.761Z"
 }

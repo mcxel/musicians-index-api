@@ -49,7 +49,6 @@ import {
 import { useHomeDiscoveryRotation } from '@/lib/discovery/useHomeDiscoveryRotation';
 import type { LiveDiscoveryRecord } from '@/lib/discovery/LiveDiscoveryRecord';
 import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
-import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import {
   getOrbitalTopSlots,
   publishUniversalRankingSnapshot,
@@ -871,6 +870,7 @@ export default function Home1CoverPage() {
   const orbitSlotCount = isMobileViewport ? 6 : 8;
   const {
     cards: orbitDiscoveryCards,
+    records: liveDiscoveryRecords,
     isEmpty: orbitDiscoveryEmpty,
   } = useHomeDiscoveryRotation({ slotCount: orbitSlotCount });
 
@@ -929,38 +929,14 @@ export default function Home1CoverPage() {
     };
   }, []);
 
-  // Real liveness from GlobalLiveSessionRegistry — subscribe to changes rather than polling.
-  // Carry full session metadata (roomId, viewerCount, category, title) for future enhancements
-  // like "🔴 LIVE 42 viewers Battle Thunder Dome" orbit badges.
-  const [livePerformers, setLivePerformers] = useState<LiveSession[]>([]);
-  useEffect(() => {
-    setLivePerformers(getActiveSessions());
-    const unsubscribe = onSessionsChanged((sessions) => {
-      setLivePerformers(sessions);
-    });
-    // Durable hydrate across serverless instances — poll GET /api/live/go
-    let cancelled = false;
-    const sync = async () => {
-      try {
-        const res = await fetch("/api/live/go", { cache: "no-store" });
-        if (!res.ok || cancelled) return;
-        const data = await res.json() as { sessions?: LiveSession[] };
-        if (!cancelled && Array.isArray(data.sessions)) setLivePerformers(data.sessions);
-      } catch { /* keep local registry */ }
-    };
-    void sync();
-    const timer = window.setInterval(() => void sync(), 10_000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      unsubscribe();
-    };
-  }, []);
-
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
+  // Live status is looked up on the SAME canonical DiscoveryBus record set the orbit
+  // rail already subscribes to (via useHomeDiscoveryRotation) — no second, independently
+  // timed poll of the registry. Two polls of the same truth is exactly how a crown badge
+  // and the orbit rail can disagree about "is this person live" for several seconds.
   const crownData = getCrownHolder();
-  const crownIsLive = livePerformers.some((s) => s.userId === crownData.id);
-  const crownLiveSession = livePerformers.find((s) => s.userId === crownData.id);
+  const crownLiveRecord = liveDiscoveryRecords.find((r) => r.hostUserId === crownData.id);
+  const crownIsLive = Boolean(crownLiveRecord);
   const crowdHolder = {
     slug: crownData.slug,
     performerId: crownData.id,
@@ -970,8 +946,8 @@ export default function Home1CoverPage() {
     introVideoUrl: crownData.introVideoUrl,
     motionPosterUrl: crownData.motionPosterUrl,
     isLive: crownIsLive || crownData.isLive,
-    liveRoomRoute: crownLiveSession?.roomId ? `/live/rooms/${crownLiveSession.roomId}` : crownData.liveRoomRoute,
-    audienceCount: crownLiveSession?.viewerCount ?? crownData.audienceCount,
+    liveRoomRoute: crownLiveRecord?.roomId ? `/live/rooms/${crownLiveRecord.roomId}` : crownData.liveRoomRoute,
+    audienceCount: crownLiveRecord?.humanViewerCount ?? crownData.audienceCount,
     xp: crownData.xp,
     verified: isVerifiedRankedPerformer(crownData),
     honorTitle: getPerformerHonorTitle(crownData),
@@ -1045,7 +1021,7 @@ export default function Home1CoverPage() {
 
   const rightRailViews = [
     { label: 'Trending Artists', route: '/rankings', entries: topPerformers.slice(0, 4).map((p) => ({ name: p.name, sub: `${p.category}`, href: p.profileRoute })) },
-    { label: 'Active Rooms', route: '/live/lobby', entries: livePerformers.slice(0, 4).map((s) => ({ name: s.displayName, sub: `${s.viewerCount} in room`, href: `/live/rooms/${s.roomId}` })) },
+    { label: 'Active Rooms', route: '/live/lobby', entries: liveDiscoveryRecords.slice(0, 4).map((r) => ({ name: r.hostName, sub: `${r.humanViewerCount} in room`, href: `/live/rooms/${r.roomId}` })) },
     { label: 'Top Rising Artists', route: '/rankings?rising=true', entries: getFeaturedFreePerformers(4).map((p) => ({ name: p.name, sub: p.genre, href: `/performers/${p.slug}` })) },
     { label: 'Newest Diamond Members', route: '/rankings?tier=Diamond', entries: diamondMembers.slice(0, 4).map((p) => ({ name: p.name, sub: p.category, href: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image` })) },
     { label: 'Featured Venue', route: '/venues', entries: venues.slice(0, 1).map((v) => ({ name: v.venue, sub: `${v.day} booking`, href: v.bookRoute })) },
@@ -2955,7 +2931,7 @@ export default function Home1CoverPage() {
         <div style={{ width: '100%', maxWidth: 900, padding: '10px 10px 0', display: 'flex', gap: 6, justifyContent: 'space-between' }}>
           {[
             { label: 'LIVE VENUES', value: venues.length, color: '#00E5FF', icon: '🏟' },
-            { label: 'LIVE STREAMS', value: livePerformers.length, color: '#FF2DAA', icon: '👁' },
+            { label: 'LIVE STREAMS', value: liveDiscoveryRecords.length, color: '#FF2DAA', icon: '👁' },
             { label: 'TIPS SENT', value: '$0', color: '#FFD700', icon: '💰' },
             { label: 'VOTES CAST', value: voteCount > 0 ? voteCount.toLocaleString() : '—', color: '#AA2DFF', icon: '⚡' },
           ].map((stat) => (

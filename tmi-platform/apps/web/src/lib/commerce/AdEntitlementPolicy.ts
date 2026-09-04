@@ -21,7 +21,19 @@ export interface AdEntitlementContext {
 
 const SPONSOR_ONLY_PREFIXES = ["/sponsors", "/advertiser"];
 
-const NO_MONETIZATION_PREFIXES = ["/admin", "/checkout", "/billing", "/login", "/signup"];
+const NO_MONETIZATION_PREFIXES = [
+  "/admin",
+  "/checkout",
+  "/billing",
+  "/login",
+  "/signup",
+  "/hub",
+  "/account",
+  "/settings",
+  "/wallet",
+  "/inventory",
+  "/dashboard",
+];
 
 export function resolveAdEntitlement(ctx: AdEntitlementContext): AdEntitlement {
   const normalized = ctx.pathname.toLowerCase();

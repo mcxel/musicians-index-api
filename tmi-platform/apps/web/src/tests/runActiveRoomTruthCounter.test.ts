@@ -117,4 +117,8 @@ function runActiveRoomTruthCounterTest() {
   }
 }
 
-runActiveRoomTruthCounterTest();
+describe("Active Room Truth Counter", () => {
+  it("tracks exact N -> N+1 -> N lifecycle on registry", () => {
+    runActiveRoomTruthCounterTest();
+  });
+});

@@ -32,7 +32,7 @@ interface AvatarRenderState {
 }
 
 export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId: _userId, username, role, avatarAssetId = 'default-front.png', className = '' }) => {
-  const [engineClient] = useState(() => new EngineClient({ url: 'ws://localhost:3001' }));
+  const [engineClient] = useState(() => new EngineClient(process.env.NEXT_PUBLIC_WS_URL ? { url: process.env.NEXT_PUBLIC_WS_URL } : undefined));
   const [connected, setConnected] = useState(false);
   const [seats, setSeats] = useState<EnhancedSeatState[]>([]);
   const [avatars, setAvatars] = useState<Map<string, AvatarRenderState>>(new Map());

@@ -1,142 +1,170 @@
 {
-  "timestamp": "2026-09-03T06:56:24.603Z",
+  "timestamp": "2026-09-03T06:58:35.474Z",
   "base": "http://localhost:3003",
   "route": "http://localhost:3003/avatar/studio",
   "gates": {
     "G1": {
       "status": "PASS",
-      "notes": "Full Studio mounts canonical runtime; draftId=cad_mtl67qat_shared",
+      "notes": "Full Studio mounts canonical runtime; draftId=cad_mtl69zyy_shared",
       "evidence": [
         "01-desktop-studio-mount.png"
       ]
     },
     "G2": {
       "status": "PASS",
-      "notes": "Quick Avatar mounts same runtime; draftId=cad_mtl67qat_shared",
+      "notes": "Quick Avatar mounts same runtime; draftId=cad_mtl69zyy_shared",
       "evidence": [
         "02-desktop-quick-embed.png"
       ]
     },
     "G3": {
       "status": "PASS",
-      "notes": "Shared draft ID equality: cad_mtl67qat_shared",
+      "notes": "Shared draft ID equality: cad_mtl69zyy_shared",
       "evidence": [
         "02-desktop-quick-embed.png"
       ]
     },
     "G4": {
       "status": "PASS",
-      "notes": "Quick→Full mutation continuity action=WALK; draftId=cad_mtl67qat_shared",
+      "notes": "Quick→Full mutation continuity action=WALK; draftId=cad_mtl69zyy_shared",
       "evidence": [
         "02-desktop-quick-embed.png"
       ]
     },
     "G5": {
       "status": "PASS",
-      "notes": "Full→Quick mutation continuity action=DANCE; draftId=cad_mtl67qat_shared",
+      "notes": "Full→Quick mutation continuity action=DANCE; draftId=cad_mtl69zyy_shared",
       "evidence": []
     },
     "G6": {
       "status": "PASS",
-      "notes": "IDLE/WALK/DANCE/EMOTE exercised: {\"IDLE\":true,\"WALK\":true,\"DANCE\":true,\"EMOTE\":true}",
+      "notes": "IDLE action rendered on active rig",
       "evidence": [
         "03-desktop-motion-suite.png"
       ]
     },
     "G7": {
       "status": "PASS",
-      "notes": "ARMS_UP production-compatible path rendered",
+      "notes": "WALK action rendered on active rig",
       "evidence": [
         "03-desktop-motion-suite.png"
       ]
     },
     "G8": {
       "status": "PASS",
+      "notes": "DANCE action rendered on active rig",
+      "evidence": [
+        "03-desktop-motion-suite.png"
+      ]
+    },
+    "G9": {
+      "status": "PASS",
+      "notes": "EMOTE action rendered on active rig (WAVE production path)",
+      "evidence": [
+        "03-desktop-motion-suite.png"
+      ]
+    },
+    "G10": {
+      "status": "PASS",
+      "notes": "ARMS_UP production-compatible path rendered",
+      "evidence": [
+        "03-desktop-motion-suite.png"
+      ]
+    },
+    "G11": {
+      "status": "PASS",
       "notes": "FAN_LOBBY preview selected",
       "evidence": [
         "04-desktop-fan-lobby.png"
       ]
     },
-    "G9": {
+    "G12": {
       "status": "PASS",
       "notes": "WORLD_CONCERT preview selected",
       "evidence": [
         "05-desktop-world-concert.png"
       ]
     },
-    "G10": {
+    "G13": {
       "status": "PASS",
       "notes": "LOW_LIGHT_LOUNGE_STYLE lighting-only · occupancy=false",
       "evidence": [
         "06-desktop-lounge-lighting.png"
       ]
     },
-    "G11": {
+    "G14": {
       "status": "PASS",
       "notes": "JUMBOTRON presentation preview",
       "evidence": [
         "07-desktop-jumbotron.png"
       ]
     },
-    "G12": {
+    "G15": {
       "status": "PASS",
       "notes": "FAN_CAM presentation preview",
       "evidence": [
         "08-desktop-fan-cam.png"
       ]
     },
-    "G13": {
+    "G16": {
       "status": "PASS",
       "notes": "GROUP_CAM editor-mannequin-only law",
       "evidence": [
         "09-desktop-group-cam.png"
       ]
     },
-    "G14": {
+    "G17": {
       "status": "PASS",
       "notes": "LOCKED PREVIEW · gold_chain not owned · save blocked",
       "evidence": [
         "10-desktop-locked-item.png"
       ]
     },
-    "G15": {
+    "G18": {
       "status": "PASS",
       "notes": "Owned street_fit equipped; note=OWNED EQUIP · street_fit",
       "evidence": [
         "11-desktop-owned-item.png"
       ]
     },
-    "G16": {
+    "G19": {
       "status": "PASS",
       "notes": "Saved Look continuity; cert=REGENERATE",
       "evidence": [
         "12-desktop-saved-look.png"
       ]
     },
-    "G17": {
+    "G20": {
       "status": "PASS",
       "notes": "certificationSnapshot.wearableCert=REGENERATE",
       "evidence": [
         "12-desktop-saved-look.png"
       ]
     },
-    "G18": {
+    "G21": {
       "status": "PASS",
       "notes": "fidelity=reduced",
       "evidence": [
         "13-desktop-reduced-motion.png"
       ]
     },
-    "G19": {
+    "G22": {
       "status": "PASS",
-      "notes": "Reload retained Saved Look look_cad_mtl67qat_shared_1788418551930 + certificationSnapshot",
+      "notes": "Reload retained Saved Look look_cad_mtl69zyy_shared_1788418651247 + certificationSnapshot",
       "evidence": [
         "14-desktop-reload.png"
       ]
     },
-    "G20": {
+    "G23": {
       "status": "PASS",
-      "notes": "Mobile 390×844 parity; draftId=cad_mtl68t74_shared env=FAN_LOBBY panel=FAN_CAM",
+      "notes": "Mobile Full Studio rendered on 390×844; draftId=cad_mtl6b8un_shared",
+      "evidence": [
+        "20-mobile-parity.png"
+      ]
+    },
+    "G24": {
+      "status": "PASS",
+      "notes": "Mobile Quick Avatar 390×844 parity; draftId=cad_mtl6b8un_shared env=FAN_LOBBY panel=FAN_CAM",
       "evidence": [
         "20-mobile-parity.png"
       ]

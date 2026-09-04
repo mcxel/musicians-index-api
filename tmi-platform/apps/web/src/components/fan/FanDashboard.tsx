@@ -4,6 +4,9 @@ import Link from "next/link";
 import type { FanProfile } from "@/lib/fan/FanProfileEngine";
 import type { Achievement } from "@/lib/gamification/AchievementEngine";
 import type { FanNotification } from "@/lib/fan/FanNotificationEngine";
+import { useUniversalShowroom } from "@/lib/discovery/UniversalShowroomEngine";
+import LiveSessionPreviewSlot from "@/components/discovery/LiveSessionPreviewSlot";
+import HappyDaysPromptCard from "@/components/happydays/HappyDaysPromptCard";
 
 interface FanDashboardProps {
   profile: FanProfile;
@@ -27,6 +30,7 @@ const RARITY_COLORS = {
 
 export function FanDashboard({ profile, unlockedAchievements, notifications, onFollowToggle, onMarkAllRead }: FanDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
+  const { slots: liveSlots } = useUniversalShowroom({ surface: "fan_dashboard", slotCount: 2 });
 
   const levelColor = LEVEL_COLORS[Math.min(profile.level, LEVEL_COLORS.length - 1)];
   const unreadCount = notifications.filter((n) => !n.readAtMs).length;
@@ -209,6 +213,26 @@ export function FanDashboard({ profile, unlockedAchievements, notifications, onF
                       <span style={{ fontSize: 16 }}>{a.badgeIcon}</span>
                       <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{a.title}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Happy Days Positive Daily Prompt */}
+            <div style={{ marginTop: 16 }}>
+              <HappyDaysPromptCard userRole="fan" displayName={profile.displayName} />
+            </div>
+
+            {/* Live Showroom Rotation Strip */}
+            {liveSlots.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, color: "#FF2DAA", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontWeight: 800 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2DAA", display: "inline-block", boxShadow: "0 0 6px #FF2DAA" }} />
+                  Live Showroom · Happening Now
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                  {liveSlots.map((s) => (
+                    <LiveSessionPreviewSlot key={s.id} slot={s} variant="compact" />
                   ))}
                 </div>
               </div>

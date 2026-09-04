@@ -310,6 +310,7 @@ export default function ChallengeRoomByIdPage() {
           instantEmptyStage
           eventType="challenge"
           venueId={`challenge-${challengeId}`}
+          jumbotronLookUpActive
         />
         <VenueAutomatedJumbotronMount
           roomId={roomId}

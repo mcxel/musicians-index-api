@@ -21,13 +21,52 @@ export async function runGoLiveLaunchPipelineTest(): Promise<{ allPassed: boolea
   const fanDest = resolveLiveDestination({ role: "FAN", privacy: "public", preferredExperience: "live" });
   results["fan_explicit_go_live_contains_room_id"] = fanDest.route.includes("{roomId}");
 
-  // 3. Execute Instant Go Live Launch
-  const launchResult = await executeInstantGoLive({ role: "PERFORMER", preferredExperience: "live", deferMedia: true });
-  results["instant_go_live_launches_valid_href"] =
-    launchResult.ok && Boolean(launchResult.href && (launchResult.href.startsWith("/live/rooms/") || launchResult.href.startsWith("/rooms/")));
+  // 3. Execute Instant Go Live Launch without auth -> rejected cleanly
+  const unauthResult = await executeInstantGoLive({ role: "PERFORMER", preferredExperience: "live", deferMedia: true, publishSession: false });
+  results["unauthenticated_launch_rejected_safely"] = !unauthResult.ok && Boolean(unauthResult.error?.includes("Authentication required") || unauthResult.error?.includes("401") || unauthResult.error?.includes("auth"));
+
+  // 4. Execute Instant Go Live Launch with authenticated performer session
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+    const urlStr = String(url);
+    if (urlStr.includes("/api/auth/session")) {
+      return new Response(JSON.stringify({
+        authenticated: true,
+        user: { id: "test-performer-1", name: "Test Performer", role: "PERFORMER" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/api/live/go")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        session: {
+          userId: "test-performer-1",
+          displayName: "Test Performer",
+          roomId: "test-room-123",
+          category: "live",
+          title: "Test Live",
+        },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return origFetch(url, init);
+  };
+
+  try {
+    const authResult = await executeInstantGoLive({ role: "PERFORMER", preferredExperience: "live", deferMedia: true, publishSession: true });
+    results["instant_go_live_launches_valid_href"] =
+      authResult.ok && Boolean(authResult.href && (authResult.href.startsWith("/live/rooms/") || authResult.href.startsWith("/rooms/")));
+  } finally {
+    globalThis.fetch = origFetch;
+  }
 
   const allPassed = Object.values(results).every(Boolean);
 
   console.log(`[GO_LIVE_LAUNCH_PIPELINE_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
+
+describe("Go Live Launch Pipeline", () => {
+  it("resolves destinations, enforces auth, and executes instant go-live", async () => {
+    const { allPassed } = await runGoLiveLaunchPipelineTest();
+    expect(allPassed).toBe(true);
+  });
+});

@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
 import ShowsReleasePublisher from '@/components/events/ShowsReleasePublisher';
 import { MiniEventCreator } from '@/components/live/MiniEventCreator';
+import { useUniversalShowroom } from '@/lib/discovery/UniversalShowroomEngine';
+import LiveSessionPreviewSlot from '@/components/discovery/LiveSessionPreviewSlot';
+import HappyDaysPromptCard from '@/components/happydays/HappyDaysPromptCard';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -38,6 +41,7 @@ export default function PerformerDashboardPage() {
   const [stats, setStats] = useState<DashboardStat[]>([]);
   const [revBars, setRevBars] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [revMax, setRevMax] = useState(0);
+  const { slots: liveSlots } = useUniversalShowroom({ surface: "performer_dashboard", slotCount: 2 });
 
   useEffect(() => {
     const load = async () => {
@@ -148,6 +152,26 @@ export default function PerformerDashboardPage() {
                 <span style={{ fontSize: 20 }}>🥊</span>BEAT BATTLE
               </Link>
             </div>
+
+            {/* Happy Days Positive Reflection Prompt */}
+            <div style={{ marginBottom: 12 }}>
+              <HappyDaysPromptCard userRole="performer" displayName={displayName} />
+            </div>
+
+            {/* Live Showroom Activity Strip */}
+            {liveSlots.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 9, color: '#00FFFF', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FFFF', display: 'inline-block', boxShadow: '0 0 6px #00FFFF' }} />
+                  Live Showroom · Active Broadcasts & Cyphers
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+                  {liveSlots.map((s) => (
+                    <LiveSessionPreviewSlot key={s.id} slot={s} variant="compact" />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick action grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>

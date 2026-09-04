@@ -159,11 +159,11 @@ export default function LiveFeedbackPanel() {
 
   if (dismissed) return null;
 
-  // Position toward center-left of the usable content area, safely above the persistent bottom rail
-  // and avoiding collision with bottom navigation docks, side rails, and top headers on all viewports (desktop and 390x844).
+  // Position farther left and above the dock so hub quick controls stay unobstructed
+  // on desktop and 390x844 mobile during QA.
   const anchorStyle = {
-    bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
-    left: "max(16px, env(safe-area-inset-left, 0px))",
+    bottom: "calc(112px + env(safe-area-inset-bottom, 0px))",
+    left: "max(10px, env(safe-area-inset-left, 0px))",
     top: "auto" as const,
     right: "auto" as const,
   };
@@ -175,7 +175,7 @@ export default function LiveFeedbackPanel() {
       style={{
         position: "fixed",
         ...anchorStyle,
-        zIndex: hubSafe ? 350 : 9000,
+        zIndex: hubSafe ? 220 : 9000,
         fontFamily: "'Inter',sans-serif",
         pointerEvents: "none",
       }}

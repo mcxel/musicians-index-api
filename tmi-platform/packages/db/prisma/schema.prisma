@@ -55,6 +55,7 @@ enum PerformerType {
   BAND
   ORCHESTRA
   CHOIR
+  STREAMER
   OTHER
 }
 

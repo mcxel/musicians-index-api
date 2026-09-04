@@ -1,10 +1,10 @@
 {
   "gate": "LIVE_P0_1",
-  "ok": false,
+  "ok": true,
   "base": "http://localhost:3000",
   "email": "suedejs2000@gmail.com",
   "hub": "/hub/performer",
-  "testedAt": "2026-08-31T18:57:44.592Z",
+  "testedAt": "2026-08-31T19:59:47.926Z",
   "checks": [
     {
       "id": "auth-login",
@@ -14,7 +14,7 @@
     {
       "id": "auth-session",
       "status": "PASS",
-      "detail": "role=PERFORMER userId=yes"
+      "detail": "role=PERFORMER userId=yes cookies=session"
     },
     {
       "id": "baseline-registry",
@@ -22,9 +22,19 @@
       "detail": "count=0"
     },
     {
+      "id": "hub-hydration-chunks",
+      "status": "PASS",
+      "detail": "hydrated=true no chunk 404/html-mime"
+    },
+    {
+      "id": "page-session-authenticated",
+      "status": "PASS",
+      "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\",\"userId\":true}"
+    },
+    {
       "id": "media-player-go-live-visible",
       "status": "PASS",
-      "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack"
+      "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack box=113x33"
     },
     {
       "id": "no-port-3002",
@@ -38,51 +48,179 @@
     },
     {
       "id": "live-go-post",
-      "status": "FAIL",
-      "detail": "posts=0 statuses="
+      "status": "PASS",
+      "detail": "posts=1 statuses=200"
     },
     {
       "id": "ui-live-published",
-      "status": "FAIL",
-      "detail": "{\"uiLive\":false,\"uiError\":null,\"postOk\":false,\"postFail\":false}"
+      "status": "PASS",
+      "detail": "{\"uiLive\":true,\"uiError\":null,\"postOk\":true,\"postFail\":false}"
     },
     {
       "id": "publish-from-media-player",
-      "status": "FAIL",
+      "status": "PASS",
       "detail": "{\"component\":\"MediaPlayerGoLiveControl\",\"surface\":\"CommandCenterMediaStack (data-media-player-live-bezel)\",\"selector\":\"[data-media-player-go-live='1']\",\"publishTriggeredFrom\":\"media-player\"}"
     },
     {
       "id": "registry-session",
-      "status": "FAIL",
-      "detail": "count=0 sessions=0"
+      "status": "PASS",
+      "detail": "count=1 sessions=1"
     },
     {
       "id": "lobby-wall-discoverable",
-      "status": "FAIL",
-      "detail": "{\"wallOk\":true,\"liveCardCount\":0,\"matched\":false,\"sessionCount\":0}"
+      "status": "PASS",
+      "detail": "{\"wallOk\":true,\"liveCardCount\":1,\"matched\":true,\"sessionCount\":1}"
     },
     {
       "id": "no-fake-green-light",
       "status": "PASS",
-      "detail": "{\"uiClaimsLive\":false,\"postOk\":false}"
+      "detail": "{\"uiClaimsLive\":true,\"postOk\":true}"
     }
   ],
   "network": {
     "refused": [],
     "port3002": [],
-    "liveGoPosts": [],
-    "sessionGets": []
+    "liveGoPosts": [
+      {
+        "url": "http://localhost:3000/api/live/go",
+        "at": 1788206499052,
+        "status": 200
+      }
+    ],
+    "sessionGets": [
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206449714
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206456071
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206456074
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206456075
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206464094
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206472055
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206480055
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481048
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481049
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481055
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481056
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481060
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206481070
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206483023
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206488082
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206491169
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206496274
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206504191
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206511322
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206512133
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206520125
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206528106
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206536184
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206544100
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206552054
+      },
+      {
+        "url": "http://localhost:3000/api/auth/session",
+        "at": 1788206556002
+      }
+    ]
   },
   "publication": {
-    "count": 0,
-    "sessions": []
+    "count": 1,
+    "sessions": [
+      {
+        "userId": "ccff73de-7ea6-4278-b8e7-5c8c9f9ef113",
+        "roomId": "room-hub-1788206491006",
+        "displayName": "Performer",
+        "category": "live",
+        "startedAt": 1788206529109
+      }
+    ]
   },
   "lobbyWall": {
     "status": 200,
-    "cardCount": 12,
-    "liveCardCount": 0,
-    "matched": false,
-    "sample": []
+    "cardCount": 13,
+    "liveCardCount": 1,
+    "matched": true,
+    "sample": [
+      {
+        "id": "session-ccff73de-7ea6-4278-b8e7-5c8c9f9ef113",
+        "sourceType": "LIVE_SESSION",
+        "status": "LIVE",
+        "title": "Performer — Live",
+        "route": "/hub/fan?watch=room-hub-1788206491006&from=live-lobby-wall",
+        "host": "Performer"
+      }
+    ]
   },
   "mediaPlayerHost": {
     "component": "MediaPlayerGoLiveControl",
@@ -91,19 +229,40 @@
     "publishTriggeredFrom": "media-player"
   },
   "consoleErrors": [
-    "Refused to apply style from 'http://localhost:3000/_next/static/css/app/layout.css?v=1788202685441' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.",
-    "Failed to load resource: the server responded with a status of 404 (Not Found)",
-    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/main-app.js?v=1788202685441' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
-    "Failed to load resource: the server responded with a status of 404 (Not Found)",
-    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app/error.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
-    "Failed to load resource: the server responded with a status of 404 (Not Found)",
-    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app-pages-internals.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.",
-    "Failed to load resource: the server responded with a status of 404 (Not Found)",
-    "Refused to execute script from 'http://localhost:3000/_next/static/chunks/app/global-error.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled."
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED"
   ],
   "summary": {
-    "overall": "FAIL",
-    "performerOnLobbyWall": false,
+    "overall": "PASS",
+    "performerOnLobbyWall": true,
     "checks": [
       {
         "id": "auth-login",
@@ -113,7 +272,7 @@
       {
         "id": "auth-session",
         "status": "PASS",
-        "detail": "role=PERFORMER userId=yes"
+        "detail": "role=PERFORMER userId=yes cookies=session"
       },
       {
         "id": "baseline-registry",
@@ -121,9 +280,19 @@
         "detail": "count=0"
       },
       {
+        "id": "hub-hydration-chunks",
+        "status": "PASS",
+        "detail": "hydrated=true no chunk 404/html-mime"
+      },
+      {
+        "id": "page-session-authenticated",
+        "status": "PASS",
+        "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\",\"userId\":true}"
+      },
+      {
         "id": "media-player-go-live-visible",
         "status": "PASS",
-        "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack"
+        "detail": "MediaPlayerGoLiveControl on CommandCenterMediaStack box=113x33"
       },
       {
         "id": "no-port-3002",
@@ -137,33 +306,33 @@
       },
       {
         "id": "live-go-post",
-        "status": "FAIL",
-        "detail": "posts=0 statuses="
+        "status": "PASS",
+        "detail": "posts=1 statuses=200"
       },
       {
         "id": "ui-live-published",
-        "status": "FAIL",
-        "detail": "{\"uiLive\":false,\"uiError\":null,\"postOk\":false,\"postFail\":false}"
+        "status": "PASS",
+        "detail": "{\"uiLive\":true,\"uiError\":null,\"postOk\":true,\"postFail\":false}"
       },
       {
         "id": "publish-from-media-player",
-        "status": "FAIL",
+        "status": "PASS",
         "detail": "{\"component\":\"MediaPlayerGoLiveControl\",\"surface\":\"CommandCenterMediaStack (data-media-player-live-bezel)\",\"selector\":\"[data-media-player-go-live='1']\",\"publishTriggeredFrom\":\"media-player\"}"
       },
       {
         "id": "registry-session",
-        "status": "FAIL",
-        "detail": "count=0 sessions=0"
+        "status": "PASS",
+        "detail": "count=1 sessions=1"
       },
       {
         "id": "lobby-wall-discoverable",
-        "status": "FAIL",
-        "detail": "{\"wallOk\":true,\"liveCardCount\":0,\"matched\":false,\"sessionCount\":0}"
+        "status": "PASS",
+        "detail": "{\"wallOk\":true,\"liveCardCount\":1,\"matched\":true,\"sessionCount\":1}"
       },
       {
         "id": "no-fake-green-light",
         "status": "PASS",
-        "detail": "{\"uiClaimsLive\":false,\"postOk\":false}"
+        "detail": "{\"uiClaimsLive\":true,\"postOk\":true}"
       }
     ]
   }

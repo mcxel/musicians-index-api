@@ -77,4 +77,8 @@ function runUniversalLiveLobbyTest() {
   }
 }
 
-runUniversalLiveLobbyTest();
+describe("Universal Live Lobby", () => {
+  it("resolves exact destinations and manages live sessions", () => {
+    runUniversalLiveLobbyTest();
+  });
+});

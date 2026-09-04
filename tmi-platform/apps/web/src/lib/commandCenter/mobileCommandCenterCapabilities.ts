@@ -26,7 +26,9 @@ export type MobileQuickPanelActionId =
   | "share-screen"
   | "record"
   | "share"
-  | "memory";
+  | "memory"
+  | "cast"
+  | "user-id";
 
 export type MobileCommandCenterRole = "fan" | "performer";
 
@@ -46,6 +48,8 @@ const LOWER_ROW_FAN: MobileQuickPanelButtonDef[] = [
   { id: "venue-tools", label: "VENUE TOOLS", tier: "primary" },
   { id: "remote", label: "🎚️ REMOTE", tier: "primary" },
   { id: "memory", label: "🧠 MEMORY", tier: "primary" },
+  { id: "cast", label: "📡 CAST", tier: "primary" },
+  { id: "user-id", label: "🪪 USER ID", tier: "primary" },
 ];
 
 const LOWER_ROW_PERFORMER: MobileQuickPanelButtonDef[] = [
@@ -56,6 +60,8 @@ const LOWER_ROW_PERFORMER: MobileQuickPanelButtonDef[] = [
   { id: "venue-tools", label: "VENUE TOOLS", tier: "primary" },
   { id: "remote", label: "🎚️ REMOTE", tier: "primary" },
   { id: "memory", label: "🧠 MEMORY", tier: "primary" },
+  { id: "cast", label: "📡 CAST", tier: "primary" },
+  { id: "user-id", label: "🪪 USER ID", tier: "primary" },
 ];
 
 const MORE_COMMON: MobileQuickPanelButtonDef[] = [

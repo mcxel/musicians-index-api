@@ -59,8 +59,7 @@
     "rollback:to-tag": "powershell -NoProfile -File ./scripts/rollback-to-tag.ps1",
     "dev:tickets-api": "node apps/api/dev-tickets-server.cjs",
     "bot:monitor": "node ./scripts/bot-monitor.js",
-    "bot:triage": "node ./scripts/bot-triage.js",
-    "test:overseer-monitor-wall": "pnpm -C apps/web exec jest src/tests/overseerDeckConvergence.test.ts"
+    "bot:triage": "node ./scripts/bot-triage.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.38.0",

@@ -40,6 +40,7 @@ export default function CompactFloatingQuickPanel({
     <div
       role="dialog"
       aria-label={title}
+      data-compact-floating-quick-panel={title}
       style={{
         position: "fixed",
         bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px) + 12px)`,

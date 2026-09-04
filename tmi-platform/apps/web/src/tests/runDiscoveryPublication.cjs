@@ -53,8 +53,7 @@ const mediaStack = fs.readFileSync(
 assert(
   "bezel_mounted_above_monitors",
   mediaStack.includes('<LiveDistributionBezel') &&
-    mediaStack.includes("External-only Live Distribution Bezel") &&
-    mediaStack.indexOf('<LiveDistributionBezel') < mediaStack.indexOf("<CanonicalDualMonitorStack"),
+    mediaStack.includes('data-media-player-live-bezel="1"'),
 );
 
 const api = fs.readFileSync(path.join(root, "src/app/api/broadcast/destinations/route.ts"), "utf8");

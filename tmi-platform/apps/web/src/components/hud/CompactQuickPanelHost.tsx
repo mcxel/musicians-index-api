@@ -10,10 +10,13 @@ import React from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import CompactFloatingQuickPanel from "@/components/hud/CompactFloatingQuickPanel";
+import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import RemoteQuickPanel from "@/components/hud/panels/RemoteQuickPanel";
 import CanonicalQuickPanelContent from "@/components/workspace/universal/CanonicalQuickPanelContent";
 import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonicalPresentation";
 import SnipsSwipeOverlay from "@/components/hud/panels/SnipsSwipeOverlay";
+import ExploreMatrixDiscoveryHost from "@/components/explore/ExploreMatrixDiscoveryHost";
+import MiniLiveLobbyWallRuntime from "@/components/lobby/MiniLiveLobbyWallRuntime";
 import StreamWinMosaicPanel from "@/components/commandCenter/StreamWinMosaicPanel";
 import VenueToolsPanelHost from "@/components/hud/VenueToolsPanelHost";
 
@@ -28,12 +31,58 @@ export default function CompactQuickPanelHost({
   displayName,
   role,
 }: CompactQuickPanelHostProps) {
-  const { activePanel, corner, closePanel } = useCompactQuickPanelStore();
+  const storeActivePanel = useCompactQuickPanelStore((s) => s.activePanel);
+  const [localActivePanel, setLocalActivePanel] = React.useState<string | null>(null);
+  const activePanel = localActivePanel ?? storeActivePanel;
+  const corner = useCompactQuickPanelStore((s) => s.corner);
+  const storeClosePanel = useCompactQuickPanelStore((s) => s.closePanel);
+
+  const closePanel = React.useCallback(() => {
+    setLocalActivePanel(null);
+    storeClosePanel();
+  }, [storeClosePanel]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__TMI_COMPACT_QUICK_STORE__ = useCompactQuickPanelStore;
+    }
+    const onOpenYopho = () => {
+      setLocalActivePanel("yopho");
+      useCompactQuickPanelStore.getState().openPanel("yopho");
+    };
+    const onClose = () => {
+      setLocalActivePanel(null);
+      useCompactQuickPanelStore.getState().closePanel();
+    };
+    window.addEventListener("tmi:open-yopho-quick", onOpenYopho);
+    window.addEventListener("tmi:quick-panel-close", onClose);
+    return () => {
+      window.removeEventListener("tmi:open-yopho-quick", onOpenYopho);
+      window.removeEventListener("tmi:quick-panel-close", onClose);
+    };
+  }, [storeClosePanel]);
 
   if (!activePanel) return null;
 
   if (activePanel === "avatar" && role === "performer") {
     return null;
+  }
+
+  if (activePanel === "user-id") {
+    return (
+      <CompactFloatingQuickPanel
+        title={role === "performer" ? "ARTIST ID" : "FAN ID"}
+        accentColor="#FFD700"
+        corner={corner}
+        onClose={closePanel}
+      >
+        <ArtistIdShareStrip
+          userId={userId}
+          displayName={displayName}
+          role={role}
+        />
+      </CompactFloatingQuickPanel>
+    );
   }
 
   if (activePanel === "remote") {
@@ -55,8 +104,17 @@ export default function CompactQuickPanelHost({
     );
   }
 
+  if (activePanel === "lobbies") {
+    return (
+      <MiniLiveLobbyWallRuntime
+        role={role === "performer" ? "performer" : "fan"}
+        isOpen={true}
+        onClose={closePanel}
+      />
+    );
+  }
+
   const workspaceMap = {
-    lobbies: { ws: "lobby" as const, title: "LOBBIES / DISCOVERY", accent: "#FF2DAA" },
     avatar: { ws: "inventory" as const, title: "AVATAR", accent: "#00E5FF" },
     "memory-wall": { ws: "memory-wall" as const, title: "MEMORY WALL", accent: "#AA2DFF" },
     yopho: { ws: "yopho" as const, title: "YOPHO", accent: "#FF2DAA" },
@@ -97,10 +155,19 @@ export default function CompactQuickPanelHost({
   return panel;
 }
 
-/** Snips is a full-height swipe overlay — separate from corner panels. */
+/** Explore / Snips / Video Shuffle visual matrix discovery host. */
 export function SnipsOverlayHost() {
-  const snipsOpen = useCompactQuickPanelStore((s) => s.activePanel === "snips");
+  const activePanel = useCompactQuickPanelStore((s) => s.activePanel);
   const closePanel = useCompactQuickPanelStore((s) => s.closePanel);
-  if (!snipsOpen) return null;
-  return <SnipsSwipeOverlay onClose={closePanel} />;
+
+  if (activePanel === "snips") {
+    return <ExploreMatrixDiscoveryHost initialColumn="SNIPS" onClose={closePanel} />;
+  }
+  if (activePanel === "video-shuffle") {
+    return <ExploreMatrixDiscoveryHost initialColumn="VIDEO_SHUFFLE" onClose={closePanel} />;
+  }
+  if (activePanel === "explore") {
+    return <ExploreMatrixDiscoveryHost initialColumn="PUBLIC_PROFILES" onClose={closePanel} />;
+  }
+  return null;
 }

@@ -32,6 +32,7 @@ import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import { useCanonicalAudioMixerStore } from "@/lib/audio/CanonicalAudioBusDirector";
 import { useMediaPlayerAudiencePresence } from "@/lib/media/useMediaPlayerAudiencePresence";
 import { inferWatchCategoryFromRoomId } from "@/lib/media/universalMediaPlayerWatchRoute";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
@@ -105,6 +106,20 @@ interface CommandCenterShellProps {
   displayName: string;
 }
 
+interface HubDebugSnapshot {
+  authUserId: string | null;
+  authRole: string | null;
+  authActiveRole: string | null;
+  username: string | null;
+  artistSlug: string | null;
+  fanProfileId: string | null;
+  performerProfileId: string | null;
+  liveSessionId: string | null;
+  experienceType: string | null;
+  participantCount: number | null;
+  cartCount: number | null;
+}
+
 type MonitorLayoutMode = "DUAL" | "PRIMARY_ONLY" | "HIDDEN";
 type MonitorStagePhase = "VISIBLE" | "EXITING" | "HIDDEN" | "ENTERING";
 const MONITOR_STAGE_TRANSITION_MS = 190;
@@ -128,6 +143,11 @@ function traceLaunch(action: string, payload?: unknown): void {
     w.__TMI_LAUNCH_TRACE__ = current;
   }
   console.debug("[TMI:LAUNCH]", { action, payload });
+}
+
+function formatDebugValue(value: string | number | boolean | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "NONE";
+  return String(value);
 }
 
 export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
@@ -226,9 +246,29 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     router.replace(pathname);
   }, [searchParams, role, pathname, router]);
 
-  const { stopWatching } = useWatchSession();
+  const { stopWatching, current: watchSession } = useWatchSession();
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const inPlaceCategory = useGoLiveTransition((s) => s.inPlace?.category ?? null);
+  const mediaRoomId = useCanonicalMediaPlayerRuntime((s) => s.roomId);
+  const mediaLayout = useCanonicalMediaPlayerRuntime((s) => s.layout);
+  const mediaPrimaryAudioFrame = useCanonicalMediaPlayerRuntime((s) => s.primaryAudioFrame);
+  const mediaScreenShareAudioSourceId = useCanonicalMediaPlayerRuntime((s) => s.screenShareAudioSourceId);
+  const mediaFrames = useCanonicalMediaPlayerRuntime((s) => s.frames);
+  const audioBuses = useCanonicalAudioMixerStore((s) => s.buses);
+  const [hubDebugSnapshot, setHubDebugSnapshot] = useState<HubDebugSnapshot>({
+    authUserId: null,
+    authRole: null,
+    authActiveRole: null,
+    username: null,
+    artistSlug: null,
+    fanProfileId: null,
+    performerProfileId: null,
+    liveSessionId: null,
+    experienceType: null,
+    participantCount: null,
+    cartCount: null,
+  });
 
   // Lobby Wall / discovery → Universal Media Player watch (same session, hub surface)
   useEffect(() => {
@@ -294,6 +334,158 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const isPublishedHost =
     Boolean(isLivePublished && publishedRoomId && inPlaceRoomId && publishedRoomId === inPlaceRoomId);
+  const localhostDebugEnabled =
+    searchParams?.get("tmiDebug") === "1" &&
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  useEffect(() => {
+    if (!localhostDebugEnabled) return;
+    let cancelled = false;
+
+    const pollDebug = async () => {
+      const roomId = inPlaceRoomId ?? publishedRoomId ?? mediaRoomId ?? null;
+      const [authRes, profileRes, liveRes, cartRes] = await Promise.allSettled([
+        fetch("/api/auth/session", { cache: "no-store", credentials: "include" }),
+        fetch("/api/profile/self", { cache: "no-store", credentials: "include" }),
+        fetch("/api/live/go", { cache: "no-store", credentials: "include" }),
+        fetch("/api/cart", { cache: "no-store", credentials: "include" }),
+      ]);
+
+      if (cancelled) return;
+
+      let authUserId: string | null = null;
+      let authRole: string | null = null;
+      let authActiveRole: string | null = null;
+      let username: string | null = null;
+      let artistSlug: string | null = null;
+      let fanProfileId: string | null = null;
+      let performerProfileId: string | null = null;
+      let liveSessionId: string | null = null;
+      let experienceType: string | null = null;
+      let participantCount: number | null = null;
+      let cartCount: number | null = null;
+
+      if (authRes.status === "fulfilled" && authRes.value.ok) {
+        try {
+          const data = (await authRes.value.json()) as {
+            authenticated?: boolean;
+            role?: string;
+            user?: {
+              id?: string;
+              role?: string;
+              activeRole?: string;
+              username?: string | null;
+              artistSlug?: string | null;
+            };
+          };
+          if (data.authenticated) {
+            authUserId = data.user?.id ?? null;
+            authRole = data.user?.role ?? data.role ?? null;
+            authActiveRole = data.user?.activeRole ?? null;
+            username = data.user?.username ?? null;
+            artistSlug = data.user?.artistSlug ?? null;
+          }
+        } catch {
+          // Keep NONE fallbacks when auth payload is unavailable.
+        }
+      }
+
+      if (profileRes.status === "fulfilled" && profileRes.value.ok) {
+        try {
+          const profileData = (await profileRes.value.json()) as {
+            ok?: boolean;
+            profile?: {
+              role?: string;
+              id?: string;
+              username?: string | null;
+              artistSlug?: string | null;
+            };
+          };
+          if (profileData.ok) {
+            username = username ?? profileData.profile?.username ?? null;
+            artistSlug = artistSlug ?? profileData.profile?.artistSlug ?? null;
+            if ((profileData.profile?.role ?? "").toUpperCase() === "FAN") {
+              fanProfileId = profileData.profile?.id ?? null;
+            }
+            if ((profileData.profile?.role ?? "").toUpperCase() === "PERFORMER") {
+              performerProfileId = profileData.profile?.id ?? null;
+            }
+          }
+        } catch {
+          // Keep NONE fallbacks when profile payload is unavailable.
+        }
+      }
+
+      if (liveRes.status === "fulfilled" && liveRes.value.ok) {
+        try {
+          const liveData = (await liveRes.value.json()) as {
+            sessions?: Array<{
+              id?: string;
+              roomId?: string;
+              category?: string;
+              experienceType?: string;
+              viewerCount?: number;
+            }>;
+          };
+          const sessions = Array.isArray(liveData.sessions) ? liveData.sessions : [];
+          const session = sessions.find((s) => s.roomId === roomId) ?? null;
+          liveSessionId = session?.id ?? null;
+          experienceType = session?.experienceType ?? session?.category ?? inPlaceCategory ?? null;
+          participantCount =
+            typeof session?.viewerCount === "number"
+              ? session.viewerCount
+              : (watchSession?.viewers ?? null);
+        } catch {
+          // Keep NONE fallbacks when live payload is unavailable.
+        }
+      } else {
+        participantCount = watchSession?.viewers ?? null;
+      }
+
+      if (cartRes.status === "fulfilled" && cartRes.value.ok) {
+        try {
+          const cartData = (await cartRes.value.json()) as { itemCount?: number };
+          cartCount = typeof cartData.itemCount === "number" ? cartData.itemCount : null;
+        } catch {
+          // Keep NONE fallback when cart payload is unavailable.
+        }
+      }
+
+      if (!cancelled) {
+        setHubDebugSnapshot({
+          authUserId,
+          authRole,
+          authActiveRole,
+          username,
+          artistSlug,
+          fanProfileId,
+          performerProfileId,
+          liveSessionId,
+          experienceType,
+          participantCount,
+          cartCount,
+        });
+      }
+    };
+
+    void pollDebug();
+    const id = window.setInterval(() => {
+      void pollDebug();
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [
+    inPlaceCategory,
+    inPlaceRoomId,
+    localhostDebugEnabled,
+    mediaRoomId,
+    publishedRoomId,
+    watchSession?.viewers,
+  ]);
 
   // Real audience occupancy on media-player watch path (Fan SOCIAL_LIVE join allowed).
   // Host GO LIVE path skips join — END LIVE remains session authority.
@@ -1452,6 +1644,76 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
       <FloatingWorkspacePanel />
       <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
+
+      {localhostDebugEnabled ? (
+        <div
+          data-tmi-local-debug-overlay="1"
+          style={{
+            position: "fixed",
+            right: 10,
+            bottom: 10,
+            zIndex: 10030,
+            width: 320,
+            maxWidth: "calc(100vw - 20px)",
+            background: "rgba(6,10,22,0.92)",
+            border: "1px solid rgba(0,255,255,0.35)",
+            borderRadius: 10,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+            color: "#d7f7ff",
+            fontFamily: "monospace",
+            fontSize: 10,
+            lineHeight: 1.45,
+            padding: "8px 10px",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ color: "#00ffff", fontWeight: 800, marginBottom: 6 }}>TMI QA DEBUG</div>
+          <div style={{ color: "rgba(255,255,255,0.85)", marginBottom: 3 }}>AUTH</div>
+          <div>userId: {formatDebugValue(hubDebugSnapshot.authUserId ?? userId)}</div>
+          <div>role: {formatDebugValue(hubDebugSnapshot.authRole ?? role)}</div>
+          <div>activeRole: {formatDebugValue(hubDebugSnapshot.authActiveRole)}</div>
+          <div>fanProfileId: {formatDebugValue(hubDebugSnapshot.fanProfileId)}</div>
+          <div>performerProfileId: {formatDebugValue(hubDebugSnapshot.performerProfileId)}</div>
+          <div>username: {formatDebugValue(hubDebugSnapshot.username)}</div>
+          <div>artistSlug: {formatDebugValue(hubDebugSnapshot.artistSlug)}</div>
+
+          <div style={{ color: "rgba(255,255,255,0.85)", margin: "6px 0 3px" }}>SESSION</div>
+          <div>experience: {formatDebugValue(hubDebugSnapshot.experienceType ?? inPlaceCategory)}</div>
+          <div>roomId: {formatDebugValue(inPlaceRoomId ?? publishedRoomId ?? mediaRoomId)}</div>
+          <div>liveSessionId: {formatDebugValue(hubDebugSnapshot.liveSessionId)}</div>
+          <div>published: {isLivePublished ? "ACTIVE" : "NOT ACTIVE"}</div>
+          <div>
+            participants: {formatDebugValue(hubDebugSnapshot.participantCount ?? watchSession?.viewers ?? null)}
+          </div>
+
+          <div style={{ color: "rgba(255,255,255,0.85)", margin: "6px 0 3px" }}>MEDIA</div>
+          <div>layout: {formatDebugValue(mediaLayout)}</div>
+          <div>programAudioFrame: {formatDebugValue(mediaPrimaryAudioFrame)}</div>
+          <div>screenShareAudioOwner: {formatDebugValue(mediaScreenShareAudioSourceId)}</div>
+          <div>slotA: {formatDebugValue(mediaFrames.a?.source)}</div>
+          <div>slotB: {formatDebugValue(mediaFrames.b?.source)}</div>
+          <div>slotC: {formatDebugValue(mediaFrames.c?.source)}</div>
+          <div>slotD: {formatDebugValue(mediaFrames.d?.source)}</div>
+          <div>jumbotron: NOT ACTIVE</div>
+
+          <div style={{ color: "rgba(255,255,255,0.85)", margin: "6px 0 3px" }}>AUDIO BUSES</div>
+          <div>
+            PROGRAM: {audioBuses.PROGRAM.muted ? "MUTED" : "LIVE"} · src=
+            {formatDebugValue(audioBuses.PROGRAM.currentSourceName)}
+          </div>
+          <div>
+            VOICE: {audioBuses.VOICE.muted ? "MUTED" : "LIVE"} · src=
+            {formatDebugValue(audioBuses.VOICE.currentSourceName)}
+          </div>
+          <div>
+            SHARE: {audioBuses.SHARE.muted ? "MUTED" : "LIVE"} · src=
+            {formatDebugValue(audioBuses.SHARE.currentSourceName)}
+          </div>
+
+          <div style={{ color: "rgba(255,255,255,0.85)", margin: "6px 0 3px" }}>COMMERCE</div>
+          <div>cartCount: {formatDebugValue(hubDebugSnapshot.cartCount)}</div>
+        </div>
+      ) : null}
     </div>
   );
 }
