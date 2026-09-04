@@ -28,13 +28,24 @@ test('phase17.3 stale routing state recovers via onboarding root', async ({ page
   const registerResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/auth/register') && response.request().method() === 'POST'
   );
+  const provisionResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/auth/provision') && response.request().method() === 'POST'
+  );
   await page.getByRole('button', { name: /CREATE FAN ACCOUNT/i }).click();
   const registerResponse = await registerResponsePromise;
   const registerStatus = registerResponse.status();
   expect([201, 409]).toContain(registerStatus);
 
-  if (registerStatus !== 201) {
-    // 409 = user already exists — log in explicitly on /auth
+  if (registerStatus === 201) {
+    // New account: wait for real provision, then finish into /onboarding/fan
+    const provisionResponse = await provisionResponsePromise;
+    expect(provisionResponse.status()).toBe(201);
+
+    await page.getByRole('button', { name: /FINISH SETTING UP YOUR PROFILE/i }).click();
+    await expect(page).toHaveURL(/\/onboarding\/fan$/);
+  } else {
+    // 409 = user already exists — do not drop recovery; log in explicitly on /auth
+    void provisionResponsePromise.catch(() => undefined);
     await page.goto(`${baseUrl}/auth`);
     await page.locator('input[type="email"]').first().waitFor({ state: 'visible', timeout: 15000 });
     await page.getByLabel('Email').fill(email);
