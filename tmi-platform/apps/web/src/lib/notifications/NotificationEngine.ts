@@ -33,7 +33,10 @@ export interface TMINotification {
   title: string;
   body: string;
   priority: NotificationPriority;
+  /** Item opened / action taken */
   read: boolean;
+  /** Drawer opened — clears badge without marking read */
+  seen: boolean;
   ts: number;
   href?: string;         // destination route when clicked
   emoji?: string;
@@ -67,6 +70,7 @@ class NotificationEngineClass {
       body,
       priority: opts.priority ?? "medium",
       read: false,
+      seen: false,
       ts: Date.now(),
       href: opts.href,
       emoji: opts.emoji ?? this.defaultEmoji(type),
@@ -80,15 +84,28 @@ class NotificationEngineClass {
   }
 
   getAll(): TMINotification[] { return [...this.store]; }
-  getUnread(): TMINotification[] { return this.store.filter(n => !n.read); }
-  getUnreadCount(): number { return this.store.filter(n => !n.read).length; }
+  getUnread(): TMINotification[] { return this.store.filter(n => !n.seen); }
+  getUnreadCount(): number { return this.store.filter(n => !n.seen).length; }
 
   markRead(id: string) {
     const n = this.store.find(n => n.id === id);
-    if (n) n.read = true;
+    if (n) {
+      n.read = true;
+      n.seen = true;
+    }
   }
 
-  markAllRead() { this.store.forEach(n => { n.read = true; }); }
+  /** Drawer open — clears badge; items stay unread until clicked. */
+  markAllSeen() {
+    this.store.forEach(n => { n.seen = true; });
+  }
+
+  markAllRead() {
+    this.store.forEach(n => {
+      n.read = true;
+      n.seen = true;
+    });
+  }
 
   clear() { this.store = []; }
 
@@ -109,10 +126,34 @@ class NotificationEngineClass {
       emoji: "👑", href: `/battles/${battleId}`, data: { battleId },
     });
   }
-  tipReceived(from: string, amount: number) {
-    return this.push("tip_received", "Tip Received!", `${from} sent you $${amount.toFixed(2)}`, {
-      emoji: "💰", priority: "high",
-    });
+  tipReceived(from: string, amount: number, href?: string) {
+    const dollars = amount.toFixed(2);
+    return this.push(
+      "tip_received",
+      "Tip Received",
+      `Tip Received — $${dollars}`,
+      {
+        emoji: "💰",
+        priority: "high",
+        href: href ?? "/wallet",
+        data: { from, amount },
+      },
+    );
+  }
+
+  tipPendingPayout(from: string, amount: number) {
+    const dollars = amount.toFixed(2);
+    return this.push(
+      "tip_received",
+      "Tip pending payout setup",
+      `$${dollars} tip pending — finish payout setup`,
+      {
+        emoji: "💰",
+        priority: "high",
+        href: "/settings/payout",
+        data: { from, amount, payoutIncomplete: true },
+      },
+    );
   }
   achievement(name: string, desc: string) {
     return this.push("achievement", `Achievement: ${name}`, desc, {
@@ -153,6 +194,29 @@ class NotificationEngineClass {
     return this.push("radio", "Waiting Room Update", `Artists joined: ${joined} of ${threshold}. Session launches when the room fills.`, {
       emoji: "📻", href: "/radio", priority: "medium",
     });
+  }
+
+  /** Merge server notifications into the client store once (dedupe by id). */
+  async hydrateFromApi(): Promise<void> {
+    if (typeof window === "undefined") return;
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { notifications?: TMINotification[] };
+      for (const n of data.notifications ?? []) {
+        if (!this.store.some((x) => x.id === n.id)) {
+          this.store.push({
+            ...n,
+            seen: Boolean((n as TMINotification).seen),
+            read: Boolean(n.read),
+          });
+        }
+      }
+      this.store.sort((a, b) => b.ts - a.ts);
+      if (this.store.length > 200) this.store.length = 200;
+    } catch {
+      /* keep in-memory store */
+    }
   }
 
   private defaultEmoji(type: NotificationType): string {

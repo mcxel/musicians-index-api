@@ -1,0 +1,32 @@
+{
+  "early": {
+    "btn": true,
+    "fan": true,
+    "scripts": [
+      "http://localhost:3000/_next/static/chunks/main-app.js?v=1788341455709",
+      "http://localhost:3000/_next/static/chunks/app-pages-internals.js",
+      "http://localhost:3000/_next/static/chunks/app/hub/fan/page.js",
+      "http://localhost:3000/_next/static/chunks/app/layout.js",
+      "http://localhost:3000/_next/static/chunks/app/error.js",
+      "http://localhost:3000/_next/static/chunks/app/global-error.js",
+      "http://localhost:3000/_next/static/chunks/polyfills.js",
+      "http://localhost:3000/_next/static/chunks/webpack.js?v=1788341455709"
+    ],
+    "nextData": false,
+    "bodyLen": 64411,
+    "text": "The Musician's Index Magazine — Live music platform for artists, performers, and fans.\nTMI\n🔍\n🪙\n0\nTMI\n🔔\n✉️\nF\nFan\nTMI · FAN COMMAND CENTER\nNo one live right now\n📺 MONITORS 2\nDEV CONTINUITY\nruntimeInstanceId: runtime-unknown-room-session-unknown-venue-instance-mon-a\nvenueInstanceId: unknown-venue-instance\nroomSessionId: unknown-room-session\nrtcSessionId: unknown-rtc-session\nprimarySourceId: mon-a"
+  },
+  "late": {
+    "btn": false,
+    "fan": false,
+    "bodyLen": 33800,
+    "text": "The Musician's Index Magazine — Live music platform for artists, performers, and fans.\nAds & privacy\nWe use Google AdSense to fund the platform. Accept to load personalized/non-personalized ads. Decline keeps the site usable without AdSense.\nAccept ads\nDecline\n★ FOUNDING BETA MEMBER\nThank you for helping build TMI.\nDETAILS\n×\n×\nQUICK START\nYour First Steps\n\nComplete these to earn up to 170 XP\n\n0 of",
+    "openFn": "undefined"
+  },
+  "errors": [
+    "reqfail: http://localhost:3000/api/live net::ERR_ABORTED",
+    "reqfail: http://localhost:3000/api/live net::ERR_ABORTED",
+    "reqfail: http://localhost:3000/api/live net::ERR_ABORTED",
+    "reqfail: http://localhost:3000/api/live net::ERR_ABORTED"
+  ]
+}

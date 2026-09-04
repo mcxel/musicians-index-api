@@ -7,7 +7,7 @@ export default function ShopsPage() {
     { id: "props", label: "Props", href: "/props", icon: "🎸" },
     { id: "backgrounds", label: "Backgrounds", href: "/avatar/shop", icon: "🌄" },
     { id: "badges", label: "Badges", href: "/avatar/shop", icon: "🏅" },
-    { id: "skins", label: "Skins", href: "/avatar/customize", icon: "🎨" },
+    { id: "skins", label: "Skins", href: "/avatar/studio", icon: "🎨" },
   ];
 
   return (

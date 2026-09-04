@@ -2,6 +2,8 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { dispatchMediaPlayerGoLiveIntent } from "@/components/commandCenter/MediaPlayerGoLiveControl";
 
 type Props = {
   compact?: boolean;
@@ -26,8 +28,13 @@ function clusterButtonStyle(active: boolean): CSSProperties {
 export default function PerformerCreatorControlCluster({ compact = false }: Readonly<Props>) {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
-  const [liveOn, setLiveOn] = useState(false);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const [fullScreenOn, setFullScreenOn] = useState(false);
+
+  const handleGoLive = () => {
+    // Deep-link to media-player GO LIVE authority — do not publish from this cluster
+    dispatchMediaPlayerGoLiveIntent();
+  };
 
   const actions = useMemo(
     () => [
@@ -45,9 +52,9 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
       },
       {
         id: "live",
-        label: liveOn ? "⏹ END LIVE" : "🔴 GO LIVE",
-        active: liveOn,
-        onClick: () => setLiveOn((v) => !v),
+        label: isLivePublished ? "⏹ END LIVE (PLAYER)" : "🔴 GO LIVE (PLAYER)",
+        active: isLivePublished,
+        onClick: () => handleGoLive(),
       },
       {
         id: "share-screen",
@@ -76,7 +83,7 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
         onClick: () => setFullScreenOn((v) => !v),
       },
     ],
-    [cameraOn, micOn, liveOn, fullScreenOn],
+    [cameraOn, micOn, isLivePublished, fullScreenOn],
   );
 
   return (
@@ -126,11 +133,28 @@ export default function PerformerCreatorControlCluster({ compact = false }: Read
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+          gridTemplateColumns: "repeat(4,minmax(0,1fr))",
           gap: 8,
           marginTop: 10,
         }}
       >
+        <Link
+          href="/hub/performer/network"
+          style={{
+            textDecoration: "none",
+            borderRadius: 8,
+            border: "1px solid rgba(0,255,255,0.35)",
+            background: "rgba(0,255,255,0.08)",
+            color: "#00FFFF",
+            padding: "8px 10px",
+            fontSize: 10,
+            fontWeight: 800,
+            textAlign: "center",
+            letterSpacing: "0.07em",
+          }}
+        >
+          🌐 NETWORK
+        </Link>
         <Link
           href="/performer/analytics"
           style={{

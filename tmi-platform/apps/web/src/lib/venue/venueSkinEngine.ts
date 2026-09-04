@@ -14,6 +14,12 @@ export interface VenueColorPalette {
   text: string;
 }
 
+export type VenueSkinCertificationStatus =
+  | "DRAFT"
+  | "PREVIEW"
+  | "CERTIFIED"
+  | "PRODUCTION";
+
 export interface VenueSkin {
   id: string;
   name: string;
@@ -29,6 +35,11 @@ export interface VenueSkin {
   floorPattern: string;
   ambientSound?: string;
   tags: string[];
+  /**
+   * Certification gate before production registry promotion.
+   * DRAFT → PREVIEW → CERTIFIED → PRODUCTION. Defaults DRAFT (Rule 20 honesty).
+   */
+  certificationStatus?: VenueSkinCertificationStatus;
 }
 
 export const VENUE_SKINS: Record<string, VenueSkin> = {
@@ -281,6 +292,32 @@ export const VENUE_SKINS: Record<string, VenueSkin> = {
     ambientSound: 'concert-hall-reverb',
     tags: ['concert', 'grand', 'premiere', 'classical'],
   },
+
+  /** Sunday Slow Jams default outdoor — cool night amphitheater / stars. */
+  'under-the-stars': {
+    id: 'under-the-stars',
+    name: 'Under the Stars',
+    description: 'Outdoor night lounge under soft starlight — sultry Slow Jam energy',
+    backgroundImage: '/venue-skins/under-the-stars/background.png',
+    colorPalette: {
+      primary: '#6B5CFF',
+      accent: '#FFD700',
+      floor: '#050510',
+      crowd: '#0a0614',
+      ui: '#AA2DFF',
+      glow: '#00FFFF',
+      text: '#E8E0FF',
+    },
+    lightingPreset: 'IDLE',
+    stageLayout: 'corner',
+    crowdLayout: 'scattered',
+    sponsorWallPlacement: 'none',
+    cameraAngles: ['wide-night', 'intimate-close', 'stars-up'],
+    particleEffects: ['star-dust', 'soft-haze'],
+    floorPattern: 'open-air',
+    ambientSound: 'night-crickets',
+    tags: ['outdoor', 'chill', 'slow-jam', 'night', 'lounge'],
+  },
 };
 
 export function getVenueSkin(id: string): VenueSkin {
@@ -293,6 +330,25 @@ export function listVenueSkins(): VenueSkin[] {
 
 export function getVenueSkinsByTag(tag: string): VenueSkin[] {
   return Object.values(VENUE_SKINS).filter(s => s.tags.includes(tag));
+}
+
+/** Promote skin cert status only after checklist gates pass (caller enforces). */
+export function setVenueSkinCertificationStatus(
+  id: string,
+  status: VenueSkinCertificationStatus,
+): VenueSkin | null {
+  const skin = VENUE_SKINS[id];
+  if (!skin) return null;
+  skin.certificationStatus = status;
+  return skin;
+}
+
+export function getVenueSkinsByCertification(
+  status: VenueSkinCertificationStatus,
+): VenueSkin[] {
+  return Object.values(VENUE_SKINS).filter(
+    (s) => (s.certificationStatus ?? "DRAFT") === status,
+  );
 }
 
 /** Apply venue skin CSS variables to a DOM element (works client-side only) */

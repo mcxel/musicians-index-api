@@ -1,15 +1,18 @@
 import React from 'react';
+import { headers } from 'next/headers';
 
 export const dynamic = "force-dynamic";
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
+import ShowsReleasesMarquee from '@/components/events/ShowsReleasesMarquee';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
 import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getActiveSessionsDurable } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
 import type { LiveSession } from '@/lib/broadcast/globalLiveSessionStore';
+import { resolveSameOriginApiAbsolute } from '@/lib/runtime/canonicalEndpointResolver';
 
 // Rule 12: No Empty Inventory — derive sponsor rail from registry, not hardcoded strings
 const RAIL_ZONES = [
@@ -33,8 +36,13 @@ function buildSponsorEntry(zone: string) {
 
 async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
-    const res = await fetch(`${baseUrl}/api/performers`, {
+    // Same-origin Next API only — never NEXT_PUBLIC_API_URL → localhost:3002
+    const h = await headers();
+    const url = resolveSameOriginApiAbsolute('/api/performers', {
+      host: h.get('x-forwarded-host') ?? h.get('host'),
+      proto: h.get('x-forwarded-proto'),
+    });
+    const res = await fetch(url, {
       cache: 'no-store', // Always fresh for avatar propagation
     });
     if (!res.ok) throw new Error('Failed to fetch performers');
@@ -48,15 +56,18 @@ async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
 }
 
 async function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): Promise<PerformerIdentity[]> {
-  const liveSessions = await getActiveSessionsDurable();
-  const liveUserIds = new Set(liveSessions.map((s: LiveSession) => s.userId));
-  return performers.map(p => ({
-    ...p,
-    isLive: liveUserIds.has(p.id),
-  }));
+  const noLiveness = performers.map(p => ({ ...p, isLive: false }));
+  try {
+    const liveSessions = await Promise.race([
+      getActiveSessionsDurable(),
+      new Promise<LiveSession[]>((resolve) => setTimeout(() => resolve([]), 3500)),
+    ]);
+    const liveUserIds = new Set(liveSessions.map((s: LiveSession) => s.userId));
+    return performers.map(p => ({ ...p, isLive: liveUserIds.has(p.id) }));
+  } catch {
+    return noLiveness;
+  }
 }
-
-import GlobalTmiHeader from '@/components/shell/GlobalTmiHeader';
 
 export default async function Home1Route() {
   // P0 Avatar Certification: Fetch performers with real avatar data from Prisma
@@ -72,9 +83,9 @@ export default async function Home1Route() {
 
   return (
     <>
-      <GlobalTmiHeader />
       <SponsorRail sponsors={sponsors} zone="home-1-top" />
       <Home1CoverPage />
+      <ShowsReleasesMarquee zone="home-1" />
       <EventReel zone="home-1" />
 
       {/* Rule 6: Discovery Rails — no dead ends */}

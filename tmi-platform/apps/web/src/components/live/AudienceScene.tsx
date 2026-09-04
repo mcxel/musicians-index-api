@@ -10,11 +10,69 @@
  * by a real canonical entity — skin tone from SKIN_HEX, emotion hints in face
  * shape, stable per-entity seed (no per-frame Math.random color flicker).
  * Backward-compatible: occupancyRatio fallback unchanged when entities is absent.
+ *
+ * Phase bobblehead (2026-08-20): optional R3F AvatarRig overlay for Fan seats +
+ * Venue TEST occupancy — same BobbleheadRuntimeCharacter as Fan lobby. Canvas
+ * heads remain for far/crowd density; near seats get full AvatarRig. Performer
+ * never owns an AvatarRig (Rule 26) — only Fan / [TEST] fan seats.
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { SKIN_HEX, type AvatarEntity } from "@/lib/avatars/UnifiedAvatarRuntime";
 import { avatarAttentionRuntime } from "@/lib/engines/attention/AvatarAttentionRuntime";
+import {
+  bobbleheadRuntimeToRigProps,
+  readPersistedBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
+import { listFreeBobbleheadBases } from "@/lib/avatars/BobbleheadBaseRegistry";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
+
+const AudienceSceneJumbotronLayer = dynamic(
+  () =>
+    import("@/components/jumbotron/AudienceSceneJumbotronLayer").then(
+      (m) => m.AudienceSceneJumbotronLayer,
+    ),
+  { ssr: false },
+);
+
+export {
+  AUDIENCE_SCENE_W,
+  AUDIENCE_SCENE_H,
+  FAN_TOTAL_SEATS,
+  PERF_TOTAL_SEATS,
+  FAN_ROWS,
+  PERF_ROWS,
+  computeAudienceSeatPins,
+  type AudienceSeatPin,
+} from "@/lib/audience/audienceSeatGeometry";
+import {
+  AUDIENCE_SCENE_W,
+  AUDIENCE_SCENE_H,
+  FAN_TOTAL_SEATS,
+  PERF_TOTAL_SEATS,
+  FAN_ROWS,
+  PERF_ROWS,
+  computeAudienceSeatPins,
+  type AudienceSeatPin,
+} from "@/lib/audience/audienceSeatGeometry";
+
+/** Fan/TEST AvatarRig seating overlay — not performer ownership (Rule 26). */
+export type AudienceBobbleheadSeating = {
+  /** Local Fan seat fill-index; mounts persisted BobbleheadRuntimeCharacter */
+  localFanSeatIndex?: number | null;
+  localFanLabel?: string;
+  /** Venue Preview TEST — synthetic AvatarRigs labeled [TEST] (Rule 20) */
+  testOccupancy?: boolean;
+  /** Cap WebGL AvatarViewer instances (canvas crowd remains for the rest) */
+  maxRigInstances?: number;
+};
 
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
@@ -293,6 +351,22 @@ interface AudienceSceneProps {
    * occupancyRatio is derived automatically; no need to pass it separately.
    */
   entities?: AvatarEntity[];
+  /**
+   * Fan AvatarRig / BobbleheadRuntimeCharacter overlay on near seats.
+   * TEST occupancy uses the same rig with [TEST] labels (Rule 20).
+   * Never mounts a Performer-owned avatar (Rule 26).
+   */
+  bobbleheadSeating?: AudienceBobbleheadSeating;
+  /**
+   * Physical Jumbotron (AutomatedJumbotronDirector geometry) — center-hung /
+   * end-zone / disco orb / wall LED. Mounted in world-space over the canvas.
+   */
+  jumbotron?: {
+    roomId: string;
+    eventType?: string | null;
+    venueId?: string;
+    lookUpActive?: boolean;
+  } | null;
 }
 
 interface SceneState {
@@ -324,6 +398,8 @@ export default function AudienceScene({
   screenSubLabel,
   occupancyRatio = 1.0,
   entities,
+  bobbleheadSeating,
+  jumbotron = null,
 }: AudienceSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef   = useRef(0);
@@ -335,6 +411,98 @@ export default function AudienceScene({
   entitiesRef.current  = entities;
   occupancyRef.current = occupancyRatio;
 
+  const totalSeats = view === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS;
+  const entityMode = entities !== undefined && entities.length > 0;
+  const effectiveOccupancy = entityMode
+    ? Math.min(1, entities!.length / totalSeats)
+    : Math.max(0, Math.min(1, occupancyRatio));
+  const occupiedUpToOverlay = Math.floor(totalSeats * effectiveOccupancy);
+
+  const bobbleOverlays = useMemo(() => {
+    if (!bobbleheadSeating) return [];
+    const maxRig = Math.max(1, Math.min(16, bobbleheadSeating.maxRigInstances ?? 10));
+    const pins = computeAudienceSeatPins(view);
+    // Match canvas fill: fan = first N; performer = last N (front rows first)
+    const occupied =
+      view === "performer"
+        ? pins.slice(Math.max(0, pins.length - occupiedUpToOverlay))
+        : pins.slice(0, occupiedUpToOverlay);
+    if (occupied.length === 0 && bobbleheadSeating.localFanSeatIndex == null) return [];
+
+    const freeBases = listFreeBobbleheadBases();
+    const byVisibility = [...occupied].sort((a, b) => b.visibility - a.visibility);
+    const selected = byVisibility.slice(0, maxRig);
+    const localIdx = bobbleheadSeating.localFanSeatIndex;
+    const localPin =
+      localIdx != null && localIdx >= 0 && localIdx < pins.length ? pins[localIdx]! : null;
+
+    type Overlay = {
+      key: string;
+      pin: AudienceSeatPin;
+      baseId: string;
+      label: string;
+      isTest: boolean;
+      isLocal: boolean;
+    };
+    const out: Overlay[] = [];
+
+    if (localPin) {
+      out.push({
+        key: `fan-local-${localPin.seatIndex}`,
+        pin: localPin,
+        baseId: readPersistedBobbleheadBaseId(),
+        label: bobbleheadSeating.localFanLabel ?? "YOU",
+        isTest: false,
+        isLocal: true,
+      });
+    }
+
+    if (bobbleheadSeating.testOccupancy) {
+      for (const pin of selected) {
+        if (out.some((o) => o.pin.seatIndex === pin.seatIndex)) continue;
+        const base = freeBases[pin.seatIndex % Math.max(1, freeBases.length)];
+        out.push({
+          key: `test-${pin.seatIndex}`,
+          pin,
+          baseId: base?.id ?? "bh-urban-cap-male",
+          label: `[TEST] Seat ${pin.seatIndex + 1}`,
+          isTest: true,
+          isLocal: false,
+        });
+      }
+    } else if (!localPin && occupied.length > 0) {
+      // Live Fan audience near seats — procedural Fan bases only (Rule 26)
+      for (const pin of selected.slice(0, Math.min(6, maxRig))) {
+        if (out.some((o) => o.pin.seatIndex === pin.seatIndex)) continue;
+        const base = freeBases[pin.seatIndex % Math.max(1, freeBases.length)];
+        out.push({
+          key: `fan-seat-${pin.seatIndex}`,
+          pin,
+          baseId: base?.id ?? "bh-urban-cap-male",
+          label: `Fan · seat ${pin.seatIndex + 1}`,
+          isTest: false,
+          isLocal: false,
+        });
+      }
+    } else if (localPin && occupied.length > 0) {
+      // Local fan present: still seed a few near peer Fan rigs
+      for (const pin of selected.slice(0, Math.min(4, maxRig))) {
+        if (out.some((o) => o.pin.seatIndex === pin.seatIndex)) continue;
+        const base = freeBases[pin.seatIndex % Math.max(1, freeBases.length)];
+        out.push({
+          key: `fan-seat-${pin.seatIndex}`,
+          pin,
+          baseId: base?.id ?? "bh-urban-cap-male",
+          label: `Fan · seat ${pin.seatIndex + 1}`,
+          isTest: false,
+          isLocal: false,
+        });
+      }
+    }
+
+    return out.slice(0, maxRig + (localPin ? 1 : 0));
+  }, [bobbleheadSeating, view, occupiedUpToOverlay]);
+
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -345,8 +513,6 @@ export default function AudienceScene({
     const t = timeRef.current++;
     const s = stateRef.current;
 
-    const FAN_TOTAL_SEATS  = 84;   // 7 rows × avg 12 seats
-    const PERF_TOTAL_SEATS = 114;  // 8 rows × avg 14 seats
     const totalSeats = view === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS;
 
     // Entity mode: real AvatarEntity data per seat
@@ -428,18 +594,9 @@ export default function AudienceScene({
       }
 
       // ── Audience rows (back-of-head, fan looking at stage) ──
-      const fanRows = [
-        { y: 310, seats: 15, sw: 48, sz: 9.5,  lit: 0.15 },
-        { y: 332, seats: 14, sw: 52, sz: 11,   lit: 0.22 },
-        { y: 355, seats: 13, sw: 57, sz: 13,   lit: 0.32 },
-        { y: 376, seats: 12, sw: 62, sz: 14.5, lit: 0.44 },
-        { y: 397, seats: 11, sw: 68, sz: 16,   lit: 0.58 },
-        { y: 418, seats: 10, sw: 74, sz: 17.5, lit: 0.72 },
-        { y: 440, seats: 9,  sw: 80, sz: 18.5, lit: 0.85 },
-      ];
       let fanSeatIdx   = 0;
       let entityFanIdx = 0; // separate counter for entity array (only increments on occupied)
-      fanRows.forEach((row, ri) => {
+      FAN_ROWS.forEach((row, ri) => {
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
           const idx  = ri * 20 + c;
@@ -535,21 +692,12 @@ export default function AudienceScene({
       ctx.fillStyle = followGrad; ctx.fillRect(0, 0, W, H * 0.5);
 
       // ── Audience rows (front-facing, front rows fill first) ──
-      const perfRows = [
-        { ri: 0, yB: H*0.40, seats: 20, sw: 36, sz: 8,    lit: 0.65 },
-        { ri: 1, yB: H*0.46, seats: 18, sw: 40, sz: 9.5,  lit: 0.72 },
-        { ri: 2, yB: H*0.52, seats: 16, sw: 44, sz: 11,   lit: 0.78 },
-        { ri: 3, yB: H*0.58, seats: 14, sw: 50, sz: 13,   lit: 0.84 },
-        { ri: 4, yB: H*0.65, seats: 12, sw: 56, sz: 14.5, lit: 0.90 },
-        { ri: 5, yB: H*0.72, seats: 10, sw: 62, sz: 16,   lit: 0.94 },
-        { ri: 6, yB: H*0.79, seats: 8,  sw: 70, sz: 17.5, lit: 0.97 },
-        { ri: 7, yB: H*0.86, seats: 6,  sw: 80, sz: 19,   lit: 1    },
-      ];
       const perfSeatStart = PERF_TOTAL_SEATS - occupiedUpTo;
       let perfGlobalIdx   = 0;
       let entityPerfIdx   = 0;
-      perfRows.forEach(row => {
+      PERF_ROWS.forEach(row => {
         const sx = (W - row.seats * row.sw) / 2;
+        const yB = H * row.yB;
         for (let c = 0; c < row.seats; c++) {
           const idx  = row.ri * 30 + c;
           const seed = idx * 137.5;
@@ -558,7 +706,7 @@ export default function AudienceScene({
           const jb = s.jump ? Math.abs(Math.sin(t*0.08+c*0.3))*-9 : 0;
           const hb = s.hype ? (Math.sin(t*0.06+c*0.4)*4.5+Math.sin(t*0.03+c*0.2)*3.5) : 0;
           const beatBob = beatPulse * -3 * row.lit;
-          const hy = row.yB + wb + jb + hb + beatBob;
+          const hy = yB + wb + jb + hb + beatBob;
 
           if (perfGlobalIdx++ >= perfSeatStart) {
             const entity  = entityMode ? liveEntities[entityPerfIdx++] : undefined;
@@ -660,13 +808,40 @@ export default function AudienceScene({
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative" }} data-audience-bobblehead-overlay={bobbleOverlays.length > 0 ? "true" : "false"}>
       <canvas
         ref={canvasRef}
-        width={900}
-        height={480}
+        width={AUDIENCE_SCENE_W}
+        height={AUDIENCE_SCENE_H}
         style={{ display: "block", width: "100%", borderRadius: 8 }}
       />
+      {jumbotron?.roomId ? (
+        <AudienceSceneJumbotronLayer
+          roomId={jumbotron.roomId}
+          venue={venue}
+          eventType={jumbotron.eventType}
+          venueId={jumbotron.venueId}
+          lookUpActive={jumbotron.lookUpActive === true}
+        />
+      ) : null}
+      {bobbleOverlays.length > 0 && (
+        <div
+          aria-hidden={false}
+          data-avatar-rig-seats="true"
+          style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 8, overflow: "hidden" }}
+        >
+          {bobbleOverlays.map((o) => (
+            <AudienceSeatAvatarRig
+              key={o.key}
+              pin={o.pin}
+              baseId={o.baseId}
+              label={o.label}
+              isTest={o.isTest}
+              isLocal={o.isLocal}
+            />
+          ))}
+        </div>
+      )}
       {!hideControls && (
         <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
           {[
@@ -682,6 +857,90 @@ export default function AudienceScene({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Single seated AvatarRig pin — Fan / [TEST] only (never Performer identity). */
+function AudienceSeatAvatarRig({
+  pin,
+  baseId,
+  label,
+  isTest,
+  isLocal,
+}: {
+  pin: AudienceSeatPin;
+  baseId: string;
+  label: string;
+  isTest: boolean;
+  isLocal: boolean;
+}) {
+  const character = useMemo(() => resolveBobbleheadRuntimeCharacter(baseId), [baseId]);
+  const rig = useMemo(() => {
+    const extras = isLocal ? readPersistedFanEquippedLook()?.equippedCosmeticIds : undefined;
+    return bobbleheadRuntimeToRigProps(character, {
+      isSeated: true,
+      isPlaying: false,
+      extraAccessoryIds: extras,
+    });
+  }, [character, isLocal]);
+  const size = Math.max(36, Math.min(72, pin.sz * 3.2));
+  const leftPct = (pin.x / AUDIENCE_SCENE_W) * 100;
+  const topPct = (pin.y / AUDIENCE_SCENE_H) * 100;
+  const border = isTest
+    ? "1.5px solid rgba(255,215,0,0.85)"
+    : isLocal
+      ? "2px solid #00FFFF"
+      : "1px solid rgba(0,255,255,0.35)";
+
+  return (
+    <div
+      data-seat-avatar-rig={isTest ? "test" : isLocal ? "local-fan" : "fan"}
+      title={label}
+      style={{
+        position: "absolute",
+        left: `${leftPct}%`,
+        top: `${topPct}%`,
+        transform: "translate(-50%, -78%)",
+        width: size,
+        height: size + 14,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        zIndex: isLocal ? 24 : isTest ? 18 : 14,
+      }}
+    >
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 10,
+          border,
+          overflow: "hidden",
+          background: "rgba(5,5,16,0.45)",
+          boxShadow: isLocal ? "0 0 12px rgba(0,255,255,0.45)" : isTest ? "0 0 8px rgba(255,215,0,0.35)" : undefined,
+        }}
+      >
+        <AvatarViewer {...rig} size={size} enableOrbit={false} isSeated />
+      </div>
+      <div
+        style={{
+          marginTop: 1,
+          fontSize: 6,
+          fontWeight: 900,
+          letterSpacing: "0.06em",
+          color: isTest ? "#FFD700" : isLocal ? "#00FFFF" : "rgba(255,255,255,0.75)",
+          background: "rgba(0,0,0,0.65)",
+          padding: "1px 4px",
+          borderRadius: 4,
+          whiteSpace: "nowrap",
+          maxWidth: size + 24,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 }

@@ -20,18 +20,12 @@ import {
   type YoPhoCardKind,
   type YoPhoRarityLabel,
 } from "./YoPhoCardDocument";
+import type { YoPhoMediaModule, YoPhoNowPlaying } from "./YoPhoMediaModule";
+import { mediaModuleToNowPlaying, resolveCardMediaModules } from "./YoPhoMediaModule";
+
+export type { YoPhoNowPlaying } from "./YoPhoMediaModule";
 
 export type YoPhoCardRole = "fan" | "performer";
-
-/** Now Playing — single track and/or playlist for "song right now" */
-export interface YoPhoNowPlaying {
-  playlistId?: string | null;
-  trackId?: string | null;
-  title?: string | null;
-  artist?: string | null;
-  audioUrl?: string | null;
-  coverUrl?: string | null;
-}
 
 export interface PublishedYoPhoCard {
   cardId: string;
@@ -51,6 +45,8 @@ export interface PublishedYoPhoCard {
   /** Display-only tag e.g. "This month" / "Today" */
   momentTag?: string | null;
   nowPlaying?: YoPhoNowPlaying | null;
+  /** Optional embedded media modules — does not consume image-layer slots */
+  mediaModules?: YoPhoMediaModule[] | null;
   /** Motor-card motion hook (loop from optional ≤60s source) */
   motion?: YoPhoMotionClip | null;
   /** Magic effect presets active on this card */
@@ -95,6 +91,7 @@ export function compositionToDraft(
     moodTitle?: string | null;
     momentTag?: string | null;
     nowPlaying?: YoPhoNowPlaying | null;
+    mediaModules?: YoPhoMediaModule[] | null;
     motion?: YoPhoMotionClip | null;
     isCanonical?: boolean;
     editionTitle?: string | null;
@@ -107,11 +104,18 @@ export function compositionToDraft(
   const cardId = meta.cardId ?? genCardId();
   const isCanonical = meta.isCanonical ?? Boolean(comp.isCanonical);
   const rarity = meta.rarity ?? comp.rarity ?? "STANDARD";
+  const mediaModules = resolveCardMediaModules({
+    mediaModules: meta.mediaModules ?? comp.mediaModules,
+    nowPlaying: meta.nowPlaying,
+    playlistId: meta.playlistId ?? comp.playlistId,
+  });
+  const audio = meta.nowPlaying ?? mediaModuleToNowPlaying(mediaModules[0] ?? null);
   let documentJson = compositionToDocument(
     {
       ...comp,
       motion: meta.motion ?? comp.motion,
       playlistId: meta.playlistId ?? comp.playlistId,
+      mediaModules,
       rarity,
     },
     {
@@ -128,7 +132,8 @@ export function compositionToDraft(
       moodTitle: meta.moodTitle,
       momentTag: meta.momentTag,
       quote: meta.quote,
-      audio: meta.nowPlaying ?? null,
+      audio,
+      mediaModules,
       createdAt: now,
     },
   );
@@ -149,7 +154,8 @@ export function compositionToDraft(
     playlistId: meta.playlistId ?? comp.playlistId ?? null,
     moodTitle: meta.moodTitle ?? null,
     momentTag: meta.momentTag ?? null,
-    nowPlaying: meta.nowPlaying ?? null,
+    nowPlaying: audio,
+    mediaModules,
     motion: meta.motion ?? comp.motion ?? defaultMotionClip(),
     magicEffects: comp.magicEffects ?? [],
     documentJson,
@@ -186,6 +192,20 @@ export function loadPublishedCardLocal(cardId: string): PublishedYoPhoCard | nul
     return JSON.parse(raw) as PublishedYoPhoCard;
   } catch {
     return null;
+  }
+}
+
+/** Device-local published cards (same index used by savePublishedCardLocal). */
+export function listPublishedCardsLocal(): PublishedYoPhoCard[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_INDEX);
+    const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+    return ids
+      .map((id) => loadPublishedCardLocal(id))
+      .filter((card): card is PublishedYoPhoCard => Boolean(card));
+  } catch {
+    return [];
   }
 }
 
@@ -252,6 +272,11 @@ export function draftCompositionFromPublished(card: PublishedYoPhoCard): YoPhoCa
     collageUrls: card.collageUrls,
     cardId: card.cardId,
     playlistId: card.playlistId ?? null,
+    mediaModules: resolveCardMediaModules({
+      mediaModules: card.mediaModules ?? card.documentJson?.mediaModules,
+      nowPlaying: card.nowPlaying,
+      playlistId: card.playlistId,
+    }),
     motion: card.motion ?? defaultMotionClip(),
     magicEffects: card.magicEffects ?? [],
     isCanonical: card.isCanonical ?? false,

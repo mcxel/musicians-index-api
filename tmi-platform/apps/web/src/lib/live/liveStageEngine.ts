@@ -98,6 +98,28 @@ export function toggleHostMic(venueSlug: string): boolean {
   return state.hostMicHot;
 }
 
+/** Host permission: allow/deny current on-stage performer mic. */
+export function setParticipantMicAllowed(venueSlug: string, allowed: boolean): boolean {
+  const state = getStageState(venueSlug);
+  if (!state.currentPerformer) return false;
+  state.currentPerformer.micHot = allowed;
+  if (allowed) state.hostMicHot = false;
+  return true;
+}
+
+/** Remove current performer from stage without advancing queue. */
+export function removeCurrentFromStage(venueSlug: string): Performer | null {
+  const state = getStageState(venueSlug);
+  if (!state.currentPerformer) return null;
+  state.currentPerformer.status = "exiting";
+  state.currentPerformer.micHot = false;
+  state.currentPerformer.completedAt = Date.now();
+  state.completedRound.push(state.currentPerformer);
+  const removed = state.currentPerformer;
+  state.currentPerformer = null;
+  return removed;
+}
+
 export function listStageStates(): StageState[] {
   return Array.from(stageRegistry.values());
 }

@@ -14,7 +14,7 @@ function gitDirty() {
 }
 
 try {
-  run('node ./scripts/generate-api-snapshots.js');
+  run('node ./scripts/generate-api-snapshots.cjs');
   if (gitDirty()) {
     console.error('\n❌ Snapshot drift detected. Commit the snapshot updates intentionally.\n');
     run('git --no-pager diff');

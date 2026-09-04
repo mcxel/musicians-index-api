@@ -7,7 +7,6 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import MemoryWallPanelOverlay from "@/components/panels/MemoryWallPanelOverlay";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
@@ -17,7 +16,6 @@ import { useTheme } from "@/lib/design/ThemeEngine";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import {
-  openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import {
@@ -26,15 +24,12 @@ import {
   subscribePlaylistNowPlaying,
   type PlaylistNowPlayingPayload,
 } from "@/lib/playlists/commandCenterPlaybackBus";
-import {
-  dockEmotesForRole,
-  triggerDockOverlayEmote,
-  type DockOverlayRole,
-} from "@/lib/commandCenter/dockOverlayEmotes";
-import type { DockModuleId } from "@/components/shell/MasterControlDock";
+import type { DockModuleId } from "@/components/shell/dockModuleTypes";
+import MobileQuickPanelBar from "@/components/commandCenter/MobileQuickPanelBar";
+import CanonicalQuickToolsStrip from "@/components/commandCenter/CanonicalQuickToolsStrip";
 
 export interface PersistentMediaInteractionDockProps {
-  role: DockOverlayRole;
+  role: "fan" | "performer";
   userId: string;
   roomId?: string;
   onLobbyNav?: () => void;
@@ -62,18 +57,24 @@ export default function PersistentMediaInteractionDock({
   const [nowPlaying, setNowPlaying] = useState<PlaylistNowPlayingPayload | null>(null);
   const [waveTick, setWaveTick] = useState(0);
   const [online, setOnline] = useState(true);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [emotesExpanded, setEmotesExpanded] = useState(false);
-  const [recentEmote, setRecentEmote] = useState<string | null>(null);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
-  const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace } =
-    useFloatingWorkspace();
-  const { screenStream, startScreenShare, stopScreenShare } = useMonitorScreenShare({
-    openPickerOnStart: true,
-  });
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 900px)");
+    const sync = () => setIsMobile(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+
+  const { open: openWorkspace } = useFloatingWorkspace();
+  const { screenStream, shareActive, shareButtonLabel, cycleSharePress } =
+    useMonitorScreenShare({
+      defaultSlot: { monitor: 0, cellIndex: -1 },
+      openPickerOnStart: false,
+    });
   const openInSurface = useWorkspacePresentationStore((s) => s.openInSurface);
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function PersistentMediaInteractionDock({
   }, [onOpenModule, isPerformer]);
 
   useEffect(() => {
-    return subscribePlaybackCommands((command) => {
+    return subscribePlaybackCommands(({ command }) => {
       if (command === "open-full") openPlaylistStudio();
     });
   }, [openPlaylistStudio]);
@@ -116,35 +117,6 @@ export default function PersistentMediaInteractionDock({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function poll() {
-      try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch("/api/notifications", { cache: "no-store" }),
-          fetch("/api/messages", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-        if (notifRes.ok) {
-          const d = await notifRes.json();
-          setUnreadNotifications(typeof d.unreadCount === "number" ? d.unreadCount : 0);
-        }
-        if (msgRes.ok) {
-          const d = await msgRes.json();
-          setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
-        }
-      } catch {
-        /* keep last counts */
-      }
-    }
-    void poll();
-    const id = setInterval(poll, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
-
   const openShareStudio = () => {
     presentCanonicalWorkspace("share-studio", "DRAWER");
   };
@@ -156,8 +128,6 @@ export default function PersistentMediaInteractionDock({
     const current = formatTime(p * 240);
     return `${current} / —:—`;
   })();
-
-  const emotes = dockEmotesForRole(role);
 
   return (
     <>
@@ -202,7 +172,7 @@ export default function PersistentMediaInteractionDock({
               width: "100%",
               minHeight: 56,
               gap: 12,
-              flexWrap: "wrap",
+              flexWrap: isMobile ? "nowrap" : "wrap",
             }}
           >
             {/* LEFT — Mini Media Player (compact, fixed) */}
@@ -211,13 +181,13 @@ export default function PersistentMediaInteractionDock({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                paddingRight: 14,
-                marginRight: 14,
-                borderRight: "1px solid rgba(255,255,255,0.12)",
+                paddingRight: isMobile ? 0 : 14,
+                marginRight: isMobile ? 0 : 14,
+                borderRight: isMobile ? "none" : "1px solid rgba(255,255,255,0.12)",
                 minWidth: 0,
-                maxWidth: 320,
+                maxWidth: isMobile ? "100%" : 320,
                 flexShrink: 1,
-                flex: "0 1 260px",
+                flex: isMobile ? "1 1 100%" : "0 1 260px",
               }}
             >
               <button
@@ -332,79 +302,30 @@ export default function PersistentMediaInteractionDock({
               </div>
             </div>
 
-            {/* CENTER — Global Navigation */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 16,
-                flex: 1,
-                minWidth: 0,
-                flexWrap: "wrap",
-                paddingRight: 14,
-                marginRight: 14,
-                borderRight: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              <NavHome workspaceOpen={workspaceOpen} onToggleWorkspace={toggleWorkspace} />
-              <NavButton label="DISCOVER" icon="🧭" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="LIVE NOW" icon="📹" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="LOBBY" icon="👥" onClick={() => openCanonicalWorkspaceQuick("lobby", "DRAWER")} />
-              <NavButton label="MESSAGES" icon="💬" onClick={() => openCanonicalWorkspaceQuick("messaging", "DRAWER")} badge={unreadMessages} />
-              <NavButton label="NOTIFICATIONS" icon="🔔" onClick={() => openCanonicalWorkspaceQuick("notifications", "DRAWER")} badge={unreadNotifications} />
-            </div>
-
-            {/* RIGHT — Live / Media controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
-              {/* Avatar/Inventory ownership is Fan-only (Rule 26 Identity Policy) — never expose the chrome to Performers. */}
-              {!isPerformer && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
-                    style={toolBtn}
-                    aria-label="Avatar workspace"
-                  >
-                    👤 AVATAR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => presentCanonicalWorkspace("inventory", "DRAWER")}
-                    style={toolBtn}
-                    aria-label="Inventory workspace"
-                  >
-                    🎒 INV
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => (screenStream ? stopScreenShare() : void startScreenShare())}
-                style={toolBtn}
-                aria-label={screenStream ? "Stop screen share" : "Start screen share"}
-              >
-                🖥 {screenStream ? "STOP SHARE" : "SHARE SCREEN"}
-              </button>
-              <button type="button" onClick={() => setIsCameraOpen(true)} style={toolBtn} aria-label="Camera workspace">
-                ⏺ RECORD
-              </button>
-              <button type="button" onClick={openShareStudio} style={toolBtn} aria-label="Open Share Studio">
-                ↗ SHARE
-              </button>
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 900,
-                  color: "#FFD700",
-                  border: "1px solid rgba(255,215,0,0.45)",
-                  borderRadius: 4,
-                  padding: "2px 6px",
-                }}
-                title="Stream quality follows connection (auto)"
-              >
-                AUTO
-              </span>
+            {isMobile ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 900,
+                    color: online ? "#00FF88" : "#FF6666",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: online ? "#00FF88" : "#FF6666",
+                    }}
+                  />
+                  {online ? "ONLINE" : "OFFLINE"}
+                </div>
+              </div>
+            ) : (
               <div
                 style={{
                   fontSize: 9,
@@ -413,6 +334,7 @@ export default function PersistentMediaInteractionDock({
                   display: "flex",
                   alignItems: "center",
                   gap: 5,
+                  flexShrink: 0,
                 }}
               >
                 <span
@@ -425,91 +347,8 @@ export default function PersistentMediaInteractionDock({
                 />
                 {online ? "ONLINE" : "OFFLINE"}
               </div>
-              <button
-                type="button"
-                onClick={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
-                style={toolBtn}
-                aria-label="Memory workspace"
-              >
-                🧠 MEMORY
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmotesExpanded((v) => !v)}
-                style={{ ...toolBtn, color: emotesExpanded ? theme.secondary : "rgba(255,255,255,0.7)" }}
-                aria-expanded={emotesExpanded}
-              >
-                {isPerformer ? "🎭 OVERLAYS" : "😃 EMOTES"}
-              </button>
-            </div>
+            )}
           </div>
-
-          {emotesExpanded ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                paddingTop: 6,
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 900,
-                  letterSpacing: "0.14em",
-                  color: "rgba(255,255,255,0.35)",
-                  marginRight: 4,
-                }}
-              >
-                {isPerformer ? "STAGE OVERLAYS" : "CROWD EMOTES"}
-              </span>
-              {emotes.map((em) => (
-                <button
-                  key={em.id}
-                  type="button"
-                  title={em.label}
-                  onClick={() => {
-                    const ok = triggerDockOverlayEmote({
-                      role,
-                      emoteId: em.id,
-                      roomId,
-                      userId,
-                    });
-                    if (ok) {
-                      setRecentEmote(em.emoji);
-                      window.setTimeout(() => setRecentEmote(null), 700);
-                    }
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: isPerformer ? 8 : "50%",
-                    border: `1px solid ${em.accent}${isPerformer ? "cc" : "55"}`,
-                    background: isPerformer
-                      ? `linear-gradient(145deg, ${em.accent}33, rgba(0,0,0,0.5))`
-                      : "rgba(255,255,255,0.04)",
-                    boxShadow: isPerformer ? `0 0 10px ${em.accent}44` : "none",
-                    fontSize: 16,
-                    cursor: "pointer",
-                  }}
-                >
-                  {em.emoji}
-                </button>
-              ))}
-              {recentEmote ? (
-                <span style={{ fontSize: 20, marginLeft: 4, animation: "dockEmotePop 0.7s ease-out" }}>{recentEmote}</span>
-              ) : null}
-              <style>{`
-                @keyframes dockEmotePop {
-                  0% { opacity: 1; transform: scale(1) translateY(0); }
-                  100% { opacity: 0; transform: scale(1.15) translateY(-12px); }
-                }
-              `}</style>
-            </div>
-          ) : null}
         </div>
 
         {/* Cyan / gold hard boundary — playlist library starts immediately below */}
@@ -522,6 +361,25 @@ export default function PersistentMediaInteractionDock({
           }}
         />
       </div>
+      {isMobile ? (
+        <MobileQuickPanelBar
+          role={role}
+          screenShareActive={shareActive || Boolean(screenStream)}
+          onShareScreen={() => void cycleSharePress()}
+          onRecord={() => setIsCameraOpen(true)}
+          onShare={openShareStudio}
+          onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+        />
+      ) : (
+        <CanonicalQuickToolsStrip
+          role={role}
+          screenShareActive={shareActive || Boolean(screenStream)}
+          onShareScreen={() => void cycleSharePress()}
+          onRecord={() => setIsCameraOpen(true)}
+          onShare={openShareStudio}
+          onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+        />
+      )}
     </>
   );
 }
@@ -535,154 +393,3 @@ const transportBtn: React.CSSProperties = {
   padding: 0,
   lineHeight: 1,
 };
-
-const toolBtn: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "rgba(255,255,255,0.65)",
-  fontSize: 9,
-  fontWeight: 800,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  fontFamily: "inherit",
-};
-
-function NavLink({
-  label,
-  icon,
-  href,
-  badge,
-}: {
-  label: string;
-  icon: string;
-  href: string;
-  badge?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: "0.05em",
-        color: "rgba(255,255,255,0.85)",
-        textDecoration: "none",
-        position: "relative",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-      {badge != null && badge > 0 ? <Badge count={badge} /> : null}
-    </Link>
-  );
-}
-
-function NavButton({
-  label,
-  icon,
-  onClick,
-  badge,
-}: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-  badge?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: "0.05em",
-        color: "rgba(255,255,255,0.85)",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        fontFamily: "inherit",
-        whiteSpace: "nowrap",
-        position: "relative",
-      }}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-      {badge != null && badge > 0 ? <Badge count={badge} /> : null}
-    </button>
-  );
-}
-
-function NavHome({
-  workspaceOpen,
-  onToggleWorkspace,
-}: {
-  workspaceOpen: boolean;
-  onToggleWorkspace: () => void;
-}) {
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-      <Link
-        href="/"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: "0.05em",
-          color: "rgba(255,255,255,0.85)",
-          textDecoration: "none",
-        }}
-      >
-        <span>🏠</span>
-        <span>HOME</span>
-      </Link>
-      <button
-        type="button"
-        aria-label={workspaceOpen ? "Close workspace panel" : "Open workspace panel"}
-        onClick={onToggleWorkspace}
-        style={{
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "rgba(255,255,255,0.05)",
-          color: "#d6b5ff",
-          borderRadius: 6,
-          fontSize: 10,
-          fontWeight: 900,
-          cursor: "pointer",
-          padding: "1px 6px",
-        }}
-      >
-        {workspaceOpen ? "▼" : "▲"}
-      </button>
-    </div>
-  );
-}
-
-function Badge({ count }: { count: number }) {
-  return (
-    <span
-      style={{
-        position: "absolute",
-        top: -6,
-        right: -8,
-        background: "#FF0055",
-        color: "#fff",
-        fontSize: 7,
-        fontWeight: 900,
-        padding: "1px 4px",
-        borderRadius: 4,
-        minWidth: 14,
-        textAlign: "center",
-      }}
-    >
-      {count > 99 ? "99+" : count}
-    </span>
-  );
-}

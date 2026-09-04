@@ -26,13 +26,33 @@ import {
   getPortraitControl,
   patchOverlayParams,
 } from "@/lib/yopho/YoPhoPortraitEffectCatalog";
-import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import {
+  acknowledgeYoPhoBackgroundFirst,
+  canApplyYoPhoOwnedEffect,
+  canSetYoPhoLayerMedia,
+  countYoPhoImageSlots,
+  countYoPhoTotalLayers,
+  evaluateYoPhoAdd,
+  getYoPhoBackgroundLayer,
+  getYoPhoImageCapacity,
+  hasYoPhoBackgroundFirstAck,
+  hasYoPhoBackgroundSet,
+  isYoPhoBackgroundLayer,
+  YOPHO_BACKGROUND_FIRST_MESSAGE,
+  YOPHO_FREE_ALLOWANCE_COPY,
+  yoPhoAddKindConsumesImageSlot,
+  yoPhoBudgetKindForAddLayer,
+  yoPhoImageCapMessage,
+  yoPhoTotalLayerCapMessage,
+} from "@/lib/yopho/YoPhoImageCapacity";
 import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   addStackLayer,
   bringLayerToFront,
-  countStackLayers,
+  duplicateStackLayer,
+  ensureTripleLayerStack,
   getLayerById,
+  layerHasVisibleMedia,
   listStackLayers,
   nudgeLayerPosition,
   nudgeLayerScale,
@@ -42,6 +62,7 @@ import {
   resetLayerTransform,
   sendLayerToBack,
   setActiveLayerImage,
+  setActiveLayerMedia,
   updateLayerById,
   YOPHO_NUDGE_ROTATION_STEP,
   YOPHO_NUDGE_SCALE_STEP,
@@ -51,7 +72,27 @@ import {
   YOPHO_STUDIO_STYLE_PRESETS,
   type YoPhoStudioStyleId,
 } from "@/lib/yopho/YoPhoStudioStylePresets";
+import {
+  claimYoPhoLearningXp,
+  loadYoPhoLearningProgress,
+  yoPhoLearningPct,
+  type YoPhoLearningProgress,
+} from "@/lib/yopho/YoPhoLearningTrack";
+import {
+  copyYoPhoShareLink,
+  nativeShareYoPhoCard,
+} from "@/lib/yopho/shareYoPhoCard";
 import YoPhoPortraitStageCanvas from "./YoPhoPortraitStageCanvas";
+import YoPhoMediaModuleComposer from "./YoPhoMediaModuleComposer";
+import YoPhoBrandingFooter from "./YoPhoBrandingFooter";
+import YoPhoFreeOnboardingGuide, {
+  reopenYoPhoFreeGuide,
+} from "./YoPhoFreeOnboardingGuide";
+import {
+  loadCardComposition,
+  saveCardComposition,
+} from "@/lib/yopho/YoPhoCardComposition";
+import { YOPHO_LEARNING_TRACK_TARGET_XP } from "@/lib/xp/XpActionRegistry";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -91,6 +132,8 @@ export interface YoPhoTripleStageStudioProps {
   onSaveEdition?: (bp: YoPhoPortraitBlueprint) => void;
   storageKey?: string;
   tierOrRole?: string;
+  cardRole?: "fan" | "performer";
+  userKey?: string;
 }
 
 export default function YoPhoTripleStageStudio({
@@ -99,12 +142,16 @@ export default function YoPhoTripleStageStudio({
   onSaveEdition,
   storageKey = "tmi_yopho_triple_stage",
   tierOrRole = "FREE",
+  cardRole = "fan",
+  userKey = "local",
 }: YoPhoTripleStageStudioProps) {
   const capacity = useMemo(() => getYoPhoImageCapacity(tierOrRole), [tierOrRole]);
-  const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() => clonePortraitBlueprint(master));
+  const [preview, setPreview] = useState<YoPhoPortraitBlueprint>(() =>
+    ensureTripleLayerStack(clonePortraitBlueprint(master)),
+  );
   const [selectedControlId, setSelectedControlId] = useState<string | null>("smoke");
   const [activeLayerId, setActiveLayerId] = useState<string>(master.primaryLayer.id);
-  const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion">("layers");
+  const [activeTab, setActiveTab] = useState<"layers" | "fx" | "style" | "color" | "motion" | "media">("layers");
   const [dockExpanded, setDockExpanded] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [timelineSec, setTimelineSec] = useState(0);
@@ -113,6 +160,12 @@ export default function YoPhoTripleStageStudio({
   const [motionSpeed, setMotionSpeed] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const [showUpgradeCta, setShowUpgradeCta] = useState(false);
+  const [cardComp, setCardComp] = useState(() => loadCardComposition(cardRole, userKey));
+  const [learningProgress, setLearningProgress] = useState<YoPhoLearningProgress | null>(null);
+  const [guideForceOpen, setGuideForceOpen] = useState(false);
+  const [shareCardId, setShareCardId] = useState<string | null>(null);
+  const [bgFirstAcked, setBgFirstAcked] = useState(false);
 
   // Undo / Redo stacks
   const undoStack = useRef<YoPhoPortraitBlueprint[]>([]);
@@ -128,20 +181,55 @@ export default function YoPhoTripleStageStudio({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  useEffect(() => {
+    setLearningProgress(loadYoPhoLearningProgress());
+    setBgFirstAcked(hasYoPhoBackgroundFirstAck());
+  }, []);
+
   const durationSec = preview.previewDurationSec ?? master.previewDurationSec ?? 6;
   const stackLayers = useMemo(() => listStackLayers(preview), [preview]);
+  const backgroundReady = useMemo(() => hasYoPhoBackgroundSet(preview), [preview]);
+  const softGateOpen = !backgroundReady && !bgFirstAcked;
   const activeLayer = useMemo(
     () => getLayerById(preview, activeLayerId) ?? preview.primaryLayer,
     [preview, activeLayerId],
   );
 
   useEffect(() => {
-    setPreview(clonePortraitBlueprint(master));
+    const normalized = ensureTripleLayerStack(clonePortraitBlueprint(master));
+    setPreview(normalized);
     setActiveLayerId((prev) => {
-      const ids = new Set([master.primaryLayer.id, ...master.secondaryLayers.map((l) => l.id)]);
-      return ids.has(prev) ? prev : master.primaryLayer.id;
+      const ids = new Set([normalized.primaryLayer.id, ...normalized.secondaryLayers.map((l) => l.id)]);
+      if (ids.has(prev)) return prev;
+      // Prefer empty background slot so Free users start correctly.
+      const bg = getYoPhoBackgroundLayer(normalized);
+      if (bg && !layerHasVisibleMedia(bg)) return bg.id;
+      return bg?.id ?? normalized.primaryLayer.id;
     });
+    if (
+      normalized.secondaryLayers.length !== master.secondaryLayers.length ||
+      normalized.primaryLayer.id !== master.primaryLayer.id
+    ) {
+      onMasterChange(normalized);
+    }
   }, [master.id, master.updatedAt]);
+
+  useEffect(() => {
+    setCardComp(loadCardComposition(cardRole, userKey));
+  }, [cardRole, userKey]);
+
+  const claimLearning = useCallback(async (key: Parameters<typeof claimYoPhoLearningXp>[0]) => {
+    const result = await claimYoPhoLearningXp(key);
+    setLearningProgress(result.progress);
+    if (result.granted > 0) {
+      setStatusLine(`+${result.granted} learning XP · ${key.replace(/^yopho_/, "").replace(/_/g, " ")}`);
+    } else if (result.reason === "unauthenticated") {
+      setStatusLine("Progress saved locally. Sign in to earn durable learning XP.");
+    }
+    return result;
+  }, []);
+
+  const pendingPickLayerId = useRef<string | null>(null);
 
   // Continuous animation loop ticker
   useEffect(() => {
@@ -190,6 +278,14 @@ export default function YoPhoTripleStageStudio({
     redoStack.current = [];
   }, [preview]);
 
+  const commitPreview = useCallback(
+    (next: YoPhoPortraitBlueprint) => {
+      setPreview(next);
+      onMasterChange(next);
+    },
+    [onMasterChange],
+  );
+
   const handleUndo = () => {
     if (undoStack.current.length === 0) {
       setStatusLine("Nothing to undo.");
@@ -212,32 +308,164 @@ export default function YoPhoTripleStageStudio({
     setStatusLine("Redid change.");
   };
 
-  const onPickImage = () => fileInputRef.current?.click();
-
-  const onFileChosen = async (file: File | null) => {
-    if (!file || !file.type.startsWith("image/")) {
-      setStatusLine("Choose a valid image file.");
+  const onPickImage = (opts?: { layerId?: string; blueprint?: YoPhoPortraitBlueprint }) => {
+    const bp = opts?.blueprint ?? preview;
+    const targetId = opts?.layerId ?? activeLayerId;
+    const gate = canSetYoPhoLayerMedia(bp, targetId, { allowSkipAck: true });
+    if (!gate.ok) {
+      setShowUpgradeCta(false);
+      setStatusLine(gate.message);
+      const bg = getYoPhoBackgroundLayer(bp);
+      if (bg) setActiveLayerId(bg.id);
       return;
     }
-    setStatusLine("Preparing image…");
-    const { blob } = await downscaleImageFile(file);
+    pendingPickLayerId.current = targetId;
+    fileInputRef.current?.click();
+  };
+
+  const onFileChosen = async (file: File | null) => {
+    if (!file) {
+      setStatusLine("No file selected.");
+      return;
+    }
+    const targetId = pendingPickLayerId.current ?? activeLayerId;
+    pendingPickLayerId.current = null;
+    const gate = canSetYoPhoLayerMedia(preview, targetId, { allowSkipAck: true });
+    if (!gate.ok) {
+      setStatusLine(gate.message);
+      return;
+    }
+    const targetLayer = getLayerById(preview, targetId) ?? activeLayer;
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isImage && !isVideo) {
+      setStatusLine("Choose a valid image or video file.");
+      return;
+    }
+    setStatusLine(isVideo ? "Preparing video layer…" : "Preparing image…");
     pushUndo();
-    const url = URL.createObjectURL(blob);
-    const next = setActiveLayerImage(preview, activeLayerId, url, file.name);
-    setPreview(next);
-    onMasterChange(next);
-    setStatusLine(`Image loaded into layer: ${file.name}`);
+    const wasBackground = isYoPhoBackgroundLayer(preview, targetId);
+    let next: YoPhoPortraitBlueprint;
+    if (isVideo) {
+      const url = URL.createObjectURL(file);
+      next = setActiveLayerMedia(preview, targetId, {
+        videoUrl: url,
+        mediaMode: "animated",
+        label: file.name,
+      });
+    } else {
+      const { blob } = await downscaleImageFile(file);
+      const url = URL.createObjectURL(blob);
+      next = setActiveLayerImage(preview, targetId, url, file.name);
+    }
+    setActiveLayerId(targetId);
+    commitPreview(next);
+    setStatusLine(
+      isVideo
+        ? `Video loaded into ${targetLayer.label || "layer"} (animated).`
+        : `Image loaded into layer: ${file.name}`,
+    );
+    if (wasBackground) {
+      void claimLearning("yopho_set_background");
+    } else if ((targetLayer.budgetKind ?? "image") === "image") {
+      void claimLearning("yopho_add_image_layer");
+    }
+  };
+
+  const handleSaveEditionClick = () => {
+    if (!hasYoPhoBackgroundSet(preview)) {
+      setStatusLine(YOPHO_BACKGROUND_FIRST_MESSAGE);
+      return;
+    }
+    const trimmed = ensureTripleLayerStack(clonePortraitBlueprint(preview));
+    onSaveEdition?.(trimmed);
+    onMasterChange(trimmed);
+    const cardId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? `yopho_${crypto.randomUUID().slice(0, 8)}`
+        : `yopho_${Date.now().toString(36)}`;
+    setShareCardId(cardId);
+    try {
+      void fetch("/api/yopho/cards", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          cardId,
+          displayName: trimmed.title || "YoPho Card",
+          subjectUrl:
+            trimmed.primaryLayer.imageUrl ||
+            getYoPhoBackgroundLayer(trimmed)?.imageUrl ||
+            "/images/tmi-placeholder.jpg",
+          role: cardRole,
+        }),
+      });
+    } catch {
+      /* non-fatal */
+    }
+    setStatusLine("Composition saved. Share link + QR ready below.");
+    void claimLearning("yopho_save_composition");
+  };
+
+  const handleShareClick = async () => {
+    const cardId = shareCardId ?? preview.id;
+    const artifact = {
+      type: "yopho_card" as const,
+      cardId,
+      displayName: preview.title,
+    };
+    const native = await nativeShareYoPhoCard(artifact);
+    if (native.ok) {
+      setStatusLine("Shared.");
+      void claimLearning("yopho_share_card");
+      return;
+    }
+    const copied = await copyYoPhoShareLink(artifact);
+    if (copied.ok) {
+      setStatusLine(copied.url ? `Link copied: ${copied.url}` : "Share link copied.");
+      void claimLearning("yopho_share_card");
+      return;
+    }
+    setStatusLine(copied.error ?? native.error ?? "Share unavailable. Save first, then copy link.");
   };
 
   const handleControlClick = (controlId: string) => {
     const def = getPortraitControl(controlId);
     if (!def) return;
+
+    let alreadyOnStack = false;
+    if (def.overlayId) {
+      alreadyOnStack = Boolean(
+        (preview.portraitEffects ?? []).find((effect) => effect.effectId === def.overlayId && effect.enabled),
+      );
+    } else if (controlId === "black_white" || controlId === "vintage") {
+      alreadyOnStack = preview.texturePreset !== "none";
+    } else if (controlId === "motion") {
+      alreadyOnStack = Boolean(
+        (preview.portraitEffects ?? []).find((effect) => effect.effectId === "drift" && effect.enabled),
+      );
+    }
+
+    const burnsNewTotalLayer =
+      Boolean(def.overlayId) || controlId === "black_white" || controlId === "vintage" || controlId === "motion";
+    if (burnsNewTotalLayer && !canApplyYoPhoOwnedEffect(preview, alreadyOnStack, tierOrRole)) {
+      setShowUpgradeCta(true);
+      setStatusLine(yoPhoTotalLayerCapMessage(tierOrRole));
+      return;
+    }
+
     pushUndo();
     setSelectedControlId(controlId);
     const next = applyPortraitControl(preview, controlId);
-    setPreview(next);
-    setStatusLine(`Applied effect: ${def.label}`);
+    commitPreview(next);
+    setShowUpgradeCta(false);
+    setStatusLine(
+      burnsNewTotalLayer
+        ? `Applied effect: ${def.label} (counts as a total layer, not an extra image slot).`
+        : `Applied effect: ${def.label}`,
+    );
     if (!isPlaying) setIsPlaying(true);
+    void claimLearning("yopho_add_effect");
   };
 
   const patchSelectedParams = (partial: Parameters<typeof patchOverlayParams>[2]) => {
@@ -248,6 +476,16 @@ export default function YoPhoTripleStageStudio({
   const handleApplyStylePreset = (styleId: YoPhoStudioStyleId) => {
     const preset = YOPHO_STUDIO_STYLE_PRESETS.find((s) => s.id === styleId);
     if (!preset) return;
+    let projected = countYoPhoTotalLayers(preview);
+    if (preset.objectMaskHint && !preview.objectMask) projected += 1;
+    if (preset.textureHint && preset.textureHint !== "none" && preview.texturePreset === "none") {
+      projected += 1;
+    }
+    if (projected > capacity.maxTotalLayers) {
+      setShowUpgradeCta(true);
+      setStatusLine(yoPhoTotalLayerCapMessage(tierOrRole));
+      return;
+    }
     pushUndo();
     const next = clonePortraitBlueprint(preview);
     if (preset.compositionHint) next.mode = preset.compositionHint;
@@ -260,30 +498,100 @@ export default function YoPhoTripleStageStudio({
         ambientGlow: preset.accentHint,
       };
     }
-    setPreview(next);
-    onMasterChange(next);
+    commitPreview(next);
     setStatusLine(`Style applied: ${preset.label}`);
   };
 
   const handleAddLayerItem = (kind: string) => {
-    pushUndo();
     setShowAddModal(false);
-    const next = addStackLayer(preview, capacity.maxImages);
-    if (!next) {
-      setStatusLine(`Layer limit reached (${capacity.maxImages}). Upgrade for unlimited layers.`);
+    const verdict = evaluateYoPhoAdd(preview, kind, tierOrRole);
+    if (!verdict.ok) {
+      // Free already has a 3-slot image stack — fill an empty matching slot instead of minting a 4th.
+      if (
+        verdict.reason === "image" &&
+        (kind === "background" || kind === "photo" || kind === "cutout")
+      ) {
+        const emptyBg = getYoPhoBackgroundLayer(preview);
+        if (kind === "background" && emptyBg && !layerHasVisibleMedia(emptyBg)) {
+          setActiveLayerId(emptyBg.id);
+          onPickImage({ layerId: emptyBg.id, blueprint: preview });
+          setStatusLine("Fill your Background slot first (Free 3-slot stack).");
+          return;
+        }
+        if ((kind === "photo" || kind === "cutout") && !hasYoPhoBackgroundSet(preview)) {
+          setShowUpgradeCta(false);
+          setStatusLine(YOPHO_BACKGROUND_FIRST_MESSAGE);
+          if (emptyBg) setActiveLayerId(emptyBg.id);
+          return;
+        }
+        const emptyImage = listStackLayers(preview).find(
+          (ref) =>
+            (ref.layer.budgetKind ?? "image") === "image" &&
+            !layerHasVisibleMedia(ref.layer) &&
+            ref.layer.role !== "background",
+        );
+        if (emptyImage && hasYoPhoBackgroundSet(preview)) {
+          setActiveLayerId(emptyImage.id);
+          onPickImage({ layerId: emptyImage.id, blueprint: preview });
+          setStatusLine(`Filling empty ${emptyImage.layer.label || "image"} slot.`);
+          return;
+        }
+      }
+      setShowUpgradeCta(verdict.reason === "image" || verdict.reason === "total");
+      setStatusLine(verdict.message);
+      if (verdict.reason === "background_first") {
+        const bg = getYoPhoBackgroundLayer(preview);
+        if (bg) setActiveLayerId(bg.id);
+      }
       return;
     }
-    setPreview(next);
-    const added = listStackLayers(next).at(-1);
-    if (added) {
-      setActiveLayerId(added.id);
-      const label = `${kind.charAt(0).toUpperCase() + kind.slice(1)} ${added.layer.zIndex}`;
-      setPreview((p) => updateLayerById(p, added.id, { label }));
+
+    if (kind === "effect" || kind === "particle" || kind === "animation") {
+      setShowUpgradeCta(false);
+      setActiveTab("fx");
+      setStatusLine(
+        "Owned effects apply onto the existing image — no extra image slot. A new overlay still counts as one total layer. Apply from FX.",
+      );
+      return;
     }
-    if (kind === "photo") {
-      onPickImage();
+
+    const budgetKind = yoPhoBudgetKindForAddLayer(kind);
+    if (budgetKind === "unsupported" || budgetKind === "media") return;
+
+    // Prefer filling empty Background slot over adding another image layer.
+    if (kind === "background") {
+      const bg = getYoPhoBackgroundLayer(preview);
+      if (bg && !layerHasVisibleMedia(bg)) {
+        setActiveLayerId(bg.id);
+        onPickImage({ layerId: bg.id, blueprint: preview });
+        return;
+      }
+    }
+
+    pushUndo();
+    const next = addStackLayer(preview, capacity.maxImages, capacity.maxTotalLayers, budgetKind);
+    if (!next) {
+      setShowUpgradeCta(true);
+      setStatusLine(
+        yoPhoAddKindConsumesImageSlot(kind) ? yoPhoImageCapMessage(tierOrRole) : yoPhoTotalLayerCapMessage(tierOrRole),
+      );
+      return;
+    }
+    setShowUpgradeCta(false);
+    const added = listStackLayers(next).at(-1);
+    let patched = next;
+    if (added) {
+      const role =
+        kind === "background" ? "background" : kind === "cutout" ? "cutout" : kind === "photo" ? "secondary" : added.layer.role;
+      const label = `${kind.charAt(0).toUpperCase() + kind.slice(1)} ${added.layer.zIndex}`;
+      patched = updateLayerById(next, added.id, { label, budgetKind, role });
+      setActiveLayerId(added.id);
+    }
+    commitPreview(patched);
+    if (kind === "photo" || kind === "background" || kind === "cutout") {
+      if (added) onPickImage({ layerId: added.id, blueprint: patched });
     } else {
-      setStatusLine(`New ${kind} layer created.`);
+      setStatusLine(`New ${kind} layer created — total layer used, image slot unchanged.`);
     }
   };
 
@@ -292,10 +600,9 @@ export default function YoPhoTripleStageStudio({
       return;
     }
     pushUndo();
-    const fresh = clonePortraitBlueprint(master);
+    const fresh = ensureTripleLayerStack(clonePortraitBlueprint(master));
     fresh.portraitEffects = [];
-    setPreview(fresh);
-    onMasterChange(fresh);
+    commitPreview(fresh);
     setStatusLine("Project reset to initial state.");
   };
 
@@ -354,9 +661,9 @@ export default function YoPhoTripleStageStudio({
       {stageLabel("PREVIEW 1", "Source image only", "SOURCE")}
       <div
         onClick={() => {
-          if (!activeLayer.imageUrl) onPickImage();
+          if (!layerHasVisibleMedia(activeLayer)) onPickImage();
         }}
-        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+        style={{ cursor: !layerHasVisibleMedia(activeLayer) ? "pointer" : "default" }}
       >
         <YoPhoPortraitStageCanvas
           blueprint={sourceOnlyBlueprint}
@@ -392,9 +699,9 @@ export default function YoPhoTripleStageStudio({
       {stageLabel("PREVIEW 3", "Live Master Composite · Continuous animation", "MASTER")}
       <div
         onClick={() => {
-          if (!activeLayer.imageUrl) onPickImage();
+          if (!layerHasVisibleMedia(activeLayer)) onPickImage();
         }}
-        style={{ cursor: !activeLayer.imageUrl ? "pointer" : "default" }}
+        style={{ cursor: !layerHasVisibleMedia(activeLayer) ? "pointer" : "default" }}
       >
         <YoPhoPortraitStageCanvas
           blueprint={preview}
@@ -446,7 +753,7 @@ export default function YoPhoTripleStageStudio({
           <button type="button" onClick={() => setShowAddModal(true)} style={chipBtn(GREEN)}>
             + ADD LAYER
           </button>
-          <button type="button" onClick={onPickImage} style={chipBtn(FUCHSIA)}>
+          <button type="button" onClick={() => onPickImage()} style={chipBtn(FUCHSIA)}>
             📷 REPLACE IMAGE
           </button>
         </div>
@@ -609,7 +916,7 @@ export default function YoPhoTripleStageStudio({
         }}
       >
         <div style={{ display: "flex", gap: 4 }}>
-          {(["layers", "fx", "style", "color", "motion"] as const).map((tab) => {
+          {(["layers", "fx", "style", "color", "motion", "media"] as const).map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -659,6 +966,16 @@ export default function YoPhoTripleStageStudio({
           {/* TAB 1: LAYERS */}
           {activeTab === "layers" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
+                Background first, then Mid / Foreground. Free image slots {countYoPhoImageSlots(preview)}/
+                {capacity.maxImages} (1 bg + 2 images) · Total layers {countYoPhoTotalLayers(preview)}/
+                {capacity.maxTotalLayers} on {capacity.tierKey}. FX/filters are separate from image slots.
+                {!backgroundReady ? (
+                  <span style={{ color: FUCHSIA, display: "block", marginTop: 4 }}>
+                    {YOPHO_BACKGROUND_FIRST_MESSAGE}
+                  </span>
+                ) : null}
+              </div>
               {/* Opacity & Blend Mode Bar */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", paddingBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -696,13 +1013,50 @@ export default function YoPhoTripleStageStudio({
                     ))}
                   </select>
                 </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>Media:</span>
+                  {(["static", "animated"] as const).map((mode) => {
+                    const selected = (activeLayer.mediaMode ?? "static") === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          commitPreview(
+                            setActiveLayerMedia(preview, activeLayerId, {
+                              mediaMode: mode,
+                              ...(mode === "static" ? { videoUrl: "" } : {}),
+                            }),
+                          )
+                        }
+                        style={{
+                          ...chipBtn(selected ? CYAN : "rgba(255,255,255,0.45)"),
+                          fontSize: 8,
+                          padding: "3px 8px",
+                        }}
+                      >
+                        {mode.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                  <button type="button" onClick={() => onPickImage()} style={{ ...chipBtn(FUCHSIA), fontSize: 8, padding: "3px 8px" }}>
+                    {(activeLayer.mediaMode ?? "static") === "animated" ? "UPLOAD VIDEO" : "UPLOAD IMAGE"}
+                  </button>
+                </div>
               </div>
 
               {/* Layer Stack Items */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[...stackLayers].reverse().map((ref) => {
                   const selected = ref.id === activeLayerId;
-                  const empty = !ref.layer.imageUrl?.trim();
+                  const empty = !layerHasVisibleMedia(ref.layer);
+                  const thumbBg =
+                    ref.layer.mediaMode === "animated" && ref.layer.videoUrl
+                      ? "rgba(255,45,170,0.25)"
+                      : ref.layer.imageUrl
+                        ? `url(${ref.layer.imageUrl}) center/cover`
+                        : "rgba(255,255,255,0.1)";
                   return (
                     <div
                       key={ref.id}
@@ -724,7 +1078,7 @@ export default function YoPhoTripleStageStudio({
                           width: 28,
                           height: 28,
                           borderRadius: 4,
-                          background: ref.layer.imageUrl ? `url(${ref.layer.imageUrl}) center/cover` : "rgba(255,255,255,0.1)",
+                          background: thumbBg,
                           border: "1px solid rgba(255,255,255,0.2)",
                           display: "flex",
                           alignItems: "center",
@@ -732,7 +1086,7 @@ export default function YoPhoTripleStageStudio({
                           fontSize: 10,
                         }}
                       >
-                        {!ref.layer.imageUrl ? "🖼" : null}
+                        {!layerHasVisibleMedia(ref.layer) ? (ref.layer.mediaMode === "animated" ? "🎬" : "🖼") : null}
                       </div>
 
                       {/* Layer Label & Rename Input */}
@@ -751,7 +1105,7 @@ export default function YoPhoTripleStageStudio({
                           }}
                         />
                         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>
-                          z{ref.layer.zIndex} · {empty ? "Empty Image" : "Image Set"}
+                          z{ref.layer.zIndex} · {(ref.layer.budgetKind ?? "image") === "image" ? (empty ? "Empty slot" : ref.layer.mediaMode === "animated" ? "Animated video" : "Static image") : `${ref.layer.budgetKind} layer`}
                         </div>
                       </div>
 
@@ -796,11 +1150,27 @@ export default function YoPhoTripleStageStudio({
                 <button
                   type="button"
                   onClick={() => {
-                    const next = addStackLayer(preview, capacity.maxImages);
+                    const next = duplicateStackLayer(
+                      preview,
+                      activeLayerId,
+                      capacity.maxImages,
+                      capacity.maxTotalLayers,
+                    );
                     if (next) {
                       setPreview(next);
                       const added = listStackLayers(next).at(-1);
-                      if (added) setActiveLayerId(added.id);
+                      if (added) {
+                        setActiveLayerId(added.id);
+                        setStatusLine(`Duplicated layer: ${activeLayer.label ?? "Layer"}`);
+                      }
+                      setShowUpgradeCta(false);
+                    } else {
+                      setShowUpgradeCta(true);
+                      setStatusLine(
+                        (activeLayer.budgetKind ?? "image") === "image"
+                          ? yoPhoImageCapMessage(tierOrRole)
+                          : yoPhoTotalLayerCapMessage(tierOrRole),
+                      );
                     }
                   }}
                   style={chipBtn(CYAN)}
@@ -975,6 +1345,20 @@ export default function YoPhoTripleStageStudio({
               </div>
             </div>
           )}
+
+          {activeTab === "media" && (
+            <YoPhoMediaModuleComposer
+              role={cardRole}
+              userKey={userKey}
+              accountTier={tierOrRole}
+              modules={cardComp.mediaModules ?? []}
+              onChange={(next) => {
+                const updated = { ...cardComp, mediaModules: next, updatedAt: new Date().toISOString() };
+                setCardComp(updated);
+                saveCardComposition(cardRole, userKey, updated);
+              }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -982,10 +1366,107 @@ export default function YoPhoTripleStageStudio({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <YoPhoFreeOnboardingGuide
+        forceOpen={guideForceOpen}
+        onDismissed={() => setGuideForceOpen(false)}
+        onProgressChange={setLearningProgress}
+      />
+
+      {learningProgress ? (
+        <div
+          data-yopho-learning-progress
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid rgba(0,255,255,0.25)",
+            background: "rgba(0,0,0,0.35)",
+          }}
+        >
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: CYAN }}>
+            LEARNING · {learningProgress.earnedXp}/{YOPHO_LEARNING_TRACK_TARGET_XP} XP
+          </span>
+          <div
+            style={{
+              flex: "1 1 120px",
+              height: 5,
+              borderRadius: 99,
+              background: "rgba(255,255,255,0.1)",
+              overflow: "hidden",
+              minWidth: 80,
+            }}
+          >
+            <div
+              style={{
+                width: `${yoPhoLearningPct(learningProgress)}%`,
+                height: "100%",
+                background: `linear-gradient(90deg, ${CYAN}, ${FUCHSIA})`,
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              reopenYoPhoFreeGuide();
+              setGuideForceOpen(true);
+            }}
+            style={chipBtn(GOLD)}
+          >
+            HOW-TO
+          </button>
+        </div>
+      ) : null}
+
+      {!backgroundReady ? (
+        <div
+          data-yopho-bg-gate
+          data-yopho-bg-soft={softGateOpen ? "1" : "0"}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: `1px solid ${FUCHSIA}66`,
+            background: `${FUCHSIA}12`,
+            fontSize: 11,
+            color: "rgba(255,255,255,0.85)",
+            lineHeight: 1.4,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ flex: "1 1 220px" }}>
+            <strong style={{ color: FUCHSIA }}>
+              {softGateOpen ? "Add your background first, then add your images." : "Tip — background still empty."}
+            </strong>{" "}
+            {YOPHO_BACKGROUND_FIRST_MESSAGE}{" "}
+            <span style={{ color: "rgba(255,255,255,0.5)" }}>{YOPHO_FREE_ALLOWANCE_COPY}</span>
+          </div>
+          {softGateOpen ? (
+            <button
+              type="button"
+              data-yopho-bg-ack
+              onClick={() => {
+                acknowledgeYoPhoBackgroundFirst();
+                setBgFirstAcked(true);
+                setStatusLine("Got it — you can add layers now. Background-first still recommended.");
+              }}
+              style={chipBtn(GOLD)}
+            >
+              I UNDERSTAND — CONTINUE
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         style={{ display: "none" }}
         onChange={(e) => {
           onFileChosen(e.target.files?.[0] ?? null);
@@ -1028,38 +1509,58 @@ export default function YoPhoTripleStageStudio({
                 ✕
               </button>
             </div>
+            {!backgroundReady ? (
+              <div style={{ fontSize: 10, color: FUCHSIA, fontWeight: 700, lineHeight: 1.4 }}>
+                {YOPHO_BACKGROUND_FIRST_MESSAGE}
+              </div>
+            ) : null}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {[
+                ["🌆 Background", "background"],
                 ["📷 Photo", "photo"],
+                ["✂ Cutout", "cutout"],
                 ["🎥 Video", "video"],
                 ["🔤 Text", "text"],
                 ["⚡ Effect", "effect"],
                 ["🖼 Frame", "frame"],
-                ["🌆 Background", "background"],
                 ["✨ Prop / Sticker", "prop"],
                 ["🏷 Logo", "logo"],
                 ["🎆 Particle", "particle"],
                 ["🎬 Animation", "animation"],
-              ].map(([label, kind]) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => handleAddLayerItem(kind)}
-                  style={{
-                    padding: "10px",
-                    borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.05)",
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+              ].map(([label, kind]) => {
+                const blocked =
+                  softGateOpen && (kind === "photo" || kind === "cutout");
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    disabled={blocked}
+                    title={blocked ? YOPHO_BACKGROUND_FIRST_MESSAGE : undefined}
+                    onClick={() => handleAddLayerItem(kind)}
+                    style={{
+                      padding: "10px",
+                      borderRadius: 8,
+                      border: blocked
+                        ? "1px solid rgba(255,68,102,0.35)"
+                        : kind === "background"
+                          ? `1px solid ${CYAN}88`
+                          : "1px solid rgba(255,255,255,0.15)",
+                      background: blocked
+                        ? "rgba(255,68,102,0.08)"
+                        : kind === "background"
+                          ? `${CYAN}18`
+                          : "rgba(255,255,255,0.05)",
+                      color: blocked ? "rgba(255,255,255,0.35)" : "#fff",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: blocked ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1095,8 +1596,60 @@ export default function YoPhoTripleStageStudio({
         </div>
       )}
 
+      <div
+        data-yopho-share-strip
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          alignItems: "center",
+          padding: 12,
+          borderRadius: 12,
+          border: "1px solid rgba(255,215,0,0.28)",
+          background: "rgba(8,8,20,0.9)",
+        }}
+      >
+        <button type="button" onClick={handleSaveEditionClick} style={chipBtn(GREEN)}>
+          💾 SAVE COMPOSITION
+        </button>
+        <button type="button" onClick={() => void handleShareClick()} style={chipBtn(GOLD)}>
+          ↗ SHARE / COPY LINK
+        </button>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", flex: "1 1 160px" }}>
+          Album cover · baseball card · QR on footer. Share works after save when a card id exists.
+        </span>
+        <div
+          style={{
+            position: "relative",
+            width: 120,
+            height: 48,
+            borderRadius: 8,
+            overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "#0a0614",
+          }}
+        >
+          <YoPhoBrandingFooter
+            cardId={shareCardId ?? preview.id}
+            showSafeGuide={false}
+            heightPct={0.12}
+            config={{ enabled: true, showQr: true, qrTarget: "card", label: "TMI × YoPho" }}
+          />
+        </div>
+      </div>
+
       {statusLine ? (
-        <div style={{ fontSize: 10, color: CYAN, fontWeight: 700, textAlign: "center" }}>{statusLine}</div>
+        <div style={{ fontSize: 10, color: CYAN, fontWeight: 700, textAlign: "center" }}>
+          {statusLine}
+          {showUpgradeCta ? (
+            <>
+              {" "}
+              <Link href={capacity.upgradeHref} style={{ color: GOLD }}>
+                Upgrade
+              </Link>
+            </>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

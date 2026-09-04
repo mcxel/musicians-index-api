@@ -68,7 +68,7 @@ export default function TrackUploadPanel({
         
         const uploadPromise = new Promise<string>((resolve, reject) => {
           xhr.onload = () => {
-            if (xhr.status === 200) {
+            if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText) as { url?: string; error?: string };
                 if (data.error) reject(new Error(data.error));
@@ -86,6 +86,11 @@ export default function TrackUploadPanel({
         });
         
         finalUrl = await uploadPromise;
+        if (!finalUrl.trim() || finalUrl.startsWith("blob:")) {
+          setError("Upload did not return a playable URL.");
+          setUploading(false);
+          return;
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
         setUploading(false);
@@ -100,7 +105,7 @@ export default function TrackUploadPanel({
       id: `track-${Date.now()}`,
       title: title.trim(),
       artist: artist.trim(),
-      url: finalUrl.trim() || "#",
+      url: finalUrl.trim(),
       type: mode,
       genre: genre.trim() || undefined,
       addedAt: Date.now(),

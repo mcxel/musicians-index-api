@@ -65,3 +65,96 @@ export function getSubmissionWindow(from: Date = new Date()): SubmissionWindow {
   const isOpen = from.getTime() >= opensAt.getTime() && from.getTime() < showtime.getTime();
   return { showtime, opensAt, isOpen };
 }
+
+/** Canonical broadcast window for Monday Night Stage (America/New_York). */
+const SHOW_LIVE_DURATION_MS = 3 * 60 * 60 * 1000;
+const PRESHOW_WINDOW_MS = 45 * 60 * 1000;
+
+export type MondayNightStagePhase = "CLOSED" | "PRESHOW" | "LIVE" | "ARCHIVE";
+
+export interface MondayNightStageWindow {
+  phase: MondayNightStagePhase;
+  /** Next scheduled 8PM ET showtime (current or upcoming Monday). */
+  showtime: Date;
+  /** Ms until showtime when CLOSED/PRESHOW; ms until window ends when LIVE. */
+  countdownMs: number;
+  /** True only during Monday LIVE window — bots + UI must agree on this gate. */
+  joinable: boolean;
+  label: string;
+}
+
+function getCurrentMondayShowtimeET(from: Date): Date | null {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = fmt.formatToParts(from).reduce<Record<string, string>>((acc, p) => {
+    if (p.type !== "literal") acc[p.type] = p.value;
+    return acc;
+  }, {});
+  if ((ET_WEEKDAY[parts.weekday] ?? -1) !== 1) return null;
+  const y = Number(parts.year);
+  const m0 = Number(parts.month) - 1;
+  const d = Number(parts.day);
+  return zonedWallClockToUtc(y, m0, d, SHOW_HOUR_ET, 0, "America/New_York");
+}
+
+export function getMondayNightStageWindow(from: Date = new Date()): MondayNightStageWindow {
+  const nextShow = getNextMondayShowtimeET(from);
+  const thisMonday = getCurrentMondayShowtimeET(from);
+
+  if (!thisMonday) {
+    return {
+      phase: "CLOSED",
+      showtime: nextShow,
+      countdownMs: Math.max(0, nextShow.getTime() - from.getTime()),
+      joinable: false,
+      label: "Next Monday 8PM ET",
+    };
+  }
+
+  const liveEnd = thisMonday.getTime() + SHOW_LIVE_DURATION_MS;
+  const preshowStart = thisMonday.getTime() - PRESHOW_WINDOW_MS;
+  const now = from.getTime();
+
+  if (now >= liveEnd) {
+    return {
+      phase: "ARCHIVE",
+      showtime: nextShow,
+      countdownMs: Math.max(0, nextShow.getTime() - from.getTime()),
+      joinable: false,
+      label: "Show ended — next Monday",
+    };
+  }
+
+  if (now >= thisMonday.getTime() && now < liveEnd) {
+    return {
+      phase: "LIVE",
+      showtime: thisMonday,
+      countdownMs: Math.max(0, liveEnd - now),
+      joinable: true,
+      label: "Live now",
+    };
+  }
+
+  if (now >= preshowStart && now < thisMonday.getTime()) {
+    return {
+      phase: "PRESHOW",
+      showtime: thisMonday,
+      countdownMs: Math.max(0, thisMonday.getTime() - now),
+      joinable: false,
+      label: "Preshow — doors open at 8PM ET",
+    };
+  }
+
+  return {
+    phase: "CLOSED",
+    showtime: thisMonday,
+    countdownMs: Math.max(0, preshowStart - now),
+    joinable: false,
+    label: "Monday Night Stage opens 8PM ET",
+  };
+}

@@ -1,7 +1,8 @@
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import Link from "next/link";
 import type { MagazinePage } from "@/components/magazine/MagazineShell";
-import { MAGAZINE_ISSUE_1, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import { MAGAZINE_ISSUE_1, getArticleBySlug, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl, magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 import MagazineEditorialSpreadEngine from "@/components/magazine/MagazineEditorialSpreadEngine";
 import {
@@ -119,16 +120,16 @@ function FeatureImagePage({ article, image, artistSlug, artistImage }: { article
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <ConfettiBand />
-      <ImageTile src={image} href={`/magazine/article/${article.slug}`} label="FEATURE IMAGE" ratio="video" />
+      <ImageTile src={image} href={magazineReaderArticleUrl(article.slug)} label="FEATURE IMAGE" ratio="video" />
       <TextTile
         title={article.title.toUpperCase()}
         deck={article.subtitle}
-        href={`/magazine/article/${article.slug}`}
+        href={magazineReaderArticleUrl(article.slug)}
         accent={article.heroColor}
       />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <ImageTile src={artistImage} href={`/artists/${artistSlug}`} label="ARTIST" ratio="portrait" faceCrop />
-        <TextTile title="READ ARTICLE" deck="Open the full editorial inside." href={`/magazine/article/${article.slug}`} accent="#FFD700" />
+        <TextTile title="READ ARTICLE" deck="Open the full editorial inside." href={magazineReaderArticleUrl(article.slug)} accent="#FFD700" />
       </div>
     </div>
   );
@@ -142,14 +143,14 @@ function MixedEditorialPageA({ article, fallbackNewsSlug }: { article: MagazineA
         <TextTile
           title="ARTICLE PREVIEW"
           deck={article.blocks.find((block) => block.type === "paragraph")?.text ?? article.subtitle}
-          href={`/magazine/article/${article.slug}`}
+          href={magazineReaderArticleUrl(article.slug)}
           accent="#00FFFF"
         />
         <ImageTile src={mediaShots[1]} href="/live" label="VIDEO PREVIEW" ratio="video" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <TextTile title="POLL CARD" deck="Vote this story to next week's cover." href="/games/polls" accent="#AA2DFF" />
-        <TextTile title="NEWS TILE" deck="Trending chart movements and recaps." href={`/articles/news/${fallbackNewsSlug}`} accent="#FFD700" />
+        <TextTile title="NEWS TILE" deck="Trending chart movements and recaps." href={magazineReaderArticleUrl(fallbackNewsSlug)} accent="#FFD700" />
       </div>
       <TextTile title="SPONSOR TILE" deck="Sponsored segment placement in this spread." href="/sponsors/soundwave-audio" accent="#FF2DAA" />
       <ConfettiBand />
@@ -161,7 +162,7 @@ function MixedEditorialPageA({ article, fallbackNewsSlug }: { article: MagazineA
 function SponsorCollagePageA() {
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      <TextTile title="SPONSOR POWER PANEL" deck="Magazine ad inventory, sponsor offers, and launch rails." href="/articles/sponsor/soundwave-audio-presents-the-beat-vault" accent="#FFD700" />
+      <TextTile title="SPONSOR POWER PANEL" deck="Magazine ad inventory, sponsor offers, and launch rails." href="/sponsors/soundwave-audio" accent="#FFD700" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {sponsorLogos.slice(0, 2).map((logo, index) => (
           <Link key={logo} href="/sponsors/soundwave-audio" style={{ ...panel(index === 0 ? "#00FFFF" : "#FF2DAA"), display: "grid", placeItems: "center", minHeight: 110 }}>
@@ -187,10 +188,10 @@ function ArtistSpotlightPageA() {
         <ImageTile src={mediaShots[5]} href="/artists/nova-cipher" label="NOVA CIPHER" ratio="portrait" faceCrop />
         <ImageTile src={mediaShots[7]} href="/artists/zuri-bloom" label="ZURI BLOOM" ratio="portrait" faceCrop />
       </div>
-      <TextTile title="ARTIST SPOTLIGHT" deck="Profiles, article links, and booking movement inside the issue." href="/articles/artist/ray-journey-builds-his-empire" accent="#00FFFF" />
+      <TextTile title="ARTIST SPOTLIGHT" deck="Profiles, article links, and booking movement inside the issue." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#00FFFF" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <TextTile title="BOOK NOW" deck="Artist booking details from profile rail." href="/artists/ray-journey" accent="#FFD700" />
-        <TextTile title="READ ARTICLE" deck="Open artist editorial detail view." href="/magazine/article/wavetek-rise-billboard" accent="#FF2DAA" />
+        <TextTile title="READ ARTICLE" deck="Open artist editorial detail view." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#FF2DAA" />
       </div>
     </div>
   );
@@ -206,7 +207,7 @@ function PollVideoArchivePageA() {
         <TextTile title="ARCHIVE" deck="Jump to prior issue spreads." href="/magazine/archive" accent="#00FFFF" />
         <TextTile title="MARKETPLACE" deck="Issue product cards and limited drops." href="/marketplace" accent="#FFD700" />
       </div>
-      <TextTile title="CONTINUE READING" deck="Read full issue and continue from saved spread." href="/magazine/issue/current" accent="#FF2DAA" />
+      <TextTile title="CONTINUE READING" deck="Read full issue and continue from saved spread." href={magazineReaderUrl()} accent="#FF2DAA" />
     </div>
   );
 }
@@ -220,16 +221,16 @@ function MixedEditorialPageB({ article, fallbackNewsSlug }: { article: MagazineA
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <ConfettiBand />
-      <ImageTile src={mediaShots[4]} href={`/magazine/article/${article.slug}`} label="EDITORIAL IMAGE" ratio="video" />
+      <ImageTile src={mediaShots[4]} href={magazineReaderArticleUrl(article.slug)} label="EDITORIAL IMAGE" ratio="video" />
       <TextTile
         title={article.title.toUpperCase()}
         deck={article.blocks.find((block) => block.type === "paragraph")?.text ?? article.subtitle}
-        href={`/magazine/article/${article.slug}`}
+        href={magazineReaderArticleUrl(article.slug)}
         accent="#FF2DAA"
       />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         <TextTile title="POLL" deck="Cast your vote now." href="/games/polls" accent="#AA2DFF" />
-        <TextTile title="NEWS" deck="This week's chart recap." href={`/articles/news/${fallbackNewsSlug}`} accent="#FFD700" />
+        <TextTile title="NEWS" deck="This week's chart recap." href={magazineReaderArticleUrl(fallbackNewsSlug)} accent="#FFD700" />
         <TextTile title="ARCHIVE" deck="Past issue index." href="/magazine/archive" accent="#00FFFF" />
       </div>
     </div>
@@ -254,7 +255,7 @@ function SponsorCollagePageB() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <TextTile title="ADVERTISE WITH TMI" deck="Reach 10K+ music industry fans." href="/sponsors/soundwave-audio" accent="#00FF88" />
-        <TextTile title="SPONSOR ARTICLE" deck="Full editorial placement available." href="/articles/sponsor/soundwave-audio-presents-the-beat-vault" accent="#FFD700" />
+        <TextTile title="SPONSOR ARTICLE" deck="Full editorial placement available." href="/sponsors/soundwave-audio" accent="#FFD700" />
       </div>
       <ConfettiBand />
     </div>
@@ -270,7 +271,7 @@ function ArtistSpotlightPageB() {
         <div style={{ display: "grid", gap: 8 }}>
           <TextTile title="FEATURED ARTIST" deck="This week's spotlight pick from the index." href="/artists/lena-sky" accent="#FF2DAA" />
           <TextTile title="BOOK NOW" deck="Check availability." href="/artists/lena-sky" accent="#FFD700" />
-          <TextTile title="ARTICLE" deck="Read full profile." href="/magazine/article/wavetek-rise-billboard" accent="#00FFFF" />
+          <TextTile title="ARTICLE" deck="Read full profile." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#00FFFF" />
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -322,7 +323,7 @@ function CoverPage({ issue }: { issue: string }) {
           LOBBY INDEX
         </Link>
       </div>
-      <ImageTile src={mediaShots[0]} href="/magazine/article/wavetek-rise-billboard" label="COVER FEATURE" ratio="video" />
+      <ImageTile src={mediaShots[0]} href={magazineReaderArticleUrl("wavetek-rise-billboard")} label="COVER FEATURE" ratio="video" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <TextTile title="WEEKLY CROWN" href="/battles/b1" accent="#FF2DAA" />
         <TextTile title="TOP STORIES" href="/articles" accent="#00FFFF" />
@@ -340,10 +341,10 @@ function BackCoverPage() {
         <div style={{ fontSize: 20, fontWeight: 900, marginTop: 6 }}>SEE YOU NEXT WEEK</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="MAGAZINE LOBBY" href="/magazine/issue/current" accent="#FF2DAA" />
+        <TextTile title="MAGAZINE LOBBY" href={magazineReaderUrl()} accent="#FF2DAA" />
         <TextTile title="ARCHIVE" href="/magazine/archive" accent="#00FFFF" />
       </div>
-      <ImageTile src={mediaShots[7]} href="/magazine/issue/current" label="READ AGAIN" ratio="video" />
+      <ImageTile src={mediaShots[7]} href={magazineReaderUrl()} label="READ AGAIN" ratio="video" />
       <ConfettiBand />
     </div>
   );
@@ -371,8 +372,24 @@ function ExclusionCta({ href, label, accent }: { href: string; label: string; ac
   );
 }
 
+function articleSpreadContent(articleSlug?: string) {
+  if (!articleSlug) return null;
+  const article = getArticleBySlug(articleSlug);
+  if (!article) return null;
+
+  const bodyParagraphs = article.blocks
+    .filter((block) => block.type === "paragraph" || block.type === "pullquote")
+    .map((block) => block.text)
+    .filter((text): text is string => Boolean(text));
+
+  const pullQuote = article.blocks.find((block) => block.type === "pullquote")?.text;
+
+  return { article, bodyParagraphs, pullQuote };
+}
+
 function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
   const accent = slot.heroColor ?? "#00FFFF";
+  const spread = articleSpreadContent(slot.articleSlug);
   return (
     <MagazineEditorialSpreadEngine
       templateId="ARTIST_SCORECARD"
@@ -382,12 +399,16 @@ function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
       category="PERFORMER"
       heroImage={slot.imageUrl ?? mediaShots[2]}
       cutShape="ONE_CORNER"
+      author={spread?.article.author}
+      bodyParagraphs={spread?.bodyParagraphs}
+      pullQuote={spread?.pullQuote}
     />
   );
 }
 
 function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
   const accent = slot.heroColor ?? "#00FF88";
+  const spread = articleSpreadContent(slot.articleSlug);
   return (
     <MagazineEditorialSpreadEngine
       templateId="HERITAGE_EDITORIAL"
@@ -396,6 +417,9 @@ function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
       accentColor={accent}
       category="NEWS"
       cutShape="RECTANGLE"
+      author={spread?.article.author}
+      bodyParagraphs={spread?.bodyParagraphs}
+      pullQuote={spread?.pullQuote}
     />
   );
 }

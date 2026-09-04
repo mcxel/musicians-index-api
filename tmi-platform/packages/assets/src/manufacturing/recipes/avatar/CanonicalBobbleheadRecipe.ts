@@ -1,0 +1,40 @@
+import { ManufacturingRecipe } from "../../ManufacturingRecipe";
+import { ManufacturingState } from "../../ManufacturingState";
+
+export const CANONICAL_BOBBLEHEAD_RECIPE: ManufacturingRecipe = {
+  id: "CanonicalBobblehead",
+  version: "1.0",
+  assetType: "AVATAR",
+  intentTemplate: {
+    assetId: "tmi-bobblehead-base-bh-a",
+    recipeId: "CanonicalBobblehead",
+    recipeVersion: "1.0",
+    bodyArchetype: "BH-A",
+    heightMeters: 1.65,
+    headScale: 1.55,
+    styleTrack: "stylized-bobblehead",
+    rigVersion: "AvatarRig/1.0",
+    motionPackageVersion: "AvatarMotionPackage/1.0",
+    outputName: "avatar-BH-A-base.glb",
+    proof: "Foundry Proof 001 - Zero-External-Mesh",
+  },
+  steps: [
+    { id: "plan", stateOnSuccess: ManufacturingState.PLANNING, description: "Resolve canonical recipe and intent." },
+    { id: "concept", stateOnSuccess: ManufacturingState.CONCEPT_CREATED, description: "Persist generated design parameters; no external mesh." },
+    { id: "manufacture", script: "scripts/blender/manufactureAvatar.py", stateOnSuccess: ManufacturingState.MESH_CREATED, description: "Procedurally generate bobblehead mesh." },
+    { id: "uv", stateOnSuccess: ManufacturingState.UV_CREATED, description: "Generate UVs." },
+    { id: "rig", stateOnSuccess: ManufacturingState.RIG_CREATED, description: "Build AvatarRig/1.0." },
+    { id: "skinning", stateOnSuccess: ManufacturingState.SKINNING_CREATED, description: "Generate deterministic skin weights." },
+    { id: "arkit", stateOnSuccess: ManufacturingState.ARKIT_CREATED, description: "Generate ARKit facial targets with non-zero deltas." },
+    { id: "materials", stateOnSuccess: ManufacturingState.MATERIALS_CREATED, description: "Create procedural PBR materials." },
+    { id: "animations", stateOnSuccess: ManufacturingState.ANIMATIONS_ATTACHED, description: "Attach AvatarMotionPackage/1.0." },
+    { id: "lod", stateOnSuccess: ManufacturingState.LOD_CREATED, description: "Generate LOD0/LOD1/LOD2." },
+    { id: "collision", stateOnSuccess: ManufacturingState.COLLISION_CREATED, description: "Create runtime capsule metadata." },
+    { id: "anchors", stateOnSuccess: ManufacturingState.ANCHORS_CREATED, description: "Create sockets/anchors." },
+    { id: "normalize", stateOnSuccess: ManufacturingState.NORMALIZATION_PASS, description: "Run normalization gate." },
+    { id: "validate", stateOnSuccess: ManufacturingState.VALIDATION_PASS, description: "Run asset validation." },
+    { id: "export", stateOnSuccess: ManufacturingState.EXPORT_COMPLETE, description: "Export canonical GLB.", expectedArtifacts: ["avatar-BH-A-base.glb"] },
+    { id: "ingest", stateOnSuccess: ManufacturingState.INGESTION_COMPLETE, description: "Ingest into authoritative asset pipeline." },
+    { id: "cert-ready", stateOnSuccess: ManufacturingState.CERTIFICATION_READY, description: "Ready for runtime/two-device certification." },
+  ],
+};

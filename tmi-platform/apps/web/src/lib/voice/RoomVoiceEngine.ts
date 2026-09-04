@@ -1,8 +1,6 @@
 // RoomVoiceEngine.ts
 // Core voice session state for a room. Runtime only — no WebRTC wiring.
 
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
-
 export type VoiceRoomState = "FREE_ROAM" | "PRE_SHOW" | "LIVE_SHOW" | "POST_SHOW";
 
 export type VoiceParticipantRole =
@@ -112,26 +110,6 @@ export class RoomVoiceEngine {
   setMicActive(id: string, active: boolean): void {
     const p = this.participants.get(id);
     if (!p) return;
-
-    if (active) {
-      const decision = enforceAdultTeenContactBlock({
-        source: `voice-room:${this.roomId}`,
-        channel: "voice",
-        actor: {
-          userId: p.id,
-          ageClass: "unknown",
-        },
-        target: {
-          userId: `voice-audience-${this.roomId}`,
-          ageClass: "unknown",
-        },
-      });
-
-      if (!decision.allowed) {
-        this.activeSpeakerIds.delete(id);
-        return;
-      }
-    }
 
     p.micActive = active;
     if (active && !this.mutedBySystemIds.has(id)) {

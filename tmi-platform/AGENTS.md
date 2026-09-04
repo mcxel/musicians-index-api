@@ -2,6 +2,12 @@
 # The Musician's Index | BernoutGlobal LLC
 # Last updated: 2026-04-26
 
+> **AI Navigation:** Every agent reads [`MASTER_AI_NAVIGATION.md`](MASTER_AI_NAVIGATION.md) first.
+> General lookup (engines, registries, routes, archive, bots, 3D tiers): [§1–8](MASTER_AI_NAVIGATION.md#1-where-to-look-by-task-type) · [§ 3D upgrade map](MASTER_AI_NAVIGATION.md#3d--avatar--environment-upgrade-map).
+> Media players (Fan + Performer dual experience): [§ MEDIA PLAYER DUAL-EXPERIENCE MAP](MASTER_AI_NAVIGATION.md#media-player-dual-experience-map).
+> Split screens / dual monitors / battle VS: [§ SPLIT SCREEN CANON](MASTER_AI_NAVIGATION.md#split-screen-canon).
+> Front/back of house + lobby walls + home rotation: [§ FRONT/BACK OF HOUSE + LOBBY WALL CANON](MASTER_AI_NAVIGATION.md#frontback-of-house--lobby-wall-canon).
+
 ## NON-NEGOTIABLES FOR ALL AI AGENTS
 
 These rules apply to every AI tool working in this repo: Claude, Copilot, Gemini, CodeGPT, BlackBox.
@@ -154,4 +160,119 @@ DATABASE_URL=...
 ### Memory Boundaries
 - Do not mingle executive knowledge bases. Big Ace has the `Enterprise Umbrella Memory Spine` covering all company registries. Michael Charlie has the `TMI Memory Vault` covering local competition data.
 - Both executives must support local procedural execution (RAG + offline templates) to maintain operations if external APIs are unavailable.
+
+---
+
+## 13. TMI ANTI-BLOAT LAW, CERTIFICATION LAW & MASTER ACCEPTANCE TEMPLATES
+
+### TMI Anti-Bloat Law (Permanent Repo Law)
+> **TMI should grow by evolving canonical master files and registries, not by endlessly creating new files, duplicate logs, temporary variants, and binary dumps.**
+
+```text
+CONSOLIDATE BEFORE CREATE.
+REFERENCE BEFORE COPY.
+PROMOTE BEFORE COMMIT.
+OPTIMIZE BEFORE STORE.
+REGISTER BEFORE DUPLICATE.
+MASTER FILES EVOLVE IN PLACE.
+LARGE BINARIES STAY OUT OF GIT.
+TEMPORARY OUTPUT STAYS OUT OF GIT.
+GIT IS SOURCE HISTORY, NOT A FILE WAREHOUSE.
+```
+
+### The 5-Point File Creation Test
+Before creating ANY new file, every AI agent must evaluate:
+1. **Does a canonical file already own this responsibility?**
+2. **Can this be added to an existing registry/runtime/master ledger?**
+3. **Is this temporary output that belongs in `.gitignore`?**
+4. **Is this a large binary that belongs outside Git?**
+5. **Is this actually a distinct module with a durable responsibility?**
+*Only if #5 is genuinely true should a new permanent file be created.*
+
+### Asset & Memory Management Laws
+- **Durable Authorities**: Merge discoveries into master files (`MASTER_PROJECT_MEMORY`, `MASTER_CERTIFICATION_LEDGER`, `MASTER_ARCHITECTURE_REGISTRY`, `MASTER_ASSET_REGISTRY`, `MASTER_ROUTE_REGISTRY`) rather than creating temporary handoff files.
+- **Large Binary References**: Keep heavy reference handoffs (`TMI-Mobile-Handoff-v2/`, `.zip` archives, `Profiles/`, `Sounds Pack/`, `Yopho Bases/`) locally on disk in `.gitignore`. Promote ONLY individual optimized production assets into canonical app paths.
+- **No Duplicate Copies**: Reference single canonical asset IDs across all components.
+- **Never Broad `git add -A`**: Identify, classify, and promote files intentionally.
+
+---
+
+### Certification Law
+```text
+CODE EXISTS ≠ FEATURE CERTIFIED
+AUTOMATED TEST PASSES ≠ PHYSICAL CERTIFICATION
+PHYSICAL PASS = exact required behavior observed on real device/runtime without hidden workarounds.
+If a physical test FAILS: record exact failing step first, then modify ONLY the failing execution path. Do not redesign frozen architecture.
+```
+
+---
+
+### Universal Acceptance Template
+
+```text
+ACCEPTANCE TEMPLATE
+
+STATUS:
+⏳ OPEN / 🟡 BLOCKED / 🔴 FAIL / 🟢 PASS
+
+DEVICE:
+<desktop / phone / tablet / console / headset>
+
+DEVICE MODEL:
+<exact model if physical certification>
+
+OS:
+<Windows / iOS / Android / etc.>
+
+BROWSER:
+<Chrome / Safari / Edge / Firefox + version if known>
+
+BUILD / SHA:
+<exact candidate commit or deployed build>
+
+ROUTE:
+<exact URL / roomId>
+
+MODULE / GATE:
+<module name>
+
+TEST STEP:
+<exact numbered step>
+
+EXPECTED:
+<what should have happened>
+
+ACTUALLY OBSERVED:
+<only what was physically visible/heard>
+
+AUDIO CONTINUITY:
+PASS / FAIL / N/A
+
+VIDEO / WEBRTC CONTINUITY:
+PASS / FAIL / N/A
+
+ROOM ID / SESSION CONTINUITY:
+PASS / FAIL / N/A
+
+PLAYER STATE PRESERVED:
+PASS / FAIL / N/A
+
+LAYOUT / COLLISION:
+PASS / FAIL / N/A
+
+CONSOLE / NETWORK ERROR:
+<exact error if captured>
+
+SCREENSHOT / RECORDING:
+<attached evidence>
+
+FINAL RESULT:
+🟢 PASS
+or
+🔴 FAIL AT STEP <n>
+
+FOLLOW-UP RULE:
+If FAIL, patch only the observed failing execution path.
+Do not redesign frozen architecture.
+```
 

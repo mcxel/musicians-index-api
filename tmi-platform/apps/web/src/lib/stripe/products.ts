@@ -6,13 +6,26 @@
 
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
-  FAN_RUBY_MONTHLY: {
-    productId: "prod_fan_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_1TcJnFEAwH1Fjtu98MhoEGqG",
-    name:      "TMI Fan — Ruby",
+  // PRO is the real entry paid tier (Lane A "Option A", locked 2026-09-01) —
+  // RUBY sits above it. RUBY's price/priceId below were migrated 2026-09-01:
+  // the original Stripe object was mislabeled at PRO's amount ($4.99); the
+  // legacy price ID stays mapped to RUBY in tierMapping.ts for reconciliation
+  // only, never used for new checkout.
+  FAN_PRO_MONTHLY: {
+    productId: "prod_fan_pro",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PRO ?? "price_1UAj28EAwH1Fjtu9zQ4dTJv2",
+    name:      "TMI Fan — Pro",
     price:     499,  // $4.99/mo
     interval:  "month" as const,
     features:  ["All live rooms","Chat + reactions","Tip performers","Monthly magazine","XP + achievements"],
+  },
+  FAN_RUBY_MONTHLY: {
+    productId: "prod_fan_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_1UAj29EAwH1Fjtu9FPDD0MO4",
+    name:      "TMI Fan — Ruby",
+    price:     999,  // $9.99/mo
+    interval:  "month" as const,
+    features:  ["Everything in Pro","Early access drops","Fan leaderboard placement","Ruby avatar glow"],
   },
   FAN_SILVER_MONTHLY: {
     productId: "prod_fan_silver",
@@ -56,13 +69,21 @@ export const STRIPE_PRODUCTS = {
   },
 
   // ── Performer subscriptions ───────────────────────────────────────────────
-  PERFORMER_RUBY_MONTHLY: {
-    productId: "prod_performer_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_1TcJzdEAwH1Fjtu9Nx5DsRzL",
-    name:      "TMI Performer — Ruby",
+  PERFORMER_PRO_MONTHLY: {
+    productId: "prod_performer_pro",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PRO ?? "price_1UAj28EAwH1Fjtu9eB1IOCcN",
+    name:      "TMI Performer — Pro",
     price:     299,  // $2.99/mo
     interval:  "month" as const,
     features:  ["Go live anytime","Beat marketplace access","Booking requests","Analytics dashboard"],
+  },
+  PERFORMER_RUBY_MONTHLY: {
+    productId: "prod_performer_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_1UAj28EAwH1Fjtu9fleIQ1Lb",
+    name:      "TMI Performer — Ruby",
+    price:     799,  // $7.99/mo
+    interval:  "month" as const,
+    features:  ["Everything in Pro","Fan club tools","Tipping enabled","Ruby badge"],
   },
   PERFORMER_SILVER_MONTHLY: {
     productId: "prod_performer_silver",
@@ -126,8 +147,13 @@ export const STRIPE_PRODUCTS = {
   },
 
   // ── Tips ─────────────────────────────────────────────────────────────────
+  // TIP_MEDIUM previously hardcoded "price_1TUWKrEL7B8tMf4NVceVcW4i" as if it
+  // were a verified real Stripe object — direct Stripe API lookup (Lane D,
+  // 2026-09-01) proved it 404s in both test and live mode ("No such price").
+  // Reverted to the same placeholder + price_data fallback pattern its three
+  // sibling tip amounts already use safely — not a new invented ID.
   TIP_SMALL:  { productId: "prod_tip", priceId: "price_tip_small",  name: "Tip $1",   price: 100  },
-  TIP_MEDIUM: { productId: "prod_tip", priceId: "price_1TUWKrEL7B8tMf4NVceVcW4i", name: "Tip $5",   price: 500  },
+  TIP_MEDIUM: { productId: "prod_tip", priceId: process.env.STRIPE_PRICE_TIP_MEDIUM ?? "price_tip_medium", name: "Tip $5",   price: 500  },
   TIP_LARGE:  { productId: "prod_tip", priceId: "price_tip_large",  name: "Tip $10",  price: 1000 },
   TIP_XL:     { productId: "prod_tip", priceId: "price_tip_xl",     name: "Tip $25",  price: 2500 },
   TIP_XXL:    { productId: "prod_tip", priceId: "price_tip_xxl",    name: "Tip $50",  price: 5000 },
@@ -271,19 +297,21 @@ export const STRIPE_PRODUCTS = {
   TICKET_VIP:      { productId:"prod_ticket", priceId: process.env.STRIPE_PRICE_TICKET_VIP ?? "price_ticket_vip",           name:"Event Ticket (VIP)",      price:1500, interval:"one_time" as const },
   VENUE_PROMOTION: { productId:"prod_venue_promo", priceId: process.env.STRIPE_PRICE_VENUE_PROMO ?? "price_venue_promotion", name:"Venue Promotion (1 month)", price:4900, interval:"month" as const },
 
-  // ── Meet & Greet / Shoutouts ──────────────────────────────────────────────
+  // ── Meet & Greet / Shoutouts (LEGACY platform catalog — DO NOT use for artist store)
+  // Artist-set prices live in ArtistCommerceProduct + /api/commerce/checkout (price_data).
+  // These entries remain only for older deep-links; never add STRIPE_PRICE_SHOUTOUT as a fix.
   MEET_GREET: {
     productId: "prod_meet_greet",
-    priceId:   process.env.STRIPE_PRICE_MEET_GREET ?? "price_1TUWSaEL7B8tMf4N74LrAyG",
-    name:      "Artist Meet & Greet",
-    price:     2500, // $25
+    priceId:   process.env.STRIPE_PRICE_MEET_GREET ?? "price_legacy_meet_greet_unused",
+    name:      "Artist Meet & Greet (legacy)",
+    price:     2500,
     interval:  "one_time" as const,
   },
   SHOUTOUT: {
     productId: "prod_shoutout",
-    priceId:   process.env.STRIPE_PRICE_SHOUTOUT ?? "price_1TUWvpEL7B8tMf4Ns2TE2uX4",
-    name:      "Personalized Artist Shoutout",
-    price:     1500, // $15
+    priceId:   process.env.STRIPE_PRICE_SHOUTOUT ?? "price_legacy_shoutout_unused",
+    name:      "Personalized Artist Shoutout (legacy)",
+    price:     1500,
     interval:  "one_time" as const,
   },
   QUICK_VIDEO_CHAT: {
@@ -323,6 +351,45 @@ export const STRIPE_PRODUCTS = {
 
   // ── DJ / event submissions ────────────────────────────────────────────────
   DJ_SUBMISSION:       { productId:"prod_dj_sub",   priceId: process.env.STRIPE_PRICE_DJ_SUBMISSION ?? "price_dj_submission",       name:"DJ Track Submission",     price:499,  interval:"one_time" as const },
+
+  /** Lobby wall + WDP submission visibility boost — low price, high volume (Marcel lock). */
+  LOBBY_WALL_BOOST_24H: {
+    productId: "prod_lobby_wall_boost",
+    priceId:   process.env.STRIPE_PRICE_LOBBY_WALL_BOOST ?? "price_lobby_wall_boost_24h",
+    name:      "Lobby Wall Visibility Boost (24h)",
+    price:     199, // $1.99 — paid promotion, honest PROMOTED badge
+    interval:  "one_time" as const,
+  },
+
+  /** Self-serve discovery boosts — TMI-owned promo products (not artist store). */
+  DISCOVERY_BOOST_SPARK: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_SPARK ?? "price_discovery_boost_spark",
+    name:      "TMI Discovery Boost — Spark (24h)",
+    price:     199, // $1.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_PULSE: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_PULSE ?? "price_discovery_boost_pulse",
+    name:      "TMI Discovery Boost — Pulse (48h)",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_WAVE: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_WAVE ?? "price_discovery_boost_wave",
+    name:      "TMI Discovery Boost — Wave (72h)",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  DISCOVERY_BOOST_BLAST: {
+    productId: "prod_discovery_boost",
+    priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_BLAST ?? "price_discovery_boost_blast",
+    name:      "TMI Discovery Boost — Blast (7 days)",
+    price:     1999, // $19.99
+    interval:  "one_time" as const,
+  },
 
   // ── Media Player chassis (Stage 2 store Rare SKUs ~$2.99) ─────────────────
   // Checkout uses product type MEDIA_PLAYER_CHASSIS + price_data fallback when
@@ -408,27 +475,196 @@ export const STRIPE_PRODUCTS = {
     interval: "one_time" as const,
   },
 
-  // ── Season passes (bonus points granted on webhook) ───────────────────────
+  // ── Fan Avatar cosmetics (volume model — low cash, points path stays) ─────
+  // Prefer STRIPE_PRICE_FAN_COSMETIC_* env; checkout falls back to price_data
+  // from catalog usdCents when placeholder price IDs are not live yet.
+  FAN_COSMETIC_BASE: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_BASE ?? "price_fan_cosmetic_base",
+    name: "Fan Cosmetic — Base",
+    price: 99, // $0.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_COMMON: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_COMMON ?? process.env.STRIPE_PRICE_FAN_COSMETIC_BASE ?? "price_fan_cosmetic_common",
+    name: "Fan Cosmetic — Common",
+    price: 99, // $0.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_RARE: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_RARE ?? "price_fan_cosmetic_rare",
+    name: "Fan Cosmetic — Rare",
+    price: 199, // $1.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_EPIC: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_EPIC ?? "price_fan_cosmetic_epic",
+    name: "Fan Cosmetic — Epic",
+    price: 299, // $2.99
+    interval: "one_time" as const,
+  },
+  FAN_COSMETIC_LEGENDARY: {
+    productId: "prod_fan_cosmetic",
+    priceId: process.env.STRIPE_PRICE_FAN_COSMETIC_LEGENDARY ?? "price_fan_cosmetic_legendary",
+    name: "Fan Cosmetic — Legendary",
+    price: 399, // $3.99
+    interval: "one_time" as const,
+  },
+
+  // ── Season passes (TMI-owned; bonus points on webhook) ─────────────────────
+  // Display order MUST always sort by `price` ASC — never lead with VIP.
+  // Checkout amount must equal these cents (price_data fallback when priceId is placeholder).
+  SEASON_PASS_STARTER: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_STARTER ?? "price_season_pass_starter",
+    name: "Starter Season Pass — Season 1",
+    price: 199, // $1.99 — low-cost entry
+    interval: "one_time" as const,
+  },
+  SEASON_PASS_PLUS: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_PLUS ?? "price_season_pass_plus",
+    name: "Plus Season Pass — Season 1",
+    price: 499, // $4.99
+    interval: "one_time" as const,
+  },
   SEASON_PASS_FAN: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_FAN ?? "price_season_pass_fan",
     name: "Fan Season Pass — Season 1",
-    price: 999,
+    price: 999, // $9.99
     interval: "one_time" as const,
   },
   SEASON_PASS_ARTIST: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_ARTIST ?? "price_season_pass_artist",
     name: "Artist Season Pass — Season 1",
-    price: 1999,
+    price: 1999, // $19.99
     interval: "one_time" as const,
   },
   SEASON_PASS_BUNDLE: {
     productId: "prod_season_pass",
     priceId: process.env.STRIPE_PRICE_SEASON_PASS_BUNDLE ?? "price_season_pass_bundle",
     name: "Full Bundle — Season 1",
-    price: 2499,
+    price: 2499, // $24.99
     interval: "one_time" as const,
+  },
+  SEASON_PASS_VIP: {
+    productId: "prod_season_pass",
+    priceId: process.env.STRIPE_PRICE_SEASON_PASS_VIP ?? "price_season_pass_vip",
+    name: "VIP Season Pass — Season 1",
+    price: 4999, // $49.99 — always last in ASC display
+    interval: "one_time" as const,
+  },
+
+  // ── Performer Venue Store (StoreItemEngine.VENUE_ITEMS, `/store/venues`) ──
+  // NOTE (Lane D, 2026-09-01): a second, more sophisticated venue-skin system
+  // already exists at VenueSkinCommerce.ts / VENUE_SKINS (10 real skins,
+  // $4.99–$11.99 rarity pricing, DB ownership, season-pass entitlement,
+  // sold at /store/venue-skins). These 5 entries are NOT that system — they
+  // are the pre-existing, differently-priced /store/venues catalog. Flagged
+  // for a Marcel business decision on whether the two should converge; not
+  // silently merged here. This pass only makes /store/venues non-fake.
+  VENUE_UNDERGROUND_CLUB: {
+    productId: "prod_venue_underground_club",
+    priceId: process.env.STRIPE_PRICE_VENUE_UNDERGROUND_CLUB ?? "price_venue_underground_club",
+    name: "Venue — Underground Club",
+    price: 1999,
+    interval: "one_time" as const,
+  },
+  VENUE_DIGITAL_THEATER: {
+    productId: "prod_venue_digital_theater",
+    priceId: process.env.STRIPE_PRICE_VENUE_DIGITAL_THEATER ?? "price_venue_digital_theater",
+    name: "Venue — Digital Theater",
+    price: 3999,
+    interval: "one_time" as const,
+  },
+  VENUE_TMI_ARENA: {
+    productId: "prod_venue_tmi_arena",
+    priceId: process.env.STRIPE_PRICE_VENUE_TMI_ARENA ?? "price_venue_tmi_arena",
+    name: "Venue — TMI Arena",
+    price: 9999,
+    interval: "one_time" as const,
+  },
+  VENUE_OUTDOOR_STAGE: {
+    productId: "prod_venue_outdoor_stage",
+    priceId: process.env.STRIPE_PRICE_VENUE_OUTDOOR_STAGE ?? "price_venue_outdoor_stage",
+    name: "Venue — Outdoor Stage",
+    price: 2999,
+    interval: "one_time" as const,
+  },
+  VENUE_CIPHER_PIT: {
+    productId: "prod_venue_cipher_pit",
+    priceId: process.env.STRIPE_PRICE_VENUE_CIPHER_PIT ?? "price_venue_cipher_pit",
+    name: "Venue — Cipher Pit",
+    price: 1499,
+    interval: "one_time" as const,
+  },
+
+  // ── Fan Lobby Skins (StoreItemEngine.LOBBY_ITEMS, `/store/lobbies`) ───────
+  // Prices must stay equal to FanLobbySkinRegistry.ts's FAN_LOBBY_SKIN_CANON
+  // priceCents — that file is the visual/product vocabulary, this is the
+  // commerce layer (see its own header comment: "do not invent a second store").
+  FAN_LOBBY_SKIN_NEON: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_NEON ?? "price_fan_lobby_skin_neon",
+    name: "Lobby Skin — Neon Lounge",
+    price: 499,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CINEMA: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CINEMA ?? "price_fan_lobby_skin_cinema",
+    name: "Lobby Skin — Movie Theater",
+    price: 799,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_FUTURISTIC: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_FUTURISTIC ?? "price_fan_lobby_skin_futuristic",
+    name: "Lobby Skin — Futuristic Space",
+    price: 999,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CYPHER: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CYPHER ?? "price_fan_lobby_skin_cypher",
+    name: "Lobby Skin — Underground Cipher",
+    price: 499,
+    interval: "one_time" as const,
+  },
+  FAN_LOBBY_SKIN_CHILL: {
+    productId: "prod_fan_lobby_skin",
+    priceId: process.env.STRIPE_PRICE_LOBBY_SKIN_CHILL ?? "price_fan_lobby_skin_chill",
+    name: "Lobby Skin — Chill Lounge",
+    price: 299,
+    interval: "one_time" as const,
+  },
+
+  // ── Fan Club tiers (per-performer recurring support — REVENUE_SPLITS.FAN_CLUB) ──
+  FAN_CLUB_RUBY_MONTHLY: {
+    productId: "prod_fan_club_ruby",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_RUBY ?? "price_fan_club_ruby_monthly",
+    name: "Fan Club — Ruby",
+    price: 299,
+    interval: "month" as const,
+  },
+  FAN_CLUB_SILVER_MONTHLY: {
+    productId: "prod_fan_club_silver",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_SILVER ?? "price_fan_club_silver_monthly",
+    name: "Fan Club — Silver",
+    price: 499,
+    interval: "month" as const,
+  },
+  FAN_CLUB_GOLD_MONTHLY: {
+    productId: "prod_fan_club_gold",
+    priceId: process.env.STRIPE_PRICE_FAN_CLUB_GOLD ?? "price_fan_club_gold_monthly",
+    name: "Fan Club — Gold",
+    price: 999,
+    interval: "month" as const,
   },
 } as const;
 
@@ -450,6 +686,7 @@ export const REVENUE_SPLITS = {
   SPONSOR:          { platform: 1.00 },
   ADVERTISER:       { platform: 1.00 },
   ARTIST_SPOTLIGHT: { platform: 1.00 },
+  DISCOVERY_BOOST:  { platform: 1.00 },
   FAN_CLUB:         { platform: 0.20, artist: 0.80 },
   MEET_GREET:       { platform: 0.20, artist: 0.80 },
   SHOUTOUT:         { platform: 0.20, artist: 0.80 },
@@ -458,6 +695,62 @@ export const REVENUE_SPLITS = {
 } as const;
 
 export type StripeProductKey = keyof typeof STRIPE_PRODUCTS;
+
+// ── Canonical subscription tier ladder (Lane A A5, 2026-09-01) ─────────────────
+// Single source of truth for FAN/PERFORMER tier pricing — every checkout
+// trigger (pricing pages, upgrade modals, nudges) must read from here rather
+// than hardcoding its own price/priceId table. This is what tierMapping.ts's
+// webhook-facing PRICE_TO_TIER is generated from below, so the price a user
+// sees, the price Stripe charges, and the tier the webhook grants can never
+// drift apart again. FREE has no Stripe product (no checkout needed).
+export type SubscriptionAccountType = "fan" | "performer";
+export type SubscriptionTierKey = "PRO" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
+
+export const SUBSCRIPTION_TIER_ORDER: SubscriptionTierKey[] = [
+  "PRO", "RUBY", "SILVER", "GOLD", "PLATINUM", "DIAMOND",
+];
+
+export const SUBSCRIPTION_TIER_PRODUCT_KEYS: Record<SubscriptionAccountType, Record<SubscriptionTierKey, StripeProductKey>> = {
+  fan: {
+    PRO: "FAN_PRO_MONTHLY",
+    RUBY: "FAN_RUBY_MONTHLY",
+    SILVER: "FAN_SILVER_MONTHLY",
+    GOLD: "FAN_GOLD_MONTHLY",
+    PLATINUM: "FAN_PLATINUM_MONTHLY",
+    DIAMOND: "FAN_DIAMOND_MONTHLY",
+  },
+  performer: {
+    PRO: "PERFORMER_PRO_MONTHLY",
+    RUBY: "PERFORMER_RUBY_MONTHLY",
+    SILVER: "PERFORMER_SILVER_MONTHLY",
+    GOLD: "PERFORMER_GOLD_MONTHLY",
+    PLATINUM: "PERFORMER_PLATINUM_MONTHLY",
+    DIAMOND: "PERFORMER_DIAMOND_MONTHLY",
+  },
+};
+
+// All 12 tier-ladder STRIPE_PRODUCTS entries (FAN/PERFORMER × PRO..DIAMOND)
+// share this shape — asserted here since TS can't otherwise narrow a lookup
+// keyed by the widened StripeProductKey union.
+export interface SubscriptionTierProduct {
+  key: StripeProductKey;
+  productId: string;
+  priceId: string;
+  name: string;
+  price: number;
+  interval: "month";
+  features: readonly string[];
+}
+
+export function getSubscriptionProduct(accountType: SubscriptionAccountType, tier: SubscriptionTierKey): SubscriptionTierProduct {
+  const key = SUBSCRIPTION_TIER_PRODUCT_KEYS[accountType][tier];
+  return { key, ...STRIPE_PRODUCTS[key] } as SubscriptionTierProduct;
+}
+
+/** Full tier ladder for one account type, in canonical FREE→...→DIAMOND order (FREE excluded — no product). */
+export function getAllSubscriptionProducts(accountType: SubscriptionAccountType) {
+  return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
+}
 
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
 export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey> = {
@@ -468,6 +761,41 @@ export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey>
   submarine: "MEDIA_PLAYER_CHASSIS_SUBMARINE",
   rocket: "MEDIA_PLAYER_CHASSIS_ROCKET",
 };
+
+/** Fan cosmetic rarity → Stripe product key (volume SKUs). */
+export const FAN_COSMETIC_PRODUCT_KEYS = {
+  free: null,
+  common: "FAN_COSMETIC_COMMON",
+  rare: "FAN_COSMETIC_RARE",
+  epic: "FAN_COSMETIC_EPIC",
+  legendary: "FAN_COSMETIC_LEGENDARY",
+} as const satisfies Record<string, StripeProductKey | null>;
+
+/** Marcel volume defaults (cents) when catalog usdCents omitted. */
+export const FAN_COSMETIC_VOLUME_USD_CENTS: Record<string, number> = {
+  common: 99,
+  rare: 199,
+  epic: 299,
+  legendary: 399,
+};
+
+export function resolveFanCosmeticStripeKey(
+  rarity: string,
+): StripeProductKey | null {
+  if (rarity === "free") return null;
+  const key = FAN_COSMETIC_PRODUCT_KEYS[rarity as keyof typeof FAN_COSMETIC_PRODUCT_KEYS];
+  if (key == null) return "FAN_COSMETIC_BASE";
+  return key;
+}
+
+export function resolveFanCosmeticUsdCents(
+  rarity: string,
+  explicitUsdCents?: number | null,
+): number | null {
+  if (explicitUsdCents != null && explicitUsdCents > 0) return explicitUsdCents;
+  if (rarity === "free") return null;
+  return FAN_COSMETIC_VOLUME_USD_CENTS[rarity] ?? FAN_COSMETIC_VOLUME_USD_CENTS.common ?? 99;
+}
 
 // ── Price ID helpers ──────────────────────────────────────────────────────────
 // Real Stripe price IDs match the format price_1<alphanum>

@@ -1,6 +1,6 @@
 /**
  * DockRegistry — data-driven bottom dock navigation (Phase 2 Dashboard Runtime).
- * MasterControlDock renders from here; no duplicate Fan/Performer JSX trees.
+ * PersistentMediaInteractionDock / role shells own HQ chrome — no legacy MasterControlDock board.
  */
 
 import type { EosRole } from "@/core/eos/types";
@@ -23,12 +23,13 @@ export type DockActionId =
   | "leave"
   | "mic"
   | "cam"
-  | "hand"
-  | "emotes"
   | "camera"
   | "broadcast"
   | "memory"
-  | "record";
+  | "record"
+  | "snips"
+  | "video-shuffle"
+  | "stream-win";
 
 export type DockCenterButton = "camera" | "broadcast";
 
@@ -77,19 +78,21 @@ export const DOCK_ACTION_CATALOG: Record<DockActionId, DockActionDefinition> = {
   leave: { id: "leave", label: "LEAVE", icon: "🚪" },
   mic: { id: "mic", label: "MIC OFF", icon: "🎙️", activeLabel: "MIC ON" },
   cam: { id: "cam", label: "CAM OFF", icon: "📹", activeLabel: "CAM ON" },
-  hand: { id: "hand", label: "HAND", icon: "✋" },
-  emotes: { id: "emotes", label: "EMOTES", icon: "😃" },
   camera: { id: "camera", label: "CAMERA", icon: "📷" },
   broadcast: { id: "broadcast", label: "GO LIVE", icon: "🔴" },
   memory: { id: "memory", label: "SCREEN", icon: "📷" },
   record: { id: "record", label: "REC", icon: "⏺" },
+  snips: { id: "snips", label: "SNIPS", icon: "📱" },
+  "video-shuffle": { id: "video-shuffle", label: "VIDEO SHUFFLE", icon: "🔀" },
+  "stream-win": { id: "stream-win", label: "STREAM & WIN", icon: "📻" },
 };
 
+/** Nav rail retired — messages/notifications live in AccountCommandMenu + TopNav. */
 export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   fan: {
     role: "fan",
-    navItemIds: ["home", "explore", "search", "live_now", "messages", "notifications"],
-    actionIds: ["leave", "mic", "cam", "hand", "emotes", "camera"],
+    navItemIds: [],
+    actionIds: ["leave", "mic", "cam", "snips", "video-shuffle", "stream-win", "camera"],
     centerButton: "camera",
     accentColor: "#00FF88",
     playlistPlaylistId: "stream-and-win",
@@ -97,8 +100,8 @@ export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   },
   performer: {
     role: "performer",
-    navItemIds: ["home", "explore", "search", "live_now", "messages", "notifications"],
-    actionIds: ["leave", "mic", "cam", "hand", "camera", "broadcast"],
+    navItemIds: [],
+    actionIds: ["leave", "mic", "cam", "snips", "video-shuffle", "stream-win", "broadcast"],
     centerButton: "broadcast",
     accentColor: "#AA2DFF",
     playlistPlaylistId: "discovery",
@@ -106,7 +109,7 @@ export const DOCK_ROLE_REGISTRY: Record<EosRole, DockRoleConfig> = {
   },
   admin: {
     role: "admin",
-    navItemIds: ["home", "explore", "observatory", "analytics", "runtime", "settings"],
+    navItemIds: ["observatory", "analytics", "runtime", "settings"],
     actionIds: ["leave", "mic", "cam", "camera"],
     centerButton: "broadcast",
     accentColor: "#FFD700",

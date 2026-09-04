@@ -20,7 +20,7 @@
  *  - Youth mode (16+ accounts see age-appropriate items only)
  *
  * Drop at: apps/web/src/components/avatar/TMIAvatarSystem.tsx
- * Route:   apps/web/src/app/avatar-center/page.tsx
+ * Route:   apps/web/src/app/avatar/studio/page.tsx
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";

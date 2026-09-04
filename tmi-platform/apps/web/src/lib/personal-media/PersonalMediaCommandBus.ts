@@ -28,7 +28,7 @@ export const PERSONAL_MEDIA_COMMANDS = [
 export type PersonalMediaCommand = (typeof PERSONAL_MEDIA_COMMANDS)[number];
 
 export type PersonalMediaCommandPayloadMap = {
-  "MEDIA.ASSIGN_TO_MONITOR": { participantId: string; target: MonitorTarget };
+  "MEDIA.ASSIGN_TO_MONITOR": { participantId: string; target: MonitorTarget; privateSocial?: boolean };
   "MEDIA.REMOVE_FROM_MONITOR": { target: MonitorTarget };
   "MEDIA.SWAP_MONITOR_ASSIGNMENTS": { a: MonitorTarget; b: MonitorTarget };
   "MEDIA.PIN_AUDIO": { participantId: string };
@@ -64,7 +64,10 @@ export class PersonalMediaCommandBus {
       case "MEDIA.ASSIGN_TO_MONITOR": {
         const p = payload as PersonalMediaCommandPayloadMap["MEDIA.ASSIGN_TO_MONITOR"] | undefined;
         if (!p?.participantId || !p.target) return false;
-        return this.router.assignToMonitor(p.participantId, p.target).ok;
+        const result = this.router.assignToMonitor(p.participantId, p.target, {
+          privateSocial: p.privateSocial === true,
+        });
+        return result.ok;
       }
       case "MEDIA.REMOVE_FROM_MONITOR": {
         const p = payload as PersonalMediaCommandPayloadMap["MEDIA.REMOVE_FROM_MONITOR"] | undefined;

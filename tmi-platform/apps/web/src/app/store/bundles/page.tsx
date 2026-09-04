@@ -1,5 +1,7 @@
-import StoreCategoryClient from "@/components/store/StoreCategoryClient";
+import { redirect } from "next/navigation";
 
+// "bundles" was never a real StoreItemEngine category (fake demo data only)
+// — redirect to the real store hub rather than show an empty dead end.
 export default function StoreBundlesPage() {
-  return <StoreCategoryClient category="bundles" title="Store Bundles" />;
+  redirect("/store");
 }

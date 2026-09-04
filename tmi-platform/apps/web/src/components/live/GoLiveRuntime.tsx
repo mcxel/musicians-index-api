@@ -25,15 +25,13 @@ import CanisterShell from '@/components/canisters/CanisterShell';
 import EventOwnerControls from '@/components/live/EventOwnerControls';
 import { AudiencePresenceProvider, useAudiencePresence } from '@/components/live/AudiencePresenceProvider';
 import StageBannerOverlay from '@/components/live/StageBannerOverlay';
-import AudienceReactionBar from '@/components/live/AudienceReactionBar';
 import EnergyMeterDisplay from '@/components/live/EnergyMeterDisplay';
 import FriendSeatFlow from '@/components/live/FriendSeatFlow';
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
+import VenueToolsToggleButton from '@/components/hud/VenueToolsToggleButton';
 import {
-  setLightingPreset as directorSetLighting,
   showBannerText as directorShowBanner,
   clearBannerText as directorClearBanner,
-  STAGE_LIGHTING_PRESETS,
 } from '@/lib/live/StageDirectorEngine';
 import RoomEnvironmentLayer from '@/components/live/RoomEnvironmentLayer';
 import { slugToVenueType, getVenueAsset, type VenueType } from '@/lib/venues/VenueAssetRegistry';
@@ -50,98 +48,7 @@ function AvatarActionWheelWrapper({ roomId }: { roomId: string }) {
 
 type ViewMode = 'FULL_VENUE' | 'DASHBOARD' | 'BACKSTAGE';
 
-// ─── Control canister content ─────────────────────────────────────────────────
-
-function LightingContent({ accentColor }: { accentColor: string }) {
-  const [active, setActive] = useState('purple-wash');
-
-  const handleSelect = (id: string) => {
-    setActive(id);
-    directorSetLighting(id); // wires to StageDirectorEngine CSS bridge
-  };
-
-  const PRESETS = Object.values(STAGE_LIGHTING_PRESETS).map(p => ({
-    id: p.id,
-    label: p.label,
-    color: p.primaryColor,
-  }));
-
-  return (
-    <div style={{ padding: 14 }}>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 10 }}>LIGHTING PRESET</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {PRESETS.map(p => (
-          <button
-            key={p.id}
-            onClick={() => handleSelect(p.id)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px',
-              background: active === p.id ? `${p.color}18` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${active === p.id ? p.color : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: 8, cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: p.color, flexShrink: 0, boxShadow: active === p.id ? `0 0 8px ${p.color}` : 'none' }} />
-            <span style={{ fontSize: 11, fontWeight: active === p.id ? 900 : 600, color: active === p.id ? p.color : 'rgba(255,255,255,0.6)' }}>{p.label}</span>
-            {active === p.id && <span style={{ marginLeft: 'auto', fontSize: 8, color: p.color, fontWeight: 900 }}>ACTIVE</span>}
-          </button>
-        ))}
-      </div>
-      <div style={{ marginTop: 12, fontSize: 8, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
-        Lighting changes apply CSS variables to the venue in real time.
-      </div>
-    </div>
-  );
-}
-
-function DirectorContent({ accentColor }: { accentColor: string }) {
-  const [layout, setLayout] = useState('THREE_EQUAL');
-  const [speed, setSpeed] = useState(90);
-  const LAYOUTS = [
-    { id: 'THREE_EQUAL', label: 'Three Equal', icon: '⊟' },
-    { id: 'VS_MODE', label: 'VS Mode', icon: '⚔️' },
-    { id: 'A_FEATURED', label: 'Feature A', icon: '◧' },
-    { id: 'B_FEATURED', label: 'Feature B', icon: '◨' },
-    { id: 'HOST_FEATURED', label: 'Host Center', icon: '◻' },
-    { id: 'HOST_LEFT', label: 'Host Left', icon: '▷◻' },
-  ];
-  return (
-    <div style={{ padding: 14 }}>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 10 }}>SPLIT LAYOUT</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 14 }}>
-        {LAYOUTS.map(l => (
-          <button
-            key={l.id}
-            onClick={() => setLayout(l.id)}
-            style={{
-              padding: '8px 6px',
-              background: layout === l.id ? `${accentColor}18` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${layout === l.id ? accentColor : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: 8, cursor: 'pointer',
-              fontSize: 10, color: layout === l.id ? accentColor : 'rgba(255,255,255,0.5)',
-              fontWeight: layout === l.id ? 900 : 600,
-            }}
-          >
-            {l.icon} {l.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 6 }}>ROTATION SPEED</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Fast</span>
-        <input
-          type="range" min={20} max={180} value={speed}
-          onChange={e => setSpeed(Number(e.target.value))}
-          style={{ flex: 1, accentColor }}
-        />
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Slow</span>
-        <span style={{ fontSize: 10, fontWeight: 900, color: accentColor, minWidth: 36 }}>{speed}s</span>
-      </div>
-    </div>
-  );
-}
+// ─── Control canister content (banner + owner — lighting/director → VENUE TOOLS) ─
 
 function BannerContent() {
   const [bannerText, setBannerText] = useState('');
@@ -226,16 +133,8 @@ function BannerContent() {
 
 type DockItem = { id: string; icon: string; label: string; content: ReactNode };
 
-function CanisterDock({ accentColor, eventId, onOwnerAction }: { accentColor: string; eventId: string; onOwnerAction?: () => void }) {
+function CanisterDock({ accentColor, eventId, roomId }: { accentColor: string; eventId: string; roomId: string }) {
   const DOCK_ITEMS: DockItem[] = [
-    {
-      id: 'lighting', icon: '💡', label: 'Lighting',
-      content: <LightingContent accentColor={accentColor} />,
-    },
-    {
-      id: 'director', icon: '🎬', label: 'Director',
-      content: <DirectorContent accentColor={accentColor} />,
-    },
     {
       id: 'banner', icon: '📢', label: 'Banner',
       content: <BannerContent />,
@@ -257,6 +156,7 @@ function CanisterDock({ accentColor, eventId, onOwnerAction }: { accentColor: st
       <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '.15em', marginRight: 4 }}>
         CONTROL BOOTH
       </span>
+      <VenueToolsToggleButton accent={accentColor} roomId={roomId} role="performer" policyContext={{ isGoLiveContext: true }} />
       {DOCK_ITEMS.map(item => (
         <CanisterShell
           key={item.id}
@@ -349,14 +249,16 @@ function DashboardOverlay({ onReturn, accentColor }: { onReturn: () => void; acc
 interface GoLiveRuntimeProps {
   roomId: string;
   eventId?: string;
-  /** Venue type — drives environment layer, colors, and seating geometry */
   venueType?: VenueType;
-  /** Legacy: eventType maps to venueType if venueType is not provided */
   eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'dance-party' | 'world-concert' | 'mini-concert' | 'release-party' | 'world-release' | 'mini-release';
   accentColor?: string;
   initialMode?: ViewMode;
-  /** Instant Go Live — empty seats first paint, real presence only */
   instantEmptyStage?: boolean;
+  contained?: boolean;
+  /** When false, suppress hardcoded LIVE chrome (hub privacy path). */
+  showLiveChrome?: boolean;
+  /** Optional EventVenueEnvironment-resolved index override. */
+  venueIndex?: 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 export default function GoLiveRuntime({
@@ -367,6 +269,9 @@ export default function GoLiveRuntime({
   accentColor: accentColorProp,
   initialMode = 'FULL_VENUE',
   instantEmptyStage = false,
+  contained = false,
+  showLiveChrome = true,
+  venueIndex: venueIndexProp,
 }: GoLiveRuntimeProps) {
   // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
   const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
@@ -378,14 +283,14 @@ export default function GoLiveRuntime({
   const enterDash    = useCallback(() => setViewMode('DASHBOARD'), []);
 
   const isVenueShrunk = viewMode !== 'FULL_VENUE';
-
+  const resolvedVenueIndex = venueIndexProp ?? 1;
   return (
     <AudiencePresenceProvider>
     <RoomEnvironmentLayer
       venueType={venueType}
       mode="performer"
       energyLevel={0.8}
-      style={{ height: '100vh' }}
+      style={{ height: contained ? "100%" : "100vh" }}
     >
     <div style={{
       position: 'relative',
@@ -404,6 +309,7 @@ export default function GoLiveRuntime({
         borderBottom: `1px solid ${accentColor}22`,
         zIndex: 200, flexShrink: 0,
       }}>
+        {showLiveChrome ? (
         <span style={{
           display: 'flex', alignItems: 'center', gap: 5,
           fontSize: 8, fontWeight: 900, color: '#FF2020', letterSpacing: '.12em',
@@ -411,6 +317,13 @@ export default function GoLiveRuntime({
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', animation: 'grtBlink 1s step-end infinite' }} />
           LIVE
         </span>
+        ) : (
+        <span style={{
+          fontSize: 8, fontWeight: 900, color: '#00FFFF', letterSpacing: '.12em',
+        }}>
+          STAGE READY
+        </span>
+        )}
         <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)' }}>
           Room {roomId}
         </span>
@@ -462,7 +375,7 @@ export default function GoLiveRuntime({
         <UniversalVenueRenderer
           roomId={roomId}
           mode="performer"
-          venueIndex={1}
+          venueIndex={resolvedVenueIndex}
           instantEmptyStage={instantEmptyStage}
         />
         {/* Stage banner overlay — renders StageDirectorEngine announcements */}
@@ -486,22 +399,15 @@ export default function GoLiveRuntime({
         )}
       </AnimatePresence>
 
-      {/* ── Audience Reaction Bar — below venue, above control booth ── */}
-      <div style={{
-        padding: '8px 16px',
-        background: 'rgba(5,3,16,0.92)',
-        borderTop: `1px solid ${accentColor}22`,
-        borderBottom: `1px solid ${accentColor}22`,
-        zIndex: 50,
-      }}>
-        <AudienceReactionBar roomId={roomId} />
-      </div>
+      {/* Audience Reaction Bar moved into VENUE TOOLS → Audience tab overlay
+          (VenueControlPanel) — was previously a permanently-visible strip
+          on the main runtime; reactions now live in the venue overlay HUD. */}
 
       {/* ─── Avatar Action Wheel — floating control panel (bottom-right) ─── */}
       <AvatarActionWheelWrapper roomId={roomId} />
 
       {/* ── Canister Dock — ALWAYS visible at bottom ── */}
-      <CanisterDock accentColor={accentColor} eventId={eventId} />
+      <CanisterDock accentColor={accentColor} eventId={eventId} roomId={roomId} />
 
       <style>{`
         @keyframes grtBlink { 0%,100%{opacity:1} 50%{opacity:0} }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { shouldNoIndexRoute } from './src/lib/seo/SeoIndexingRules';
 
 const ADMIN_PATHS = ['/admin', '/api/admin', '/contest/admin'];
 
@@ -27,6 +28,9 @@ const PROTECTED_PATHS = [
   '/api/visuals',
   '/api/promos',
   '/api/stripe',
+  // Venue Preview & Certification Runtime — performer/admin only (Rule 26).
+  '/venue/preview',
+  '/live/venue-preview',
 ];
 
 const AUTH_WHITELIST = [
@@ -77,6 +81,10 @@ const VISIBILITY_WHITELIST = [
   '/favicon.ico',
   '/api/stripe/webhook',
   '/api/stripe/webhook-health',
+  '/cert',
+  '/jumbotron',
+  '/battles',
+  '/cypher',
 ];
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
@@ -89,21 +97,27 @@ function normalizeRef(input: string | null): string | null {
   return value || null;
 }
 
-// Extract all user roles from tmi_roles cookie (multi-role support)
+// Extract all user roles — always merges tmi_role (primary) + tmi_roles (multi-role).
+// tmi_roles must never shadow the authoritative single-role cookie.
 function getUserRoles(req: NextRequest): string[] {
+  const roles = new Set<string>();
+
+  const singleRole = req.cookies.get('tmi_role')?.value;
+  if (singleRole) roles.add(singleRole.toUpperCase());
+
   try {
     const rolesJson = req.cookies.get('tmi_roles')?.value;
     if (rolesJson) {
       const parsed = JSON.parse(rolesJson);
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) {
+        parsed.forEach((r) => roles.add(String(r).toUpperCase()));
+      }
     }
   } catch {
-    // Ignore malformed roles cookie and fall back to single-role cookie.
+    // Ignore malformed tmi_roles — tmi_role fallback already added above.
   }
 
-  // Fallback: single role cookie
-  const singleRole = req.cookies.get('tmi_role')?.value;
-  return singleRole ? [singleRole] : [];
+  return [...roles];
 }
 
 // Check if user has any of the required roles
@@ -158,10 +172,24 @@ function isQuarantined(pathname: string): boolean {
   return QUARANTINED_PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
+function applyCrawlHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (shouldNoIndexRoute(pathname)) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  return response;
+}
+
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const proofMode = req.nextUrl.searchParams.get('proof') === '1';
   const isLocalHost = req.nextUrl.hostname === 'localhost' || req.nextUrl.hostname === '127.0.0.1';
+
+  // Never intercept Next internals — matcher already excludes `_next/static` /
+  // `_next/image`, but keep an explicit short-circuit so auth/quarantine never
+  // rewrites chunks/CSS into HTML (hydration killer on hubs).
+  if (pathname.startsWith('/_next') || pathname === '/favicon.ico') {
+    return NextResponse.next();
+  }
 
   // Local visual-cert bypass for performer command center proof runs.
   // Never active outside localhost.
@@ -428,7 +456,7 @@ export function middleware(req: NextRequest) {
   // ───────────────────────────────────────────────────────────────────────────
 
   if (matchesAny(pathname, AUTH_WHITELIST)) {
-    return withReferralCookies(NextResponse.next());
+    return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
   }
 
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
@@ -443,8 +471,33 @@ export function middleware(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       const signin = new URL('/auth', req.url);
-      signin.searchParams.set('next', pathname);
+      // Preserve query (skin/cert/occ/roomId) so PREVIEW VENUE return does not flicker.
+      signin.searchParams.set('next', pathname + (search || ''));
       return NextResponse.redirect(signin, 307);
+    }
+
+    // Venue Preview — performer / venue / admin only (Rule 26). Fans never land here.
+    const isVenuePreviewPath =
+      pathname === '/venue/preview' ||
+      pathname.startsWith('/venue/preview/') ||
+      pathname === '/live/venue-preview' ||
+      pathname.startsWith('/live/venue-preview/');
+    if (isVenuePreviewPath) {
+      const allowed = hasAnyRole(userRoles, [
+        'PERFORMER',
+        'ARTIST',
+        'BAND',
+        'VENUE',
+        'ADMIN',
+        'STAFF',
+      ]);
+      if (!allowed) {
+        const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/hub/fan';
+        if (redirectPath === pathname) {
+          return NextResponse.next();
+        }
+        return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+      }
     }
 
     // Onboarding Enforcer Gate — Disabled to prevent locking users into the onboarding flow.
@@ -466,11 +519,14 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return withReferralCookies(NextResponse.next());
+  return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|google27b9fc359205edb8\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Static 3D/binary assets must bypass middleware — bobblehead_v0.glb (~2MB) was
+    // starved under hub telemetry load when routed through auth/visibility checks,
+    // so Fan Avatar Canister never received a GLB response (Playwright glb:[] / 60s timeout).
+    '/((?!_next/static|_next/image|favicon\\.ico|google27b9fc359205edb8\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|bin|hdr|ktx2|wasm)$).*)',
   ],
 };

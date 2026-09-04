@@ -101,10 +101,5 @@ export function runLoungeContextRingIntegrationTest(): {
   return { allPassed, results };
 }
 
-declare const require: { main: unknown };
-declare const module: { exports: unknown };
 
-if (typeof require !== "undefined" && require.main === module) {
-  const outcome = runLoungeContextRingIntegrationTest();
-  if (!outcome.allPassed) process.exitCode = 1;
-}
+

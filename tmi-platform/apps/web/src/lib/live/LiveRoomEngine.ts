@@ -9,6 +9,12 @@ import {
   getLivePresenceSnapshot,
   type LivePresenceSnapshot,
 } from "./LivePresenceEngine";
+import {
+  assertDatingExperienceMayLaunch,
+  DATING_EXPERIENCE_MANIFEST,
+  isDatingExperience,
+  type DatingExperienceClass,
+} from "@/lib/trustSafety/DatingExperiencePolicy";
 
 export type LiveRoomType =
   | "event"
@@ -52,6 +58,9 @@ export type LiveRoom = {
   updatedAtMs: number;
   genre?: string;
   tags: string[];
+  experienceClass?: DatingExperienceClass;
+  minimumAge?: number;
+  ageVerificationRequired?: boolean;
 };
 
 export type LiveRoomSummary = {
@@ -120,7 +129,20 @@ export function createLiveRoom(input: {
   tags?: string[];
   scheduledStartMs?: number;
   configOverrides?: Partial<LiveRoomConfig>;
+  experienceClass?: DatingExperienceClass;
+  minimumAge?: number;
+  ageVerificationRequired?: boolean;
 }): LiveRoom {
+  const datingRef = {
+    roomType: input.roomType,
+    title: input.title,
+    tags: input.tags,
+    experienceClass: input.experienceClass,
+    minimumAge: input.minimumAge,
+    ageVerificationRequired: input.ageVerificationRequired,
+  };
+  assertDatingExperienceMayLaunch(datingRef);
+  const dating = isDatingExperience(datingRef);
   const room: LiveRoom = {
     roomId: `live-room-${++roomCounter}`,
     roomType: input.roomType,
@@ -140,6 +162,9 @@ export function createLiveRoom(input: {
     updatedAtMs: Date.now(),
     genre: input.genre,
     tags: input.tags ?? [],
+    experienceClass: dating ? DATING_EXPERIENCE_MANIFEST.experienceClass : input.experienceClass,
+    minimumAge: dating ? DATING_EXPERIENCE_MANIFEST.minimumAge : input.minimumAge,
+    ageVerificationRequired: dating ? DATING_EXPERIENCE_MANIFEST.ageVerificationRequired : input.ageVerificationRequired,
   };
   liveRooms.set(room.roomId, room);
   return room;
@@ -161,7 +186,20 @@ export function ensureLiveRoom(input: {
   configOverrides?: Partial<LiveRoomConfig>;
   /** When true, room stays open/live for 24/7 anchors. */
   forceLive?: boolean;
+  experienceClass?: DatingExperienceClass;
+  minimumAge?: number;
+  ageVerificationRequired?: boolean;
 }): LiveRoom {
+  const datingRef = {
+    roomId: input.roomId,
+    roomType: input.roomType,
+    title: input.title,
+    tags: input.tags,
+    experienceClass: input.experienceClass,
+    minimumAge: input.minimumAge,
+    ageVerificationRequired: input.ageVerificationRequired,
+  };
+  assertDatingExperienceMayLaunch(datingRef);
   const existing = liveRooms.get(input.roomId);
   if (existing) {
     existing.title = input.title;
@@ -199,6 +237,15 @@ export function ensureLiveRoom(input: {
     updatedAtMs: Date.now(),
     genre: input.genre,
     tags: input.tags ?? [],
+    experienceClass: isDatingExperience(datingRef)
+      ? DATING_EXPERIENCE_MANIFEST.experienceClass
+      : input.experienceClass,
+    minimumAge: isDatingExperience(datingRef)
+      ? DATING_EXPERIENCE_MANIFEST.minimumAge
+      : input.minimumAge,
+    ageVerificationRequired: isDatingExperience(datingRef)
+      ? DATING_EXPERIENCE_MANIFEST.ageVerificationRequired
+      : input.ageVerificationRequired,
   };
   liveRooms.set(room.roomId, room);
   return room;

@@ -7,8 +7,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { PENDING_GO_LIVE_KEY } from "@/lib/dock/presentInstantGoLiveInPlace";
 import {
   loadPersistedLivePrivacy,
   loadPersistedPreferredExperience,
@@ -26,7 +27,6 @@ const WORLD_EXPERIENCES = [
 ] as const;
 
 export default function InstantGoLiveLauncher() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const started = useRef(false);
   const [phase, setPhase] = useState<GoLiveInitPhase>("preparing_venue");
@@ -58,9 +58,21 @@ export default function InstantGoLiveLauncher() {
       return;
     }
 
-    setPhase("initializing_broadcast");
-    router.replace(result.href);
-  }, [experience, privacy, router]);
+    try {
+      sessionStorage.setItem(
+        PENDING_GO_LIVE_KEY,
+        JSON.stringify({
+          role: "PERFORMER",
+          preferredExperience: experience,
+          roomId: result.roomId,
+          publishSession: true,
+        }),
+      );
+    } catch {
+      /* hub query fallback */
+    }
+    window.location.replace("/hub/performer?golive=1");
+  }, [experience, privacy]);
 
   useEffect(() => {
     if (started.current) return;

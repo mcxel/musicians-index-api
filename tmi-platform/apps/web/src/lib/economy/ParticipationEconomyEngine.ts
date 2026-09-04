@@ -2,6 +2,7 @@ export type EconomyRole = 'fan' | 'performer';
 
 export type FanEarnAction =
   | 'listen_song'
+  | 'listen_in_playlist_lounge'
   | 'vote_battle'
   | 'rate_performance'
   | 'join_live_room'
@@ -15,6 +16,7 @@ export type FanEarnAction =
 
 export type PerformerEarnAction =
   | 'perform_live'
+  | 'listen_in_playlist_lounge'
   | 'win_battle'
   | 'complete_performer_challenge'
   | 'audience_engagement'
@@ -48,6 +50,9 @@ export type SpendAction =
   | 'featured_campaign'
   | 'magazine_submission_credit'
   | 'digital_asset_pack'
+  | 'wdp_track_play'
+  | 'wdp_vote_down'
+  | 'sj_track_play'
   | 'ranking_boost';
 
 export interface EconomyWallet {
@@ -75,6 +80,7 @@ const ledger = new Map<string, EconomyLedgerEntry[]>();
 
 const FAN_EARN_TABLE: Record<FanEarnAction, { xp: number; coins: number }> = {
   listen_song: { xp: 8, coins: 2 },
+  listen_in_playlist_lounge: { xp: 15, coins: 4 },
   vote_battle: { xp: 15, coins: 4 },
   rate_performance: { xp: 12, coins: 3 },
   join_live_room: { xp: 10, coins: 3 },
@@ -88,6 +94,7 @@ const FAN_EARN_TABLE: Record<FanEarnAction, { xp: number; coins: number }> = {
 };
 
 const PERFORMER_EARN_TABLE: Record<PerformerEarnAction, { xp: number; coins: number }> = {
+  listen_in_playlist_lounge: { xp: 5, coins: 1 },
   perform_live: { xp: 50, coins: 10 },
   win_battle: { xp: 80, coins: 20 },
   complete_performer_challenge: { xp: 60, coins: 14 },
@@ -121,6 +128,9 @@ const SPEND_TABLE: Record<Exclude<SpendAction, 'ranking_boost'>, number> = {
   featured_campaign: 350,
   magazine_submission_credit: 240,
   digital_asset_pack: 175,
+  wdp_track_play: 50,
+  wdp_vote_down: 5,
+  sj_track_play: 50,
 };
 
 function nowIso(): string {

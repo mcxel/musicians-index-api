@@ -154,10 +154,11 @@ export default function MarketplaceDrawerPanel({
 
       <StoreCanister
         entityId={performerId}
+        artistSlug={activePerformer?.slug}
         entityName={name}
         storeType="performer"
         accentColor={accentColor}
-        maxItems={6}
+        maxItems={8}
       />
 
       <Link

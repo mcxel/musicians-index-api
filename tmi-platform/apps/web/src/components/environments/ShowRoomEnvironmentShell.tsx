@@ -19,6 +19,11 @@ type ShowRoomEnvironmentShellProps = {
   children?: React.ReactNode;
 };
 
+/**
+ * LEGACY — non-UVR show room shell. Official game-show routes still mount this
+ * until UniversalVenueRenderer certification passes per show type (Rule 21).
+ * Do not use for new Go Live or hub surfaces.
+ */
 export function ShowRoomEnvironmentShell({
   roomId,
   lightingMode = "idle",

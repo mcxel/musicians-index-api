@@ -833,6 +833,66 @@ interface SkinProps {
   currentIdx?: number;
 }
 
+// DJ Face Skin (Headphones + Shades, Head-Bob on Beat)
+function DjFaceSkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
+  return (
+    <div style={{ position: "relative", width: 240, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
+      {/* Bass pulse rings off each ear cup */}
+      {isPlaying && [16, 196].map((x, i) => (
+        <motion.div key={i}
+          animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }}
+          style={{ position: "absolute", top: 66, left: x, width: 28, height: 28, borderRadius: "50%", border: `2px solid ${accent}` }}
+        />
+      ))}
+
+      <motion.div
+        animate={{ rotate: isPlaying ? [-3, 3, -3] : 0, y: isPlaying ? [0, -3, 0] : 0 }}
+        transition={{ duration: 0.55, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {/* Headphone band */}
+        <div style={{ margin: "0 auto", width: 150, height: 76, borderRadius: "150px 150px 0 0", border: `6px solid ${primary}`, borderBottom: "none", boxShadow: `0 0 10px ${primary}55` }} />
+
+        {/* Face */}
+        <div style={{ margin: "-8px auto 0", width: 168, height: 150, borderRadius: "50% 50% 40% 40%", background: "linear-gradient(160deg, #ffb066 0%, #f0863c 100%)", position: "relative", boxShadow: `0 0 16px ${primary}33` }}>
+          {/* Ear cups */}
+          {[-24, 168].map((x, i) => (
+            <motion.div key={i}
+              animate={isPlaying ? { boxShadow: [`0 0 6px ${accent}`, `0 0 16px ${accent}`, `0 0 6px ${accent}`] } : {}}
+              transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }}
+              style={{ position: "absolute", top: 40, left: x, width: 26, height: 46, borderRadius: 10, background: primary, border: `2px solid ${accent}` }}
+            />
+          ))}
+
+          {/* Sunglasses with glint sweep */}
+          <div style={{ position: "absolute", top: 46, left: 20, right: 20, height: 30, borderRadius: 8, background: "#0a0a12", border: `2px solid ${accent}`, overflow: "hidden" }}>
+            {isPlaying && (
+              <motion.div
+                animate={{ x: ["-40%", "140%"] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                style={{ position: "absolute", top: 0, bottom: 0, width: "30%", background: `linear-gradient(90deg, transparent, ${accent}66, transparent)` }}
+              />
+            )}
+          </div>
+
+          {/* Nose heart accent */}
+          <div style={{ position: "absolute", top: 82, left: 30, fontSize: 12, color: "#FF2DAA" }}>♥</div>
+
+          {/* PLAYLIST label */}
+          <div style={{ position: "absolute", top: 80, right: 18, fontSize: 8, fontWeight: 900, color: accent, letterSpacing: "0.08em" }}>PLAYLIST</div>
+
+          {/* Monitor Screen (beard area) */}
+          <div style={{ position: "absolute", top: 96, left: 16, right: 16, height: 46, borderRadius: 8, overflow: "hidden", background: "#020212", border: `2px solid ${primary}88` }}>
+            {children}
+          </div>
+
+          <div style={{ position: "absolute", bottom: 4, right: 14, fontSize: 10, color: accent, fontWeight: 900 }}>{isOpen ? "▲" : "▼"}</div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /** Free default Standard TMI Player chassis shell (not fish/organic). */
 function StandardPlayerChassis({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
   return (
@@ -897,6 +957,7 @@ const SKIN_COMPONENTS: Record<ArtifactSkin, React.FC<SkinProps>> = {
   car:       CarSkin,
   train:     TrainSkin,
   baby:      BabySkin,
+  dj_face:   DjFaceSkin,
 };
 
 // ── PlaylistArtifact (main export) ────────────────────────────────────────────

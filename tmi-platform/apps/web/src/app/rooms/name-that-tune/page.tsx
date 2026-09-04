@@ -1,9 +1,6 @@
-import LobbyTheaterShell from "@/components/lobbies/LobbyTheaterShell";
+import { redirect } from "next/navigation";
+import { millHrefForExperience } from "@/lib/live/ExperienceRoomRegistry";
 
 export default function NameThatTuneRoomPage() {
-  return (
-    <main data-testid="room-name-that-tune">
-      <LobbyTheaterShell slug="name-that-tune" mode="room" />
-    </main>
-  );
+  redirect(millHrefForExperience("NAME_THAT_TUNE", { from: "rooms-name-that-tune" }));
 }

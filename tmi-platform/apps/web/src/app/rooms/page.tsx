@@ -1,17 +1,20 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import dynamic from 'next/dynamic';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
+import { getMondayNightStageSchedule } from '@/lib/events/ScheduledEventRegistry';
+import { getActiveSessions, onSessionsChanged } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 const AvatarLobbyCanvas = dynamic(() => import('@/components/3d/AvatarLobbyCanvas'), { ssr: false });
 
 const ROOMS = [
-  { label: "Monday Night Stage",   href: "/rooms/monday-stage",       desc: "Marcel's weekly live show — artist performances every Monday 8PM EST.",       emoji: "🎭", accent: "#FF2DAA", badge: "WEEKLY",   live: true  },
-  { label: "Cypher Arena",         href: "/rooms/cypher",             desc: "Live freestyle and rap battle sessions. Queue up and battle for the crown.",   emoji: "🎤", accent: "#AA2DFF", badge: "BATTLES",  live: true  },
+  { label: "Monday Night Stage",   href: "/rooms/monday-stage",       desc: "Marcel's weekly live show — artist performances every Monday 8PM EST.",       emoji: "🎭", accent: "#FF2DAA", badge: "WEEKLY",   scheduled: true, roomKeys: ["monday-night-stage", "monday-stage"] },
+  { label: "Cypher Arena",         href: "/rooms/cypher",             desc: "Live freestyle and rap battle sessions. Queue up and battle for the crown.",   emoji: "🎤", accent: "#AA2DFF", badge: "BATTLES",  roomKeys: ["cypher-arena", "cypher"] },
   { label: "Live Concert",         href: "/rooms/live-concert",       desc: "Full live concert experiences — artists perform full sets for the audience.",   emoji: "🎸", accent: "#00FFFF", badge: "SHOWS",    live: false },
   { label: "Listening Party",      href: "/rooms/listening-party",    desc: "Album and single drops — listen together in real time with the community.",    emoji: "🎶", accent: "#FFD700", badge: "DROPS",    live: false },
   { label: "DJ Room",              href: "/rooms/dj",                 desc: "Live DJ sets, mixes, and takeovers from top DJs on the Index.",                 emoji: "🎧", accent: "#FF2DAA", badge: "SETS",     live: false },
@@ -35,9 +38,72 @@ const ROOMS = [
   { label: "Game Room",            href: "/rooms/game",               desc: "Music-themed mini-games — earn XP and compete for leaderboard glory.",          emoji: "🎮", accent: "#00FF88", badge: "GAMES",    live: false },
   { label: "Interview Stage",      href: "/rooms/interview",          desc: "Artist deep-dives — intimate one-on-one or panel interviews.",                   emoji: "🎙️", accent: "#00FFFF", badge: "TALK",     live: false },
   { label: "Cover Art Zoom",       href: "/rooms/cover-art-zoom",     desc: "Reveal and discuss cover art — artists walk fans through visual concepts.",     emoji: "🖼️", accent: "#FF2DAA", badge: "ART",      live: false },
-];
+] as const;
+
+type RoomCard = {
+  label: string;
+  href: string;
+  desc: string;
+  emoji: string;
+  accent: string;
+  badge: string;
+  live: boolean;
+  statusLabel?: string;
+  scheduled?: boolean;
+  roomKeys?: readonly string[];
+};
+
+function slugFromHref(href: string): string {
+  return href.split("/").filter(Boolean).pop() ?? "";
+}
+
+function isRoomLive(room: (typeof ROOMS)[number], liveRoomIds: Set<string>): boolean {
+  const keys = "roomKeys" in room && room.roomKeys ? [...room.roomKeys] : [slugFromHref(room.href)];
+  for (const id of liveRoomIds) {
+    const normalized = id.toLowerCase();
+    if (keys.some((key) => normalized.includes(key))) return true;
+  }
+  return false;
+}
 
 export default function RoomsPage() {
+  const [liveRoomIds, setLiveRoomIds] = useState<Set<string>>(() =>
+    new Set(getActiveSessions().map((s) => s.roomId)),
+  );
+
+  useEffect(() => {
+    const sync = () => setLiveRoomIds(new Set(getActiveSessions().map((s) => s.roomId)));
+    sync();
+    return onSessionsChanged(sync);
+  }, []);
+
+  const rooms = useMemo((): RoomCard[] => {
+    const mns = getMondayNightStageSchedule();
+    return ROOMS.map((room) => {
+      const registryLive = isRoomLive(room, liveRoomIds);
+      if ("scheduled" in room && room.scheduled) {
+        return {
+          ...room,
+          live: mns.joinable,
+          statusLabel: mns.joinable ? "LIVE" : mns.phase,
+          desc: mns.joinable
+            ? room.desc
+            : mns.phase === "PRESHOW"
+              ? `Preshow waiting room — ${mns.label}.`
+              : `Off air — ${mns.label}.`,
+        };
+      }
+      return {
+        ...room,
+        live: registryLive,
+        desc: room.desc,
+      };
+    });
+  }, [liveRoomIds]);
+
+  const liveRooms = rooms.filter((r) => r.live);
+  const offlineRooms = rooms.filter((r) => !r.live);
+
   return (
     <PageShell>
       <HUDFrame>
@@ -55,8 +121,13 @@ export default function RoomsPage() {
 
           {/* Live rooms first */}
           <div style={{ fontSize: 9, letterSpacing: 4, color: '#FF2DAA', fontWeight: 800, marginBottom: 16, position: 'relative', zIndex: 10 }}>● LIVE NOW</div>
+          {liveRooms.length === 0 ? (
+            <div style={{ marginBottom: 36, padding: '20px 16px', borderRadius: 14, border: '1px solid rgba(255,45,170,0.25)', background: 'rgba(255,45,170,0.05)', color: 'rgba(255,255,255,0.55)', fontSize: 13, position: 'relative', zIndex: 10 }}>
+              No rooms live right now. Scheduled shows appear below with CLOSED / PRESHOW status.
+            </div>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 36, position: 'relative', zIndex: 10 }}>
-            {ROOMS.filter((r) => r.live).map((room, i) => (
+            {liveRooms.map((room, i) => (
               <motion.div key={room.href} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <Link href={room.href} style={{ textDecoration: 'none', display: 'block' }}>
                   <motion.div whileHover={{ y: -3, borderColor: room.accent }}
@@ -81,8 +152,19 @@ export default function RoomsPage() {
           {/* All rooms */}
           <div style={{ fontSize: 9, letterSpacing: 4, color: '#555', fontWeight: 800, marginBottom: 16, position: 'relative', zIndex: 10 }}>ALL ROOMS</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, position: 'relative', zIndex: 10 }}>
-            {ROOMS.filter((r) => !r.live).map((room, i) => (
+            {offlineRooms.map((room, i) => (
               <motion.div key={room.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.04 }}>
+                {"scheduled" in room && room.scheduled && room.statusLabel && room.statusLabel !== "LIVE" ? (
+                  <motion.div
+                    style={{ background: 'rgba(10, 10, 20, 0.65)', backdropFilter: 'blur(10px)', border: '1px solid #1a1a2e', borderRadius: 12, padding: '18px 18px', opacity: 0.85 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                      <div style={{ fontSize: 26 }}>{room.emoji}</div>
+                      <div style={{ fontSize: 8, color: room.accent, fontWeight: 700, letterSpacing: 2, background: `${room.accent}12`, padding: '3px 8px', borderRadius: 8, border: `1px solid ${room.accent}25` }}>{room.statusLabel}</div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#ddd', marginBottom: 6 }}>{room.label}</div>
+                    <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>{room.desc}</div>
+                  </motion.div>
+                ) : (
                 <Link href={room.href} style={{ textDecoration: 'none', display: 'block' }}>
                   <motion.div whileHover={{ y: -2, borderColor: `${room.accent}55` }}
                     style={{ background: 'rgba(10, 10, 20, 0.65)', backdropFilter: 'blur(10px)', border: '1px solid #1a1a2e', borderRadius: 12, padding: '18px 18px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
@@ -94,6 +176,7 @@ export default function RoomsPage() {
                     <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>{room.desc}</div>
                   </motion.div>
                 </Link>
+                )}
               </motion.div>
             ))}
           </div>

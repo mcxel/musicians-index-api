@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getFanLobbyPresence,
@@ -30,6 +31,7 @@ import {
   getPersistedFanLobbySkinId,
   listSwitchableFanLobbySkins,
   persistFanLobbySkinId,
+  FAN_LOBBY_SKIN_CHANGED_EVENT,
   type FanLobbySkinId,
   type SeatAnchor,
 } from "@/lib/lobby/FanLobbySkinRegistry";
@@ -49,6 +51,28 @@ import {
   muteUserLocal,
 } from "@/lib/trustSafety/localBlocks";
 import { mergePropAtmospheres } from "@/lib/lobby/LobbyPropAtmosphere";
+import {
+  auditoriumEntryHref,
+  CANONICAL_WORLD_ZONE,
+  isSystemOperatedFanLobby,
+  loungeSideRoomEntryHref,
+} from "@/lib/live/canonicalWorldViewport";
+import { useAuth } from "@/lib/hooks/useAuth";
+import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
+import FanLobbyPresentationShell from "@/components/live/FanLobbyPresentationShell";
+import LoungePresentationShell from "@/components/live/LoungePresentationShell";
+import {
+  clearFanLobbyProgram,
+  composeFanLobbyProgram,
+  getActiveFanLobbyProgram,
+  type FanLobbyProgramComposition,
+} from "@/lib/experiencePresentation/composeFanLobbyProgram";
+import {
+  clearLoungeProgram,
+  composeLoungeProgram,
+  getActiveLoungeProgram,
+  type LoungeProgramComposition,
+} from "@/lib/experiencePresentation/composeLoungeProgram";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -85,13 +109,17 @@ interface FanLobbyVenueProps {
  * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks.
  */
 export default function FanLobbyVenue({
-  roomId = "fan-lobby",
+  roomId = "anchor-global-fan-lobby",
   userName = "Fan",
   initialSkinId = DEFAULT_FAN_LOBBY_SKIN_ID,
   embedded = false,
   roomType = "FAN_LOBBY",
   authority: authorityProp,
 }: FanLobbyVenueProps) {
+  const router = useRouter();
+  // Presence identity — anonymous, per-browser, keyed to real-time sync/mod
+  // mechanics only (rejoin-check, block/mute, peer sync). Never the authority
+  // for paid commerce ownership (Lane D Phase 2) — see authenticatedUserId below.
   const userId = useMemo(() => getOrCreateLocalId(roomId), [roomId]);
   const authority = useMemo(
     () => authorityProp ?? defaultRoomAuthority(roomType),
@@ -100,6 +128,31 @@ export default function FanLobbyVenue({
   const emoji = useMemo(() => AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)], []);
   const selfFrame = getPresenceFrameById("frame-obsidian-free");
   const switchableSkins = useMemo(() => listSwitchableFanLobbySkins(), []);
+
+  // Authenticated identity — the real account, resolved via the same
+  // useAuth() session used by /account/finance and Stripe checkout. This,
+  // not the anonymous presence userId above, is what paid lobby-skin
+  // ownership is checked against.
+  const { user: authedUser } = useAuth();
+  const authenticatedUserId = authedUser?.id ?? null;
+  const [ownedSkinItemIds, setOwnedSkinItemIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!authenticatedUserId) {
+      setOwnedSkinItemIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/account/purchases", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { ownedStoreItems?: { itemId: string }[] } | null) => {
+        if (cancelled || !data?.ownedStoreItems) return;
+        setOwnedSkinItemIds(new Set(data.ownedStoreItems.map((i) => i.itemId)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticatedUserId]);
 
   const [skinId, setSkinId] = useState<FanLobbySkinId>(() => {
     const locked = authorityProp?.lockedSkinId ?? (authorityProp?.mode === "BOT_AUTOMATED" ? authorityProp.lockedSkinId : null);
@@ -125,7 +178,19 @@ export default function FanLobbyVenue({
   const [reportOpen, setReportOpen] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [jumbotronLookUp, setJumbotronLookUp] = useState(false);
   const joinedRef = useRef(false);
+
+  useEffect(() => {
+    const onSkinChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ skinId: FanLobbySkinId }>).detail;
+      if (!detail?.skinId || !canSwitchSkin) return;
+      const canon = getFanLobbySkinCanon(detail.skinId);
+      if (canon) setSkinId(canon.id);
+    };
+    window.addEventListener(FAN_LOBBY_SKIN_CHANGED_EVENT, onSkinChanged);
+    return () => window.removeEventListener(FAN_LOBBY_SKIN_CHANGED_EVENT, onSkinChanged);
+  }, [canSwitchSkin]);
 
   const dressing = getFanLobbySkinDressing(skinId);
   const skinLabel = getFanLobbySkinCanon(skinId)?.label ?? "Fan Lobby";
@@ -138,6 +203,63 @@ export default function FanLobbyVenue({
     emoji,
     theme: skinId,
   });
+
+  const [fanLobbyProgram, setFanLobbyProgram] = useState<FanLobbyProgramComposition | null>(null);
+  const [loungeProgram, setLoungeProgram] = useState<LoungeProgramComposition | null>(null);
+
+  // Phase 1 ExperiencePresentation — Fan Lobby avatars vs Lounge panels DNA (never invent occupancy).
+  useEffect(() => {
+    const sessionId = `social-lobby:${roomId}`;
+    const presenceCount = Array.isArray(sync.participants) ? sync.participants.length : null;
+
+    if (roomType === "FAN_LOBBY") {
+      clearLoungeProgram("fan-lobby-mode");
+      setLoungeProgram(null);
+      const next = composeFanLobbyProgram({
+        sessionId,
+        roomId,
+        skinId,
+        skinLabel,
+        presenceCount,
+        lifecyclePhase: "HANGOUT",
+        bindJumbotron: true,
+      });
+      setFanLobbyProgram(next);
+      return () => {
+        if (getActiveFanLobbyProgram()?.roomId === roomId) {
+          clearFanLobbyProgram("fan-lobby-unmount");
+        }
+        setFanLobbyProgram(null);
+      };
+    }
+
+    if (roomType === "PLAYLIST_LOUNGE") {
+      clearFanLobbyProgram("playlist-lounge-mode");
+      setFanLobbyProgram(null);
+      // Lounge DNA = panels only — do not pass avatar seat counts as panel occupancy (Rule 20).
+      const next = composeLoungeProgram({
+        sessionId,
+        roomId,
+        loungeMode: "PLAYLIST_LOUNGE",
+        panelPresenceCount: null,
+        lifecyclePhase: "PLAYLIST",
+        bindJumbotron: true,
+      });
+      setLoungeProgram(next);
+      return () => {
+        if (getActiveLoungeProgram()?.roomId === roomId) {
+          clearLoungeProgram("playlist-lounge-unmount");
+        }
+        setLoungeProgram(null);
+      };
+    }
+
+    clearFanLobbyProgram("non-fan-lobby-mode");
+    clearLoungeProgram("non-lounge-mode");
+    setFanLobbyProgram(null);
+    setLoungeProgram(null);
+    return undefined;
+  }, [roomId, roomType, skinId, skinLabel, sync.participants]);
 
   const peerMedia = useLobbyPeerMediaSession({
     roomId,
@@ -359,6 +481,8 @@ export default function FanLobbyVenue({
   );
 
   const totalOnline = sync.participants.filter((p) => !hiddenIds.has(p.userId)).length + 1;
+  const liveSessionPresent =
+    roomType === "FAN_LOBBY" && !isSystemOperatedFanLobby(roomId);
 
   if (rejoinBlocked) {
     return (
@@ -379,6 +503,14 @@ export default function FanLobbyVenue({
 
   return (
     <div
+      data-canonical-zone={
+        roomType === "PLAYLIST_LOUNGE"
+          ? CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM
+          : CANONICAL_WORLD_ZONE.FAN_AVATAR_LOBBY
+      }
+      data-lounge-avatars={roomType === "PLAYLIST_LOUNGE" ? "false" : undefined}
+      data-canonical-room-id={roomId}
+      data-live-session={liveSessionPresent ? "true" : "false"}
       style={{
         position: "relative",
         minHeight: embedded ? "100%" : "100vh",
@@ -405,6 +537,70 @@ export default function FanLobbyVenue({
         />
       ) : null}
 
+      {roomType === "FAN_LOBBY" && fanLobbyProgram ? (
+        <div
+          data-fan-lobby-program-shell="true"
+          style={{
+            position: "relative",
+            zIndex: 41,
+            margin: embedded ? "6px 8px 0" : "10px 16px 0",
+          }}
+        >
+          <FanLobbyPresentationShell composition={fanLobbyProgram} />
+        </div>
+      ) : null}
+      {roomType === "PLAYLIST_LOUNGE" && loungeProgram ? (
+        <div
+          data-lounge-program-shell="true"
+          style={{
+            position: "relative",
+            zIndex: 41,
+            margin: embedded ? "6px 8px 0" : "10px 16px 0",
+          }}
+        >
+          <LoungePresentationShell composition={loungeProgram} />
+        </div>
+      ) : null}
+
+      {/* Club / cinema wall-LED Jumbotron — AutomatedJumbotronDirector geometry (not HUD chrome) */}
+      <div
+        data-fan-lobby-jumbotron="true"
+        style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}
+      >
+        <VenueAutomatedJumbotronMount
+          roomId={roomId}
+          eventType={roomType === "PLAYLIST_LOUNGE" ? "lounge" : "fan-lobby"}
+          venueId={`fan-lobby-${roomId}`}
+          lookUpActive={jumbotronLookUp}
+        />
+      </div>
+      {!embedded ? (
+        <button
+          type="button"
+          data-testid="btn-venue-look-up-jumbotron"
+          data-presence-session={`jumbotron-presence-${roomId}`}
+          onClick={() => setJumbotronLookUp((v) => !v)}
+          style={{
+            position: "absolute",
+            right: 12,
+            bottom: 72,
+            zIndex: 45,
+            pointerEvents: "auto",
+            padding: "6px 10px",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            cursor: "pointer",
+            borderRadius: 6,
+            border: jumbotronLookUp ? "1px solid #FF2DAA" : "1px solid #00FFFF",
+            background: jumbotronLookUp ? "rgba(255,45,170,0.2)" : "rgba(0,255,255,0.12)",
+            color: jumbotronLookUp ? "#FF2DAA" : "#00FFFF",
+          }}
+        >
+          {jumbotronLookUp ? "RETURN TO LOBBY" : "LOOK UP / FOCUS JUMBOTRON"}
+        </button>
+      ) : null}
+
       <header
         style={{
           position: "relative",
@@ -428,10 +624,55 @@ export default function FanLobbyVenue({
             ? "PLAYLIST LOUNGE"
             : roomType === "REHEARSAL_ROOM"
               ? "REHEARSAL ROOM"
-              : skinLabel.toUpperCase()}{" "}
+              : `FAN AVATAR LOBBY · ENTRY · ${skinLabel.toUpperCase()}`}{" "}
           · {totalOnline} HERE
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {liveSessionPresent ? (
+            <Link
+              href={auditoriumEntryHref(roomId)}
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                color: "#050510",
+                background: dressing.accent,
+                borderRadius: 999,
+                padding: "4px 10px",
+                textDecoration: "none",
+              }}
+            >
+              ENTER AUDITORIUM
+            </Link>
+          ) : roomType === "FAN_LOBBY" ? (
+            <span
+              style={{
+                fontSize: 8,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.45)",
+              }}
+            >
+              NO LIVE SESSION
+            </span>
+          ) : null}
+          {roomType !== "PLAYLIST_LOUNGE" ? (
+            <Link
+              href={loungeSideRoomEntryHref(roomId, { from: "fan-avatar-lobby" })}
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                color: "#AA2DFF",
+                border: "1px solid rgba(170,45,255,0.45)",
+                borderRadius: 999,
+                padding: "4px 10px",
+                textDecoration: "none",
+              }}
+            >
+              ENTER LOUNGE
+            </Link>
+          ) : null}
           {isStaffHost ? (
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "#FFD700", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 999, padding: "4px 8px" }}>
               HOST SAFETY
@@ -545,6 +786,32 @@ export default function FanLobbyVenue({
           />
         ) : null}
         <LobbyEnvironmentToys state={"FREE_ROAM" as never} onUseToy={(toyId) => sync.triggerProp(toyMapsToProp(toyId))} />
+        {roomType === "PLAYLIST_LOUNGE" ? (
+          <div
+            data-lounge-group-view="true"
+            data-lounge-avatars="false"
+            style={{
+              position: "relative",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              zIndex: 10,
+            }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF" }}>
+              LOUNGE · VIDEO HANGOUT · NO AVATARS
+            </span>
+            <Link
+              href={loungeSideRoomEntryHref(roomId, { from: "fan-avatar-lobby" })}
+              style={{ fontSize: 12, fontWeight: 800, color: "#00FFFF" }}
+            >
+              Open connected lounge mill →
+            </Link>
+          </div>
+        ) : (
         <LobbyFreeRoamAvatars
           self={{
             userId,
@@ -575,6 +842,7 @@ export default function FanLobbyVenue({
           peerMedia={peerMedia.snapshot}
           localHideHeadPanel={localHideHeadPanel}
         />
+        )}
         <LobbyInventoryTray state={"FREE_ROAM" as never} onUseProp={(propId) => sync.triggerProp(propId)} />
 
         <div style={{ position: "absolute", top: 12, right: 12, zIndex: 45 }}>
@@ -610,11 +878,22 @@ export default function FanLobbyVenue({
             {switchableSkins.map((s) => {
               const d = getFanLobbySkinDressing(s.id);
               const active = s.id === skinId;
+              // Real ownership gate (Lane D Phase 2): a premium skin the
+              // authenticated account hasn't purchased is locked. The
+              // already-active skin never re-locks mid-session — this only
+              // gates switching to a *different* unowned skin, so nobody's
+              // current/default skin is yanked out from under them.
+              const locked =
+                !active && s.isPremium && !!s.storeItemId && !ownedSkinItemIds.has(s.storeItemId);
               return (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => {
+                    if (locked) {
+                      router.push("/store/lobbies");
+                      return;
+                    }
                     setSkinId(s.id);
                     if (roomType === "FAN_LOBBY") persistFanLobbySkinId(s.id);
                     setThemePanelOpen(false);
@@ -626,15 +905,21 @@ export default function FanLobbyVenue({
                     borderRadius: 10,
                     border: `1.5px solid ${active ? d.accent : "rgba(255,255,255,0.15)"}`,
                     background: active ? `${d.accent}22` : "rgba(255,255,255,0.04)",
-                    color: d.accent,
+                    color: locked ? "rgba(255,255,255,0.35)" : d.accent,
                     padding: "8px 12px",
                     fontSize: 10,
                     fontWeight: 800,
                     cursor: "pointer",
                     letterSpacing: "0.04em",
+                    opacity: locked ? 0.7 : 1,
                   }}
-                  title={s.tagline}
+                  title={
+                    locked
+                      ? `Locked — ${s.priceCents != null ? `$${(s.priceCents / 100).toFixed(2)}` : "buy"} in the Lobby Store`
+                      : s.tagline
+                  }
                 >
+                  {locked ? "🔒 " : ""}
                   {s.label}
                 </button>
               );

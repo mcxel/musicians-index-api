@@ -3,21 +3,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { ageYearsFromDateOfBirthIso } from '@/lib/trustSafety/YouthSocialGuard';
 import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
-import { createSession } from '@/lib/auth/SessionManager';
+import { authSessionCookieOpts, createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 import { waitUntil } from '@vercel/functions';
-
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60,
-  path: '/',
-};
+import { acceptAllRequiredPolicies } from "@/lib/messaging/PolicyAcceptance";
 
 type RegisterStage =
   | 'REQUEST_RECEIVED'
@@ -90,7 +84,7 @@ export async function POST(req: NextRequest) {
   let stage: RegisterStage = 'REQUEST_RECEIVED';
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
-    dateOfBirth?: string; termsAccepted?: boolean; ref?: string; roles?: string[];
+    dateOfBirth?: string; dob?: string; termsAccepted?: boolean; originalityAccepted?: boolean; ref?: string; roles?: string[];
     inviteToken?: string;
     tier?: string;
     paymentToken?: string;
@@ -103,6 +97,12 @@ export async function POST(req: NextRequest) {
     stage = 'REQUEST_JSON_PARSED';
   } catch {
     return NextResponse.json({ ok: false, errorCode: 'INVALID_JSON', error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  
+  // Normalize DOB field aliases from signup UIs (dateOfBirth | dob)
+  if (!parsed.dateOfBirth?.trim() && typeof (parsed as { dob?: string }).dob === "string") {
+    parsed.dateOfBirth = (parsed as { dob?: string }).dob;
   }
 
   const email       = (parsed.email ?? '').trim().toLowerCase();
@@ -156,6 +156,50 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, errorCode: 'WEAK_PASSWORD', error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
+  const registerAgeYears = parsed.dateOfBirth ? ageYearsFromDateOfBirthIso(parsed.dateOfBirth) : null;
+  if (!parsed.dateOfBirth?.trim()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'MISSING_FIELDS',
+        error: 'Date of birth is required.',
+      },
+      { status: 400 },
+    );
+  }
+  if (registerAgeYears == null || !Number.isFinite(registerAgeYears)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'MISSING_FIELDS',
+        error: 'Enter a valid date of birth.',
+      },
+      { status: 400 },
+    );
+  }
+  
+  if (parsed.termsAccepted !== true) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'TERMS_REQUIRED',
+        error: 'You must accept the Terms, Privacy, Community Guidelines, Messaging Conduct, and liability acknowledgment.',
+      },
+      { status: 400 },
+    );
+  }
+
+  if (registerAgeYears < 16) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'AGE_RESTRICTED',
+        error: 'You must be 16 years of age or older to create an account.',
+      },
+      { status: 403 },
+    );
+  }
+
 async function ensureUserDatabaseSchema() {
   try {
     await prisma.$executeRawUnsafe(`
@@ -167,6 +211,10 @@ async function ensureUserDatabaseSchema() {
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_room_id" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_genre" TEXT;
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_started_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "billing_status" TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "billing_grace_ends_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "last_canceled_stripe_subscription_id" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "last_canceled_at" TIMESTAMP(3);
     `);
     console.info('[TMI register] Database schema self-healing completed successfully.');
   } catch (err) {
@@ -218,15 +266,36 @@ async function ensureUserDatabaseSchema() {
 
     // Create user with first role as primary (legacy compatibility)
     stage = 'USER_CREATED';
+    const signupAgeYears = parsed.dateOfBirth
+      ? ageYearsFromDateOfBirthIso(parsed.dateOfBirth)
+      : null;
+    const signupDob = parsed.dateOfBirth ? new Date(parsed.dateOfBirth) : null;
+    const hasSignupDob = Boolean(signupDob && !Number.isNaN(signupDob.getTime()) && signupAgeYears != null);
+
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         displayName: displayName || email.split('@')[0],
         role: platformRoles[0].toUpperCase() as any,
-        tier: resolvedTier
+        tier: resolvedTier,
+        termsAccepted: true,
+        ...(hasSignupDob
+          ? {
+              dateOfBirth: signupDob!,
+              age: signupAgeYears!,
+              isMinor: signupAgeYears! < 18,
+            }
+          : {}),
       }
     });
+
+    // Versioned policy acceptance at signup (messaging eligibility)
+    try {
+      await acceptAllRequiredPolicies(user.id);
+    } catch (polErr) {
+      console.warn("[TMI register] policy acceptance record failed", polErr);
+    }
 
     // Create UserRole records for all selected roles
     stage = 'USER_ROLES_CREATED';
@@ -412,18 +481,13 @@ async function ensureUserDatabaseSchema() {
       { status: 201 }
     );
 
+    const COOKIE_OPTS = authSessionCookieOpts();
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
     response.cookies.set('tmi_roles', JSON.stringify(platformRoles), COOKIE_OPTS);  // All roles
     response.cookies.set('tmi_tier', effectiveTier, COOKIE_OPTS);
-    response.cookies.set('tmi_user_email', email, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    });
+    response.cookies.set('tmi_user_email', email, authSessionCookieOpts({ httpOnly: false }));
 
     return response;
   } catch (err) {

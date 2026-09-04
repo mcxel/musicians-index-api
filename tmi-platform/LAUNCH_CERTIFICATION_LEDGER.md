@@ -1,5 +1,272 @@
 # LAUNCH CERTIFICATION LEDGER
-**Last Updated:** 2026-07-02 (session 5) | **Phase 4 → Soft Launch Gate**
+**Last Updated:** 2026-08-23 (TWO-DEVICE PRESENCE GATE freeze) | **Phase 4 → Soft Launch Gate** + World Director + Game Runtime Constitution locked; next cert = manual two-device avatar presence only
+
+---
+
+## TMI GAME RUNTIME CONSTITUTION — STATUS LOCK 2026-08-23
+
+```text
+GAME RUNTIME CONSTITUTION   🔒 LOCKED
+60 SYSTEMS                  🟢 REGISTERED
+13 WIRED                    🟢
+37 PARTIAL                  🟡
+10 OPEN                     🔴
+NEXT CERT:
+TWO-DEVICE AVATAR PRESENCE  ⏳ PHYSICAL ONLY
+```
+
+**Core law:** TMI is a real-time social entertainment world delivered through the web — not a website with game features.
+
+Canonical module: `apps/web/src/lib/runtime/GameRuntimeConstitution.ts`  
+Glue: `DeviceQualityGovernor.ts`, `InteractionCommandBus.ts`  
+Coordinate authority: `WorldScenePlan.spatialMap` (engine units; tools display ft/sq ft @ 1:1 until MEASURED_GLB)
+
+**Constitution modules are FROZEN for this cert.** Do not reopen Game Runtime Constitution, DeviceQualityGovernor, InteractionCommandBus, LOD, stadium fill, or new runtime wiring for this gate. Manual physical proof only.
+
+```text
+OPERATIONAL CHAIN
+INPUT → COMMAND BUS → POLICY/ENTITLEMENT/SAFETY → AUTHORITATIVE STATE
+→ ROOM/MEDIA/WORLD EXECUTION → LOCAL PRESENTATION → NETWORK SYNC
+→ OBSERVABILITY → AUTO-RECOVERY → PERSISTENCE/EVENT LEDGER → LEARNING/OPTIMIZATION
+
+PRIORITY UNDER PRESSURE
+P0 LIVE MEDIA → P1 INPUT/ROOM STATE → P2 GAME STATE → P3 UI → P4 COSMETICS → P5 ANALYTICS/PREFETCH
+
+DEVICE QUALITY
+LIGHT | STANDARD | ULTRA  (via DeviceQualityGovernor ← AWR)
+
+DEGRADED LADDER
+ULTRA_3D → STANDARD_3D → LIGHTWEIGHT → VIDEO_ONLY → AUDIO_ONLY
+```
+
+### Measurable performance budgets (SLOs — not hard guarantees)
+
+| Budget | Target |
+| :--- | :--- |
+| Frame ms ULTRA / STANDARD / LIGHT | 16.7 / 22 / 33 |
+| Stress downgrade threshold | avg frame > 36 ms |
+| Live media first frame P50 / P95 | 1200 ms / 3500 ms |
+| Reversible input echo P95 | 100 ms |
+| Authoritative ack (pay/own/safety) P95 | 2500 ms |
+| Room handoff P95 | 4000 ms |
+
+**Never claim:** literal zero lag, guaranteed 60 FPS everywhere, or 100% reliability.
+
+### 60-system inventory (consolidate — do not rebuild)
+
+Statuses from `GAME_RUNTIME_SYSTEM_REGISTRY` — WIRED | PARTIAL | OPEN | DEFERRED.
+
+| # | System | Status | Canonical |
+| :--- | :--- | :--- | :--- |
+| 1 | Canonical World Coordinate Runtime | WIRED | `lib/world/WorldScenePlan.ts` |
+| 2 | Spatial Partition Engine | PARTIAL | spatialMap zones (hash OPEN) |
+| 3 | Full-Sphere Render Director | PARTIAL | viewMode + LOD metadata; physical LOD OPEN |
+| 4 | Device Quality Governor | WIRED | `lib/runtime/DeviceQualityGovernor.ts` |
+| 5 | Performance Budget System | PARTIAL | constitution + AWR PerformanceGovernor |
+| 6 | Predictive Room Streaming | OPEN | — |
+| 7 | Asset Manifest Runtime | PARTIAL | MediaAssetEngine / MediaRegistry |
+| 8 | One Canonical Media Bus | WIRED | `canonicalMediaPlayerRuntime.ts` (+ Go Live bind) |
+| 9 | Dynamic Media Frame Director | WIRED | canonicalMediaPlayerRuntime frames |
+| 10 | Adaptive WebRTC Runtime | PARTIAL | WebRTCSubscriptionGovernor |
+| 11 | Media Continuity Ledger | PARTIAL | roomId + device persistence |
+| 12 | Single Active Audio Authority | WIRED | `primaryAudioFrame` |
+| 13 | Quick Panel Runtime | WIRED | mobileQuickPanelRuntime / compact store |
+| 14 | Interaction Command Bus | WIRED | InteractionCommandBus + HudCommandBus |
+| 15 | 1-Action UX Law | PARTIAL | optimistic reversible only |
+| 16 | State Machine Everywhere | PARTIAL | key live stores |
+| 17 | Offline/Degraded Mode | PARTIAL | OfflineReconnectQueue + degraded ladder |
+| 18 | Error Recovery Directory | PARTIAL | RuntimeRecoveryEngine family |
+| 19 | Circuit Breakers | PARTIAL | SystemResilienceHQ / KillSwitch |
+| 20 | Worker/Off-Main-Thread Runtime | PARTIAL | VisualWorkerHealthEngine |
+| 21 | Frame Scheduler | WIRED | FrameBudgetScheduler |
+| 22 | Long-Session Memory Discipline | PARTIAL | sample cap |
+| 23 | Resource Ownership Registry | PARTIAL | OwnershipRuntime (commerce) |
+| 24 | Hot/Cold Asset Cache | OPEN | — |
+| 25 | Room Handoff Runtime | PARTIAL | LiveDestinationRouter / in-place GO LIVE |
+| 26 | Deterministic Room Registry | WIRED | globalLiveSessionStore + scene plan store |
+| 27 | Interaction Zones | PARTIAL | SpatialZoneFt |
+| 28 | Seat Runtime | WIRED | audienceRuntimeEngine |
+| 29 | Video-Panel Physics Runtime | PARTIAL | SpatialVideoPresenceDirector |
+| 30 | Camera Director | PARTIAL | BroadcastDirectorEngine |
+| 31 | Input Abstraction Layer | OPEN | — |
+| 32 | Gesture Runtime | OPEN | — |
+| 33 | Haptic Hooks | OPEN | — |
+| 34 | Animation Budget Director | PARTIAL | PerformanceBudgetGovernor / QualityAdaptation |
+| 35 | Search Runtime Repair | PARTIAL | SearchConsoleAuthorityEngine |
+| 36 | Preload-Next Media | OPEN | — |
+| 37 | Media Eligibility Engine | PARTIAL | IdleFallback + entitlements |
+| 38 | Anti-Repetition Director | PARTIAL | ContentRotationAuthorityEngine |
+| 39 | Fair Discovery Allocation | PARTIAL | ContentFreshness |
+| 40 | Replay/Incident Trace | PARTIAL | ReplayEngine / SupportDiagnostics |
+| 41 | Observatory Perf Command Center | PARTIAL | RuntimeTelemetry / Flight Deck |
+| 42 | Automatic Health Scoring | PARTIAL | SystemResilienceHQ / StreamHealth |
+| 43 | Performance Regression Gates CI | OPEN | — |
+| 44 | Synthetic Lab Tests | PARTIAL | ChaosRuntimeTester (not fake users) |
+| 45 | Soak Testing | OPEN | — |
+| 46 | Chaos Testing | PARTIAL | ChaosRuntimeTester |
+| 47 | Phone Reality Certification | OPEN | World Director PHYSICAL CERT OPEN |
+| 48 | Persistence Checkpoints | PARTIAL | liveDevicePersistence |
+| 49 | Versioned Runtime Contracts | PARTIAL | LIVE_LOBBY_WALL / VenuePlatformContract |
+| 50 | Feature Flags / Kill Switches | WIRED | feature.flags + KillSwitchPanel |
+| 51 | Progressive Rollout | OPEN | — |
+| 52 | Canonical Entitlement Resolver | WIRED | SubscriptionEntitlementEngine |
+| 53 | Server Authority Valuable State | PARTIAL | live/go + stripe webhooks |
+| 54 | Idempotency Valuable Paths | PARTIAL | stripe / tips fulfillment |
+| 55 | Event Ledger | PARTIAL | RuntimeEventBus |
+| 56 | Backpressure | PARTIAL | WebRTC subscribe demotion |
+| 57 | Priority Classes | WIRED | P0–P5 in constitution |
+| 58 | Fast First Frame | PARTIAL | T+0 camera; budgets not CI-gated |
+| 59 | Placeholder Law | PARTIAL | honest OPEN states (World Director) |
+| 60 | Recovery-First UX | PARTIAL | ReconnectButton / OfflineStateBanner |
+
+**What was wired this lock (not architecture-only):** Device Quality → WorldScenePlan `lodPolicy` hint; Go Live → Canonical Media Bus `setRoomId` + Monitor A/B sources; InteractionCommandBus thin dispatcher (Hud bridge).
+
+**Still OPEN for 100%×10:** phone/dual-device physical cert (**next = TWO-DEVICE PRESENCE GATE**), production GLB/navmesh, physical LOD, progressive stadium fill, CI perf gates, predictive streaming, input/gesture/haptic, progressive rollout. Do not claim PASS.
+
+---
+
+## WORLD DIRECTOR (AutonomousWorldDirector) — STATUS LOCK 2026-08-23
+
+Canonical runtime: `apps/web/src/lib/world/` (`AutonomousWorldDirector.ts`, `WorldScenePlan.ts`, `worldScenePlanStore.ts`).  
+Constant: `WORLD_DIRECTOR_CERT_STATUS = "OPEN"` — **CODE WIRED / PHYSICAL CERT OPEN** (not CERTIFIED).
+
+```text
+WORLD DIRECTOR
+🟢 CODE WIRED
+🟢 TYPECHECK CLEAN
+🟢 MONITOR B PATH CONNECTED
+🟡 DEPLOYMENT TO BE VERIFIED
+⏳ PHYSICAL CERT OPEN  ← NOT CLOSED (2026-08-23 agent re-run)
+⏳ PRODUCTION GEOMETRY OPEN
+⏳ NAVMESH/COLLISION OPEN
+
+NEXT CERT (FROZEN):
+TWO-DEVICE AVATAR PRESENCE  ⏳ PHYSICAL ONLY
+```
+
+### TWO-DEVICE PRESENCE GATE — NEXT CERT (LOCKED 2026-08-23)
+
+**Status: ⏳ PHYSICAL ONLY** — not PASS. Prior agent physical attempt was **BLOCKED** (no credentials / hung `:3000`). Result remains open until Marcel (or operator) completes the manual sequence below on two real devices.
+
+```text
+TWO-DEVICE PRESENCE GATE
+DEVICE A — FAN
+1. Sign in as real fan account.
+2. Enter the target Fan Avatar Lobby / venue.
+3. Confirm the canonical avatar identity loads.
+4. Move the avatar.
+5. Sit / stand if seating is available.
+6. Trigger one allowed reaction / movement.
+7. Stay connected.
+
+DEVICE B — PERFORMER MONITOR B
+1. Sign in separately as performer/host.
+2. Enter the SAME roomId.
+3. Open the canonical dual-monitor/media-player view.
+4. Assign the house/audience view to Monitor B.
+5. Confirm Device A's avatar is physically visible on Monitor B.
+6. Confirm movement updates without refresh.
+7. Confirm sit/stand/reaction state is visible.
+8. Confirm no duplicate avatar is spawned.
+9. Confirm empty seats remain empty.
+10. Confirm leaving Device A removes that avatar cleanly.
+```
+
+#### Pass criteria
+
+All Device A steps 1–7 and Device B steps 1–10 must be **physically observed** on real signed-in accounts in the same `roomId`, with no invented counts, no bot-fill inflation, and no duplicate avatar entity for Device A’s user.
+
+#### Failure diagnostics (capture on FAIL)
+
+Record every field available; blank = not observed:
+
+| Field | Value |
+| :--- | :--- |
+| `roomId` | |
+| `userId` (Device A fan) | |
+| `userId` (Device B performer/host) | |
+| `avatar entityId` | |
+| coords (x/y/z or plan space) | |
+| `seatId` | |
+| Monitor B source | |
+| transport state | |
+| last sync timestamp | |
+| error code | |
+
+#### Failure buckets (classify the failing step)
+
+```text
+IDENTITY | PRESENCE | ROOM JOIN | SPATIAL SYNC | AVATAR RENDER
+MONITOR ASSIGNMENT | NETWORK TRANSPORT | CLEANUP
+```
+
+#### Post-pass chain (document only — do NOT implement ahead of this gate)
+
+```text
+TWO-DEVICE PRESENCE GATE  ⏳ PHYSICAL ONLY
+↓ 1. Production GLB + navmesh
+↓ 2. Physical collision proof
+↓ 3. Physical LOD / device-quality proof
+↓ 4. CI performance regression gates
+↓ 5. Long-session soak / recovery certification
+```
+
+**LOCK:** Do not start LOD, stadium fill, GLB/navmesh stubs, CI perf gates, soak automation, or mark this gate PASS until the TWO-DEVICE PRESENCE GATE sequence is observed on two real devices. Constitution modules stay frozen.
+
+### WORLD DIRECTOR PHYSICAL GATE — 2026-08-23 agent run (observed only; superseded as NEXT by TWO-DEVICE PRESENCE GATE)
+
+**Verdict: NOT CERTIFIED.** Gate incomplete. No PASS claimed for AvatarRig / Monitor A / Monitor B live path. Prior result remains **BLOCKED → ⏳ PHYSICAL ONLY** (credentials missing; local `:3000` hung).
+
+```text
+WORLD DIRECTOR PHYSICAL GATE
+Monitor A performer camera          BLOCKED
+Monitor B venue                     BLOCKED
+Venue empty at zero audience        BLOCKED
+Live Lobby Wall publication         BLOCKED
+Exact-room routing                  BLOCKED
+Real Fan AvatarRig appears          BLOCKED
+Valid seat/zone placement           BLOCKED
+Avatar visibly alive/moving         BLOCKED
+No fake viewer inflation            BLOCKED
+Fan leave removes presence          BLOCKED
+Same roomId throughout              BLOCKED
+```
+
+**Observed evidence (only):**
+- Repo HEAD short SHA: `72753240` (local workspace). Commit `e5a60e72` **not present** in this git tree.
+- Code constant still `WORLD_DIRECTOR_CERT_STATUS = "OPEN"`; go-live crowd policy still `allowBotFill: false` in `AutonomousWorldDirector.ts` (source inspection — not runtime store proof).
+- `http://127.0.0.1:3000` — port LISTENING (node pid from 2026-08-20) but HTTP **timed out** (5–15s). Local GO LIVE path unusable this run.
+- `https://themusiciansindex.com` — HTTP 200. `/auth` loads SIGN IN with email + password fields (screenshot `.tmp-wd-auth.png`). `/hub/performer` returns **307** (auth gate).
+- No `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` / performer+fan test passwords in process env or `apps/web/.env.local` — **credentials not available; passwords not invented**.
+- cursor-ide-browser MCP: tabs create then vanish; navigate returns “No browser tab available” — interactive two-device session not achievable here.
+- Headless Patchright reached unauthenticated `/auth` only. No camera permission, no GO LIVE, no Monitor A/B, no roomId, no Fan AvatarRig observed.
+
+**Blockers for full gate:** (1) two real signed-in accounts (Performer + Fan), (2) working local or authenticated production session, (3) second device/browser for Fan join, (4) visual proof of canonical avatar on Monitor B, (5) clean leave/cleanup.
+
+**Owner action:** Marcel (or operator) must execute **TWO-DEVICE PRESENCE GATE** (Device A Fan + Device B Performer/Host) on physical PC/phone. Until then status stays **⏳ PHYSICAL ONLY** — never PASS by inference.
+
+### Prior run-order notes (historical — NEXT CERT is TWO-DEVICE PRESENCE GATE above)
+
+1. **PC `/venue/preview`** — EMPTY→FULL, TEST labels, indoor/outdoor, no bot count leaks
+2. **PC GO LIVE** — no route takeover, Monitor A camera, Monitor B venue empty, HUD usable
+3. **Phone GO LIVE** — same roomId/scene plan, responsive HUD, stable camera/mic
+4. **Second real account** — fan enters, real AvatarRig, valid seat, leave removes presence, count = real only *(folded into TWO-DEVICE PRESENCE GATE)*
+5. **World Director state proof** — `useWorldScenePlanStore.getState().plans[roomId]` shows certification OPEN, `allowBotFill` false, correct policies
+
+### Dependency order after TWO-DEVICE PRESENCE GATE (document only — do NOT implement ahead)
+
+```text
+TWO-DEVICE PRESENCE GATE  ⏳ PHYSICAL ONLY
+↓ 1. Production GLB + navmesh
+↓ 2. Physical collision proof
+↓ 3. Physical LOD / device-quality proof
+↓ 4. CI performance regression gates
+↓ 5. Long-session soak / recovery certification
+```
+
+**LOCK:** Do not start LOD, stadium fill, fake GLB/navmesh, CI perf gates, soak automation, or mark presence PASS until TWO-DEVICE PRESENCE GATE is observed on two real devices. Constitution modules stay frozen.
+
+---
 
 | Major System | Status | Notes |
 | :--- | :--- | :--- |
@@ -120,3 +387,202 @@ Wave 2 Complete (2026-07-05):
 - Theme Store purchase flow
 - Dating Lounge
 - Radio Network
+
+---
+
+## MASTER MODULE CERTIFICATION PROOF MATRIX
+
+```text
+CERTIFICATION LAW
+
+CODE EXISTS ≠ FEATURE CERTIFIED
+AUTOMATED TEST PASSES ≠ PHYSICAL CERTIFICATION
+PHYSICAL PASS = exact required behavior observed on real device/runtime without hidden workarounds.
+
+If a physical test FAILS:
+record exact failing step first,
+then modify ONLY the failing execution path.
+Do not redesign frozen architecture.
+```
+
+### Module Proof Index
+
+#### 1. QP-10 / QUICK PANELS — FUNCTIONAL (desktop harness)
+* **Status**: ⏳ READY FOR HARNESS RE-RUN (post mobile collapse patch)
+* **Canonical Components**: `components/hud/CompactFloatingQuickPanel.tsx`, `lib/hud/compactQuickPanelStore.ts`, `components/hud/CompactQuickPanelHost.tsx`, `components/hud/panels/RemoteQuickPanel.tsx`, `lib/shuffle/VideoShuffleModeRuntime.ts`, `lib/discovery/SnipsDiscoveryRuntime.ts`, `components/hud/panels/SnipsSwipeOverlay.tsx`, `components/commandCenter/MobileQuickPanelBar.tsx`, `lib/commandCenter/mobileCommandCenterCapabilities.ts`
+* **Proof Steps**:
+  1. Tap **LOBBIES** → compact panel opens → shell stays → no route jump → scroll works → tapping room enters via same media experience.
+  2. Tap **REMOTE** → PLAYLIST tab shows canonical playlists + search works → PLAYER tab controls same active player → playlist switching does not create a second player.
+  3. Tap **VIDEO SHUFFLE** → video starts immediately in canonical player → no landing page → queue continues.
+  4. Tap **SNIPS** → eligible public sources appear → tapping source routes to canonical destination.
+  5. Open panels while multiple monitor frames are active → one parks visually, other remains live; close returns to same state.
+* **Evidence Block**:
+  ```text
+  QP-10 FUNCTIONAL PROOF EVIDENCE
+  PANEL OPENED IN PLACE: YES / NO
+  ROUTE JUMP: YES / NO
+  SECOND PLAYER CREATED: YES / NO
+  MONITOR PARKED WITHOUT RESET: YES / NO
+  SCROLL / THUMB ACCESS: PASS / FAIL
+  VIDEO SHUFFLE HARNESS STEP: PASS / FAIL / BLOCKED
+  ```
+
+#### 1b. QP-10 / QUICK PANELS — MOBILE VISUAL (360 / 390 / 430)
+* **Status**: ⏳ OPEN — code collapse landed; physical device screenshots still required
+* **Canonical Components**: `components/commandCenter/CommandCenterShell.tsx`, `components/commandCenter/CommandCenterSessionControlStrip.tsx`, `components/commandCenter/PersistentMediaInteractionDock.tsx`, `components/commandCenter/MobileQuickPanelBar.tsx`, `lib/commandCenter/mobileCommandCenterCapabilities.ts`, `components/mobile/PWAInstallPrompt.tsx`
+* **Proof Steps**:
+  1. `/hub/fan` and `/hub/performer` at 360 / 390 / 430 px: **LOBBIES** on quick-panel bar (not STAGE); no duplicate CAM+CAMERA on primary strip.
+  2. Right nav (HOME|DISCOVER|LIVE NOW|…) hidden behind **NAV ▴** drawer — not permanently expanded.
+  3. Secondary utilities (SHARE SCREEN|RECORD|SHARE|AUTO) only inside **MORE ▴** tray.
+  4. **INSTALL TMI** banner suppressed on hub + during GO LIVE / camera session; NOT NOW persists 7 days.
+  5. Mini player region stable — quick panels open below without playback restart.
+* **Evidence Block**:
+  ```text
+  QP-10 MOBILE VISUAL EVIDENCE
+  DEVICE WIDTH: 360 / 390 / 430
+  STAGE LABEL ABSENT: YES / NO
+  LOBBIES ON QUICK BAR: YES / NO
+  NAV COLLAPSED: YES / NO
+  MORE TRAY WORKS: YES / NO
+  PWA SUPPRESSED ON HUB: YES / NO
+  MINI PLAYER STABLE: PASS / FAIL
+  ```
+
+#### 2. GO LIVE PHYSICAL RETEST
+* **Status**: 🔴 PHYSICAL FAIL (2026-08-21 — code path converged; phone proof required)
+* **Superseding law**: ONE TAP GO LIVE stays on Command Center — Monitor A = local cam, Monitor B = venue, publish LiveSession for fans, NO broadcaster route change / Welcome / Wave / starfield.
+* **Canonical Components**: `components/commandCenter/CommandCenterSessionControlStrip.tsx`, `lib/dock/presentInstantGoLiveInPlace.ts`, `lib/dock/executeInstantGoLive.ts`, `components/commandCenter/CommandCenterMediaStack.tsx`, `components/live/HubMonitorCameraPlayer.tsx`, `components/live/HubMonitorVenuePlayer.tsx`
+* **Proof Steps**:
+  1. Load performer shell on phone Preview: camera OFF, mic OFF, live false; monitors may idle-rotate.
+  2. Tap GO LIVE once: URL stays on `/hub` (or Command Center) — never `/live/lobby` or `/live/rooms/{id}` for broadcaster.
+  3. Monitor A = self-camera within ~1s; Monitor B = UniversalVenueRenderer (empty→presence); idle MNS/Kiara rotation STOPPED.
+  4. No VENUE READY / Welcome / Wave takeover flicker for broadcaster.
+  5. Fan joins via Lobby Wall → `/live/rooms/{sameRoomId}`.
+  6. SWAP / FULLSCREEN does not restart camera or remount venue.
+* **Evidence Block**:
+  ```text
+  GO LIVE PROOF EVIDENCE
+  BUTTON FIRED: YES / NO
+  ROUTE STAYED ON COMMAND CENTER: YES / NO
+  MONITOR A SELF-CAM: YES / NO
+  MONITOR B VENUE: YES / NO
+  IDLE ROTATION STOPPED: YES / NO
+  WELCOME/WAVE/VENUE-READY FLICKER: YES / NO
+  REGISTRY PUBLISHED (fan discoverable): YES / NO
+  SAME ROOM ID FAN JOIN: YES / NO
+  ```
+* **Cert rule**: stays 🔴 PHYSICAL FAIL until phone screenshots prove Monitor A self-cam + Monitor B venue + no redirect.
+
+#### 3. GATE 3 BROADCAST CONVERGENCE
+* **Status**: ⏳ OPEN
+* **Canonical Components**: `lib/broadcast/BroadcastControlRuntime.ts`, `lib/live/GlobalLiveSessionRegistry.ts`, `components/live/AudienceField.tsx`
+* **Proof Steps**:
+  1. Performer enters live room → verify canonical session `roomId`.
+  2. Monitor A = performer source; Monitor B = canonical venue view.
+  3. Audience enters same `roomId` → verify real fan presence; 0 attendees shows empty seats.
+  4. Media continuity: same player runtime survives fullscreen + exit.
+  5. End LIVE: publication stops and LIVE indicator clears.
+* **Evidence Block**:
+  ```text
+  GATE 3 PROOF EVIDENCE
+  PERFORMER ROOM ID: <id>
+  AUDIENCE ROOM ID: <id>
+  MONITOR ROOM ID: <id>
+  ALL IDENTICAL: YES / NO
+  REAL AUDIENCE PRESENCE: YES / NO
+  LOBBY WALL PREVIEW: YES / NO
+  HOME LIVE SLOT: YES / NO
+  EXACT-ROOM ENTRY: YES / NO
+  DUPLICATE WEBRTC CAPTURE: YES / NO
+  ```
+
+#### 4. GATE 4 AUDIO PERSISTENCE
+* **Status**: ⏳ OPEN
+* **Canonical Components**: `apps/web/src/app/api/upload/media/route.ts`, `lib/media/blobStorage.ts`, `lib/playlists/PlaylistEngine.ts`
+* **Proof Steps**:
+  1. Log in → upload beat → ensure blob/store size > 0.
+  2. Hit PLAY → confirm audible playback.
+  3. Refresh page → PLAY same track.
+* **Evidence Block**:
+  ```text
+  GATE 4 PROOF EVIDENCE
+  UPLOAD SUCCEEDED: YES / NO
+  STORED URL / ASSET EXISTS: YES / NO
+  AUDIBLE BEFORE REFRESH: YES / NO
+  AUDIBLE AFTER REFRESH: YES / NO
+  SAME TRACK ID: YES / NO
+  ```
+
+#### 5. CANONICAL MEDIA PLAYER & MULTI-MONITOR GRID (1, 2, 3, 4, 6, 8)
+* **Status**: 🟢 CODE CERTIFIED / ⏳ RUNTIME PROOF OPEN
+* **Canonical Components**: `lib/monitors/MonitorLayoutDirector.ts`, `components/monitors/CanonicalDualMonitorStack.tsx`, `components/shell/VideoMonitorGrid.tsx`
+* **Evidence Block**:
+  ```text
+  MEDIA PLAYER PROOF EVIDENCE
+  LAYOUT: SINGLE / SPLIT_2 / SPLIT_3 / SPLIT_4 / GRID_6 / GRID_8
+  SWAP WITHOUT RECONNECT: PASS / FAIL
+  PARK / UNPARK WITHOUT RECONNECT: PASS / FAIL
+  PRIMARY AUDIO EXCLUSIVE: PASS / FAIL
+  ASPECT RATIO PRESERVED: PASS / FAIL
+  6/8 SCREEN DENSITY FIT: PASS / FAIL
+  ROOM ID UNCHANGED: PASS / FAIL
+  ```
+
+#### 6. LIVE SCENE EFFECTS
+* **Status**: 🟢 WIRING COMPLETE / ⏳ PHYSICAL PROOF OPEN
+* **Canonical Components**: `lib/effects/TmiFilterEngine.ts`, `lib/effects/BattleMomentumEngine.ts`, `components/effects/LiveFxDrawer.tsx`
+* **Proof Steps**:
+  1. Apply presentation effect → verify WebRTC stream remains active without reconnecting.
+  2. Switch presets → verify zero audio/video drops.
+
+#### 7. MAGAZINE READER & EDITORIAL SYSTEM
+* **Status**: 🟢 CONSOLIDATED / ⏳ PHONE VIEWPORT PROOF OPEN
+* **Canonical Components**: `/magazine/issue/current`, `components/magazine/TMIMagazineEngine.tsx`, `components/magazine/SafeMagazineImage.tsx`
+* **Proof Steps**:
+  1. Phone: Edge-to-edge 100dvw/100dvh single-page flip mode.
+  2. Media fallback: missing assets render safe editorial placeholder without layout collapse.
+
+#### 8. YOUTH SAFETY & AGE GUARDRAILS
+* **Status**: 🟢 CODE & TEST CERTIFIED (72/72 PASS)
+* **Canonical Components**: `lib/trustSafety/YouthSocialGuard.ts`, `/api/account/update-age/route.ts`
+* **Proof Steps**:
+  1. 16-17 minors barred from adult 1:1 contact without verified family link.
+  2. Missing age state triggers inline DOB completion, updates Prisma, and unlocks messaging cleanly.
+
+#### 9. AVATAR STUDIO
+* **Status**: 🟢 CANONICAL ROUTING ACTIVE
+* **Canonical Components**: `/settings/avatar`, `components/avatar/AvatarStudioExperience.tsx`
+* **Proof Steps**:
+  1. All customize/avatar links (`/avatar/customize`, `/avatar-builder`, `/avatar/shop`) auto-redirect to `/settings/avatar`.
+  2. Avatar is centered with 3D orbit controls and side category panels.
+
+#### 10. FREE-ROAM + COLLISION MESH CERTIFICATION
+* **Status**: ⏳ OPEN
+* **Evidence Block**:
+  ```text
+  COLLISION PROOF EVIDENCE
+  FLOOR DETECTION: PASS / FAIL
+  WALL COLLISION: PASS / FAIL
+  PROP COLLISION: PASS / FAIL
+  AVATAR / PERSONAL SPACE: PASS / FAIL / N/A
+  VIDEO PANEL COLLISION: PASS / FAIL
+  STAIRS / RAMPS: PASS / FAIL
+  SEATING: PASS / FAIL
+  MOVEMENT REMAINS FREE-ROAM: PASS / FAIL
+  ```
+
+#### 11. STRIPE COMMERCE & ENTITLEMENTS
+* **Status**: 🟢 MODULE PATH FIXED / ⏳ END-TO-END PAYMENT PROOF OPEN
+* **Canonical Components**: `lib/commerce/CommerceCatalogContract.ts`, `/api/stripe/checkout/route.ts`, `/api/stripe/webhook/route.ts`
+* **Evidence Block**:
+  ```text
+  COMMERCE PROOF EVIDENCE
+  CHECKOUT SESSION CREATED: YES / NO
+  PAYMENT SUCCEEDED: YES / NO
+  SIGNED WEBHOOK RECEIVED: YES / NO
+  ORDER SETTLED ONCE: YES / NO
+  ENTITLEMENT GRANTED ONCE: YES / NO
+  WEBHOOK REPLAY DUPLICATED ENTITLEMENT: YES / NO
+  OWNERSHIP VISIBLE IN UI: YES / NO
+  ```
+

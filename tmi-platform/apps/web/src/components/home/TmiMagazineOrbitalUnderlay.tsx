@@ -119,8 +119,8 @@ export const TmiMagazineOrbitalUnderlay: React.FC = () => {
           textTransform: 'uppercase',
           fontFamily: "'Impact', 'Arial Black', sans-serif",
         }}>
-          {'CYPHER ARENA OPEN • GENRE BATTLE • VOTE FOR THE CROWN • STREAM AND WIN • '}
-          {'CYPHER ARENA OPEN • GENRE BATTLE • VOTE FOR THE CROWN • STREAM AND WIN • '}
+          {'CYPHER ARENA OPEN • GENRE BATTLE • VOTE FOR THE CROWN • STREAM & WIN • '}
+          {'CYPHER ARENA OPEN • GENRE BATTLE • VOTE FOR THE CROWN • STREAM & WIN • '}
           {'CYPHER ARENA OPEN • GENRE BATTLE • VOTE FOR THE CROWN • STREAM AND WIN • '}
         </div>
       </div>

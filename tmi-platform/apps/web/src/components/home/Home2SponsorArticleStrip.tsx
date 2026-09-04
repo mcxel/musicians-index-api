@@ -8,7 +8,7 @@ export default function Home2SponsorArticleStrip() {
         SPONSORED READS
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-        <Link href="/articles/sponsor/featured" style={{ textDecoration: "none", color: "white", padding: "18px 16px", borderRadius: 10, background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.3)", display: "flex", flexDirection: "column", gap: 8 }}>
+        <Link href="/sponsors" style={{ textDecoration: "none", color: "white", padding: "18px 16px", borderRadius: 10, background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.3)", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: "#ffd700", letterSpacing: "0.1em", textTransform: "uppercase" }}>
             Brand Spotlight
           </div>

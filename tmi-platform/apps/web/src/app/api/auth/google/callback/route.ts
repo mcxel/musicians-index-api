@@ -1,7 +1,18 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { registerUser, getUserByEmail, resolveHardcodedTierRole } from '@/lib/auth/UserStore';
-import { createSession } from '@/lib/auth/SessionManager';
+import {
+  registerUser,
+  getUserByEmail,
+  resolveHardcodedTierRole,
+  dbReady,
+  type UserRole,
+} from '@/lib/auth/UserStore';
+import { authSessionCookieOpts, createSession } from '@/lib/auth/SessionManager';
+import prisma from '@/lib/prisma';
+import {
+  getMessagingEligibility,
+  needsAgeOrPolicyGate,
+} from '@/lib/messaging/MessagingEligibility';
 
 function getGoogleClientId(): string {
   return (
@@ -21,12 +32,18 @@ function getGoogleClientSecret(): string {
   ).trim();
 }
 
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure:   process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge:   7 * 24 * 60 * 60,
-  path:     '/',
+const ROLE_TO_DB: Record<string, string> = {
+  admin: 'ADMIN',
+  staff: 'STAFF',
+  fan: 'FAN',
+  artist: 'ARTIST',
+  performer: 'PERFORMER',
+  sponsor: 'SPONSOR',
+  advertiser: 'ADVERTISER',
+  venue: 'VENUE',
+  writer: 'WRITER',
+  promoter: 'PROMOTER',
+  user: 'USER',
 };
 
 function roleToHub(role: string): string {
@@ -51,6 +68,46 @@ interface GoogleUserInfo {
   name:  string;
   sub:   string;
   picture?: string;
+}
+
+/**
+ * Ensure Prisma User exists for OAuth identity.
+ * Never sets termsAccepted=true — consent is collected on
+ * /onboarding/communication-setup (or password signup checkboxes).
+ */
+async function ensureOauthPrismaUser(params: {
+  id: string;
+  email: string;
+  passwordHash: string;
+  displayName: string;
+  tier: string;
+  role: string;
+}): Promise<string> {
+  const dbRole = ROLE_TO_DB[params.role] ?? 'USER';
+  try {
+    const existing = await prisma.user.findUnique({
+      where: { email: params.email },
+      select: { id: true },
+    });
+    if (existing?.id) return existing.id;
+
+    const created = await prisma.user.create({
+      data: {
+        id: params.id,
+        email: params.email,
+        passwordHash: params.passwordHash,
+        displayName: params.displayName,
+        tier: params.tier,
+        role: dbRole as never,
+        termsAccepted: false,
+      },
+      select: { id: true },
+    });
+    return created.id;
+  } catch {
+    // Fall back to UserStore id — eligibility may be incomplete until DB sync
+    return params.id;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -108,7 +165,9 @@ export async function GET(req: NextRequest) {
   const email = (profile.email ?? '').toLowerCase().trim();
   if (!email) return NextResponse.redirect(`${BASE_URL}/auth?error=oauth_no_email`);
 
-  // Look up existing user or auto-register
+  await dbReady;
+
+  // Look up existing user or auto-register (no silent policy accept)
   let user = getUserByEmail(email);
   if (!user) {
     const hardcoded = resolveHardcodedTierRole(email);
@@ -116,28 +175,50 @@ export async function GET(req: NextRequest) {
       email,
       password:    `google_oauth_${profile.sub}`, // not used for Google auth
       displayName: profile.name ?? email.split('@')[0],
-      role:        (hardcoded?.role ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
+      role:        (hardcoded?.role ?? 'fan') as UserRole,
     });
     user = result.user ?? null;
   }
 
   if (!user) return NextResponse.redirect(`${BASE_URL}/auth?error=register_failed`);
 
+  const prismaUserId = await ensureOauthPrismaUser({
+    id: user.id,
+    email: user.email,
+    passwordHash: user.passwordHash,
+    displayName: user.displayName,
+    tier: user.tier,
+    role: user.role,
+  });
+
   const clientIp  = req.headers.get('x-forwarded-for') ?? 'unknown';
   const userAgent = req.headers.get('user-agent') ?? '';
-  const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
+  const { sessionId, sessionToken } = createSession(prismaUserId, user.role, clientIp, userAgent);
 
-  const dest = roleToHub(user.role);
-  const res  = NextResponse.redirect(`${BASE_URL}${dest}`);
+  const hub = roleToHub(user.role);
+  let dest = hub;
+
+  try {
+    const eligibility = await getMessagingEligibility(prismaUserId);
+    if (needsAgeOrPolicyGate(eligibility.state)) {
+      dest = `/onboarding/communication-setup?next=${encodeURIComponent(hub)}`;
+    }
+  } catch {
+    // If eligibility check fails, still force the consent gate for OAuth
+    dest = `/onboarding/communication-setup?next=${encodeURIComponent(hub)}`;
+  }
+
+  const res = NextResponse.redirect(`${BASE_URL}${dest}`);
 
   res.cookies.delete('tmi_oauth_state');
   res.cookies.delete('tmi_role');
   res.cookies.delete('tmi_tier');
+  const COOKIE_OPTS = authSessionCookieOpts();
   res.cookies.set('tmi_session_id', sessionId,       COOKIE_OPTS);
   res.cookies.set('tmi_session',    sessionToken,     COOKIE_OPTS);
   res.cookies.set('tmi_role',       user.role,        COOKIE_OPTS);
   res.cookies.set('tmi_tier',       user.tier,        COOKIE_OPTS);
-  res.cookies.set('tmi_user_email', email, { ...COOKIE_OPTS, httpOnly: false });
+  res.cookies.set('tmi_user_email', email, authSessionCookieOpts({ httpOnly: false }));
 
   return res;
 }

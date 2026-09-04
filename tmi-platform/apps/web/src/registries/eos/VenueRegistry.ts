@@ -25,6 +25,7 @@ const LAYOUT_BY_VENUE: Record<VenueType, VenueLayout> = {
   "world-release": "theater",
   "mini-release": "theater",
   "listening-party": "lounge",
+  "slow-jams": "lounge",
 };
 
 function buildVenueDefinition(venueType: VenueType): VenueDefinition {

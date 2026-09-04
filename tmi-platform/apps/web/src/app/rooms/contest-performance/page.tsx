@@ -1,9 +1,6 @@
-import LobbyTheaterShell from "@/components/lobbies/LobbyTheaterShell";
+import { redirect } from "next/navigation";
+import { millHrefForExperience } from "@/lib/live/ExperienceRoomRegistry";
 
 export default function ContestPerformanceRoomPage() {
-  return (
-    <main data-testid="room-contest-performance">
-      <LobbyTheaterShell slug="contest-performance" mode="room" />
-    </main>
-  );
+  redirect(millHrefForExperience("CONTEST", { from: "rooms-contest-performance" }));
 }

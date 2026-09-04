@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import TripleImageCarousel from '@/lib/media/TripleImageCarousel';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 
 interface Home1EditorialBeltProps {
   title?: string;
@@ -9,10 +10,10 @@ interface Home1EditorialBeltProps {
 }
 
 const SAMPLE_ARTICLES = [
-  { title: 'How to Win Your First TMI Contest', slug: 'how-to-win-first-contest', icon: '🏆' },
-  { title: 'Top 10 Producers to Watch 2026', slug: 'top-10-producers', icon: '🎛️' },
-  { title: 'Interview: KRYPT on His Latest Release', slug: 'interview-krypt', icon: '🎤' },
-  { title: 'Studio Recap: Neon Vibe Session Vol.3', slug: 'studio-recap-vol3', icon: '🎧' },
+  { title: 'Inside the TMI Grand Contest: Season 1 Preview', slug: 'tmi-grand-contest-season-1', icon: '🏆' },
+  { title: "The Beat Marketplace: Inside TMI's New Economy", slug: 'beat-marketplace-economy', icon: '💰' },
+  { title: 'Krypt: No Label, No Limit', slug: 'krypt-no-label-no-limit', icon: '🔒' },
+  { title: 'Neon Vibe Takes Over Monday Stage', slug: 'neon-vibe-monday-stage', icon: '🎧' },
 ];
 
 export default function Home1EditorialBelt({
@@ -41,7 +42,7 @@ export default function Home1EditorialBelt({
             transition={{ delay: i * 0.08 }}
           >
             <Link
-              href={`/magazine/article/${article.slug}`}
+              href={magazineReaderArticleUrl(article.slug, { from: '/home/1' })}
               style={{
                 display: 'block',
                 textDecoration: 'none',

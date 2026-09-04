@@ -1,0 +1,68 @@
+{
+  "title": "The Musician's Index Magazine | Official Live Music Platform",
+  "href": "http://localhost:3002/rooms/challenge/sess-challenge-prod-01",
+  "hasShell": true,
+  "shellPhase": "ATTEMPT_1_ACTIVE",
+  "pack": "Challenge",
+  "composition": "HOST_CLOSE",
+  "vsLayout": "false",
+  "prefersContract": "true",
+  "programSource": "PROGRAM.CHALLENGE_PRIMARY",
+  "surfaceKind": "production",
+  "shellText": "CHALLENGE · OBJECTIVE CONTRACT\nComplete the stated objective within the time limit\n60s · 1 attempt\nAUDIENCE VOTE\nSTAKE: NONE\nOPEN WORK\nCHALLENGER Local Challenger\nCHALLENGED — awaiting\nObjective-centered — not Battle VS. Dual split only if a future format authorizes it; this shell never forces corner collision.\nPROGRAM.CHALLENGE_PRIMARY · HOST_CLOSE",
+  "hasContractPrimitive": true,
+  "hasResultCard": false,
+  "hasJumbo": true,
+  "jumboLookUp": "true",
+  "jumboExperience": "CHALLENGE_ARENA",
+  "jumboFaces": "NORTH:CONTRACT|SOUTH:OBJECTIVE_TIMER|EAST:SPONSOR|WEST:AUDIENCE",
+  "hasCanvas": false,
+  "phaseLabel": "ATTEMPT_1_ACTIVE",
+  "policySelect": "AUDIENCE_VOTE",
+  "textSample": "CHALLENGE · OBJECTIVE STAGE\nChallenge Room\n\nRoom sess-challenge-prod-01 — contract/objective centered; not Battle VS.\n\nADD REAL CHALLENGED\nSTART ATTEMPT\nRECORD COMPLETE (NO WINNER)\nChallenges Wall\nLive Challenge\nCHALLENGE ARENA OBJECTIVE PACK\nPRIORITY 2\nTARGET: JUMBOTRON\nCHALLENGE\nCOMPLETE THE STATED OBJECTIVE WITHIN THE TIME LIMIT\n\nLocal Challenger · OBJECTIVE_CONTRACT_ASSEMBLY · PROGRAM.CHALLENGE_PRIMARY\n\nNORTH · CONTRACT\nSOUTH · OBJECTIVE TIMER\nEAST · SPONSOR\nWEST · AUDIENCE\nTMI JUMBOTRON DIRECTOR • TRUTH ENGINE\nVEN: PACK.CHALLENGE_ARENA.DEFAULT\nCHALLENGE · OBJECTIVE CONTRACT\nComplete the stated objective within the time limit\n60s · 1 attempt\nAUDIENCE VOTE\nSTAKE: NONE\nOPEN WORK\nCHALLENGER Local Challenger\nCHALLENGED — awaiting\nObjective-centered — not Battle VS. Dual split only if a future format authorizes it; this shell never forces corner collision.\nPROGRAM.CHALLENGE_PRIMARY · HOST_CLOSE\n🔊 AUDIO\n◱ HIDE HUD\nChallenge Room\nMODE\n🔴\nGo Live\n⚔️\nBattle\n🔄\nCypher\n🏆\nChallenge\n🎤\nConcert\n🎮\nGame Show\nBROADCAST\nREADY\n▶ GO LIVE\nCHALLENGE · 720p\nSETTINGS\n🎤 Microphone\nACTIVE\n🎥 Camera\nON\nQUALITY\n360p\n480p\n720p\n1080p\nJudgment policy: \nMEASURABLE_RESULT\nAUDIENCE_VOTE\nAUTHORIZED_JUDGES\nPhase: ATTEMPT_1_ACTIVE",
+  "audios": [
+    {
+      "tag": "AUDIO",
+      "muted": false,
+      "paused": true,
+      "src": ""
+    }
+  ],
+  "facesHook": [
+    {
+      "face": "NORTH",
+      "role": "ACTIVE_ATTEMPT",
+      "sourceKind": "PROGRAM",
+      "creativeId": "challenge:challenge-session:sess-challenge-prod-01:active:local-challenger",
+      "campaignId": null
+    },
+    {
+      "face": "SOUTH",
+      "role": "OBJECTIVE_TIMER",
+      "sourceKind": "TIMER",
+      "creativeId": "challenge:challenge-session:sess-challenge-prod-01:objective:Complete the stated objective within the time limit",
+      "campaignId": null
+    },
+    {
+      "face": "EAST",
+      "role": "SPONSOR",
+      "sourceKind": "AD",
+      "creativeId": "challenge:challenge-session:sess-challenge-prod-01:sponsor:house",
+      "campaignId": "house-promo"
+    },
+    {
+      "face": "WEST",
+      "role": "AUDIENCE",
+      "sourceKind": "FAN_CAM",
+      "creativeId": "challenge:challenge-session:sess-challenge-prod-01:audience",
+      "campaignId": null
+    }
+  ],
+  "semantic": {
+    "hasObjectiveContract": true,
+    "hasBattleVs": false,
+    "hasCypherChrome": false,
+    "hasGauntlet": false,
+    "mentionsNotBattleVs": true
+  }
+}

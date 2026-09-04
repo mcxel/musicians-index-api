@@ -30,6 +30,7 @@ coverage/
 .tmp/
 .temp/
 .cache/
+.data/
 
 # =============================
 # TS / MAP
@@ -81,3 +82,36 @@ humanity-benchmark.js
 # =============================
 packages/db/prisma/migrations_backup/
 .vercel
+
+# =============================
+# SOURCE/REFERENCE ASSET PACKS — not runtime assets.
+# Keep on disk, out of git. Promote individual optimized files into
+# canonical asset locations when actually needed by the shipped app.
+# =============================
+TMI-Mobile-Handoff-v2/
+Profiles/
+Sounds Pack/
+Yopho Bases/
+Lobbies/*.zip
+Venue Skins Plus Seating/*.zip
+
+# =============================
+# TSC / BUILD SCRATCH OUTPUT
+# =============================
+*.tsbuildinfo.*
+tsc_*.txt
+tsc-out*.txt
+tmp-tsc*.txt
+_tsc_out.txt
+build-out.txt
+_build_stage_telemetry.txt
+tmp/
+test-results/
+
+# BobbleHead reference pack — concept art only; register paths in BobbleheadBaseRegistry.
+# Promote optimized previews into apps/web/public/avatars/bobblehead-bases/ only.
+BobbleHead Avatar Bases/
+
+
+apps/web/public/avatars/bobblehead-bases/base-*.png
+

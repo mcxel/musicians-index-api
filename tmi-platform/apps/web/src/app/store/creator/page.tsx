@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { CREATOR_ITEMS, formatPrice } from '@/lib/store/StoreItemEngine';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
 import BuyPointsSection from '@/components/store/BuyPointsSection';
+import CreateProductPanel from '@/components/store/CreateProductPanel';
+import { StoreCanister } from '@/components/canisters/StoreCanister';
 
 const BADGE_COLORS: Record<string, string> = {
   HOT: '#FF2DAA', NEW: '#00FF88', LIMITED: '#FFD700', LAUNCH: '#AA2DFF',
@@ -26,12 +28,32 @@ export default function CreatorStorePage() {
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
             FREE <strong style={{ color: '#FF2DAA' }}>20%</strong> · PRO <strong style={{ color: '#FF2DAA' }}>18%</strong> · RUBY <strong style={{ color: '#FF2DAA' }}>16%</strong> · SILVER <strong style={{ color: '#FF2DAA' }}>14%</strong><br />
             GOLD <strong style={{ color: '#FF2DAA' }}>12%</strong> · PLATINUM <strong style={{ color: '#FF2DAA' }}>10%</strong> · DIAMOND <strong style={{ color: '#FF2DAA' }}>8%</strong><br />
-            You keep the rest on tips, beats, merch, NFT, shoutouts. Big Ace = 0.
+            You keep the rest on tips, beats, merch, NFT, shoutouts. Big Ace = 0. Artist store prices are set per-product in your catalog below — not via STRIPE_PRICE_* env.
           </div>
         </div>
 
         <BuyPointsSection role="PERFORMER" accent="#FF2DAA" showSpendCatalog />
 
+        <div style={{ marginBottom: 36 }}>
+          <CreateProductPanel />
+        </div>
+
+        <div style={{ marginBottom: 36 }}>
+          <StoreCanister
+            entityId="me"
+            entityName="Your Catalog"
+            storeType="performer"
+            accentColor="#FF2DAA"
+            manageHref="/store/creator"
+          />
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 10 }}>
+            Your live catalog loads from your artist account after you publish products above. Fans buy via /api/commerce/checkout — not STRIPE_PRICE_* env vars.
+          </p>
+        </div>
+
+        <div style={{ fontSize: 9, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.35)', fontWeight: 800, marginBottom: 14 }}>
+          PLATFORM TOOLS (TMI-OWNED — SEPARATE FROM YOUR ARTIST STORE)
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
           {CREATOR_ITEMS.map((item, i) => (
             <motion.div

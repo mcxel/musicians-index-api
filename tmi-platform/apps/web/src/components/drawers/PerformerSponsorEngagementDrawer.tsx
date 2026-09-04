@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import UniversalDrawerBase from "./UniversalDrawerBase";
 import { DRAWER_OPEN_HEIGHT } from "@/lib/drawers/DrawerAnimationProfile";
-import { HOUSE_SPONSORS } from "@/lib/commerce/DualStreamSponsorshipEngine";
+import { HOUSE_SPONSORS } from "@/lib/commerce/HouseSponsorCanon";
 
 interface PerformerSponsorEngagementDrawerProps {
   open: boolean;

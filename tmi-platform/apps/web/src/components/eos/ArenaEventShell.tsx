@@ -30,6 +30,9 @@ export interface EosArenaEventShellConfig {
   watcherCount?: number;
   /** Skip built-in presentation — EOS widget layer owns HUD */
   suppressLivePresentation?: boolean;
+  venueEnvironment?: "indoor" | "outdoor" | null;
+  venueSkinId?: string | null;
+  specialYearlyOutdoor?: boolean;
 }
 
 const CATEGORY_TO_EVENT: Partial<Record<ExperienceCategory, ArenaEventType>> = {
@@ -72,12 +75,19 @@ export default function EosArenaEventShell({ config }: EosArenaEventShellProps) 
           liveState={config.liveState ?? "live"}
           watcherCount={config.watcherCount}
           suppressPresentation
+          venueEnvironment={config.venueEnvironment}
+          venueSkinId={config.venueSkinId}
+          specialYearlyOutdoor={config.specialYearlyOutdoor}
         />
         <ExperienceWidgetLayer
           widgets={manifest.widgets}
           roomId={config.roomId}
           format={format}
           accentColor="#00FFFF"
+          featureFlags={experience.featureFlags}
+          cypherKing={experience.featureFlags?.some((f) =>
+            f.toLowerCase().includes("cypher_king") || f.toLowerCase().includes("cypher-king"),
+          )}
         />
       </div>
     </FlightDeckBezel>

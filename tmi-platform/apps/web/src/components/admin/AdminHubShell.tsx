@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * LEGACY / UNMOUNTED — do not route.
+ *
+ * Second admin shell built without knowledge of the 2026-07-29 Marcel mandate
+ * that made OverseerFlightDeck (mounted at /admin/overseer) canonical. Has
+ * zero production route consumers. Pending deletion after a final
+ * zero-dependency confirmation pass — see OverseerDeck.tsx for detail.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import BackButton from "@/components/navigation/BackButton";
@@ -14,8 +23,24 @@ import AdminRuntimePanel from "@/components/admin/AdminRuntimePanel";
 import { ADMIN_ROUTE_LIST, getAdminRouteById, type AdminSectionId } from "@/lib/adminRouteMap";
 import { emitBigAceEvent, emitSystemEvent, getSystemEventLog, subscribeSystemEvent } from "@/lib/systemEventBus";
 import AdminMotionLayer from "@/components/motion/AdminMotionLayer";
+import OverseerDeck from "./OverseerDeck";
 import AdminMotionHUD from "@/components/admin/AdminMotionHUD";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+
+// Map admin section IDs to their respective components for inline rendering
+const COMPONENT_MAP = {
+  "chain-command": AdminChainCommand,
+  "security": AdminSecurityWall,
+  "integrations": AdminAccountLinker,
+  "billing": AdminRevenuePanel,
+  "bots": AdminLiveFeedExplorer,
+  "live-feed": AdminLiveFeedExplorer,
+  "artist-analytics": AdminMagazineAnalytics,
+  "magazine-analytics": AdminMagazineAnalytics,
+  "role-previews": AdminRuntimePanel,
+  "user-management": AdminRuntimePanel,
+} as const;
 
 export default function AdminHubShell() {
   const router = useRouter();
@@ -29,6 +54,8 @@ export default function AdminHubShell() {
   const [eventCount, setEventCount] = useState(() => getSystemEventLog().length);
   const [isMobile, setIsMobile] = useState(true);
   const [mobileAdminTab, setMobileAdminTab] = useState<"command" | "monitor" | "intel">("monitor");
+  // State for currently displayed inline admin component (slot)
+  const [inlineComponentId, setInlineComponentId] = useState<AdminSectionId | null>(null);
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 767px)");
@@ -51,6 +78,7 @@ export default function AdminHubShell() {
       nextParams.set("monitor", target.id);
       nextParams.set("route", target.route);
       router.push(`${pathname}?${nextParams.toString()}`);
+        setInlineComponentId(id);
 
       emitSystemEvent({
         type: "admin.monitor.select",
@@ -147,6 +175,7 @@ export default function AdminHubShell() {
           Big Ace Deck
         </button>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <RoleHubAccountMenu accentColor="#FFD700" />
           <RoleSwitcherWidget accentColor="#FFD700" buttonLabel="SWITCH ROLE" />
           <span style={{ color: "#99f6e4", fontSize: 11 }}>event bus logs: {eventCount}</span>
         </div>
@@ -205,24 +234,34 @@ export default function AdminHubShell() {
           )}
         </div>
       ) : (
-        <section style={{ display: "grid", gridTemplateColumns: "290px 1fr 320px", gap: 12, padding: 12, minHeight: 0 }}>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <AdminChainCommand selectedId={selectedId} onSelect={selectSection} />
-            <AdminSecurityWall selectedId={selectedId} onSelect={selectSection} />
-            <AdminAccountLinker selectedId={selectedId} onSelect={selectSection} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateRows: "1fr auto", gap: 10, minHeight: 0 }}>
-            <AdminMonitorRouter selectedTarget={selectedTarget} onOpenFullView={openFullView} />
-            <AdminLiveFeedExplorer />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 10, minHeight: 0 }}>
-            <AdminRevenuePanel selectedId={selectedId} onSelect={selectSection} />
-            <AdminMagazineAnalytics selectedId={selectedId} onSelect={selectSection} />
-            <AdminRuntimePanel />
-          </div>
-        </section>
+        <OverseerDeck
+          inlinePanel={
+            inlineComponentId ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setInlineComponentId(null)}
+                  style={{
+                    marginBottom: 8,
+                    background: "rgba(250,204,21,0.12)",
+                    border: "1px solid rgba(250,204,21,0.5)",
+                    borderRadius: 6,
+                    color: "#fcd34d",
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Close
+                </button>
+                {(() => {
+                  const Component = COMPONENT_MAP[inlineComponentId as keyof typeof COMPONENT_MAP];
+                  return Component ? <Component selectedId={selectedId} onSelect={selectSection} /> : null;
+                })()}
+              </div>
+            ) : undefined
+          }
+        />
       )}
 
       <footer

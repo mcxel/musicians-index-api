@@ -4,7 +4,6 @@ import Link from "next/link";
 import LiveStoreOverlay from "@/components/live/LiveStoreOverlay";
 import GhostChatWidget from "@/components/live/GhostChatWidget";
 import SpotlightContainer from "@/components/live/SpotlightContainer";
-import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 import ConductorDeck from "@/components/conductor/ConductorDeck";
 
 type StageSnapshot = {
@@ -80,7 +79,6 @@ export default function LiveStagesPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      <SeatArrivalTransition />
       <section style={{ padding: "56px 24px 32px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
           <Link href="/live" style={{ color: "#666", textDecoration: "none", fontSize: 13 }}>{"<- Live Hub"}</Link>

@@ -1,6 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+/**
+ * LEGACY / UNMOUNTED — do not route.
+ *
+ * Superseded by OverseerFlightDeck (the real canonical admin shell, mounted
+ * at /admin/overseer per the 2026-07-29 Marcel mandate). This component and
+ * its consumer AdminHubShell.tsx have zero production route consumers.
+ *
+ * The named-slot idea here (LEFT_PRIMARY/RIGHT_PRIMARY/etc.) is already
+ * covered — more capably — by OverseerFlightDeck's ObservatoryControlDesk
+ * (DeskPanelId / DeskTile / named layouts, driven by OverseerCoverageRail
+ * via focusIntelligenceWorkspace()). Do not port this slot pattern into
+ * OverseerFlightDeck; it would duplicate that system, not fill a gap.
+ *
+ * Pending deletion after a final zero-dependency confirmation pass.
+ */
+
+import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { DeckSlot } from "./DeckSlot";
 
 type ObservatorySummary = {
   users: { total: number; online: number; paid: number; free: number };
@@ -191,7 +208,11 @@ function HealthBadge({ status }: { status: string }) {
   );
 }
 
-export default function OverseerDeck() {
+export default function OverseerDeck({
+  inlinePanel,
+}: {
+  inlinePanel?: ReactNode;
+}) {
   const [summary, setSummary] = useState<ObservatorySummary | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState("");
@@ -280,130 +301,121 @@ export default function OverseerDeck() {
         </div>
       </div>
 
-      {/* 8-Monitor Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-        }}
-      >
-        {/* Monitor 1 — Activity */}
-        <Monitor label="Activity" pulse={s.liveActivity.liveRooms > 0}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-            <Stat label="Live Rooms" value={s.liveActivity.liveRooms} accent="#00FFFF" />
-            <Stat label="Live Performers" value={s.liveActivity.livePerformers} accent="#00FFFF" />
-            <Stat label="Live Fans" value={s.liveActivity.liveFans} />
-            <Stat label="Online Now" value={s.users.online} />
-            <Stat label="Radio Rooms" value={s.liveActivity.radioRoomsActive} />
-            <Stat label="Playlist Rooms" value={s.liveActivity.playlistRoomsActive} />
-          </div>
-        </Monitor>
-
-        {/* Monitor 2 — Revenue */}
-        <Monitor label="Revenue" pulse={s.revenueHealth.revenueToday > 0}>
-          <Stat label="Today" value={fmt$(s.revenueHealth.revenueToday)} accent="#00FF88" large />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
-            <Stat label="This Week" value={fmt$(s.revenueHealth.revenueWeek)} accent="#00FF88" />
-            <Stat label="This Month" value={fmt$(s.revenueHealth.revenueMonth)} accent="#00FF88" />
-            <Stat label="New Subs" value={s.revenueHealth.newSubscriptions} />
-            <Stat label="Renewals" value={s.revenueHealth.renewals} />
-            <Stat label="Failed Payments" value={s.revenueHealth.failedPayments} accent={s.revenueHealth.failedPayments > 0 ? "#ff6666" : undefined} />
-            <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
-              <HealthBadge status={s.revenueHealth.stripeHealth} />
+      {/* Named Slot Layout */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        <DeckSlot slotName="LEFT_PRIMARY">
+          <Monitor label="Activity" pulse={s.liveActivity.liveRooms > 0}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+              <Stat label="Live Rooms" value={s.liveActivity.liveRooms} accent="#00FFFF" />
+              <Stat label="Live Performers" value={s.liveActivity.livePerformers} accent="#00FFFF" />
+              <Stat label="Live Fans" value={s.liveActivity.liveFans} />
+              <Stat label="Online Now" value={s.users.online} />
+              <Stat label="Radio Rooms" value={s.liveActivity.radioRoomsActive} />
+              <Stat label="Playlist Rooms" value={s.liveActivity.playlistRoomsActive} />
             </div>
-          </div>
-        </Monitor>
-
-        {/* Monitor 3 — Signups */}
-        <Monitor label="Signups">
-          <Stat label="Total Users" value={s.users.total} accent="#AA2DFF" large />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
-            <Stat label="Paid" value={s.users.paid} accent="#AA2DFF" />
-            <Stat label="Free" value={s.users.free} />
-            <Stat label="Diamond Fans" value={s.membership.fan.diamond ?? 0} accent="#FFD700" />
-            <Stat label="Diamond Artists" value={s.membership.performer.diamond ?? 0} accent="#FFD700" />
-            <Stat label="Gold Fans" value={s.membership.fan.gold ?? 0} />
-            <Stat label="Gold Artists" value={s.membership.performer.gold ?? 0} />
-          </div>
-        </Monitor>
-
-        {/* Monitor 4 — Live Rooms */}
-        <Monitor label="Live Rooms" pulse={s.rooms.active > 0}>
-          <Stat label="Active Rooms" value={s.rooms.active} accent="#FF2DAA" large />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
-            <Stat label="Sessions" value={s.rooms.liveSessions} accent="#FF2DAA" />
-            <Stat label="Total Capacity" value={s.rooms.total} />
-            <Stat label="Occupancy" value={s.rooms.occupancy} />
-            <Stat label="Missing Preview" value={s.discoveryHealth.roomsMissingPreview} accent={s.discoveryHealth.roomsMissingPreview > 0 ? "#FFD700" : undefined} />
-            <Stat label="Missing Streams" value={s.discoveryHealth.roomsMissingStreams} accent={s.discoveryHealth.roomsMissingStreams > 0 ? "#ff6666" : undefined} />
-            <Stat label="On Discovery" value={s.discoveryHealth.roomsVisibleOnDiscovery} />
-          </div>
-        </Monitor>
-
-        {/* Monitor 5 — Tickets */}
-        <Monitor label="Tickets">
-          <Stat label="Total Tickets" value={s.commerce.tickets} accent="#FFD700" large />
-          <div style={{ marginTop: 8 }}>
-            <Stat label="Songs Uploaded Today" value={s.uploadHealth.songsUploadedToday} />
-            <Stat label="Videos Uploaded Today" value={s.uploadHealth.videosUploadedToday} />
-            <Stat label="Images Uploaded Today" value={s.uploadHealth.imagesUploadedToday} />
-            <Stat
-              label="Failed Uploads"
-              value={s.uploadHealth.failedUploads}
-              accent={s.uploadHealth.failedUploads > 0 ? "#ff6666" : undefined}
-            />
-          </div>
-        </Monitor>
-
-        {/* Monitor 6 — Sponsors */}
-        <Monitor label="Sponsors">
-          <Stat label="Active Sponsor Zones" value={s.commerce.sponsors} accent="#FF8C00" large />
-          <div style={{ marginTop: 8 }}>
-            <Stat label="Active Gifts" value={(s.observatory as { activeGifts?: number }).activeGifts ?? 0} />
-            <Stat label="Runtime Conflicts" value={(s.observatory as { totalConflicts?: number }).totalConflicts ?? 0} accent={(s.observatory as { totalConflicts?: number }).totalConflicts ? "#ff6666" : undefined} />
-            <Stat label="Pending Payments" value={s.revenueHealth.pendingPayments} accent={s.revenueHealth.pendingPayments > 0 ? "#FFD700" : undefined} />
-          </div>
-        </Monitor>
-
-        {/* Monitor 7 — Battles */}
-        <Monitor label="Battles" pulse={s.liveActivity.battlesActive > 0}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-            <Stat label="Battles Live" value={s.liveActivity.battlesActive} accent="#f87171" large />
-            <Stat label="Cyphers Live" value={s.liveActivity.cyphersActive} accent="#f87171" large />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
-            <Stat label="Challenges" value={s.liveActivity.challengesActive} />
-            <Stat label="Total Arena" value={s.liveActivity.battlesActive + s.liveActivity.cyphersActive + s.liveActivity.challengesActive} accent="#f87171" />
-          </div>
-          {s.liveActivity.battlesActive === 0 && s.liveActivity.cyphersActive === 0 && (
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", marginTop: 8 }}>
-              No active arena sessions
+          </Monitor>
+        </DeckSlot>
+        <DeckSlot slotName="LEFT_SECONDARY">
+          <Monitor label="Revenue" pulse={s.revenueHealth.revenueToday > 0}>
+            <Stat label="Today" value={fmt$(s.revenueHealth.revenueToday)} accent="#00FF88" large />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
+              <Stat label="This Week" value={fmt$(s.revenueHealth.revenueWeek)} accent="#00FF88" />
+              <Stat label="This Month" value={fmt$(s.revenueHealth.revenueMonth)} accent="#00FF88" />
+              <Stat label="New Subs" value={s.revenueHealth.newSubscriptions} />
+              <Stat label="Renewals" value={s.revenueHealth.renewals} />
+              <Stat label="Failed Payments" value={s.revenueHealth.failedPayments} accent={s.revenueHealth.failedPayments > 0 ? "#ff6666" : undefined} />
+              <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
+                <HealthBadge status={s.revenueHealth.stripeHealth} />
+              </div>
             </div>
+          </Monitor>
+        </DeckSlot>
+        <DeckSlot slotName="RIGHT_PRIMARY">
+          {inlinePanel ?? (
+          <Monitor label="Signups">
+            <Stat label="Total Users" value={s.users.total} accent="#AA2DFF" large />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
+              <Stat label="Paid" value={s.users.paid} accent="#AA2DFF" />
+              <Stat label="Free" value={s.users.free} />
+              <Stat label="Diamond Fans" value={s.membership.fan.diamond ?? 0} accent="#FFD700" />
+              <Stat label="Diamond Artists" value={s.membership.performer.diamond ?? 0} accent="#FFD700" />
+              <Stat label="Gold Fans" value={s.membership.fan.gold ?? 0} />
+              <Stat label="Gold Artists" value={s.membership.performer.gold ?? 0} />
+            </div>
+          </Monitor>
           )}
-        </Monitor>
-
-        {/* Monitor 8 — Sys Health */}
-        <Monitor label="Sys Health">
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>STRIPE</span>
-              <HealthBadge status={s.revenueHealth.stripeHealth} />
+        </DeckSlot>
+        <DeckSlot slotName="RIGHT_SECONDARY">
+          <Monitor label="Live Rooms" pulse={s.rooms.active > 0}>
+            <Stat label="Active Rooms" value={s.rooms.active} accent="#FF2DAA" large />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
+              <Stat label="Sessions" value={s.rooms.liveSessions} accent="#FF2DAA" />
+              <Stat label="Total Capacity" value={s.rooms.total} />
+              <Stat label="Occupancy" value={s.rooms.occupancy} />
+              <Stat label="Missing Preview" value={s.discoveryHealth.roomsMissingPreview} accent={s.discoveryHealth.roomsMissingPreview > 0 ? "#FFD700" : undefined} />
+              <Stat label="Missing Streams" value={s.discoveryHealth.roomsMissingStreams} accent={s.discoveryHealth.roomsMissingStreams > 0 ? "#ff6666" : undefined} />
+              <Stat label="On Discovery" value={s.discoveryHealth.roomsVisibleOnDiscovery} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>TRANSCODES</span>
-              <HealthBadge status={s.uploadHealth.failedTranscodes > 0 ? "DEGRADED" : "HEALTHY"} />
+          </Monitor>
+        </DeckSlot>
+        <DeckSlot slotName="BOTTOM_INTELLIGENCE">
+          <Monitor label="Tickets">
+            <Stat label="Total Tickets" value={s.commerce.tickets} accent="#FFD700" large />
+            <div style={{ marginTop: 8 }}>
+              <Stat label="Songs Uploaded Today" value={s.uploadHealth.songsUploadedToday} />
+              <Stat label="Videos Uploaded Today" value={s.uploadHealth.videosUploadedToday} />
+              <Stat label="Images Uploaded Today" value={s.uploadHealth.imagesUploadedToday} />
+              <Stat
+                label="Failed Uploads"
+                value={s.uploadHealth.failedUploads}
+                accent={s.uploadHealth.failedUploads > 0 ? "#ff6666" : undefined}
+              />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>STREAM FEEDS</span>
-              <HealthBadge status={s.discoveryHealth.roomsMissingStreams > 0 ? "DEGRADED" : "HEALTHY"} />
+          </Monitor>
+          <Monitor label="Sponsors">
+            <Stat label="Active Sponsor Zones" value={s.commerce.sponsors} accent="#FF8C00" large />
+            <div style={{ marginTop: 8 }}>
+              <Stat label="Active Gifts" value={(s.observatory as { activeGifts?: number }).activeGifts ?? 0} />
+              <Stat label="Runtime Conflicts" value={(s.observatory as { totalConflicts?: number }).totalConflicts ?? 0} accent={(s.observatory as { totalConflicts?: number }).totalConflicts ? "#ff6666" : undefined} />
+              <Stat label="Pending Payments" value={s.revenueHealth.pendingPayments} accent={s.revenueHealth.pendingPayments > 0 ? "#FFD700" : undefined} />
             </div>
-            <div style={{ marginTop: 4 }}>
-              <Stat label="Failed Transcodes" value={s.uploadHealth.failedTranscodes} accent={s.uploadHealth.failedTranscodes > 0 ? "#ff6666" : undefined} />
-              <Stat label="Playlist Import Errors" value={s.uploadHealth.failedPlaylistImports} accent={s.uploadHealth.failedPlaylistImports > 0 ? "#ff6666" : undefined} />
+          </Monitor>
+          <Monitor label="Battles" pulse={s.liveActivity.battlesActive > 0}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+              <Stat label="Battles Live" value={s.liveActivity.battlesActive} accent="#f87171" large />
+              <Stat label="Cyphers Live" value={s.liveActivity.cyphersActive} accent="#f87171" large />
             </div>
-          </div>
-        </Monitor>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 6 }}>
+              <Stat label="Challenges" value={s.liveActivity.challengesActive} />
+              <Stat label="Total Arena" value={s.liveActivity.battlesActive + s.liveActivity.cyphersActive + s.liveActivity.challengesActive} accent="#f87171" />
+            </div>
+            {s.liveActivity.battlesActive === 0 && s.liveActivity.cyphersActive === 0 && (
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", marginTop: 8 }}>
+                No active arena sessions
+              </div>
+            )}
+          </Monitor>
+          <Monitor label="Sys Health">
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>STRIPE</span>
+                <HealthBadge status={s.revenueHealth.stripeHealth} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>TRANSCODES</span>
+                <HealthBadge status={s.uploadHealth.failedTranscodes > 0 ? "DEGRADED" : "HEALTHY"} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>STREAM FEEDS</span>
+                <HealthBadge status={s.discoveryHealth.roomsMissingStreams > 0 ? "DEGRADED" : "HEALTHY"} />
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <Stat label="Failed Transcodes" value={s.uploadHealth.failedTranscodes} accent={s.uploadHealth.failedTranscodes > 0 ? "#ff6666" : undefined} />
+                <Stat label="Playlist Import Errors" value={s.uploadHealth.failedPlaylistImports} accent={s.uploadHealth.failedPlaylistImports > 0 ? "#ff6666" : undefined} />
+              </div>
+            </div>
+          </Monitor>
+        </DeckSlot>
       </div>
     </div>
   );

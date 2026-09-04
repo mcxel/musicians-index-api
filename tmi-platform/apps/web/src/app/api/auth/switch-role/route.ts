@@ -8,6 +8,8 @@ const ROLE_TO_HUB: Record<string, string> = {
   ADMIN: "/admin",
   ARTIST: "/hub/performer",
   PERFORMER: "/hub/performer",
+  PRODUCER: "/hub/performer",
+  BAND: "/hub/performer",
   FAN: "/hub/fan",
   USER: "/hub/fan",
   WRITER: "/hub/writer",

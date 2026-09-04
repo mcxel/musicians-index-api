@@ -124,7 +124,6 @@ export async function prepareStripeLiveVerificationCheckout(input?: {
     success_url: `${origin}/checkout/success?checkoutId=${encodeURIComponent(created.checkout.checkoutId)}`,
     cancel_url: `${origin}/checkout/cancel?checkoutId=${encodeURIComponent(created.checkout.checkoutId)}`,
     client_reference_id: customerId,
-    payment_method_types: ["card"],
     metadata: {
       checkoutId: created.checkout.checkoutId,
       orderId: created.checkout.orderId,

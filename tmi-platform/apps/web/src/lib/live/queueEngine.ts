@@ -83,6 +83,65 @@ export function removeFromQueue(venueSlug: string, performerId: string): void {
   const queue = getVenueQueue(venueSlug);
   const slot = queue.slots.find((s) => s.performerId === performerId && s.status !== "done");
   if (slot) slot.status = "done";
+  // Re-mark next-up if we removed the previous next-up
+  const waiting = queue.slots.filter((s) => s.status === "waiting");
+  const hasNext = queue.slots.some((s) => s.status === "next-up" || s.status === "staging");
+  if (!hasNext && waiting.length > 0) waiting[0].status = "next-up";
+}
+
+/** Host reject: remove next-up / first waiting request. Returns rejected slot or null. */
+export function rejectNextRequest(venueSlug: string): QueueSlot | null {
+  const queue = getVenueQueue(venueSlug);
+  const target =
+    queue.slots.find((s) => s.status === "next-up" || s.status === "staging") ??
+    queue.slots.find((s) => s.status === "waiting");
+  if (!target) return null;
+  target.status = "done";
+  const waiting = queue.slots.filter((s) => s.status === "waiting");
+  if (waiting.length > 0 && !queue.slots.some((s) => s.status === "next-up")) {
+    waiting[0].status = "next-up";
+  }
+  return target;
+}
+
+/** Promote/demote within waiting queue via priority (existing boost path). */
+export function reorderQueue(
+  venueSlug: string,
+  performerId: string,
+  direction: "up" | "down",
+): QueueSlot | null {
+  const queue = getVenueQueue(venueSlug);
+  const slot = queue.slots.find((s) => s.performerId === performerId && s.status !== "done");
+  if (!slot) return null;
+  if (direction === "up") {
+    slot.priority = Math.max(1, slot.priority - 1);
+    slot.boostedAt = Date.now();
+  } else {
+    slot.priority = Math.min(20, slot.priority + 1);
+  }
+  queue.slots.sort((a, b) => a.priority - b.priority || a.requestedAt - b.requestedAt);
+  for (const s of queue.slots) {
+    if (s.status === "next-up") s.status = "waiting";
+  }
+  const waiting = queue.slots.filter((s) => s.status === "waiting");
+  if (waiting.length > 0) waiting[0].status = "next-up";
+  return slot;
+}
+
+/** Mark current on-stage performer complete (host remove from stage). */
+export function clearOnStage(venueSlug: string): QueueSlot | null {
+  const queue = getVenueQueue(venueSlug);
+  const onStage = queue.slots.find((s) => s.status === "on-stage");
+  if (!onStage) return null;
+  onStage.status = "done";
+  return onStage;
+}
+
+/** 1-based position among active (non-done) slots; null if not queued. */
+export function getQueuePosition(venueSlug: string, performerId: string): number | null {
+  const active = getVenueQueue(venueSlug).slots.filter((s) => s.status !== "done");
+  const idx = active.findIndex((s) => s.performerId === performerId);
+  return idx >= 0 ? idx + 1 : null;
 }
 
 export function pauseQueue(venueSlug: string): void {
@@ -103,4 +162,47 @@ export function getQueueSnapshot(venueSlug: string) {
     maxSlots: queue.maxSlots,
     slots: activeSlots,
   };
+}
+
+/** Honest: any waiting / next-up / staging / on-stage performer. */
+export function hasActiveQueueParticipants(venueSlug: string): boolean {
+  return getQueueSnapshot(venueSlug).count > 0;
+}
+
+/**
+ * RESET step (must run before shuffle):
+ * Clear stage, next-up, staging, and completed slots. Honest empty.
+ * Keeps the same venueSlug — discovery tile stays alive.
+ */
+export function resetQueueForRecruiting(venueSlug: string): VenueQueue {
+  const queue = getVenueQueue(venueSlug);
+  queue.slots = [];
+  queue.paused = false;
+  return queue;
+}
+
+/**
+ * SHUFFLE step — reorder waiting-only pool for next-up presentation.
+ * Refuses if any on-stage / staging / next-up slot still exists (match still live).
+ */
+export function shuffleWaitingSlots(venueSlug: string): VenueQueue | null {
+  const queue = getVenueQueue(venueSlug);
+  const live = queue.slots.some(
+    (s) => s.status === "on-stage" || s.status === "staging" || s.status === "next-up",
+  );
+  if (live) return null;
+
+  const waiting = queue.slots.filter((s) => s.status === "waiting");
+  for (let i = waiting.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = waiting[i]!;
+    waiting[i] = waiting[j]!;
+    waiting[j] = tmp;
+  }
+  waiting.forEach((s, idx) => {
+    s.priority = idx + 1;
+  });
+  queue.slots = waiting;
+  if (waiting[0]) waiting[0].status = "next-up";
+  return queue;
 }

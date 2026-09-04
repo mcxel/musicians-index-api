@@ -27,26 +27,42 @@ export default function VenueTicketScanner({ venueId, onScan }: VenueTicketScann
   const processTicket = useCallback(async (code?: string) => {
     setScanState('SCANNING');
     setResult(null);
-    const lookup = code ?? manualCode;
+    const lookup = (code ?? manualCode).trim();
+    if (!lookup) {
+      setScanState('IDLE');
+      return;
+    }
 
     try {
-      const res = await fetch('/api/tickets/validate', {
+      const res = await fetch('/api/tickets/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: lookup, venueId }),
+        body: JSON.stringify({ token: lookup, method: 'manual', gate: venueId }),
       });
-      if (res.ok) {
-        const data = await res.json() as { valid: boolean; ticket?: TicketResult };
-        if (data.valid && data.ticket) { setScanState('APPROVED'); setResult(data.ticket); onScan?.(data.ticket); }
-        else { setScanState('DENIED'); onScan?.(null); }
-      } else { setScanState('DENIED'); onScan?.(null); }
+      const data = await res.json() as {
+        ok?: boolean;
+        ticketId?: string;
+        decision?: string;
+        message?: string;
+      };
+      if (data.ok) {
+        const ticket: TicketResult = {
+          id: data.ticketId ?? lookup,
+          holder: 'Guest',
+          tier: data.decision ?? 'ADMITTED',
+          seat: venueId,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        setScanState('APPROVED');
+        setResult(ticket);
+        onScan?.(ticket);
+      } else {
+        setScanState('DENIED');
+        onScan?.(null);
+      }
     } catch {
-      // Demo / offline fallback
-      const ok = Math.random() > 0.15;
-      if (ok) {
-        const demo: TicketResult = { id: `TMI-${Math.random().toString(36).substring(2,8).toUpperCase()}`, holder: 'Guest', tier: 'VIP FLOOR', seat: `A-${Math.floor(Math.random()*20)+1}`, timestamp: new Date().toLocaleTimeString() };
-        setScanState('APPROVED'); setResult(demo); onScan?.(demo);
-      } else { setScanState('DENIED'); onScan?.(null); }
+      setScanState('DENIED');
+      onScan?.(null);
     }
     setTimeout(() => { setScanState('IDLE'); setManualCode(''); }, 4000);
   }, [manualCode, venueId, onScan]);
@@ -65,17 +81,13 @@ export default function VenueTicketScanner({ venueId, onScan }: VenueTicketScann
         {scanState==='IDLE' && <div style={{ textAlign:'center', color: C.dim }}><div style={{ fontSize:32, marginBottom:8 }}>📱</div><div style={{ fontSize:10, letterSpacing:3, fontWeight:700 }}>AWAITING QR</div></div>}
         {scanState==='SCANNING' && <><div style={{ fontSize:14, fontWeight:900, color: C.gold, letterSpacing:4 }}>SCANNING...</div><div style={{ position:'absolute', top:0, left:0, width:'100%', height:3, background: C.gold }} /></>}
         {scanState==='APPROVED' && result && <div style={{ textAlign:'center', padding:16 }}><div style={{ fontSize:28, marginBottom:8 }}>✅</div><div style={{ color: C.green, fontWeight:900, fontSize:14, letterSpacing:3, marginBottom:8 }}>ACCESS GRANTED</div><div style={{ color:'rgba(0,255,136,0.7)', fontSize:10, letterSpacing:2, lineHeight:1.8 }}><div>ID: {result.id}</div><div>TIER: {result.tier}</div><div>SEAT: {result.seat}</div></div></div>}
-        {scanState==='DENIED' && <div style={{ textAlign:'center' }}><div style={{ fontSize:28, marginBottom:8 }}>❌</div><div style={{ color: C.red, fontWeight:900, fontSize:14, letterSpacing:4 }}>INVALID TICKET</div></div>}
+        {scanState==='DENIED' && <div style={{ textAlign:'center' }}><div style={{ fontSize:28, marginBottom:8 }}>❌</div><div style={{ color: C.red, fontWeight:900, fontSize:14, letterSpacing:4 }}>INVALID / USED</div></div>}
       </div>
 
       <div style={{ display:'flex', gap:8, marginBottom:12 }}>
         <input value={manualCode} onChange={e=>setManualCode(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter' && scanState==='IDLE' && manualCode) void processTicket(); }} placeholder="Enter ticket code..." disabled={scanState!=='IDLE'} style={{ flex:1, background:'#0a0a1a', border:`1px solid ${C.border}`, borderRadius:8, padding:'9px 12px', color: C.text, fontSize:12, outline:'none', fontFamily:'monospace' }} />
         <button onClick={()=>void processTicket()} disabled={scanState!=='IDLE'||!manualCode} style={{ background: C.cyan, color:'#000', border:'none', borderRadius:8, padding:'9px 16px', fontWeight:900, fontSize:11, cursor:'pointer', letterSpacing:1, opacity:(!manualCode||scanState!=='IDLE')?0.5:1 }}>SCAN</button>
       </div>
-
-      <button onClick={()=>void processTicket(`DEMO-${Date.now()}`)} disabled={scanState!=='IDLE'} style={{ width:'100%', padding:'11px 0', background:'transparent', border:`1px solid ${C.border}`, borderRadius:8, color: C.dim, fontWeight:700, fontSize:10, cursor:'pointer', letterSpacing:3, opacity:scanState!=='IDLE'?0.4:1 }}>
-        SIMULATE PHYSICAL SCAN
-      </button>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   isRouteIndexable,
   toCanonicalUrl,
 } from "@/lib/seo/SeoIndexingRules";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import { getAllStatePages } from "@/lib/seo/TrendingSEOEngine";
 import { getAllCityScenes } from "@/lib/seo/GeoSEOEngine";
 
@@ -22,8 +23,8 @@ const KNOWN_VENUE_SLUGS = ["neon-palace", "beat-lab", "cypher-stage"] as const;
 function priorityForRoute(route: string): number {
   if (route === "/") return 1.0;
   if (route.startsWith("/home/")) return 0.95;
-  if (route === "/magazine") return 0.9;
-  if (route.startsWith("/magazine/article/")) return 0.86;
+  if (route === "/magazine" || route === "/magazine/issue/current") return 0.9;
+  if (route.startsWith("/magazine/issue/current?article=")) return 0.86;
   if (route.startsWith("/articles/")) return 0.84;
   if (route.startsWith("/artists/") || route.startsWith("/performers/") || route.startsWith("/venues/")) return 0.83;
   if (route === "/tickets" || route === "/song-battle/live" || route === "/dance-party/live" || route === "/cypher/stage") return 0.82;
@@ -43,7 +44,7 @@ function priorityForRoute(route: string): number {
 
 function changeFrequencyForRoute(route: string): SitemapEntry["changeFrequency"] {
   if (route === "/" || route.startsWith("/home/")) return "daily";
-  if (route === "/magazine" || route.startsWith("/magazine/article/") || route.startsWith("/articles/")) return "daily";
+  if (route === "/magazine" || route === "/magazine/issue/current" || route.startsWith("/articles/")) return "daily";
   if (route.startsWith("/artists/") || route.startsWith("/performers/") || route.startsWith("/venues/")) return "weekly";
   if (route === "/tickets" || route === "/song-battle/live" || route === "/dance-party/live" || route === "/cypher/stage") return "hourly";
   if (route === "/billboards" || route.startsWith("/billboards/")) return "daily";
@@ -79,7 +80,7 @@ function normalizeSeedSlug(seedId: string): string {
 }
 
 function getDynamicArticleRoutes(): string[] {
-  const magazineRoutes = listMagazineArticles().map((article) => `/magazine/article/${article.slug}`);
+  const magazineRoutes = listMagazineArticles().map((article) => magazineReaderArticleUrl(article.slug));
 
   const editorialRoutes = EDITORIAL_ARTICLES.flatMap((article) => {
     if (article.category === "news") return [`/articles/news/${article.slug}`];

@@ -67,7 +67,7 @@ export default function AvatarMiniPreview({
   if (variant === 'mini') {
     if (!hasAvatar) {
       return (
-        <Link href="/avatar-center" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <Link href="/avatar/studio" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%',
             border: `2px dashed ${accentColor}66`,
@@ -147,7 +147,7 @@ export default function AvatarMiniPreview({
           No avatar yet
         </div>
         <Link
-          href="/avatar-center"
+          href="/avatar/studio"
           style={{
             display: 'inline-block', fontSize: 10, fontWeight: 900,
             color: '#050510', background: accentColor,
@@ -207,7 +207,7 @@ export default function AvatarMiniPreview({
             <div>Outfit: {avatar.outfit}</div>
           </div>
           <Link
-            href="/avatar-center"
+            href="/avatar/studio"
             style={{
               display: 'inline-block', marginTop: 10, fontSize: 9, fontWeight: 900,
               color: accentColor, border: `1px solid ${accentColor}44`,

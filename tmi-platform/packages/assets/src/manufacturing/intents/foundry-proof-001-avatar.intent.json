@@ -1,0 +1,21 @@
+{
+  "jobId": "JOB-AVATAR-PROOF001",
+  "assetId": "tmi-bobblehead-base-bh-a",
+  "recipeId": "CanonicalBobblehead",
+  "recipeVersion": "1.0",
+  "bodyArchetype": "BH-A",
+  "heightMeters": 1.65,
+  "headScale": 1.55,
+  "styleTrack": "stylized-bobblehead",
+  "rigVersion": "AvatarRig/1.0",
+  "motionPackageVersion": "AvatarMotionPackage/1.0",
+  "artifactRoot": "packages/assets/generated/manufacturing/artifacts/JOB-AVATAR-PROOF001",
+  "outputName": "avatar-BH-A-base.glb",
+  "coordinateSystem": {
+    "upAxis": "Z",
+    "metersPerUnit": 1,
+    "gltfUpAxis": "Y",
+    "forwardAxis": "-Y"
+  },
+  "proof": "Foundry Proof 001 - Zero-External-Mesh"
+}

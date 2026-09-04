@@ -8,6 +8,8 @@
  *   4. Identity payload is canonical and permanent — derived from userId + verified slug/username.
  */
 
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
+
 export function getShareBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_BASE_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
@@ -41,9 +43,7 @@ export function buildUserShareIdentity(input: {
   const canonicalSlug = (input.slug ?? input.username).toLowerCase().replace(/[^a-z0-9_-]/g, "");
   const isPerformer = input.role === "performer" || input.role === "artist";
 
-  const profileUrl = isPerformer
-    ? `/profile/artist/${canonicalSlug}`
-    : `/profile/fan/${canonicalSlug}`;
+  const profileUrl = canonicalPublicPath(canonicalSlug);
 
   const yophoCardUrl = `/yopho/card/${canonicalSlug}`;
   const performerArticleUrl = isPerformer ? `/magazine/article/${canonicalSlug}` : undefined;

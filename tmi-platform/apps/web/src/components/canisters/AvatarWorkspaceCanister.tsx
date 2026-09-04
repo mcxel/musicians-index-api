@@ -1,6 +1,30 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type CSSProperties } from "react";
+import RoleGate from "@/components/auth/RoleGate";
+import BobbleheadBasePicker from "@/components/avatar/BobbleheadBasePicker";
+import {
+  BOBBLEHEAD_DEFAULT_BASE_ID,
+  getAccessoriesForBase,
+  getBobbleheadBaseById,
+} from "@/lib/avatars/BobbleheadBaseRegistry";
+import {
+  bobbleheadRuntimeToRigProps,
+  persistBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import {
+  FAN_SKIN_TONE_CONTINUUM,
+  persistFanSkinT,
+  readPersistedFanSkinT,
+  sampleFanSkinTone,
+} from "@/lib/avatars/FanCosmeticCatalog";
+import dynamic from "next/dynamic";
+
+const AvatarViewer = dynamic(
+  () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
+  { ssr: false },
+);
 
 export interface AvatarBobbleheadConfig {
   skinTone: string;
@@ -8,6 +32,8 @@ export interface AvatarBobbleheadConfig {
   outfitColor: string;
   accessory: string;
   headSize?: number;
+  /** Fan bobblehead base id from BobbleheadBaseRegistry */
+  baseId?: string;
 }
 
 interface SavedConfig {
@@ -18,14 +44,13 @@ interface SavedConfig {
   bobbleheadConfig?: AvatarBobbleheadConfig;
 }
 
-const SKIN_TONES = [
-  { id: "ivory",    label: "Ivory",     hex: "#FDDBB4" },
-  { id: "light",    label: "Light",     hex: "#F0C895" },
-  { id: "medium",   label: "Medium",    hex: "#C68642" },
-  { id: "tan",      label: "Tan",       hex: "#A0613A" },
-  { id: "brown",    label: "Brown",     hex: "#7C4019" },
-  { id: "dark",     label: "Dark",      hex: "#4A2010" },
-];
+/** Prefer global continuum; keep legacy ids for saved configs. */
+const SKIN_TONES = FAN_SKIN_TONE_CONTINUUM.map((s) => ({
+  id: s.id,
+  label: s.label,
+  hex: s.hex,
+  t: s.t,
+}));
 const HAIR_COLORS = [
   { id: "black",    hex: "#111111" },
   { id: "brown",    hex: "#6B3A2A" },
@@ -87,12 +112,20 @@ function AvatarPreview({ config, size = 96 }: { config: AvatarBobbleheadConfig; 
 
 export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentColor?: string }) {
   const [config, setConfig] = useState<AvatarBobbleheadConfig>({
-    skinTone: "medium", hairColor: "black", outfitColor: "purple", accessory: "none",
+    skinTone: "medium",
+    hairColor: "black",
+    outfitColor: "purple",
+    accessory: "none",
+    baseId: BOBBLEHEAD_DEFAULT_BASE_ID,
   });
   const [saved, setSaved] = useState<SavedConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+
+  const baseId = config.baseId ?? BOBBLEHEAD_DEFAULT_BASE_ID;
+  const selectedBase = getBobbleheadBaseById(baseId);
+  const fitAccessories = getAccessoriesForBase(baseId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,7 +135,12 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
         const { config: cfg } = await res.json() as { config: SavedConfig & { bobbleheadConfig?: AvatarBobbleheadConfig } | null };
         if (cfg) {
           setSaved(cfg);
-          if (cfg.bobbleheadConfig) setConfig(cfg.bobbleheadConfig);
+          if (cfg.bobbleheadConfig) {
+            setConfig({
+              ...cfg.bobbleheadConfig,
+              baseId: cfg.bobbleheadConfig.baseId ?? BOBBLEHEAD_DEFAULT_BASE_ID,
+            });
+          }
         }
       }
     } finally {
@@ -116,6 +154,7 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
     setSaving(true);
     setMsg("");
     try {
+      const previewFromBase = selectedBase?.previewImageUrl;
       const res = await fetch("/api/avatar/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,7 +162,9 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
         body: JSON.stringify({
           bobbleheadConfig: config,
           isComplete: true,
-          previewImageUrl: `/api/avatar/preview?skin=${config.skinTone}&hair=${config.hairColor}&outfit=${config.outfitColor}&acc=${config.accessory}`,
+          previewImageUrl:
+            previewFromBase ??
+            `/api/avatar/preview?skin=${config.skinTone}&hair=${config.hairColor}&outfit=${config.outfitColor}&acc=${config.accessory}`,
         }),
       });
       if (res.ok) {
@@ -140,7 +181,7 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
   }
 
   function set(k: keyof AvatarBobbleheadConfig, v: string) {
-    setConfig(prev => ({ ...prev, [k]: v }));
+    setConfig((prev) => ({ ...prev, [k]: v }));
   }
 
   const swatch = (hex: string, selected: boolean, onClick: () => void) => (
@@ -149,10 +190,18 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
     />
   );
 
-  const label: React.CSSProperties = { fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 8, marginTop: 14 };
-  const row: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+  const label: CSSProperties = { fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 8, marginTop: 14 };
+  const row: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
 
   return (
+    <RoleGate
+      allow={["FAN", "USER", "ADMIN", "STAFF"]}
+      fallback={
+        <div style={{ padding: 18, borderRadius: 16, border: `1px solid ${accentColor}22`, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+          Avatar workspace is Fan-only (Rule 26).
+        </div>
+      }
+    >
     <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${accentColor}22`, borderRadius: 16, overflow: "hidden" }}>
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${accentColor}18`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.3em", color: accentColor, fontWeight: 800 }}>MY AVATAR</div>
@@ -162,11 +211,46 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
       {loading ? (
         <div style={{ padding: 32, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 12 }}>Loading avatar…</div>
       ) : (
-        <div style={{ display: "flex", gap: 24, padding: "20px 20px 24px", flexWrap: "wrap" }}>
-          {/* Preview column */}
+        <div style={{ padding: "16px 18px 24px" }}>
+          <BobbleheadBasePicker
+            selectedBaseId={baseId}
+            onSelect={(b) => {
+              persistBobbleheadBaseId(b.id);
+              set("baseId", b.id);
+            }}
+            accentColor={accentColor}
+            compact
+          />
+
+          <div style={{ display: "flex", gap: 24, marginTop: 16, flexWrap: "wrap" }}>
+          {/* Preview column — spatial AvatarRig, not cutout image */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <AvatarPreview config={config} size={96} />
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em" }}>PREVIEW</div>
+            {(() => {
+              const character = resolveBobbleheadRuntimeCharacter(baseId);
+              const skinHex = SKIN_TONES.find((s) => s.id === config.skinTone)?.hex;
+              const hairHex = HAIR_COLORS.find((h) => h.id === config.hairColor)?.hex;
+              const outfitHex = OUTFIT_COLORS.find((o) => o.id === config.outfitColor)?.hex;
+              const rig = bobbleheadRuntimeToRigProps(character);
+              return (
+                <AvatarViewer
+                  {...rig}
+                  color={skinHex ?? rig.color}
+                  hairColor={hairHex ?? rig.hairColor}
+                  outfitTint={outfitHex ?? rig.outfitTint}
+                  size={120}
+                  enableOrbit
+                  isPlaying={false}
+                />
+              );
+            })()}
+            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em" }}>
+              3D WORLD CITIZEN · PROCEDURAL RIG
+            </div>
+            {selectedBase && (
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.25)", textAlign: "center", maxWidth: 140 }}>
+                Concept ref catalog only — not pasted as avatar
+              </div>
+            )}
             {saved?.isComplete && (
               <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>
                 Last saved<br />{new Date(saved.updatedAt).toLocaleDateString()}
@@ -176,9 +260,40 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
 
           {/* Builder column */}
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={label}>SKIN TONE</div>
+            <div style={label}>SKIN TONE · GLOBAL CONTINUUM</div>
+            <div
+              style={{
+                height: 14,
+                borderRadius: 7,
+                marginBottom: 8,
+                background: `linear-gradient(90deg, ${FAN_SKIN_TONE_CONTINUUM.map((s) => s.hex).join(", ")})`,
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              defaultValue={readPersistedFanSkinT()}
+              onChange={(e) => {
+                const t = Number(e.target.value);
+                persistFanSkinT(t);
+                const sampled = sampleFanSkinTone(t);
+                const nearest = SKIN_TONES.reduce((best, s) =>
+                  Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best,
+                );
+                set("skinTone", nearest.id);
+                void sampled;
+              }}
+              aria-label="Skin tone continuum"
+              style={{ width: "100%", accentColor: "#C68642", marginBottom: 8 }}
+            />
             <div style={row}>
-              {SKIN_TONES.map(s => swatch(s.hex, config.skinTone === s.id, () => set("skinTone", s.id)))}
+              {SKIN_TONES.map(s => swatch(s.hex, config.skinTone === s.id, () => {
+                set("skinTone", s.id);
+                persistFanSkinT(s.t);
+              }))}
             </div>
 
             <div style={label}>HAIR COLOR</div>
@@ -201,6 +316,30 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
               ))}
             </div>
 
+            {fitAccessories.length > 0 && (
+              <>
+                <div style={label}>BASE FIT ACCESSORIES</div>
+                <div style={{ ...row, gap: 6 }}>
+                  {fitAccessories.map((a) => (
+                    <span
+                      key={a.id}
+                      title={a.description}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        fontSize: 10,
+                        color: "rgba(255,255,255,0.75)",
+                      }}
+                    >
+                      {a.icon} {a.label}
+                      {a.cosmeticSkuId ? ` → ${a.cosmeticSkuId}` : ""}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+
             <div style={{ display: "flex", gap: 10, marginTop: 18, alignItems: "center" }}>
               <button onClick={() => void save()} disabled={saving}
                 style={{ padding: "10px 22px", borderRadius: 9, border: "none", background: accentColor, color: "#000", fontSize: 10, fontWeight: 900, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1, letterSpacing: "0.1em" }}>
@@ -209,9 +348,11 @@ export function AvatarWorkspaceCanister({ accentColor = "#AA2DFF" }: { accentCol
               {msg && <span style={{ fontSize: 11, color: msg.includes("saved") ? "#00FF88" : "#FF4444" }}>{msg}</span>}
             </div>
           </div>
+          </div>
         </div>
       )}
     </div>
+    </RoleGate>
   );
 }
 

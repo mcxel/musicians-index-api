@@ -1,37 +1,19 @@
-import { ARTIST_SEED } from "@/lib/artists/artistSeed";
-import MagazineArticleSurface from "@/components/magazine/MagazineArticleSurface";
+import { permanentRedirect } from "next/navigation";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
-import { redirect } from "next/navigation";
 
 type MagazineArticlePageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ from?: string }>;
 };
 
 export function generateStaticParams() {
-  return MAGAZINE_ISSUE_1.map(a => ({ slug: a.slug }));
+  return MAGAZINE_ISSUE_1.map((article) => ({ slug: article.slug }));
 }
 
-export default async function MagazineArticlePage({ params, searchParams }: MagazineArticlePageProps) {
+export default async function LegacyMagazineArticlesRedirect({ params }: MagazineArticlePageProps) {
   const { slug } = await params;
-  const magazineArticle = getArticleBySlug(slug);
-  if (magazineArticle) {
-    redirect(`/magazine/article/${slug}`);
+  if (getArticleBySlug(slug)) {
+    permanentRedirect(magazineReaderArticleUrl(slug));
   }
-
-  const resolvedSearch = searchParams ? await searchParams : undefined;
-  const artist = ARTIST_SEED.find((entry) => entry.id === slug);
-  const backFallback = resolvedSearch?.from ? decodeURIComponent(resolvedSearch.from) : "/home/2";
-
-  return (
-    <MagazineArticleSurface
-      title={`${artist?.name ?? slug} Editorial Cover Story`}
-      deck="Magazine article route hub for artist/performer editorial surfaces routed from homepage artifacts."
-      authorLabel={artist?.name ?? "TMI Magazine"}
-      fallbackRoute={backFallback}
-      profileRoute={`/artists/${slug}`}
-      articleHubRoute="/home/2"
-      category="magazine"
-    />
-  );
+  permanentRedirect(magazineReaderArticleUrl("wavetek-rise-billboard"));
 }

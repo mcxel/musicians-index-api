@@ -110,7 +110,7 @@ export default function PerformerVideoPanel({
           Video &amp; Media
         </div>
         <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg,${accentColor}44,transparent)` }} />
-        <Link href="/go-live" style={{ fontSize: 8, fontWeight: 900, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.4)', padding: '3px 10px', borderRadius: 0, textDecoration: 'none', letterSpacing: '0.1em', clipPath: 'polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)' }}>
+        <Link href="/hub/performer?golive=1" style={{ fontSize: 8, fontWeight: 900, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.4)', padding: '3px 10px', borderRadius: 0, textDecoration: 'none', letterSpacing: '0.1em', clipPath: 'polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)' }}>
           🔴 GO LIVE
         </Link>
         <Link href={`/media/upload?for=${slug}`} style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 0, textDecoration: 'none', letterSpacing: '0.1em', clipPath: 'polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)' }}>
@@ -164,7 +164,7 @@ export default function PerformerVideoPanel({
             <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>Start a live session</div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>Go live in one click — camera, screen share, or OBS</div>
           </div>
-          <Link href="/go-live" style={{ padding: '7px 16px', background: 'rgba(255,45,170,0.2)', border: '1px solid rgba(255,45,170,0.45)', color: '#FF2DAA', fontWeight: 900, fontSize: 9, letterSpacing: '0.1em', textDecoration: 'none', borderRadius: 0, clipPath: 'polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)', flexShrink: 0 }}>
+          <Link href="/hub/performer?golive=1" style={{ padding: '7px 16px', background: 'rgba(255,45,170,0.2)', border: '1px solid rgba(255,45,170,0.45)', color: '#FF2DAA', fontWeight: 900, fontSize: 9, letterSpacing: '0.1em', textDecoration: 'none', borderRadius: 0, clipPath: 'polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)', flexShrink: 0 }}>
             GO LIVE →
           </Link>
         </div>

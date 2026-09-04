@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getSubscriptionProduct } from "@/lib/stripe/products";
 
 interface Plan {
   id: string;
@@ -11,6 +12,10 @@ interface Plan {
   color: string;
   features: string[];
   stripePriceId?: string;
+  /** True for a plan with no confirmed-working checkout path (never a fake
+   * price ID) — distinct from the FREE tier, which also has no stripePriceId
+   * but IS actually free. */
+  unavailable?: boolean;
 }
 
 interface CurrentSub {
@@ -29,24 +34,38 @@ const PLANS: Plan[] = [
     color: "#FF2DAA",
     features: ["Watch battles & cyphers", "Buy tickets", "Collect memory polaroids", "Vote in challenges"],
   },
+  // Fan/Performer Pro: real price/priceId/name from the canonical registry
+  // (@/lib/stripe/products.ts) — this page previously showed invented names
+  // and amounts ("Fan Plus" $7.99, "Performer Pro" $19.99) tied to literal
+  // placeholder price IDs that don't exist in Stripe at all; checkout would
+  // have failed outright had a real user reached this reachable page and
+  // clicked upgrade (Lane A A8, 2026-09-01).
   {
-    id: "fan-plus",
-    name: "Fan Plus",
-    price: "$7.99",
+    id: "fan-pro",
+    name: "Fan Pro",
+    price: `$${(getSubscriptionProduct("fan", "PRO").price / 100).toFixed(2)}`,
     interval: "/mo",
     color: "#FF2DAA",
     features: ["Everything in Free", "No ads", "Early ticket access", "Exclusive fan badges", "HD streams"],
-    stripePriceId: "price_fan_plus_monthly",
+    stripePriceId: getSubscriptionProduct("fan", "PRO").priceId,
   },
   {
     id: "performer-pro",
     name: "Performer Pro",
-    price: "$19.99",
+    price: `$${(getSubscriptionProduct("performer", "PRO").price / 100).toFixed(2)}`,
     interval: "/mo",
     color: "#AA2DFF",
     features: ["All fan features", "Live room hosting", "Battle entry", "Beat purchase credits", "Analytics dashboard", "Profile article"],
-    stripePriceId: "price_performer_pro_monthly",
+    stripePriceId: getSubscriptionProduct("performer", "PRO").priceId,
   },
+  // Promoter/Sponsor/Advertiser: the only existing price IDs for these
+  // (in tierMapping.ts's fallbacks) were found to be LIVE-mode Stripe
+  // objects — this app runs on a TEST-mode key, so those IDs 404 here and
+  // would hard-fail a real checkout attempt (Lane A A8, 2026-09-01,
+  // confirmed via a direct Stripe API lookup). Rather than invent a new
+  // fake price ID or guess a dollar amount that might not match whatever
+  // real price eventually backs these, mark them honestly unavailable
+  // instead of offering a checkout button that would fail.
   {
     id: "promoter-pro",
     name: "Promoter Pro",
@@ -54,7 +73,7 @@ const PLANS: Plan[] = [
     interval: "/mo",
     color: "#00FF88",
     features: ["Unlimited events", "Batch ticket printing", "Venue seat maps", "Artist booking tools", "Sponsor matchmaking", "Priority support"],
-    stripePriceId: "price_promoter_pro_monthly",
+    unavailable: true,
   },
   {
     id: "sponsor-featured",
@@ -63,7 +82,7 @@ const PLANS: Plan[] = [
     interval: "/mo",
     color: "#FFD700",
     features: ["Platform-wide banner", "Curated artist matching", "Pro Legacy Ledger entries", "HolographicCard showcase", "Dedicated account manager"],
-    stripePriceId: "price_sponsor_featured_monthly",
+    unavailable: true,
   },
   {
     id: "advertiser-pro",
@@ -72,7 +91,7 @@ const PLANS: Plan[] = [
     interval: "/mo",
     color: "#FFA500",
     features: ["Mid-article ad placements", "Live overlay ads", "Campaign analytics", "A/B creative testing", "Brand safety controls"],
-    stripePriceId: "price_advertiser_pro_monthly",
+    unavailable: true,
   },
 ];
 
@@ -225,7 +244,7 @@ export default function SubscriptionPage() {
                 </button>
               ) : (
                 <div style={{ marginTop: 16, padding: "10px 16px", background: "rgba(255,255,255,0.04)", borderRadius: 8, color: "rgba(255,255,255,0.3)", fontSize: 11, letterSpacing: "0.1em", textAlign: "center" }}>
-                  FREE
+                  {plan.unavailable ? "COMING SOON" : "FREE"}
                 </div>
               )}
             </div>

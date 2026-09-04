@@ -12,6 +12,8 @@
  */
 
 import { routeLivePlacement, type RoutedLivePlacement } from "@/lib/live/LiveRoutingEngine";
+import { getRoleEntryProfile, RoleEntryProfile, LiveParticipantRole } from "@/lib/live/RoleEntryMap";
+import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 export type LivePrivacy = "public" | "friends" | "invite" | "private";
 
@@ -20,6 +22,7 @@ export type LiveDestinationRole =
   | "PERFORMER"
   | "BAND"
   | "ARTIST"
+  | "PRODUCER"
   | "ADMIN"
   | "SUPERADMIN"
   | "VENUE"
@@ -63,6 +66,19 @@ export interface LiveDestination {
     goldDirector: string[];
     diamondDirector: string[];
   };
+  /**
+   * Role-based presentation profile (entryZone/spawnAnchor/presenceMode/
+   * capabilities/hudPolicy) — NOT a full RoleEntry, because no real roomId
+   * exists yet at this point for a freshly-minted performer stage. Combine
+   * this with the real minted roomId + liveSessionId via
+   * RoleEntryMap.resolveRoleEntry() once both are known (see
+   * executeInstantGoLive.ts) to get the full canonical RoleEntry.
+   */
+  roleEntryProfile: RoleEntryProfile;
+}
+
+export function toLiveParticipantRole(role: LiveDestinationRole): LiveParticipantRole {
+  return isPerformerLike(role) ? "performer" : "fan";
 }
 
 const STORAGE_PRIVACY_KEY = "tmi.live.privacy";
@@ -90,9 +106,10 @@ const DIAMOND_DIRECTOR = [
   "cinematic_replay",
 ];
 
-function normalizeRole(role: string): LiveDestinationRole {
+export function normalizeRole(role: string): LiveDestinationRole {
   const r = (role || "FAN").trim().toUpperCase();
-  if (r === "ARTIST") return "PERFORMER";
+  // PRODUCER is a PerformerType specialty (Prisma) — go-live treats as performer stage.
+  if (r === "ARTIST" || r === "PRODUCER") return "PERFORMER";
   if (
     r === "FAN" ||
     r === "PERFORMER" ||
@@ -113,6 +130,7 @@ function isPerformerLike(role: LiveDestinationRole): boolean {
   return (
     role === "PERFORMER" ||
     role === "BAND" ||
+    role === "PRODUCER" ||
     role === "ADMIN" ||
     role === "SUPERADMIN" ||
     role === "VENUE"
@@ -138,7 +156,10 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
   const role = normalizeRole(input.role);
   const privacy = input.privacy;
   const preferred = input.preferredExperience;
-  const restricted = privacy === "friends" || privacy === "invite" || privacy === "private";
+  const roleEntryProfile: RoleEntryProfile = getRoleEntryProfile(
+    toLiveParticipantRole(role),
+    privacy !== "public",
+  );
   const entitlements = {
     freeBasics: FREE_BASICS,
     goldDirector: GOLD_DIRECTOR,
@@ -163,11 +184,12 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
         },
         lobbyPlacement: null,
         entitlements,
+        roleEntryProfile,
       };
     }
     return {
       experienceId: "fan-lobby",
-      route: `/rooms/fan-lobby?privacy=${privacy}&from=launch-dock`,
+      route: fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "launch-dock", privacy }),
       label: "Fan Avatar Lobby",
       category: "fan-lobby",
       flags: {
@@ -178,6 +200,31 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: null,
       entitlements,
+      roleEntryProfile,
+    };
+  }
+
+  // ── Fan explicit GO LIVE → FAN_SOCIAL_LIVE (hangout — not battles/concerts) ─
+  if (!isPerformerLike(role) && isExplicitGoLive) {
+    const restricted =
+      privacy === "private" || privacy === "friends" || privacy === "invite";
+    const category = restricted ? "lounge" : "fan-lobby";
+    return {
+      experienceId: "fan-social-live",
+      route: `/live/rooms/{roomId}?mode=fan&auto=true&privacy=${privacy}&category=${category}&from=launch-dock`,
+      label: restricted ? "Fan Hangout" : "Fan Social Live",
+      category,
+      flags: {
+        emptyStage: true,
+        fanLobby: true,
+        privateRoom: restricted,
+        restrictedAudience: restricted,
+      },
+      lobbyPlacement: restricted
+        ? null
+        : routeLivePlacement({ category: "live", eventType: "LIVE_GENERAL" }),
+      entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -196,6 +243,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: null,
       entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -216,6 +264,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
       },
       lobbyPlacement: placement,
       entitlements,
+      roleEntryProfile,
     };
   }
 
@@ -239,6 +288,7 @@ export function resolveLiveDestination(input: LiveDestinationInput): LiveDestina
     },
     lobbyPlacement: placement,
     entitlements,
+    roleEntryProfile,
   };
 }
 

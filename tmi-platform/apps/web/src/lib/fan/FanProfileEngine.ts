@@ -128,11 +128,16 @@ export class FanProfileEngine {
   }
 
   recordVote(userId: string): void {
-    const profile = this.profiles.get(userId);
-    if (profile) {
-      profile.totalVotesCast += 1;
-      profile.lastActiveMs = Date.now();
-    }
+    const profile = this.getOrCreate(userId, userId);
+    profile.totalVotesCast += 1;
+    profile.lastActiveMs = Date.now();
+  }
+
+  /** Real ballot → fan position (XP + vote count). Does not invent tallies. */
+  creditCompetitionVote(userId: string, xp: number): void {
+    if (!userId.trim() || xp <= 0) return;
+    this.recordVote(userId);
+    this.addXP(userId, xp, userId);
   }
 
   joinFanClub(userId: string, membership: FanClubMembership): void {

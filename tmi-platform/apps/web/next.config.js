@@ -12,7 +12,7 @@ const nextConfig = {
     "@tmi/hud-tmi",
     "@bernout/agent-network",
   ],
-  webpack(config, { isServer, nextRuntime }) {
+  webpack(config, { isServer, nextRuntime, dev }) {
     // Point each workspace package to its TypeScript source so Vercel can
     // resolve and transpile them without needing a pre-built dist/ directory.
     const pkgRoot = path.resolve(__dirname, "../../packages");
@@ -45,15 +45,37 @@ const nextConfig = {
       };
     }
 
-    // Add watchOptions to ignore noisy system files on Windows during `next dev`.
-    // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information,
-    // which can cause the dev server to hang and Playwright tests to time out.
-    if (process.env.NODE_ENV === 'development') {
+    // Confine Watchpack strictly to the repository boundary during development.
+    // This stops Watchpack from escaping to C:\ and triggering EINVAL errors on
+    // locked Windows root files (DumpStack.log.tmp, hiberfil.sys, pagefile.sys, etc.).
+    //
+    // webpack's watchOptions.ignored schema accepts a glob string, an array of
+    // glob strings, or a RegExp — NOT a function (a function value here throws
+    // a hard webpack ValidationError on every cold `next dev`/`next build`,
+    // found 2026-09-01 when a from-scratch dev server failed to start at all).
+    // A single RegExp expresses the same "outside repo root OR inside
+    // node_modules/.git/.next/Windows-system-paths" test the function did,
+    // tested case-insensitively so Windows drive-letter casing never matters.
+    if (dev || process.env.NODE_ENV === 'development') {
+      const repoRoot = path.resolve(__dirname, "../..");
+      const escapedRoot = repoRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
       config.watchOptions = {
         ...(config.watchOptions ?? {}),
-        ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**", "**/System Volume Information/**", "**/$RECYCLE.BIN/**", "**/hiberfil.sys", "**/pagefile.sys", "**/swapfile.sys"],
+        ignored: new RegExp(
+          `^(?!${escapedRoot})|[\\\\/]node_modules([\\\\/]|$)|[\\\\/]\\.git([\\\\/]|$)|[\\\\/]\\.next([\\\\/]|$)|system volume information|\\$recycle\\.bin|\\.tmp$`,
+          "i",
+        ),
       };
     }
+
+    // Hub shells (FanShell/PerformerShell → CommandCenterShell) are large async
+    // chunks. Cold `next dev` compile can exceed webpack's default ~120s
+    // chunkLoadTimeout and surface "Loading chunk … failed (timeout)".
+    config.output = {
+      ...(config.output || {}),
+      chunkLoadTimeout: 300000,
+    };
 
     return config;
   },
@@ -188,6 +210,14 @@ const nextConfig = {
 
       // ── Challenges ────────────────────────────────────────────────────────
       { source: '/challenges/submit', destination: '/challenges/create', permanent: false },
+
+      // ── Canonical PREVIEW VENUE (kill parallel /live/venue-preview path) ───
+      { source: '/live/venue-preview', destination: '/venue/preview', permanent: false },
+      {
+        source: '/live/venue-preview/:venueId',
+        destination: '/venue/preview?skin=:venueId',
+        permanent: false,
+      },
 
       // ── Favicon ───────────────────────────────────────────────────────────
       { source: '/favicon.ico', destination: '/icon.svg', permanent: false },

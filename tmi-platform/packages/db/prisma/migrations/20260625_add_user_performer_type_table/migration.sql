@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "PerformerType" AS ENUM ('RAPPER', 'SINGER', 'DJ', 'PRODUCER', 'GUITARIST', 'DRUMMER', 'COMEDIAN', 'DANCER', 'ACTOR', 'MAGICIAN', 'SPOKEN_WORD', 'BAND', 'ORCHESTRA', 'CHOIR', 'OTHER');
+
 -- CreateTable
 CREATE TABLE "UserPerformerType" (
     "id" TEXT NOT NULL,

@@ -61,7 +61,3 @@ export function runInteractiveVenueHudTest(): { allPassed: boolean; results: Rec
   console.log(`[INTERACTIVE_VENUE_HUD_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runInteractiveVenueHudTest();
-}

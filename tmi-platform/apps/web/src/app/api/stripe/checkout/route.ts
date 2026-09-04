@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
-import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, type StripeProductKey } from '@/lib/stripe/products';
+import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, isRealPriceId, resolveFanCosmeticStripeKey, resolveFanCosmeticUsdCents, type StripeProductKey } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
@@ -17,6 +17,8 @@ import {
   resolveFanUserIdFromEmail,
   resolveTipArtistUserId,
 } from '@/lib/tips/tipFulfillment';
+import { getFanCosmetic } from '@/lib/avatars/FanCosmeticCatalog';
+import { findStoreItemByPriceId } from '@/lib/store/StoreItemEngine';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -90,9 +92,140 @@ export async function GET(req: NextRequest) {
   const creativeUrl  = searchParams.get('creativeUrl') ?? '';
   const placementStartDate = searchParams.get('startDate') ?? '';
 
+  // Lobby wall / WDP submission visibility boost
+  const boostRoomId = searchParams.get('roomId') ?? '';
+  const boostCategory = searchParams.get('category') ?? 'all';
+  const wdpEntryId = searchParams.get('wdpEntryId') ?? '';
+
+  // Self-serve discovery boost ($1.99–$19.99)
+  if (purchaseType === 'discovery_boost') {
+    if (isStripePaused()) {
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=stripe-paused', req.url));
+    }
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=stripe-pending', req.url));
+    }
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    if (!userEmail) {
+      return NextResponse.redirect(new URL('/login?next=/hub/performer/network', req.url));
+    }
+    const tierRaw = (searchParams.get('tier') ?? 'spark') as
+      | 'spark'
+      | 'pulse'
+      | 'wave'
+      | 'blast';
+    const tier = ['spark', 'pulse', 'wave', 'blast'].includes(tierRaw) ? tierRaw : 'spark';
+    const target = searchParams.get('target') ?? 'profile';
+    const targetRefId = searchParams.get('targetRefId') ?? '';
+    const ownerRole = searchParams.get('ownerRole') === 'venue' ? 'venue' : 'performer';
+    const productKey =
+      tier === 'pulse'
+        ? 'DISCOVERY_BOOST_PULSE'
+        : tier === 'wave'
+          ? 'DISCOVERY_BOOST_WAVE'
+          : tier === 'blast'
+            ? 'DISCOVERY_BOOST_BLAST'
+            : 'DISCOVERY_BOOST_SPARK';
+    const catalog = STRIPE_PRODUCTS[productKey];
+    try {
+      const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
+      const ownerId = buyer?.id ?? targetRefId ?? userEmail;
+      const isRealBoostPrice = /^price_[A-Za-z0-9]{16,}$/.test(catalog.priceId);
+      const lineItem = isRealBoostPrice
+        ? { price: catalog.priceId, quantity: 1 as const }
+        : {
+            quantity: 1 as const,
+            price_data: {
+              currency: 'usd' as const,
+              unit_amount: catalog.price,
+              product_data: { name: catalog.name },
+            },
+          };
+      const session = await stripeClient.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [lineItem],
+        success_url: `${origin}/payment-success?type=discovery_boost&tier=${encodeURIComponent(tier)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/hub/performer/network?notice=boost-cancelled`,
+        customer_email: userEmail,
+        metadata: {
+          type: 'discovery_boost',
+          ownerId,
+          ownerRole,
+          target,
+          targetRefId: targetRefId || ownerId,
+          tier,
+        },
+      });
+      if (!session.url) throw new Error('No session URL returned');
+      return NextResponse.redirect(session.url, 303);
+    } catch (err) {
+      console.error('[stripe/checkout] discovery_boost failed', err);
+      return NextResponse.redirect(new URL('/hub/performer/network?notice=boost-failed', req.url));
+    }
+  }
+
+  if (
+    purchaseType === 'boost_lobby_wall' ||
+    purchaseType === 'wdp_submission_boost'
+  ) {
+    if (isStripePaused()) {
+      return NextResponse.redirect(new URL('/home/1?notice=stripe-paused', req.url));
+    }
+    if (!boostRoomId) {
+      return NextResponse.redirect(new URL('/home/1?notice=boost-room-required', req.url));
+    }
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.redirect(new URL('/home/1?notice=stripe-pending', req.url));
+    }
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    if (!userEmail) {
+      return NextResponse.redirect(new URL('/login?next=/home/1', req.url));
+    }
+    try {
+      const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
+      const performerId = buyer?.id ?? userEmail;
+      const catalog = STRIPE_PRODUCTS.LOBBY_WALL_BOOST_24H;
+      const isRealBoostPrice = /^price_[A-Za-z0-9]{16,}$/.test(catalog.priceId);
+      const lineItem = isRealBoostPrice
+        ? { price: catalog.priceId, quantity: 1 as const }
+        : {
+            quantity: 1 as const,
+            price_data: {
+              currency: 'usd' as const,
+              unit_amount: catalog.price,
+              product_data: { name: catalog.name },
+            },
+          };
+      const boostKind = purchaseType === 'wdp_submission_boost' ? 'wdp_submission' : 'lobby_wall';
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [lineItem],
+        success_url: `${origin}/payment-success?type=${encodeURIComponent(purchaseType)}&roomId=${encodeURIComponent(boostRoomId)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/home/1?notice=boost-cancelled`,
+        customer_email: userEmail,
+        metadata: {
+          type: purchaseType,
+          roomId: boostRoomId,
+          performerId,
+          category: boostCategory,
+          boostKind,
+          ...(wdpEntryId ? { wdpEntryId } : {}),
+        },
+      });
+      if (!session.url) throw new Error('No session URL returned');
+      return NextResponse.redirect(session.url, 303);
+    } catch (err) {
+      console.error('[stripe/checkout:GET boost]', err);
+      return NextResponse.redirect(new URL('/home/1?notice=boost-checkout-error', req.url));
+    }
+  }
+
   // For placeholders, build inline price_data from URL params
   const amountStr   = searchParams.get('amount');
   const productName = searchParams.get('productName') ?? 'TMI Pass';
+  const passType    = searchParams.get('passType') ?? '';
   const amount      = amountStr ? parseInt(amountStr, 10) : null;
 
   // Resolve which plan/tier this purchase maps to
@@ -106,6 +239,10 @@ export async function GET(req: NextRequest) {
 
   // Read user email from non-httpOnly cookie set at login/register
   const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+  const buyer = userEmail
+    ? await prisma.user.findFirst({ where: { email: userEmail.toLowerCase() }, select: { id: true } })
+    : null;
+  const storeCatalogItem = findStoreItemByPriceId(resolvedPriceId);
 
   // Build success URL — include sponsor params so payment-success can auto-attach
   let successUrl = `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`;
@@ -134,6 +271,15 @@ export async function GET(req: NextRequest) {
           : { product_data: { name: productName } }),
       },
     };
+  } else if (storeCatalogItem) {
+    lineItem = {
+      quantity: 1 as const,
+      price_data: {
+        currency: 'usd' as const,
+        unit_amount: storeCatalogItem.price,
+        product_data: { name: storeCatalogItem.name },
+      },
+    };
   } else {
     // No real price ID and no amount — avoid passing placeholder to Stripe
     console.warn('[stripe/checkout:GET] Unresolved placeholder priceId, no amount provided:', resolvedPriceId);
@@ -143,7 +289,6 @@ export async function GET(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
-      payment_method_types: ['card'],
       line_items: [lineItem],
       success_url: successUrl,
       cancel_url:  cancelUrl,
@@ -155,9 +300,20 @@ export async function GET(req: NextRequest) {
         plan: planKey,
         tierUpgrade,
         userEmail,
+        ...(storeCatalogItem
+          ? {
+              type: 'store',
+              items: JSON.stringify([{ itemId: storeCatalogItem.id, qty: 1 }]),
+              buyerId: buyer?.id ?? '',
+              fanEmail: userEmail,
+            }
+          : {}),
+        ...(passType || purchaseType === 'season_pass'
+          ? { type: 'season_pass', passType: passType || 'starter', ...(amount ? { amountCents: String(amount) } : {}) }
+          : {}),
         ...(battleId
           ? { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' }
-          : purchaseType
+          : purchaseType && purchaseType !== 'season_pass'
             ? { type: purchaseType, refId, creativeUrl, startDate: placementStartDate }
             : {}),
       },
@@ -206,10 +362,84 @@ export async function POST(req: NextRequest) {
       skinId?: string;
       customColors?: Record<string, string>;
       chassisId?: string;
+      /** FanCosmeticCatalog SKU id for FAN_COSMETIC cash checkout. */
+      cosmeticId?: string;
       /** Explicit checkout mode — when omitted, inferred from recurring line items. */
       mode?: 'subscription' | 'payment';
     };
     const { items, successUrl, cancelUrl } = body;
+
+    // FAN_COSMETIC — Fan Store cash path → webhook grantAvatarCosmetic
+    if (body.product === 'FAN_COSMETIC' && body.cosmeticId) {
+      const cosmetic = getFanCosmetic(body.cosmeticId);
+      if (!cosmetic) {
+        return NextResponse.json({ error: 'Unknown cosmetic' }, { status: 400 });
+      }
+      if (cosmetic.pointsCost <= 0 || cosmetic.rarity === 'free') {
+        return NextResponse.json(
+          { error: 'Free cosmetics use points/grant path, not Stripe' },
+          { status: 400 },
+        );
+      }
+
+      const buyerEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+      if (!buyerEmail) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+      const buyer = await prisma.user.findUnique({ where: { email: buyerEmail }, select: { id: true, role: true } });
+      if (!buyer) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+      const role = String(buyer.role ?? '').toUpperCase();
+      if (role && role !== 'FAN' && role !== 'USER' && role !== 'ADMIN' && role !== 'STAFF') {
+        return NextResponse.json({ error: 'Fan cosmetics are Fan-only (Rule 26)' }, { status: 403 });
+      }
+
+      const stripe = getStripe();
+      if (!stripe) {
+        return NextResponse.json(
+          { error: 'STRIPE N/A', code: 'STRIPE_NOT_CONFIGURED', message: 'Stripe secret not configured — use points unlock' },
+          { status: 503 },
+        );
+      }
+
+      const productKey =
+        (cosmetic.stripeProductId && cosmetic.stripeProductId in STRIPE_PRODUCTS
+          ? (cosmetic.stripeProductId as StripeProductKey)
+          : null) ?? resolveFanCosmeticStripeKey(cosmetic.rarity) ?? 'FAN_COSMETIC_BASE';
+      const catalog = STRIPE_PRODUCTS[productKey];
+      const unitAmount =
+        resolveFanCosmeticUsdCents(cosmetic.rarity, cosmetic.usdCents) ?? catalog.price;
+      const priceId = catalog.priceId;
+      const usePriceId = typeof priceId === 'string' && isRealPriceId(priceId);
+
+      const { origin } = req.nextUrl;
+      const cosmeticSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          usePriceId
+            ? { price: priceId, quantity: 1 }
+            : {
+                quantity: 1,
+                price_data: {
+                  currency: 'usd',
+                  unit_amount: unitAmount,
+                  product_data: {
+                    name: `Fan Cosmetic — ${cosmetic.label}`,
+                    description: `${cosmetic.description.slice(0, 120)} · AvatarRig SKU ${cosmetic.id}`,
+                  },
+                },
+              },
+        ],
+        success_url: `${origin}/store/fan?purchased=${encodeURIComponent(cosmetic.id)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/store/fan?notice=cosmetic-checkout-cancelled`,
+        customer_email: buyerEmail,
+        metadata: {
+          type: 'fan_cosmetic',
+          productType: 'FAN_COSMETIC',
+          cosmeticId: cosmetic.id,
+          buyerId: buyer.id,
+        },
+      });
+      if (!cosmeticSession.url) throw new Error('No session URL from Stripe');
+      return NextResponse.json({ url: cosmeticSession.url });
+    }
 
     // MEDIA_PLAYER_CHASSIS — Shop / Studio dual-purchase Stripe path
     if (body.product === 'MEDIA_PLAYER_CHASSIS' && body.chassisId) {
@@ -241,7 +471,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const mpSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [
           isRealPriceId && priceId
             ? { price: priceId, quantity: 1 }
@@ -289,7 +518,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const skinSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [{
           quantity: 1,
           price_data: {
@@ -332,7 +560,6 @@ export async function POST(req: NextRequest) {
       const { origin } = req.nextUrl;
       const tipSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
         line_items: [{
           quantity: 1,
           price_data: {
@@ -449,7 +676,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (lineItems.length === 0) {
-      return NextResponse.json({ error: 'No valid products — set STRIPE_PRICE_* env vars in Vercel for subscription products' }, { status: 400 });
+      // Subscription / TMI catalog path only — artist store uses /api/commerce/checkout (DB price_data).
+      const wantsSubscription = body.mode === 'subscription' || hasRecurring;
+      return NextResponse.json(
+        {
+          error: wantsSubscription
+            ? 'Subscriptions temporarily unavailable'
+            : 'No valid subscription products for this checkout',
+          code: 'SUBSCRIPTIONS_UNAVAILABLE',
+          hint: 'Artist merch/shoutouts/meet-greet use /api/commerce/checkout with productId — not STRIPE_PRICE_* env vars.',
+        },
+        { status: 400 },
+      );
     }
 
     // Subscription when caller asks or when any line item is recurring — never force payment-only.
@@ -480,7 +718,6 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: checkoutMode,
-      payment_method_types: ['card'],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       line_items: lineItems as any,
       success_url: successUrl,

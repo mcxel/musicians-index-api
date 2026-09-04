@@ -1,0 +1,134 @@
+{
+  "verdict": "PASS",
+  "headShaHint": "expect d2cdde1e+",
+  "base": "http://localhost:3002",
+  "roomUrl": "http://localhost:3002/rooms/challenge/sess-challenge-prod-01",
+  "gates": {
+    "1": {
+      "status": "PASS",
+      "notes": "Venue+shell+jumbo mounted. lookUp=true pack=Challenge",
+      "evidence": [
+        "01-desktop-mount-objective.png"
+      ]
+    },
+    "2": {
+      "status": "PASS",
+      "notes": "ChallengeContract visible; composition=OBJECTIVE_FOCUS; phase=OBJECTIVE_CONTRACT_ASSEMBLY",
+      "evidence": [
+        "01-desktop-mount-objective.png"
+      ]
+    },
+    "3": {
+      "status": "PASS",
+      "notes": "Challenge DNA: pack=Challenge composition=OBJECTIVE_FOCUS vsLayout=false",
+      "evidence": [
+        "01-desktop-mount-objective.png"
+      ]
+    },
+    "4": {
+      "status": "PASS",
+      "notes": "Countdown→Active observed (ATTEMPT_1_COUNTDOWN → ATTEMPT_1_ACTIVE); composition=HOST_CLOSE",
+      "evidence": [
+        "02-desktop-attempt-countdown.png",
+        "03-desktop-attempt-active.png"
+      ]
+    },
+    "5": {
+      "status": "PASS",
+      "notes": "Judgment policy select exercised all three modes; last=MEASURABLE_RESULT",
+      "evidence": [
+        "04-desktop-judgment-policy.png"
+      ]
+    },
+    "6": {
+      "status": "PASS",
+      "notes": "Authorized result card; honest no-winner copy. phase=RESULT_PRESENTATION",
+      "evidence": [
+        "05-desktop-result-presentation.png"
+      ]
+    },
+    "7": {
+      "status": "PASS",
+      "notes": "LOOK-UP=true; faces=NORTH:ACTIVE_ATTEMPT|SOUTH:OBJECTIVE_TIMER|EAST:SPONSOR|WEST:AUDIENCE; distinct=4",
+      "evidence": [
+        "06-desktop-jumbotron-lookup.png"
+      ]
+    },
+    "8": {
+      "status": "PASS",
+      "notes": "PROGRAM.CHALLENGE_PRIMARY bound; audioControlClicked=true; no room remount",
+      "evidence": [
+        "07-desktop-player-audio.png"
+      ]
+    },
+    "9": {
+      "status": "PASS",
+      "notes": "Phase resumed after reload: ATTEMPT_1_ACTIVE",
+      "evidence": [
+        "08-desktop-reload-resume.png"
+      ]
+    },
+    "10": {
+      "status": "PASS",
+      "notes": "No double-audio. media=[{\"tag\":\"AUDIO\",\"muted\":false,\"paused\":true,\"src\":\"\"}]; unmutedPlaying=0",
+      "evidence": [
+        "08-desktop-reload-resume.png"
+      ]
+    },
+    "11": {
+      "status": "PASS",
+      "notes": "Left room; face hook cleared. href=http://localhost:3002/challenges",
+      "evidence": [
+        "09-desktop-teardown.png"
+      ]
+    },
+    "12": {
+      "status": "PASS",
+      "notes": "No Battle VS / Cypher winnerless / Gauntlet incumbent chrome",
+      "evidence": [
+        "10-desktop-semantic-negatives.png"
+      ]
+    },
+    "M": {
+      "status": "PASS",
+      "notes": "Mobile 390×844 retains shell+contract; phase=ATTEMPT_1_ACTIVE composition=HOST_CLOSE",
+      "evidence": [
+        "11-mobile-mount.png",
+        "12-mobile-attempt.png",
+        "13-mobile-judgment.png"
+      ]
+    }
+  },
+  "screenshots": [
+    "01-desktop-mount-objective.png",
+    "02-desktop-attempt-countdown.png",
+    "03-desktop-attempt-active.png",
+    "04-desktop-judgment-policy.png",
+    "05-desktop-result-presentation.png",
+    "06-desktop-jumbotron-lookup.png",
+    "07-desktop-player-audio.png",
+    "08-desktop-reload-resume.png",
+    "09-desktop-teardown.png",
+    "10-desktop-semantic-negatives.png",
+    "11-mobile-mount.png",
+    "12-mobile-attempt.png",
+    "13-mobile-judgment.png"
+  ],
+  "fails": [],
+  "passes": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "M"
+  ],
+  "at": "2026-09-03T03:21:07.613Z"
+}

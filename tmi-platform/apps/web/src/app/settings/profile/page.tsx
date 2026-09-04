@@ -136,7 +136,7 @@ export default function SettingsProfilePage() {
             </button>
             {/* Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity Policy, 2026-07-18). */}
             <RoleGate allow={["FAN"]}>
-              <Link href="/avatar-builder"
+              <Link href="/avatar/studio"
                 style={{ padding: "11px 20px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
                 Edit Avatar
               </Link>

@@ -1,27 +1,10 @@
-import { redirect } from "next/navigation";
-import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { permanentRedirect } from "next/navigation";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
-import { getPerformerBySlug } from "@/lib/performers/PerformerRegistry";
-import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
-import MagazineSpreadRenderer from "@/components/editorial/MagazineSpreadRenderer";
-import DiscoveryRail from "@/components/discovery/DiscoveryRail";
-import XPTrigger from "@/components/common/XPTrigger";
-import AdRailSlot from "@/components/ads/AdRailSlot";
-import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
-import Link from "next/link";
-import TMIGeoBlock from "@/components/shared/TMIGeoBlock";
-// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
-import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
-import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
-import { BookingCanister } from "@/components/canisters/BookingCanister";
-import { StoreCanister } from "@/components/canisters/StoreCanister";
-import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
+import { getMagazineArticleBySlug } from "@/lib/magazine/MagazineArticleResolver";
+import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 type Props = { params: Promise<{ slug: string }> };
-
-export async function generateStaticParams() {
-  return MAGAZINE_ISSUE_1.map(a => ({ slug: a.slug }));
-}
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
@@ -30,258 +13,32 @@ export async function generateMetadata({ params }: Props) {
   return {
     title: `${article.title} | TMI Magazine`,
     description: article.subtitle,
-    openGraph: { title: article.title, description: article.subtitle, type: "article" },
+    alternates: { canonical: magazineReaderArticleUrl(slug) },
   };
 }
 
-export default async function ArticlePage({ params }: Props) {
-  const { slug } = await params;
-  const article = getArticleBySlug(slug);
+export async function generateStaticParams() {
+  const { MAGAZINE_ISSUE_1 } = await import("@/lib/magazine/magazineIssueData");
+  return MAGAZINE_ISSUE_1.map((article) => ({ slug: article.slug }));
+}
 
-  if (!article) {
-    const editorial = getEditorialArticleBySlug(slug);
-    if (editorial) {
-      const dest = editorial.category === "artist"
-        ? `/articles/artist/${slug}`
-        : editorial.category === "performer"
-        ? `/articles/performer/${slug}`
-        : `/articles/news/${slug}`;
-      redirect(dest);
-    }
-    redirect("/magazine");
+export default async function LegacyMagazineArticleRedirect({ params }: Props) {
+  const { slug } = await params;
+
+  if (getArticleBySlug(slug) || getMagazineArticleBySlug(slug)) {
+    permanentRedirect(magazineReaderArticleUrl(slug));
   }
 
-  const allArticles = MAGAZINE_ISSUE_1;
-  const currentIdx = allArticles.findIndex((a) => a.slug === slug);
-  const prevArticle = currentIdx > 0 ? allArticles[currentIdx - 1] : null;
-  const nextArticle = currentIdx < allArticles.length - 1 ? allArticles[currentIdx + 1] : null;
-  const relatedArticles = allArticles.filter((a) => a.slug !== slug);
+  const editorial = getEditorialArticleBySlug(slug);
+  if (editorial) {
+    const dest =
+      editorial.category === "artist"
+        ? `/articles/artist/${slug}`
+        : editorial.category === "performer"
+          ? `/articles/performer/${slug}`
+          : `/articles/news/${slug}`;
+    permanentRedirect(dest);
+  }
 
-  return (
-    <>
-      <XPTrigger action="READ_ARTICLE" delayMs={8000} />
-
-      {/* Issue identity bar */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(5,5,16,0.92)", backdropFilter: "blur(8px)",
-        borderBottom: "1px solid rgba(255,45,170,0.15)",
-        padding: "9px 20px",
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 10 }}>📖</span>
-          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.2em", color: "#FF2DAA" }}>ISSUE 1 — THE MUSICIAN&apos;S INDEX</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Link href="/magazine/1" style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.4)", textDecoration: "none", letterSpacing: "0.1em" }}>
-            BACK TO ISSUE
-          </Link>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 10 }}>·</span>
-          <Link href="/home/1" style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.1em" }}>
-            EXIT PLATFORM
-          </Link>
-        </div>
-      </div>
-
-      {/* XP earn banner */}
-      <div style={{
-        maxWidth: 900, margin: "0 auto", padding: "12px 24px 0",
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          background: "rgba(0,255,136,0.07)", border: "1px solid rgba(0,255,136,0.2)",
-          borderRadius: 10, padding: "10px 16px",
-        }}>
-          <span style={{ fontSize: 18 }}>⭐</span>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 900, color: "#00FF88", letterSpacing: "0.06em" }}>
-              +10–40 XP for reading this article — you earn more points in the magazine than anywhere else
-            </div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-              Use your XP to enter contests, buy exclusive items in the store, and unlock platform perks
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── AD — leaderboard before article ── */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "8px 24px 0" }}>
-        <UnifiedAdSlot venue="magazine" slotKey="magazineLeaderboard" format="horizontal" label="ADVERTISEMENT" style={{ minHeight: 90 }} accentColor="#FF2DAA" />
-      </div>
-
-      <MagazineSpreadRenderer article={article} issueNumber={1} related={relatedArticles} />
-
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 24px 0" }}>
-        <TMIGeoBlock
-          shape="jagg"
-          label="GEO FEATURE"
-          accentColor="#FF2DAA"
-          bg="linear-gradient(135deg, rgba(13,8,28,0.95), rgba(25,9,35,0.88))"
-          glow
-          style={{ padding: "12px 14px" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ display: "grid", gap: 3 }}>
-              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)" }}>
-                TMI MAGAZINE SIGNAL
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
-                Discovery + Industry visibility is now active for this editorial surface.
-              </span>
-            </div>
-            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#FF2DAA" }}>
-              GEO-BLOCK LIVE
-            </span>
-          </div>
-        </TMIGeoBlock>
-      </div>
-
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
-        <AdRailSlot slotId="magazine-article-rail" hasSponsor={false} hasAdvertiser={false} title="Article Rail" />
-        {/* ── AD — end of article ── */}
-        <UnifiedAdSlot venue="magazine" slotKey="magazineArticleEnd" format="rectangle" label="ADVERTISEMENT" style={{ marginTop: 16, minHeight: 250 }} accentColor="#FF2DAA" />
-      </div>
-
-      {/* ── Rule 13: Article Hub — every article is a destination, not a dead end ── */}
-      {(() => {
-        const performer = article.performerSlug ? getPerformerBySlug(article.performerSlug) : null;
-        const ac = article.heroColor;
-        // Rule 12: ad slot for article bottom
-        const bottomAd = getAdSlotForZone(`magazine-article-${article.slug}-bottom`);
-        return (
-          <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
-            {/* Performer commerce rail — only if article links to a performer */}
-            {performer && (
-              <div style={{ margin: "24px 0", background: `${ac}08`, border: `1px solid ${ac}22`, borderRadius: 12, padding: "16px 20px" }}>
-                <div style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: "0.2em", marginBottom: 12 }}>
-                  SUPPORT {performer.name.toUpperCase()}
-                </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                  <Link href={`/checkout/tip/${performer.slug}`} style={{ padding: "9px 18px", background: ac, borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#050310", textDecoration: "none", letterSpacing: "0.06em" }}>
-                    💸 SEND TIP
-                  </Link>
-                  <Link href={`/fan-club/${performer.slug}`} style={{ padding: "9px 18px", background: "rgba(255,45,170,0.1)", border: "1.5px solid rgba(255,45,170,0.45)", borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.06em" }}>
-                    ⭐ JOIN FAN CLUB
-                  </Link>
-                  <Link href={`/merch/${performer.slug}`} style={{ padding: "9px 18px", background: "rgba(255,215,0,0.08)", border: "1.5px solid rgba(255,215,0,0.3)", borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#FFD700", textDecoration: "none", letterSpacing: "0.06em" }}>
-                    🛍️ BUY MERCH
-                  </Link>
-                  <Link href={performer.liveRoomRoute} style={{ padding: "9px 18px", background: performer.isLive ? "rgba(230,48,0,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${performer.isLive ? "rgba(230,48,0,0.6)" : "rgba(255,255,255,0.15)"}`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: performer.isLive ? "#E63000" : "rgba(255,255,255,0.5)", textDecoration: "none", letterSpacing: "0.06em" }}>
-                    {performer.isLive ? "🔴 JOIN LIVE" : "🎥 LIVE ROOM"}
-                  </Link>
-                  <Link href={performer.profileRoute} style={{ padding: "9px 18px", background: "transparent", border: `1.5px solid ${ac}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: ac, textDecoration: "none", letterSpacing: "0.06em" }}>
-                    VIEW PROFILE →
-                  </Link>
-                </div>
-                {performer.isLive && (
-                  <div style={{ fontSize: 9, color: "#E63000", fontWeight: 700 }}>
-                    🔴 {performer.name} is LIVE RIGHT NOW with {performer.audienceCount.toLocaleString()} watching
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Rule 12: Bottom ad slot — Paid → Platform Promo → AdSense → Advertise CTA */}
-            {bottomAd.type === 'platform' && bottomAd.platformPromo && (
-              <div style={{ margin: "16px 0", background: `${bottomAd.platformPromo.accentColor}0a`, border: `1px solid ${bottomAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: bottomAd.platformPromo.accentColor, marginBottom: 3 }}>{bottomAd.platformPromo.headline}</div>
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{bottomAd.platformPromo.body}</div>
-                </div>
-                <Link href={bottomAd.platformPromo.ctaHref} style={{ padding: "7px 16px", background: bottomAd.platformPromo.accentColor, borderRadius: 7, fontSize: 9, fontWeight: 900, color: "#050310", textDecoration: "none", letterSpacing: "0.06em", flexShrink: 0 }}>
-                  {bottomAd.platformPromo.ctaLabel}
-                </Link>
-              </div>
-            )}
-            {bottomAd.type === 'advertise-cta' && (
-              <div style={{ margin: "16px 0", textAlign: "center" }}>
-                <Link href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
-                  ADVERTISE ON TMI · FROM $25
-                </Link>
-              </div>
-            )}
-
-            {/* Rule 6: Discovery Rails — article hub content graph */}
-            <DiscoveryRail type="articles" tags={article.tags} exclude={article.slug} accentColor={ac} label="MORE LIKE THIS" />
-            {performer && <DiscoveryRail type="performers" tags={[performer.category]} exclude={performer.slug} accentColor={ac} label="MORE ARTISTS" />}
-            {!performer && <DiscoveryRail type="performers" accentColor="#00E5FF" label="FEATURED ARTISTS" />}
-            <DiscoveryRail type="liveRooms" accentColor="#E63000" label="LIVE NOW" />
-            <DiscoveryRail type="games" accentColor="#AA2DFF" label="BATTLES & GAMES" />
-          </div>
-        );
-      })()}
-
-      {/* Reader continuity footer */}
-      <nav style={{
-        background: "rgba(5,5,16,0.95)", borderTop: "1px solid rgba(255,255,255,0.07)",
-        padding: "20px 24px",
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        gap: 12, alignItems: "center",
-        maxWidth: 900, margin: "0 auto",
-      }}>
-        <div>
-          {prevArticle && (
-            <Link href={`/magazine/article/${prevArticle.slug}`} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>← PREVIOUS</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{prevArticle.title}</span>
-            </Link>
-          )}
-        </div>
-        <Link href="/magazine/1" style={{
-          padding: "8px 18px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em",
-          color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 6,
-          textDecoration: "none", whiteSpace: "nowrap",
-        }}>
-          FULL ISSUE
-        </Link>
-        <div style={{ textAlign: "right" }}>
-          {nextArticle && (
-            <Link href={`/magazine/article/${nextArticle.slug}`} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>NEXT →</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{nextArticle.title}</span>
-            </Link>
-          )}
-        </div>
-      </nav>
-
-      {/* ── Rule 15 Canister Section — every article is a hub ── */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 60px", display: "flex", flexDirection: "column", gap: 20 }}>
-        {/* Playlist — listen while you read */}
-        <PlaylistCanister
-          entityId={article.performerSlug ?? article.slug}
-          entityName={article.performerSlug ?? undefined}
-          accentColor="#AA2DFF"
-        />
-        {/* Memory Wall — moments from this article/event */}
-        <MemoryWallCanister
-          entityId={article.slug}
-          entityType="article"
-          title={`${article.title} — Memories`}
-          accentColor="#FF2DAA"
-        />
-        {/* Booking — book the performer featured in this article */}
-        {article.performerSlug && (
-          <BookingCanister
-            entityId={article.performerSlug}
-            entityType="performer"
-            accentColor="#00FF88"
-            showRequestForm={true}
-          />
-        )}
-        {/* Store — support the performer */}
-        {article.performerSlug && (
-          <StoreCanister
-            entityId={article.performerSlug}
-            storeType="performer"
-            accentColor="#FFD700"
-            maxItems={4}
-          />
-        )}
-        {/* Live Lobby Wall — see who's live right now */}
-        <LiveLobbyWallCanister accentColor="#FF2DAA" maxRooms={4} />
-      </div>
-    </>
-  );
+  permanentRedirect(magazineReaderArticleUrl("wavetek-rise-billboard"));
 }

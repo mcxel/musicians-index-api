@@ -3,12 +3,14 @@ import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { getPerformerBySlug, PERFORMER_REGISTRY, getTierColor } from '@/lib/performers/PerformerRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { XP_TIER_THRESHOLDS, getNextTier, getXpToNextTier, getTierFromXp } from '@/lib/xp/XpActionRegistry';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import PerformerBioMagazineLauncher from '@/components/drawers/PerformerBioMagazineLauncher';
 import ArtistDirectCommerceCta from '@/components/commerce/ArtistDirectCommerceCta';
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
 import { StoreCanister } from '@/components/canisters/StoreCanister';
 
 export async function generateStaticParams() {
@@ -103,9 +105,23 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
       <div style={{ padding: '50px 20px 24px', borderBottom: `1px solid ${ac}18`, maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 'clamp(26px, 5vw, 42px)', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.01em', lineHeight: 1.05, background: `linear-gradient(135deg, #fff 40%, ${ac})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <Link
+              href={canonicalPublicPath(p.slug)}
+              style={{
+                fontSize: 'clamp(26px, 5vw, 42px)',
+                fontWeight: 900,
+                margin: '0 0 4px',
+                letterSpacing: '-0.01em',
+                lineHeight: 1.05,
+                background: `linear-gradient(135deg, #fff 40%, ${ac})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
               {p.name}
-            </h1>
+            </Link>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>
               {p.flag} {p.city} · {p.category}
             </div>
@@ -223,7 +239,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
                     )}
                   </div>
                 ))}
-                <Link href={`/magazine/article/${a.slug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '8px 16px', background: `${a.heroColor}14`, border: `1px solid ${a.heroColor}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: a.heroColor, textDecoration: 'none', letterSpacing: '0.06em' }}>
+                <Link href={magazineReaderArticleUrl(a.slug)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '8px 16px', background: `${a.heroColor}14`, border: `1px solid ${a.heroColor}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: a.heroColor, textDecoration: 'none', letterSpacing: '0.06em' }}>
                   READ FULL ARTICLE →
                 </Link>
               </div>
@@ -295,7 +311,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
 
         {/* ── Store canister — platform items + linked artist products ── */}
         <div style={{ marginTop: 24 }}>
-          <StoreCanister entityId={p.slug} entityName={p.name} storeType="performer" accentColor={ac} maxItems={4} />
+          <StoreCanister entityId={p.slug} artistSlug={p.slug} entityName={p.name} storeType="performer" accentColor={ac} maxItems={6} />
         </div>
 
         {/* ── Performer upload + profile hub section ── */}

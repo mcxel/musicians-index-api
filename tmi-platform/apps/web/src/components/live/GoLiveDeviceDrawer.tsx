@@ -23,6 +23,7 @@ interface GoLiveDeviceDrawerProps {
   onClose: () => void;
   onStreamReady: (stream: MediaStream) => void;
   onSkip?: () => void;
+  contained?: boolean;
 }
 
 export default function GoLiveDeviceDrawer({
@@ -30,6 +31,7 @@ export default function GoLiveDeviceDrawer({
   onClose,
   onStreamReady,
   onSkip,
+  contained = false,
 }: GoLiveDeviceDrawerProps) {
   const [cameras, setCameras] = useState<MediaDeviceOption[]>([]);
   const [mics, setMics] = useState<MediaDeviceOption[]>([]);
@@ -107,10 +109,10 @@ export default function GoLiveDeviceDrawer({
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.18 }}
           style={{
-            position: "fixed",
-            right: 16,
-            bottom: 96,
-            zIndex: 9700,
+            position: contained ? "absolute" : "fixed",
+            right: contained ? 8 : 16,
+            bottom: contained ? 8 : 96,
+            zIndex: contained ? 80 : 9700,
             width: 300,
             maxWidth: "calc(100vw - 32px)",
             padding: 14,

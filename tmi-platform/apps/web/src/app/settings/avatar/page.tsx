@@ -19,17 +19,31 @@ export default function AvatarSettingsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Rule 26: avatar ownership is Fan-only.
   useEffect(() => {
-    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
-      .then(r => r.json())
-      .then((d: { user?: { role?: string } }) => {
-        const role = (d.user?.role ?? '').toUpperCase();
-        if (role && !FAN_AVATAR_ROLES.has(role)) {
-          router.replace('/settings/profile');
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean; user?: { role?: string } }) => {
+        if (!data.authenticated || !data.user?.role) {
+          router.replace("/auth?next=/settings/avatar");
+          return;
+        }
+        const role = (data.user.role ?? "").toUpperCase();
+        if (!FAN_AVATAR_ROLES.has(role)) {
+          const hubMap: Record<string, string> = {
+            PERFORMER: "/hub/performer",
+            ARTIST: "/hub/performer",
+            BAND: "/hub/band",
+            VENUE: "/hub/venue",
+            SPONSOR: "/hub/sponsor",
+            ADVERTISER: "/hub/advertiser",
+            PROMOTER: "/hub/promoter",
+            ADMIN: "/admin",
+            STAFF: "/admin",
+          };
+          router.replace(hubMap[role] ?? "/settings/profile");
         }
       })
-      .catch(() => {});
+      .catch(() => router.replace("/auth?next=/settings/avatar"));
   }, [router]);
   const [preview, setPreview]     = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
@@ -222,8 +236,8 @@ export default function AvatarSettingsPage() {
             <div style={{ padding: '20px 24px', background: 'rgba(170,45,255,0.04)', border: '1px solid rgba(170,45,255,0.15)', borderRadius: 16, marginBottom: 20 }}>
               <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', marginBottom: 16 }}>OPTIONAL — COMPLETE YOUR PROFILE</div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', fontWeight: 700, marginBottom: 5 }}>DISPLAY NAME / ARTIST NAME</label>
-                <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name or stage name"
+                <label style={{ display: 'block', fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', fontWeight: 700, marginBottom: 5 }}>DISPLAY NAME</label>
+                <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name or username"
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 9, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(170,45,255,0.25)', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div style={{ marginBottom: 12 }}>

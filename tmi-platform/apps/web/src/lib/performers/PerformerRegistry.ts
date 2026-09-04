@@ -1116,13 +1116,65 @@ const _bySlug = new Map(PERFORMER_REGISTRY.map((p) => [p.slug, p]));
 // (getPerformerById/getPerformerBySlug) are untouched — a bot-filler tile
 // still needs to resolve when clicked from a legitimate filler context.
 export function isRankedEligible(p: PerformerIdentity): boolean {
-  return (
-    p.category !== 'Venues' &&
-    p.category !== 'Sponsors' &&
-    p.lineupType !== undefined
-  );
+  if (p.category === 'Venues' || p.category === 'Sponsors') return false;
+  if (p.lineupType === undefined) return false;
+  const route = p.profileRoute || '';
+  if (
+    route.startsWith('/venues/') ||
+    route.startsWith('/events/') ||
+    route.startsWith('/sponsors/')
+  ) {
+    return false;
+  }
+  return true;
 }
 const RANKED_PERFORMER_REGISTRY = PERFORMER_REGISTRY.filter(isRankedEligible);
+
+/**
+ * Program / honor titles overlay a real performer — they never replace the name.
+ * Only achievement IDs that exist on the identity, or XP-derived genre leadership.
+ * Missing titles are omitted (Rule 20). Do not invent Monthly Idol / Arena Prime
+ * on a performer who does not hold that achievement.
+ */
+const HONOR_TITLE_BY_ACHIEVEMENT: Record<string, string> = {
+  'monthly-idol': 'Monthly Idol',
+  'monthly-idol-champion': 'Monthly Idol',
+  'monthly-idol-winner': 'Monthly Idol',
+  'arena-prime': 'Arena Prime',
+  'monday-night-idol-winner': 'Monday Night Idol Winner',
+  'edm-leader': 'EDM Leader',
+  'cypher-champion': 'Cypher Champion',
+  'dj-champion': 'DJ Champion',
+  'crown-holder': 'Overall Crown',
+  'battle-finalist': 'Battle Finalist',
+  'regional-champion': 'Regional Champion',
+};
+
+export function getPerformerHonorTitle(p: PerformerIdentity): string | undefined {
+  for (const id of p.achievementIds) {
+    const title = HONOR_TITLE_BY_ACHIEVEMENT[id];
+    if (title) return title;
+  }
+  const peers = RANKED_PERFORMER_REGISTRY.filter((x) => x.category === p.category && x.xp > 0);
+  if (peers.length < 2 || p.xp <= 0) return undefined;
+  const maxXp = Math.max(...peers.map((x) => x.xp));
+  if (p.xp !== maxXp) return undefined;
+  return `${p.category} Leader`;
+}
+
+export function isVerifiedRankedPerformer(p: PerformerIdentity): boolean {
+  if (!isRankedEligible(p)) return false;
+  return p.achievementIds.some((id) =>
+    id === 'top-100' ||
+    id === 'battle-finalist' ||
+    id === 'regional-champion' ||
+    id === 'platinum-tier' ||
+    id === 'gold-tier' ||
+    id === 'diamond-tier' ||
+    id === 'crown-holder' ||
+    id === 'dj-champion'
+  );
+}
 
 export function getPerformerById(id: string): PerformerIdentity | null {
   return _byId.get(id) ?? null;

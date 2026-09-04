@@ -76,7 +76,13 @@ export interface LiveDiscoveryRecord {
   anchorFamily?: string;
   /** Idle-rotating featured category (locked when queue forms). */
   featuredCategory?: string;
+  /** Up to 3 eligible like-vs-like types while recruiting (not collapsed to first). */
+  calloutSlots?: string[];
   categoryLocked?: boolean;
+  /** Honest recruiting — room stays on wall; overlay is LOOKING FOR, not fake LIVE crowd. */
+  recruiting?: boolean;
+  /** Mosaic / panel cast line (LIVE · … / LOOKING FOR · …). Never includes viewer counts. */
+  castOverlay?: string;
 }
 
 export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, string> = {
@@ -134,10 +140,21 @@ export function mapStreamCategoryToDiscovery(
   if (c === "battle" || c === "battles") return "battles";
   if (c === "cypher" || c === "cyphers") return "cyphers";
   if (c === "challenge" || c === "challenges") return "challenges";
-  if (c === "concert" || c === "concerts" || c === "mini-concert" || c === "world-concert")
+  if (
+    c === "concert" ||
+    c === "concerts" ||
+    c === "mini-concert" ||
+    c === "world-concert" ||
+    c === "live-online-concert" ||
+    c === "release-party" ||
+    c === "mini-release" ||
+    c === "world-release" ||
+    c === "releases"
+  )
     return "concerts";
   if (c === "fan-lobby" || c === "fan_lobbies" || c === "fan-lobbies") return "fan_lobbies";
   if (c === "lounge" || c === "lounges" || c === "vip-lounge" || c === "rehearsal") return "lounges";
+  if (c === "performer-lobby" || c === "performer_lobby" || c === "performer-lobbies") return "lounges";
   if (c === "listening" || c === "radio" || c === "stream-and-win") return "listening";
   if (c === "dance" || c === "dance-party" || c === "world-dance-party") return "dance";
   if (c === "game" || c === "games" || c === "game-show" || c === "session") return "games";

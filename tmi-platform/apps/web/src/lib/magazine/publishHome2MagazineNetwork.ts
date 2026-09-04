@@ -24,6 +24,7 @@ import {
   resolveArticleVideoUrl,
 } from "./resolveArticleEditorialImage";
 import { listActiveVideoBoostMedia } from "./videoBoostEligibility";
+import { magazineReaderArticleUrl } from "./MagazineReaderRoutes";
 
 const ACCENT: Record<MagazineArticle["category"], string> = {
   feature: "#00FFFF",
@@ -34,7 +35,7 @@ const ACCENT: Record<MagazineArticle["category"], string> = {
 };
 
 function articleRoute(article: MagazineArticle): string {
-  return `/magazine/article/${article.slug}`;
+  return magazineReaderArticleUrl(article.slug);
 }
 
 function articleToRecord(

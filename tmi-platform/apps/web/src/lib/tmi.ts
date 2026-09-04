@@ -1,12 +1,21 @@
 /**
  * tmi.ts — Central typed API client for TMI platform
  * Server-side fetch only (use in Server Components and Route Handlers)
+ *
+ * External Nest/API base comes from API_BASE_URL only — no silent localhost:3001.
  */
 
-const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3001";
+import {
+  joinExternalServiceUrl,
+  resolveExternalServiceBase,
+} from "@/lib/runtime/canonicalEndpointResolver";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${path}`;
+  const base = resolveExternalServiceBase("API_BASE_URL");
+  if (!base) {
+    throw new Error("API_BASE_URL is not configured — refusing dead localhost fallback.");
+  }
+  const url = joinExternalServiceUrl(base, path);
   const res = await fetch(url, {
     ...options,
     headers: {

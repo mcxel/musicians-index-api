@@ -17,6 +17,7 @@ export interface TrackMeta {
   duration?: number;
   file?: File;
   coverUrl?: string;
+  audioUrl?: string;
 }
 
 export interface ExternalLink {
@@ -58,6 +59,7 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
   const [tag, setTag]             = useState("");
   const [linkPlatform, setLinkPlatform] = useState<ExternalLink["platform"]>("spotify");
   const [linkUrl, setLinkUrl]     = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const [meta, setMeta] = useState<TrackMeta>({
     title: "", genre: "", tags: [], isInstrumental: false,
@@ -101,6 +103,7 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
     if (!meta.title.trim() || !meta.file) return;
     setUploading(true);
     setProgress(0);
+    setSubmitError("");
 
     const formData = new FormData();
     formData.append("file", meta.file);
@@ -126,16 +129,16 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const data = JSON.parse(xhr.responseText) as { ok?: boolean; assetId?: string; url?: string; status?: string };
-            if (data.ok && data.assetId) {
+            if (data.ok && data.assetId && data.url && !String(data.url).startsWith("blob:")) {
               setProgress(100);
-              onUpload?.(meta);
+              onUpload?.({ ...meta, audioUrl: data.url });
               setStep("drop");
               setMeta({
                 title: "", genre: "", tags: [], isInstrumental: false,
                 forSale: false, licenseType: "basic", externalLinks: [],
               });
             } else {
-              console.error("Upload response error:", data);
+              setSubmitError("Upload did not return a playable URL. Nothing was queued.");
               setProgress(0);
             }
           } catch (err) {
@@ -143,14 +146,19 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
             setProgress(0);
           }
         } else {
-          console.error("Upload failed:", xhr.status);
+          try {
+            const err = JSON.parse(xhr.responseText) as { error?: string };
+            setSubmitError(err.error ?? `Upload failed (${xhr.status})`);
+          } catch {
+            setSubmitError(`Upload failed (${xhr.status})`);
+          }
           setProgress(0);
         }
         setUploading(false);
       });
 
       xhr.addEventListener("error", () => {
-        console.error("Network error");
+        setSubmitError("Network error. Track was not saved.");
         setProgress(0);
         setUploading(false);
       });
@@ -322,6 +330,12 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
             <div style={{ width: `${progress}%`, height: "100%", background: accent, borderRadius: 2, transition: "width 0.1s" }} />
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 4, textAlign: "center" }}>Uploading… {progress}%</div>
+        </div>
+      )}
+
+      {submitError && (
+        <div role="alert" style={{ marginBottom: 12, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,80,80,0.45)", background: "rgba(255,40,40,0.12)", color: "#FFB4B4", fontSize: 11, fontWeight: 600 }}>
+          {submitError}
         </div>
       )}
 

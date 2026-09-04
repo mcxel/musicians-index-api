@@ -20,7 +20,12 @@ export {
 export type { AudioResolutionLayer, PersonalAudioResolution } from "./audioResolution";
 
 export { PersonalMediaRouter, createPersonalMediaRouter, defaultPersonalMediaRouter } from "./PersonalMediaRouter";
-export type { PersonalMediaViewSnapshot, PersonalMediaRouterOptions } from "./PersonalMediaRouter";
+export type {
+  PersonalMediaViewSnapshot,
+  PersonalMediaRouterOptions,
+  PrivateSocialGateDecision,
+  PrivateSocialInteractGate,
+} from "./PersonalMediaRouter";
 
 export {
   PersonalMediaCommandBus,

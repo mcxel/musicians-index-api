@@ -196,6 +196,9 @@ export function InventoryCanister({ accentColor = "#FF6B35", onEquip }: Inventor
                 💎 {points.toLocaleString()} PTS
               </div>
             ) : null}
+            <Link href="/avatar/studio" style={{ fontSize: 10, color: "#FFD700", fontWeight: 800 }}>
+              DECORATE →
+            </Link>
             <Link href="/avatar/shop" style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800 }}>
               COSMETICS →
             </Link>

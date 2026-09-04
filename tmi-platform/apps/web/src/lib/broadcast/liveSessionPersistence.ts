@@ -44,6 +44,13 @@ function normalizeSession(raw: LiveSession): LiveSession {
     audienceCountries: Array.isArray(raw.audienceCountries) ? raw.audienceCountries : [],
     recentAudienceEntries: Array.isArray(raw.recentAudienceEntries) ? raw.recentAudienceEntries : [],
     lastAudienceEntryAt: raw.lastAudienceEntryAt ?? null,
+    venueEnvironment:
+      raw.venueEnvironment === "indoor" || raw.venueEnvironment === "outdoor"
+        ? raw.venueEnvironment
+        : null,
+    venueSkinId: typeof raw.venueSkinId === "string" && raw.venueSkinId.trim()
+      ? raw.venueSkinId.trim()
+      : null,
   };
 }
 
@@ -91,7 +98,7 @@ function sessionFromUserRow(u: {
 
 export async function persistLiveSession(session: LiveSession): Promise<void> {
   const normalized = normalizeSession(session);
-  await prisma.user.updateMany({
+  const updated = await prisma.user.updateMany({
     where: { OR: [{ id: normalized.userId }, { userRef: normalized.userId }] },
     data: {
       isLive: true,
@@ -100,6 +107,13 @@ export async function persistLiveSession(session: LiveSession): Promise<void> {
       liveStartedAt: new Date(normalized.startedAt),
     },
   });
+  // Fail loud if the host id does not map to a User row — otherwise Worker B
+  // hydrates empty (isLive never set) while Worker A still serves memory count.
+  if (updated.count === 0) {
+    throw new Error(
+      `[liveSessionPersistence] persistLiveSession: no User row for userId=${normalized.userId}`,
+    );
+  }
   const existing = await prisma.feedItem.findFirst({
     where: { userId: normalized.userId, type: LIVE_FEED_TYPE },
     orderBy: { createdAt: "desc" },
@@ -224,14 +238,17 @@ export async function loadPersistedLiveSessions(staleMs = DEFAULT_STALE_MS): Pro
     if (isLiveSessionShape(item.data)) feedByUser.set(item.userId, normalizeSession(item.data));
   }
   const result: LiveSession[] = [];
-  const staleUserIds: string[] = [];
   for (const u of liveUsers) {
-    const session = feedByUser.get(u.id) ?? sessionFromUserRow(u);
-    if (now - session.lastPingAt > staleMs) { staleUserIds.push(u.id); continue; }
+    const fromFeed = feedByUser.get(u.id);
+    const session = fromFeed ?? sessionFromUserRow(u);
+    // GET must never delete durable rows — concurrent /home/3 polls were racing
+    // create and zeroing LIVE NOW while the host worker still reported n+1.
+    // Rescue stale feed pings via user-row freshness while isLive remains true.
+    if (now - session.lastPingAt > staleMs) {
+      result.push(sessionFromUserRow(u));
+      continue;
+    }
     result.push(session);
-  }
-  for (const id of staleUserIds) {
-    await removePersistedLiveSession(id).catch(() => {});
   }
   return result.sort((a, b) => {
     if (b.viewerCount !== a.viewerCount) return b.viewerCount - a.viewerCount;

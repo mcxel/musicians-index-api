@@ -1,47 +1,24 @@
 "use client";
 
-// IntercomButton.tsx
-// Performer's intercom toggle — opens/closes room voice for the performer.
-
 import React from "react";
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
-import type { SafetyAgeClass } from "@/lib/safety/TeenMessagingPolicyEngine";
 
 interface IntercomButtonProps {
   performerId: string;
   intercomEnabled: boolean;
   allowAudienceTalkback: boolean;
   onToggle: (enabled: boolean) => void;
-  actorAgeClass?: SafetyAgeClass;
-  targetAgeClass?: SafetyAgeClass;
 }
 
 export default function IntercomButton({
   intercomEnabled,
   allowAudienceTalkback,
   onToggle,
-  actorAgeClass = "unknown",
-  targetAgeClass = "unknown",
 }: IntercomButtonProps) {
-  const decision = enforceAdultTeenContactBlock({
-    source: "voice:intercom-button",
-    channel: "voice",
-    actor: {
-      userId: "performer-local",
-      ageClass: actorAgeClass,
-    },
-    target: {
-      userId: "audience-local",
-      ageClass: targetAgeClass,
-    },
-  });
-
   return (
     <button
       type="button"
       aria-label={intercomEnabled ? "Close intercom" : "Open intercom"}
       onClick={() => {
-        if (!decision.allowed) return;
         onToggle(!intercomEnabled);
       }}
       style={{
@@ -65,7 +42,6 @@ export default function IntercomButton({
           ? "0 0 12px rgba(0,255,204,0.35)"
           : "none",
         position: "relative",
-        opacity: decision.allowed ? 1 : 0.55,
       }}
     >
       {/* Mic icon */}
@@ -91,9 +67,6 @@ export default function IntercomButton({
         >
           TALKBACK
         </span>
-      )}
-      {!decision.allowed && (
-        <span style={{ marginLeft: "6px", fontSize: "10px", color: "#fca5a5", letterSpacing: "0.03em" }}>BLOCKED</span>
       )}
     </button>
   );

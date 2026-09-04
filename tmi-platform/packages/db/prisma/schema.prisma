@@ -111,6 +111,21 @@ model User {
   stripePriceId          String?        @map("stripe_price_id")
   stripeCurrentPeriodEnd DateTime?      @map("stripe_current_period_end")
 
+  // Billing status vs. access status (Lane A P0-A4, dunning/grace):
+  // `tier` is the access status a user actually receives; `billingStatus`
+  // tracks the underlying payment health without forcing an immediate
+  // downgrade. A failed/action-required invoice enters "past_due" and starts
+  // a TMI-owned grace clock — access stays at the current tier until the
+  // grace period is confirmed expired. Distinct from the Trust & Safety
+  // `accountStatus` field (moderation-only; never reused for billing).
+  billingStatus                    String    @default("active") @map("billing_status")
+  billingGraceEndsAt               DateTime? @map("billing_grace_ends_at")
+  // Archival, not live state: preserved on cancel/refund so support/reconciliation
+  // can see the last subscription this user held, without leaving a stale
+  // reference in the live stripeSubscriptionId/stripePriceId fields above.
+  lastCanceledStripeSubscriptionId String?   @map("last_canceled_stripe_subscription_id")
+  lastCanceledAt                   DateTime? @map("last_canceled_at")
+
   // Ledger
   ledgerEntries LedgerEntry[]
 
@@ -130,6 +145,7 @@ model User {
   notificationPreferences NotificationPreference[]
   feedItems               FeedItem[]
   wallet                  Wallet?
+  artistCommerceProducts  ArtistCommerceProduct[] @relation("ArtistCommerceProducts")
   userSettings            UserSettings?
   familyAccount           FamilyAccount?
   childAccount            ChildAccount?
@@ -225,6 +241,12 @@ model User {
   // Venue skins
   venueSkinOwnerships    VenueSkinOwnership[]
 
+  // StoreItemEngine catalog ownership (lobby/venue skins from /store/*)
+  storeItemOwnerships    StoreItemOwnership[]
+
+  // Persistent Universal Cart (Lane D Phase 2, 2026-09-02)
+  cart Cart?
+
   // Media Player chassis ownership + equipped preference (Stage 2)
   mediaPlayerChassisOwnerships MediaPlayerChassisOwnership[]
   mediaPlayerPreference        MediaPlayerPreference?
@@ -237,6 +259,11 @@ model User {
 
   // Yo Artifact — purchased / gifted digital release ownership records
   yoArtifactOwnerships   YoArtifactOwnership[] @relation("YoArtifactOwnershipUser")
+
+  savedPerformances      SavedPerformance[]    @relation("SavedPerformanceOwner")
+
+  // Canonical per-user public profile theme + customization config
+  publicProfileConfig    PublicProfileConfig?
 }
 
 model Account {
@@ -620,6 +647,13 @@ model Order {
   amountCents       Int?
   status            String? // PAID | REFUND_PENDING | REFUNDED
 
+  /// Fulfillment recovery observability (Lane D Phase 2, 2026-09-02) — set by
+  /// EntitlementFulfillmentEngine's reconciliation path when retrying a
+  /// PAID_PENDING_FULFILLMENT order. Never silently swallow a retry.
+  fulfillmentRetryCount    Int       @default(0)
+  lastFulfillmentAttemptAt DateTime?
+  lastFulfillmentError     String?
+
   tickets Ticket[]
   refunds Refund[]
 
@@ -705,6 +739,64 @@ model EventInventory {
   issued    Int      @default(0)
 
   @@index([key])
+}
+
+// ======================================================================
+// DIGITAL TICKET OFFERS (performer/event-owner online tickets)
+// Distinct from Venue/Promoter Ticket+TicketType (Rule 17). Not TicketV2.
+// Runtime also ensure*-creates via DigitalTicketPersistence (ArtistCommerce pattern).
+// ======================================================================
+
+model DigitalTicketOffer {
+  id                           String    @id
+  eventId                      String
+  ownerId                      String
+  ticketType                   String    @default("general")
+  title                        String
+  artworkAssetId               String?
+  artworkUrl                   String?
+  priceCents                   Int
+  currency                     String    @default("USD")
+  capacity                     Int       @default(100)
+  soldCount                    Int       @default(0)
+  pricingZone                  String?
+  seatMapId                    String?
+  saleStart                    DateTime?
+  saleEnd                      DateTime?
+  feePolicyId                  String
+  status                       String    @default("draft")
+  venueBusinessRevenueCents    Int       @default(0)
+  digitalPerformerRevenueCents Int       @default(0)
+  publishedAt                  DateTime?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  issuedTickets DigitalIssuedTicket[]
+
+  @@index([ownerId])
+  @@index([eventId])
+  @@index([ownerId, status])
+}
+
+/// Issued digital ticket + atomic check-in flag (cross-instance redeem).
+model DigitalIssuedTicket {
+  id          String    @id
+  offerId     String?
+  offer       DigitalTicketOffer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  eventId     String
+  ownerId     String
+  redeemed    Boolean   @default(false)
+  checkedInAt DateTime?
+  checkedInBy String?
+  /// Full TicketRecord JSON (scanner / Load Ticket / print path)
+  payload     Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([offerId])
+  @@index([eventId])
+  @@index([ownerId])
+  @@index([redeemed])
 }
 
 // ======================================================================
@@ -1175,6 +1267,41 @@ model FeedItem {
   @@index([userId, createdAt])
 }
 
+// -- ARTIST COMMERCE CATALOG (per-artist prices; NOT STRIPE_PRICE_* env) ----------
+// Authority split: TMI subscriptions → STRIPE_PRICE_* env; artist store → this table
+// + Checkout Session price_data (+ Stripe Connect application fee).
+
+enum ArtistCommerceProductType {
+  MERCH
+  SHOUTOUT
+  MEET_AND_GREET
+  VIP_PASS
+  LICENSING_PACK
+  DIGITAL_PRODUCT
+  OTHER
+}
+
+model ArtistCommerceProduct {
+  id              String                     @id @default(cuid())
+  artistId        String
+  artist          User                       @relation("ArtistCommerceProducts", fields: [artistId], references: [id], onDelete: Cascade)
+  type            ArtistCommerceProductType
+  title           String
+  description     String?
+  priceCents      Int
+  currency        String                     @default("usd")
+  active          Boolean                    @default(true)
+  inventory       Int?
+  imageUrl        String?
+  stripeProductId String?
+  stripePriceId   String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([artistId, active])
+  @@index([artistId, type])
+}
+
 // -- WALLET & ECONOMY ----------------------------------------------------------
 
 model Wallet {
@@ -1569,6 +1696,39 @@ model UserSettings {
   exportExpiresAt     DateTime?
 }
 
+// -- PUBLIC PROFILE CUSTOMIZATION ---------------------------------------------
+
+/**
+ * Canonical per-user public profile config.
+ * One record per user. `themeColor` is the single source of truth — drives
+ * both private dashboard UI and the public /p/[username] page.
+ * No separate "dashboard color" vs "public color" field.
+ */
+model PublicProfileConfig {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Full-spectrum hex (#RRGGBB). Free for all accounts. Single source of truth.
+  themeColor       String   @default("#00FFFF") @map("theme_color")
+  /// Style pack id from PublicProfileStyleEngine registry.
+  activeStylePackId String  @default("tmi_classic") @map("active_style_pack_id")
+  /// OFF | LOW | NORMAL | HIGH
+  animationIntensity String  @default("NORMAL") @map("animation_intensity")
+  /// SINGLE_COL | SIDEBAR_RIGHT | MAGAZINE | FEATURE_HERO
+  layout           String   @default("SINGLE_COL")
+  /// Ordered JSON array of visible module ids (application default applied in ProfileConfigService)
+  visibleModules   Json     @default("[]")
+  /// Short owner-set public status (≤ 120 chars)
+  statusMessage    String?  @map("status_message")
+  /// JSON array of pinned item ids (max 5)
+  pinnedItems      Json     @default("[]")
+  /// Whether the public page reflects this config or is in draft
+  published        Boolean  @default(true)
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("public_profile_configs")
+}
+
 // -- MODERATION ----------------------------------------------------------------
 
 model Report {
@@ -1642,6 +1802,18 @@ model ParentApproval {
 
   @@index([parentId, status])
   @@index([childId])
+}
+
+
+model PolicyAcceptanceRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  policyId   String
+  version    String
+  acceptedAt DateTime @default(now())
+
+  @@unique([userId, policyId, version])
+  @@index([userId])
 }
 
 // -- BLOCK / MUTE --------------------------------------------------------------
@@ -3418,6 +3590,59 @@ model VenueSkinOwnership {
   @@map("venue_skin_ownerships")
 }
 
+/// Durable StoreItemEngine ownership — lobby/venue skins sold via /store/lobbies
+/// and /store/venues (distinct from VenueSkinCommerce /store/venue-skins).
+/// `itemId` matches StoreItemEngine item id (e.g. lobby-neon, venue-club).
+model StoreItemOwnership {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId          String
+  category        String   // "lobby" | "venue" | other StoreCategory values
+  stripePaymentId String?
+  pricePaidCents  Int      @default(0)
+  purchasedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@map("store_item_ownerships")
+}
+
+/// Persistent Universal Cart (Lane D Phase 2, 2026-09-02). One cart per
+/// authenticated user, server-authoritative — replaces CanonicalCartRuntime's
+/// prior in-memory Map so cart contents survive reload, redeploy, and a new
+/// device/session. CartItem.unitPriceCents is a display-only snapshot taken
+/// when the item was added; checkout always re-resolves the current
+/// canonical price via StoreItemEngine.findStoreItemById — never trusts this
+/// snapshot for charging (Rule: browser/stored prices are never authoritative).
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id             String   @id @default(cuid())
+  cartId         String
+  cart           Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  itemId         String   // StoreItemEngine item id, e.g. "lobby-neon"
+  quantity       Int      @default(1)
+  unitPriceCents Int      // display snapshot only — see model doc comment
+  addedAt        DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([cartId, itemId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
 /// Durable Media Player chassis ownership (separate from Playlist Artifact ownership).
 /// unlockedVia: "purchase" | "points" | "free" | "tier"
 model MediaPlayerChassisOwnership {
@@ -3985,4 +4210,44 @@ model YoArtifactOwnership {
   @@index([artifactId])
   @@index([ownerId])
   @@map("yo_artifact_ownerships")
+}
+
+
+// ==============================================================================
+// SAVED PERFORMANCE RETENTION POLICY
+// Universal — same allowance for FAN and PERFORMER
+// ==============================================================================
+
+enum SavedPerformanceStatus {
+  ACTIVE
+  EXPIRING_SOON
+  RENEWED
+  EXPIRED
+  DELETION_PENDING
+  DELETED
+}
+
+model SavedPerformance {
+  id                  String                 @id @default(cuid())
+  owner               User                   @relation("SavedPerformanceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId             String                 @map("owner_id")
+  liveSessionId       String                 @map("live_session_id")
+  role                Role
+  title               String
+  durationSeconds     Int                    @map("duration_seconds")
+  storageBytes        BigInt                 @default(0) @map("storage_bytes")
+  status              SavedPerformanceStatus @default(ACTIVE)
+  createdAt           DateTime               @default(now()) @map("created_at")
+  expiresAt           DateTime               @map("expires_at")
+  renewalCount        Int                    @default(0) @map("renewal_count")
+  storageProviderKey  String?                @map("storage_provider_key")
+  /// JSON array of derived/transcoded asset keys
+  derivedAssetKeys    String                 @default("[]") @map("derived_asset_keys")
+  transcodingCostCents Int                   @default(0) @map("transcoding_cost_cents")
+  deliveryCostCents   Int                    @default(0) @map("delivery_cost_cents")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("saved_performances")
 }

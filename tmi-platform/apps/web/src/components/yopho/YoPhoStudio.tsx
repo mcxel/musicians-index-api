@@ -7,6 +7,13 @@ import {
   type YoPhoPortraitBlueprint,
   type SubscriptionPortraitEntitlement,
 } from "@/lib/yopho/YoPhoPortraitEngine";
+import {
+  getYoPhoImageCapacity,
+  normalizeYoPhoTier,
+  trimYoPhoBlueprintToCapacity,
+  YOPHO_FREE_ALLOWANCE_COPY,
+} from "@/lib/yopho/YoPhoImageCapacity";
+import { ensureTripleLayerStack } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
 
 export type YoPhoStudioRole = "fan" | "performer";
@@ -29,6 +36,8 @@ function activeStorageKey(role: YoPhoStudioRole): string {
 
 /**
  * Canonical full-page YoPho triple-stage runtime — shared editor, role-specific assets.
+ * Fan vs Performer keep separate storage + cardRole (Rule 26).
+ * FREE = 1 background + 2 content images (3 image slots) — layered, background-first.
  */
 export default function YoPhoStudio({
   role,
@@ -39,17 +48,19 @@ export default function YoPhoStudio({
 }: YoPhoStudioProps) {
   const [blueprint, setBlueprint] = useState<YoPhoPortraitBlueprint | null>(null);
   const [entitlement, setEntitlement] = useState<SubscriptionPortraitEntitlement | null>(null);
+  const [tierKey, setTierKey] = useState("FREE");
 
   useEffect(() => {
-    const tier = tierProp?.toUpperCase() ?? "FREE";
-    setEntitlement(getPortraitEntitlement(tier));
+    const resolved = normalizeYoPhoTier(tierProp ?? "FREE");
+    setTierKey(resolved);
+    setEntitlement(getPortraitEntitlement(resolved === "BAND" ? "PLATINUM" : resolved));
 
     const storageKey = editionsStorageKey(role);
     try {
       const raw = localStorage.getItem(storageKey);
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
-      if (parsed.length > 0) {
-        setBlueprint(parsed[0]!);
+      if (parsed.length > 0 && parsed[0]) {
+        setBlueprint(ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(parsed[0], resolved)));
       } else {
         setBlueprint(
           createDefaultYoPhoBlueprint(role, displayName, profileImageUrl ?? undefined),
@@ -61,17 +72,18 @@ export default function YoPhoStudio({
   }, [userId, displayName, tierProp, role, profileImageUrl]);
 
   const handleSaveEdition = (saved: YoPhoPortraitBlueprint) => {
+    const trimmed = ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(saved, tierKey));
     try {
       const storageKey = editionsStorageKey(role);
       const raw = localStorage.getItem(storageKey);
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
-      const updated = parsed.length > 0 ? [...parsed] : [saved];
-      updated[0] = saved;
+      const updated = parsed.length > 0 ? [...parsed] : [trimmed];
+      updated[0] = trimmed;
       localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch {
       /* quota */
     }
-    setBlueprint(saved);
+    setBlueprint(trimmed);
   };
 
   if (!blueprint || !entitlement) {
@@ -91,13 +103,16 @@ export default function YoPhoStudio({
     );
   }
 
+  const capacity = getYoPhoImageCapacity(tierKey);
   const accent = role === "fan" ? "#FF2DAA" : "#FFD700";
   const headline =
-    role === "fan" ? "FAN EXCLUSIVE · TRIPLE STAGE" : "PERFORMER LIVING STAGE · TRIPLE STAGE";
+    role === "fan"
+      ? "FAN · TRIPLE STAGE · BACKGROUND FIRST"
+      : "PERFORMER · LIVING STAGE · BACKGROUND FIRST";
   const subline =
     role === "fan"
-      ? "Master · preview · compare — portrait engine controls"
-      : "Living YoPho card — master, preview, and compare before you publish";
+      ? `Master · preview · compare — ${capacity.tierKey}: ${YOPHO_FREE_ALLOWANCE_COPY}`
+      : `Living YoPho card — ${capacity.tierKey} image slots ${capacity.maxImages}; fan canvas stays separate`;
 
   return (
     <div style={{ padding: "16px 20px 32px" }}>
@@ -112,6 +127,9 @@ export default function YoPhoStudio({
         onMasterChange={setBlueprint}
         onSaveEdition={handleSaveEdition}
         storageKey={activeStorageKey(role)}
+        tierOrRole={tierKey}
+        cardRole={role}
+        userKey={userId}
       />
     </div>
   );

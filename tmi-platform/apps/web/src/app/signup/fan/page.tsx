@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
+import SignupPolicyAcceptance, {
+  AGE_REQUIRED_ERROR,
+  POLICY_ACCEPTANCE_ERROR,
+  allRequiredPoliciesAccepted,
+  emptyPolicyChecks,
+  isSignupAgeEligible,
+} from "@/components/onboarding/SignupPolicyAcceptance";
+import type { PolicyId } from "@/lib/messaging/policyCatalog";
 
 
 export default function FanSignupPage() {
@@ -12,12 +20,41 @@ export default function FanSignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [policyChecks, setPolicyChecks] = useState<Record<PolicyId, boolean>>(emptyPolicyChecks);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const policiesOk = allRequiredPoliciesAccepted(policyChecks);
+  const canSubmit = Boolean(email.trim() && password && dateOfBirth && policiesOk);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { authenticated?: boolean }) => {
+        if (active && d?.authenticated) {
+          router.replace("/hub/fan");
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [router]);
+
   async function handleSubmit() {
     console.log("[TMI] handleSubmit entered. Fan Signup. Email:", email);
+    if (!email.trim() || !password || !dateOfBirth) {
+      setError("Email, password, and date of birth are required.");
+      return;
+    }
+    if (!isSignupAgeEligible(dateOfBirth)) {
+      setError(AGE_REQUIRED_ERROR);
+      return;
+    }
+    if (!policiesOk) {
+      setError(POLICY_ACCEPTANCE_ERROR);
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -26,13 +63,21 @@ export default function FanSignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-csrf-token": csrfToken },
         credentials: "include",
-        body: JSON.stringify({ email, password, dateOfBirth, termsAccepted: true, originalityAccepted: true, roles: ["FAN"] }),
+        body: JSON.stringify({
+          email,
+          password,
+          dateOfBirth,
+          displayName,
+          termsAccepted: true,
+          originalityAccepted: true,
+          roles: ["FAN"],
+        }),
       });
       if (res.ok) {
-        router.push("/dashboard");
+        router.replace("/hub/fan");
       } else {
         const data = await res.json().catch(() => null);
-        setError((data as { message?: string })?.message ?? "Signup failed. Check your details.");
+        setError((data as { error?: string; message?: string })?.error ?? (data as { message?: string })?.message ?? "Signup failed. Check your details.");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -70,14 +115,16 @@ export default function FanSignupPage() {
       </header>
 
       <div style={{ display: "grid", gap: 10 }}>
-        <label style={labelStyle}>Display Name</label>
+        <label style={labelStyle}>Display Name <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>(Optional)</span></label>
         <input style={inputStyle} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your fan alias" />
-        <label style={labelStyle}>Email</label>
-        <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-        <label style={labelStyle}>Password</label>
-        <input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8+ characters" />
-        <label style={labelStyle}>Date of Birth</label>
-        <input style={inputStyle} type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+        <label style={labelStyle}>Email *</label>
+        <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+        <label style={labelStyle}>Password *</label>
+        <input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8+ characters" required />
+        <label style={labelStyle}>Date of Birth *</label>
+        <input style={inputStyle} type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} required />
+        <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Required — you must be 16+ to join TMI.</p>
+        <SignupPolicyAcceptance checks={policyChecks} onChange={setPolicyChecks} accent="#FFD700" />
       </div>
 
       <div style={cardStyle}>
@@ -94,7 +141,7 @@ export default function FanSignupPage() {
         </ul>
       </div>
 
-      <button type="button" style={ctaStyle} onClick={handleSubmit} disabled={submitting}>
+      <button type="button" style={{ ...ctaStyle, opacity: submitting || !canSubmit ? 0.5 : 1, cursor: submitting || !canSubmit ? "not-allowed" : "pointer" }} onClick={handleSubmit} disabled={submitting || !canSubmit}>
         {submitting ? "Creating Account…" : "Create Fan Account →"}
       </button>
       {error && <p style={{ fontSize: 11, color: "#FF4444", margin: 0 }}>{error}</p>}

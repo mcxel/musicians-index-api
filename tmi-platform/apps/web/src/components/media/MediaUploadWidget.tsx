@@ -18,6 +18,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { MediaType, UploadResult } from "@/lib/media/MediaAssetEngine";
 import { MEDIA_TYPE_META } from "@/lib/media/MediaAssetEngine";
+import { uploadCanonicalMediaFile } from "@/lib/media/clientMediaUpload";
 
 interface Props {
   mediaType:        MediaType;
@@ -49,7 +50,7 @@ const ACCEPTED: Record<MediaType, string> = {
 };
 
 export default function MediaUploadWidget({
-  mediaType, ownerId = "guest", ownerName = "Artist", ownerRole = "performer",
+  mediaType,
   onSuccess, onError, linkedEntityId, linkedEntityType,
   accentColor = "#FF2DAA", compact = false, placeholder,
 }: Props) {
@@ -58,6 +59,7 @@ export default function MediaUploadWidget({
   const [bpm, setBpm] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
@@ -67,10 +69,9 @@ export default function MediaUploadWidget({
 
   const meta = MEDIA_TYPE_META[mediaType];
   const isBeat = mediaType === "beat";
-  const isMedia = mediaType === "video" || mediaType === "interview" || mediaType === "venue_promo";
-  const isEntry = mediaType === "challenge_entry" || mediaType === "battle_entry" || mediaType === "cypher_entry";
 
   const handleFile = useCallback((file: File) => {
+    setSelectedFile(file);
     setFileName(file.name);
     setFileSize(file.size);
     setError("");
@@ -85,7 +86,7 @@ export default function MediaUploadWidget({
   }, [handleFile]);
 
   async function handleUpload() {
-    if (!fileName || !title.trim()) {
+    if (!selectedFile || !title.trim()) {
       setError("Add a title and select a file.");
       return;
     }
@@ -93,39 +94,37 @@ export default function MediaUploadWidget({
     setProgress(10);
     setError("");
 
-    // Simulate upload progress
-    const tick = setInterval(() => {
-      setProgress(p => Math.min(p + 12, 88));
-    }, 300);
-
     try {
-      const res = await fetch("/api/media/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ownerId, ownerName, ownerRole, type: mediaType, title: title.trim(),
-          genre: genre || undefined, bpm: bpm ? parseInt(bpm) : undefined,
-          linkedEntityId, linkedEntityType,
-          simulatedFileName: fileName, simulatedSizeBytes: fileSize,
-          simulatedFormat: fileName.split(".").pop() ?? "mp3",
-          simulatedDurationSecs: isBeat ? 180 : isMedia ? 300 : 210,
-        }),
+      const extra: Record<string, string> = { type: mediaType };
+      if (genre) extra.genre = genre;
+      if (bpm) extra.bpm = bpm;
+      if (linkedEntityId) extra.linkedEntityId = linkedEntityId;
+      if (linkedEntityType) extra.linkedEntityType = linkedEntityType;
+
+      const result = await uploadCanonicalMediaFile(selectedFile, {
+        title: title.trim(),
+        persistVia: "/api/media/upload",
+        extraForm: extra,
       });
 
-      clearInterval(tick);
       setProgress(95);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(err.error ?? "Upload failed");
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
-      const result: UploadResult = await res.json();
       setProgress(100);
       setDone(true);
-      if (result.ok && onSuccess) onSuccess({ ...result, title: title.trim() });
+      if (onSuccess) {
+        onSuccess({
+          ok: true,
+          assetId: result.id,
+          url: result.url,
+          status: "ready",
+          title: title.trim(),
+        });
+      }
     } catch (e) {
-      clearInterval(tick);
       const msg = e instanceof Error ? e.message : "Upload failed";
       setError(msg);
       if (onError) onError(msg);
@@ -236,7 +235,7 @@ export default function MediaUploadWidget({
 
       {done && (
         <div style={{ marginTop: 10, textAlign: "center", fontSize: 10, color: "#00FF88" }}>
-          Processing in background · Will be available in your library shortly
+          Saved with a playable source. Open Media Locker and press Play — refresh should still hear it.
         </div>
       )}
     </div>

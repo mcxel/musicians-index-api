@@ -1,7 +1,8 @@
 'use client';
 
 import React, { type CSSProperties } from 'react';
-import type { YoPhoPortraitBlueprint, BlendMode } from '@/lib/yopho/YoPhoPortraitEngine';
+import type { YoPhoPortraitBlueprint, BlendMode, PortraitLayer } from '@/lib/yopho/YoPhoPortraitEngine';
+import { layerHasVisibleMedia } from '@/lib/yopho/YoPhoLayerStack';
 import { OBJECT_MASK_CATALOG } from '@/lib/yopho/YoPhoPortraitEngine';
 import YoPhoDepthParallaxCanvas, { createDepthLayerPair } from './YoPhoDepthParallaxCanvas';
 import YoPhoPortraitEffectOverlay from './YoPhoPortraitEffectOverlay';
@@ -18,6 +19,53 @@ interface YoPhoPortraitStageCanvasProps {
   suppressOverlays?: boolean;
   /** Honest empty-state copy when no user image (Rule 20) */
   emptyLabel?: string;
+}
+
+function renderStackLayerMedia(
+  layer: PortraitLayer,
+  colorPalette: YoPhoPortraitBlueprint['colorPalette'],
+): React.ReactNode {
+  const sharedStyle: CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    margin: 'auto',
+    maxHeight: '100%',
+    maxWidth: '100%',
+    width: 'auto',
+    height: 'auto',
+    objectFit: 'contain',
+    zIndex: layer.zIndex,
+    transform: `scale(${layer.scale}) translate(${layer.xOffset}px, ${layer.yOffset}px) rotate(${layer.rotation}deg)`,
+    opacity: layer.opacity,
+    mixBlendMode: layer.blendMode as CSSProperties['mixBlendMode'],
+    filter: `drop-shadow(0 0 ${layer.edgeSoftness}px ${colorPalette.primaryAccent})`,
+    pointerEvents: 'none',
+  };
+
+  if (layer.mediaMode === 'animated' && layer.videoUrl?.trim()) {
+    return (
+      <video
+        key={layer.id}
+        src={layer.videoUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{ ...sharedStyle, objectFit: 'cover', width: '100%', height: '100%' }}
+      />
+    );
+  }
+
+  if (!layer.imageUrl?.trim()) return null;
+
+  return (
+    <img
+      key={layer.id}
+      src={layer.imageUrl}
+      alt={layer.label}
+      style={sharedStyle}
+    />
+  );
 }
 
 /**
@@ -50,7 +98,7 @@ export default function YoPhoPortraitStageCanvas({
   // Selected Object Mask Definition if mode === 'object_composite'
   const activeMaskDef = OBJECT_MASK_CATALOG.find((m) => m.id === objectMask) || OBJECT_MASK_CATALOG[0];
 
-  const hasSubject = Boolean(primaryLayer.imageUrl?.trim());
+  const hasSubject = [primaryLayer, ...secondaryLayers].some(layerHasVisibleMedia);
 
   // Preset Visual Treatments — CSS only; never swaps in stock photos
   const getTextureStyle = () => {
@@ -390,31 +438,7 @@ export default function YoPhoPortraitStageCanvas({
             {[primaryLayer, ...secondaryLayers]
               .slice()
               .sort((a, b) => a.zIndex - b.zIndex)
-              .map((layer) =>
-                layer.imageUrl?.trim() ? (
-                  <img
-                    key={layer.id}
-                    src={layer.imageUrl}
-                    alt={layer.label}
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      margin: 'auto',
-                      maxHeight: '100%',
-                      maxWidth: '100%',
-                      width: 'auto',
-                      height: 'auto',
-                      objectFit: 'contain',
-                      zIndex: layer.zIndex,
-                      transform: `scale(${layer.scale}) translate(${layer.xOffset}px, ${layer.yOffset}px) rotate(${layer.rotation}deg)`,
-                      opacity: layer.opacity,
-                      mixBlendMode: layer.blendMode as CSSProperties['mixBlendMode'],
-                      filter: `drop-shadow(0 0 ${layer.edgeSoftness}px ${colorPalette.primaryAccent})`,
-                      pointerEvents: 'none',
-                    }}
-                  />
-                ) : null,
-              )}
+              .map((layer) => renderStackLayerMedia(layer, colorPalette))}
           </div>
         )}
       </div>

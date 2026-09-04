@@ -3,27 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getAllSubscriptionProducts, type SubscriptionTierKey } from "@/lib/stripe/products";
 
 const BG = "#050510";
 
 // ── Real Stripe price IDs from Stripe Dashboard (created 2026-05-28) ─────────
+// Fan/Performer PRO-through-DIAMOND plans below are built from the canonical
+// registry (@/lib/stripe/products.ts) instead of hardcoded here — this file
+// used to keep its own copy of every price/priceId, which is exactly what let
+// it silently fall out of sync with the real PRO/RUBY migration (Lane A A5,
+// 2026-09-01: this page still showed pre-migration $4.99 "Ruby" with no PRO
+// tier at all, while checkout itself already charged the correct amount).
+// Sponsor/Advertiser/Venue/Promoter aren't part of that tier ladder and stay
+// listed explicitly.
 const P = {
-  // Fan tiers
-  FAN_FREE:      process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FREE      ?? "price_1TcJXrEAwH1Fjtu9pYxAwEqi",
-  FAN_RUBY:      process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY      ?? "price_1TcJnFEAwH1Fjtu98MhoEGqG",
-  FAN_SILVER:    process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER    ?? "price_1TcJoOEAwH1Fjtu9IrhSwoyA",
-  FAN_GOLD:      process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD      ?? "price_1TcJrTEAwH1Fjtu9wjhmnv5K",
-  FAN_PLATINUM:  process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM  ?? "price_1TcJsDEAwH1Fjtu9zU7X7mml",
-  FAN_DIAMOND:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND   ?? "price_1TcJvaEAwH1Fjtu9me4Aq2UU",
-  FAN_FAMILY:    process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY    ?? "price_1TcJxBEAwH1Fjtu9xjMfLhw4",
-  // Performer tiers
-  PERF_RUBY:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY    ?? "price_1TcJzdEAwH1Fjtu9Nx5DsRzL",
-  PERF_SILVER:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER  ?? "price_1TcK0dEAwH1Fjtu9MXK323Q7",
-  PERF_GOLD:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD    ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
-  PERF_PLATINUM: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
-  PERF_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_1TcK4MEAwH1Fjtu96b2TJlBe",
-  PERF_BAND:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND    ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE",
-  // Sponsor/Advertiser
   SPONSOR_BASIC:    process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_BASIC    ?? "price_1Tb148EAwH1Fjtu9KZFL3H3Y",
   SPONSOR_STANDARD: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? "price_1Tb147EAwH1Fjtu9yCbRfH3j",
   SPONSOR_PREMIUM:  process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_PREMIUM  ?? "price_1Tb144EAwH1Fjtu9I0Xq1iFV",
@@ -33,6 +26,34 @@ const P = {
   PROMOTER:    process.env.NEXT_PUBLIC_STRIPE_PRICE_PROMOTER    ?? "price_1TdZQSEAwH1Fjtu9Cz3j2Rik",
   ADVERTISER:  process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER  ?? "price_1TdY0UEAwH1Fjtu9FTrdprdy",
 };
+
+// Cosmetics only (color/emoji/badge) — the economic facts (price, priceId,
+// name, features) come from the canonical registry, never hardcoded here.
+const TIER_COSMETICS: Record<SubscriptionTierKey, { color: string; emoji: string; badge?: string; popular?: boolean }> = {
+  PRO:      { color: "#FF6B35", emoji: "🎧" },
+  RUBY:     { color: "#FF2DAA", emoji: "💎" },
+  SILVER:   { color: "#00FFFF", emoji: "⭐" },
+  GOLD:     { color: "#FFD700", emoji: "🌟", popular: true, badge: "POPULAR" },
+  PLATINUM: { color: "#E5E4E2", emoji: "💿" },
+  DIAMOND:  { color: "#AA2DFF", emoji: "👑" },
+};
+
+function buildTierPlans(accountType: "fan" | "performer") {
+  return getAllSubscriptionProducts(accountType).map((p) => {
+    const cosmetics = TIER_COSMETICS[p.tier];
+    return {
+      key: `${accountType.toUpperCase()}_${p.tier}`,
+      name: p.name,
+      price: p.price / 100,
+      cents: p.price,
+      priceId: p.priceId,
+      interval: "mo" as const,
+      features: [...(p.features ?? [])],
+      cta: `START ${p.tier}`,
+      ...cosmetics,
+    };
+  });
+}
 
 type PlanGroup = { group: string; color: string; plans: Plan[] };
 interface Plan {
@@ -47,24 +68,18 @@ const PLAN_GROUPS: PlanGroup[] = [
     group: "FAN PLANS",
     color: "#00FFFF",
     plans: [
-      { key: "FAN_RUBY",     name: "Ruby Fan",      price: 4.99,  cents: 499,  color: "#FF2DAA", emoji: "🎧", priceId: P.FAN_RUBY,     features: ["Access all live rooms", "Sit in any audience seat", "Chat + reactions", "Beat Vault access", "Fan badge"], cta: "START RUBY" },
-      { key: "FAN_SILVER",   name: "Silver Fan",    price: 9.99,  cents: 999,  color: "#00FFFF", emoji: "⭐", priceId: P.FAN_SILVER,   features: ["Everything in Ruby", "XP multiplier ×1.5", "Enhanced fan profile", "Priority seating"], cta: "START SILVER" },
-      { key: "FAN_GOLD",     name: "Gold Fan",      price: 14.99, cents: 1499, color: "#FFD700", emoji: "🌟", priceId: P.FAN_GOLD,     features: ["Everything in Silver", "Gold badge everywhere", "Exclusive emotes", "Fan Club access"], cta: "GO GOLD", popular: true, badge: "POPULAR" },
-      { key: "FAN_PLATINUM", name: "Platinum Fan",  price: 24.99, cents: 2499, color: "#E5E4E2", emoji: "💿", priceId: P.FAN_PLATINUM, features: ["Everything in Gold", "XP multiplier ×3", "Backstage access", "Monthly crown ballot"], cta: "GO PLATINUM" },
-      { key: "FAN_DIAMOND",  name: "Diamond Fan",   price: 49.99, cents: 4999, color: "#AA2DFF", emoji: "💎", priceId: P.FAN_DIAMOND,  features: ["Everything in Platinum", "Diamond badge + aura", "Front-row guaranteed seats", "Priority support", "VIP Lounge"], cta: "GO DIAMOND" },
-      { key: "FAN_FAMILY",   name: "Fan Family Plan", price: 27.99, cents: 2799, color: "#00FF88", emoji: "👨‍👩‍👧‍👦", priceId: P.FAN_FAMILY, features: ["Up to 4 family members", "Each member gets Gold Fan access", "Shared family vault", "Family badge on profiles", "One subscription, 4 accounts"], cta: "GET FAMILY PLAN", badge: "BEST FOR FAMILIES" },
+      ...buildTierPlans("fan"),
+      // Multi-account bundle, not part of the PRO→DIAMOND ladder — priced independently.
+      { key: "FAN_FAMILY", name: "Fan Family Plan", price: 27.99, cents: 2799, color: "#00FF88", emoji: "👨‍👩‍👧‍👦", priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? "price_1TcJxBEAwH1Fjtu9xjMfLhw4", features: ["Up to 4 family members", "Each member gets Gold Fan access", "Shared family vault", "Family badge on profiles", "One subscription, 4 accounts"], cta: "GET FAMILY PLAN", badge: "BEST FOR FAMILIES" },
     ],
   },
   {
     group: "PERFORMER PLANS",
     color: "#FF2DAA",
     plans: [
-      { key: "PERF_RUBY",     name: "Ruby Performer",     price: 2.99,  cents: 299,  color: "#FF6B35", emoji: "🎤", priceId: P.PERF_RUBY,     features: ["Go live + WebRTC broadcast", "Battle & Cypher entry", "Performer profile", "Basic revenue dashboard"], cta: "START RUBY" },
-      { key: "PERF_SILVER",   name: "Silver Performer",   price: 4.99,  cents: 499,  color: "#FF2DAA", emoji: "🎙️", priceId: P.PERF_SILVER,   features: ["Everything in Ruby", "Beat Vault upload + sell", "Silver badge", "Booking requests"], cta: "START SILVER" },
-      { key: "PERF_GOLD",     name: "Gold Performer",     price: 9.99,  cents: 999,  color: "#FFD700", emoji: "🎵", priceId: P.PERF_GOLD,     features: ["Everything in Silver", "Mint NFTs", "Full revenue dashboard", "Gold profile spotlight"], cta: "GO GOLD", popular: true, badge: "MOST POPULAR" },
-      { key: "PERF_PLATINUM", name: "Platinum Performer", price: 19.99, cents: 1999, color: "#00FFFF", emoji: "🏆", priceId: P.PERF_PLATINUM, features: ["Everything in Gold", "Platinum badge", "Priority matchmaking", "Advanced analytics"], cta: "GO PLATINUM" },
-      { key: "PERF_DIAMOND",  name: "Diamond Performer",  price: 29.99, cents: 2999, color: "#AA2DFF", emoji: "👑", priceId: P.PERF_DIAMOND,  features: ["Everything in Platinum", "Diamond aura", "Crown ballot vote", "VIP Lounge + Backstage", "Featured on homepage"], cta: "GO DIAMOND" },
-      { key: "PERF_BAND",     name: "Band / Group / Choir", price: 24.99, cents: 2499, color: "#FF9500", emoji: "🎼", priceId: P.PERF_BAND, features: ["All members share one account", "Band/Group/Choir profile", "Up to team size", "Shared revenue dashboard", "Group badge on all content", "Book as a group"], cta: "JOIN AS A GROUP", badge: "BANDS & CHOIRS" },
+      ...buildTierPlans("performer"),
+      // Group account add-on, not part of the PRO→DIAMOND ladder — priced independently.
+      { key: "PERF_BAND", name: "Band / Group / Choir", price: 24.99, cents: 2499, color: "#FF9500", emoji: "🎼", priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE", features: ["All members share one account", "Band/Group/Choir profile", "Up to team size", "Shared revenue dashboard", "Group badge on all content", "Book as a group"], cta: "JOIN AS A GROUP", badge: "BANDS & CHOIRS" },
     ],
   },
   {

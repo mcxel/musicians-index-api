@@ -1,0 +1,39 @@
+{
+  "jobId": "JOB-AVATAR-PROOF001",
+  "assetId": "tmi-bobblehead-base-bh-a",
+  "proof": "Foundry Proof 001 - Zero-External-Mesh",
+  "externalMeshUsed": false,
+  "coordinateSystem": {
+    "authoringUpAxis": "Z",
+    "metersPerUnit": 1,
+    "gltfUpAxis": "Y"
+  },
+  "states": [
+    "MESH_CREATED",
+    "UV_CREATED",
+    "RIG_CREATED",
+    "SKINNING_CREATED",
+    "ARKIT_CREATED",
+    "MATERIALS_CREATED",
+    "ANIMATIONS_ATTACHED",
+    "LOD_CREATED",
+    "COLLISION_CREATED",
+    "ANCHORS_CREATED"
+  ],
+  "arkitTargetCount": 52,
+  "arkitAllNonZero": true,
+  "triangleCounts": {
+    "Avatar_LOD0": 3800,
+    "Avatar_LOD1": 1710,
+    "Avatar_LOD2": 456
+  },
+  "sockets": [
+    "Socket_Hair",
+    "Socket_Hat",
+    "Socket_Headphones",
+    "Socket_Badge",
+    "Socket_Backpack",
+    "Socket_Prop_L",
+    "Socket_Prop_R"
+  ]
+}

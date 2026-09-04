@@ -29,13 +29,25 @@ import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import RotatingHeroBanner, { HERO_BILLBOARD_SLIDES } from '@/components/home/RotatingHeroBanner';
 import HeroLightningAtmosphere from '@/components/home/HeroLightningAtmosphere';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getPerformerById, getPerformerBySlug, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, computeRanks, getPerformerHonorTitle, isRankedEligible, isVerifiedRankedPerformer, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import HomeFeaturedChannelPanels from '@/components/discovery/HomeFeaturedChannelPanels';
 import { hasRole } from '@/lib/auth/session';
+import { HOME_BROADCAST_ROTATION_MS } from '@/lib/broadcast/BroadcastRotationEngine';
+import { resolveInstantJoin } from '@/lib/discovery/InstantJoinRuntime';
+import {
+  categoryLabel,
+  discoveryRecordToHomeOrbitCard,
+  logHomeExactJoinRequested,
+  verifyHomeOrbitRecordEligible,
+  type HomeOrbitDiscoveryCard,
+  type HomeOrbitRoomState,
+} from '@/lib/discovery/HomeDiscoveryRotationEngine';
+import { useHomeDiscoveryRotation } from '@/lib/discovery/useHomeDiscoveryRotation';
+import type { LiveDiscoveryRecord } from '@/lib/discovery/LiveDiscoveryRecord';
 import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
 import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import {
@@ -48,6 +60,7 @@ import {
 
 interface Performer {
   slug: string;
+  performerId?: string;
   name: string;
   emoji: string;
   rank: number;
@@ -71,7 +84,15 @@ interface Performer {
   roomId?: string;
   viewerCount?: number;
   category?: string;
-  title?: string;
+  honorTitle?: string;
+  verified?: boolean;
+  /** Canonical discovery orbit fields (Gap 2 — exact-room law) */
+  discoveryRecord?: LiveDiscoveryRecord;
+  exactJoinTarget?: string;
+  liveSessionId?: string;
+  experienceType?: string;
+  roomState?: HomeOrbitRoomState;
+  isSystemAutomated?: boolean;
 }
 
 const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }> = {
@@ -106,88 +127,70 @@ function hasUploadedProfileImage(url?: string): boolean {
   return !DEFAULT_PROFILE_PLACEHOLDERS.has(trimmed);
 }
 
-function buildDiamondOrbitMembers(): Performer[] {
-  return PERFORMER_REGISTRY
-    .filter((p) => p.tier === 'Diamond' && hasUploadedProfileImage(p.profileImageUrl))
-    .sort((a, b) => b.xp - a.xp)
-    .map((p) => ({
-      slug: p.slug,
-      name: p.name,
-      emoji: '💎',
-      rank: p.rank,
-      score: p.xp,
-      genre: p.category,
-      image: p.profileImageUrl,
-      avatarImage: p.profileImageUrl,
-      profileRoute: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image`,
-      accountType: 'diamond-member',
-      voteCount: null,
-      audienceCount: p.audienceCount,
-      isLive: p.isLive,
-      liveRoomRoute: p.liveRoomRoute,
-      lineupType: p.lineupType,
-    }));
-}
-
-function isVerifiedPerformer(achievementIds: string[] | undefined): boolean {
-  if (!achievementIds || achievementIds.length === 0) return false;
-  return achievementIds.some((id) =>
-    id === 'top-100' ||
-    id === 'battle-finalist' ||
-    id === 'regional-champion' ||
-    id === 'platinum-tier' ||
-    id === 'gold-tier'
-  );
-}
-
-function buildRealMemberProfileRing(genreKey: string): Performer[] {
-  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
-    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl));
-  const profiledFallback = PERFORMER_REGISTRY
-    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && !byGenre.some((g) => g.slug === p.slug))
-    .sort((a, b) => b.xp - a.xp);
-  return [...byGenre, ...profiledFallback].slice(0, 4).map((p) => ({
+function identityOrbitFields(p: PerformerIdentity, rank: number) {
+  return {
     slug: p.slug,
+    performerId: p.id,
     name: p.name,
-    emoji: '👥',
-    rank: p.rank,
+    rank,
     score: p.xp,
     genre: p.category,
     image: p.profileImageUrl,
     avatarImage: p.profileImageUrl,
     profileRoute: p.profileRoute,
-    accountType: 'real-member',
-    voteCount: null,
+    voteCount: null as number | null,
     audienceCount: p.audienceCount,
     isLive: p.isLive,
     liveRoomRoute: p.liveRoomRoute,
     lineupType: p.lineupType,
+    honorTitle: getPerformerHonorTitle(p),
+    verified: isVerifiedRankedPerformer(p),
+  };
+}
+
+function rankByPerformerId(): Map<string, number> {
+  return new Map(computeRanks().map((p) => [p.id, p.rank]));
+}
+
+function buildDiamondOrbitMembers(): Performer[] {
+  const ranks = rankByPerformerId();
+  return PERFORMER_REGISTRY
+    .filter((p) => isRankedEligible(p) && p.tier === 'Diamond' && hasUploadedProfileImage(p.profileImageUrl))
+    .sort((a, b) => b.xp - a.xp)
+    .map((p) => ({
+      ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
+      emoji: '💎',
+      profileRoute: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image`,
+      accountType: 'diamond-member' as const,
+    }));
+}
+
+function buildRealMemberProfileRing(genreKey: string): Performer[] {
+  const ranks = rankByPerformerId();
+  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
+    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl));
+  const profiledFallback = PERFORMER_REGISTRY
+    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && !byGenre.some((g) => g.slug === p.slug))
+    .sort((a, b) => b.xp - a.xp);
+  return [...byGenre, ...profiledFallback].slice(0, 4).map((p) => ({
+    ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
+    emoji: '👥',
+    accountType: 'real-member' as const,
   }));
 }
 
 function buildVerifiedPerformerRing(genreKey: string): Performer[] {
+  const ranks = rankByPerformerId();
   const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
-    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedPerformer(p.achievementIds));
+    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedRankedPerformer(p));
   const verifiedFallback = PERFORMER_REGISTRY
-    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedPerformer(p.achievementIds) && !byGenre.some((g) => g.slug === p.slug))
+    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedRankedPerformer(p) && !byGenre.some((g) => g.slug === p.slug))
     .sort((a, b) => b.xp - a.xp);
 
   return [...byGenre, ...verifiedFallback].slice(0, 4).map((p) => ({
-    slug: p.slug,
-    name: p.name,
+    ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
     emoji: '🎤',
-    rank: p.rank,
-    score: p.xp,
-    genre: p.category,
-    image: p.profileImageUrl,
-    avatarImage: p.profileImageUrl,
-    profileRoute: p.profileRoute,
-    accountType: 'verified-performer',
-    voteCount: null,
-    audienceCount: p.audienceCount,
-    isLive: p.isLive,
-    liveRoomRoute: p.liveRoomRoute,
-    lineupType: p.lineupType,
+    accountType: 'verified-performer' as const,
   }));
 }
 
@@ -277,21 +280,31 @@ function slotKindToAccountType(kind: 'human' | 'bot' | 'placeholder'): Performer
 
 function buildOrbitPerformersFromSnapshot(): Performer[] {
   publishUniversalRankingSnapshot(undefined, 10);
-  return getOrbitalTopSlots(10).map((slot) => ({
-    slug: slot.slug,
-    name: slot.displayName,
-    emoji: slot.kind === 'bot' ? '🤖' : '🎤',
-    rank: slot.rank,
-    score: slot.points,
-    genre: slot.genre ?? (slot.kind === 'bot' ? 'Bot Seat' : 'All Genres'),
-    image: slot.avatarUrl,
-    avatarImage: slot.avatarUrl,
-    profileRoute: slot.profileRoute,
-    accountType: slotKindToAccountType(slot.kind),
-    voteCount: null,
-    audienceCount: 0,
-    isLive: Boolean(slot.isLive),
-  }));
+  return getOrbitalTopSlots(10).map((slot) => {
+    const identity = getPerformerById(slot.profileId) ?? getPerformerBySlug(slot.slug);
+    const honorTitle = slot.honorTitle ?? (identity ? getPerformerHonorTitle(identity) : undefined);
+    const verified = slot.kind === 'human' && (slot.verified ?? (identity ? isVerifiedRankedPerformer(identity) : false));
+    return {
+      slug: slot.slug,
+      performerId: slot.profileId,
+      name: slot.displayName,
+      emoji: slot.kind === 'bot' ? '🤖' : '🎤',
+      rank: slot.rank,
+      score: slot.points,
+      genre: slot.genre ?? (slot.kind === 'bot' ? 'Bot Seat' : 'All Genres'),
+      image: slot.avatarUrl,
+      avatarImage: slot.avatarUrl,
+      profileRoute: slot.profileRoute,
+      accountType: slotKindToAccountType(slot.kind),
+      voteCount: slot.voteCount ?? null,
+      audienceCount: 0,
+      isLive: Boolean(slot.isLive),
+      honorTitle,
+      verified,
+      lineupType: identity?.lineupType,
+      liveRoomRoute: identity?.liveRoomRoute,
+    };
+  });
 }
 
 function buildOrbitPerformers(genreKey: string): Performer[] {
@@ -314,6 +327,35 @@ function buildOrbitPerformers(genreKey: string): Performer[] {
   const unique = merged.filter((p, idx, arr) => arr.findIndex((x) => x.slug === p.slug) === idx);
   if (unique.length >= 10) return unique.slice(0, 10);
   return [...unique, ...buildHonestEmptySlots(10 - unique.length)];
+}
+
+function homeOrbitCardToPerformer(card: HomeOrbitDiscoveryCard, index: number): Performer {
+  return {
+    slug: card.roomId,
+    performerId: card.record.hostUserId,
+    name: card.title,
+    emoji: card.isSystemAutomated ? '🤖' : '🔴',
+    rank: index + 2,
+    score: card.participantCount,
+    genre: categoryLabel(card.discoveryCategory),
+    image: card.posterUrl ?? undefined,
+    avatarImage: card.posterUrl ?? undefined,
+    profileRoute: card.exactJoinTarget,
+    accountType: card.isSystemAutomated ? 'system-bot' : 'verified-performer',
+    voteCount: null,
+    audienceCount: card.participantCount,
+    isLive: card.roomState === 'LIVE' || card.roomState === 'OPEN' || card.roomState === 'SCHEDULED',
+    liveRoomRoute: card.exactJoinTarget,
+    roomId: card.roomId,
+    viewerCount: card.participantCount,
+    category: card.discoveryCategory,
+    discoveryRecord: card.record,
+    exactJoinTarget: card.exactJoinTarget,
+    liveSessionId: card.liveSessionId,
+    experienceType: card.experienceType,
+    roomState: card.roomState,
+    isSystemAutomated: card.isSystemAutomated,
+  };
 }
 
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container).
@@ -358,8 +400,15 @@ const OrbitCard = memo(function OrbitCard({
   isSpinning,
 }: OrbitCardProps) {
   const pos = getOrbitPos(index, total, radius, 0);
-  const isLeader = performer.rank === 1;
-  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 200 : 200);
+  const rank = performer.rank > 0 ? performer.rank : index + 1;
+  const isLeader = rank === 1;
+  const isPodium = rank === 2 || rank === 3;
+  const cardSize = compactMode
+    ? (isLeader ? 64 : isPodium ? 54 : 42)
+    : (isLeader ? 168 : isPodium ? 142 : 108);
+  const rankBadgeSize = compactMode
+    ? (isLeader || isPodium ? 26 : 22)
+    : (isLeader ? 36 : isPodium ? 32 : 26);
   const rawAvatar = performer.image ?? performer.avatarImage;
   const hasImage = Boolean(rawAvatar?.trim()) && !isBrokenImage && (performer.accountType === 'system-bot' || performer.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
   const initials = performer.name
@@ -368,9 +417,11 @@ const OrbitCard = memo(function OrbitCard({
     .join('')
     .slice(0, 2)
     .toUpperCase();
-  const profileHref = performer.accountType === 'empty-slot'
-    ? performer.profileRoute
-    : (performer.isLive && performer.liveRoomRoute ? `${performer.liveRoomRoute}?from=home-1` : performer.profileRoute);
+  const profileHref = performer.exactJoinTarget
+    ? performer.exactJoinTarget
+    : performer.accountType === 'empty-slot'
+      ? performer.profileRoute
+      : (performer.isLive && performer.liveRoomRoute ? `${performer.liveRoomRoute}?from=home-1` : performer.profileRoute);
 
   return (
     <Link
@@ -378,7 +429,9 @@ const OrbitCard = memo(function OrbitCard({
       style={{ textDecoration: 'none' }}
       onClick={(e: React.MouseEvent) => {
         e.preventDefault();
-        if (performer.isLive && performer.liveRoomRoute) {
+        if (performer.discoveryRecord) {
+          onOpenLive(performer);
+        } else if (performer.isLive && performer.liveRoomRoute) {
           onOpenLive(performer);
         } else if (performer.accountType === 'empty-slot') {
           onOpenEmptySlot(performer);
@@ -405,30 +458,35 @@ const OrbitCard = memo(function OrbitCard({
         }}
       >
         <div
+          data-testid="home1-orbit-rank-badge"
           style={{
             position: 'absolute',
-            top: -10,
-            left: -4,
-            zIndex: 5,
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
+            top: -12,
+            left: -8,
+            zIndex: 8,
+            minWidth: rankBadgeSize,
+            height: rankBadgeSize,
+            padding: '0 6px',
+            borderRadius: 8,
             background:
-              performer.rank === 1
+              isLeader
                 ? 'linear-gradient(135deg, #FFD700, #FF9500)'
-                : `${accentColor}33`,
-            border: `1.5px solid ${performer.rank === 1 ? '#FFD700' : accentColor}`,
+                : isPodium
+                  ? 'linear-gradient(135deg, #00FFFF, #AA2DFF)'
+                  : 'rgba(5,5,16,0.95)',
+            border: `2px solid ${isLeader ? '#FFD700' : accentColor}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 8,
+            fontSize: isLeader ? 13 : isPodium ? 12 : 11,
             fontWeight: 900,
-            color: performer.rank === 1 ? '#050510' : accentColor,
-            fontFamily: "'Inter', sans-serif",
-            boxShadow: `0 0 8px ${performer.rank === 1 ? '#FFD700' : accentColor}66`,
+            color: isLeader ? '#050510' : '#fff',
+            fontFamily: "'Orbitron','Inter', sans-serif",
+            letterSpacing: '0.02em',
+            boxShadow: `0 0 14px ${isLeader ? '#FFD700' : accentColor}aa`,
           }}
         >
-          {performer.rank === 1 ? '\u{1F451}' : performer.rank}
+          #{rank}
         </div>
 
         {performer.isLive && (
@@ -485,12 +543,12 @@ const OrbitCard = memo(function OrbitCard({
             justifyContent: 'center',
             gap: 2,
             position: 'relative',
-            transform: isLeader ? 'translateZ(0) scale(1.3)' : 'translateZ(0)',
+            transform: 'translateZ(0)',
             willChange: 'transform',
             backfaceVisibility: 'hidden',
           }}
         >
-          {performer.rank <= 3 && (
+          {rank <= 3 && (
             <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
           )}
 
@@ -541,9 +599,15 @@ const OrbitCard = memo(function OrbitCard({
             </div>
           )}
 
-          <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: Math.max(cardSize * 0.11, 8), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '92%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {performer.name.split(' ').slice(0, 2).join(' ')}
           </div>
+          {performer.verified && performer.accountType !== 'system-bot' && performer.accountType !== 'system-actor' && performer.accountType !== 'empty-slot' && (
+            <div style={{ fontSize: Math.max(cardSize * 0.075, 6), color: '#00FFFF', background: 'rgba(0,255,255,0.12)', borderRadius: 8, padding: '1px 5px', fontFamily: "'Inter',sans-serif", fontWeight: 800 }}>
+              Verified Performer
+            </div>
+          )}
+          {!(performer.verified) && (
           <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: accentColor, background: `${accentColor}18`, borderRadius: 8, padding: '1px 4px', fontFamily: "'Inter',sans-serif" }}>
             {performer.accountType === 'diamond-member'
               ? 'Diamond Member'
@@ -557,16 +621,41 @@ const OrbitCard = memo(function OrbitCard({
                       ? 'TMI Assistant'
                       : 'Position Available'}
           </div>
-          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.42)', fontFamily: "'Inter',sans-serif" }}>
-            {performer.accountType === 'system-bot' || performer.accountType === 'system-actor' ? `${performer.activityType ?? 'system'} · ${performer.systemFunction ?? 'system actor'}` : `XP ${performer.score.toLocaleString()}`}
+          )}
+          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.55)', fontFamily: "'Inter',sans-serif" }}>
+            {performer.accountType === 'system-bot' || performer.accountType === 'system-actor'
+              ? `${performer.activityType ?? 'system'} · ${performer.systemFunction ?? 'system actor'}`
+              : performer.score > 0
+                ? `XP ${performer.score.toLocaleString()}`
+                : 'XP —'}
           </div>
-          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.32)', fontFamily: "'Inter',sans-serif" }}>
+          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>
             {(performer.accountType === 'diamond-member' || performer.accountType === 'real-member' || performer.accountType === 'verified-performer') && !hasUploadedProfileImage(rawAvatar)
               ? 'Add profile image in HQ'
               : performer.accountType === 'empty-slot'
                 ? 'No data available yet'
-                : (typeof performer.voteCount === 'number' ? `Votes ${performer.voteCount.toLocaleString()}` : 'Votes: N/A')}
+                : (typeof performer.voteCount === 'number' ? `Votes ${performer.voteCount.toLocaleString()}` : 'Votes —')}
           </div>
+          {performer.honorTitle ? (
+            <div style={{
+              marginTop: 1,
+              fontSize: Math.max(cardSize * 0.07, 6),
+              fontWeight: 800,
+              color: '#FFD700',
+              background: 'rgba(255,215,0,0.12)',
+              border: '1px solid rgba(255,215,0,0.45)',
+              borderRadius: 6,
+              padding: '1px 5px',
+              fontFamily: "'Inter',sans-serif",
+              letterSpacing: '0.04em',
+              maxWidth: '94%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {performer.honorTitle}
+            </div>
+          ) : null}
         </div>
       </div>
     </Link>
@@ -706,6 +795,9 @@ export default function Home1CoverPage() {
   const [rightOpen, setRightOpen] = useState(true);
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
+  const [discoveryJoinRoom, setDiscoveryJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+  const [staleOrbitMessage, setStaleOrbitMessage] = useState<string | null>(null);
+  const [viewerRole, setViewerRole] = useState('FAN');
   const [pendingEmptySlot, setPendingEmptySlot] = useState<Performer | null>(null);
   const [selectedPerformer, setSelectedPerformer] = useState<Performer | null>(null);
   const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
@@ -764,6 +856,25 @@ export default function Home1CoverPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean; user?: { role?: string } }) => {
+        if (!cancelled && data?.authenticated) {
+          setViewerRole((data.user?.role ?? 'FAN').toUpperCase());
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const orbitSlotCount = isMobileViewport ? 6 : 8;
+  const {
+    cards: orbitDiscoveryCards,
+    isEmpty: orbitDiscoveryEmpty,
+  } = useHomeDiscoveryRotation({ slotCount: orbitSlotCount });
+
+  useEffect(() => {
     fetch('/api/submissions/queue')
       .then(r => r.ok ? r.json() : null)
       .then((data: { pending?: number; queue?: { status: string }[] } | null) => {
@@ -796,26 +907,22 @@ export default function Home1CoverPage() {
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
   const genreConfig = GENRE_CONFIG[genreKey]!;
 
-  // UNIFICATION: Replace static GENRE_DATA with live data from PerformerRegistry
-  const [performers, setPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
+  // Directory grid / left-rail — PerformerRegistry ranking snapshot (NOT live orbit).
+  const [directoryPerformers, setDirectoryPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
   useEffect(() => {
     publishUniversalRankingSnapshot(undefined, 12);
-    setPerformers(buildOrbitPerformers(genreKey));
+    setDirectoryPerformers(buildOrbitPerformers(genreKey));
     return subscribeUniversalRanking(() => {
-      setPerformers(buildOrbitPerformers(genreKey));
+      setDirectoryPerformers(buildOrbitPerformers(genreKey));
     }, { emitCurrent: false });
   }, [genreKey]);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && performers.length === 0) {
-      // Development signal to catch unexpected registry/category mismatches.
-      console.warn('[Home1CoverPage] orbit performers empty for genre', genreKey);
-    }
-  }, [performers.length, genreKey]);
+  // Live orbit — canonical DiscoveryBus only (Gap 2).
+  const visibleOrbitCards = orbitDiscoveryCards.map((c, i) => homeOrbitCardToPerformer(c, i));
 
   useEffect(() => {
-    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), 13000);
-    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), 13000);
+    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), HOME_BROADCAST_ROTATION_MS);
+    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), HOME_BROADCAST_ROTATION_MS);
     return () => {
       clearInterval(leftId);
       clearInterval(rightId);
@@ -856,6 +963,7 @@ export default function Home1CoverPage() {
   const crownLiveSession = livePerformers.find((s) => s.userId === crownData.id);
   const crowdHolder = {
     slug: crownData.slug,
+    performerId: crownData.id,
     name: crownData.name,
     profileImageUrl: crownData.profileImageUrl,
     profileRoute: crownData.profileRoute,
@@ -864,37 +972,23 @@ export default function Home1CoverPage() {
     isLive: crownIsLive || crownData.isLive,
     liveRoomRoute: crownLiveSession?.roomId ? `/live/rooms/${crownLiveSession.roomId}` : crownData.liveRoomRoute,
     audienceCount: crownLiveSession?.viewerCount ?? crownData.audienceCount,
+    xp: crownData.xp,
+    verified: isVerifiedRankedPerformer(crownData),
+    honorTitle: getPerformerHonorTitle(crownData),
   };
 
-  // Overlay real liveness from livePerformers (GlobalLiveSessionRegistry) onto the
-  // orbit ring — buildOrbitPerformers()/PERFORMER_REGISTRY only carries the static
-  // seed isLive flag, which never reflects an actual broadcast. Live performers also
-  // sort to the front so a real broadcaster isn't cut off by the 6/10-card slice
-  // (Rule 11: Content Freshness — LIVE first).
-  // Map LiveSession objects by userId to find matching performers.
-  const liveByUserId = new Map(livePerformers.map((s) => {
-    const performer = getPerformerById(s.userId);
-    return [s.userId, { session: s, performer }];
-  }));
-  const performersWithRealLiveness = performers
-    .map((p) => {
-      const live = Array.from(liveByUserId.values()).find((item) => item.performer?.slug === p.slug);
-      if (live) {
-        return {
-          ...p,
-          isLive: true,
-          liveRoomRoute: live.session.roomId ? `/live/rooms/${live.session.roomId}` : p.liveRoomRoute,
-          roomId: live.session.roomId,
-          viewerCount: live.session.viewerCount,
-          category: live.session.category,
-          title: live.session.title,
-        };
-      }
-      return p;
-    })
-    .sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
-
-  const visibleOrbitCards = performersWithRealLiveness.slice(0, isMobileViewport ? 6 : 10);
+  const handleOrbitDiscoveryJoin = (p: Performer) => {
+    if (!p.discoveryRecord) return;
+    const fresh = verifyHomeOrbitRecordEligible(p.discoveryRecord);
+    if (!fresh) {
+      setStaleOrbitMessage('This room is no longer available. Refreshing live discovery…');
+      window.setTimeout(() => setStaleOrbitMessage(null), 4000);
+      return;
+    }
+    const card = discoveryRecordToHomeOrbitCard(fresh);
+    logHomeExactJoinRequested(card);
+    setDiscoveryJoinRoom(resolveInstantJoin(fresh, { role: viewerRole }));
+  };
   const orbitRadius = isMobileViewport ? 36 : 44;
 
   // Genre cycle every 6s with starburst flash
@@ -945,8 +1039,8 @@ export default function Home1CoverPage() {
     { label: 'Top Fans', categoryHint: 'Fans', route: '/rankings', filter: () => false },
   ] as const;
   const activeDiscovery = genreDiscoveryRails[leftRailIndex % genreDiscoveryRails.length]!;
-  const discoveryEntries = performers.filter(activeDiscovery.filter).slice(0, 3);
-  const discoveryFallbackBots = buildSystemBotRing().filter((p) => ['discovery-bot', 'helper-bot', 'welcome-bot'].includes(p.botRole ?? '')).slice(0, 3);
+  const discoveryEntries = directoryPerformers.filter(activeDiscovery.filter).slice(0, 3);
+  const discoveryFallbackBots: Performer[] = [];
   const renderedDiscoveryEntries = discoveryEntries.length > 0 ? discoveryEntries : discoveryFallbackBots;
 
   const rightRailViews = [
@@ -980,12 +1074,19 @@ export default function Home1CoverPage() {
     },
   ] as const;
   const activeRightRail = rightRailViews[rightRailIndex % rightRailViews.length]!;
-  const rightRailFallback = buildSystemBotRing().slice(0, 3).map((b) => ({ name: b.name, sub: b.systemFunction ?? 'System actor', href: b.profileRoute }));
+  const rightRailFallback: { name: string; sub: string; href: string }[] = [];
   const rightRailEntries = activeRightRail.entries.length > 0 ? activeRightRail.entries : rightRailFallback;
 
   return (
     <>
     {pendingOrbit && <LobbyEntryFlow room={pendingOrbit} onClose={() => setPendingOrbit(null)} />}
+    {discoveryJoinRoom && (
+      <LobbyEntryFlow
+        room={discoveryJoinRoom.room}
+        instant={discoveryJoinRoom.instant}
+        onClose={() => setDiscoveryJoinRoom(null)}
+      />
+    )}
     {pendingEmptySlot && (
       <div
         role="dialog"
@@ -1060,6 +1161,12 @@ export default function Home1CoverPage() {
               <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginTop: 4 }}>
                 {selectedPerformer.name}
               </div>
+              {selectedPerformer.verified && (
+                <div style={{ fontSize: 10, color: '#00FFFF', fontWeight: 800, marginTop: 2 }}>Verified Performer</div>
+              )}
+              {selectedPerformer.honorTitle && (
+                <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, marginTop: 2 }}>{selectedPerformer.honorTitle}</div>
+              )}
             </div>
             <button
               onClick={() => setSelectedPerformer(null)}
@@ -1133,10 +1240,10 @@ export default function Home1CoverPage() {
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {(() => {
-                const clickedIdx = performers.findIndex(p => p.slug === selectedPerformer.slug);
+                const clickedIdx = directoryPerformers.findIndex(p => p.slug === selectedPerformer.slug);
                 const startIndex = Math.max(0, clickedIdx - 1);
-                const endIndex = Math.min(performers.length, clickedIdx + 2);
-                const list = performers.slice(startIndex, endIndex);
+                const endIndex = Math.min(directoryPerformers.length, clickedIdx + 2);
+                const list = directoryPerformers.slice(startIndex, endIndex);
 
                 return list.map((p) => {
                   const isCurrent = p.slug === selectedPerformer.slug;
@@ -2047,27 +2154,55 @@ export default function Home1CoverPage() {
           >
             <div
               style={{
-                width: 'min(240px, 38vw)',
-                height: 'min(240px, 38vw)',
+                width: 'min(300px, 46vw)',
+                height: 'min(300px, 46vw)',
                 borderRadius: '50%',
                 background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
-                border: `3px solid ${accentColor}`,
-                boxShadow: `0 0 50px ${accentColor}88, inset 0 0 25px ${accentColor}33`,
+                border: `4px solid #FFD700`,
+                boxShadow: `0 0 70px #FFD700cc, 0 0 40px ${accentColor}88, inset 0 0 28px #FFD70044`,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 animation: 'h1Pulse 2.5s ease-in-out infinite',
                 cursor: 'pointer',
+                position: 'relative',
               }}
             >
+              <div
+                data-testid="home1-crown-rank-badge"
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 4,
+                  minWidth: 44,
+                  height: 28,
+                  padding: '0 10px',
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #FFD700, #FF9500)',
+                  border: '2px solid #FFD700',
+                  color: '#050510',
+                  fontWeight: 900,
+                  fontSize: 16,
+                  fontFamily: "'Orbitron','Inter',sans-serif",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 18px #FFD700',
+                }}
+              >
+                #1
+              </div>
               {/* Crown above */}
               <div
                 style={{
-                  fontSize: 'min(36px, 6vw)',
+                  fontSize: 'min(42px, 7vw)',
                   animation: 'h1CrownFloat 3s ease-in-out infinite',
                   marginBottom: 2,
-                  filter: `drop-shadow(0 0 12px #FFD700)`,
+                  marginTop: 18,
+                  filter: `drop-shadow(0 0 14px #FFD700)`,
                 }}
               >
                 👑
@@ -2084,42 +2219,63 @@ export default function Home1CoverPage() {
                 showLiveOverlay={false}
                 replayOnHover
                 style={{
-                  width: 'min(90px, 15vw)',
-                  height: 'min(90px, 15vw)',
+                  width: 'min(176px, 28vw)',
+                  height: 'min(176px, 28vw)',
                   borderRadius: '50%',
-                  border: `2px solid ${accentColor}`,
-                  marginBottom: 4,
+                  border: `3px solid #FFD700`,
+                  boxShadow: '0 0 28px #FFD700aa',
+                  marginBottom: 6,
                   flexShrink: 0,
                 }}
               />
               <div style={{
-                fontSize: 'min(9px, 1.8vw)',
+                fontSize: 'min(16px, 3.2vw)',
                 fontWeight: 900,
                 color: '#fff',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.04em',
                 textAlign: 'center',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "'Orbitron','Inter', sans-serif",
                 marginTop: 2,
-                maxWidth: '80%',
+                maxWidth: '86%',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                textShadow: '0 0 12px #000, 0 0 8px #FFD70066',
               }}>
                 {crowdHolder.name}
               </div>
+              {crowdHolder.verified && (
+                <div style={{ fontSize: 'min(9px, 1.6vw)', fontWeight: 800, color: '#00FFFF', marginTop: 2 }}>
+                  Verified Performer
+                </div>
+              )}
               <div style={{
-                fontSize: 'min(8px, 1.5vw)',
-                fontWeight: 700,
+                fontSize: 'min(10px, 1.8vw)',
+                fontWeight: 800,
                 color: '#FFD700',
                 fontFamily: "'Inter', sans-serif",
               }}>
-                #1 {genreKey}
+                {crowdHolder.xp > 0 ? `XP ${crowdHolder.xp.toLocaleString()}` : 'XP —'}
               </div>
+              {crowdHolder.honorTitle ? (
+                <div style={{
+                  marginTop: 3,
+                  fontSize: 'min(9px, 1.6vw)',
+                  fontWeight: 800,
+                  color: '#FFD700',
+                  background: 'rgba(255,215,0,0.14)',
+                  border: '1px solid rgba(255,215,0,0.5)',
+                  borderRadius: 8,
+                  padding: '2px 8px',
+                  letterSpacing: '0.04em',
+                }}>
+                  {crowdHolder.honorTitle}
+                </div>
+              ) : null}
             </div>
           </Link>
 
-          {/* Orbit cards — static on load, occasional accent spin (see
-              orbitSpinning state above), not a continuous loop */}
+          {/* Orbit cards — canonical DiscoveryBus rotation (Gap 2) */}
           <div
             style={{
               position: 'absolute',
@@ -2131,9 +2287,56 @@ export default function Home1CoverPage() {
               pointerEvents: 'none',
             }}
           >
-            {visibleOrbitCards.map((performer, i) => (
+            {staleOrbitMessage && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '8%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 45,
+                  background: 'rgba(5,5,16,0.92)',
+                  border: '1px solid rgba(255,45,170,0.5)',
+                  borderRadius: 8,
+                  padding: '8px 14px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: '#FF2DAA',
+                  pointerEvents: 'auto',
+                }}
+              >
+                {staleOrbitMessage}
+              </div>
+            )}
+            {orbitDiscoveryEmpty ? (
+              <div
+                data-testid="home1-orbit-empty"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 40,
+                  width: 'min(280px, 70vw)',
+                  textAlign: 'center',
+                  padding: '16px 14px',
+                  borderRadius: 12,
+                  border: `1px dashed ${accentColor}44`,
+                  background: 'rgba(5,5,16,0.88)',
+                  pointerEvents: 'auto',
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 900, color: accentColor, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  NO LIVE ROOMS IN ROTATION
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+                  Battles, cyphers, lobbies, and live sessions appear here when published to discovery.
+                </div>
+              </div>
+            ) : (
+            visibleOrbitCards.map((performer, i) => (
               <OrbitCard
-                key={performer.slug}
+                key={performer.roomId ?? performer.slug}
                 performer={performer}
                 index={i}
                 total={visibleOrbitCards.length}
@@ -2143,6 +2346,10 @@ export default function Home1CoverPage() {
                 isBrokenImage={Boolean(brokenOrbitImages[performer.slug])}
                 onImageError={(slug) => setBrokenOrbitImages(prev => ({ ...prev, [slug]: true }))}
                 onOpenLive={(p) => {
+                  if (p.discoveryRecord) {
+                    handleOrbitDiscoveryJoin(p);
+                    return;
+                  }
                   setPendingOrbit({
                     id: p.slug,
                     title: `${p.name} LIVE`,
@@ -2159,7 +2366,8 @@ export default function Home1CoverPage() {
                 onOpenDetail={(p) => setSelectedPerformer(p)}
                 isSpinning={orbitSpinning}
               />
-            ))}
+            ))
+            )}
           </div>
 
           {/* ── Stream & Win Radio — fixed card at 9 o'clock position in orbit ──
@@ -2512,7 +2720,7 @@ export default function Home1CoverPage() {
               gap: 10,
             }}
           >
-            {performers.map((p, i) => (
+            {directoryPerformers.map((p, i) => (
               <Link
                 key={p.slug}
                 href={`/articles/performer/${p.slug}`}

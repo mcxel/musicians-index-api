@@ -22,6 +22,10 @@ import {
   type LobbyPeerMediaSnapshot,
   type LobbyPeerMediaTracks,
 } from "./lobbyPeerMediaBinding";
+import {
+  leaveLiveRoomMixer,
+  syncDailyCallRemoteAudio,
+} from "@/lib/audio/mixer/LiveRoomMixerBind";
 
 export interface UseLobbyPeerMediaSessionOpts {
   roomId: string;
@@ -81,7 +85,6 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
   const { roomId, userId, userName, cameraEnabled, micEnabled, enabled = true } = opts;
   const callRef = useRef<DailyCall | null>(null);
   const localFallbackRef = useRef<MediaStream | null>(null);
-  const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [snapshot, setSnapshot] = useState<LobbyPeerMediaSnapshot>({
     sessionReady: false,
     unavailableReason: null,
@@ -99,46 +102,40 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
     setSnapshot(buildSnapshot(callRef.current, reason ?? null));
   }, []);
 
-  const syncRemoteAudio = useCallback((call: DailyCall, selfId: string) => {
-    const participants = call.participants();
-    const keep = new Set<string>();
-    for (const p of Object.values(participants)) {
-      if (!p || p.local) continue;
-      const uid = parseLobbyMediaUserId(p.user_id, p.user_name);
-      if (!uid || uid === selfId) continue;
-      const track = p.tracks?.audio?.persistentTrack ?? p.tracks?.audio?.track;
-      if (!track || p.tracks?.audio?.state !== "playable") continue;
-      keep.add(uid);
-      let el = audioElsRef.current.get(uid);
-      if (!el) {
-        el = new Audio();
-        el.autoplay = true;
-        audioElsRef.current.set(uid, el);
-      }
-      const stream = el.srcObject instanceof MediaStream ? el.srcObject : new MediaStream();
-      const existing = stream.getAudioTracks()[0];
-      if (existing?.id !== track.id) {
-        stream.getTracks().forEach((t) => stream.removeTrack(t));
-        stream.addTrack(track);
-        el.srcObject = stream;
-        void el.play().catch(() => {});
-      }
-    }
-    for (const [uid, el] of audioElsRef.current) {
-      if (!keep.has(uid)) {
-        el.pause();
-        el.srcObject = null;
-        audioElsRef.current.delete(uid);
-      }
-    }
-  }, []);
+  /** Remote peer audio → TMIAudioSafetyMixer (ChannelMixerDirector AudioOwner) — no HTMLAudio */
+  const syncRemoteAudio = useCallback(
+    (call: DailyCall, selfId: string) => {
+      const participants = call.participants();
+      const local = participants.local;
+      const localAudio =
+        local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track ?? null;
+      const localAudioPlayable =
+        Boolean(localAudio) &&
+        (local?.tracks?.audio?.state === "playable" ||
+          local?.tracks?.audio?.state === "sendable");
+
+      void syncDailyCallRemoteAudio(call, {
+        roomId,
+        liveSessionId: `lobby:${roomId}`,
+        experienceType: "LOUNGE",
+        remoteRole: "audience",
+        localMicAvailable: localAudioPlayable && micEnabled,
+        resolveParticipantId: (p) => {
+          const uid = parseLobbyMediaUserId(p.user_id, p.user_name);
+          if (!uid || uid === selfId) return null;
+          return uid;
+        },
+        resolveDisplayName: (p) => {
+          const uid = parseLobbyMediaUserId(p.user_id, p.user_name) ?? p.session_id ?? "peer";
+          return (p.user_name || uid).slice(0, 48);
+        },
+      });
+    },
+    [roomId, micEnabled],
+  );
 
   const cleanupAudio = useCallback(() => {
-    for (const el of audioElsRef.current.values()) {
-      el.pause();
-      el.srcObject = null;
-    }
-    audioElsRef.current.clear();
+    leaveLiveRoomMixer();
   }, []);
 
   // Join / leave Daily for this lobby room.

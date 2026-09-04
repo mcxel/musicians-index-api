@@ -1,6 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+const DISMISSED_KEY = "tmi-feedback-dismissed-until";
+const DISMISS_DAYS = 7;
+
+function isDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  const until = Number(localStorage.getItem(DISMISSED_KEY) ?? "0");
+  return Date.now() < until;
+}
+
+function rememberDismissed() {
+  localStorage.setItem(DISMISSED_KEY, String(Date.now() + DISMISS_DAYS * 86_400_000));
+}
+
+function isHubRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return pathname === "/hub/fan" || pathname === "/hub/performer" || pathname.startsWith("/hub/");
+}
 
 type FeedbackCategory =
   | 'bug'
@@ -43,11 +62,73 @@ const SEVERITY: Record<FeedbackCategory, 'high' | 'medium' | 'low'> = {
 type PanelState = "collapsed" | "open" | "submitted";
 
 export default function LiveFeedbackPanel() {
+  const pathname = usePathname();
+  const onHub = isHubRoute(pathname);
+  const [dismissed, setDismissed] = useState(false);
+  const [hubSessionActive, setHubSessionActive] = useState(false);
+  const [explicitOpen, setExplicitOpen] = useState(false);
   const [panelState, setPanelState] = useState<PanelState>("collapsed");
   const [selected, setSelected]     = useState<FeedbackCategory | null>(null);
   const [message, setMessage]       = useState("");
   const [issueCount, setIssueCount] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setDismissed(isDismissed());
+  }, []);
+
+  useEffect(() => {
+    const onOpenRequest = () => {
+      setExplicitOpen(true);
+      setPanelState("open");
+    };
+    window.addEventListener("tmi:open-beta-feedback", onOpenRequest);
+    return () => window.removeEventListener("tmi:open-beta-feedback", onOpenRequest);
+  }, []);
+
+  useEffect(() => {
+    if (!onHub) {
+      setHubSessionActive(false);
+      return;
+    }
+    const check = () => {
+      setHubSessionActive(
+        Boolean(
+          document.querySelector("[data-session-control-strip]") ||
+            document.querySelector("[data-hub-monitor-stage]"),
+        ),
+      );
+    };
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [onHub]);
+
+  const hubSafe = onHub && hubSessionActive;
+
+  useEffect(() => {
+    if (hubSafe && panelState === "open" && !explicitOpen) {
+      setPanelState("collapsed");
+    }
+  }, [hubSafe, panelState, explicitOpen]);
+
+  const handleOpen = useCallback(() => {
+    setExplicitOpen(true);
+    setPanelState("open");
+  }, []);
+
+  const handleCollapse = useCallback(() => {
+    setPanelState("collapsed");
+    setExplicitOpen(false);
+  }, []);
+
+  const handleNotNow = useCallback(() => {
+    rememberDismissed();
+    setDismissed(true);
+    setPanelState("collapsed");
+    setExplicitOpen(false);
+  }, []);
 
   async function submit() {
     if (!selected || submitting) return;
@@ -76,33 +157,68 @@ export default function LiveFeedbackPanel() {
 
   const selectedOption = OPTIONS.find((o) => o.id === selected);
 
+  if (dismissed) return null;
+
+  // Position toward center-left of the usable content area, safely above the persistent bottom rail
+  // and avoiding collision with bottom navigation docks, side rails, and top headers on all viewports (desktop and 390x844).
+  const anchorStyle = {
+    bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
+    left: "max(16px, env(safe-area-inset-left, 0px))",
+    top: "auto" as const,
+    right: "auto" as const,
+  };
+
+
   return (
-    <div style={{
-      position: "fixed",
-      bottom: 24,
-      right: 20,
-      zIndex: 9000,
-      fontFamily: "'Inter',sans-serif",
-    }}>
-      {/* Collapsed beacon */}
+    <div
+      data-live-feedback-panel
+      style={{
+        position: "fixed",
+        ...anchorStyle,
+        zIndex: hubSafe ? 350 : 9000,
+        fontFamily: "'Inter',sans-serif",
+        pointerEvents: "none",
+      }}
+    >
+      {/* Collapsed beacon — hub sessions keep clear of session control strip */}
       {panelState === "collapsed" && (
-        <button
-          onClick={() => setPanelState("open")}
-          style={{
-            display: "flex", alignItems: "center", gap: 7,
-            padding: "8px 14px",
-            background: "rgba(5,5,16,0.92)",
-            border: "1px solid rgba(170,45,255,0.4)",
-            color: "#AA2DFF",
-            fontSize: 9, fontWeight: 900, letterSpacing: "0.2em",
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            borderRadius: 4,
-            boxShadow: "0 0 12px rgba(170,45,255,0.15)",
-          }}
-        >
-          📡 BETA FEEDBACK
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
+          <button
+            type="button"
+            data-feedback-beacon
+            onClick={handleOpen}
+            style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 14px",
+              background: "rgba(5,5,16,0.92)",
+              border: "1px solid rgba(170,45,255,0.4)",
+              color: "#AA2DFF",
+              fontSize: 9, fontWeight: 900, letterSpacing: "0.2em",
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+              borderRadius: 4,
+              boxShadow: "0 0 12px rgba(170,45,255,0.15)",
+            }}
+          >
+            📡 BETA FEEDBACK
+          </button>
+          <button
+            type="button"
+            onClick={handleNotNow}
+            aria-label="Dismiss beta feedback for 7 days"
+            style={{
+              padding: "8px 10px",
+              background: "rgba(5,5,16,0.85)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.45)",
+              fontSize: 8, fontWeight: 700, letterSpacing: "0.08em",
+              cursor: "pointer",
+              borderRadius: 4,
+            }}
+          >
+            NOT NOW
+          </button>
+        </div>
       )}
 
       {/* Open panel */}
@@ -115,8 +231,9 @@ export default function LiveFeedbackPanel() {
           padding: "16px",
           borderRadius: 8,
           boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-          maxHeight: "80vh",
+          maxHeight: hubSafe ? "min(55vh, 420px)" : "80vh",
           overflowY: "auto",
+          pointerEvents: "auto",
         }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -126,12 +243,32 @@ export default function LiveFeedbackPanel() {
                 Your report goes directly to the team
               </div>
             </div>
-            <button
-              onClick={() => setPanelState("collapsed")}
-              style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
-            >
-              ✕
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                onClick={handleNotNow}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "rgba(255,255,255,0.35)",
+                  cursor: "pointer",
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  padding: 0,
+                }}
+              >
+                NOT NOW
+              </button>
+              <button
+                type="button"
+                onClick={handleCollapse}
+                aria-label="Close beta feedback"
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Category grid */}
@@ -223,6 +360,7 @@ export default function LiveFeedbackPanel() {
           padding: "20px 16px",
           textAlign: "center",
           borderRadius: 8,
+          pointerEvents: "auto",
         }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
           <div style={{ fontSize: 11, fontWeight: 800, color: "#00C896", marginBottom: 6 }}>Received — thank you.</div>
@@ -236,7 +374,8 @@ export default function LiveFeedbackPanel() {
             </div>
           )}
           <button
-            onClick={() => { setPanelState("collapsed"); setSelected(null); setMessage(""); setIssueCount(null); }}
+            type="button"
+            onClick={() => { handleCollapse(); setSelected(null); setMessage(""); setIssueCount(null); }}
             style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.1em" }}
           >
             CLOSE

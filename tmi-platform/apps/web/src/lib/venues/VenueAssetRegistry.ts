@@ -4,18 +4,44 @@
 // art-direction blueprints that drove the reference videos in
 // public/assets/videos/rooms/.
 //
-// Ambient loops: every ambientVideoUrl points at an existing file under
-// /assets/videos/rooms/ (NOT missing /assets/environments/ background files).
+// Ambient loops — confirmed source↔deployed mappings (SHA-256 identical):
+//   _Monday_Night stage video base.mp4  → monday-night-stage.mp4
+//   Battles video base.mp4              → battle.mp4
+//   Deal_vs_Feud_video base.mp4         → deal-or-feud.mp4
+//   world ance party video base.mp4     → world-dance-party.mp4
+//   Now_we_have_to_do_one_for_our (1)   → fan-lobby.mp4
+//
 // Fallbacks when no dedicated loop exists:
 //   concert / world-concert / mini-concert -> monday-night-stage.mp4 (stage)
 //   release-party / world-release -> world-dance-party.mp4 (party floor)
 //   mini-release / listening-party -> lounge.mp4 (intimate room)
+//
+// lounge-variant.mp4 — distinct loop from the Yopho source set; wired to slow-jams.
+// unassigned-loop-1..4.mp4 — new source loops not yet mapped to a room type;
+//   listed in UNASSIGNED_VIDEO_LOOPS below pending review.
+//
 // Phase 5B mesh / walkable VenueRuntime stays IDLE.
 //
 // Rule 8 (Registry First): pages and components read FROM here.
 // Rule 14 (No Empty Surface): every field has a fallback.
 // Rule 20 (Reality Rule): no fabricated asset paths — only real files.
 // Rule 21 (Venue Runtime Convergence): one runtime, venue type = mode.
+
+/**
+ * Declares what role a video asset plays in the room. A video may decorate,
+ * preview, or display on a surface — it may never substitute for geometry,
+ * collision, seating, participant presence, or the Venue HUD.
+ *
+ * REFERENCE_ONLY  — blueprint only; never rendered at runtime
+ * AMBIENT_SURFACE — plays on an in-world wall / screen surface
+ * FALLBACK_PREVIEW — temporary background while production 3D is unavailable
+ * IN_WORLD_SCREEN  — plays on a specific prop or monitor inside the 3D world
+ */
+export type VenueVideoRole =
+  | "REFERENCE_ONLY"
+  | "AMBIENT_SURFACE"
+  | "FALLBACK_PREVIEW"
+  | "IN_WORLD_SCREEN";
 
 export type VenueType =
   | "battle"
@@ -25,6 +51,7 @@ export type VenueType =
   | "fan-lobby"
   | "lounge"
   | "monday-night-stage"
+  | "slow-jams"
   | "world-dance-party"
   | "concert"
   | "world-concert"
@@ -83,6 +110,18 @@ export interface VenueAsset {
   // --- Video assets ---
   /** Looping ambient environment video (idle/attract mode, muted) */
   ambientVideoUrl: string;
+  /**
+   * How this video may be used by runtime renderers.
+   * Defaults to "FALLBACK_PREVIEW" — temporary background until production 3D ships.
+   * Set to "REFERENCE_ONLY" to suppress runtime rendering entirely.
+   */
+  ambientVideoRole?: VenueVideoRole;
+  /**
+   * True once a production walkable 3D world exists for this venue type.
+   * When true, RoomEnvironmentLayer must NOT render the ambient video as the
+   * primary background — the 3D world takes precedence.
+   */
+  hasCanonical3DWorld?: boolean;
   /** Seating perspective from the audience (muted loop) */
   audienceViewVideoUrl?: string;
   /** Performer perspective looking out to audience */
@@ -506,6 +545,31 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     venueIndex: 2,
   },
 
+  "slow-jams": {
+    type: "slow-jams",
+    label: "Sunday Slow Jams",
+    tagline: "Smooth energy. Intimate audience. Music in the air.",
+    accentColor: "#AA2DFF",
+    secondaryColor: "#FFD700",
+    ambientVideoUrl: "/assets/videos/rooms/lounge-variant.mp4",
+    geometry: {
+      hasElevatedStage: false,
+      seatTiers: 1,
+      displayCapacity: 300,
+      ledWalls: ["ceiling"],
+      sponsorZones: ["side-rail"],
+      lightingRig: "club-ceiling",
+      controlBooth: "none",
+      entranceTunnel: "none",
+      hasVipSection: false,
+      audienceLayout: "lounge-tables",
+    },
+    hosts: {
+      primaryHostId: "julius",
+    },
+    venueIndex: 2,
+  },
+
   "listening-party": {
     type: "listening-party",
     label: "Listening Party",
@@ -538,7 +602,28 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function getVenueAsset(type: VenueType): VenueAsset {
-  return VENUE_REGISTRY[type];
+  const entry = VENUE_REGISTRY[type];
+  // Inject contract defaults so callers never need to null-check role.
+  return {
+    ambientVideoRole: "FALLBACK_PREVIEW",
+    hasCanonical3DWorld: false,
+    ...entry,
+  };
+}
+
+/** RoomEnvironmentLayer may render this as a temporary background layer. */
+export function canRenderAsFallbackBackground(asset?: VenueAsset): boolean {
+  return asset?.ambientVideoRole === "FALLBACK_PREVIEW" && !asset.hasCanonical3DWorld;
+}
+
+/** Video belongs on an in-world environmental mesh or surface. */
+export function canRenderOnAmbientSurface(asset?: VenueAsset): boolean {
+  return asset?.ambientVideoRole === "AMBIENT_SURFACE";
+}
+
+/** Video belongs on a canonical monitor, prop, or media-player inside the world. */
+export function canRenderOnWorldScreen(asset?: VenueAsset): boolean {
+  return asset?.ambientVideoRole === "IN_WORLD_SCREEN";
 }
 
 export function getAllVenueTypes(): VenueType[] {
@@ -547,7 +632,7 @@ export function getAllVenueTypes(): VenueType[] {
 
 /** Maps ArenaEventShell event types to VenueType */
 export function arenaEventTypeToVenueType(
-  eventType: "concert" | "battle" | "cypher" | "challenge" | "song-challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party"
+  eventType: "concert" | "battle" | "cypher" | "challenge" | "song-challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party" | "slow-jams"
 ): VenueType {
   const map: Record<string, VenueType> = {
     concert:             "concert",
@@ -560,6 +645,7 @@ export function arenaEventTypeToVenueType(
     "deal-or-feud":      "deal-or-feud",
     "lounge":            "lounge",
     "world-dance-party": "world-dance-party",
+    "slow-jams":         "listening-party",
   };
   return map[eventType] ?? "concert";
 }
@@ -582,6 +668,7 @@ export function slugToVenueType(slug: string): VenueType {
   if (s.includes("challenge"))      return "challenge";
   if (s.includes("deal") || s.includes("feud")) return "deal-or-feud";
   if (s.includes("dance-party") || s.includes("world-dance")) return "world-dance-party";
+  if (s.includes("slow-jam")) return "listening-party";
   if (s.includes("fan-lobby") || s.includes("avatar-lobby")) return "fan-lobby";
   if (s.includes("lounge") || s.includes("vip")) return "lounge";
   return "concert"; // default for live shows
@@ -589,3 +676,36 @@ export function slugToVenueType(slug: string): VenueType {
 
 export type { VenueAsset as VenueAssetType };
 export default VENUE_REGISTRY;
+
+/**
+ * Video loops present in public/assets/videos/rooms/ that are not yet
+ * assigned to a specific VenueType. These come from the Yopho source set
+ * and need design review before wiring to a room type.
+ *
+ * Source filenames (original, truncated by AI video tool):
+ *   unassigned-loop-1 ← Now_let_s_get_another_one_of_t.mp4
+ *   unassigned-loop-2 ← Now_let_s_get_another_one_of_t (2).mp4
+ *   unassigned-loop-3 ← Our_venues_are_to_simulate_a_r.mp4
+ *   unassigned-loop-4 ← We_need_one_where_everyone_s_e.mp4
+ */
+export const UNASSIGNED_VIDEO_LOOPS: ReadonlyArray<{
+  url: string;
+  sourceFilename: string;
+}> = [
+  {
+    url: "/assets/videos/rooms/unassigned-loop-1.mp4",
+    sourceFilename: "Now_let_s_get_another_one_of_t.mp4",
+  },
+  {
+    url: "/assets/videos/rooms/unassigned-loop-2.mp4",
+    sourceFilename: "Now_let_s_get_another_one_of_t (2).mp4",
+  },
+  {
+    url: "/assets/videos/rooms/unassigned-loop-3.mp4",
+    sourceFilename: "Our_venues_are_to_simulate_a_r.mp4",
+  },
+  {
+    url: "/assets/videos/rooms/unassigned-loop-4.mp4",
+    sourceFilename: "We_need_one_where_everyone_s_e.mp4",
+  },
+] as const;

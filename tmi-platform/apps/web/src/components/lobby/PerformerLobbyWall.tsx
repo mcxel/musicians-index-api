@@ -82,12 +82,16 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
   function acceptAndJoin(performer: PerformerTile) {
     setAccepted((prev) => new Set(prev).add(performer.id));
     setJoiningRoomId(performer.id);
-    router.push(`/live/rooms/collab-${performer.slug}?from=live-lobby`);
+    router.push(`/live/rooms/collab-${performer.slug}?zone=PERFORMER_LOBBY&experienceClass=PERFORMER_LOBBY&mode=performer-lobby&from=performer-lobby-wall`);
+  }
+
+  function performerLobbyHref(roomId: string) {
+    return `/live/rooms/${encodeURIComponent(roomId)}?zone=PERFORMER_LOBBY&experienceClass=PERFORMER_LOBBY&mode=performer-lobby&from=performer-lobby-wall`;
   }
 
   function joinRoom(performer: PerformerTile) {
     setJoiningRoomId(performer.id);
-    router.push(`/live/rooms/${performer.roomId}?from=live-lobby`);
+    router.push(performerLobbyHref(performer.roomId));
   }
 
   // Build real tiles from live users (deterministic accent color from userId hash)

@@ -31,7 +31,3 @@ export async function runGoLiveLaunchPipelineTest(): Promise<{ allPassed: boolea
   console.log(`[GO_LIVE_LAUNCH_PIPELINE_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runGoLiveLaunchPipelineTest();
-}

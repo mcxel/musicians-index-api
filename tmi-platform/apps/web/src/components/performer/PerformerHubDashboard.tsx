@@ -181,6 +181,22 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
               End Show
             </button>
           )}
+          <Link
+            href="/venue/preview?cert=1&event=live-show&env=indoor&skin=red-theater"
+            style={{
+              background: "rgba(255,215,0,0.12)",
+              color: "#FFD700",
+              border: "1px solid rgba(255,215,0,0.45)",
+              borderRadius: 8,
+              padding: "10px 14px",
+              fontWeight: 800,
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            PREVIEW VENUE
+          </Link>
           <SplitActionButton presetKey="challenge" />
           <SplitActionButton presetKey="mint-nft" />
         </div>

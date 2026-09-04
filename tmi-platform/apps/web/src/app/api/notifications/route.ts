@@ -1,104 +1,89 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import {
+  clearNotifications,
+  getOrInitNotifications,
+  pushStoredNotification,
+  type NotificationType,
+} from "@/lib/notifications/notificationStore";
 
-export const dynamic = 'force-dynamic';
-
-type NotificationType =
-  | 'system' | 'room_joined' | 'room_started' | 'battle_result' | 'battle_invite'
-  | 'tip_received' | 'tip_sent' | 'achievement' | 'follower' | 'mention'
-  | 'ticket_confirmed' | 'payout' | 'subscription' | 'magazine_drop'
-  | 'nft_sale' | 'beat_purchase' | 'moderation' | 'bot_alert';
-
-interface TMINotification {
-  id: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  read: boolean;
-  ts: number;
-  href?: string;
-  emoji?: string;
-}
-
-// In-memory store per-process (replaces on next deploy; use DB for persistence)
-const userNotifications = new Map<string, TMINotification[]>();
+export const dynamic = "force-dynamic";
 
 function getUserId(req: NextRequest): string {
-  return req.cookies.get('tmi_session_id')?.value?.substring(0, 16) ?? 'guest';
+  const internal = req.headers.get("x-tmi-internal-user")?.trim();
+  if (internal) return internal;
+  // tmi_session_id is the durable user id (see /api/auth/session) — do not truncate
+  return req.cookies.get("tmi_session_id")?.value ?? "guest";
 }
 
-function getOrInit(userId: string): TMINotification[] {
-  if (!userNotifications.has(userId)) {
-    // Seed with platform welcome notification
-    userNotifications.set(userId, [
-      {
-        id: `notif-welcome-${userId}`,
-        type: 'system',
-        title: 'Welcome to TMI',
-        body: 'Your account is active. Explore live rooms, join cyphers, and start earning.',
-        priority: 'medium',
-        read: false,
-        ts: Date.now() - 60_000,
-        href: '/home/1',
-        emoji: '🎵',
-      },
-    ]);
+function resolveStoreKey(req: NextRequest, bodyUserId?: unknown): string {
+  if (typeof bodyUserId === "string" && bodyUserId.trim()) {
+    return bodyUserId.trim();
   }
-  return userNotifications.get(userId)!;
+  return getUserId(req);
 }
 
-// GET /api/notifications — list notifications for current user
 export async function GET(req: NextRequest) {
-  const userId = getUserId(req);
-  const notifications = getOrInit(userId);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const userId = resolveStoreKey(req, req.nextUrl.searchParams.get("userId"));
+  const notifications = getOrInitNotifications(userId);
+  const unreadCount = notifications.filter((n) => !n.seen).length;
   return NextResponse.json({ notifications, unreadCount });
 }
 
-// POST /api/notifications — push a new notification (internal use) or mark read
 export async function POST(req: NextRequest) {
-  const userId = getUserId(req);
-  const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = body.action as string | undefined;
+  const userId = resolveStoreKey(req, body.targetUserId);
 
-  if (action === 'mark_read') {
+  if (action === "mark_read") {
     const id = body.id as string;
-    const store = getOrInit(userId);
-    const n = store.find(x => x.id === id);
-    if (n) n.read = true;
+    const store = getOrInitNotifications(userId);
+    const n = store.find((x) => x.id === id);
+    if (n) {
+      n.read = true;
+      n.seen = true;
+    }
     return NextResponse.json({ ok: true });
   }
 
-  if (action === 'mark_all_read') {
-    const store = getOrInit(userId);
-    store.forEach(n => { n.read = true; });
+  if (action === "mark_all_seen") {
+    getOrInitNotifications(userId).forEach((n) => {
+      n.seen = true;
+    });
     return NextResponse.json({ ok: true });
   }
 
-  if (action === 'push') {
-    const store = getOrInit(userId);
-    const newNotif: TMINotification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type: (body.type as NotificationType) ?? 'system',
-      title: (body.title as string) ?? 'Notification',
-      body: (body.body as string) ?? '',
-      priority: (body.priority as TMINotification['priority']) ?? 'medium',
-      read: false,
-      ts: Date.now(),
-      href: body.href as string | undefined,
-      emoji: body.emoji as string | undefined,
-    };
-    store.unshift(newNotif);
-    if (store.length > 200) store.length = 200;
-    return NextResponse.json({ ok: true, notification: newNotif });
+  if (action === "mark_all_read") {
+    getOrInitNotifications(userId).forEach((n) => {
+      n.read = true;
+      n.seen = true;
+    });
+    return NextResponse.json({ ok: true });
   }
 
-  return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  if (action === "push") {
+    try {
+      const notification = pushStoredNotification(userId, {
+        type: (body.type as NotificationType) ?? "system",
+        title: (body.title as string) ?? "Notification",
+        body: (body.body as string) ?? "",
+        priority: (body.priority as "low" | "medium" | "high" | "critical") ?? "medium",
+        href: body.href as string | undefined,
+        emoji: body.emoji as string | undefined,
+      });
+      return NextResponse.json({ ok: true, notification });
+    } catch (err) {
+      return NextResponse.json(
+        { ok: false, error: err instanceof Error ? err.message : "push failed" },
+        { status: 400 },
+      );
+    }
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 
-// DELETE /api/notifications — clear all notifications
 export async function DELETE(req: NextRequest) {
   const userId = getUserId(req);
-  userNotifications.set(userId, []);
+  clearNotifications(userId);
   return NextResponse.json({ ok: true });
 }

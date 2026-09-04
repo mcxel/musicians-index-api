@@ -70,6 +70,7 @@ const ROOM_VENUE_OVERRIDES: Record<string, VenueType> = {
   "test-room-g1b": "monday-night-stage",
   "monday-night-stage": "monday-night-stage",
   "world-dance-party": "world-dance-party",
+  "slow-jams": "listening-party",
   "battle-thunder-dome": "battle",
   "cypher-freestyle": "cypher",
   "lounge-playlist": "lounge",

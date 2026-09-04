@@ -4,6 +4,9 @@ import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import { injectAds } from "@/lib/editorial/editorialAdInjector";
 import { articleToProfileRoute, categoryToSectionLabel } from "@/lib/editorial/editorialRoutingResolver";
 import { resolveTemplate } from "@/lib/editorial/editorialPageEngine";
+import { permanentRedirect } from "next/navigation";
+import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import Link from "next/link";
 
 interface Props {
@@ -29,6 +32,10 @@ function SponsorFallback({ slug }: { slug: string }) {
 }
 
 export default function SponsorArticlePage({ params }: Props) {
+  if (getArticleBySlug(params.slug)) {
+    permanentRedirect(magazineReaderArticleUrl(params.slug));
+  }
+
   const article = getEditorialArticleBySlug(params.slug);
   if (!article || article.category !== "sponsor") return <SponsorFallback slug={params.slug} />;
 

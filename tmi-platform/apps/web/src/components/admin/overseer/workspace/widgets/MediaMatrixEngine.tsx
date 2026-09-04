@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 import {
   DEFAULT_MATRIX_ASSIGNMENTS,
   getMediaSource,
+  LIVE_MONITOR_SOURCE_REGISTRY,
   MEDIA_SOURCE_REGISTRY,
   type MediaSourceDefinition,
 } from "./MediaSourceRegistry";
@@ -75,9 +76,9 @@ function sourceTheme(source: MediaSourceDefinition) {
 
 export default function MediaMatrixEngine() {
   const [layout, setLayout] = useState<LayoutMode>("quad");
-  const [selectedSourceId, setSelectedSourceId] = useState<string>(DEFAULT_MATRIX_ASSIGNMENTS[0]);
+  const [selectedSourceId, setSelectedSourceId] = useState<string>(LIVE_MONITOR_SOURCE_REGISTRY[0]?.id ?? "live-now");
   const [swapAnchor, setSwapAnchor] = useState<number | null>(null);
-  const [assignments, setAssignments] = useState<string[]>(DEFAULT_MATRIX_ASSIGNMENTS);
+  const [assignments, setAssignments] = useState<(string | null)[]>(DEFAULT_MATRIX_ASSIGNMENTS);
   const [liveCount, setLiveCount] = useState(0);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState<"layout" | "sources" | null>(null);
@@ -120,7 +121,12 @@ export default function MediaMatrixEngine() {
   );
 
   const activeViewports = useMemo(
-    () => Array.from({ length: viewportCount }, (_, index) => getMediaSource(viewportAssignments[index] ?? DEFAULT_MATRIX_ASSIGNMENTS[index] ?? MEDIA_SOURCE_REGISTRY[0].id)),
+    () =>
+      Array.from({ length: viewportCount }, (_, index) => {
+        const id = viewportAssignments[index];
+        if (!id) return null;
+        return getMediaSource(id ?? LIVE_MONITOR_SOURCE_REGISTRY[0]?.id ?? "live-now");
+      }),
     [viewportAssignments, viewportCount],
   );
 
@@ -161,7 +167,7 @@ export default function MediaMatrixEngine() {
 
   const restoreDefaults = () => {
     setLayout("quad");
-    setSelectedSourceId(DEFAULT_MATRIX_ASSIGNMENTS[0]);
+    setSelectedSourceId(DEFAULT_MATRIX_ASSIGNMENTS[0] ?? "");
     setSwapAnchor(null);
     setAssignments(DEFAULT_MATRIX_ASSIGNMENTS);
   };
@@ -201,6 +207,15 @@ export default function MediaMatrixEngine() {
           }}
         >
           {activeViewports.map((source, idx) => {
+            if (!source) {
+              return (
+                <div key={`empty-${idx}`} style={{ ...cardStyle, placeItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>
+                    No Source Assigned
+                  </span>
+                </div>
+              );
+            }
             const isTripleLast = layout === "triple" && idx === 2;
             const isAnchor = swapAnchor === idx;
 
@@ -485,15 +500,7 @@ function MediaRenderer({ source, liveCount, livePreviewUrl }: { source: MediaSou
 
   if (source.kind === "security") {
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "1.25fr 0.95fr", gap: 8, minHeight: 118 }}>
-        <MonitorViewport source={source} label={source.label} meta={source.detail} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
-        <div style={{ borderRadius: 8, border: "1px solid rgba(255,68,68,0.18)", background: "linear-gradient(180deg, rgba(255,68,68,0.1), rgba(10,4,8,0.3))", padding: 10, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-          <MiniCard label="Alerts" value="3" accent="#FF8A8A" />
-          <MiniCard label="Cameras" value="8" accent="#FF8A8A" />
-          <MiniCard label="Threats" value="0" accent="#FF8A8A" />
-          <MiniCard label="Queue" value="2" accent="#FF8A8A" />
-        </div>
-      </div>
+      <MonitorViewport source={source} label={source.label} meta={source.detail} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
     );
   }
 

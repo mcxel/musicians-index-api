@@ -25,6 +25,13 @@ import {
   resolveOutfitTint,
 } from "@/lib/avatars/fanAvatarLoadout";
 import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
+import {
+  bobbleheadRuntimeToRigProps,
+  readPersistedBobbleheadBaseId,
+  resolveBobbleheadRuntimeCharacter,
+} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+import { FAN_EQUIPPED_LOOK_EVENT, readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
+import { syncLobbyJamFromPresence } from "@/lib/lobby/FanLobbyJamAudio";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -90,18 +97,50 @@ export function LobbyFreeRoamAvatars({
       setLoadoutIds(equippedProp);
       return;
     }
+    const applyLook = (ids: string[]) => {
+      if (ids.length) setLoadoutIds(ids);
+    };
+    const persisted = readPersistedFanEquippedLook()?.equippedCosmeticIds ?? [];
+    if (persisted.length) applyLook(persisted);
+
     let cancelled = false;
-    fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { AvatarInventory?: { items?: AvatarInventoryItem[] } } | null) => {
-        if (cancelled || !data?.AvatarInventory?.items) return;
-        setLoadoutIds(equippedIdsFromInventory(data.AvatarInventory.items));
-      })
-      .catch(() => {});
+    const hydrateFromInventory = () => {
+      fetch("/api/avatar/inventory", { credentials: "include", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { AvatarInventory?: { items?: AvatarInventoryItem[] } } | null) => {
+          if (cancelled || !data?.AvatarInventory?.items) return;
+          setLoadoutIds(equippedIdsFromInventory(data.AvatarInventory.items));
+        })
+        .catch(() => {});
+    };
+    hydrateFromInventory();
+    const onLook = (e: Event) => {
+      const detail = (e as CustomEvent<{ equippedCosmeticIds?: string[] }>).detail;
+      const fromEvent = Array.isArray(detail?.equippedCosmeticIds) ? detail.equippedCosmeticIds : [];
+      const fromStore = readPersistedFanEquippedLook()?.equippedCosmeticIds ?? [];
+      const next = fromEvent.length ? fromEvent : fromStore;
+      if (next.length) setLoadoutIds(next);
+      else hydrateFromInventory();
+    };
+    window.addEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
     return () => {
       cancelled = true;
+      window.removeEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
     };
   }, [equippedProp]);
+
+  /** Shared instrument jam — presence propTrigger bus + local Web Audio / sound pack. */
+  const jamPrevRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    jamPrevRef.current = syncLobbyJamFromPresence({
+      selfPropTrigger: self.propTrigger,
+      peerPropTriggers: participants.map((p) => ({
+        userId: p.userId,
+        propTrigger: p.propTrigger ?? "none",
+      })),
+      prevMap: jamPrevRef.current,
+    });
+  }, [self.propTrigger, participants]);
 
   function handleFloorClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = floorRef.current?.getBoundingClientRect();
@@ -135,6 +174,23 @@ export function LobbyFreeRoamAvatars({
     [attachmentIds, self.propTrigger],
   );
   const outfitTint = resolveOutfitTint(attachmentIds);
+
+  const bobbleCharacter = useMemo(
+    () => resolveBobbleheadRuntimeCharacter(readPersistedBobbleheadBaseId()),
+    // Re-resolve when loadout changes so session base stays fresh after picker
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadoutIds, self.isSeated],
+  );
+  const bobbleRig = useMemo(
+    () =>
+      bobbleheadRuntimeToRigProps(bobbleCharacter, {
+        isSeated: Boolean(self.isSeated),
+        isPlaying: (self.navigationState ?? self.locomotion) === "WALKING",
+        extraAccessoryIds: attachmentIds,
+        activePropId: self.propTrigger !== "none" ? self.propTrigger : undefined,
+      }),
+    [bobbleCharacter, self.isSeated, self.navigationState, self.locomotion, attachmentIds, self.propTrigger],
+  );
 
   return (
     <div
@@ -266,14 +322,10 @@ export function LobbyFreeRoamAvatars({
           }}
         >
           <AvatarViewer
-            active
-            color={self.skinColor ?? "#AA2DFF"}
-            isSeated={Boolean(self.isSeated)}
-            isPlaying={(self.navigationState ?? self.locomotion) === "WALKING"}
-            attachments={attachments}
-            outfitTint={outfitTint}
-            activePropId={self.propTrigger !== "none" ? self.propTrigger : undefined}
-            crown={attachments.some((a) => a.id === "crown")}
+            {...bobbleRig}
+            color={bobbleRig.color ?? self.skinColor ?? "#AA2DFF"}
+            outfitTint={bobbleRig.outfitTint ?? outfitTint}
+            attachments={bobbleRig.attachments?.length ? bobbleRig.attachments : attachments}
             size={self.isSeated ? 72 : 88}
             enableOrbit={false}
           />
@@ -293,7 +345,7 @@ export function LobbyFreeRoamAvatars({
           {self.isSeated ? `🪑 ${self.userName} (you)` : `${self.userName} (you)`}
         </div>
         <div style={{ fontSize: 7, color: "#00FFFF99", letterSpacing: "0.08em", fontWeight: 800 }}>
-          3D AVATAR RUNTIME v0
+          {bobbleCharacter.displayName.toUpperCase()} · 3D WORLD CITIZEN
         </div>
       </motion.div>
 

@@ -35,6 +35,8 @@ interface WatchSessionState {
   stopWatching: () => void;
   minimize: () => void;
   restore: () => void;
+  /** Update honest viewer count for the active watch session (never invent). */
+  updateViewers: (viewers: number) => void;
 }
 
 const STORAGE_KEY = 'tmi_watch_session';
@@ -99,8 +101,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     setCurrent((cur) => { persist(cur, false); return cur; });
   }, [persist]);
 
+  const updateViewers = useCallback((viewers: number) => {
+    const next = Math.max(0, Math.round(viewers));
+    setCurrent((cur) => {
+      if (!cur) return cur;
+      const updated = { ...cur, viewers: next };
+      persist(updated, minimized);
+      return updated;
+    });
+  }, [persist, minimized]);
+
   return (
-    <WatchSessionCtx.Provider value={{ current, minimized, recentRooms, startWatching, stopWatching, minimize, restore }}>
+    <WatchSessionCtx.Provider value={{ current, minimized, recentRooms, startWatching, stopWatching, minimize, restore, updateViewers }}>
       {children}
     </WatchSessionCtx.Provider>
   );
@@ -111,7 +123,16 @@ export function useWatchSession(): WatchSessionState {
   if (!ctx) {
     // Never throw for a missing provider — presence is an enhancement, not
     // a hard dependency. Callers get a harmless no-op session.
-    return { current: null, minimized: false, recentRooms: [], startWatching: () => {}, stopWatching: () => {}, minimize: () => {}, restore: () => {} };
+    return {
+      current: null,
+      minimized: false,
+      recentRooms: [],
+      startWatching: () => {},
+      stopWatching: () => {},
+      minimize: () => {},
+      restore: () => {},
+      updateViewers: () => {},
+    };
   }
   return ctx;
 }

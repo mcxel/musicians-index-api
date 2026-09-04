@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import AudienceScene from "@/components/live/AudienceScene";
+import ConcertPresentationShell from "@/components/live/ConcertPresentationShell";
 import { useAudienceWorld } from "@/lib/live/useAudienceWorld";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
@@ -21,6 +22,12 @@ import {
 } from "@/lib/seats/SeatingMeshEngine";
 import type { TicketRecord } from "@/lib/tickets/ticketCore";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
+import {
+  clearConcertProgram,
+  composeConcertProgram,
+  getActiveConcertProgram,
+  type ConcertProgramComposition,
+} from "@/lib/experiencePresentation/composeConcertProgram";
 
 type SeatReservationRow = { seatId: string; userId: string; expiresAt: string };
 
@@ -29,21 +36,14 @@ const SESSION_ID = "session-live-001";
 const SEAT_ROWS = 6;
 const SEAT_COLS = 10;
 
-const SET_LIST = [
-  { num: 1, title: "Opening Fire", duration: "3:42", status: "DONE" },
-  { num: 2, title: "Crown City Anthem", duration: "4:18", status: "DONE" },
-  { num: 3, title: "Midnight Vision", duration: "3:55", status: "LIVE" },
-  { num: 4, title: "World Champion", duration: "4:02", status: "UPCOMING" },
-  { num: 5, title: "The Encore (TBA)", duration: "—", status: "ENCORE" },
-];
-
 export default function WorldConcertPage() {
   const router = useRouter();
   const { entities } = useAudienceWorld(ROOM_ID);
-  const [encoreVotes, setEncoreVotes] = useState(0);
+  const [encoreVoted, setEncoreVoted] = useState(false);
   const [tipped, setTipped] = useState(false);
   const [tipPicking, setTipPicking] = useState(false);
   const [activeLight, setActiveLight] = useState<string | null>(null);
+  const [concertProgram, setConcertProgram] = useState<ConcertProgramComposition | null>(null);
 
   // ── Seating Mesh ────────────────────────────────────────────────────
   // fanId must match the server's derivation (sessionId.substring(0, 8)) in
@@ -59,6 +59,24 @@ export default function WorldConcertPage() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  // Production World Concert PROGRAM — no invented headliner/setlist/attendance.
+  useEffect(() => {
+    const composed = composeConcertProgram({
+      sessionId: `concert-session:${ROOM_ID}`,
+      concertId: ROOM_ID,
+      roomId: ROOM_ID,
+      scope: "WORLD",
+      lifecyclePhase: "VENUE_PREP",
+      bindJumbotron: true,
+    });
+    setConcertProgram(composed);
+    return () => {
+      if (getActiveConcertProgram()?.concertId === ROOM_ID) {
+        clearConcertProgram("world-concert-unmount");
+      }
+    };
   }, []);
 
   const { seatId: persistedSeatId, claim: persistClaim, release: persistRelease } =
@@ -210,54 +228,90 @@ export default function WorldConcertPage() {
                   accentColor="#FF2DAA"
                   bpm={120}
                   screenLabel="WORLD CONCERT"
-                  screenSubLabel="Nova Cipher · LIVE"
+                  screenSubLabel={
+                    concertProgram?.headliner?.displayName
+                      ? `${concertProgram.headliner.displayName} · LIVE`
+                      : "Waiting for headliner"
+                  }
                 />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    right: 12,
+                    top: 12,
+                    zIndex: 4,
+                    maxWidth: 640,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <ConcertPresentationShell composition={concertProgram} />
+                </div>
                 <div style={{ position: "absolute", bottom: 16, left: 16, right: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#aaa" }}>NOW PLAYING</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#FF2DAA" }}>Midnight Vision</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#FF2DAA" }}>
+                      {concertProgram?.nowPlaying?.title ?? "— no track yet"}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#888" }}>3:42 / 3:55</div>
+                  <div style={{ fontSize: 11, color: "#888" }}>
+                    {concertProgram?.nowPlaying?.durationLabel ?? "—"}
+                  </div>
                 </div>
               </div>
 
-              {/* Set list */}
+              {/* Set list — real PROGRAM tracks only (Rule 20) */}
               <div style={{
                 background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 12, padding: 20, marginBottom: 20,
               }}>
                 <div style={{ fontSize: 9, letterSpacing: 4, color: "#888", fontWeight: 800, marginBottom: 16 }}>SET LIST</div>
-                {SET_LIST.map(track => (
-                  <div key={track.num} style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  }}>
-                    <div style={{ width: 22, fontSize: 12, textAlign: "center", color: "#555" }}>{track.num}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: track.status === "LIVE" ? 700 : 400, color: track.status === "LIVE" ? "#FF2DAA" : track.status === "DONE" ? "#555" : "#fff" }}>
-                        {track.title}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 10, color: "#666" }}>{track.duration}</div>
-                    <div style={{
-                      padding: "2px 8px", borderRadius: 10,
-                      background: track.status === "LIVE" ? "rgba(255,45,170,0.2)" : track.status === "DONE" ? "rgba(255,255,255,0.05)" : "transparent",
-                      fontSize: 7, fontWeight: 800, letterSpacing: 2,
-                      color: track.status === "LIVE" ? "#FF2DAA" : track.status === "UPCOMING" ? "#888" : track.status === "ENCORE" ? "#FFD700" : "#444",
-                    }}>{track.status}</div>
+                {(concertProgram?.setlist?.length ?? 0) === 0 ? (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                    No setlist yet — tracks appear when the real concert PROGRAM supplies them.
                   </div>
-                ))}
+                ) : (
+                  concertProgram!.setlist.map((track, idx) => {
+                    const isLive = concertProgram?.nowPlaying?.trackId === track.trackId;
+                    return (
+                      <div key={track.trackId} style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      }}>
+                        <div style={{ width: 22, fontSize: 12, textAlign: "center", color: "#555" }}>{idx + 1}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: 12,
+                            fontWeight: isLive ? 700 : 400,
+                            color: isLive ? "#FF2DAA" : "#fff",
+                          }}>
+                            {track.title}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#666" }}>{track.durationLabel ?? "—"}</div>
+                        <div style={{
+                          padding: "2px 8px", borderRadius: 10,
+                          background: isLive ? "rgba(255,45,170,0.2)" : "transparent",
+                          fontSize: 7, fontWeight: 800, letterSpacing: 2,
+                          color: isLive ? "#FF2DAA" : track.isEncoreTrack ? "#FFD700" : "#888",
+                        }}>{isLive ? "LIVE" : track.isEncoreTrack ? "ENCORE" : "READY"}</div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
-              {/* Encore vote */}
+              {/* Encore vote — local action only; never invent platform-wide vote totals */}
               <div style={{
                 background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.2)",
                 borderRadius: 12, padding: 20, textAlign: "center",
               }}>
-                <div style={{ fontSize: 9, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 8 }}>🔁 VOTE FOR ENCORE</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#FFD700", marginBottom: 12 }}>{encoreVotes.toLocaleString()}</div>
+                <div style={{ fontSize: 9, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 8 }}>🔁 ENCORE SIGNAL</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#FFD700", marginBottom: 12 }}>
+                  {encoreVoted ? "Your encore signal sent" : "No invented vote totals"}
+                </div>
                 <motion.button whileTap={{ scale: 0.95 }}
-                  onClick={() => setEncoreVotes((v: number) => v + 1)}
+                  onClick={() => setEncoreVoted(true)}
                   style={{
                     padding: "10px 36px", borderRadius: 25,
                     background: "rgba(255,215,0,0.15)", border: "1px solid #FFD700",
@@ -305,18 +359,21 @@ export default function WorldConcertPage() {
                 )}
               </div>
 
-              {/* Crowd size */}
+              {/* Crowd size — honest seat-mesh occupancy only (Rule 20) */}
               <div style={{
                 background: "rgba(0,255,255,0.03)", border: "1px solid rgba(0,255,255,0.12)",
                 borderRadius: 12, padding: 20, textAlign: "center",
               }}>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#00FFFF" }}>8,244</div>
-                <div style={{ fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 12 }}>IN ATTENDANCE</div>
+                <div style={{ fontSize: 32, fontWeight: 900, color: "#00FFFF" }}>{occupancy}%</div>
+                <div style={{ fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 12 }}>SEAT MESH OCCUPIED</div>
                 <div style={{ height: 4, borderRadius: 2, background: "rgba(0,255,255,0.15)", overflow: "hidden" }}>
-                  <motion.div animate={{ width: ["0%", "72%"] }} transition={{ duration: 1.5 }}
-                    style={{ height: "100%", background: "#00FFFF", borderRadius: 2 }} />
+                  <div
+                    style={{ height: "100%", width: `${occupancy}%`, background: "#00FFFF", borderRadius: 2 }}
+                  />
                 </div>
-                <div style={{ fontSize: 9, color: "#666", marginTop: 6 }}>72% arena capacity</div>
+                <div style={{ fontSize: 9, color: "#666", marginTop: 6 }}>
+                  Real mesh claims only — no invented attendance
+                </div>
               </div>
 
               {/* Seating Mesh */}

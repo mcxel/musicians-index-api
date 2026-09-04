@@ -7,8 +7,9 @@
  */
 
 export type ArtifactSkin =
-  | "submarine" | "ufo" | "rocket" | "tree"
-  | "house"     | "car" | "train"  | "baby";
+  | "submarine" | "ufo"  | "rocket"   | "tree"
+  | "house"     | "car"  | "train"   | "baby"
+  | "dj_face";
 
 export type TrackSource = "spotify" | "youtube" | "soundcloud" | "tmi" | "apple" | "pandora" | "tiktok" | "link";
 
@@ -59,6 +60,8 @@ export const SKIN_META: Record<ArtifactSkin, {
   car:       { name: "Neon Cruiser",  icon: "🏎️", primary: "#FF2DAA", accent: "#FFD700", bg: "#000000", unlockPoints: 600,  description: "Neon outline cruiser with rolling wheels & headlights." },
   train:     { name: "Locomotive",   icon: "🚂", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 400,  description: "Steam locomotive with puffing smoke & track motion." },
   baby:      { name: "Crawling Baby", icon: "👶", primary: "#FF69B4", accent: "#FFD700", bg: "#1a0826", unlockPoints: 350,  description: "Animated crawling baby with interactive rattle & movement." },
+  // Colors match MEDIA_PLAYER_CHASSIS_REGISTRY['dj_face'] (accent/theme) for cross-registry consistency.
+  dj_face:   { name: "DJ",            icon: "🎧", primary: "#00E5FF", accent: "#FF2DAA", bg: "#080510", unlockPoints: 199,  description: "Headphone DJ with bass-pulse ear cups & sunglasses glint." },
 };
 
 // TMI seed tracks — distributed naturally, never back-to-back

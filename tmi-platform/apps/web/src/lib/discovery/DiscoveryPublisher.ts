@@ -45,7 +45,10 @@ export interface PublishLiveRoomInput {
   isAnchor?: boolean;
   anchorFamily?: string;
   featuredCategory?: string;
+  calloutSlots?: string[];
   categoryLocked?: boolean;
+  recruiting?: boolean;
+  castOverlay?: string;
 }
 
 function normalizeVisibility(
@@ -100,9 +103,12 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
 
   const categories = buildCategories(primary, humanViewerCount, visibility, startedAt);
+  const experienceKey = (input.experienceId ?? "live").trim() || "live";
+  /** Idempotent bus key — roomId + experience identity prevents duplicate cards on reconnect. */
+  const busId = `${roomId}::${experienceKey}`;
 
   return {
-    id: roomId,
+    id: busId,
     roomId,
     title: (input.title || `${input.hostName || "Live"} — Live`).trim(),
     hostName: (input.hostName || "Host").trim(),
@@ -131,7 +137,10 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     isAnchor: input.isAnchor === true,
     anchorFamily: input.anchorFamily,
     featuredCategory: input.featuredCategory,
+    calloutSlots: input.calloutSlots?.length ? [...input.calloutSlots] : undefined,
     categoryLocked: input.categoryLocked === true,
+    recruiting: input.recruiting === true,
+    castOverlay: input.castOverlay?.trim() || undefined,
   };
 }
 
@@ -143,7 +152,9 @@ export function publishLiveRoom(input: PublishLiveRoomInput): LiveDiscoveryRecor
   return record;
 }
 
-export function unpublishLiveRoom(roomId: string): void {
+export function unpublishLiveRoom(roomId: string, experienceId?: string): void {
+  DiscoveryBus.remove(`${roomId}::${(experienceId ?? "live").trim() || "live"}`);
+  // Legacy id cleanup for sessions published before composite keys
   DiscoveryBus.remove(roomId);
 }
 
@@ -174,7 +185,10 @@ export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscover
     posterUrl: session.thumbnailUrl ?? session.avatarUrl,
     previewUrl: session.previewUrl,
     accentColor: session.accentColor,
-    joinRoute: `/live/rooms/${encodeURIComponent(session.roomId)}?from=live-lobby-wall`,
+    joinRoute:
+      session.category === "fan-lobby"
+        ? `/hub/fan?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`
+        : `/hub/performer?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`,
     joinGate: paid ? "paid" : "none",
     entryPriceUsd: session.entryPriceUsd,
     startedAt: session.startedAt,
@@ -192,7 +206,8 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
   }
   // Permanent anchors always merge in — poll must never wipe the 24/7 wall
   const { getAnchorDiscoveryRecords } = require("@/lib/live/AnchorRoomNetwork") as typeof import("@/lib/live/AnchorRoomNetwork");
-  for (const anchor of getAnchorDiscoveryRecords()) {
+  const { getAllGenreDiscoveryRecords } = require("@/lib/live/performerGenreRoomNetwork") as typeof import("@/lib/live/performerGenreRoomNetwork");
+  for (const anchor of [...getAnchorDiscoveryRecords(), ...getAllGenreDiscoveryRecords()]) {
     const existing = byId.get(anchor.id);
     if (existing) {
       byId.set(anchor.id, {
@@ -207,6 +222,29 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
       byId.set(anchor.id, anchor);
     }
   }
+
+  // Preserve very recent client upserts during registry hydrate lag (POST→GET race).
+  // Prevents Lobby Wall flicker / connection-reset loops wiping LIVE_SESSION tiles.
+  const GRACE_MS = 12_000;
+  const now = Date.now();
+  for (const existing of DiscoveryBus.getAll()) {
+    if (byId.has(existing.id)) {
+      const polled = byId.get(existing.id)!;
+      // Prefer higher honest human count when poll lags join sync
+      if (existing.humanViewerCount > polled.humanViewerCount) {
+        byId.set(existing.id, {
+          ...polled,
+          humanViewerCount: existing.humanViewerCount,
+          updatedAt: Math.max(polled.updatedAt, existing.updatedAt),
+        });
+      }
+      continue;
+    }
+    if (now - existing.updatedAt < GRACE_MS) {
+      byId.set(existing.id, existing);
+    }
+  }
+
   DiscoveryBus.replaceAll([...byId.values()]);
 }
 
@@ -223,40 +261,46 @@ export function projectLiveSurfaceFromDiscoveryBus(): LiveSurfaceCard[] {
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollRefCount = 0;
+let pollIntervalMs = 4000;
+let pollFetchImpl: typeof fetch = fetch;
+
+async function discoveryPollTick(): Promise<void> {
+  if (pollRefCount <= 0 || typeof window === "undefined") return;
+  try {
+    const res = await pollFetchImpl("/api/live/go", { credentials: "include", cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { sessions?: LiveSession[] };
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    syncDiscoveryFromSessions(sessions);
+  } catch {
+    /* keep last honest snapshot — no reset loop */
+  }
+}
 
 /**
  * Client poll of GET /api/live/go → DiscoveryBus.
- * Use until WebSocket discovery channel is ready. No mock seed.
+ * Ref-counted so multiple useDiscoveryBus mounts share one interval
+ * (unmount of one subscriber must not kill polling for the rest).
  */
 export function startDiscoveryPoll(opts?: {
   intervalMs?: number;
   fetchImpl?: typeof fetch;
 }): () => void {
-  const intervalMs = opts?.intervalMs ?? 4000;
-  const fetchFn = opts?.fetchImpl ?? fetch;
+  if (typeof opts?.intervalMs === "number" && opts.intervalMs > 0) {
+    pollIntervalMs = opts.intervalMs;
+  }
+  if (opts?.fetchImpl) pollFetchImpl = opts.fetchImpl;
 
-  let stopped = false;
-
-  const tick = async () => {
-    if (stopped || typeof window === "undefined") return;
-    try {
-      const res = await fetchFn("/api/live/go", { credentials: "include", cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as { sessions?: LiveSession[] };
-      const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-      syncDiscoveryFromSessions(sessions);
-    } catch {
-      /* keep last honest snapshot */
-    }
-  };
-
-  void tick();
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(() => void tick(), intervalMs);
+  pollRefCount += 1;
+  if (!pollTimer) {
+    void discoveryPollTick();
+    pollTimer = setInterval(() => void discoveryPollTick(), pollIntervalMs);
+  }
 
   return () => {
-    stopped = true;
-    if (pollTimer) {
+    pollRefCount = Math.max(0, pollRefCount - 1);
+    if (pollRefCount === 0 && pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;
     }

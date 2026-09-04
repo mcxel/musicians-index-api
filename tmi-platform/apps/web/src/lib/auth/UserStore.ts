@@ -136,13 +136,16 @@ async function persistUser(user: StoredUser): Promise<void> {
         role: dbRole,
         userRef: user.ref ?? null,
         userCreatedAt: new Date(user.createdAt),
-        termsAccepted: true,
+        // Never silently accept policies — OAuth / UserStore creates must
+        // complete /onboarding/communication-setup (or signup checkboxes).
+        termsAccepted: false,
       },
       update: {
         passwordHash: user.passwordHash,
         displayName: user.displayName,
         tier: user.tier,
         role: dbRole,
+        // Do not set termsAccepted on update — only policy-accept / register may.
       },
     });
   } catch {

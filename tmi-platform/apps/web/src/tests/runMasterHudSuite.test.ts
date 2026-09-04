@@ -97,7 +97,3 @@ export function runMasterHudSuite(): { allPassed: boolean; results: Record<strin
   console.log(`[MASTER_HUD_SUITE_TEST_ASSERT]`, JSON.stringify({ allPassed, results }, null, 2));
   return { allPassed, results };
 }
-
-if (require.main === module) {
-  runMasterHudSuite();
-}

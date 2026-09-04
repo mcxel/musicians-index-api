@@ -6,7 +6,7 @@ const FEATURE_ROUTES: Record<string, string> = {
   "live-merch":      "/shop",
   "backstage-pass":  "/season-pass",
   "nft-drops":       "/nft-lab/drops",
-  "collab-studio":   "/go-live?type=collab",
+  "collab-studio":   "/hub/performer?golive=1&type=collab",
   "artist-academy":  "/articles",
   "fan-club":        "/hub/fan",
   "watch-parties":   "/live/rooms",

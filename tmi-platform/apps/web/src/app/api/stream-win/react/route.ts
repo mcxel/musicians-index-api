@@ -3,6 +3,7 @@ import { StreamAndWinEngine } from "@/lib/economy/StreamAndWinEngine";
 import type { FeedbackReaction } from "@/lib/economy/StreamAndWinEngine";
 import { prisma } from "@/lib/prisma";
 import { XP_VALUES } from "@/lib/xp/xpEngine";
+import { getListenLoungeXp } from "@/lib/xp/XpActionRegistry";
 
 /**
  * Persist XP to UserStats for a given userId.
@@ -23,23 +24,30 @@ async function persistStreamXp(userId: string, source: "stream_listen" | "stream
   }
 }
 
+function normalizeListenRole(role?: string | null): string {
+  const r = (role ?? "fan").trim().toLowerCase();
+  if (r === "performer" || r === "band" || r === "artist") return "performer";
+  return "fan";
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { songId, userId, reaction, listenPct } = body as {
-    songId: string; userId: string; reaction: FeedbackReaction; listenPct: number;
+  const { songId, userId, reaction, listenPct, role: rawRole } = body as {
+    songId: string; userId: string; reaction: FeedbackReaction; listenPct: number; role?: string;
   };
 
   if (!songId || !userId || !reaction) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
 
+  const role = normalizeListenRole(rawRole);
   const pct = typeof listenPct === "number" ? listenPct : 0;
-  const listenOk = StreamAndWinEngine.recordListen(songId, userId, pct);
-  const reactOk = StreamAndWinEngine.recordReaction(songId, userId, reaction);
+  const listenOk = StreamAndWinEngine.recordListen(songId, userId, pct, true, role);
+  const reactOk = StreamAndWinEngine.recordReaction(songId, userId, reaction, role);
 
-  // Persist XP to DB when the engine awarded it
+  const listenXp = getListenLoungeXp(role);
   if (listenOk) {
-    await persistStreamXp(userId, "stream_listen", XP_VALUES["stream_listen"]);
+    await persistStreamXp(userId, "stream_listen", listenXp);
   }
   if (reactOk && reaction !== "skip") {
     await persistStreamXp(userId, "stream_react", XP_VALUES["stream_react"]);
@@ -48,7 +56,9 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     xpAwarded: reactOk,
-    xpAmount: reactOk ? XP_VALUES["stream_react"] : 0,
+    xpAmount: reactOk ? XP_VALUES["stream_react"] : listenOk ? listenXp : 0,
     listenQualified: listenOk,
+    listenXpAmount: listenOk ? listenXp : 0,
+    role,
   });
 }

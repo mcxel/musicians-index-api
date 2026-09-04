@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { listOwnedVenueSkins } from '@/lib/venue/VenueSkinCommerce';
+import { listOwnedStoreItems } from '@/lib/commerce/StoreItemOwnershipEngine';
 
 /**
  * GET /api/account/purchases
@@ -38,8 +39,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 
-  const [venueSkins, chassisOwnerships, seasonPasses, recentOrders] = await Promise.all([
+  const [venueSkins, storeItems, chassisOwnerships, seasonPasses, recentOrders] = await Promise.all([
     listOwnedVenueSkins(user.id).catch(() => []),
+    listOwnedStoreItems(user.id).catch(() => []),
     prisma.mediaPlayerChassisOwnership.findMany({ where: { userId: user.id } }).catch(() => []),
     prisma.seasonPassOwnership.findMany({
       where: { userId: user.id, isActive: true },
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest) {
     subscriptionRenewsAt: user.stripeCurrentPeriodEnd,
     stripeConnected: Boolean(user.stripeCustomerId),
     ownedVenueSkins: venueSkins.filter((s) => s.owned),
+    ownedStoreItems: storeItems,
     ownedChassis: chassisOwnerships.map((c) => ({
       chassisId: c.chassisId,
       unlockedVia: c.unlockedVia,

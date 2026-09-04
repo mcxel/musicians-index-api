@@ -16,10 +16,10 @@
  * - DirectorCanister (battles only)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ComponentType } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import EventOwnerCanister from './EventOwnerCanister';
-import CurtainCanister from './CurtainCanister';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 
 export type CanisterType =
   | 'lighting'
@@ -56,7 +56,7 @@ interface Props {
 // ─── Canister registry ────────────────────────────────────────────────────────
 
 const CANISTER_INFO: Record<CanisterType, { label: string; icon: string; color: string }> = {
-  'lighting':    { label: 'Lighting',  icon: '💡', color: '#FFD700' },
+  'lighting':    { label: 'VENUE TOOLS', icon: '🎛', color: '#FFD700' },
   'effects':     { label: 'Effects',   icon: '✨', color: '#FF2DAA' },
   'banner':      { label: 'Banners',   icon: '📢', color: '#00E5FF' },
   'camera':      { label: 'Camera',    icon: '📹', color: '#AA2DFF' },
@@ -65,148 +65,69 @@ const CANISTER_INFO: Record<CanisterType, { label: string; icon: string; color: 
   'director':    { label: 'Director',  icon: '🎬', color: '#FFD700' },
   'sponsors':    { label: 'Sponsors',  icon: '🤝', color: '#fff' },
   'event-owner': { label: 'Owner',     icon: '⚙️', color: '#AA2DFF' },
-  'curtain':     { label: 'Curtain',   icon: '🎭', color: '#FFD700' },
+  /** @deprecated Use lighting (VENUE TOOLS) — do not mount both on one surface */
+  'curtain':     { label: 'VENUE TOOLS', icon: '🎛', color: '#FFD700' },
 };
 
-// ─── Individual canisters (placeholder — real content imported separately) ────
+// ─── Individual canisters ───────────────────────────────────────────────────
+// Mutation stubs (effects/banner/camera/…) retired — open VENUE TOOLS instead.
+// Do not remount dead no-op buttons on production surfaces (Rule 14 / orphan law).
 
-function LightingCanister() {
+function EffectsCanister({ roomId }: { roomId?: string }) {
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#FFD700', letterSpacing: '.15em', marginBottom: 10 }}>
-        LIGHTING CONSOLE
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Purple Wash', 'Blue Arena', 'Concert Red', 'Spotlight', 'Audience Glow'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,215,0,0.3)',
-            color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#FF2DAA" roomId={roomId} compact />
     </div>
   );
 }
 
-function EffectsCanister() {
+function BannerCanister({ roomId }: { roomId?: string }) {
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#FF2DAA', letterSpacing: '.15em', marginBottom: 10 }}>
-        EFFECTS CONSOLE
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Fog', 'Lasers', 'Confetti', 'Fire Jets', 'Sparks'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,45,170,0.3)',
-            color: '#FF2DAA', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#00E5FF" roomId={roomId} compact />
     </div>
   );
 }
 
-function BannerCanister() {
+function CameraCanister({ roomId }: { roomId?: string }) {
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#00E5FF', letterSpacing: '.15em', marginBottom: 10 }}>
-        STAGE BANNERS
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Tip the Artist', 'New Album Out', 'Thank You', 'Follow @', 'Book Me'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,229,255,0.3)',
-            color: '#00E5FF', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#AA2DFF" roomId={roomId} compact />
     </div>
   );
 }
 
-function CameraCanister() {
+function SupportCanister({ roomId }: { roomId?: string }) {
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#AA2DFF', letterSpacing: '.15em', marginBottom: 10 }}>
-        CAMERA DIRECTOR
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Auto', 'Wide', 'Crowd', 'Stage', 'Performer', 'Rotate'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(170,45,255,0.3)',
-            color: '#AA2DFF', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#00FF88" roomId={roomId} compact />
     </div>
   );
 }
 
-function SupportCanister() {
+function DirectorCanister({ roomId }: { roomId?: string }) {
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#00FF88', letterSpacing: '.15em', marginBottom: 10 }}>
-        SUPPORT BANNERS
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Join Fan Club', 'Buy Merch', 'Tip Jar', 'Book Me', 'VIP Access'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,255,136,0.3)',
-            color: '#00FF88', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#FFD700" roomId={roomId} compact />
     </div>
   );
 }
 
-function DirectorCanister() {
-  return (
+const CANISTER_COMPONENTS: Record<
+  Exclude<CanisterType, "event-owner" | "curtain" | "lighting">,
+  ComponentType<{ roomId?: string }>
+> = {
+  effects: EffectsCanister,
+  banner: BannerCanister,
+  camera: CameraCanister,
+  support: SupportCanister,
+  stage: DirectorCanister,
+  director: DirectorCanister,
+  sponsors: ({ roomId }) => (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 900, color: '#FFD700', letterSpacing: '.15em', marginBottom: 10 }}>
-        BROADCAST DIRECTOR
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['Split Screen', 'Voltron', 'Audience', 'Host Focus', 'Rotation Speed', 'Energy FX'].map(name => (
-          <button key={name} style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,215,0,0.3)',
-            color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-          }}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <VenueToolsShellHint accent="#fff" roomId={roomId} compact />
     </div>
-  );
-}
-
-const CANISTER_COMPONENTS: Record<CanisterType, React.ComponentType> = {
-  'lighting':    LightingCanister,
-  'effects':     EffectsCanister,
-  'banner':      BannerCanister,
-  'camera':      CameraCanister,
-  'support':     SupportCanister,
-  'stage':       DirectorCanister,
-  'director':    DirectorCanister,
-  'sponsors':    () => <div style={{ padding: 12 }}>Sponsor controls</div>,
-  'event-owner': () => null,
-  'curtain':     () => null,
+  ),
 };
 
 // ─── Canister component ──────────────────────────────────────────────────────
@@ -227,7 +148,6 @@ function Canister({
   eventId?: string;
 }) {
   const info = CANISTER_INFO[type];
-  const Component = CANISTER_COMPONENTS[type];
 
   return (
     <motion.div
@@ -283,10 +203,15 @@ function Canister({
         >
           {type === 'event-owner' && eventId ? (
             <EventOwnerCanister eventId={eventId} />
-          ) : type === 'curtain' ? (
-            <CurtainCanister />
+          ) : type === 'curtain' || type === 'lighting' ? (
+            <div style={{ padding: 12 }}>
+              <VenueToolsShellHint accent="#FFD700" roomId={eventId} compact />
+            </div>
           ) : (
-            <Component />
+            (() => {
+              const Component = CANISTER_COMPONENTS[type as keyof typeof CANISTER_COMPONENTS];
+              return Component ? <Component roomId={eventId} /> : null;
+            })()
           )}
         </motion.div>
       )}
@@ -302,8 +227,14 @@ export default function ControlCanisterCluster({
   availableCanisters,
   className,
 }: Props) {
+  // ONE VENUE TOOLS entry per surface — lighting owns the hint; drop duplicate curtain
+  const uniqueCanisters = availableCanisters.filter((type, i, arr) => {
+    if (type === "curtain" && arr.includes("lighting")) return false;
+    return arr.indexOf(type) === i;
+  });
+
   const [canisters, setCanisters] = useState<CanisterState[]>(
-    availableCanisters.map((type, i) => ({
+    uniqueCanisters.map((type, i) => ({
       id: `${type}-${i}`,
       type,
       isOpen: false,

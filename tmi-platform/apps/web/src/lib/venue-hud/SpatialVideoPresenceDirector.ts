@@ -133,3 +133,20 @@ export function calculateLodQuality(distanceMeters: number): SpatialVideoPanel["
   if (distanceMeters <= 35.0) return "far";
   return "audio_only";
 }
+
+export function getSpatialPanel(panelId: string): SpatialVideoPanel | null {
+  return activePanels.get(panelId) ?? null;
+}
+
+export function listSpatialPanels(): SpatialVideoPanel[] {
+  return Array.from(activePanels.values());
+}
+
+/** Leave → panel gone. Does not invent a second WebRTC session. */
+export function unregisterSpatialPanel(panelId: string): boolean {
+  return activePanels.delete(panelId);
+}
+
+export function resetSpatialPanelsForTests(): void {
+  activePanels.clear();
+}

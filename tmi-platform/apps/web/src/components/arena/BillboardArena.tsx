@@ -206,7 +206,7 @@ export default function BillboardArena() {
         }}>
           {[
             { label: "→ My Hub",       href: "/hub"           },
-            { label: "→ Go Live",      href: "/go-live"       },
+            { label: "→ Go Live",      href: "/hub/performer?golive=1" },
             { label: "→ Magazine",     href: "/magazine"      },
             { label: "→ My Profile",   href: "/profile"       },
           ].map((l) => (

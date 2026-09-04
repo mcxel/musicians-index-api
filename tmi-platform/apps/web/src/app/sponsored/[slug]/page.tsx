@@ -34,7 +34,7 @@ export interface SponsorSection {
   artistTagline?: string;
 }
 
-export const SPONSORED_PAGES: SponsoredPageConfig[] = [
+const SPONSORED_PAGES: SponsoredPageConfig[] = [
   {
     slug: 'soundwave-audio',
     sponsorName: 'SoundWave Audio',

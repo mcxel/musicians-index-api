@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import { DEFAULT_LICENSE_PRICES } from "@/lib/beats/BeatStoreCommerceEngine";
 import { buildBeatDropInventory } from "@/lib/beats/BeatInventoryEngine";
+import { persistUploadedMediaFile } from "@/lib/media/persistUploadedMedia";
+import { isDurablePlayableMediaUrl } from "@/lib/media/durablePlayableUrl";
 
 const VALID_GENRES = [
   "Trap",
@@ -150,25 +151,20 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    try {
-      const buf = Buffer.from(await audioFile.arrayBuffer());
-      const blob = await put(`beats/locker/${auth.user.id}/${Date.now()}${ext}`, buf, {
-        access: "public",
-        contentType: audioFile.type || "audio/mpeg",
-      });
-      previewUrl = blob.url;
-    } catch (err) {
-      console.error("[locker-submit] blob upload failed", err);
-      return NextResponse.json(
-        { ok: false, error: "Audio upload unavailable. Provide a preview URL instead." },
-        { status: 503 },
-      );
+    const stored = await persistUploadedMediaFile({
+      file: audioFile,
+      ownerId: auth.user.id,
+      fallbackExt: ext.replace(".", "") || "mp3",
+    });
+    if (!stored.ok) {
+      return NextResponse.json({ ok: false, error: stored.error }, { status: stored.status });
     }
+    previewUrl = stored.url;
   }
 
-  if (!previewUrl) {
+  if (!isDurablePlayableMediaUrl(previewUrl)) {
     return NextResponse.json(
-      { ok: false, error: "Add an audio file or preview URL." },
+      { ok: false, error: "Add an audio file or a refresh-safe preview URL (not a local blob: link)." },
       { status: 400 },
     );
   }
@@ -200,6 +196,20 @@ export async function POST(req: NextRequest) {
         moderationStatus: listForSale ? "APPROVED" : "PENDING",
         adminSubmitted: false,
       },
+    });
+
+    await prisma.song.create({
+      data: {
+        uploaderId: auth.user.id,
+        title,
+        audioUrl: previewUrl,
+        genre,
+        bpm,
+        key,
+        status: "ACTIVE",
+      },
+    }).catch((songErr) => {
+      console.error("[locker-submit] song bind failed", songErr);
     });
 
     let inventoryNote: string | undefined;

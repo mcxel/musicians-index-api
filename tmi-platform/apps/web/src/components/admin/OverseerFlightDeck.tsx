@@ -22,7 +22,6 @@ import Link from "next/link";
 import OverlayHost from "@/components/shell/OverlayHost";
 import Canister from "@/components/admin/overseer/Canister";
 import ChainCommandPanel from "@/components/admin/overseer/ChainCommandPanel";
-import FeedExplorer from "@/components/admin/overseer/FeedExplorer";
 import SentinelWall from "@/components/admin/overseer/SentinelWall";
 import AccountLinker from "@/components/admin/overseer/AccountLinker";
 import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
@@ -31,23 +30,30 @@ import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import UnifiedInbox from "@/components/admin/overseer/UnifiedInbox";
 import BotSummonDeck from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
-import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
 import OverseerSectionSwitcher from "@/components/admin/overseer/OverseerSectionSwitcher";
 import OverseerQuickControlRow from "@/components/admin/overseer/OverseerQuickControlRow";
-import {
-  renderOverseerCenterView,
-  type OverseerCenterViewId,
-} from "@/components/admin/overseer/OverseerCommandViews";
+import type { OverseerCenterViewId } from "@/components/admin/overseer/OverseerCommandViews";
 import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
-import CanonicalDualMonitorStack, { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
-import { MonitorScreenShareVideo } from "@/components/monitors/MonitorScreenSharePrimitives";
+import OverseerCoverageRail from "@/components/admin/overseer/OverseerCoverageRail";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+import { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
+import OverseerMonitorWall from "@/components/admin/overseer/OverseerMonitorWall";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
+import { scrollToControlDesk, scrollToIntelligenceDeck } from "@/lib/admin/overseerInspectBridge";
+import type { OverseerMonitorId } from "@/lib/admin/overseerMonitorState";
+import {
+  desktopMonitorStageStyle,
+  focusIntelligenceWorkspace,
+  sideCardToDeskPanel,
+  commandViewToDeskPanel,
+  type SideCardActionId,
+} from "@/lib/admin/overseerDeckConvergence";
 
 export type ShellDockButton = {
   label: string;
@@ -123,23 +129,29 @@ export default function OverseerFlightDeck({
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
   const [clock, setClock] = useState("");
   const [conciergeOpen, setConciergeOpen] = useState(false);
+  const [activeCoveragePanel, setActiveCoveragePanel] = useState<import("@/lib/admin/ObservatoryDeskState").DeskPanelId | null>(null);
   const [botIntelOpen, setBotIntelOpen] = useState(false);
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
   const [centerView, setCenterView] = useState<OverseerCenterViewId>("media");
-  const [flipKey, setFlipKey] = useState(0);
+  const [shareTargetMonitor, setShareTargetMonitor] = useState<OverseerMonitorId | null>(null);
   const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
   const [isMerging, setIsMerging] = useState(false);
-  const [isMobile, setIsMobile] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [mobileOpsTab, setMobileOpsTab] = useState<"left" | "center" | "right">("center");
   const {
     screenStream,
+    shareActive,
+    shareButtonLabel,
     shareSlot,
     slotPickerOpen,
     setSlotPickerOpen,
-    startScreenShare,
+    cycleSharePress,
     stopScreenShare,
     pickShareSlot,
-  } = useMonitorScreenShare();
+  } = useMonitorScreenShare({
+    defaultSlot: { monitor: 0, cellIndex: -1 },
+    openPickerOnStart: false,
+  });
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const mergeTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const drawerManager = useDrawerManager();
@@ -193,16 +205,35 @@ export default function OverseerFlightDeck({
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const selectCenterView = (view: OverseerCenterViewId) => {
+  useEffect(() => {
+    if (!shareSlot) {
+      setShareTargetMonitor(null);
+      return;
+    }
+    const map: OverseerMonitorId[] = ["A", "B", "C", "D"];
+    setShareTargetMonitor(map[shareSlot.monitor] ?? "A");
+  }, [shareSlot]);
+
+  const selectIntelligenceView = (view: OverseerCenterViewId) => {
     setCenterView(view);
-    setFlipKey((k) => k + 1);
-    if (view !== "media") setFullscreenPanel(null);
+    if (view !== "media") {
+      focusIntelligenceWorkspace(commandViewToDeskPanel(view));
+    }
+  };
+
+  const focusSideRail = (panelId: string) => {
+    document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
   const openBotIntel = () => {
     setBotIntelOpen(true);
+    scrollToControlDesk();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:overseer-desk-focus", { detail: { panelId: "bots" } }),
+      );
+    }
     try {
-      // Prefer left intelligence rail section switcher when present
       window.localStorage.setItem("tmi.overseer.sectionSlot.v1:surround:bot-roster", "bot-activity");
     } catch {
       /* ignore */
@@ -210,17 +241,17 @@ export default function OverseerFlightDeck({
   };
 
   const handleOpsAction = (action: string) => {
-    const scrollTo = (id: string) => {
-      const el = document.getElementById(id);
-      if (el instanceof HTMLElement) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    };
-    if (action === "alerts") scrollTo("sentinel-wall");
-    if (action === "chain-pulse") scrollTo("chain-command");
+    if (action === "alerts") {
+      focusIntelligenceWorkspace("alerts");
+    }
+    if (action === "chain-pulse") focusSideRail("chain-command");
     if (action === "summon") {
       openBotIntel();
-      scrollTo("bot-roster");
+      focusIntelligenceWorkspace("bots");
     }
-    if (action === "start-meeting") selectCenterView("observatory");
+    if (action === "start-meeting") {
+      focusIntelligenceWorkspace("webrtc");
+    }
   };
 
   const handleSuggestFix = async () => {
@@ -290,20 +321,11 @@ export default function OverseerFlightDeck({
       ],
       center: [
         {
-          id: "live-feed-router",
-          title: "TV SCREEN ROUTER · LIVE MONITOR WALL",
+          id: "overseer-monitor-wall",
+          title: "LIVE MONITOR WALL · A/B/C/D",
           accent: "#00FFFF",
-          content: <MediaMatrixEngine />,
+          content: <span aria-hidden />,
           flex: 1,
-          fullscreenKey: "tv",
-        },
-        {
-          id: "live-feed-explorer",
-          title: "LIVE FEED EXPLORER",
-          accent: "#00FFFF",
-          content: <FeedExplorer />,
-          flex: 1,
-          fullscreenKey: "feed",
         },
       ],
       rightRail: [
@@ -454,7 +476,6 @@ export default function OverseerFlightDeck({
   const allPanels = useMemo(
     () => [
       ...activeWorkspace.leftRail,
-      ...activeWorkspace.center,
       ...activeWorkspace.rightRail,
       ...activeWorkspace.bottom,
     ],
@@ -545,6 +566,33 @@ export default function OverseerFlightDeck({
       lineHeight: 1,
     });
 
+    const sideCardIds = new Set<SideCardActionId>(["bot-roster", "unified-inbox", "sentinel-wall"]);
+    const openWorkspaceBtn =
+      panel.id && sideCardIds.has(panel.id as SideCardActionId) ? (
+        <button
+          type="button"
+          onClick={() => focusIntelligenceWorkspace(sideCardToDeskPanel(panel.id as SideCardActionId))}
+          style={{
+            flexShrink: 0,
+            marginBottom: 4,
+            width: "100%",
+            padding: "4px 8px",
+            borderRadius: 6,
+            border: "1px solid rgba(0,255,255,0.4)",
+            background: "rgba(0,255,255,0.1)",
+            color: "#00FFFF",
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          Open Intelligence Workspace
+        </button>
+      ) : null;
+
     const panelBody =
       panel.id === "bot-roster" && !collapsed ? (
         <div
@@ -630,6 +678,7 @@ export default function OverseerFlightDeck({
           onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
           style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}
         >
+          {openWorkspaceBtn}
           {panelBody}
         </div>
       </Canister>
@@ -640,181 +689,31 @@ export default function OverseerFlightDeck({
     const isLeft = rail === "left";
     const isRight = rail === "right";
     const visible = panels.filter((panel) => !isFloatingPanel(panel));
-    const equalDualCenter = rail === "center" && visible.length >= 2;
+    const isMonitorWall = rail === "center";
     const isSideRail = rail === "left" || rail === "right";
 
-    if (equalDualCenter) {
-      const dual = visible.slice(0, 2);
-      const commandContent = renderOverseerCenterView(centerView);
-      const showCommand = centerView !== "media" && commandContent != null;
-
+    if (isMonitorWall) {
       return (
         <div
           data-col={rail}
-          data-equal-dual-monitors="true"
-          data-center-view={centerView}
+          data-overseer-monitor-stage="true"
           style={{
             flex: 1,
             minWidth: 0,
+            flexShrink: 0,
             alignSelf: "flex-start",
             height: "auto",
+            maxHeight: isMobile ? "none" : "none",
             overflowX: "hidden",
             paddingRight: 2,
-            perspective: 1400,
           }}
         >
-          <div
-            key={flipKey}
-            style={{
-              transformStyle: "preserve-3d",
-              animation: "overseer-center-flip 0.55s cubic-bezier(0.2, 0.8, 0.2, 1)",
-            }}
-          >
-            {showCommand ? (
-              <div
-                data-center-command-viewport
-                style={{
-                  minHeight: "min(70vh, 720px)",
-                  aspectRatio: "16 / 9",
-                  width: "100%",
-                  borderRadius: 12,
-                  border: "2px solid #D4AF37",
-                  overflow: "hidden",
-                  background: "#020210",
-                  boxShadow: "0 0 24px rgba(0,255,255,0.12), inset 0 0 30px rgba(0,0,0,0.65)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    padding: "6px 10px",
-                    borderBottom: "1px solid rgba(255,215,0,0.25)",
-                    background: "rgba(0,0,0,0.65)",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 9,
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                      color: "#00FFFF",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Command Viewport · {centerView.replace(/-/g, " ")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => selectCenterView("media")}
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 800,
-                      letterSpacing: "0.08em",
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      border: "1px solid rgba(255,215,0,0.45)",
-                      background: "rgba(255,215,0,0.12)",
-                      color: "#FFD700",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    MEDIA MATRIX
-                  </button>
-                </div>
-                <div style={{ height: "calc(100% - 32px)", minHeight: 0, overflow: "hidden" }}>
-                  {commandContent}
-                </div>
-              </div>
-            ) : (
-              <CanonicalDualMonitorStack
-                variant="gold"
-                seriesLabel="BERNTOUTGLOBAL OVERSEER DECK · GOLD SERIES · DUAL HD MONITORS"
-                controlledSplits={monitorSplits}
-                onSplitsChange={setMonitorSplits}
-                monitors={dual.map((panel, index) => {
-                  const mon = index as 0 | 1;
-                  const isShareFull = screenStream && shareSlot?.monitor === mon && shareSlot.cellIndex === -1;
-                  const panelBody = (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        height: "100%",
-                        minHeight: 0,
-                        background: "#020210",
-                      }}
-                    >
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          padding: "4px 8px",
-                          borderBottom: "1px solid rgba(255,215,0,0.2)",
-                          background: "rgba(0,0,0,0.55)",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 8,
-                            fontWeight: 900,
-                            letterSpacing: "0.12em",
-                            color: panel.accent ?? "#FFD700",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {panel.title}
-                        </span>
-                        {panel.fullscreenKey || panel.id ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggleFullscreen(panel.fullscreenKey ?? panel.id ?? panel.title)
-                            }
-                            style={{
-                              fontSize: 8,
-                              fontWeight: 800,
-                              letterSpacing: "0.08em",
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              cursor: "pointer",
-                              border: "1px solid rgba(255,215,0,0.4)",
-                              background: "rgba(255,215,0,0.12)",
-                              color: "#FFD700",
-                              fontFamily: "inherit",
-                            }}
-                          >
-                            FOCUS
-                          </button>
-                        ) : null}
-                      </div>
-                      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{panel.content}</div>
-                    </div>
-                  );
-                  // build per-cell array so split-grid cells can host the screen share
-                  const cells = Array.from({ length: 8 }, (_, ci) =>
-                    screenStream && shareSlot?.monitor === mon && shareSlot.cellIndex === ci ? (
-                      <MonitorScreenShareVideo key={`share-${mon}-${ci}`} stream={screenStream} onStop={stopScreenShare} label={`M${mon + 1} · ${ci + 1}`} />
-                    ) : null,
-                  );
-                  return {
-                    id: panel.id ?? `center-${index}`,
-                    label: `MONITOR ${index + 1} — ${panel.title}`,
-                    children: isShareFull ? (
-                      <MonitorScreenShareVideo stream={screenStream!} onStop={stopScreenShare} label={`MONITOR ${index + 1} · FULL`} />
-                    ) : panelBody,
-                    cells,
-                  };
-                })}
-              />
-            )}
-          </div>
+          <OverseerMonitorWall
+            isMobile={isMobile}
+            screenStream={screenStream}
+            shareMonitorId={shareTargetMonitor}
+            onStopScreenShare={stopScreenShare}
+          />
         </div>
       );
     }
@@ -1085,6 +984,8 @@ export default function OverseerFlightDeck({
           >
             Admin
           </button>
+          {/* Canonical account letter — hubs / settings / logout (not AdminHubShell legacy) */}
+          <RoleHubAccountMenu accentColor="#FFD700" />
         </div>
       </header>
 
@@ -1102,8 +1003,8 @@ export default function OverseerFlightDeck({
       `}</style>
 
       <OverseerQuickControlRow
-        activeView={centerView}
-        onSelectView={selectCenterView}
+        activeIntelligenceView={centerView}
+        onIntelligenceView={selectIntelligenceView}
         onOpsAction={handleOpsAction}
       />
 
@@ -1180,18 +1081,25 @@ export default function OverseerFlightDeck({
             {n}
           </button>
         ))}
-        <span aria-hidden style={{ flex: 1 }} />
-        {/* SHARE SCREEN — open picker when streaming; start share when idle */}
+        <OverseerCoverageRail
+          activePanelId={activeCoveragePanel}
+          onActivePanelChange={(id) => setActiveCoveragePanel(id)}
+        />
+        {/* SHARE SCREEN — cyclic getDisplayMedia controller (not playlist) */}
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 3 }}>
           <button
             type="button"
-            onClick={screenStream ? () => setSlotPickerOpen((v) => !v) : startScreenShare}
-            title={screenStream ? "Change monitor slot for screen share" : "Share your screen into a monitor slot"}
+            onClick={() => void cycleSharePress()}
+            title={
+              shareActive
+                ? "Cycle share sources — press after last source to stop"
+                : "Share screen / window / tab via getDisplayMedia"
+            }
             style={{
               padding: "4px 10px",
               borderRadius: 999,
-              border: `1px solid ${screenStream ? "#00FF88" : "rgba(0,255,136,0.6)"}`,
-              background: screenStream ? "rgba(0,255,136,0.15)" : "rgba(0,255,136,0.08)",
+              border: `1px solid ${shareActive ? "#00FF88" : "rgba(0,255,136,0.6)"}`,
+              background: shareActive ? "rgba(0,255,136,0.15)" : "rgba(0,255,136,0.08)",
               color: "#00FF88",
               fontSize: 9,
               fontWeight: 900,
@@ -1200,9 +1108,9 @@ export default function OverseerFlightDeck({
               transition: "all 0.2s",
             }}
           >
-            {screenStream ? "⬡ SHARING…" : "⬡ SHARE SCREEN"}
+            ⬡ {shareButtonLabel}
           </button>
-          {screenStream && (
+          {shareActive && (
             <button
               type="button"
               onClick={stopScreenShare}
@@ -1382,9 +1290,6 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                ...(!isMobile && stageCapCss !== "auto"
-                  ? { height: stageCapCss, maxHeight: stageCapCss }
-                  : {}),
               }}
             >
               <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%", minWidth: 0 }}>
@@ -1468,6 +1373,7 @@ export default function OverseerFlightDeck({
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "flex-start",
+                ...(!isMobile ? desktopMonitorStageStyle(true) : {}),
               }}
             >
               {renderRail(activeWorkspace.center, "center")}
@@ -1488,9 +1394,6 @@ export default function OverseerFlightDeck({
                 flexDirection: "column",
                 alignSelf: "flex-start",
                 minHeight: 0,
-                ...(!isMobile && stageCapCss !== "auto"
-                  ? { height: stageCapCss, maxHeight: stageCapCss }
-                  : {}),
               }}
             >
               <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", minWidth: 0 }}>

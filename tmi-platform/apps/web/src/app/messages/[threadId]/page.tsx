@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 type Msg = { id: string; from: string; text: string; mine: boolean; ts: number };
@@ -90,14 +89,6 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
     const text = input.trim();
     if (!text || sending) return;
 
-    const decision = enforceAdultTeenContactBlock({
-      source: "messages:thread",
-      channel: "dm",
-      actor:  { userId: "local-user", ageClass: "unknown", familyVerified: true, guardianApproved: true },
-      target: { userId: threadId,     ageClass: "unknown", familyMember: true,   guardianLink: true    },
-    });
-
-    if (!decision.allowed) { setSafetyReason(decision.reason); return; }
     setSafetyReason(null);
     setError(null);
     setSending(true);
@@ -115,7 +106,13 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
         credentials: "include",
         body: JSON.stringify({ body: text, type: "text" }),
       });
-      if (!res.ok) setError("Failed to send. Please try again.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string; reason?: string };
+        const reason = data.reason ?? data.error ?? "Failed to send. Please try again.";
+        setSafetyReason(reason);
+        setError(reason);
+        setMessages(prev => prev.filter(m => m.id !== outgoing.id));
+      }
     } catch {
       setError("Network error. Please try again.");
     } finally {

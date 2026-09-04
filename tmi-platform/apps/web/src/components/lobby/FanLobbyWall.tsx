@@ -7,6 +7,7 @@
  */
 
 import Link from "next/link";
+import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 interface Props {
   compact?: boolean;
@@ -19,7 +20,7 @@ export default function FanLobbyWall({ compact = false }: Props) {
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#00FFFF" }}>
           FAN AVATAR LOBBY WALL
         </div>
-        <Link href="/rooms/fan-lobby" style={{ fontSize: 8, color: "#00FFFF", textDecoration: "none", letterSpacing: "0.1em" }}>
+        <Link href={fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "fan-lobby-wall" })} style={{ fontSize: 8, color: "#00FFFF", textDecoration: "none", letterSpacing: "0.1em" }}>
           ENTER LOBBY →
         </Link>
       </div>
@@ -42,7 +43,7 @@ export default function FanLobbyWall({ compact = false }: Props) {
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
           <Link
-            href="/rooms/fan-lobby"
+            href={fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "fan-lobby-wall" })}
             style={{
               padding: "8px 14px",
               borderRadius: 8,

@@ -484,7 +484,7 @@ export default function MonitorSatelliteSystem({
           </button>
         </div>
 
-        {/* Monitor B — Live Lobby Wall / audience-facing browse view */}
+        {/* Monitor B — Live audience when performing, Lobby Wall when idle */}
         {layoutMode === "SPLIT_VIEW" && (
           <div
             ref={monitorBRef}
@@ -494,15 +494,30 @@ export default function MonitorSatelliteSystem({
               borderRadius: 14,
               overflow: "hidden",
               background: "#050510",
-              border: "3px solid #1c1c26",
-              boxShadow: "0 0 0 1px rgba(170,45,255,0.4), 0 0 32px rgba(170,45,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04)",
+              border: `3px solid ${isLive ? "rgba(170,45,255,0.7)" : "#1c1c26"}`,
+              boxShadow: isLive
+                ? "0 0 0 1px rgba(170,45,255,0.5), 0 0 32px rgba(170,45,255,0.2), inset 0 0 0 1px rgba(255,255,255,0.04)"
+                : "0 0 0 1px rgba(170,45,255,0.4), 0 0 32px rgba(170,45,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04)",
             }}
           >
             <div style={{ position: "absolute", inset: 0, overflowY: "auto" }}>
-              <BillboardLiveWall mode="home" maxTiles={6} title="LIVE LOBBY WALLS" />
+              {isLive ? (
+                /* BOH viewport — house perspective into the same world; fan looks toward stage */
+                <AudienceScene
+                  view="fan"
+                  venue={0}
+                  watcherCount={audienceCount ?? 0}
+                  bpm={120}
+                  accentColor={accentColor}
+                  occupancyRatio={Math.min(1, (audienceCount ?? 0) / 200 || 0.3)}
+                  hideControls
+                />
+              ) : (
+                <BillboardLiveWall mode="home" maxTiles={6} title="LIVE LOBBY WALLS" />
+              )}
             </div>
             <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.5)", color: "#AA2DFF" }}>
-              MONITOR B · LOBBY WALLS
+              {isLive ? "MONITOR B · BOH · HOUSE VIEW" : "MONITOR B · LOBBY WALLS"}
             </div>
             <button
               onClick={() => requestMonitorFullscreen(monitorBRef)}
