@@ -22,6 +22,13 @@ apps/**/.next-*/
 out/
 
 # =============================
+# OBSOLETE CAPACITOR STATIC-BUNDLE BACKUPS
+# (superseded by live-server capacitor.config.ts; see MASTER_AI_NAVIGATION.md)
+# =============================
+apps/web/android_backup_stub/
+apps/web/ios_backup_stub/
+
+# =============================
 # BUILD OUTPUTS
 # =============================
 build/
