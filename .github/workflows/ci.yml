@@ -191,6 +191,7 @@ jobs:
       - name: Start Web (e2e)
         working-directory: tmi-platform
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
           NODE_ENV: production
           NEXTAUTH_SECRET: ci-nextauth-secret
           NEXTAUTH_URL: http://127.0.0.1:3001
