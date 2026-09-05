@@ -14,7 +14,7 @@ function runUniversalLiveLobbyTest() {
     kind: "lounge",
   });
   results["lounge_destination_is_exact"] =
-    loungeDest.href === "/live/rooms/lounge-vip-001?mode=lounge" &&
+    loungeDest.href === "/live/rooms/lounge-vip-001?mode=lounge&zone=LOUNGE_SIDE_ROOM&from=live-lobby" &&
     loungeDest.via === "kind-route";
 
   const battleDest = resolveLobbyDestination({
@@ -77,4 +77,8 @@ function runUniversalLiveLobbyTest() {
   }
 }
 
-runUniversalLiveLobbyTest();
+describe("Universal Live Lobby", () => {
+  it("resolves exact destinations and manages live sessions", () => {
+    runUniversalLiveLobbyTest();
+  });
+});

@@ -1,5 +1,6 @@
 import FanLobbyWall from "@/components/lobby/FanLobbyWall";
 import Link from "next/link";
+import { fanAvatarLobbyEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 
 export const metadata = { title: "Fan Lobby · TMI", description: "Discover fans and build your crew." };
 
@@ -20,7 +21,7 @@ export default function FanLobbyPage() {
             </p>
           </div>
           <Link
-            href="/rooms/fan-lobby"
+            href={fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "fan-discovery-lobby" })}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               borderRadius: 10, border: "1px solid rgba(0,255,255,0.5)",

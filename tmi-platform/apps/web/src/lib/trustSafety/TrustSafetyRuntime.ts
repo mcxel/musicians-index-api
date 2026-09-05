@@ -16,6 +16,15 @@ import {
   type TrustSafetyCaseView,
   type TrustSafetyReportReason,
 } from "./types";
+import { resolveYouthSocialSubject } from "./resolveYouthSocialSubject";
+import { emitYouthSafetyParentNotice } from "./youthSafetyParentNotify";
+import { resolveYouthSocialBand } from "./YouthSocialGuard";
+import {
+  assertDatingExperienceForUserId,
+  evaluateDatingExperienceForUserId,
+} from "./datingExperienceGuard";
+
+export { assertDatingExperienceForUserId, evaluateDatingExperienceForUserId };
 
 export function isValidReportReason(value: string): value is TrustSafetyReportReason {
   return (TRUST_SAFETY_REPORT_REASONS as readonly string[]).includes(value);
@@ -111,6 +120,22 @@ export type SubmitTrustReportResult = {
   };
 };
 
+async function notifyFamilyParentsOfSafetyReport(
+  reporterId: string,
+  accusedId?: string | null,
+): Promise<void> {
+  const ids = [reporterId, accusedId].filter((id): id is string => Boolean(id && id.trim()));
+  for (const userId of ids) {
+    const subject = await resolveYouthSocialSubject(userId);
+    if (resolveYouthSocialBand(subject) !== "YOUTH") continue;
+    await emitYouthSafetyParentNotice({
+      teen: subject,
+      eventType: "report_filed",
+      otherUserId: userId === reporterId ? accusedId ?? undefined : reporterId,
+    });
+  }
+}
+
 /**
  * TrustSafetyRuntime — always-on platform engine.
  * Loop: Report → Protect reporter → Preserve evidence → Create case → queue.
@@ -190,6 +215,8 @@ export async function submitTrustSafetyReport(
       level: 1,
     });
   }
+
+  void notifyFamilyParentsOfSafetyReport(input.reporterId, input.accusedId).catch(() => undefined);
 
   return {
     caseId,

@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { senderBubbleStyles, senderColorFor } from "@/lib/messaging/senderColor";
 import { peerThreadParticipant } from "@/lib/messaging/threadPeerParticipant";
+import AgePolicyGateModal, {
+  clearMessagingPendingIntent,
+  gateModeFromCode,
+  loadMessagingPendingIntent,
+  saveMessagingPendingIntent,
+} from "@/components/messaging/AgePolicyGateModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -210,8 +216,8 @@ async function createThread(
   recipientId: string,
   recipientName: string,
   body: string,
-  opts?: { type?: string; mediaUrl?: string; callId?: string },
-): Promise<string | null> {
+  opts?: { type?: string; mediaUrl?: string; callId?: string; bootstrapOnly?: boolean },
+): Promise<{ threadId: string | null; code?: string; error?: string }> {
   const res = await fetch("/api/messages", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -219,16 +225,23 @@ async function createThread(
     body: JSON.stringify({
       recipientId,
       recipientName,
-      body,
+      body: body || undefined,
+      bootstrapOnly: opts?.bootstrapOnly || !body.trim(),
       kind: "fan-fan",
       type: opts?.type ?? "text",
       mediaUrl: opts?.mediaUrl,
       callId: opts?.callId,
     }),
   });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { threadId?: string };
-  return data.threadId ?? null;
+  const data = (await res.json().catch(() => ({}))) as {
+    threadId?: string;
+    code?: string;
+    error?: string;
+  };
+  if (!res.ok) {
+    return { threadId: null, code: data.code, error: data.error };
+  }
+  return { threadId: data.threadId ?? null, code: data.code, error: data.error };
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -491,6 +504,9 @@ export default function MessagingCanister({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateCode, setGateCode] = useState<string | undefined>();
+  const [gateMessage, setGateMessage] = useState<string | undefined>();
   const [callNote, setCallNote] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -586,6 +602,52 @@ export default function MessagingCanister({
     return { type: "text", body: text.trim() };
   }
 
+
+  function openGate(code?: string, msg?: string, intent?: { recipientId: string; recipientName?: string; body?: string }) {
+    if (intent) {
+      saveMessagingPendingIntent({
+        recipientId: intent.recipientId,
+        recipientName: intent.recipientName,
+        body: intent.body,
+        returnPath: typeof window !== "undefined" ? window.location.pathname + window.location.search : undefined,
+      });
+    }
+    setGateCode(code);
+    setGateMessage(msg);
+    setGateOpen(true);
+    setError(msg ?? code ?? "Messaging gate required");
+  }
+
+  async function resumeAfterGate() {
+    setGateOpen(false);
+    const pending = loadMessagingPendingIntent();
+    clearMessagingPendingIntent();
+    if (!pending?.recipientId) return;
+    setSending(true);
+    setError(null);
+    try {
+      const result = await createThread(
+        pending.recipientId,
+        pending.recipientName ?? pending.recipientId,
+        pending.body ?? "",
+        { bootstrapOnly: !pending.body?.trim() },
+      );
+      if (result.threadId) {
+        setActiveThreadId(result.threadId);
+        if (pending.body?.trim()) setInput("");
+        await loadThreads();
+      } else if (result.code === "AGE_VERIFICATION_REQUIRED" || result.code === "POLICY_ACCEPTANCE_REQUIRED") {
+        openGate(result.code, result.error, pending);
+      } else {
+        setError(result.error ?? "Could not start conversation.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function handleSend() {
     const text = input.trim();
     if ((!text && !attachUrl.trim()) || sending) return;
@@ -620,17 +682,27 @@ export default function MessagingCanister({
           setError("Failed to send message. Please try again.");
         }
       } else if (recipientId) {
-        const threadId = await createThread(recipientId, recipientName ?? recipientId, payload.body, {
+        const result = await createThread(recipientId, recipientName ?? recipientId, payload.body, {
           type: payload.type,
           mediaUrl: payload.mediaUrl,
         });
-        if (threadId) {
+        if (result.threadId) {
           setInput("");
           setAttachUrl("");
-          setActiveThreadId(threadId);
+          setActiveThreadId(result.threadId);
           await loadThreads();
+        } else if (
+          result.code === "AGE_VERIFICATION_REQUIRED" ||
+          result.code === "POLICY_ACCEPTANCE_REQUIRED"
+        ) {
+          openGate(result.code, result.error, {
+            recipientId,
+            recipientName: recipientName ?? recipientId,
+            body: payload.body,
+          });
         } else {
-          setError("Could not start conversation. Please try again.");
+          setError(result.error ?? "Could not start conversation. Please try again.");
+          if (result.code) openGate(result.code, result.error);
         }
       } else {
         const to = newTo.trim();
@@ -638,18 +710,24 @@ export default function MessagingCanister({
           setError("Enter a username, email, or pick Marcel / Justin / Jay Paul.");
           return;
         }
-        const threadId = await createThread(to, to, payload.body, {
+        const result = await createThread(to, to, payload.body, {
           type: payload.type,
           mediaUrl: payload.mediaUrl,
         });
-        if (threadId) {
+        if (result.threadId) {
           setInput("");
           setAttachUrl("");
           setNewTo("");
-          setActiveThreadId(threadId);
+          setActiveThreadId(result.threadId);
           await loadThreads();
+        } else if (
+          result.code === "AGE_VERIFICATION_REQUIRED" ||
+          result.code === "POLICY_ACCEPTANCE_REQUIRED"
+        ) {
+          openGate(result.code, result.error, { recipientId: to, recipientName: to, body: payload.body });
         } else {
-          setError("Could not start conversation. Recipient not found.");
+          setError(result.error ?? "Could not start conversation. Recipient not found.");
+          if (result.code) openGate(result.code, result.error);
         }
       }
     } catch {
@@ -710,11 +788,11 @@ export default function MessagingCanister({
         });
         await loadMessages(activeThreadId);
       } else if (recipientId) {
-        const tid = await createThread(recipientId, recipientName ?? recipientId, inviteBody, {
+        const tidResult = await createThread(recipientId, recipientName ?? recipientId, inviteBody, {
           type: "video_invite",
           callId: callData.call.callId,
         });
-        if (tid) setActiveThreadId(tid);
+        if (tidResult.threadId) setActiveThreadId(tidResult.threadId);
       }
 
       setCallNote(
@@ -1092,6 +1170,14 @@ export default function MessagingCanister({
           </div>
         )}
       </div>
+      <AgePolicyGateModal
+        open={gateOpen}
+        mode={gateModeFromCode(gateCode)}
+        code={gateCode}
+        message={gateMessage}
+        onClose={() => setGateOpen(false)}
+        onComplete={() => void resumeAfterGate()}
+      />
     </div>
   );
 }

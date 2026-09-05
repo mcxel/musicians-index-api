@@ -4,10 +4,9 @@
 // Performer sees pending audience talkback requests.
 // Can accept, mute, or focus one person.
 
-import React from "react";
+import React, { useState } from "react";
 import type { TalkbackRequest } from "@/lib/voice/IntercomModeEngine";
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
-import type { SafetyAgeClass } from "@/lib/safety/TeenMessagingPolicyEngine";
+import { requestOneToOneSocial } from "@/lib/trustSafety/requestOneToOneSocial";
 
 interface PerformerAudienceTalkbackPanelProps {
   performerId: string;
@@ -17,8 +16,6 @@ interface PerformerAudienceTalkbackPanelProps {
   onMute: (audienceId: string) => void;
   onFocus: (audienceId: string) => void;
   onClearFocus: () => void;
-  actorAgeClass?: SafetyAgeClass;
-  targetAgeClass?: SafetyAgeClass;
 }
 
 const STATUS_COLOR: Record<TalkbackRequest["status"], string> = {
@@ -44,25 +41,19 @@ export default function PerformerAudienceTalkbackPanel({
   onMute,
   onFocus,
   onClearFocus,
-  actorAgeClass = "unknown",
-  targetAgeClass = "unknown",
 }: PerformerAudienceTalkbackPanelProps) {
   const visible = requests.filter((r) => r.status !== "REJECTED");
+  const [blockReason, setBlockReason] = useState<string | null>(null);
 
-  const decision = enforceAdultTeenContactBlock({
-    source: "voice:talkback-panel",
-    channel: "talkback",
-    actor: {
-      userId: "performer-local",
-      ageClass: actorAgeClass,
-      familyVerified: false,
-      guardianApproved: false,
-    },
-    target: {
-      userId: "audience-local",
-      ageClass: targetAgeClass,
-    },
-  });
+  async function guardAudience(audienceId: string): Promise<boolean> {
+    const decision = await requestOneToOneSocial(audienceId);
+    if (!decision.allowed) {
+      setBlockReason(decision.reason);
+      return false;
+    }
+    setBlockReason(null);
+    return true;
+  }
 
   return (
     <div
@@ -130,9 +121,9 @@ export default function PerformerAudienceTalkbackPanel({
         </div>
       )}
 
-      {!decision.allowed && (
+      {!blockReason ? null : (
         <div style={{ marginBottom: "8px", border: "1px solid #7f1d1d", borderRadius: "6px", background: "#2a0e14", color: "#fecaca", padding: "6px 8px", fontSize: "11px" }}>
-          Talkback blocked by P0 teen safety: {decision.reason}
+          Talkback blocked: {blockReason}
         </div>
       )}
 
@@ -183,8 +174,10 @@ export default function PerformerAudienceTalkbackPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!decision.allowed) return;
-                      onAccept(req.audienceId);
+                      void (async () => {
+                        if (!(await guardAudience(req.audienceId))) return;
+                        onAccept(req.audienceId);
+                      })();
                     }}
                     style={{
                       background: "rgba(0,255,204,0.1)",
@@ -203,8 +196,10 @@ export default function PerformerAudienceTalkbackPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!decision.allowed) return;
-                      onFocus(req.audienceId);
+                      void (async () => {
+                        if (!(await guardAudience(req.audienceId))) return;
+                        onFocus(req.audienceId);
+                      })();
                     }}
                     style={{
                       background: "rgba(0,229,255,0.08)",

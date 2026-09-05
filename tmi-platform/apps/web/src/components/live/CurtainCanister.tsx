@@ -1,6 +1,13 @@
 'use client';
 
 /**
+ * LEGACY — UNMOUNTED from ControlCanisterCluster (LEG-VENUE-016 / DUPLICATE).
+ * Curtain DROP/RISE + style picker lived here with local-only state.
+ * Canonical curtain/lighting/mood: VENUE TOOLS (VenueToolsDirector / CurtainDirector).
+ * File retained for CURTAIN_STYLES harvest into DECOR — do not remount as mutation UI.
+ */
+
+/**
  * CurtainCanister — stage curtain/backdrop control for events.
  *
  * Allows event owner or director to:

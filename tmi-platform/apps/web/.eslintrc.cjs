@@ -28,5 +28,14 @@ module.exports = {
     "jsx-a11y/alt-text": "warn",
     "@next/next/no-img-element": "warn",
     "no-console": ["warn", { "allow": ["warn", "error", "info"] }]
-  }
+  },
+  overrides: [
+    {
+      files: ["src/tests/**/*.ts", "src/tests/**/*.tsx"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+  ],
 };
+

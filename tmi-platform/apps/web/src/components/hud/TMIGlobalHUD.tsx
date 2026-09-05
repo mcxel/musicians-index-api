@@ -7,6 +7,7 @@ import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import StreakBadge from "@/components/gamification/StreakBadge";
 import TokenBalance from "@/components/hud/TokenBalance";
 import XPProgressRing from "@/components/hud/XPProgressRing";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 interface SessionUser {
   id: string;
@@ -29,7 +30,6 @@ export function TMIGlobalHUD() {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [notifCount, setNotifCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
   const [isLive, setIsLive] = useState(false);
   const [hudHovered, setHudHovered] = useState(false);
@@ -85,25 +85,35 @@ export function TMIGlobalHUD() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const syncLiveState = () => {
-      setIsLive(localStorage.getItem('tmi_is_live') === 'true');
+    const syncLiveState = async () => {
+      try {
+        const res = await fetch('/api/live/go', { credentials: 'include', cache: 'no-store' });
+        if (!res.ok) {
+          setIsLive(false);
+          return;
+        }
+        const data = await res.json() as { sessions?: { userId: string }[]; live?: { userId: string }[] };
+        const sessions = data.sessions ?? data.live ?? [];
+        const mine = user?.id ? sessions.some((s) => s.userId === user.id) : false;
+        setIsLive(mine);
+      } catch {
+        setIsLive(false);
+      }
     };
 
-    syncLiveState();
+    void syncLiveState();
 
-    const onGoLive = () => setIsLive(true);
+    const onGoLive = () => void syncLiveState();
     const onEndBroadcast = () => setIsLive(false);
 
-    window.addEventListener('storage', syncLiveState);
     window.addEventListener('tmi:golive', onGoLive);
     window.addEventListener('tmi:endbroadcast', onEndBroadcast);
 
     return () => {
-      window.removeEventListener('storage', syncLiveState);
       window.removeEventListener('tmi:golive', onGoLive);
       window.removeEventListener('tmi:endbroadcast', onEndBroadcast);
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (pathname?.startsWith('/home')) {
@@ -130,9 +140,18 @@ export function TMIGlobalHUD() {
     };
   }, []);
 
-  // Only render when logged in
+  // Only render when logged in. Hub / dashboard shells own chrome — never
+  // stack a second floating HUD (legacy bell / Home) over FanShell/PerformerShell.
   if (!user) return null;
   if (pathname?.startsWith('/admin')) return null;
+  if (
+    pathname === '/hub' ||
+    pathname?.startsWith('/hub/') ||
+    pathname === '/dashboard' ||
+    pathname?.startsWith('/dashboard/')
+  ) {
+    return null;
+  }
 
   const xp = user.xp ?? 0;
   const xpTier = xp >= 5000 ? "DIAMOND" : xp >= 3000 ? "PLATINUM" : xp >= 2000 ? "GOLD" : xp >= 1000 ? "SILVER" : xp >= 500 ? "PRO" : "FREE";
@@ -186,10 +205,10 @@ export function TMIGlobalHUD() {
           },
         }));
         setIsLive(true);
-        router.push('/live/lobby');
+        // Stay in current shell — tmi:golive event updates listening monitors.
       }
     } catch {
-      router.push('/go-live');
+      // No navigation — resolveGoLive has no roomId to hand to a standalone page.
     }
   };
 
@@ -344,45 +363,8 @@ export function TMIGlobalHUD() {
         <XPProgressRing userId={user.id} size={32} role={user.role} />
         <TokenBalance userId={user.id} compact accentColor="#FFD700" />
 
-        {/* Notification bell */}
-        <Link
-          href="/notifications"
-          style={{
-            position: "relative",
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: notifCount > 0 ? "rgba(255,45,170,0.12)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${notifCount > 0 ? "rgba(255,45,170,0.4)" : "rgba(255,255,255,0.08)"}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 14,
-            textDecoration: "none",
-            flexShrink: 0,
-          }}
-          onClick={() => setNotifCount(0)}
-          aria-label="Notifications"
-        >
-          🔔
-          {notifCount > 0 && (
-            <span style={{
-              position: "absolute",
-              top: -4, right: -4,
-              width: 16, height: 16,
-              borderRadius: "50%",
-              background: "#FF2DAA",
-              fontSize: 8,
-              fontWeight: 800,
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              {notifCount}
-            </span>
-          )}
-        </Link>
+        {/* Notification bell — canonical, reads from /api/notifications */}
+        <NotificationBell userId={user?.id ?? ''} />
 
         {/* Messages */}
         <Link

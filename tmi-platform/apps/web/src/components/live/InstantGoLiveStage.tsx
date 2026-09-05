@@ -34,6 +34,14 @@ import {
   persistDevicesFromStream,
 } from "@/lib/live/liveDevicePersistence";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from "@/lib/venues/EventVenueEnvironment";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
+import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
+import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
+import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -49,17 +57,23 @@ interface InstantGoLiveStageProps {
   roomId: string;
   category?: string;
   privacy?: string;
+  /** Fill the assigned media player instead of taking over the viewport. */
+  contained?: boolean;
+  /** Persisted / URL indoor|outdoor — fed into EventVenueEnvironment on join. */
+  venueEnvironment?: VenueEnvironmentKind | null;
+  venueSkinId?: string | null;
 }
 
 function categoryToEventType(
   category: string,
-): "concert" | "battle" | "cypher" | "challenge" | "live-show" | "lounge" | "world-dance-party" {
+): "concert" | "battle" | "cypher" | "challenge" | "live-show" | "lounge" | "world-dance-party" | "slow-jams" {
   const c = category.toLowerCase();
   if (c === "battle") return "battle";
   if (c === "cypher") return "cypher";
   if (c === "challenge") return "challenge";
-  if (c === "concert") return "concert";
+  if (c === "concert" || c === "release-party") return "concert";
   if (c === "dance-party" || c === "world-dance-party") return "world-dance-party";
+  if (c === "listening" || c.includes("slow-jam")) return "slow-jams";
   if (c === "lounge") return "lounge";
   return "live-show";
 }
@@ -68,6 +82,9 @@ export default function InstantGoLiveStage({
   roomId,
   category = "live",
   privacy = "public",
+  contained = false,
+  venueEnvironment = null,
+  venueSkinId = null,
 }: InstantGoLiveStageProps) {
   const [metrics, setMetrics] = useState<VenuePresenceMetrics>(EMPTY_VENUE_PRESENCE_METRICS);
   const [envVerified, setEnvVerified] = useState(false);
@@ -100,21 +117,12 @@ export default function InstantGoLiveStage({
 
   const finishBroadcastInit = useCallback(() => {
     setInitPhase("initializing_broadcast");
-    // Registry already published via executeInstantGoLive — mark LIVE after brief settle
     window.setTimeout(() => {
       setInitPhase("live");
       launchDockStore.setCamReady(true);
       launchDockStore.setMicReady(true);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("tmi_is_live", "true");
-        window.dispatchEvent(
-          new CustomEvent("tmi:golive", {
-            detail: { roomId, category, privacy, instant: true },
-          }),
-        );
-      }
     }, 350);
-  }, [roomId, category, privacy]);
+  }, []);
 
   const runMediaInit = useCallback(async () => {
     setInitPhase("preparing_venue");
@@ -152,15 +160,14 @@ export default function InstantGoLiveStage({
     }
   }, [attachPreview, finishBroadcastInit]);
 
-  // Parallel media init — venue already painted
+  // Instant Go Live requires the camera/mic to start the moment the stage
+  // mounts — waiting on a manual "Open Devices" click contradicts "press Go
+  // Live and you're instantly on stage." Falls back to the device drawer
+  // automatically on permission/device failure (see runMediaInit's catch).
   useEffect(() => {
     if (mediaStarted.current) return;
     mediaStarted.current = true;
     void runMediaInit();
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    };
   }, [runMediaInit]);
 
   useEffect(() => {
@@ -298,34 +305,57 @@ export default function InstantGoLiveStage({
   }, []);
 
   const eventType = categoryToEventType(category);
+  const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
+  const renderFromPlan = scenePlan ? worldScenePlanToRenderProps(scenePlan) : null;
+  const envResolution = resolveEventVenueEnvironment({
+    kind:
+      eventType === "world-dance-party"
+        ? "mini-dance-party"
+        : eventType === "slow-jams"
+          ? "mini-slow-jam"
+          : eventType,
+    environment: venueEnvironment,
+    skinId: venueSkinId,
+  });
   const useArenaShell =
     eventType === "battle" ||
     eventType === "cypher" ||
     eventType === "challenge" ||
-    eventType === "concert";
+    eventType === "concert" ||
+    eventType === "world-dance-party" ||
+    eventType === "slow-jams";
 
   const watching = metrics.humanViewers;
+  const RootTag = contained ? "div" : "main";
+  const hudPos = contained ? "absolute" : "fixed";
 
   return (
-    <main
+    <RootTag
       style={{
         position: "relative",
-        minHeight: "100vh",
-        height: "100vh",
+        minHeight: contained ? 0 : "100vh",
+        height: contained ? "100%" : "100vh",
+        width: "100%",
         background: "#050510",
         color: "#fff",
         overflow: "hidden",
+        flex: contained ? 1 : undefined,
       }}
       data-instant-go-live="true"
+      data-instant-go-live-contained={contained ? "true" : "false"}
       data-privacy={privacy}
     >
-      <GoLiveStatusPill
-        phase={initPhase}
-        errorMsg={initError}
-        onOpenDevices={() => setDeviceDrawerOpen(true)}
-      />
+      {(!contained || initPhase === "error") && (
+        <GoLiveStatusPill
+          contained={contained}
+          phase={initPhase}
+          errorMsg={initError}
+          onOpenDevices={() => setDeviceDrawerOpen(true)}
+        />
+      )}
 
       <GoLiveDeviceDrawer
+        contained={contained}
         open={deviceDrawerOpen}
         onClose={() => setDeviceDrawerOpen(false)}
         onStreamReady={onDeviceStreamReady}
@@ -344,8 +374,8 @@ export default function InstantGoLiveStage({
             bottom: 24,
             left: 16,
             zIndex: 55,
-            width: 140,
-            height: 90,
+            width: contained ? 88 : 140,
+            height: contained ? 56 : 90,
             objectFit: "cover",
             borderRadius: 10,
             border: "1px solid rgba(0,255,255,0.45)",
@@ -379,7 +409,7 @@ export default function InstantGoLiveStage({
         }}
       >
         <span style={{ color: initPhase === "live" ? "#FF2020" : "#00FFFF" }}>
-          {initPhase === "live" ? "● LIVE" : "○ OPENING"}
+          {initPhase === "live" ? "● ON STAGE" : "○ PREPARING"}
         </span>
         <span style={{ color: "#00FFFF" }}>{watching} watching</span>
         <span style={{ color: "rgba(255,255,255,0.45)" }}>Venue Open</span>
@@ -393,20 +423,65 @@ export default function InstantGoLiveStage({
         )}
       </div>
 
-      {useArenaShell ? (
-        <ArenaEventShell
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+          minHeight: 0,
+        }}
+      >
+        {useArenaShell ? (
+          <ArenaEventShell
+            roomId={roomId}
+            eventType={eventType}
+            mode="performer"
+            liveState="soon"
+            watcherCount={watching}
+            instantEmptyStage={renderFromPlan?.instantEmptyStage ?? true}
+            venueEnvironment={renderFromPlan?.venueEnvironment ?? envResolution.environment}
+            venueSkinId={renderFromPlan?.venueSkinId ?? envResolution.skinId}
+          />
+        ) : (
+          <GoLiveRuntime
+            roomId={roomId}
+            eventType="live-show"
+            instantEmptyStage
+            contained={contained}
+            showLiveChrome={false}
+            venueIndex={envResolution.policy === "exempt" ? 1 : envResolution.venueIndex}
+          />
+        )}
+      </div>
+
+      {/* TMI Interactive Venue HUD Overlay — same mount pattern as GoLiveStudio.tsx */}
+      {!contained && initPhase === "live" && (
+        <TMIInteractiveVenueHud
           roomId={roomId}
-          eventType={eventType}
-          mode="performer"
-          liveState="live"
-          watcherCount={watching}
-          instantEmptyStage
+          roomTitle="Live Broadcast"
+          experienceType={eventType === "battle" ? "BATTLE" : eventType === "concert" ? "WORLD_CONCERT" : "LIVE"}
+          role="performer"
         />
-      ) : (
-        <GoLiveRuntime roomId={roomId} eventType="live-show" instantEmptyStage />
+      )}
+
+      {/* Media Player One — canonical dual-monitor stack + local screen share (any source, with audio) */}
+      {!contained && initPhase === "live" && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 16,
+            zIndex: 50,
+            width: 300,
+            maxWidth: "34vw",
+          }}
+        >
+          <LiveRoomMonitorShareSection roomId={roomId} isPerformerSession />
+        </div>
       )}
 
       <PerformerCommandPanel
+        contained={contained}
         roomId={roomId}
         audienceCount={watching}
         metrics={metrics}
@@ -414,8 +489,8 @@ export default function InstantGoLiveStage({
         soundCheckComplete={soundOk}
         hostMode={hostMode}
         onHostModeChange={setHostMode}
-        onWelcome={onWelcome}
-        onWave={onWave}
+        onWelcome={contained ? undefined : onWelcome}
+        onWave={contained ? undefined : onWave}
       />
 
       {/* Human arrival toast */}
@@ -427,10 +502,10 @@ export default function InstantGoLiveStage({
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.35 }}
             style={{
-              position: "fixed",
-              bottom: 120,
-              right: 20,
-              zIndex: 9300,
+              position: hudPos,
+              bottom: contained ? 8 : 120,
+              right: contained ? 8 : 20,
+              zIndex: 60,
               padding: "10px 16px",
               borderRadius: 4,
               background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.75))",
@@ -458,10 +533,10 @@ export default function InstantGoLiveStage({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             style={{
-              position: "fixed",
-              bottom: 168,
-              left: 20,
-              zIndex: 9300,
+              position: hudPos,
+              bottom: contained ? 40 : 168,
+              left: contained ? 8 : 20,
+              zIndex: 60,
               padding: "8px 12px",
               borderRadius: 8,
               background: "rgba(10,8,24,0.9)",
@@ -479,6 +554,6 @@ export default function InstantGoLiveStage({
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+    </RootTag>
   );
 }

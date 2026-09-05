@@ -1,4 +1,7 @@
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
+import { permanentRedirect } from "next/navigation";
+import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import PerformerCanvasMaster from "@/components/performer/PerformerCanvasMaster";
 import type { PerformerCanvasData } from "@/components/performer/PerformerCanvasMaster";
 import Link from "next/link";
@@ -26,6 +29,11 @@ function ArtistFallback({ slug }: { slug: string }) {
 }
 
 export default function ArtistArticlePage({ params }: Props) {
+  // One-action law: magazine articles go straight to the canonical reader
+  if (getArticleBySlug(params.slug)) {
+    permanentRedirect(magazineReaderArticleUrl(params.slug));
+  }
+
   const article = getEditorialArticleBySlug(params.slug);
   if (!article || article.category !== "artist") return <ArtistFallback slug={params.slug} />;
 

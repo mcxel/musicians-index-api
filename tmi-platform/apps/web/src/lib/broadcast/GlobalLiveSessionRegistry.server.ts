@@ -44,22 +44,18 @@ export async function ensureHydrated(): Promise<void> {
 
 export async function getActiveSessionsDurable(): Promise<LiveSession[]> {
   await ensureHydrated();
-  let active = getActiveSessions();
-  // Next.js HMR / route recompiles can reset the in-memory Map while
-  // `hydratedFromDb` stays true on a fresh module — reconcile from durable
-  // when memory is empty so LIVE NOW count cannot go false-zero after create.
-  if (active.length === 0) {
-    try {
-      const durable = await loadPersistedLiveSessions();
-      for (const session of durable) {
-        upsertHydratedSession(session);
-      }
-    } catch (err) {
-      console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
+  // Always merge durable → memory. Next.js can serve GET /api/live/go from a
+  // worker that never saw the create POST; empty-only reconcile left anonymous
+  // /home/3 at count=0 while the host worker already reported n+1 (Gate 3).
+  try {
+    const durable = await loadPersistedLiveSessions();
+    for (const session of durable) {
+      upsertHydratedSession(session);
     }
-    active = getActiveSessions();
+  } catch (err) {
+    console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
   }
-  return active;
+  return getActiveSessions();
 }
 
 export async function getAllSessionsDurable(): Promise<LiveSession[]> {

@@ -1,3 +1,7 @@
+import { grantXp } from "@/lib/progression/ProgressionEngine";
+import { fanProfileEngine } from "@/lib/fan/FanProfileEngine";
+import { getXpValue } from "@/lib/xp/XpActionRegistry";
+
 export type VoteOption = "artist-a" | "artist-b";
 
 export interface BattleVoteTally {
@@ -59,6 +63,11 @@ export function castVote(
     artistBPercent: total > 0 ? Math.round((bVotes / total) * 100) : 50,
   };
   tallies.set(battleId, next);
+  if (userId.trim() && !userId.startsWith("viewer-")) {
+    const xp = getXpValue("vote_battle");
+    grantXp(userId, "vote_battle");
+    fanProfileEngine.creditCompetitionVote(userId, xp);
+  }
   return { ok: true, tally: next };
 }
 

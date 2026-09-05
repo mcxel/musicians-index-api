@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import { getMondayNightStageSchedule } from '@/lib/events/ScheduledEventRegistry';
 
 // ── Game catalog ──────────────────────────────────────────────────────────────
 const GAMES = [
@@ -50,14 +51,30 @@ export default function GameNightHub() {
   const [rot, setRot]     = useState(13);
   const [pending, setPending] = useState<UniversalRoom | null>(null);
 
+  // Real schedule status for Monday Night Stage (Rule 21: schedule-locked)
+  const mondaySchedule = getMondayNightStageSchedule();
+  const mondayIsLive = mondaySchedule.phase === 'LIVE' || mondaySchedule.phase === 'PRESHOW';
+  const mondayLabel = mondaySchedule.phase === 'LIVE'
+    ? 'LIVE NOW'
+    : mondaySchedule.phase === 'PRESHOW'
+      ? 'PRESHOW'
+      : mondaySchedule.label;
+
+  // Override the monday-night entry with real schedule data
+  const GAMES_WITH_SCHEDULE = GAMES.map(g =>
+    g.id === 'monday-night'
+      ? { ...g, status: mondayIsLive ? ('live' as const) : ('upcoming' as const), viewers: mondayIsLive ? g.viewers : 0, round: mondayLabel }
+      : g,
+  );
+
   // 13-second rotation counter
   useEffect(() => {
     const t = setInterval(() => setRot(r => r <= 1 ? 13 : r - 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const liveGames     = GAMES.filter(g => g.status === 'live' && (cat === 'all' || g.cat === cat));
-  const upcomingGames = GAMES.filter(g => g.status === 'upcoming' && (cat === 'all' || g.cat === cat));
+  const liveGames     = GAMES_WITH_SCHEDULE.filter(g => g.status === 'live' && (cat === 'all' || g.cat === cat));
+  const upcomingGames = GAMES_WITH_SCHEDULE.filter(g => g.status === 'upcoming' && (cat === 'all' || g.cat === cat));
   const featured      = GAMES[0]!; // Deal or Feud 1000
 
   return (

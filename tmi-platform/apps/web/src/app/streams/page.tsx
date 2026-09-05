@@ -51,7 +51,7 @@ export default function StreamsPage() {
         <div style={{ marginLeft: "auto", display: "flex", gap: 16 }}>
           <Link href="/rooms" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Rooms</Link>
           <Link href="/shows" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Shows</Link>
-          <Link href="/go-live" style={{ padding: "6px 14px", borderRadius: 6, background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 900, textDecoration: "none", letterSpacing: "0.06em" }}>🔴 GO LIVE</Link>
+          <Link href="/hub/performer?golive=1" style={{ padding: "6px 14px", borderRadius: 6, background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 900, textDecoration: "none", letterSpacing: "0.06em" }}>🔴 GO LIVE</Link>
         </div>
       </nav>
 
@@ -148,7 +148,7 @@ export default function StreamsPage() {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Go live to thousands of fans, battle competitors, and host your world premiere</div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/go-live" style={{ padding: "12px 28px", borderRadius: 10, background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em" }}>🔴 GO LIVE NOW</Link>
+            <Link href="/hub/performer?golive=1" style={{ padding: "12px 28px", borderRadius: 10, background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em" }}>🔴 GO LIVE NOW</Link>
             <Link href="/hub/performer" style={{ padding: "12px 20px", borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>PERFORMER HUB</Link>
           </div>
         </div>

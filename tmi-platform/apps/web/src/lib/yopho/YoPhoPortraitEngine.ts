@@ -71,6 +71,15 @@ export interface PortraitLayer {
   depthBlur?: number;
   locked?: boolean;
   hidden?: boolean;
+  /** Static image vs looping video on this layer slot. */
+  mediaMode?: "static" | "animated";
+  /** Looping video source when mediaMode === "animated". */
+  videoUrl?: string;
+  /**
+   * Stack budget. Default / undefined = IMAGE SLOT (source picture, background, or cutout).
+   * Text, stickers, overlays, frames, effects, shadows, and masks are total-layers only.
+   */
+  budgetKind?: "image" | "text" | "effects" | "stickers" | "masks";
 }
 
 /** CSS / motion overlay effects on portrait preview (instant, reversible). */
@@ -161,7 +170,7 @@ export interface SubscriptionPortraitEntitlement {
 export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPortraitEntitlement> = {
   FREE: {
     tier: 'FREE',
-    maxActivePortraits: 1,
+    maxActivePortraits: 3,
     allowBasicCutout: true,
     allowDoubleExposure: 'preview',
     objectMaskAccess: 'basic',
@@ -173,7 +182,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   PRO: {
     tier: 'PRO',
-    maxActivePortraits: 3,
+    maxActivePortraits: 5,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'basic',
@@ -185,7 +194,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   RUBY: {
     tier: 'RUBY',
-    maxActivePortraits: 5,
+    maxActivePortraits: 6,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'basic',
@@ -197,7 +206,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   SILVER: {
     tier: 'SILVER',
-    maxActivePortraits: 6,
+    maxActivePortraits: 8,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'full',
@@ -209,7 +218,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   GOLD: {
     tier: 'GOLD',
-    maxActivePortraits: 8,
+    maxActivePortraits: 12,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'full',
@@ -221,7 +230,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   PLATINUM: {
     tier: 'PLATINUM',
-    maxActivePortraits: 12,
+    maxActivePortraits: 16,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'advanced',
@@ -233,7 +242,7 @@ export const SUBSCRIPTION_PORTRAIT_ENTITLEMENTS: Record<string, SubscriptionPort
   },
   DIAMOND: {
     tier: 'DIAMOND',
-    maxActivePortraits: 16,
+    maxActivePortraits: 24,
     allowBasicCutout: true,
     allowDoubleExposure: true,
     objectMaskAccess: 'advanced',
@@ -362,16 +371,17 @@ export function createDefaultYoPhoBlueprint(
   imageUrl?: string
 ): YoPhoPortraitBlueprint {
   const subjectUrl = (imageUrl && imageUrl.trim()) || '';
+  const now = Date.now();
   return {
-    id: `yopho_blueprint_${Date.now()}`,
+    id: `yopho_blueprint_${now}`,
     title: `${displayName}'s Living YoPho Card`,
     userRole,
     mode: 'single',
     activePortraitsCount: subjectUrl ? 1 : 0,
     primaryLayer: {
-      id: 'layer_primary',
+      id: `layer_foreground_${now}`,
       imageUrl: subjectUrl,
-      label: 'Working image',
+      label: 'Foreground',
       role: 'primary',
       facing: 'center',
       scale: 1.0,
@@ -383,8 +393,47 @@ export function createDefaultYoPhoBlueprint(
       edgeSoftness: 4,
       preserveHairEdges: true,
       zIndex: 2,
+      mediaMode: 'static',
+      budgetKind: 'image',
     },
-    secondaryLayers: [],
+    secondaryLayers: [
+      {
+        id: `layer_mid_${now}`,
+        imageUrl: '',
+        label: 'Mid layer',
+        role: 'secondary',
+        facing: 'center',
+        scale: 1.0,
+        xOffset: 0,
+        yOffset: 0,
+        rotation: 0,
+        blendMode: 'normal',
+        opacity: 1.0,
+        edgeSoftness: 4,
+        preserveHairEdges: true,
+        zIndex: 1,
+        mediaMode: 'static',
+        budgetKind: 'image',
+      },
+      {
+        id: `layer_background_${now}`,
+        imageUrl: '',
+        label: 'Background',
+        role: 'background',
+        facing: 'center',
+        scale: 1.1,
+        xOffset: 0,
+        yOffset: 0,
+        rotation: 0,
+        blendMode: 'normal',
+        opacity: 1.0,
+        edgeSoftness: 2,
+        preserveHairEdges: false,
+        zIndex: 0,
+        mediaMode: 'static',
+        budgetKind: 'image',
+      },
+    ],
     objectMask: 'coffee_cup',
     secondaryFillType: 'stage',
     secondaryFillUrl: '',

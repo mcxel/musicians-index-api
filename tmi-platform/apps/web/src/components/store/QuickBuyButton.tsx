@@ -1,8 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import type { StoreItem } from '@/lib/store/StoreItemEngine';
 import { formatPrice, getCheckoutUrl } from '@/lib/store/StoreItemEngine';
+import { useAuth } from '@/lib/hooks/useAuth';
 import PointsDiscountField from '@/components/store/PointsDiscountField';
 
 const BADGE_COLORS: Record<string, string> = {
@@ -18,12 +20,40 @@ type Props = {
 };
 
 export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact = false, sellerUserId }: Props) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
   const accent = accentColor;
   const isOneTime = item.mode === 'payment';
+
+  async function handleAddToCart() {
+    setCartError(null);
+    if (!user?.id) {
+      setCartError('Sign in to use the cart');
+      return;
+    }
+    try {
+      const res = await fetch('/api/cart/items', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, quantity: 1 }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setCartError(data.error ?? 'Could not add to cart');
+        return;
+      }
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch {
+      setCartError('Could not add to cart');
+    }
+  }
 
   async function checkoutWithPoints() {
     setBusy(true);
@@ -200,6 +230,26 @@ export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact 
                     BUY NOW →
                   </a>
                 )}
+                {isOneTime && (
+                  <button
+                    type="button"
+                    onClick={() => void handleAddToCart()}
+                    style={{
+                      padding: '13px 14px',
+                      background: addedToCart ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.06)',
+                      color: addedToCart ? '#00FF88' : 'rgba(255,255,255,0.7)',
+                      border: `1px solid ${addedToCart ? '#00FF8840' : 'rgba(255,255,255,0.12)'}`,
+                      borderRadius: 8,
+                      fontWeight: 800,
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {addedToCart ? 'ADDED ✓' : 'ADD TO CART'}
+                  </button>
+                )}
                 <button
                   onClick={() => setOpen(false)}
                   style={{ padding: '13px 16px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
@@ -207,6 +257,14 @@ export default function QuickBuyButton({ item, accentColor = '#AA2DFF', compact 
                   Cancel
                 </button>
               </div>
+              {cartError && (
+                <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: '#FF2DAA', fontWeight: 700 }}>{cartError}</div>
+              )}
+              {addedToCart && (
+                <Link href="/cart" style={{ display: 'block', textAlign: 'center', marginTop: 12, fontSize: 11, color: accent, fontWeight: 700, textDecoration: 'none' }}>
+                  View cart →
+                </Link>
+              )}
             </motion.div>
           </>
         )}

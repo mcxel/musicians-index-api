@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 export interface ArticleCardProps {
   slug: string;
@@ -119,7 +120,7 @@ export default function ArticleCard({
 
         {/* Title */}
         <Link
-          href={`/articles/${slug}`}
+          href={magazineReaderArticleUrl(slug)}
           style={{
             display: "-webkit-box",
             fontSize: isFeatured ? 18 : isCompact ? 13 : 15,

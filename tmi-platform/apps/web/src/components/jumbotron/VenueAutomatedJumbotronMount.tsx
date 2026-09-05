@@ -1,0 +1,699 @@
+"use client";
+
+/**
+ * VenueAutomatedJumbotronMount — world-space Jumbotron surface for ArenaEventShell / UVR.
+ *
+ * Laws:
+ * - Real venue geometry (not HUD overlay). Positioned above stage center from PhysicalJumbotronDescriptor.
+ * - LOOK UP / focus uses AvatarCameraDirector — no teleport, seat reset, or session restart.
+ * - Media feed mirrors via CanonicalUniversalPlayerFabric (no recursive LiveSession).
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { AutomatedJumbotronDirector } from "@/lib/jumbotron/AutomatedJumbotronDirector";
+import type { JumbotronExperienceType } from "@/lib/jumbotron/JumbotronContracts";
+import { JumbotronPriority } from "@/lib/jumbotron/JumbotronContracts";
+import { JumbotronSurfaceRenderer } from "@/components/jumbotron/JumbotronSurfaceRenderer";
+import { AvatarCameraDirector } from "@/lib/avatar/AvatarCameraDirector";
+import { CanonicalUniversalPlayerFabric } from "@/lib/media/CanonicalUniversalPlayerFabric";
+import { getActivePerformerLiveProgram } from "@/lib/experiencePresentation/composePerformerLiveProgram";
+import { getActiveBattleProgram } from "@/lib/experiencePresentation/composeBattleProgram";
+import { getActiveChallengeProgram } from "@/lib/experiencePresentation/composeChallengeProgram";
+import { getActiveCypherProgram } from "@/lib/experiencePresentation/composeCypherProgram";
+import { getActiveConcertProgram } from "@/lib/experiencePresentation/composeConcertProgram";
+import { getActiveDancePartyProgram } from "@/lib/experiencePresentation/composeDancePartyProgram";
+import { getActiveMondayNightStageProgram } from "@/lib/experiencePresentation/composeMondayNightStageProgram";
+import { getActiveReleaseProgram } from "@/lib/experiencePresentation/composeReleaseProgram";
+import { getActiveGameShowProgram } from "@/lib/experiencePresentation/composeGameShowProgram";
+import { getActiveFanLobbyProgram } from "@/lib/experiencePresentation/composeFanLobbyProgram";
+import { getActiveLoungeProgram } from "@/lib/experiencePresentation/composeLoungeProgram";
+import { JumbotronShowDirector } from "@/lib/jumbotron/JumbotronShowDirector";
+import {
+  applyChallengeJumbotronFacePlan,
+  assertFourDistinctFaceRoles,
+  resolveChallengeAcgbrFacePlanForMount,
+  type ChallengeFaceAssignment,
+} from "@/lib/acgbr";
+
+const SafeReactThreeCanvas = dynamic(
+  () => import("@/components/3d/SafeReactThreeCanvas"),
+  { ssr: false },
+);
+const VenueJumbotronGeometry3D = dynamic(
+  () =>
+    import("@/components/jumbotron/VenueJumbotronGeometry3D").then((m) => m.VenueJumbotronGeometry3D),
+  { ssr: false },
+);
+
+export function mapArenaEventToJumbotronExperience(
+  eventType: string | undefined | null
+): JumbotronExperienceType {
+  const t = (eventType ?? "").toLowerCase();
+  if (t.includes("battle") || t.includes("gauntlet")) return "BATTLE_ARENA";
+  // Challenge before cypher — "challenge" must not fall through to REGULAR_LIVE.
+  if (t.includes("challenge")) return "CHALLENGE_ARENA";
+  if (t.includes("cypher") || t.includes("cipher")) return "CYPHER";
+  if (t.includes("dance")) return "WORLD_DANCE_PARTY";
+  // Concert before monday/auditorium — world/mini concert map to WORLD_CONCERT PROGRAM.
+  if (t.includes("concert") || t.includes("mini-concert") || t.includes("world-concert")) {
+    return "WORLD_CONCERT";
+  }
+  // Release premiere before generic auditorium — bind PROGRAM.WORLD_RELEASE / RELEASE_PREMIERE.
+  if (
+    t.includes("world-release") ||
+    t.includes("mini-release") ||
+    t.includes("release-party") ||
+    t.includes("release")
+  ) {
+    return "WORLD_RELEASE";
+  }
+  // Monday Night Stage before generic auditorium — bind PROGRAM.MNS_SHOW.
+  if (t.includes("monday") || t.includes("monday-stage") || t.includes("monday_night")) {
+    return "MONDAY_NIGHT_STAGE";
+  }
+  if (t.includes("auditorium")) return "AUDITORIUM";
+  if (t.includes("feud") || t.includes("game") || t.includes("tune") || t.includes("square")) {
+    return "GAME_SHOW";
+  }
+  if (t.includes("fan-lobby") || t.includes("fan_lobby") || t.includes("lobby")) return "FAN_LOBBY";
+  if (t.includes("lounge") || t.includes("club")) return "LOUNGE";
+  if (t.includes("performer-lobby") || t.includes("performer_lobby")) return "PERFORMER_LOBBY";
+  return "REGULAR_LIVE";
+}
+
+interface VenueAutomatedJumbotronMountProps {
+  roomId: string;
+  eventType?: string | null;
+  venueId?: string;
+  /** When true, surface is revealed (LOOK UP / focus). */
+  lookUpActive?: boolean;
+  /** Optional camera director shared with venue HUD. */
+  cameraDirector?: AvatarCameraDirector;
+  /**
+   * Optional mutable player assignment for JUMBOTRON_FEED (Freedom Law).
+   * Never implies a dedicated jumbotron slot — omit to keep feed off all players.
+   * Physical Jumbotron continues in world regardless.
+   */
+  mirrorFeedToPlayerId?: string;
+  className?: string;
+}
+
+export function VenueAutomatedJumbotronMount({
+  roomId,
+  eventType,
+  venueId,
+  lookUpActive = false,
+  cameraDirector,
+  mirrorFeedToPlayerId,
+  className = "",
+}: VenueAutomatedJumbotronMountProps) {
+  const experienceType = mapArenaEventToJumbotronExperience(eventType);
+
+  const director = useMemo(() => {
+    return new AutomatedJumbotronDirector({
+      roomId,
+      sessionId: `session:${roomId}`,
+      experienceType,
+      venueId: venueId ?? `venue-${roomId}`,
+      venueClass:
+        experienceType === "WORLD_DANCE_PARTY" ||
+        experienceType === "LOUNGE" ||
+        experienceType === "FAN_LOBBY"
+          ? "CLUB"
+          : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
+            ? "AUDITORIUM"
+            : "ARENA",
+      venueSkin: "default",
+      isCurtainClosed: false,
+      participantCount: 0, // honest empty until real presence wired
+      crowdActivityScore: 0,
+      venueEnvironment:
+        experienceType === "WORLD_DANCE_PARTY"
+          ? "WORLD_DANCE_PARTY"
+          : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
+            ? "PROSCENIUM_THEATER"
+            : experienceType === "WORLD_CONCERT"
+              ? "OUTDOOR_STADIUM"
+              : experienceType === "LOUNGE" ||
+                  experienceType === "FAN_LOBBY" ||
+                  experienceType === "PERFORMER_LOBBY"
+                ? "CLUB_SMALL_ROOM"
+                : "INDOOR_ARENA",
+    });
+  }, [roomId, experienceType, venueId]);
+
+  const [focused, setFocused] = useState(false);
+  const [cam] = useState(() => cameraDirector ?? new AvatarCameraDirector());
+  const physical = director.getPhysicalJumbotronDescriptor();
+  const pack = director.getPresentationPack();
+  const [event, setEvent] = useState(() => director.getActiveEvent());
+  const [challengeFacePlan, setChallengeFacePlan] = useState<
+    readonly ChallengeFaceAssignment[] | null
+  >(null);
+  const sightline = useMemo(() => director.certifySightlines(), [director]);
+
+  // Seed experience-appropriate program content (real director events, not fake crowds/scores)
+  useEffect(() => {
+    if (experienceType === "BATTLE_ARENA") {
+      const prog = getActiveBattleProgram();
+      // Show-critical Battle state outranks ads (P2). Never invent MC Nova / fake scores.
+      if (prog?.dualOccupancy && prog.cornerA && prog.cornerB) {
+        if (prog.scores) {
+          const scored = director.postBattleScoreboard({
+            participantA: prog.cornerA.displayName,
+            scoreA: prog.scores.scoreA,
+            participantB: prog.cornerB.displayName,
+            scoreB: prog.scores.scoreB,
+          });
+          setEvent({
+            ...scored,
+            sourceEventId: prog.programSourceId,
+            title: "BATTLE LIVE",
+            headline: `${prog.cornerA.displayName} VS ${prog.cornerB.displayName}`,
+          });
+        } else {
+          setEvent({
+            id: `evt-battle-vs-${roomId}`,
+            traceId: `tr-battle-${roomId}`,
+            priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+            eventType: "ROUND_TIMER_TICK",
+            experienceType: "BATTLE_ARENA",
+            targetClass: pack.primaryTarget,
+            sourceEventId: prog.programSourceId,
+            title: "BATTLE LIVE",
+            headline: `${prog.cornerA.displayName} VS ${prog.cornerB.displayName}`,
+            subline: prog.programSourceId,
+            durationMs: 120_000,
+            createdAtMs: Date.now(),
+            expiresAtMs: Date.now() + 120_000,
+            accentColor: pack.brandPalette.accent,
+            battleScores: {
+              participantA: prog.cornerA.displayName,
+              scoreA: Number.NaN,
+              participantB: prog.cornerB.displayName,
+              scoreB: Number.NaN,
+            },
+          });
+        }
+        // Face preempt via ShowDirector when hooks exist — P2 show-critical over ads.
+        try {
+          const show = new JumbotronShowDirector(venueId ?? `venue-${roomId}`, `session:${roomId}`);
+          show.handleBusEvent({ type: "ROUND_START", roundId: prog.battleId });
+        } catch {
+          /* show director optional — AutomatedJumbotronDirector already holds P2 event */
+        }
+      } else {
+        const name = prog?.cornerA?.displayName?.trim() || "Waiting for competitor";
+        setEvent({
+          id: `evt-battle-solo-${roomId}`,
+          traceId: `tr-battle-solo-${roomId}`,
+          priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+          eventType: "ROUND_TIMER_TICK",
+          experienceType: "BATTLE_ARENA",
+          targetClass: pack.primaryTarget,
+          sourceEventId: prog?.programSourceId ?? "PROGRAM.BATTLE_COMPOSITE",
+          title: "BATTLE",
+          headline: name,
+          subline: "Corner B unlocks when a real competitor joins",
+          durationMs: 120_000,
+          createdAtMs: Date.now(),
+          expiresAtMs: Date.now() + 120_000,
+          accentColor: pack.brandPalette.accent,
+        });
+      }
+    } else if (experienceType === "CHALLENGE_ARENA") {
+      // Objective-first PROGRAM — never Battle VS scoreboard seed.
+      const prog = getActiveChallengeProgram();
+      const objectiveText = prog?.objective.objective?.trim() || "Waiting for objective";
+      const programId = prog?.programSourceId ?? "PROGRAM.CHALLENGE_PRIMARY";
+      const challengerName = prog?.challenger?.displayName?.trim() || null;
+      const phase = prog?.lifecyclePhase ?? "OBJECTIVE_CONTRACT_ASSEMBLY";
+      const isActiveAttempt =
+        phase === "ATTEMPT_1_ACTIVE" || phase === "ATTEMPT_2_ACTIVE";
+      setEvent({
+        id: `evt-challenge-obj-${roomId}`,
+        traceId: `tr-challenge-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: isActiveAttempt
+          ? "CHALLENGE_ATTEMPT_TICK"
+          : phase === "JUDGMENT_OPEN"
+            ? "CHALLENGE_JUDGMENT_OPEN"
+            : phase === "RESULT_PRESENTATION" ||
+                phase === "RESULT_FINALIZED" ||
+                phase === "SETTLEMENT" ||
+                phase === "COMPLETE"
+              ? "CHALLENGE_RESULT"
+              : "CHALLENGE_OBJECTIVE_REVEAL",
+        experienceType: "CHALLENGE_ARENA",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "CHALLENGE",
+        headline: objectiveText,
+        subline: challengerName
+          ? `${challengerName} · ${phase} · ${programId}`
+          : `${phase} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
+      });
+    } else if (experienceType === "CYPHER") {
+      // Real Cypher PROGRAM — mic + next-up; never fake Battle scoreboard.
+      const prog = getActiveCypherProgram();
+      const onMic = prog?.activeMic?.displayName?.trim() || "Waiting for mic";
+      const nextName = prog?.nextUp?.displayName?.trim() || "Awaiting handoff";
+      const programId = prog?.programSourceId ?? "PROGRAM.CYPHER_FOCUS";
+      if (prog?.activeMic) {
+        const next = director.postCypherNextUp(onMic, nextName);
+        setEvent({
+          ...next,
+          sourceEventId: programId,
+          title: "CYPHER",
+          headline: `ON MIC: ${onMic.toUpperCase()}`,
+          subline: `NEXT UP: ${nextName.toUpperCase()} · ${programId}`,
+        });
+      } else {
+        setEvent({
+          id: `evt-cypher-lobby-${roomId}`,
+          traceId: `tr-cypher-${roomId}`,
+          priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+          eventType: "CYPHER_ROTATION_NEXT",
+          experienceType: "CYPHER",
+          targetClass: pack.primaryTarget,
+          sourceEventId: programId,
+          title: "CYPHER",
+          headline: onMic,
+          subline: programId,
+          durationMs: 120_000,
+          createdAtMs: Date.now(),
+          expiresAtMs: Date.now() + 120_000,
+          accentColor: pack.brandPalette.secondary ?? pack.brandPalette.accent,
+        });
+      }
+    } else if (experienceType === "WORLD_CONCERT") {
+      // Real Concert PROGRAM — headliner + now-playing; never invent attendance/tips/scores.
+      const prog = getActiveConcertProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ MINI";
+      const headlinerName = prog?.headliner?.displayName?.trim() || "Waiting for headliner";
+      const nowTitle = prog?.nowPlaying?.title?.trim() || null;
+      const programId =
+        prog?.programSourceId ??
+        (prog?.scope === "WORLD" ? "PROGRAM.WORLD_CONCERT" : "PROGRAM.CONCERT_STAGE");
+      setEvent({
+        id: `evt-concert-${roomId}`,
+        traceId: `tr-concert-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_CONCERT",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD CONCERT" : "MINI CONCERT",
+        headline: nowTitle ? `${headlinerName} · ${nowTitle}` : headlinerName,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "WORLD_DANCE_PARTY") {
+      // Real WDP PROGRAM — DJ + now-playing; never invent dancer counts / tips / scores.
+      const prog = getActiveDancePartyProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const djName = prog?.dj?.displayName?.trim() || "DJ Record Ralph";
+      const nowTitle = prog?.nowPlaying?.title?.trim() || null;
+      const nowArtist = prog?.nowPlaying?.artistName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.WDP_COMPOSITE";
+      const headline = nowTitle
+        ? nowArtist
+          ? `${djName} · ${nowTitle} · ${nowArtist}`
+          : `${djName} · ${nowTitle}`
+        : djName;
+      setEvent({
+        id: `evt-wdp-${roomId}`,
+        traceId: `tr-wdp-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_DANCE_PARTY",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD DANCE PARTY" : "MINI DANCE PARTY",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "MONDAY_NIGHT_STAGE") {
+      // Real MNS PROGRAM — featured + Who's Next; never invent winners / attendance / scores.
+      const prog = getActiveMondayNightStageProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const featuredName = prog?.featured?.displayName?.trim() || null;
+      const hostName = prog?.mainHost?.displayName?.trim() || "Monday Night Stage";
+      const nextName = prog?.whosNext?.displayName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.MNS_SHOW";
+      const headline = featuredName
+        ? nextName
+          ? `${featuredName} · NEXT: ${nextName}`
+          : featuredName
+        : hostName;
+      setEvent({
+        id: `evt-mns-${roomId}`,
+        traceId: `tr-mns-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "MONDAY_NIGHT_STAGE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "MONDAY NIGHT STAGE",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "WORLD_RELEASE") {
+      // Real Release PROGRAM — artist + premiere title; never invent streams / preorders / attendance.
+      const prog = getActiveReleaseProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ MINI";
+      const artistName = prog?.artist?.displayName?.trim() || "Waiting for artist";
+      const releaseTitle = prog?.release?.title?.trim() || null;
+      const countdown = prog?.countdownRemainingSec;
+      const programId =
+        prog?.programSourceId ??
+        (prog?.scope === "WORLD" ? "PROGRAM.WORLD_RELEASE" : "PROGRAM.RELEASE_PREMIERE");
+      const headline = releaseTitle
+        ? countdown != null && countdown > 0
+          ? `${artistName} · ${releaseTitle} · DROP ${countdown}s`
+          : `${artistName} · ${releaseTitle}`
+        : artistName;
+      setEvent({
+        id: `evt-release-${roomId}`,
+        traceId: `tr-release-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "WORLD_RELEASE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: badge.includes("WORLD") ? "WORLD RELEASE" : "MINI RELEASE",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "GAME_SHOW") {
+      // Real Game Show PROGRAM — host + board/turn; never invent contestants / scores / prizes.
+      const prog = getActiveGameShowProgram();
+      const badge = prog?.worldMiniBadge ?? "🌍 WORLD";
+      const hostName = prog?.mainHost?.displayName?.trim() || "Game Show";
+      const boardCat = prog?.board?.category?.trim() || null;
+      const activeName =
+        prog?.contestants.find((c) => c.id === prog.activeContestantId)?.displayName?.trim() ||
+        null;
+      const winnerName =
+        prog?.contestants.find((c) => c.id === prog.winnerId)?.displayName?.trim() || null;
+      const programId = prog?.programSourceId ?? "PROGRAM.GAME_SHOW";
+      const headline = winnerName
+        ? `WINNER · ${winnerName}`
+        : activeName
+          ? `TURN · ${activeName}`
+          : boardCat
+            ? boardCat
+            : hostName;
+      setEvent({
+        id: `evt-game-show-${roomId}`,
+        traceId: `tr-game-show-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "GAME_SHOW",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "GAME SHOW",
+        headline,
+        subline: `${badge} · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "FAN_LOBBY") {
+      // Real Fan Lobby PROGRAM — skin + honest presence; never invent friends / occupancy.
+      const prog = getActiveFanLobbyProgram();
+      const skin = prog?.skinLabel?.trim() || "Fan Lobby";
+      const presence = prog?.presenceCount;
+      const programId = prog?.programSourceId ?? "PROGRAM.FAN_LOBBY";
+      const headline =
+        presence != null ? `${skin} · ${presence} present` : skin;
+      setEvent({
+        id: `evt-fan-lobby-${roomId}`,
+        traceId: `tr-fan-lobby-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "FAN_LOBBY",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "FAN LOBBY",
+        headline,
+        subline: `⭐ FAN · ${programId}`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "LOUNGE") {
+      // Real Lounge PROGRAM — panels only; never invent avatar stadium occupancy.
+      const prog = getActiveLoungeProgram();
+      const badge = prog?.worldMiniBadge ?? "⭐ LOUNGE";
+      const title =
+        prog?.playlistTitle?.trim() ||
+        (prog?.loungeMode === "PLAYLIST_LOUNGE" ? "Playlist Lounge" : "VIP Lounge");
+      const panels = prog?.panelPresenceCount;
+      const programId = prog?.programSourceId ?? "PROGRAM.LOUNGE";
+      const headline =
+        panels != null ? `${title} · ${panels} panels` : title;
+      setEvent({
+        id: `evt-lounge-${roomId}`,
+        traceId: `tr-lounge-${roomId}`,
+        priority: JumbotronPriority.P2_LIVE_EXPERIENCE_CRITICAL,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "LOUNGE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: prog?.loungeMode === "PLAYLIST_LOUNGE" ? "PLAYLIST LOUNGE" : "LOUNGE",
+        headline,
+        subline: `${badge} · ${programId} · NO AVATARS`,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else if (experienceType === "REGULAR_LIVE") {
+      // Same PROGRAM as Performer Live — host identity only, never fake scores/crowd.
+      const prog = getActivePerformerLiveProgram();
+      const hostName = prog?.hostDisplayName?.trim() || "LIVE NOW";
+      const programId = prog?.programSourceId ?? "PROGRAM.PERFORMER_CAMERA";
+      setEvent({
+        id: `evt-regular-live-${roomId}`,
+        traceId: `tr-performer-live-${roomId}`,
+        priority: JumbotronPriority.P6_AMBIENT,
+        eventType: "AMBIENT_UPCOMING_SCHEDULE",
+        experienceType: "REGULAR_LIVE",
+        targetClass: pack.primaryTarget,
+        sourceEventId: programId,
+        title: "PERFORMER LIVE",
+        headline: hostName,
+        subline: programId,
+        durationMs: 120_000,
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        accentColor: pack.brandPalette.accent,
+      });
+    } else {
+      setEvent(director.getActiveEvent());
+    }
+    return () => {
+      director.teardown();
+    };
+  }, [director, experienceType, pack.brandPalette.accent, pack.primaryTarget, roomId, venueId]);
+
+  // Challenge ACGBR four-face plan → existing ShowDirector / FaceTargetRegistry (not a parallel Jumbotron).
+  // P1/P2 Challenge state outranks ads via applyChallengeJumbotronFacePlan priorities.
+  useEffect(() => {
+    if (experienceType !== "CHALLENGE_ARENA") {
+      setChallengeFacePlan(null);
+      return;
+    }
+
+    const syncFaces = () => {
+      const plan = resolveChallengeAcgbrFacePlanForMount();
+      if (!plan || !assertFourDistinctFaceRoles(plan)) {
+        setChallengeFacePlan(null);
+        return;
+      }
+      try {
+        const show = new JumbotronShowDirector(
+          venueId ?? `venue-${roomId}`,
+          `session:${roomId}`
+        );
+        applyChallengeJumbotronFacePlan(show.getFaceRegistry(), plan);
+        for (const assignment of plan) {
+          show.updateFaceState(assignment.face, {
+            sourceId: assignment.creativeId,
+            sponsorCampaignId: assignment.campaignId,
+            overlayText: assignment.role,
+            currentComposition: "FULL",
+          });
+        }
+        setChallengeFacePlan(plan);
+      } catch {
+        /* ShowDirector optional — PROGRAM event still holds P2 objective truth */
+        setChallengeFacePlan(plan);
+      }
+    };
+
+    syncFaces();
+    const timer = window.setInterval(syncFaces, 750);
+    return () => window.clearInterval(timer);
+  }, [experienceType, roomId, venueId]);
+
+  // LOOK UP / DOUBLE-UP focus — aims camera at best face; no session restart
+  useEffect(() => {
+    if (!lookUpActive) {
+      if (focused) {
+        cam.returnToStageView();
+        setFocused(false);
+      }
+      return;
+    }
+    const eye: [number, number, number] = [0, 1.65, 24];
+    cam.focusJumbotron(40, eye, physical.centerPosition);
+    setFocused(true);
+  }, [lookUpActive, cam, physical.centerPosition, focused]);
+
+  // Physical Jumbotron is venue-owned. Optional feed mirror uses ANY player via prop —
+  // never a dedicated "jumbotron slot". Clearing a player does not remove world Jumbotron.
+  useEffect(() => {
+    if (!mirrorFeedToPlayerId) return;
+    const fabric = new CanonicalUniversalPlayerFabric();
+    const feed = director.createJumbotronFeedSource();
+    fabric.mirrorJumbotronFeedToPlayer(feed, mirrorFeedToPlayerId);
+  }, [director, mirrorFeedToPlayerId]);
+
+  // World-space placement: hang above stage center using clearance / architecture (not HUD chrome)
+  const hangTopPercent = Math.max(
+    4,
+    Math.min(28, 100 - (physical.bottomClearanceMeters / Math.max(1, physical.safeRiggingElevationMeters)) * 55)
+  );
+
+  const tierClasses = sightline.tierResults
+    .map((t) => t.tierClass)
+    .filter(Boolean)
+    .join(",");
+
+  const showSurface = lookUpActive || focused;
+  const ceiling = director.getSpatialDimensions().ceilingElevationMeters;
+
+  return (
+    <>
+      {/* R3F architecture mesh — always mounted in production AES/UVR shells */}
+      <div
+        data-testid="audience-scene-jumbotron-layer"
+        data-aes-jumbotron-geometry="true"
+        data-architecture={physical.architecture}
+        data-experience-type={experienceType}
+        data-challenge-acgbr-faces={
+          challengeFacePlan ? challengeFacePlan.map((f) => `${f.face}:${f.role}`).join("|") : ""
+        }
+        data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+        data-jumbotron-look-up={showSurface ? "true" : "false"}
+        data-audience-scene-jumbotron-mounted="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: showSurface ? 5 : 3,
+          opacity: showSurface ? 1 : 0.55,
+          minHeight: 160,
+        }}
+      >
+        <SafeReactThreeCanvas
+          faultContext="AES Jumbotron Geometry"
+          fallbackLabel="Jumbotron geometry paused"
+          style={{ width: "100%", height: "100%", background: "transparent" }}
+          gl={{ alpha: true, antialias: true }}
+          camera={{
+            position: showSurface ? [0, 14, 38] : [0, 6, 42],
+            fov: showSurface ? 42 : 50,
+            near: 0.1,
+            far: 200,
+          }}
+        >
+          <ambientLight intensity={0.55} />
+          <directionalLight position={[8, 24, 12]} intensity={1.1} />
+          <VenueJumbotronGeometry3D
+            descriptor={physical}
+            pack={pack}
+            event={event}
+            challengeFacePlan={challengeFacePlan}
+            ceilingElevationMeters={ceiling}
+          />
+        </SafeReactThreeCanvas>
+      </div>
+
+      {!showSurface ? (
+        <div
+          data-testid="venue-jumbotron-world-anchor"
+          data-architecture={physical.architecture}
+          data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+          data-fov={director.getSpatialDimensions().cameraSphereFovDegrees}
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `${hangTopPercent}%`,
+            transform: "translate(-50%, -50%)",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: 4,
+          }}
+        />
+      ) : (
+        <div
+          data-testid="venue-jumbotron-world-mount"
+          data-architecture={physical.architecture}
+          data-experience-type={experienceType}
+          data-sightlines-certified={sightline.certifiedSightlinesAllOccupiedZones ? "true" : "false"}
+          data-sightline-tiers={tierClasses}
+          data-camera-focus={focused ? "JUMBOTRON" : "STAGE"}
+          className={className}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `${hangTopPercent}%`,
+            transform: "translate(-50%, -50%)",
+            width: "min(42vw, 420px)",
+            zIndex: 6,
+            pointerEvents: "none",
+            filter: "drop-shadow(0 12px 28px rgba(0,255,255,0.25))",
+          }}
+        >
+          <JumbotronSurfaceRenderer
+            event={event}
+            pack={pack}
+            challengeFacePlan={challengeFacePlan}
+            is3DViewportOverlay={false}
+            className="pointer-events-none"
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+export default VenueAutomatedJumbotronMount;

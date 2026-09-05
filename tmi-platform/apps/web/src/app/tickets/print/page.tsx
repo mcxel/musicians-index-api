@@ -252,31 +252,144 @@ function PrintableTicket({ ticket }: { ticket: TicketData }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type TicketErrorCode =
+  | "TICKET_NOT_FOUND"
+  | "TICKET_UNAVAILABLE"
+  | "INVALID_TOKEN"
+  | "ALREADY_USED"
+  | "EVENT_ENDED"
+  | "NETWORK_ERROR"
+  | "INPUT_REQUIRED";
+
+const TICKET_ERROR_META: Record<TicketErrorCode, { message: string; action: string; actionLabel: string }> = {
+  TICKET_NOT_FOUND:   { message: "This ticket doesn't exist.",            action: "clear",  actionLabel: "Try another ticket" },
+  TICKET_UNAVAILABLE: { message: "This ticket is not currently available.", action: "back",   actionLabel: "Go back" },
+  INVALID_TOKEN:      { message: "Invalid ticket token or ID.",             action: "reenter",actionLabel: "Re-enter token" },
+  ALREADY_USED:       { message: "This ticket has already been redeemed.",  action: "back",   actionLabel: "Go back" },
+  EVENT_ENDED:        { message: "This event has ended.",                   action: "browse", actionLabel: "Browse events" },
+  NETWORK_ERROR:      { message: "Connection failed — check your network.", action: "retry",  actionLabel: "Retry" },
+  INPUT_REQUIRED:     { message: "Enter a ticket ID.",                      action: "none",   actionLabel: "" },
+};
+
 export default function TicketPrintPage() {
-  const [ticketId, setTicketId] = useState("TMI-2026-001");
-  const [ticket, setTicket] = useState<TicketData>(DEMO_TICKET);
+  const [ticketId, setTicketId] = useState("");
+  const [ticket, setTicket] = useState<TicketData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorCode, setErrorCode] = useState<TicketErrorCode | null>(null);
   const [error, setError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [rawJson, setRawJson] = useState<string>("");
+
+  function setTicketError(code: TicketErrorCode, override?: string) {
+    setErrorCode(code);
+    setError(override ?? TICKET_ERROR_META[code].message);
+  }
 
   async function fetchTicket() {
-    if (!ticketId.trim()) return;
+    if (!ticketId.trim()) {
+      setTicketError("INPUT_REQUIRED");
+      return;
+    }
     setLoading(true);
+    setErrorCode(null);
     setError("");
     try {
-      const res = await fetch(`/api/tickets/print?ticketId=${encodeURIComponent(ticketId)}`, { cache: "no-store" });
-      if (!res.ok) { setError("Ticket not found"); return; }
-      const data = await res.json() as { success?: boolean; payload?: { venue?: string; event?: string } };
-      if (!data.success) { setError("Ticket not found"); return; }
-      // Merge any real data from the API response into the ticket
-      setTicket({
+      // Canonical load — preview/management on this page. NEVER redirect to Venue Hub.
+      const res = await fetch(
+        `/api/tickets/digital?ticketId=${encodeURIComponent(ticketId.trim())}`,
+        { cache: "no-store", credentials: "include" },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const t = data.ticket as {
+          id: string;
+          template?: { eventSlug?: string; venueSlug?: string; tier?: string; faceValue?: number };
+          branding?: { eventBranding?: string; venueLogo?: string };
+          seat?: { section?: string; row?: string; seat?: string };
+          barcode?: { barcodeValue?: string; qrValue?: string };
+          mintedAt?: string;
+          artworkUrl?: string | null;
+          priceCents?: number;
+          redeemed?: boolean;
+        };
+        if (t?.id) {
+          const mapped: TicketData = {
+            id: t.id,
+            eventName: t.branding?.eventBranding || t.template?.eventSlug || "TMI Event",
+            venueName: t.template?.venueSlug || "Digital Venue",
+            venueAddress: "The Musician's Index · Digital / Broadcast",
+            date: t.mintedAt ? new Date(t.mintedAt).toLocaleDateString() : "—",
+            doorsOpen: "—",
+            showTime: "—",
+            section: t.seat?.section || "GA",
+            row: t.seat?.row || "—",
+            seat: t.seat?.seat || "—",
+            holderName: "Ticket Holder",
+            ticketType: t.template?.tier || "STANDARD",
+            price:
+              typeof t.priceCents === "number"
+                ? `$${(t.priceCents / 100).toFixed(2)}`
+                : typeof t.template?.faceValue === "number"
+                  ? `$${t.template.faceValue.toFixed(2)}`
+                  : "—",
+            barcode: t.barcode?.qrValue || t.barcode?.barcodeValue || t.id,
+            issueDate: t.mintedAt?.slice(0, 10) || "—",
+            accentColor: t.redeemed ? "#FF9500" : "#00FFFF",
+          };
+          setTicket(mapped);
+          setRawJson(JSON.stringify(data, null, 2));
+          setModalOpen(true);
+          return;
+        }
+      }
+
+      // Map non-ok primary response to a specific error code
+      if (!res.ok) {
+        let code: TicketErrorCode = "TICKET_NOT_FOUND";
+        try {
+          const errData = await res.json() as { error?: string; reason?: string };
+          const raw = errData.error ?? errData.reason ?? "";
+          if (raw.includes("token") || raw.includes("invalid"))        code = "INVALID_TOKEN";
+          else if (raw.includes("redeemed") || raw.includes("used"))   code = "ALREADY_USED";
+          else if (raw.includes("ended") || raw.includes("expired"))   code = "EVENT_ENDED";
+          else if (raw.includes("unavail") || raw.includes("suspend")) code = "TICKET_UNAVAILABLE";
+        } catch { /* keep code as NOT_FOUND */ }
+        setTicketError(code);
+        setTicket(null);
+        return;
+      }
+
+      // Fallback: print payload (still stay on this page)
+      const printRes = await fetch(
+        `/api/tickets/print?ticketId=${encodeURIComponent(ticketId.trim())}`,
+        { cache: "no-store" },
+      );
+      if (!printRes.ok) {
+        setTicketError("TICKET_NOT_FOUND");
+        setTicket(null);
+        return;
+      }
+      const printData = (await printRes.json()) as {
+        success?: boolean;
+        payload?: { venue?: string; event?: string; ticketId?: string; barcodeData?: string };
+      };
+      if (!printData.success) {
+        setTicketError("TICKET_NOT_FOUND");
+        setTicket(null);
+        return;
+      }
+      const mapped: TicketData = {
         ...DEMO_TICKET,
-        id: ticketId,
-        ...(data.payload?.venue ? { venueName: data.payload.venue } : {}),
-        ...(data.payload?.event ? { eventName: data.payload.event } : {}),
-        barcode: `TMI${ticketId.replace(/[^A-Z0-9]/gi, "")}`,
-      });
+        id: ticketId.trim(),
+        venueName: printData.payload?.venue || DEMO_TICKET.venueName,
+        eventName: printData.payload?.event || DEMO_TICKET.eventName,
+        barcode: printData.payload?.barcodeData || `TMI${ticketId.replace(/[^A-Z0-9]/gi, "")}`,
+      };
+      setTicket(mapped);
+      setRawJson(JSON.stringify(printData, null, 2));
+      setModalOpen(true);
     } catch {
-      setError("Network error fetching ticket");
+      setTicketError("NETWORK_ERROR");
     } finally {
       setLoading(false);
     }
@@ -288,7 +401,6 @@ export default function TicketPrintPage() {
 
   return (
     <>
-      {/* Print-only styles */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -299,7 +411,6 @@ export default function TicketPrintPage() {
       `}</style>
 
       <main style={{ minHeight: "100vh", background: "#03020a", color: "#fff", paddingBottom: 80 }}>
-        {/* Header */}
         <div className="no-print" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "18px 24px", display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/tickets" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textDecoration: "none", letterSpacing: "0.2em" }}>← TICKETS</Link>
           <div style={{ flex: 1 }}>
@@ -310,94 +421,112 @@ export default function TicketPrintPage() {
             <Link href="/tickets/print-batch" style={{ padding: "8px 16px", border: "1px solid rgba(196,181,253,0.3)", borderRadius: 6, color: "#c4b5fd", fontSize: 10, fontWeight: 700, textDecoration: "none" }}>
               BATCH PRINT
             </Link>
-            <Link href="/admin/ticket-scanner" style={{ padding: "8px 16px", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 6, color: "#00FFFF", fontSize: 10, fontWeight: 700, textDecoration: "none" }}>
+            <Link href="/tickets/scanner" style={{ padding: "8px 16px", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 6, color: "#00FFFF", fontSize: 10, fontWeight: 700, textDecoration: "none" }}>
               SCANNER
             </Link>
           </div>
         </div>
 
         <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 20px" }}>
-
-          {/* Lookup */}
           <div className="no-print" style={{ background: "rgba(196,181,253,0.05)", border: "1px solid rgba(196,181,253,0.2)", borderRadius: 12, padding: "16px 20px", marginBottom: 24, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>TICKET ID</div>
               <input
                 value={ticketId}
                 onChange={(e) => setTicketId(e.target.value)}
-                placeholder="e.g. TMI-2026-001"
+                placeholder="e.g. tkt-123456"
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(196,181,253,0.3)", background: "rgba(0,0,0,0.4)", color: "#fff", fontSize: 13, outline: "none" }}
-                onKeyDown={(e) => e.key === "Enter" && fetchTicket()}
+                onKeyDown={(e) => e.key === "Enter" && void fetchTicket()}
               />
             </div>
             <button
-              onClick={fetchTicket}
+              onClick={() => void fetchTicket()}
               disabled={loading}
               style={{ padding: "10px 20px", background: "#c4b5fd", border: "none", borderRadius: 8, color: "#050510", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
             >
               {loading ? "LOADING…" : "LOAD TICKET"}
             </button>
-            {error && <div style={{ width: "100%", color: "#FF2DAA", fontSize: 11 }}>{error}</div>}
-          </div>
-
-          {/* Ticket preview */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-            <PrintableTicket ticket={ticket} />
-
-            {/* Print controls */}
-            <div className="no-print" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-              <button
-                onClick={handlePrint}
-                style={{ padding: "14px 36px", background: "#00FFFF", border: "none", borderRadius: 8, color: "#050510", fontSize: 12, fontWeight: 900, cursor: "pointer", letterSpacing: "0.15em" }}
-              >
-                🖨️ PRINT TICKET
-              </button>
-              <button
-                onClick={() => {
-                  const el = document.getElementById("printable-ticket");
-                  if (!el) return;
-                  const text = `${ticket.eventName}\n${ticket.date} · ${ticket.showTime}\nSection: ${ticket.section} · Row: ${ticket.row} · Seat: ${ticket.seat}\nID: ${ticket.id}`;
-                  navigator.clipboard.writeText(text);
-                }}
-                style={{ padding: "14px 24px", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", background: "transparent" }}
-              >
-                📋 COPY INFO
-              </button>
-              <Link
-                href={`/api/tickets/${ticket.id}/print`}
-                target="_blank"
-                style={{ display: "inline-block", padding: "14px 24px", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 8, color: "#00FFFF", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-              >
-                📄 RAW DATA
-              </Link>
-            </div>
-
-            {/* NFT ticket option */}
-            <div className="no-print" style={{ width: "100%", maxWidth: 680, background: "rgba(170,45,255,0.06)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 10, color: "#AA2DFF", fontWeight: 900, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 4 }}>NFT Ticket Option</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Mint this ticket as a collectible NFT — proof of attendance, tradeable on TMI marketplace.</div>
+            {error && (
+              <div style={{ width: "100%" }}>
+                <div style={{ color: "#FF2DAA", fontSize: 11, marginBottom: errorCode && TICKET_ERROR_META[errorCode].action !== "none" ? 6 : 0 }}>
+                  {errorCode && <strong style={{ fontFamily: "monospace", marginRight: 6, opacity: 0.6 }}>[{errorCode}]</strong>}
+                  {error}
+                </div>
+                {errorCode && TICKET_ERROR_META[errorCode].action !== "none" && (() => {
+                  const meta = TICKET_ERROR_META[errorCode];
+                  if (meta.action === "clear")  return <button type="button" onClick={() => { setTicketId(""); setError(""); setErrorCode(null); }} style={{ background: "none", border: "1px solid rgba(255,45,170,0.4)", color: "#FF2DAA", fontSize: 9, padding: "3px 10px", borderRadius: 5, cursor: "pointer" }}>{meta.actionLabel}</button>;
+                  if (meta.action === "reenter") return <button type="button" onClick={() => { setError(""); setErrorCode(null); }} style={{ background: "none", border: "1px solid rgba(255,45,170,0.4)", color: "#FF2DAA", fontSize: 9, padding: "3px 10px", borderRadius: 5, cursor: "pointer" }}>{meta.actionLabel}</button>;
+                  if (meta.action === "retry")   return <button type="button" onClick={() => void fetchTicket()} style={{ background: "none", border: "1px solid rgba(255,45,170,0.4)", color: "#FF2DAA", fontSize: 9, padding: "3px 10px", borderRadius: 5, cursor: "pointer" }}>{meta.actionLabel}</button>;
+                  if (meta.action === "browse")  return <a href="/venues" style={{ display: "inline-block", border: "1px solid rgba(255,45,170,0.4)", color: "#FF2DAA", fontSize: 9, padding: "3px 10px", borderRadius: 5, textDecoration: "none" }}>{meta.actionLabel}</a>;
+                  if (meta.action === "back")    return <a href="/tickets" style={{ display: "inline-block", border: "1px solid rgba(255,45,170,0.4)", color: "#FF2DAA", fontSize: 9, padding: "3px 10px", borderRadius: 5, textDecoration: "none" }}>{meta.actionLabel}</a>;
+                  return null;
+                })()}
               </div>
-              <Link href="/avatar/nft" style={{ display: "inline-block", padding: "10px 20px", background: "#AA2DFF", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 900, textDecoration: "none", flexShrink: 0 }}>
-                MINT AS NFT →
-              </Link>
-            </div>
+            )}
+          </div>
 
-            {/* Venue/Brick & Mortar note */}
-            <div className="no-print" style={{ width: "100%", maxWidth: 680, background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.15)", borderRadius: 12, padding: "14px 18px", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
-              <span style={{ color: "#00FFFF", fontWeight: 800 }}>Brick & Mortar Venues:</span> Use the Print button above to produce a physical ticket on any printer. Venues can customize the ticket template, add their own logo, seat map, and barcode via{" "}
-              <Link href="/admin/venue-ticket-templates" style={{ color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>Admin → Venue Ticket Templates</Link>.
-              The barcode is scannable via the{" "}
-              <Link href="/tickets/scanner" style={{ color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>Ticket Scanner</Link>.
+          {ticket ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+              <PrintableTicket ticket={ticket} />
+              <div className="no-print" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  onClick={handlePrint}
+                  style={{ padding: "14px 36px", background: "#00FFFF", border: "none", borderRadius: 8, color: "#050510", fontSize: 12, fontWeight: 900, cursor: "pointer", letterSpacing: "0.15em" }}
+                >
+                  🖨️ PRINT TICKET
+                </button>
+                <button
+                  onClick={() => setModalOpen(true)}
+                  style={{ padding: "14px 24px", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", background: "transparent" }}
+                >
+                  Manage / Preview
+                </button>
+                <Link
+                  href={`/ticket/verify/${encodeURIComponent(ticket.id)}`}
+                  style={{ display: "inline-block", padding: "14px 24px", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 8, color: "#00FFFF", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                >
+                  Open Verify
+                </Link>
+              </div>
+              <div className="no-print" style={{ width: "100%", maxWidth: 680, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", fontWeight: 800, textTransform: "uppercase", marginBottom: 14 }}>VENUE PRINT ENGINE</div>
+                <VenueTicketPrinter tickets={[toVenueTicket(ticket)]} showBatchPrint={false} />
+              </div>
             </div>
+          ) : (
+            <div className="no-print" style={{ textAlign: "center", padding: 48, color: "rgba(255,255,255,0.35)", fontSize: 13 }}>
+              Enter a ticket ID and press LOAD TICKET to open the preview / management modal.
+            </div>
+          )}
+        </div>
 
-            {/* Venue Ticket Engine — VenueTicketPrinter view */}
-            <div className="no-print" style={{ width: "100%", maxWidth: 680, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px" }}>
-              <div style={{ fontSize: 8, letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", fontWeight: 800, textTransform: "uppercase", marginBottom: 14 }}>VENUE PRINT ENGINE</div>
-              <VenueTicketPrinter tickets={[toVenueTicket(ticket)]} showBatchPrint={false} />
+        {modalOpen && ticket ? (
+          <div
+            className="no-print"
+            role="dialog"
+            style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+            onClick={() => setModalOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: "min(720px, 100%)", maxHeight: "90vh", overflow: "auto", background: "#0a0714", border: "1px solid rgba(196,181,253,0.35)", borderRadius: 16, padding: 20 }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#c4b5fd", fontWeight: 800 }}>TICKET PREVIEW / MANAGEMENT</div>
+                  <div style={{ fontSize: 16, fontWeight: 900 }}>{ticket.id}</div>
+                </div>
+                <button type="button" onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>
+                  Close
+                </button>
+              </div>
+              <PrintableTicket ticket={ticket} />
+              {rawJson ? (
+                <pre style={{ marginTop: 14, fontSize: 10, color: "rgba(255,255,255,0.45)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{rawJson}</pre>
+              ) : null}
             </div>
           </div>
-        </div>
+        ) : null}
       </main>
     </>
   );

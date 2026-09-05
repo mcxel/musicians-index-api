@@ -32,6 +32,8 @@ import { ExperienceOrchestrator } from '../../lib/experience/ExperienceOrchestra
 import { initializeExperienceBroadcastBridge } from '@/lib/broadcast/ExperienceBroadcastBridge';
 import { recordStageEvent } from '@/lib/live/stageTelemetryStore';
 import PersistentGauntletPanel from '@/components/gauntlet/PersistentGauntletPanel';
+import { useCompactQuickPanelStore } from '@/lib/hud/compactQuickPanelStore';
+import { startVideoShuffle, exitVideoShuffle, isVideoShuffleActive } from '@/lib/shuffle/VideoShuffleModeRuntime';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -836,14 +838,11 @@ export default function TMILiveRoomExperience({
                     ['playlist',    '🎵', 'Playlist'],
                     ['memories',    '🧠', 'Memories'],
                     ['photos',      '📸', 'Photos'],
-                    ['media-locker','🎬', 'Media Locker'],
                     ['achievements','🏆', 'Achievements'],
                     ['rewards',     '⭐', 'Rewards'],
                     ['stats',       '📊', 'Stats'],
                     ['inventory',   '🎒', 'Inventory'],
-                    ['uploads',     '⬆️', 'Uploads'],
                     ['saved',       '💾', 'Saved'],
-                    ['favorites',   '❤️', 'Favorites'],
                   ] as const).map(([tab, icon, label]) => (
                     <button
                       key={tab}
@@ -991,8 +990,14 @@ export default function TMILiveRoomExperience({
             icon="📷" label="CAM" active={camOn} accentColor={accentColor}
             onClick={() => { const next = !camOn; setCamOn(next); onCamToggle?.(next); }}
           />
-          <HudButton icon="✋" label="RAISE HAND" accentColor="#FFD700" />
-          <HudButton icon="😊" label="EMOTES" accentColor="#AA2DFF" />
+          <HudButton icon="📱" label="SNIPS" accentColor="#FFD700" onClick={() => useCompactQuickPanelStore.getState().openPanel("snips", "bottom-right")} />
+          <HudButton icon="🔀" label="VIDEO SHUFFLE" accentColor="#AA2DFF" onClick={() => { if (isVideoShuffleActive()) exitVideoShuffle(); else void startVideoShuffle(); }} />
+          <HudButton
+            icon="🏠"
+            label="LOBBIES"
+            accentColor="#FFD700"
+            onClick={() => useCompactQuickPanelStore.getState().togglePanel("lobbies", "bottom-left")}
+          />
 
           <div style={{ flex: 1 }} />
 
@@ -1144,30 +1149,6 @@ export default function TMILiveRoomExperience({
           >
             🛑 END SHOW
           </button>
-        </div>
-
-        {/* Bottom nav strip (RECORD / SHARE / QUALITY etc) */}
-        <div style={{
-          padding: '5px 16px', background: 'rgba(0,0,0,0.9)',
-          display: 'flex', alignItems: 'center', gap: 4,
-          borderTop: '1px solid rgba(255,255,255,0.04)',
-        }}>
-          {['🏠 HOME','🔍 DISCOVER','🔴 LIVE NOW','🌐 LOBBY','💬 MESSAGES','🔔 NOTIF','📸 SCREENSHOT','⏺ RECORD','📤 SHARE',`📺 ${quality}`].map(label => (
-            <button key={label} style={{
-              background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-              fontSize: 8, cursor: 'pointer', padding: '3px 8px', borderRadius: 4,
-              fontWeight: 700, letterSpacing: '0.06em',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => ((e.target as HTMLButtonElement).style.color = '#fff')}
-            onMouseLeave={e => ((e.target as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)')}
-            >
-              {label}
-            </button>
-          ))}
-          <div style={{ marginLeft: 'auto', fontSize: 8, color: '#00FF88', fontWeight: 900, letterSpacing: '0.1em' }}>
-            PERFECT CONNECTION 48ms
-          </div>
         </div>
       </div>
 

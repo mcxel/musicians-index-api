@@ -14,6 +14,8 @@
  * 8. Bots escalate risky situations to the governance chain (Marcel/Big Ace/MC)
  */
 
+import { canOneToOneSocial } from "@/lib/trustSafety/YouthSocialGuard";
+
 export type PolicyViolation = {
   violationId: string;
   botId: string;
@@ -73,6 +75,9 @@ export type BotActionRequest = {
   botLabelVisible?: boolean;
   isImpersonatingHuman?: boolean;
   isLogged?: boolean;
+  isOneToOneSocial?: boolean;
+  targetUserId?: string;
+  targetAgeYears?: number | null;
 };
 
 const ESCALATION_CHAIN = ["big-ace", "mc", "sentinel", "marcel-root"];
@@ -166,6 +171,28 @@ export function enforceBotPolicy(request: BotActionRequest): PolicyCheckResult {
         escalatedTo: ESCALATION_CHAIN,
       })
     );
+  }
+
+  if (request.isOneToOneSocial === true) {
+    const decision = canOneToOneSocial(
+      { userId: request.botId, isBot: true, ageYears: null },
+      {
+        userId: request.targetUserId ?? "",
+        ageYears: request.targetAgeYears ?? null,
+      },
+    );
+    if (!decision.allowed) {
+      violations.push(
+        logViolation({
+          botId: request.botId,
+          botLabel: request.botLabel,
+          rule: "RULE_AGE_SEPARATION",
+          attemptedAction: request.action,
+          blocked: true,
+          escalatedTo: ESCALATION_CHAIN,
+        })
+      );
+    }
   }
 
   // RULE 7: All actions must be logged

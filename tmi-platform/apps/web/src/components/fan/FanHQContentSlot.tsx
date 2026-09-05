@@ -11,23 +11,21 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useMemo } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
-import YoPhoOpenFullStudioButton from "@/components/yopho/YoPhoOpenFullStudioButton";
+import YoPhoActivityHub from "@/components/yopho/YoPhoActivityHub";
+import { resolveFanWorldEntry } from "@/lib/live/canonicalWorldViewport";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   ssr: false,
   loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
 });
 
-const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
-  ssr: false,
-  loading: () => <SlotLoading label="Loading YoPho Card…" />,
-});
 
 export type FanHQSlotPanel = "lobby" | "yopho" | "playlist" | "memory" | "inventory";
 
@@ -89,38 +87,6 @@ function SlotLoading({ label }: { label: string }) {
   );
 }
 
-function FanYoPhoSlotEditor({
-  fanDisplayName,
-  fanId,
-}: {
-  fanDisplayName: string;
-  fanId: string;
-}) {
-  return (
-    <div style={{ padding: "12px 16px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FF2DAA" }}>
-            YOPHO CARD · WHO I AM RIGHT NOW
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-            Interactive motor card · song · share URL
-          </div>
-        </div>
-        <YoPhoOpenFullStudioButton role="fan" userId={fanId} label="FULL STUDIO →" />
-      </div>
-      <YoPhoTradingCard
-        role="fan"
-        displayName={fanDisplayName}
-        userKey={fanId}
-        compact
-        showEditor
-        showShare
-        showMoneyCtas
-      />
-    </div>
-  );
-}
 
 export default function FanHQContentSlot({
   activePanel,
@@ -128,13 +94,22 @@ export default function FanHQContentSlot({
   fanDisplayName,
   onClose,
 }: FanHQContentSlotProps) {
-  const roomId = useMemo(() => `fan-lobby-hq-${fanId}`, [fanId]);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const roomId = useMemo(
+    () =>
+      resolveFanWorldEntry({
+        publishedRoomId: publishedRoomId ?? inPlaceRoomId,
+        from: "fan-hq",
+      }).roomId,
+    [publishedRoomId, inPlaceRoomId],
+  );
   const open = activePanel != null;
   const title =
     activePanel === "lobby"
-      ? "AVATAR FAN LOBBY · CINEMA SKIN"
+      ? "AVATAR FAN LOBBY · VENUE ENTRY"
       : activePanel === "yopho"
-        ? "YOPHO PAGE EDITOR"
+        ? "YOPHO"
         : activePanel === "playlist"
           ? "PLAYLISTS"
           : activePanel === "memory"
@@ -243,7 +218,7 @@ export default function FanHQContentSlot({
                 ) : null}
 
                 {activePanel === "yopho" ? (
-                  <FanYoPhoSlotEditor fanDisplayName={fanDisplayName} fanId={fanId} />
+                  <YoPhoActivityHub role="fan" displayName={fanDisplayName} userId={fanId} />
                 ) : null}
 
                 {activePanel === "playlist" ? (

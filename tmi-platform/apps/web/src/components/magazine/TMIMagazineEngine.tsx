@@ -36,6 +36,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import SafeMagazineImage from "./SafeMagazineImage";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type ArticleCategory =
@@ -459,7 +460,7 @@ export function TMIArticlePage({
       {/* Hero */}
       <div className="relative mx-4 mt-3 rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
         {article.coverUrl ? (
-          <img src={article.coverUrl} alt={article.title} className="w-full h-full object-cover" />
+          <SafeMagazineImage src={article.coverUrl} alt={article.title} className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full"

@@ -1,12 +1,10 @@
 'use client';
 
 /**
- * LobbyCategoryPillRow — horizontal category filter matching the Lobbies wall
- * reference design (Live Now / Games / Challenges / Cypher / Lounges / Avatars /
- * Playlists). Purely presentational — the parent owns what each pill means and
- * what data backs it. No fake counts, no hardcoded categories baked in here.
+ * LobbyCategoryPillRow — horizontal category filter for the Lobbies wall.
+ * Parent owns categories (see LOBBY_WALL_CORE_CATEGORY_TABS in liveLobbyWallLaw).
+ * Purely presentational — icons + brand accent colors on pills.
  */
-
 export type LobbyCategoryPill = {
   id: string;
   label: string;
@@ -25,6 +23,7 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
     <div
       role="tablist"
       aria-label="Lobby content categories"
+      data-lobby-category-tabs
       style={{
         display: 'flex',
         gap: 8,
@@ -33,6 +32,8 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
         padding: '4px 2px 10px',
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-x',
+        scrollSnapType: 'x proximity',
       }}
     >
       {items.map((pill) => {
@@ -61,6 +62,8 @@ export default function LobbyCategoryPillRow({ items, activeId, onSelect }: Lobb
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'all 150ms ease',
+              scrollSnapAlign: 'start',
+              touchAction: 'manipulation',
             }}
           >
             {pill.icon && <span aria-hidden="true">{pill.icon}</span>}

@@ -61,6 +61,7 @@ const PROVISION_TO_PRISMA: Record<ProvisionAccountType, Role> = {
   PROMOTER: "PROMOTER",
   SPONSOR: "SPONSOR",
   ADVERTISER: "ADVERTISER",
+  PRODUCER: "PERFORMER",
 };
 
 const VALID_TIERS = new Set([

@@ -74,11 +74,32 @@ export function AvatarSocketAttachment({ attachment }: { attachment: SocketAttac
           ? 0.6 + pulse
           : 0.35;
       }
+    } else if (anim === "cannon_burst") {
+      g.rotation.z = Math.sin(t * 10) * 0.15;
+      particleRefs.current.forEach((p, i) => {
+        if (!p) return;
+        const phase = t * 5 + i * 0.7;
+        p.position.set(
+          Math.sin(phase) * 0.22,
+          0.12 + Math.abs(Math.sin(phase * 1.1)) * 0.35,
+          Math.cos(phase) * 0.15,
+        );
+        const mat = p.material as THREE.MeshStandardMaterial;
+        mat.opacity = active ? 0.5 + Math.abs(Math.sin(phase * 2)) * 0.5 : 0.2;
+        mat.emissiveIntensity = active ? 1.6 : 0.3;
+      });
+    } else if (anim === "instrument_strum") {
+      g.position.y = offset[1] + Math.sin(t * 5.5) * (active ? 0.05 : 0.02);
+      g.rotation.z = Math.sin(t * 4) * 0.18;
+    } else if (anim === "heart_float") {
+      g.position.y = offset[1] + Math.sin(t * 2.2) * 0.06;
+      g.rotation.y = t * 0.8;
     }
   });
 
   const showFlame = anim === "flame_flicker" || anim === "candle_glow" || anim === "glow_pulse";
-  const showSparks = anim === "sparkler_burst";
+  const showSparks = anim === "sparkler_burst" || anim === "cannon_burst";
+  const showHearts = anim === "heart_float";
 
   return (
     <group ref={groupRef} position={offset} scale={scale}>
@@ -120,7 +141,7 @@ export function AvatarSocketAttachment({ attachment }: { attachment: SocketAttac
       )}
 
       {showSparks &&
-        [0, 1, 2, 3, 4].map((i) => (
+        [0, 1, 2, 3, 4, ...(anim === "cannon_burst" ? [5, 6, 7] : [])].map((i) => (
           <mesh
             key={i}
             ref={(el) => {
@@ -128,7 +149,7 @@ export function AvatarSocketAttachment({ attachment }: { attachment: SocketAttac
             }}
             position={[0, 0.1, 0]}
           >
-            <sphereGeometry args={[0.025, 6, 6]} />
+            <sphereGeometry args={[anim === "cannon_burst" ? 0.035 : 0.025, 6, 6]} />
             <meshStandardMaterial
               color={color}
               emissive={color}
@@ -139,8 +160,21 @@ export function AvatarSocketAttachment({ attachment }: { attachment: SocketAttac
           </mesh>
         ))}
 
+      {showHearts && (
+        <mesh ref={flameRef} position={[0, 0.14, 0.01]}>
+          <sphereGeometry args={[0.07, 10, 10]} />
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={1.1}
+            transparent
+            opacity={0.9}
+          />
+        </mesh>
+      )}
+
       {/* Local point light for room atmosphere coupling when active */}
-      {(showFlame || showSparks || anim === "mic_pulse") && active && (
+      {(showFlame || showSparks || showHearts || anim === "mic_pulse" || anim === "instrument_strum") && active && (
         <pointLight color={color} intensity={showFlame || showSparks ? 1.4 : 0.6} distance={2.5} decay={2} />
       )}
     </group>

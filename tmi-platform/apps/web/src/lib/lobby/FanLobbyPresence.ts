@@ -156,7 +156,7 @@ export interface FanLobbyPresence {
   isSpeaking: boolean;
   /** Same signal as isSpeaking until room-level speaker arbitration exists. */
   activeSpeaker: boolean;
-  /** Optional inventory bind — omit/null until loadout wiring exists. */
+  /** Optional inventory bind — wired from Studio via FanEquippedLookBridge when the fan has saved a look. */
   loadoutId?: string | null;
 }
 

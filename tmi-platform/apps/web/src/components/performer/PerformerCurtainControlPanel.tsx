@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useLegacyVenueMountGuard } from "@/lib/venue/useLegacyVenueMountGuard";
 import {
   executeCurtainTransition,
   getCanonicalTimerSnapshot,
@@ -67,6 +68,7 @@ export default function PerformerCurtainControlPanel({
   accentColor = "#FF2DAA",
   compact = false,
 }: PerformerCurtainControlPanelProps) {
+  useLegacyVenueMountGuard("PerformerCurtainControlPanel", "components/performer/PerformerCurtainControlPanel.tsx", "LEGACY-VENUE-002");
   const sessionId = sessionIdProp ?? `curtain-session-${performerId}`;
   const [curtainState, setCurtainState] = useState<CurtainState>("PRE_SHOW");
   const [timer, setTimer] = useState<CanonicalTimerSnapshot | undefined>();

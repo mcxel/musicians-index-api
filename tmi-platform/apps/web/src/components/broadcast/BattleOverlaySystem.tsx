@@ -656,37 +656,9 @@ function PhaseControlBar({ phase, onPhaseChange }: {
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────────────
+// No fabricated contestants / vote % (Rule 20). Callers pass real props or get honest empty.
 
-const DEFAULT_A: BattleContestant = {
-  id: "a",
-  name: "JAY CARTER",
-  city: "Sacramento, CA",
-  genre: "Hip-Hop",
-  record: "14–2",
-  rank: 8,
-  emoji: "🎤",
-  accentColor: "#FF6B1A",
-  side: "A",
-};
-
-const DEFAULT_B: BattleContestant = {
-  id: "b",
-  name: "MIKE WAVE",
-  city: "Atlanta, GA",
-  genre: "Trap",
-  record: "10–3",
-  rank: 12,
-  emoji: "🎙️",
-  accentColor: "#00D4FF",
-  side: "B",
-};
-
-const DEFAULT_CYPHER_QUEUE: CypherPerformer[] = [
-  { id: "1", name: "Tiana (TG)", status: "active", emoji: "🎤", accentColor: "#FF6B1A", timeLeft: 82 },
-  { id: "2", name: "Julius", status: "next", emoji: "🦦", accentColor: "#FFD700" },
-  { id: "3", name: "Redbeard", status: "completed", emoji: "🎙️", accentColor: "#9B59FF" },
-  { id: "4", name: "Record Ralph", status: "queued", emoji: "🎧", accentColor: "#00D4FF" },
-];
+const DEFAULT_CYPHER_QUEUE: CypherPerformer[] = [];
 
 // ─── Main component ─────────────────────────────────────────────────────────────
 
@@ -694,15 +666,15 @@ export default function BattleOverlaySystem({
   mode = "battle",
   phase: controlledPhase,
   onPhaseChange,
-  contestantA = DEFAULT_A,
-  contestantB = DEFAULT_B,
+  contestantA,
+  contestantB,
   cypherQueue = DEFAULT_CYPHER_QUEUE,
-  voteA = 62,
-  voteB = 38,
-  totalVotes = 61000,
+  voteA,
+  voteB,
+  totalVotes,
   winnerSide,
-  winnerPrize = "$2,500",
-  winnerScore = "98.7",
+  winnerPrize,
+  winnerScore,
   showOverlayLibrary = true,
   showPhaseControls = true,
 }: BattleOverlaySystemProps) {
@@ -713,8 +685,44 @@ export default function BattleOverlaySystem({
     onPhaseChange?.(p);
   };
 
+  // Cypher shell: persistent queue + reactions only — no VS / FINAL VOTE / WINNER (unless king via parent phase omit)
+  if (mode === "cypher") {
+    return (
+      <div style={{ color: "#E8E8FF", fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div
+          style={{
+            background: "rgba(10,10,26,0.95)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 12,
+            padding: "14px 18px",
+            marginBottom: 14,
+          }}
+        >
+          {cypherQueue.length === 0 ? (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+              Cypher queue empty — join to enter rotation.
+            </div>
+          ) : (
+            <CypherRuntimePanels queue={cypherQueue} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Rule 20: no fabricated contestants or vote % — wait for real props
+  if (!contestantA || !contestantB) {
+    return (
+      <div style={{ padding: 16, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+        Waiting for contestants…
+      </div>
+    );
+  }
+
   const winner = winnerSide === "B" ? contestantB : contestantA;
   const freestyleActive = phase === "perform";
+  const hasVoteTelemetry =
+    typeof voteA === "number" && typeof voteB === "number" && typeof totalVotes === "number";
 
   return (
     <div style={{ color: "#E8E8FF", fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -730,7 +738,7 @@ export default function BattleOverlaySystem({
           assetId="beat-001"
           userRecordingOrBroadcasting
           freestyleActive={freestyleActive}
-          surface={mode === "cypher" ? "CYPHER" : mode === "challenge" ? "CHALLENGE" : "BATTLE"}
+          surface={mode === "challenge" ? "CHALLENGE" : "BATTLE"}
           compact
         />
       </div>
@@ -749,15 +757,25 @@ export default function BattleOverlaySystem({
           <PerformPhase a={contestantA} b={contestantB} activePerformer="A" />
         )}
         {phase === "vote" && (
-          <VotePhase a={contestantA} b={contestantB} voteA={voteA} voteB={voteB} totalVotes={totalVotes} />
+          hasVoteTelemetry ? (
+            <VotePhase a={contestantA} b={contestantB} voteA={voteA!} voteB={voteB!} totalVotes={totalVotes!} />
+          ) : (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", textAlign: "center", padding: 24 }}>
+              Voting open — waiting for live tally…
+            </div>
+          )
         )}
         {phase === "winner" && (
-          <WinnerPhase winner={winner} prize={winnerPrize} score={winnerScore} />
+          <WinnerPhase
+            winner={winner}
+            prize={winnerPrize ?? "—"}
+            score={winnerScore ?? "—"}
+          />
         )}
       </div>
 
-      {/* Cipher queue — shown for cypher mode or always below battle */}
-      {(mode === "cypher" || mode === "battle") && (
+      {/* Transient queue strip for battle only when real next-up entries exist */}
+      {mode === "battle" && cypherQueue.length > 0 && (
         <div style={{
           background: "rgba(10,10,26,0.95)",
           border: "1px solid rgba(255,255,255,0.06)",

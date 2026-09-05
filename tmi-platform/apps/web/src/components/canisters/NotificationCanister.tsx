@@ -21,10 +21,24 @@ export function NotificationCanister({
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   useEffect(() => {
+    let cancelled = false;
+    void NotificationEngine.hydrateFromApi().then(() => {
+      if (cancelled) return;
+      NotificationEngine.markAllSeen();
+      setNotifications(NotificationEngine.getAll());
+    });
     const refresh = () => setNotifications(NotificationEngine.getAll());
-    refresh();
     const unsub = NotificationEngine.subscribe(refresh);
-    return unsub;
+    void fetch("/api/notifications", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ action: "mark_all_seen" }),
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   const filtered = notifications.filter((n) => (filter === "unread" ? !n.read : true));
@@ -113,6 +127,12 @@ export function NotificationCanister({
               key={item.id}
               onClick={() => {
                 NotificationEngine.markRead(item.id);
+                void fetch("/api/notifications", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ action: "mark_read", id: item.id }),
+                }).catch(() => {});
                 if (item.href) {
                   router.push(item.href);
                   onClose?.();

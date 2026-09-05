@@ -1,8 +1,8 @@
-import { fileURLToPath } from 'node:url';
+
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
+const root = path.resolve(__dirname, '..', 'src');
 const includeExt = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const violations: Array<{ file: string; reason: string }> = [];
 

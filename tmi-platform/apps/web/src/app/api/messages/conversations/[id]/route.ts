@@ -6,6 +6,7 @@ import {
   markConversationRead,
 } from "@/lib/messaging/prismaMessageStore";
 import { resolveMessagingUser } from "@/lib/messaging/resolveMessagingUser";
+import { youthSocialBlockPayload } from "@/lib/trustSafety/resolveYouthSocialSubject";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await resolveMessagingUser(req);
@@ -70,6 +71,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     };
     return NextResponse.json({ ok: true, message: msg });
   } catch (err) {
+    const blocked = youthSocialBlockPayload(err);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
     console.error("[api/messages/conversations/id POST]", err);
     return NextResponse.json({ error: "Unable to send message" }, { status: 500 });
   }

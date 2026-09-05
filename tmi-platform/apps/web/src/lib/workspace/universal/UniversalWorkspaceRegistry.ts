@@ -180,7 +180,7 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     defaultGeometry: { ...DEFAULT_FLOAT },
     minWidth: 400,
     minHeight: 320,
-    phase1Content: false,
+    phase1Content: true,
     legacyDrawerId: "room_controls",
   },
   submissions: {
@@ -241,6 +241,8 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     minWidth: 280,
     minHeight: 300,
     phase1Content: false,
+    /** Maps Command Center / quick-tool "avatar" → FanAvatarCanister DRAWER */
+    legacyDrawerId: "avatar",
   },
   "inventory-quick": {
     id: "inventory-quick",

@@ -99,9 +99,10 @@ export default function HomePage05SponsorSpotlight() {
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <Link href={s.ctaHref} style={{ textDecoration: "none" }}>
-                <motion.span
-                  whileHover={{ scale: 1.04 }}
+                <motion.div
+                  whileTap={{ scale: 0.96 }}
                   style={{
+                    display: "inline-block",
                     padding: "4px 12px", borderRadius: 999,
                     background: s.accent, color: "#000",
                     fontSize: 6, fontWeight: 900, letterSpacing: "0.16em", textTransform: "uppercase",
@@ -109,7 +110,7 @@ export default function HomePage05SponsorSpotlight() {
                   }}
                 >
                   {s.ctaLabel}
-                </motion.span>
+                </motion.div>
               </Link>
               <Link href="/advertise" style={{ textDecoration: "none" }}>
                 <span style={{ padding: "4px 10px", borderRadius: 999, border: `1px solid ${s.accent}44`, fontSize: 6, fontWeight: 700, color: s.accent, letterSpacing: "0.12em", textTransform: "uppercase" }}>

@@ -1,5 +1,7 @@
 'use client';
 
+/** LEGACY — prefer CanonicalAdSlot for new surfaces. Kept for UnifiedAdSlot internal use. */
+
 import { useEffect, useRef, useState } from 'react';
 import {
   AD_CONSENT_STORAGE_KEY,

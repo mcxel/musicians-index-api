@@ -10,6 +10,7 @@ import {
   decodeShareMeta,
 } from "@/lib/messaging/prismaMessageStore";
 import { resolveMessagingUser } from "@/lib/messaging/resolveMessagingUser";
+import { youthSocialBlockPayload } from "@/lib/trustSafety/resolveYouthSocialSubject";
 
 export async function GET(req: NextRequest, { params }: { params: { threadId: string } }) {
   const user = await resolveMessagingUser(req);
@@ -148,6 +149,8 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
       createdAt: message.createdAt.toISOString(),
     });
   } catch (err) {
+    const blocked = youthSocialBlockPayload(err);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
     console.error("[api/messages/thread POST]", err);
     return NextResponse.json({ error: "Could not send message" }, { status: 500 });
   }

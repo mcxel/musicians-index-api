@@ -8,6 +8,7 @@
 
 export type PerformerTier =
   | 'free'
+  | 'pro'
   | 'ruby'
   | 'silver'
   | 'gold'
@@ -34,8 +35,15 @@ export interface TierCapacity {
 // Local  = small/regional business (restaurants, barbers, local venues, etc.)
 // Major  = national/global brand  (Nike, Fender, Sony, Walmart, etc.)
 
+// NOTE (Lane A A8, 2026-09-01): 'pro' capacity below is interpolated between
+// free(10) and ruby(15) to keep the existing linear-ish progression, not an
+// authoritative business number — PRO didn't exist in this table before the
+// PRO/RUBY tier split (CLAUDE.md, migration landed 2026-09-01). Flagged for
+// confirmation the same way the SubscriptionPricingEngine SILVER+ conflict
+// was flagged, not silently declared correct.
 export const TIER_CAPACITY: Record<PerformerTier, TierCapacity> = {
   free:           { local: 10,  major: 10,  total: 20  },
+  pro:            { local: 12,  major: 12,  total: 24  },
   ruby:           { local: 15,  major: 15,  total: 30  },
   silver:         { local: 20,  major: 20,  total: 40  },
   gold:           { local: 30,  major: 30,  total: 60  },
@@ -79,7 +87,7 @@ export class SponsorshipCapacityEngine {
 
   // Returns the next tier up, or null if already at max
   static nextTier(current: PerformerTier): PerformerTier | null {
-    const order: PerformerTier[] = ['free', 'ruby', 'silver', 'gold', 'platinum', 'diamond'];
+    const order: PerformerTier[] = ['free', 'pro', 'ruby', 'silver', 'gold', 'platinum', 'diamond'];
     const idx = order.indexOf(current);
     if (idx === -1 || idx >= order.length - 1) return null;
     return order[idx + 1];

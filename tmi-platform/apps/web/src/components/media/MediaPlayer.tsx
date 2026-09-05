@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
 
 export interface MediaTrack {
   id: string;
@@ -56,21 +57,12 @@ export default function MediaPlayer({
   const tickRef  = useRef<number | null>(null);
 
   const track = tracks[currentIdx];
+  const playableSrc = resolveDurablePlayableSrc(track?.src ?? null);
 
   // Simulated tick — only for tracks without a real src
   const startTick = useCallback(() => {
     if (track?.src) return;
-    if (tickRef.current) clearInterval(tickRef.current);
-    tickRef.current = window.setInterval(() => {
-      setElapsed(e => {
-        const dur = track?.duration ?? 180;
-        if (e >= dur) { goNext(); return 0; }
-        const next = e + 1;
-        if (!scrubbing) setProgress(next / dur);
-        return next;
-      });
-    }, 1000);
-  }, [track, repeat, scrubbing]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track]);
 
   const stopTick = useCallback(() => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
@@ -95,8 +87,8 @@ export default function MediaPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (!track?.src) { audio.pause(); audio.src = ""; return; }
-    audio.src = track.src;
+    if (!playableSrc) { audio.pause(); audio.removeAttribute("src"); return; }
+    audio.src = playableSrc;
     audio.volume = muted ? 0 : volume;
     if (playing) audio.play().catch(() => {});
   }, [currentIdx]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,7 +96,7 @@ export default function MediaPlayer({
   // Real audio: sync play/pause state
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !track?.src) return;
+    if (!audio || !playableSrc) return;
     if (playing) audio.play().catch(() => {});
     else audio.pause();
   }, [playing]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -195,6 +187,9 @@ export default function MediaPlayer({
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {track.artist}
             </div>
+            {!playableSrc && (
+              <div style={{ fontSize: 8, color: "rgba(255,160,160,0.85)" }}>No playable audio source</div>
+            )}
           </div>
           <button onClick={goPrev} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 14, padding: "2px 4px" }}>⏮</button>
           <motion.button

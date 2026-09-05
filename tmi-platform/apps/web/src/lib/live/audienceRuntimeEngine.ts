@@ -44,6 +44,8 @@ export type VenueModerationPolicy = {
   venueSlug: string;
   slowModeMs: number;
   mutedUserIds: string[];
+  /** Host mute-all: blocks audience chat for non-host/artist roles. */
+  audienceMuted: boolean;
   updatedAt: number;
 };
 
@@ -70,10 +72,15 @@ export function getVenueModerationPolicy(venueSlug: string): VenueModerationPoli
       venueSlug,
       slowModeMs: 0,
       mutedUserIds: [],
+      audienceMuted: false,
       updatedAt: Date.now(),
     });
   }
-  return moderationRegistry.get(venueSlug)!;
+  const policy = moderationRegistry.get(venueSlug)!;
+  if (typeof policy.audienceMuted !== "boolean") {
+    policy.audienceMuted = false;
+  }
+  return policy;
 }
 
 export function getVenueOccupancy(venueSlug: string): VenueOccupancy {
@@ -203,6 +210,13 @@ export function validateAudienceMessage(venueSlug: string, userId: string, text:
   reason?: string;
 } {
   const moderation = getVenueModerationPolicy(venueSlug);
+  if (moderation.audienceMuted) {
+    const occ = getVenueOccupancy(venueSlug);
+    const member = occ.members.find((m) => m.userId === userId);
+    if (!member || member.role === "fan" || member.role === "bot") {
+      return { ok: false, cleanText: '', reason: 'Audience is muted by host' };
+    }
+  }
   if (moderation.mutedUserIds.includes(userId)) {
     return { ok: false, cleanText: '', reason: 'You are muted in this arena' };
   }
@@ -260,6 +274,28 @@ export function unmuteAudienceMember(venueSlug: string, userId: string): VenueMo
   moderation.updatedAt = Date.now();
   moderationRegistry.set(venueSlug, moderation);
   return moderation;
+}
+
+/** Host mute/unmute entire audience chat (existing moderation policy — not fake). */
+export function setAudienceMuted(venueSlug: string, muted: boolean): VenueModerationPolicy {
+  const moderation = getVenueModerationPolicy(venueSlug);
+  moderation.audienceMuted = muted;
+  moderation.updatedAt = Date.now();
+  moderationRegistry.set(venueSlug, moderation);
+  return moderation;
+}
+
+/** Toggle capture (audience audio) for all active fan members. */
+export function setAudienceAudioEnabled(venueSlug: string, enabled: boolean): number {
+  const occ = getVenueOccupancy(venueSlug);
+  let n = 0;
+  for (const m of occ.members) {
+    if (m.active && m.role === "fan") {
+      m.captureEnabled = enabled;
+      n += 1;
+    }
+  }
+  return n;
 }
 
 export function listAllOccupancies(): VenueOccupancy[] {

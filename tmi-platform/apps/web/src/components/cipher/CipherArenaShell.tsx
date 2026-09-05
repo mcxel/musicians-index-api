@@ -51,6 +51,11 @@ import type {
   CipherFloorMode,
 } from "@/lib/cipher/CipherPresentationTypes";
 import type { CipherWinnerStats } from "./CipherWinnerCeremony";
+import {
+  allowsVsUi,
+  allowsWinnerUi,
+  resolveExperiencePersonality,
+} from "@/lib/live/ExperiencePersonality";
 
 // Existing EOS widgets — consume them, don't duplicate
 import CypherQueuePanel from "@/components/eos/widgets/CypherQueuePanel";
@@ -179,12 +184,28 @@ export default function CipherArenaShell({
   const showVoteBar = stateConfig?.showVoteBar ?? false;
   const showPiP = stateConfig?.showPiP ?? false;
 
-  const activePerformer: CipherPerformer | undefined = performers[activePerformerIndex];
-  const winnerPerformer = winnerId ? performers.find((p) => p.id === winnerId) : undefined;
-  const loserPerformer = winnerId ? performers.find((p) => p.id !== winnerId && performers.indexOf(p) <= 1) : undefined;
+  // Marcel lock: normal cypher = STATS_ONLY votes, no VS/winner; clash/faceoff = CYPHER_KING
+  const personality = resolveExperiencePersonality({
+    roomKind: "cypher",
+    cipherMode: mode,
+    cypherKing: mode === "clash" || mode === "faceoff",
+  });
+  const showVs = allowsVsUi(personality);
+  const showWinner = allowsWinnerUi(personality);
 
-  // Split-clash determines secondary performer
-  const isSplitClash = presentationState === "SPLIT_CLASH" || presentationState === "VOTING_OPEN" || presentationState === "VOTING_LOCKING";
+  const activePerformer: CipherPerformer | undefined = performers[activePerformerIndex];
+  const winnerPerformer =
+    showWinner && winnerId ? performers.find((p) => p.id === winnerId) : undefined;
+  const loserPerformer = winnerId
+    ? performers.find((p) => p.id !== winnerId && performers.indexOf(p) <= 1)
+    : undefined;
+
+  // Split-clash / VS layout only when personality allows confrontation UI
+  const isSplitClash =
+    showVs &&
+    (presentationState === "SPLIT_CLASH" ||
+      presentationState === "VOTING_OPEN" ||
+      presentationState === "VOTING_LOCKING");
   const secondaryPerformer: CipherPerformer | undefined = isSplitClash
     ? performers.find((p) => p.id !== activePerformer?.id)
     : undefined;
@@ -318,9 +339,9 @@ export default function CipherArenaShell({
           )}
         </AnimatePresence>
 
-        {/* VS badge in split-clash */}
+        {/* VS badge — Cypher King / clash only (normal cypher: no confrontation) */}
         <AnimatePresence>
-          {isSplitClash && secondaryPerformer && (
+          {showVs && isSplitClash && secondaryPerformer && (
             <motion.div
               key="vs-badge"
               initial={{ scale: 0, opacity: 0 }}
@@ -371,7 +392,8 @@ export default function CipherArenaShell({
           leftParticipant={leftParticipant}
           rightParticipant={rightParticipant}
           crowdEnergy={0}
-          winnerParticipantId={winnerId ?? undefined}
+          winnerParticipantId={showWinner ? (winnerId ?? undefined) : undefined}
+          personality={personality}
         />
       )}
 
@@ -394,9 +416,9 @@ export default function CipherArenaShell({
         <CypherQueuePanel />
       </div>
 
-      {/* ── z-30: Vote bar (bottom center) ───────────────────────────────── */}
+      {/* ── z-30: Vote bar — keep for STATS_ONLY + competitive (never strip votes) ─ */}
       <AnimatePresence>
-        {showVoteBar && voteState && activePerformer && secondaryPerformer && (
+        {showVoteBar && voteState && activePerformer && (secondaryPerformer || !showVs) && (
           <div
             key="vote-bar-slot"
             style={{
@@ -413,7 +435,7 @@ export default function CipherArenaShell({
             <CipherVoteBar
               voteState={voteState}
               leftPerformer={activePerformer}
-              rightPerformer={secondaryPerformer}
+              rightPerformer={secondaryPerformer ?? activePerformer}
               onVote={onVote}
             />
           </div>
@@ -430,9 +452,10 @@ export default function CipherArenaShell({
         />
       )}
 
-      {/* ── z-60: Winner ceremony ────────────────────────────────────────── */}
-      {winnerPerformer && winnerStats && (
+      {/* ── z-60: Winner ceremony — Cypher King only ──────────────────────── */}
+      {showWinner && winnerPerformer && winnerStats && (
         <CipherWinnerCeremony
+          endKind="CHAMPION"
           winner={winnerPerformer}
           loser={loserPerformer}
           stats={winnerStats}

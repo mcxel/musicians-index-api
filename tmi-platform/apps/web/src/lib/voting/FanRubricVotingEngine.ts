@@ -11,6 +11,9 @@
  */
 
 import { getXpValue } from "@/lib/xp/XpActionRegistry";
+import { grantXp } from "@/lib/progression/ProgressionEngine";
+import { fanProfileEngine } from "@/lib/fan/FanProfileEngine";
+import { awardArtistXp } from "@/lib/progression/ArtistXpEngine";
 
 export type RubricCriterion =
   | "who_won"
@@ -158,7 +161,16 @@ export function castRubricVote(input: {
   w.ballots.set(input.voterId, ballot);
   recomputeLedger(w);
 
-  return { ok: true, ballot, xp: getXpValue("vote_battle") };
+  const xp = getXpValue("vote_battle");
+  grantXp(input.voterId, "vote_battle");
+  fanProfileEngine.creditCompetitionVote(input.voterId, xp);
+  awardArtistXp({
+    artistId: input.performerId,
+    source: "vote-received",
+    metadata: { roomId: input.roomId, eventId: input.eventId },
+  });
+
+  return { ok: true, ballot, xp };
 }
 
 export function getRubricTallies(roomId: string, eventId: string): {

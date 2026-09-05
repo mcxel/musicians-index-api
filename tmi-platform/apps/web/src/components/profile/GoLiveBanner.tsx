@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import FoundingSupporterCTA from '@/components/launch/FoundingSupporterCTA';
+import { triggerCanonicalGoLive } from '@/lib/dock/presentInstantGoLiveInPlace';
 
 interface GoLiveBannerProps {
   /** The profile slug being viewed */
@@ -15,6 +15,7 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
   const [isOwner, setIsOwner] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [launching, setLaunching] = useState(false);
 
   useEffect(() => {
     // Detect if the logged-in user owns this profile
@@ -44,6 +45,19 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
       window.removeEventListener('tmi:endbroadcast', onEndBroadcast);
     };
   }, [profileSlug]);
+
+  const handleGoLive = useCallback(async () => {
+    if (launching) return;
+    setLaunching(true);
+    await triggerCanonicalGoLive({
+      role: 'PERFORMER',
+      preferredExperience: 'live',
+      publishSession: true,
+    });
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/hub')) {
+      setLaunching(false);
+    }
+  }, [launching]);
 
   if (!checked || !isOwner) return null;
 
@@ -100,24 +114,27 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
             {sub}
           </p>
         </div>
-        <Link
-          href="/live/go"
+        <button
+          type="button"
+          onClick={() => void handleGoLive()}
+          disabled={launching}
           style={{
             padding: '12px 24px',
-            background: '#FF2DAA',
+            background: launching ? 'rgba(255,45,170,0.5)' : '#FF2DAA',
             color: '#050510',
             fontWeight: 900,
             fontSize: 11,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            textDecoration: 'none',
             borderRadius: 8,
             whiteSpace: 'nowrap',
             flexShrink: 0,
+            border: 'none',
+            cursor: launching ? 'default' : 'pointer',
           }}
         >
-          🔴 GO LIVE NOW
-        </Link>
+          {launching ? '⏳ GOING LIVE…' : '🔴 GO LIVE NOW'}
+        </button>
       </div>
     </>
   );

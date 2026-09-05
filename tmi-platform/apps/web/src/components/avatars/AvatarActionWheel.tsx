@@ -21,13 +21,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getExpressionSpecList, triggerExpression, getActiveExpression, type AvatarExpression } from '@/lib/avatars/ExpressionEngine';
-import { getEmoteSpecList, triggerEmote, getActiveEmote, type AvatarEmote } from '@/lib/avatars/EmoteEngine';
+import {
+  getDanceEmoteSpecList,
+  getGestureEmoteSpecList,
+  getActionEmoteSpecList,
+  triggerEmote,
+  triggerActionEmote,
+  getActiveEmote,
+  getActiveActionEmote,
+  type AvatarEmote,
+  type ActionEmoteId,
+} from '@/lib/avatars/EmoteEngine';
 import { getEntity } from '@/lib/avatars/UnifiedAvatarRuntime';
 import { listPropManifests } from '@/lib/avatars/AvatarPropManifest';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type WheelTab = 'expressions' | 'emotes' | 'props' | 'music' | 'audience' | 'social';
+type WheelTab = 'expressions' | 'dances' | 'gestures' | 'actions' | 'props' | 'music' | 'audience' | 'social';
 
 interface Props {
   entityId: string;
@@ -40,7 +50,9 @@ interface Props {
 
 const TABS: { id: WheelTab; label: string; emoji: string }[] = [
   { id: 'expressions', label: 'Express',  emoji: '😄' },
-  { id: 'emotes',      label: 'Emotes',   emoji: '💃' },
+  { id: 'dances',      label: 'Dances',   emoji: '💃' },
+  { id: 'gestures',    label: 'Gestures', emoji: '👋' },
+  { id: 'actions',     label: 'Actions',  emoji: '🎆' },
   { id: 'props',       label: 'Props',    emoji: '🎸' },
   { id: 'music',       label: 'Music',    emoji: '🎵' },
   { id: 'audience',    label: 'Audience', emoji: '🪑' },
@@ -161,10 +173,10 @@ export default function AvatarActionWheel({ entityId, roomId, defaultOpen = fals
     );
   };
 
-  // ── Emotes tab ──────────────────────────────────────────────────────────────
+  // ── Dance tab (AvatarRig body animation) ────────────────────────────────────
 
-  const renderEmotes = () => {
-    const specs      = getEmoteSpecList();
+  const renderDances = () => {
+    const specs = getDanceEmoteSpecList();
     const activeEmot = getActiveEmote(entityId);
     return (
       <div style={S.grid}>
@@ -178,7 +190,75 @@ export default function AvatarActionWheel({ entityId, roomId, defaultOpen = fals
                 triggerEmote(entityId, spec.emote as AvatarEmote, roomId);
                 refresh();
               }}
-              title={`${spec.label} (+${spec.xpAward} XP)`}
+              title={`${spec.label} · Dance (+${spec.xpAward} XP)`}
+            >
+              <span style={S.actionEmoji}>{spec.emoji}</span>
+              <span style={S.actionLabel}>{spec.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Gesture tab ─────────────────────────────────────────────────────────────
+
+  const renderGestures = () => {
+    const specs = getGestureEmoteSpecList();
+    const activeEmot = getActiveEmote(entityId);
+    return (
+      <div style={S.grid}>
+        {specs.map(spec => {
+          const isActive = activeEmot === spec.emote;
+          return (
+            <button
+              key={spec.emote}
+              style={S.actionBtn(isActive)}
+              onClick={() => {
+                triggerEmote(entityId, spec.emote as AvatarEmote, roomId);
+                refresh();
+              }}
+              title={`${spec.label} · Gesture (+${spec.xpAward} XP)`}
+            >
+              <span style={S.actionEmoji}>{spec.emoji}</span>
+              <span style={S.actionLabel}>{spec.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Action Emotes (VFX — cooldown + perf budget) ─────────────────────────────
+
+  const renderActions = () => {
+    const specs = getActionEmoteSpecList();
+    const activeAction = getActiveActionEmote(entityId);
+    return (
+      <div style={S.grid}>
+        {specs.map(spec => {
+          const isActive = activeAction === spec.actionId;
+          return (
+            <button
+              key={spec.actionId}
+              style={S.actionBtn(isActive)}
+              onClick={() => {
+                const result = triggerActionEmote(entityId, spec.actionId as ActionEmoteId, roomId);
+                if (!result.ok && typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('tmi-toast', {
+                    detail: {
+                      message:
+                        result.reason === 'cooldown'
+                          ? `${spec.label} cooling down`
+                          : result.reason === 'room_perf_budget'
+                            ? 'Too many Action Emotes in room — wait for FPS budget'
+                            : `Action blocked (${result.reason})`,
+                    },
+                  }));
+                }
+                refresh();
+              }}
+              title={`${spec.label} · Action VFX · cd ${Math.round(spec.cooldownMs / 1000)}s · cost ${spec.performanceCost}`}
             >
               <span style={S.actionEmoji}>{spec.emoji}</span>
               <span style={S.actionLabel}>{spec.label}</span>
@@ -265,7 +345,9 @@ export default function AvatarActionWheel({ entityId, roomId, defaultOpen = fals
   const renderTabContent = () => {
     switch (activeTab) {
       case 'expressions': return renderExpressions();
-      case 'emotes':      return renderEmotes();
+      case 'dances':      return renderDances();
+      case 'gestures':    return renderGestures();
+      case 'actions':     return renderActions();
       case 'props':       return renderProps();
       case 'music':       return renderMusic();
       case 'audience':    return renderAudience();

@@ -53,7 +53,7 @@ export default function OnboardingVenuePage() {
     } catch { /* non-fatal */ }
     setSaving(false);
     setDone(true);
-    setTimeout(() => router.push("/dashboard/venue"), 1400);
+    setTimeout(() => router.replace("/hub/venue"), 1400);
   }
 
   if (done) return (

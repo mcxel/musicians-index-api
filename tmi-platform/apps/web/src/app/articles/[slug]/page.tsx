@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { WinnerBadge } from '@/components/editorial/WinnerBadge';
 import { VoteResults } from '@/components/editorial/VoteResults';
 import StructuredData from '@/components/seo/StructuredData';
 import { JsonContentRenderer } from '@/components/editorial/JsonContentRenderer';
 import { getEditorialArticleBySlug, getLatestEditorialArticles, type NewsArticle } from '@/lib/editorial/NewsArticleModel';
 import { getLocalArticleBySlug, getLatestLocalArticles, type LocalArticle } from '@/lib/editorial/localArticleCatalog';
+import { getArticleBySlug } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 
 type JsonNode = {
   type: string;
@@ -169,6 +171,11 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   // Category slug → redirect to magazine channel or articles list filtered by genre
   if (GENRE_CATEGORY_SLUGS.has(slug)) {
     redirect(`/articles?genre=${slug}`);
+  }
+
+  // One-action law: magazine articles go straight to the canonical reader
+  if (getArticleBySlug(slug)) {
+    permanentRedirect(magazineReaderArticleUrl(slug));
   }
 
   // Resolution order: editorial catalog → local catalog → remote API

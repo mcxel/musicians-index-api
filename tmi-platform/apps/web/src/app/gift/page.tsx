@@ -2,16 +2,52 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { getSeasonPassOffer } from "@/lib/season/SeasonPassCatalog";
+import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
+
+const starterPass = getSeasonPassOffer("starter")!;
 
 const GIFT_OPTIONS = [
-  { label:"Member Pro – 1 Month",  price:"$9.99",  key:"MEMBER_PRO_MONTHLY",  color:"#00FFFF", icon:"🎧" },
-  { label:"Member VIP – 1 Month",  price:"$19.99", key:"MEMBER_VIP_MONTHLY",  color:"#AA2DFF", icon:"👑" },
-  { label:"Season Pass",           price:"$49.99", key:"SEASON_PASS",          color:"#FFD700", icon:"🎟️" },
-  { label:"Artist Spotlight",      price:"$49.00", key:"ARTIST_SPOTLIGHT",     color:"#FF2DAA", icon:"⭐" },
-];
+  {
+    label: "Member Pro – 1 Month",
+    price: `$${(STRIPE_PRODUCTS.FAN_SILVER_MONTHLY.price / 100).toFixed(2)}`,
+    key: "MEMBER_PRO_MONTHLY",
+    color: "#00FFFF",
+    icon: "🎧",
+    kind: "membership" as const,
+  },
+  {
+    label: "Member VIP – 1 Month",
+    price: `$${(STRIPE_PRODUCTS.FAN_PLATINUM_MONTHLY.price / 100).toFixed(2)}`,
+    key: "MEMBER_VIP_MONTHLY",
+    color: "#AA2DFF",
+    icon: "👑",
+    kind: "membership" as const,
+  },
+  {
+    label: starterPass.shortLabel,
+    price: starterPass.priceDisplay,
+    key: "SEASON_PASS",
+    color: starterPass.color,
+    icon: "🎟️",
+    kind: "season_pass" as const,
+  },
+  {
+    label: "Artist Spotlight",
+    price: `$${(STRIPE_PRODUCTS.ARTIST_SPOTLIGHT.price / 100).toFixed(2)}`,
+    key: "ARTIST_SPOTLIGHT",
+    color: "#FF2DAA",
+    icon: "⭐",
+    kind: "one_time" as const,
+  },
+].sort((a, b) => {
+  const av = Number.parseFloat(a.price.replace(/[^0-9.]/g, "")) || 0;
+  const bv = Number.parseFloat(b.price.replace(/[^0-9.]/g, "")) || 0;
+  return av - bv;
+});
 
 export default function GiftPage() {
-  const [selected, setSelected] = useState("MEMBER_PRO_MONTHLY");
+  const [selected, setSelected] = useState(GIFT_OPTIONS[0]?.key ?? "SEASON_PASS");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
 

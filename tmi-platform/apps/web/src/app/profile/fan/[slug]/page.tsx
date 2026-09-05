@@ -15,6 +15,7 @@ import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceC
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import { PublicLobbyCanister } from "@/components/canisters/PublicLobbyCanister";
 import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
+import { PlaylistLoungeCanister } from "@/components/canisters/PlaylistLoungeCanister";
 
 interface Props { params: { slug: string } }
 
@@ -285,6 +286,8 @@ export default async function FanProfilePage({ params }: Props) {
           />
           {/* Live Lobby Wall */}
           <LiveLobbyWallCanister accentColor={tierConfig.color} maxRooms={6} />
+          {/* Playlist lounges — same mill as performer profiles (LOUNGE_SIDE_ROOM) */}
+          <PlaylistLoungeCanister accentColor={tierConfig.color} profileSlug={params.slug} maxLounges={6} />
         </div>
       </div>
     </main>

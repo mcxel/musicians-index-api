@@ -214,6 +214,27 @@ export class TMIAudioSafetyMixer {
     );
   }
 
+  /**
+   * Per-track fader (0–1) with smooth ramp — ChannelMixerDirector PROGRAM/PERSONAL path.
+   * Does not create a second AudioContext; mutates existing GainNode only.
+   */
+  setChannelGain(userId: string, gain: number): void {
+    const info = this.tracks.get(userId);
+    if (!info) return;
+    const target = Math.max(0, Math.min(1, gain));
+    this.gainTargets.set(userId, target);
+    if (info.muteOverride) {
+      this.applyGain(userId, 0);
+      return;
+    }
+    this.applyGain(userId, target);
+  }
+
+  /** Live roster of track userIds for mixer sync */
+  getTrackIds(): string[] {
+    return Array.from(this.tracks.keys());
+  }
+
   /* ─── Analysis loop ── */
 
   private startAnalysisLoop(): void {
@@ -416,6 +437,11 @@ export function useAudioSafetyMixer() {
   const setMasterVolume = (v: number) =>
     mixerRef.current?.setMasterVolume(v);
 
+  const setChannelGain = (userId: string, gain: number) =>
+    mixerRef.current?.setChannelGain(userId, gain);
+
+  const getTrackIds = () => mixerRef.current?.getTrackIds() ?? [];
+
   return {
     activeSpeaker,
     mode,
@@ -426,5 +452,9 @@ export function useAudioSafetyMixer() {
     setSolo,
     setMute,
     setMasterVolume,
+    setChannelGain,
+    getTrackIds,
+    /** Canonical AudioOwner instance for ChannelMixerDirector.bindAudioOwner */
+    getAudioOwner: () => mixerRef.current,
   };
 }

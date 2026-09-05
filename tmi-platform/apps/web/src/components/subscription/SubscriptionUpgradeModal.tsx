@@ -5,60 +5,43 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getAllSubscriptionProducts, type SubscriptionAccountType } from "@/lib/stripe/products";
 
-const PLANS = [
-  {
-    id: "fan_free",
-    name: "Fan Free",
-    price: 0,
-    period: "forever",
-    color: "#00FFFF",
-    icon: "🎧",
-    features: ["Watch live shows", "Browse battles", "Basic chat", "5 tips/month"],
-    priceId: null,
-  },
-  {
-    id: "fan_pro",
-    name: "Fan Pro",
-    price: 9.99,
-    period: "month",
-    color: "#00FF88",
-    icon: "⭐",
-    features: ["Everything in Free", "Front section access", "Unlimited tips", "VIP chat rail", "HD streams", "Priority seating"],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PRO ?? "price_fan_pro",
-  },
-  {
-    id: "artist_gold",
-    name: "Artist Gold",
-    price: 29.99,
-    period: "month",
-    color: "#FFD700",
-    icon: "🎤",
-    features: ["Everything in Fan Pro", "Go Live (HD)", "Beat Vault 5GB", "100 NFT mints/yr", "Analytics dashboard", "Booking tools", "Merch store"],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ARTIST_GOLD ?? "price_artist_gold",
-  },
-  {
-    id: "vip_diamond",
-    name: "VIP Diamond",
-    price: 99.99,
-    period: "month",
-    color: "#AA2DFF",
-    icon: "💎",
-    features: ["Everything in Gold", "VIP section all venues", "4K streaming", "Unlimited NFTs", "Custom venue skin", "Revenue share 80%", "White-glove support"],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_VIP_DIAMOND ?? "price_vip_diamond",
-  },
-];
+// Plans are built from the canonical registry (@/lib/stripe/products.ts),
+// not hardcoded — this file previously listed invented tier names ("Artist
+// Gold", "VIP Diamond") with placeholder price IDs that don't correspond to
+// any real TMI tier or Stripe price at all (Lane A A8, 2026-09-01).
+const TIER_ICONS: Record<string, string> = { PRO: "⭐", RUBY: "💎", SILVER: "🥈", GOLD: "🥇", PLATINUM: "🏆", DIAMOND: "👑" };
+const TIER_COLORS: Record<string, string> = { PRO: "#FF6B35", RUBY: "#FF2DAA", SILVER: "#00FFFF", GOLD: "#FFD700", PLATINUM: "#E5E4E2", DIAMOND: "#AA2DFF" };
+
+function buildPlans(accountType: SubscriptionAccountType) {
+  return [
+    { id: "free", name: "Free", price: 0, period: "forever", color: "#00FFFF", icon: "🎧", features: ["Watch live shows", "Browse battles", "Basic chat"], priceId: null as string | null },
+    ...getAllSubscriptionProducts(accountType).map((p) => ({
+      id: p.tier.toLowerCase(),
+      name: p.name,
+      price: p.price / 100,
+      period: "month",
+      color: TIER_COLORS[p.tier] ?? "#AA2DFF",
+      icon: TIER_ICONS[p.tier] ?? "⭐",
+      features: [...p.features],
+      priceId: p.priceId as string | null,
+    })),
+  ];
+}
 
 interface Props {
   currentPlanId?: string;
   isOpen: boolean;
   onClose: () => void;
   accentColor?: string;
+  accountType?: SubscriptionAccountType;
 }
 
-export default function SubscriptionUpgradeModal({ currentPlanId = "fan_free", isOpen, onClose, accentColor = "#AA2DFF" }: Props) {
+export default function SubscriptionUpgradeModal({ currentPlanId = "free", isOpen, onClose, accentColor = "#AA2DFF", accountType = "fan" }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const PLANS = buildPlans(accountType);
 
   if (!isOpen) return null;
 

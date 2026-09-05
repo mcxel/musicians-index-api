@@ -67,7 +67,17 @@ export type XpActionKey =
   | 'intermission_reaction_sent'
   | 'intermission_cosmetic_equipped'
   | 'intermission_profile_viewed'
-  | 'intermission_watched_full';
+  | 'intermission_watched_full'
+  // ── Playlist lounge listening (engagement lane — fans earn more) ───────────
+  | 'listen_in_playlist_lounge_fan'
+  | 'listen_in_playlist_lounge_performer'
+  // ── YoPho Free learning track (500 XP total — Rule 9 / Rule 27) ────────────
+  | 'yopho_set_background'
+  | 'yopho_add_image_layer'
+  | 'yopho_add_effect'
+  | 'yopho_save_composition'
+  | 'yopho_share_card'
+  | 'yopho_complete_onboarding';
 
 export interface XpAction {
   key: XpActionKey;
@@ -146,7 +156,31 @@ export const XP_ACTIONS: XpAction[] = [
   { key: 'intermission_cosmetic_equipped', label: 'Equip cosmetic during break',   xp: 2,    category: 'social',      repeatable: true,  cooldownHours: 0 },
   { key: 'intermission_profile_viewed',    label: 'View profile during break',     xp: 1,    category: 'social',      repeatable: true,  cooldownHours: 0 },
   { key: 'intermission_watched_full',      label: 'Watch full intermission',       xp: 5,    category: 'consumption', repeatable: true,  cooldownHours: 0 },
+
+  // ── Playlist lounge listening (Rule 24 engagement lane — fan > performer) ──
+  { key: 'listen_in_playlist_lounge_fan',       label: 'Listen in playlist lounge (fan)',       xp: 15, category: 'consumption', repeatable: true, cooldownHours: 0.5 },
+  { key: 'listen_in_playlist_lounge_performer', label: 'Listen in playlist lounge (performer)', xp: 5,  category: 'consumption', repeatable: true, cooldownHours: 0.5 },
+
+  // ── YoPho Free learning track — once each; sums to YOPHO_LEARNING_TRACK_TARGET_XP ──
+  { key: 'yopho_set_background',      label: 'YoPho: set a background',           xp: 100, category: 'platform', repeatable: false, achievementUnlock: 'yopho-background' },
+  { key: 'yopho_add_image_layer',     label: 'YoPho: add an image layer',         xp: 100, category: 'platform', repeatable: false },
+  { key: 'yopho_add_effect',          label: 'YoPho: apply FX / filter',          xp: 75,  category: 'platform', repeatable: false },
+  { key: 'yopho_save_composition',    label: 'YoPho: save a composition',         xp: 100, category: 'platform', repeatable: false },
+  { key: 'yopho_share_card',          label: 'YoPho: share / export with QR',     xp: 100, category: 'social',   repeatable: false },
+  { key: 'yopho_complete_onboarding', label: 'YoPho: complete Free how-to guide', xp: 25,  category: 'platform', repeatable: false, achievementUnlock: 'yopho-learner' },
 ];
+
+/** Sum of once-only YoPho learning actions — Free layered-creation pathway. */
+export const YOPHO_LEARNING_TRACK_TARGET_XP = 500;
+
+export const YOPHO_LEARNING_ACTION_KEYS = [
+  'yopho_set_background',
+  'yopho_add_image_layer',
+  'yopho_add_effect',
+  'yopho_save_composition',
+  'yopho_share_card',
+  'yopho_complete_onboarding',
+] as const satisfies readonly XpActionKey[];
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
 
@@ -199,4 +233,18 @@ export function getXpToNextTier(xp: number): number {
   const next = order[order.indexOf(tier) + 1];
   if (!next) return 0;
   return XP_TIER_THRESHOLDS[next] - xp;
+}
+
+/** Fan > performer differential for playlist-lounge listening (engagement lane). */
+export const LISTEN_LOUNGE_XP_BY_ROLE = {
+  fan: 15,
+  performer: 5,
+} as const;
+
+export function getListenLoungeXp(role?: string | null): number {
+  const r = (role ?? "fan").trim().toLowerCase();
+  if (r === "performer" || r === "band" || r === "artist") {
+    return LISTEN_LOUNGE_XP_BY_ROLE.performer;
+  }
+  return LISTEN_LOUNGE_XP_BY_ROLE.fan;
 }

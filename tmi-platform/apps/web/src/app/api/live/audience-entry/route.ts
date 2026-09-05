@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerAudienceEntry } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
+import { datingAccessPayload, isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
+import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,15 @@ export async function POST(req: NextRequest) {
   const roomId = body.roomId?.trim();
   if (!roomId) {
     return NextResponse.json({ ok: false, error: "roomId is required" }, { status: 400 });
+  }
+
+  const datingRef = { roomId, slug: roomId, id: roomId };
+  if (isDatingExperience(datingRef)) {
+    const auth = await getTmiAuth();
+    const decision = await evaluateDatingJoinForUserId(auth?.user?.id ?? "", datingRef);
+    if (!decision.allowed) {
+      return NextResponse.json({ ok: false, ...datingAccessPayload(decision) }, { status: 403 });
+    }
   }
 
   const session = registerAudienceEntry({

@@ -1,32 +1,50 @@
 "use client";
-
 import { useState } from "react";
 import Link from "next/link";
 
+// Per Rule #20: replace with real engine data before launch.
 const LIVE_BATTLES = [
   {
-    id: "b1",
+
     artist1: { name: "Wavetek", icon: "🎤", color: "#FF2DAA", votes: 1842 },
     artist2: { name: "Krypt", icon: "🔒", color: "#AA2DFF", votes: 1204 },
     category: "RAP",
     endsIn: "4m 22s",
     prize: "$500",
+    id: 'battle-1',
+    title: 'Wavetek vs. Krypt',
+    subtitle: 'Monday Night Stage - Finals',
+    imageUrl: '/images/stock/battle_1.jpg', // Assumes placeholder images exist
+    href: '/battles/1',
+    accentColor: '#FF2DAA',
   },
   {
-    id: "b2",
+
     artist1: { name: "Zuri Bloom", icon: "🌍", color: "#00FF88", votes: 980 },
     artist2: { name: "Neon Vibe", icon: "🎧", color: "#00FFFF", votes: 1110 },
     category: "HYBRID",
     endsIn: "12m 08s",
     prize: "$250",
+    id: 'battle-2',
+    title: 'Lyric Stone vs. Astra Nova',
+    subtitle: 'R&B Showcase - Semi-Finals',
+    imageUrl: '/images/stock/battle_2.jpg',
+    href: '/battles/2',
+    accentColor: '#AA2DFF',
   },
   {
-    id: "b3",
+
     artist1: { name: "Vela Flux", icon: "⚡", color: "#FFD700", votes: 432 },
     artist2: { name: "Mako Drift", icon: "🌊", color: "#00FFFF", votes: 395 },
     category: "ELECTRO",
     endsIn: "28m 41s",
     prize: "$100",
+    id: 'battle-3',
+    title: 'Zuri Bloom vs. Lagos Burst',
+    subtitle: 'Afrobeats Clash',
+    imageUrl: '/images/stock/battle_3.jpg',
+    href: '/battles/3',
+    accentColor: '#00FF88',
   },
 ];
 

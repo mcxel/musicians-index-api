@@ -4,7 +4,7 @@
  * Wired into the safety layer — all sends are policy-checked.
  */
 
-import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
+import { canOneToOneSocial, subjectFromLegacyAgeClass } from "@/lib/trustSafety/YouthSocialGuard";
 import { checkMessageContent, flagMessage } from "@/lib/messages/MessageModerationEngine";
 import { updateConversationLastMessage } from "@/lib/messages/ConversationEngine";
 import { pushMessageNotification } from "@/lib/messages/MessageNotificationEngine";
@@ -59,13 +59,18 @@ function getConvoMessages(conversationId: string): DirectMessage[] {
 // --- Write API ---
 
 export function sendDirectMessage(input: DMSendInput): DirectMessage {
-  // 1. Safety policy check (teen/adult)
-  const decision = enforceAdultTeenContactBlock({
-    source: "DirectMessageEngine",
-    channel: "dm",
-    actor: input.senderActor,
-    target: input.recipientTarget,
-  });
+  const decision = canOneToOneSocial(
+    subjectFromLegacyAgeClass(input.senderActor.userId, input.senderActor.ageClass, {
+      ageYears: input.senderActor.ageYears,
+      familyAccountId: input.senderActor.familyAccountId,
+      isBot: input.senderActor.isBot,
+    }),
+    subjectFromLegacyAgeClass(input.recipientTarget.userId, input.recipientTarget.ageClass, {
+      ageYears: input.recipientTarget.ageYears,
+      familyAccountId: input.recipientTarget.familyAccountId,
+      isBot: input.recipientTarget.isBot,
+    }),
+  );
 
   if (!decision.allowed) {
     const failed: DirectMessage = {

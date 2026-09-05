@@ -5,7 +5,7 @@
  */
 
 import dynamic from "next/dynamic";
-import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
+import YoPhoActivityHub from "@/components/yopho/YoPhoActivityHub";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -30,18 +30,14 @@ import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCent
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import { resolveFanWorldEntry } from "@/lib/live/canonicalWorldViewport";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   ssr: false,
   loading: () => (
     <div style={{ padding: 24, color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Loading Avatar Lobby…</div>
-  ),
-});
-
-const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
-  ssr: false,
-  loading: () => (
-    <div style={{ padding: 24, color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Loading YoPho…</div>
   ),
 });
 
@@ -56,38 +52,8 @@ function YoPhoWorkspaceSlot({
   userId: string;
   slug?: string;
 }) {
-  const cardRole = role === "performer" ? "performer" : "fan";
-
-  if (role === "fan") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 360 }}>
-        <div style={{ padding: "8px 16px 0" }}>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
-            YOPHO TRIPLE STAGE · PORTRAIT ENGINE
-          </div>
-        </div>
-        <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
-            YOPHO CARD · WHO I AM RIGHT NOW
-          </div>
-        </div>
-      </div>
-      <YoPhoTradingCard
-        role={cardRole}
-        displayName={displayName}
-        userKey={userId}
-        slug={slug}
-        compact
-      />
-    </div>
+    <YoPhoActivityHub role={role} displayName={displayName} userId={userId} slug={slug} />
   );
 }
 
@@ -110,7 +76,15 @@ export default function UniversalWorkspaceStubContent({
   const contextPerformer = contextPerformerId ? getPerformerById(contextPerformerId) : null;
   const contextDisplayName = activePerformer?.name ?? contextPerformer?.name ?? displayName;
   const contextSlug = activePerformer?.slug ?? contextPerformer?.slug ?? contextPerformerId ?? undefined;
-  const roomId = `${role}-lobby-cc-${userId}`;
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const roomId =
+    role === "fan"
+      ? resolveFanWorldEntry({
+          publishedRoomId: publishedRoomId ?? inPlaceRoomId,
+          from: "universal-workspace",
+        }).roomId
+      : `${role}-lobby-cc-${userId}`;
 
   if (!panel) {
     return (
@@ -236,7 +210,13 @@ export default function UniversalWorkspaceStubContent({
     case "championship_center":
       return <ChampionshipCenterDrawer role={role} userId={userId} />;
     case "live_destinations":
-      return <LiveDestinationsDrawerPanel viewerUserId={userId} accentColor={theme.primary} />;
+      return (
+        <LiveDestinationsDrawerPanel
+          viewerUserId={userId}
+          viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
+          accentColor={theme.primary}
+        />
+      );
     case "room_controls":
       return role === "fan" ? (
         <RoomControlsDrawerPanel

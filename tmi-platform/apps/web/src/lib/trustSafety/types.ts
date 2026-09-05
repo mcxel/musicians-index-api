@@ -17,6 +17,7 @@ export const TRUST_SAFETY_REPORT_REASONS = [
   "phishing",
   "ato",
   "harassment",
+  "age_misrepresentation",
   "other",
 ] as const;
 
@@ -33,6 +34,7 @@ export const TRUST_SAFETY_REASON_LABELS: Record<TrustSafetyReportReason, string>
   phishing: "Phishing / malicious link",
   ato: "Account takeover (ATO)",
   harassment: "Harassment",
+  age_misrepresentation: "Age misrepresentation",
   other: "Other",
 };
 
@@ -116,6 +118,7 @@ export type TrustSafetySurface =
   | "magazine"
   | "marketplace"
   | "messaging"
+  | "dating"
   | "other";
 
 export type EvidenceKind =

@@ -1,5 +1,9 @@
 /** Prisma Conversation/Message store for /api/messages */
 import { prisma } from "@/lib/prisma";
+import {
+  assertDirectThreadOneToOne,
+  assertOneToOneSocialForUserIds,
+} from "@/lib/trustSafety/resolveYouthSocialSubject";
 
 export type MessageKind = string;
 function sortedPair(a: string, b: string): [string, string] { return a < b ? [a, b] : [b, a]; }
@@ -24,6 +28,7 @@ export async function getOrCreateConversation(opts: {
   recipientId: string;
   kind?: MessageKind;
 }) {
+  await assertOneToOneSocialForUserIds(opts.userId, opts.recipientId);
   const [a, b] = sortedPair(opts.userId, opts.recipientId);
   const candidates = await prisma.conversation.findMany({
     where: { participantIds: { hasEvery: [a, b] }, isArchived: false },
@@ -62,6 +67,11 @@ export async function sendMessage(opts: {
   mediaUrl?: string;
   valueUsdCents?: number;
 }) {
+  await assertDirectThreadOneToOne({
+    conversationId: opts.conversationId,
+    senderId: opts.senderId,
+    messageType: opts.messageType,
+  });
   const msg = await prisma.message.create({
     data: {
       conversationId: opts.conversationId,

@@ -82,7 +82,7 @@ function VenueLiveMirrorPanel({ feed, accent }: { feed: LobbyFeedState; accent: 
 
       {/* Sponsor takeover strip */}
       <a
-        href="/articles/sponsor/soundwave-audio-presents-the-beat-vault"
+        href="/sponsors/soundwave-audio"
         style={{ textDecoration: "none", display: "block" }}
       >
         <div

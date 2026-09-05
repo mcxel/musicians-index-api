@@ -7,6 +7,7 @@ import type { YoPhoStudioStyleId } from "./YoPhoStudioStylePresets";
 import type { YoPhoSceneId } from "./YoPhoScenePack";
 import type { YoPhoMagicEffectId } from "./YoPhoMagicEffects";
 import type { YoPhoCardDocument, YoPhoCardKind, YoPhoRarityLabel } from "./YoPhoCardDocument";
+import type { YoPhoMediaModule } from "./YoPhoMediaModule";
 
 export type TextOverlayPosition = "top" | "center" | "bottom";
 
@@ -66,6 +67,8 @@ export interface YoPhoCardComposition {
   cardId?: string | null;
   /** Attached playlist for interactive Next Track */
   playlistId?: string | null;
+  /** Optional media modules (playlist / song / motto). Does not consume image slots. */
+  mediaModules?: YoPhoMediaModule[] | null;
   /** Motor card motion clip (loop hook) */
   motion?: YoPhoMotionClip | null;
   /** Toggleable magic effect presets (underlay / foreground) */
@@ -115,6 +118,7 @@ export function createDefaultComposition(): YoPhoCardComposition {
     collageUrls: [null, null, null],
     cardId: null,
     playlistId: null,
+    mediaModules: [],
     motion: defaultMotionClip(),
     magicEffects: [],
     isCanonical: false,

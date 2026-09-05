@@ -8,7 +8,8 @@ export default function CypherRoundTimer() {
 
   if (!runtime?.isRoundRunning) return null;
 
+  const remainingSeconds = Math.max(0, runtime.roundDurationSeconds - runtime.elapsedSeconds);
   return (
-    <CompetitionTimer format="CYPHER" remainingSeconds={runtime.elapsedSeconds} />
+    <CompetitionTimer format="CYPHER" remainingSeconds={remainingSeconds} />
   );
 }

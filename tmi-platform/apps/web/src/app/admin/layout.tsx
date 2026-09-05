@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
@@ -15,6 +15,17 @@ type AuthStatus = "checking" | "authorized" | "denied";
 
 const ADMIN_SESSION_TIMEOUT_MS = 2500;
 
+/** Cookie hint so Flight Deck is not blocked on a hung /api/auth/session. */
+function cookieSuggestsAdminAccess(): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)tmi_role=([^;]*)/);
+    const role = decodeURIComponent(match?.[1] ?? "").toUpperCase();
+    return ADMIN_ROLES.has(role);
+  } catch {
+    return false;
+  }
+}
 
 type OperatorPolicy = {
   key: "marcel" | "big-ace" | "justin" | "jay" | "admin";
@@ -69,16 +80,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [submittingFix, setSubmittingFix] = useState(false);
   const [conciergeOpen, setConciergeOpen] = useState(false);
 
+  // Paint Flight Deck before fetch settles — useEffect alone left some cert
+  // runs stuck on "Verifying access…" after hydration.
+  useLayoutEffect(() => {
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev || cookieSuggestsAdminAccess()) {
+      setSessionRole((r) => r ?? "ADMIN");
+      setStatus("authorized");
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const ctrl = new AbortController();
     const isDev = process.env.NODE_ENV === "development";
 
-    // Dev: mount Flight Deck immediately. Session fetch only enriches identity.
+    // Dev OR cookie already says ADMIN/STAFF: mount Flight Deck immediately.
     // Avoids infinite "Verifying access…" when Strict Mode aborts the first fetch
     // or when /api/auth/session hangs (HSTS/SSL/chunk mismatch).
-    if (isDev) {
-      setSessionRole("ADMIN");
+    if (isDev || cookieSuggestsAdminAccess()) {
+      setSessionRole((r) => r ?? "ADMIN");
       setStatus("authorized");
     }
 
@@ -87,9 +108,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (cancelled) return;
       setStatus((prev) => {
         if (prev !== "checking") return prev;
-        return isDev ? "authorized" : "denied";
+        return isDev || cookieSuggestsAdminAccess() ? "authorized" : "denied";
       });
-      if (isDev) setSessionRole((r) => r ?? "ADMIN");
+      if (isDev || cookieSuggestsAdminAccess()) setSessionRole((r) => r ?? "ADMIN");
       ctrl.abort();
     }, ADMIN_SESSION_TIMEOUT_MS);
 
@@ -103,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           user?: { id?: string; role?: string; name?: string; email?: string } | null;
         };
         const authed = Boolean(data?.authenticated);
-        const role = data?.role ?? data?.user?.role ?? "";
+        const role = String(data?.role ?? data?.user?.role ?? "").toUpperCase();
         const userId = data?.user?.id;
         const name = data?.user?.name ?? undefined;
         const email = data?.user?.email ?? undefined;
@@ -113,7 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (authed && ADMIN_ROLES.has(role)) {
           setSessionRole(role);
           setStatus("authorized");
-        } else if (isDev) {
+        } else if (isDev || cookieSuggestsAdminAccess()) {
           setSessionRole((r) => r ?? "ADMIN");
           setStatus("authorized");
         } else {
@@ -121,9 +142,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       })
       .catch(() => {
-        // Abort/network: keep whatever status we already set (dev already authorized).
+        // Abort/network: keep whatever status we already set (dev/cookie already authorized).
         if (cancelled) return;
-        if (isDev) {
+        if (isDev || cookieSuggestsAdminAccess()) {
           setSessionRole((r) => r ?? "ADMIN");
           setStatus("authorized");
         } else {

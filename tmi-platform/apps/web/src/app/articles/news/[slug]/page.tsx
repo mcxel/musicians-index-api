@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import EditorialMagazineShell from "@/components/editorial/EditorialMagazineShell";
 import EditorialPageFrame from "@/components/editorial/EditorialPageFrame";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import { injectAds } from "@/lib/editorial/editorialAdInjector";
+import { categoryToSectionLabel } from "@/lib/editorial/editorialRoutingResolver";
+import { resolveTemplate } from "@/lib/editorial/editorialPageEngine";
+import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const article = getEditorialArticleBySlug(params.slug);
@@ -13,8 +18,6 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     alternates: { canonical: `/articles/news/${params.slug}` },
   };
 }
-import { categoryToSectionLabel } from "@/lib/editorial/editorialRoutingResolver";
-import { resolveTemplate } from "@/lib/editorial/editorialPageEngine";
 
 interface Props {
   params: { slug: string };
@@ -42,7 +45,14 @@ function ArticleNotFoundFallback({ slug }: { slug: string }) {
 }
 
 export default function NewsArticlePage({ params }: Props) {
-  const article = getEditorialArticleBySlug(params.slug);
+  const { slug } = params;
+
+  // One-action law: if this slug is a magazine article, go straight to the reader
+  if (getArticleBySlug(slug)) {
+    permanentRedirect(magazineReaderArticleUrl(slug));
+  }
+
+  const article = getEditorialArticleBySlug(slug);
   if (!article || article.category !== "news") return <ArticleNotFoundFallback slug={params.slug} />;
 
   const accentColor = "#FFD700";

@@ -25,9 +25,30 @@ import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
 import { ensureAnchorRoomsSeeded, getAnchorDiscoveryRecords, listAnchorLiveRoomRecords } from '@/lib/live/AnchorRoomNetwork';
+import { ensureGenreRoomsSeeded, getAllGenreDiscoveryRecords } from '@/lib/live/performerGenreRoomNetwork';
 import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoomEntitlement';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
+import { canCreateBattle, canCreateCypher } from '@/lib/subscriptions/BattleCreationGate';
+import type { SubscriptionTier } from '@/lib/subscriptions/SubscriptionPricingEngine';
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from '@/lib/venues/EventVenueEnvironment';
+import { mapLivePrivacyToRegistry } from '@/lib/live/liveRoomPrivacyGate';
+import { admitGoLive } from '@/lib/live/goLiveAdmitGate';
 
 export const dynamic = 'force-dynamic';
+
+function parseVenueEnvironment(raw: unknown): VenueEnvironmentKind | null {
+  const s = String(raw ?? '').toLowerCase().trim();
+  if (s === 'indoor' || s === 'outdoor') return s;
+  return null;
+}
+
+function parseVenueSkinId(raw: unknown): string | null {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  return s.length > 0 ? s : null;
+}
 
 async function sessionUserId(req: NextRequest): Promise<string | null> {
   const email = req.cookies.get('tmi_user_email')?.value;
@@ -60,6 +81,23 @@ export async function POST(req: NextRequest) {
   const isCreateRoomIntent =
     body.intent === 'create-room' || body.createRoom === true;
 
+  const miniBody = body as { isMini?: boolean };
+  if (miniBody.isMini === true) {
+    const cat = String(body.category ?? "").toLowerCase();
+    if (cat === "cypher" || cat === "challenge" || cat === "battle") {
+      const auth = await getTmiAuth();
+      if (!auth) {
+        return NextResponse.json({ error: "authentication_required" }, { status: 401 });
+      }
+      const rawTier = (auth.user.tier || "free").toUpperCase();
+      const tier = (rawTier === "RUBY" ? "RUBY" : rawTier.toLowerCase()) as SubscriptionTier;
+      const gate = cat === "cypher" ? canCreateCypher(tier) : canCreateBattle(tier);
+      if (!gate.allowed) {
+        return NextResponse.json({ error: "tier_gate", ...gate }, { status: 403 });
+      }
+    }
+  }
+
   let userId: string;
   let displayName: string;
 
@@ -80,25 +118,115 @@ export async function POST(req: NextRequest) {
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     userId = uid;
     displayName = body.displayName ?? uid;
+
+    // Persistent-environment go-live admit (role × privacy) — does not trust ?workspace=
+    const auth = await getTmiAuth().catch(() => null);
+    let roleHint =
+      auth?.user?.role ??
+      req.cookies.get('tmi_role')?.value ??
+      '';
+    if (!roleHint) {
+      const dbUser = await prisma.user
+        .findUnique({ where: { id: userId }, select: { role: true } })
+        .catch(() => null);
+      roleHint = dbUser?.role ?? 'PERFORMER';
+    }
+    const privacyHint =
+      (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC';
+    const listedHint = (body as { listed?: boolean }).listed;
+    const admit = admitGoLive({
+      authenticated: true,
+      role: roleHint,
+      privacy: privacyHint,
+      listed: listedHint,
+    });
+    if (!admit.allowed) {
+      return NextResponse.json(
+        { error: admit.code, message: admit.reason, code: admit.code },
+        { status: admit.status },
+      );
+    }
   }
 
   await ensureHydrated();
 
   const roomId = body.roomId ?? `room-${userId}-${Date.now()}`;
 
+  // Normalize show/release categories onto StreamCategory "concert" so discovery
+  // + getSessionsByCategory verification succeed (SHOWS & RELEASES wall).
+  const rawCategory = String(body.category ?? "live").toLowerCase().replace(/_/g, "-");
+
+  // Rule 21: World Dance Party + Monday Night Stage are bot/platform-only flagship events.
+  if (rawCategory === "world-dance-party" || rawCategory === "monday-night-stage") {
+    const mini = (body as { isMini?: boolean }).isMini === true;
+    if (!mini) {
+      return NextResponse.json(
+        { error: "flagship_bot_only", message: "Official World/Monday events cannot be created by humans." },
+        { status: 403 },
+      );
+    }
+  }
+
+  const category =
+    rawCategory === "release-party" ||
+    rawCategory === "mini-release" ||
+    rawCategory === "world-release" ||
+    rawCategory === "mini-concert" ||
+    rawCategory === "world-concert" ||
+    rawCategory === "live-online-concert" ||
+    rawCategory === "concert"
+      ? ("concert" as const)
+      : rawCategory === "fan-lobby" || rawCategory === "fan_lobby" || rawCategory === "fan-social-live"
+        ? ("fan-lobby" as const)
+        : ((body.category ?? "live") as import("@/lib/broadcast/globalLiveSessionStore").StreamCategory);
+
+  // Persist indoor|outdoor (+ skin) on the session so joiners without URL params resolve correctly.
+  const bodyEnv = parseVenueEnvironment((body as { venueEnvironment?: unknown }).venueEnvironment);
+  const bodySkinId = parseVenueSkinId((body as { venueSkinId?: unknown }).venueSkinId);
+  const isMini = (body as { isMini?: boolean }).isMini === true;
+  let venueEnvironment: VenueEnvironmentKind | null = bodyEnv;
+  let venueSkinId: string | null = bodySkinId;
+  if (bodyEnv) {
+    const kindHint =
+      isMini && (rawCategory === "dance-party" || rawCategory === "world-dance-party")
+        ? "mini-dance-party"
+        : isMini && (rawCategory === "listening" || rawCategory.includes("slow-jam"))
+          ? "mini-slow-jam"
+          : isMini && rawCategory === "release-party"
+            ? "mini-release"
+            : isMini && rawCategory === "concert"
+              ? "mini-concert"
+              : rawCategory === "dance-party"
+                ? "world-dance-party"
+                : rawCategory === "listening"
+                  ? "slow-jams"
+                  : rawCategory;
+    const resolved = resolveEventVenueEnvironment({
+      kind: kindHint,
+      environment: bodyEnv,
+      skinId: bodySkinId,
+    });
+    venueEnvironment = resolved.environment;
+    venueSkinId = resolved.skinId;
+  }
+
   const session = registerLiveSession({
     userId,
     displayName,
     title:         body.title ?? `${displayName} — Live`,
-    category:      body.category ?? 'live',
+    category,
     roomId,
     avatarUrl:     body.avatarUrl,
     previewUrl:    body.previewUrl,
     thumbnailUrl:  body.thumbnailUrl,
-    privacy:       body.privacy ?? 'PUBLIC',
+    privacy:       mapLivePrivacyToRegistry(
+      (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC',
+    ),
     entryPriceUsd: body.entryPriceUsd,
     accentColor:   body.accentColor,
     performerTier: body.performerTier,
+    venueEnvironment,
+    venueSkinId,
   });
 
   // ── Atomic Discovery Emitter (Rule: Session Exists AND Discovery Tile Exists = PUBLIC) ──
@@ -146,6 +274,8 @@ export async function POST(req: NextRequest) {
     ok: true,
     session,
     roomId: session.roomId,
+    venueEnvironment: session.venueEnvironment ?? null,
+    venueSkinId: session.venueSkinId ?? null,
     href: `/live/rooms/${encodeURIComponent(session.roomId)}?from=live-lobby`,
   }, { status: 200 });
 }
@@ -180,7 +310,9 @@ export async function DELETE(req: NextRequest) {
 export async function GET() {
   try {
     ensureAnchorRoomsSeeded();
+    ensureGenreRoomsSeeded();
     const anchorRecords = getAnchorDiscoveryRecords();
+    const genreRecords = getAllGenreDiscoveryRecords();
     const sessions = await getActiveSessionsDurable();
     const count = getActiveRoomTruthCount(sessions);
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
@@ -196,35 +328,50 @@ export async function GET() {
       privacy:       s.privacy,
       performerTier: s.performerTier,
     }));
-    return NextResponse.json({
-      sessions,
-      live,
-      count,
-      anchors: listAnchorLiveRoomRecords(),
-      anchorDiscovery: anchorRecords,
-      activeDefinition: {
-        source: 'GlobalLiveSessionRegistry.getActiveSessions',
-        staleEvictionMs: 120_000,
-        publicCountExcludes: ['INVITE_ONLY'],
-        dedupeKey: 'roomId',
-        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+    return NextResponse.json(
+      {
+        sessions,
+        live,
+        count,
+        anchors: listAnchorLiveRoomRecords(),
+        anchorDiscovery: anchorRecords,
+        genreDiscovery: genreRecords,
+        activeDefinition: {
+          source: 'GlobalLiveSessionRegistry.getActiveSessions',
+          staleEvictionMs: 120_000,
+          publicCountExcludes: ['INVITE_ONLY'],
+          dedupeKey: 'roomId',
+          neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   } catch (err) {
     console.error('[api/live/go] GET error:', err);
-    return NextResponse.json({
-      sessions: [],
-      live: [],
-      count: 0,
-      anchors: [],
-      anchorDiscovery: [],
-      activeDefinition: {
-        source: 'GlobalLiveSessionRegistry.getActiveSessions',
-        staleEvictionMs: 120_000,
-        publicCountExcludes: ['INVITE_ONLY'],
-        dedupeKey: 'roomId',
-        neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+    return NextResponse.json(
+      {
+        sessions: [],
+        live: [],
+        count: 0,
+        anchors: [],
+        anchorDiscovery: [],
+        activeDefinition: {
+          source: 'GlobalLiveSessionRegistry.getActiveSessions',
+          staleEvictionMs: 120_000,
+          publicCountExcludes: ['INVITE_ONLY'],
+          dedupeKey: 'roomId',
+          neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   }
 }

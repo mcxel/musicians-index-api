@@ -3,6 +3,18 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSubscriptionProduct } from '@/lib/stripe/products';
+
+// PRO/RUBY price + priceId + checkout amount are read from the canonical
+// registry (@/lib/stripe/products.ts), not hardcoded — this page used to
+// carry its own copy of every tier's amount/priceId, which is exactly what
+// let it silently drift from what checkout actually charged after the
+// PRO/RUBY migration (Lane A A5, 2026-09-01: this page still showed no PRO
+// tier at all and priced "Ruby" at the old pre-migration $4.99/$2.99).
+const FAN_PRO = getSubscriptionProduct('fan', 'PRO');
+const FAN_RUBY = getSubscriptionProduct('fan', 'RUBY');
+const PERF_PRO = getSubscriptionProduct('performer', 'PRO');
+const PERF_RUBY = getSubscriptionProduct('performer', 'RUBY');
 
 // ── Founding supporter one-time packs ────────────────────────────────────────
 
@@ -93,16 +105,28 @@ const FAN_TIERS = [
     highlighted: false,
   },
   {
+    key: 'fan-pro',
+    name: 'PRO FAN',
+    icon: '⭐',
+    color: '#FF6B35',
+    price: `$${(FAN_PRO.price / 100).toFixed(2)}/mo`,
+    badge: 'START HERE' as string | null,
+    perks: ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements'],
+    cta: 'GET PRO',
+    ctaHref: `/api/stripe/checkout?priceId=${FAN_PRO.priceId}&mode=subscription&amount=${FAN_PRO.price}&productName=TMI+Fan+Pro`,
+    highlighted: true,
+  },
+  {
     key: 'fan-ruby',
     name: 'RUBY FAN',
     icon: '🔴',
     color: '#FF4444',
-    price: '$4.99/mo',
-    badge: 'START HERE' as string | null,
-    perks: ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements', '7-day free trial'],
-    cta: 'START FREE TRIAL',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? 'price_fan_ruby'}&mode=subscription&amount=499&productName=TMI+Fan+Ruby`,
-    highlighted: true,
+    price: `$${(FAN_RUBY.price / 100).toFixed(2)}/mo`,
+    badge: null as string | null,
+    perks: ['Everything in Pro', 'Early access drops', 'Fan leaderboard placement', 'Ruby avatar glow'],
+    cta: 'GET RUBY',
+    ctaHref: `/api/stripe/checkout?priceId=${FAN_RUBY.priceId}&mode=subscription&amount=${FAN_RUBY.price}&productName=TMI+Fan+Ruby`,
+    highlighted: false,
   },
   {
     key: 'fan-silver',
@@ -180,16 +204,28 @@ const PERFORMER_TIERS = [
     highlighted: false,
   },
   {
+    key: 'perf-pro',
+    name: 'PRO PERFORMER',
+    icon: '🎧',
+    color: '#FF6B35',
+    price: `$${(PERF_PRO.price / 100).toFixed(2)}/mo`,
+    badge: 'START HERE' as string | null,
+    perks: ['Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard'],
+    cta: 'GET PRO',
+    ctaHref: `/api/stripe/checkout?priceId=${PERF_PRO.priceId}&mode=subscription&amount=${PERF_PRO.price}&productName=TMI+Performer+Pro`,
+    highlighted: true,
+  },
+  {
     key: 'perf-ruby',
     name: 'RUBY PERFORMER',
     icon: '🎙️',
     color: '#FF2DAA',
-    price: '$2.99/mo',
-    badge: 'START HERE' as string | null,
-    perks: ['15 Local + 15 Major Sponsor Slots', 'Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard', '7-day free trial'],
-    cta: 'START FREE TRIAL',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? 'price_performer_ruby'}&mode=subscription&amount=299&productName=TMI+Performer+Ruby`,
-    highlighted: true,
+    price: `$${(PERF_RUBY.price / 100).toFixed(2)}/mo`,
+    badge: null as string | null,
+    perks: ['15 Local + 15 Major Sponsor Slots', 'Everything in Pro', 'Fan club tools', 'Tipping enabled', 'Ruby badge'],
+    cta: 'GET RUBY',
+    ctaHref: `/api/stripe/checkout?priceId=${PERF_RUBY.priceId}&mode=subscription&amount=${PERF_RUBY.price}&productName=TMI+Performer+Ruby`,
+    highlighted: false,
   },
   {
     key: 'perf-silver',
@@ -478,7 +514,12 @@ export default function PricingPage() {
 
         {/* Tier cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 16, marginBottom: 28 }}>
-          <AnimatePresence mode="popLayout">
+          {/* initial={false}: the tier cards present on first page load render
+              immediately with no enter-animation delay — real pricing must
+              never be gated behind requestAnimationFrame timing (found stuck
+              invisible for ~10s under main-thread contention, Lane A A5/A8
+              2026-09-01). Segment/showAll changes after mount still animate. */}
+          <AnimatePresence mode="popLayout" initial={false}>
             {visibleTiers.map((tier, i) => (
               <motion.div
                 key={tier.key}
@@ -633,7 +674,9 @@ export default function PricingPage() {
 
         {/* Footer note */}
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 11, letterSpacing: 2, marginBottom: 20 }}>
-          All paid plans include a 7-day free trial · No contracts · Cancel anytime
+          {/* No trial claim here — checkout never sets trial_period_days, so a
+              "free trial" promise would be false (Rule 20). */}
+          No contracts · Cancel anytime
         </div>
         <div style={{ textAlign: 'center' }}>
           <Link href="/season-pass" style={{ color: '#AA2DFF', fontSize: 11, letterSpacing: 2, textDecoration: 'none' }}>

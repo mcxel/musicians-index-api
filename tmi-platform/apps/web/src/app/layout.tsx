@@ -13,11 +13,9 @@ import TMIGlobalHUD from "@/components/hud/TMIGlobalHUD";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
-import TMIGlobalNav from "@/components/system/TMIGlobalNav";
 import TMIWorkspaceSwitcher from "@/components/system/TMIWorkspaceSwitcher";
 import { NavigationLock } from "@/components/navigation/NavigationLock";
 import NavigationRuntime from "@/components/navigation/NavigationRuntime";
-import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import LiveMarqueeTicker from "@/components/live/LiveMarqueeTicker";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
@@ -33,8 +31,6 @@ import LaunchDock from "@/components/dock/LaunchDock";
 import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
 import BeatPurchaseInterestPrompt from "@/components/beats/BeatPurchaseInterestPrompt";
 import AdConsentBanner from "@/components/ads/AdConsentBanner";
-import StarfieldWarpEntry from "@/components/live/StarfieldWarpEntry";
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -211,8 +207,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
               <PlatformFooter />
               <PWAInstallPrompt />
-              <NavigationRail />
-              <TMIGlobalNav />
               <ChevronNavigation />
               <NavigationRuntime />
               <NavigationLock />
@@ -227,7 +221,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <MonitorRuntime />
               <PersistentMiniPlayer />
               <LaunchDock />
-              <StarfieldWarpEntry />
               <GlobalLiveDiscoveryOverlay />
               <BeatPurchaseInterestPrompt />
             </WatchSessionProvider>

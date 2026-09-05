@@ -426,10 +426,13 @@ export function getPersistedFanLobbySkinId(): FanLobbySkinId | null {
   }
 }
 
+export const FAN_LOBBY_SKIN_CHANGED_EVENT = "tmi:fan-lobby-skin-changed";
+
 export function persistFanLobbySkinId(skinId: FanLobbySkinId): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(SKIN_STORAGE_KEY, skinId);
+    window.dispatchEvent(new CustomEvent(FAN_LOBBY_SKIN_CHANGED_EVENT, { detail: { skinId } }));
   } catch {
     /* ignore quota */
   }

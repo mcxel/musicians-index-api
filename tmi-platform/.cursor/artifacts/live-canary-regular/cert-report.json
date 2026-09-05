@@ -1,0 +1,200 @@
+{
+  "gate": "LIVE_CANARY_REGULAR",
+  "ok": true,
+  "base": "http://127.0.0.1:3000",
+  "testedAt": "2026-09-01T00:57:11.214Z",
+  "checks": [
+    {
+      "id": "auth-login",
+      "status": "PASS",
+      "detail": "status=200 role=performer"
+    },
+    {
+      "id": "hub_hydration",
+      "status": "PASS",
+      "detail": "hydrated=true chunks=0"
+    },
+    {
+      "id": "page_session",
+      "status": "PASS",
+      "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\"}"
+    },
+    {
+      "id": "media_player_host",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "preflight_not_live",
+      "status": "PASS",
+      "detail": "{\"canaryActive\":false,\"state\":null}"
+    },
+    {
+      "id": "publication_post",
+      "status": "PASS",
+      "detail": "{\"posts\":[{\"status\":200,\"url\":\"http://127.0.0.1:3000/api/live/go\"},{\"status\":200,\"url\":\"http://127.0.0.1:3000/api/live/go\"}],\"uiError\":\"\"}"
+    },
+    {
+      "id": "fabric_canary_observatory",
+      "status": "PASS",
+      "detail": "state=LIVE sources=4 history=PREFLIGHT→READY→CONNECTING→PUBLISHING→LIVE audio=src-performer-mic"
+    },
+    {
+      "id": "discovery_lobby_wall",
+      "status": "PASS",
+      "detail": "keys=cards"
+    },
+    {
+      "id": "registry_live",
+      "status": "PASS",
+      "detail": "{\"status\":200,\"count\":1,\"liveLen\":1}"
+    },
+    {
+      "id": "teardown",
+      "status": "PASS",
+      "detail": "{\"state\":\"ENDED\",\"active\":false,\"teardownComplete\":true}"
+    }
+  ],
+  "liveGoPosts": [
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:3000/api/live/go"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:3000/api/live/go"
+    }
+  ],
+  "canary": {
+    "canaryActive": true,
+    "experienceType": "REGULAR_GO_LIVE",
+    "sessionId": "sess-room-hub-1788224346940-1788224346943-im6lu8",
+    "roomId": "room-hub-1788224346940",
+    "state": "LIVE",
+    "stateHistory": [
+      "PREFLIGHT",
+      "READY",
+      "CONNECTING",
+      "PUBLISHING",
+      "LIVE"
+    ],
+    "generation": 1,
+    "revision": 5,
+    "mediaClockMs": 14263,
+    "sources": [
+      {
+        "sourceId": "src-performer-cam",
+        "mediaKind": "CAMERA",
+        "health": "HEALTHY",
+        "publishEligible": true
+      },
+      {
+        "sourceId": "src-performer-mic",
+        "mediaKind": "MIC",
+        "health": "HEALTHY",
+        "publishEligible": true
+      },
+      {
+        "sourceId": "src-venue-renderer",
+        "mediaKind": "VENUE_RENDERER",
+        "health": "HEALTHY",
+        "publishEligible": true
+      },
+      {
+        "sourceId": "src-audience-renderer",
+        "mediaKind": "AUDIENCE_RENDERER",
+        "health": "HEALTHY",
+        "publishEligible": true
+      }
+    ],
+    "programPrimary": "src-performer-cam",
+    "previewPrimary": "src-performer-cam",
+    "layout": "FLAT",
+    "audioAuthoritySourceId": "src-performer-mic",
+    "programAudibleSourceIds": [
+      "src-performer-mic"
+    ],
+    "audienceHumanCount": 0,
+    "recoveryIncidents": [],
+    "transport": {
+      "reconnectCount": 0,
+      "lastError": null
+    },
+    "preflightDefaults": {
+      "cameraPreviewActive": false,
+      "micPreviewActive": false,
+      "isLivePublished": false
+    },
+    "teardownComplete": false,
+    "errors": []
+  },
+  "lobbyWall": {
+    "status": 200,
+    "sampleKeys": [
+      "cards"
+    ]
+  },
+  "registry": {
+    "status": 200,
+    "count": 1,
+    "liveLen": 1
+  },
+  "summary": {
+    "overall": "PASS",
+    "failCount": 0,
+    "physicalGoLiveClick": "PASS",
+    "fabricCanary": "PASS",
+    "checks": [
+      {
+        "id": "auth-login",
+        "status": "PASS",
+        "detail": "status=200 role=performer"
+      },
+      {
+        "id": "hub_hydration",
+        "status": "PASS",
+        "detail": "hydrated=true chunks=0"
+      },
+      {
+        "id": "page_session",
+        "status": "PASS",
+        "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\"}"
+      },
+      {
+        "id": "media_player_host",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "id": "preflight_not_live",
+        "status": "PASS",
+        "detail": "{\"canaryActive\":false,\"state\":null}"
+      },
+      {
+        "id": "publication_post",
+        "status": "PASS",
+        "detail": "{\"posts\":[{\"status\":200,\"url\":\"http://127.0.0.1:3000/api/live/go\"},{\"status\":200,\"url\":\"http://127.0.0.1:3000/api/live/go\"}],\"uiError\":\"\"}"
+      },
+      {
+        "id": "fabric_canary_observatory",
+        "status": "PASS",
+        "detail": "state=LIVE sources=4 history=PREFLIGHT→READY→CONNECTING→PUBLISHING→LIVE audio=src-performer-mic"
+      },
+      {
+        "id": "discovery_lobby_wall",
+        "status": "PASS",
+        "detail": "keys=cards"
+      },
+      {
+        "id": "registry_live",
+        "status": "PASS",
+        "detail": "{\"status\":200,\"count\":1,\"liveLen\":1}"
+      },
+      {
+        "id": "teardown",
+        "status": "PASS",
+        "detail": "{\"state\":\"ENDED\",\"active\":false,\"teardownComplete\":true}"
+      }
+    ]
+  }
+}

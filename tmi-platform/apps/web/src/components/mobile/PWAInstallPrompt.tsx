@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type BeforeInstallPromptEvent = Event & {
@@ -23,10 +24,40 @@ function setDismissed() {
 }
 
 export function PWAInstallPrompt() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const [sessionBusy, setSessionBusy] = useState(false);
+
+  const isLiveStage =
+    pathname?.includes("/rooms/") ||
+    pathname?.includes("/live/") ||
+    pathname?.startsWith("/hub");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const readBusy = () => {
+      const liveFlag = localStorage.getItem("tmi_is_live") === "true";
+      const camFlag = localStorage.getItem("tmi_camera_session") === "true";
+      setSessionBusy(liveFlag || camFlag);
+    };
+    readBusy();
+    const onGoLive = () => setSessionBusy(true);
+    const onEnd = () => setSessionBusy(false);
+    const onCam = () => setSessionBusy(true);
+    window.addEventListener("tmi:golive", onGoLive);
+    window.addEventListener("tmi:endbroadcast", onEnd);
+    window.addEventListener("tmi:camera-session-start", onCam);
+    window.addEventListener("tmi:camera-session-end", onEnd);
+    return () => {
+      window.removeEventListener("tmi:golive", onGoLive);
+      window.removeEventListener("tmi:endbroadcast", onEnd);
+      window.removeEventListener("tmi:camera-session-start", onCam);
+      window.removeEventListener("tmi:camera-session-end", onEnd);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -63,13 +94,14 @@ export function PWAInstallPrompt() {
   // Push page content DOWN by the banner height so nothing gets covered
   useEffect(() => {
     const body = document.body;
-    if (visible) {
+    const showBanner = visible && !isLiveStage && !sessionBusy;
+    if (showBanner) {
       body.style.paddingBottom = 'calc(80px + env(safe-area-inset-bottom, 0px))';
     } else {
       body.style.paddingBottom = '';
     }
     return () => { body.style.paddingBottom = ''; };
-  }, [visible]);
+  }, [visible, isLiveStage, sessionBusy]);
 
   const dismiss = () => {
     setDismissed();
@@ -92,7 +124,7 @@ export function PWAInstallPrompt() {
     }
   };
 
-  if (!visible) return null;
+  if (!visible || isLiveStage || sessionBusy) return null;
 
   return (
     <div
@@ -102,9 +134,9 @@ export function PWAInstallPrompt() {
         position: 'fixed',
         left: 0,
         right: 0,
-        bottom: 0,
-        // Above nav (400) and content (300) but below modals (600)
-        zIndex: 500,
+        bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+        // Above content (300) but below modals (600) and clear of bottom nav bar
+        zIndex: 450,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

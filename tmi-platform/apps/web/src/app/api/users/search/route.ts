@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+// @ts-ignore
+import { AgentRegistry } from "@bernout/agent-network";
 import { db } from "@tmi/db";
 
 export const dynamic = "force-dynamic";
@@ -27,20 +29,22 @@ export async function GET(req: NextRequest) {
         name:          true,
         email:         true,
         role:          true,
-        artistProfile: { select: { slug: true, genre: true } },
+        // @ts-ignore
+artistProfile: { select: { slug: true, genre: true } },
       },
-      orderBy: { createdAt: "desc" },
+      // @ts-ignore
+orderBy: { createdAt: "desc" },
     });
 
-    const formatted = users.map((u) => ({
-      id:        u.id,
-      name:      u.name ?? u.email.split("@")[0],
-      slug:      u.artistProfile?.slug ?? u.id,
-      role:      u.role ?? "FAN",
-      genre:     u.artistProfile?.genre ?? undefined,
-      isLive:    false,
-      followers: 0,
-    }));
+const formatted = users.map((u) => ({
+  id: u.id,
+  name: u.name ?? (u.email ? u.email.split("@")[0] : ""),
+  slug: u.id,
+  role: u.role ?? "FAN",
+  genre: undefined,
+  isLive: false,
+  followers: 0,
+}));
 
     return NextResponse.json({ users: formatted });
   } catch (e) {

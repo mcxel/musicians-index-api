@@ -8,8 +8,7 @@
  * They do NOT have the expand/fullscreen/management workspace design of drawers.
  *
  * PANELS in this dock:
- *   🏠 Lobby       — Avatar Fan Lobby access (Fan only)
- *                    Note: Performer gets Avatar Fan Lobby too per AGENTS.md Rule 26
+ *   🏠 Lobby       — Avatar Fan Lobby access (Fan only; Rule 26)
  *   📺 Live Wall   — Browse active live rooms (quick discovery)
  *   🔔 Alerts      — Notifications and activity feed
  *   👥 Friends     — Online friends / invite
@@ -29,6 +28,7 @@ import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWa
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
+import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import {
   digitalQuickPanelFrameStyle,
   resolveHubQuickPanelPosition,
@@ -80,10 +80,17 @@ function Btn({ children, color, outline, onClick }: { children: React.ReactNode;
 // ─── Panel contents ───────────────────────────────────────────────────────────
 
 function LobbyPanel({ role }: { role: UserRole }) {
+  if (role === "performer") {
+    return (
+      <div style={{ padding: "10px 14px", fontSize: 10, color: "rgba(255,255,255,0.45)", textAlign: "center" }}>
+        Fan Avatar Lobby is Fan-only (Rule 26). Use Live Wall to discover rooms.
+      </div>
+    );
+  }
   return (
     <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ fontSize: 9, fontWeight: 900, color: "#9B59FF", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-        {role === "fan" ? "YOUR AVATAR LOBBY" : "AVATAR FAN LOBBY"}
+        YOUR AVATAR LOBBY
       </div>
       <div style={{ background: "#9B59FF22", border: "1px solid #9B59FF44", borderRadius: 8, padding: 12, textAlign: "center" }}>
         <div style={{ fontSize: 28, marginBottom: 4 }}>🎭</div>
@@ -133,10 +140,29 @@ function LiveWallPanel({
             : "live",
         href: room.href,
       });
+      const roomKind =
+        room.type === "battle"
+          ? "battle"
+          : room.type === "cypher"
+            ? "cypher"
+            : room.type === "challenge"
+              ? "challenge"
+              : room.type === "game"
+                ? "game"
+                : room.type === "lounge"
+                  ? "lounge"
+                  : room.type === "concert"
+                    ? "show_release"
+                    : "live";
+      const resolution = resolveParticipationEntry({ roomKind });
       setJoinDecision({
         instant: true,
         gateReason: "none",
         href: dest.href,
+        entryMode: resolution.entryMode,
+        roomKind: resolution.roomKind,
+        initialState: resolution.initialState,
+        claimFanSeat: resolution.claimFanSeat,
         room: {
           id: room.id,
           title: room.name,
@@ -148,6 +174,9 @@ function LiveWallPanel({
           accentColor: "#FF4444",
           roomRoute: dest.href,
           venueIndex: 0,
+          participationEntryMode: resolution.entryMode,
+          participationRoomKind: resolution.roomKind,
+          claimFanSeat: resolution.claimFanSeat,
         },
       });
     },
@@ -457,7 +486,9 @@ export default function QuickPanelDock({ role = "fan", style, panels }: QuickPan
     setActivePanel(id);
   };
 
-  const visiblePanels = panels ? PANELS.filter((p) => panels.includes(p.id)) : PANELS;
+  const visiblePanels = (panels ? PANELS.filter((p) => panels.includes(p.id)) : PANELS).filter(
+    (p) => role !== "performer" || p.id !== "lobby",
+  );
   const activePanelDef = visiblePanels.find((p) => p.id === activePanel) ?? null;
 
   return (

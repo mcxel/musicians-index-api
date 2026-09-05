@@ -37,6 +37,8 @@ import {
   DEFAULT_SIDE_BATTLE_WINDOW_SECONDS,
   resolveGauntletTurnSeconds,
 } from "@/lib/gauntlet/GauntletClockConfig";
+import { runCompetitionRestartLoop } from "@/lib/live/CompetitionRestartLoop";
+import { AdaptiveGauntletMatchDirector, MatchRequest } from "../../../../../packages/assets/src/AdaptiveGauntletMatchDirector";
 
 export type GauntletRunPhase =
   | "REGISTRATION"
@@ -96,9 +98,26 @@ export function createGauntletRun(
   waiting: GauntletParticipant[],
 ): GauntletRunState {
   const runId = `grun-${roomId}-${Date.now()}`;
-  const starters = waiting
-    .filter((p) => p.role === "WAITING_COMPETITOR" && !p.eliminated)
-    .slice(0, 32);
+
+  // Build a match request for the AdaptiveGauntletMatchDirector
+  const matchRequest: MatchRequest = {
+    experience: "GAUNTLET",
+    skill: "MUSIC", // Default skill; can be derived from participants
+    eligibleParticipants: waiting.map((p) => ({
+      userId: p.userId,
+      skill: "MUSIC", // placeholder for actual skill metadata
+    })),
+    minimumParticipants: 2,
+    idealParticipants: 4,
+    maximumParticipants: 32,
+  };
+
+  const director = new AdaptiveGauntletMatchDirector();
+  const matchResult = director.match(matchRequest);
+
+  // Promote matched participants to active competitors
+  const startersIds = matchResult.eligibleParticipantIds;
+  const starters = waiting.filter((p) => startersIds.includes(p.userId));
   for (const p of starters) promoteToActive(roomId, p.userId);
 
   const startSize = nextBracketSize(Math.max(starters.length, 2));
@@ -369,6 +388,12 @@ export function completeRunCeremony(runId: string): GauntletRunState | null {
   run.phase = "WHOS_ENTERING_NEXT";
   run.updatedAt = Date.now();
   setGauntletCurrentRun(run.roomId, null);
+  // After champion ending: RESET → SHUFFLE → RECRUITING (same room).
+  runCompetitionRestartLoop({
+    venueSlug: run.roomId,
+    roomKind: "gauntlet",
+    afterResultReveal: true,
+  });
   return run;
 }
 

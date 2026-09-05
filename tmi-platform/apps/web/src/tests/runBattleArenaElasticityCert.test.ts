@@ -243,7 +243,3 @@ export async function runBattleArenaElasticityCert(): Promise<{
     stepResults,
   };
 }
-
-if (require.main === module) {
-  void runBattleArenaElasticityCert();
-}

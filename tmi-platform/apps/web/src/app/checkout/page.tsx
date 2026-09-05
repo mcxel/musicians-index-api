@@ -60,9 +60,12 @@ export default function CheckoutPage() {
         "membership-gold":     { name: "GOLD Membership",     price: 49.99, priceId: "price_gold_monthly",     mode: "subscription" },
         "membership-platinum": { name: "PLATINUM Membership", price: 79.99, priceId: "price_platinum_monthly", mode: "subscription" },
         "membership-diamond":  { name: "DIAMOND Membership",  price: 149.99, priceId: "price_diamond_monthly", mode: "subscription" },
-        "season-pass-fan":     { name: "Season Pass — FAN",    price: 29.99, priceId: "price_fan_monthly",  mode: "subscription" },
-        "season-pass-artist":  { name: "Season Pass — ARTIST", price: 59.99, priceId: "price_artist_monthly", mode: "subscription" },
-        "season-pass-vip":     { name: "Season Pass — VIP",    price: 99.99, priceId: "price_vip_monthly",   mode: "subscription" },
+        "season-pass-starter": { name: "Starter Season Pass", price: 1.99,  priceId: "price_season_pass_starter", mode: "payment" },
+        "season-pass-plus":    { name: "Plus Season Pass",    price: 4.99,  priceId: "price_season_pass_plus",    mode: "payment" },
+        "season-pass-fan":     { name: "Fan Season Pass",     price: 9.99,  priceId: "price_season_pass_fan",     mode: "payment" },
+        "season-pass-artist":  { name: "Artist Season Pass",  price: 19.99, priceId: "price_season_pass_artist",  mode: "payment" },
+        "season-pass-bundle":  { name: "Full Bundle Pass",    price: 24.99, priceId: "price_season_pass_bundle",  mode: "payment" },
+        "season-pass-vip":     { name: "VIP Season Pass",     price: 49.99, priceId: "price_season_pass_vip",     mode: "payment" },
       };
       const def = MEMBERSHIP_LABELS[product];
       if (def) built.push({ name: def.name, price: def.price, qty: 1, priceId: def.priceId, mode: def.mode });

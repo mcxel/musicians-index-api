@@ -54,6 +54,23 @@ const FAN_ONLY_FALLBACK = (
       <br />
       Performers are represented by their real photos and videos.
     </p>
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+    <Link
+      href="/performer/canvas"
+      style={{
+        marginTop: 8,
+        padding: '10px 28px',
+        background: 'rgba(0,255,255,0.12)',
+        border: '1px solid #00FFFF',
+        borderRadius: 8,
+        color: '#00FFFF',
+        fontSize: 13,
+        textDecoration: 'none',
+        letterSpacing: 1,
+      }}
+    >
+      Open YoPho canvas →
+    </Link>
     <Link
       href="/hub"
       style={{
@@ -70,6 +87,7 @@ const FAN_ONLY_FALLBACK = (
     >
       ← Back to Hub
     </Link>
+    </div>
   </div>
 );
 

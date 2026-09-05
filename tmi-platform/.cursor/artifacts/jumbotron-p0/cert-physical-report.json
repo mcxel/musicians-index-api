@@ -1,0 +1,146 @@
+{
+  "date": "2026-09-02T16:15:35.516Z",
+  "branch": "eos/vocal-improv-clean",
+  "base": "http://127.0.0.1:3002",
+  "physicalLookUp": {
+    "battle": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "10-battle-stage-before-lookup.png",
+        "11-battle-lookup-center-hung.png",
+        "12-battle-return-stage.png"
+      ]
+    },
+    "cypher": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "CYPHER",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "20-cypher-stage-before-lookup.png",
+        "21-cypher-lookup-collaborative.png",
+        "22-cypher-return-stage.png"
+      ]
+    },
+    "worldDanceParty": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "CENTER_HUNG_DISCO_ORB",
+      "experience": "WORLD_DANCE_PARTY",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "30-wdp-stage-before-lookup.png",
+        "31-wdp-lookup-disco-orb.png",
+        "32-wdp-return-stage.png"
+      ]
+    },
+    "auditoriumLive": {
+      "lookUpOk": true,
+      "returnOk": true,
+      "packOk": true,
+      "architecture": "WALL_HANGING_LED",
+      "experience": "AUDITORIUM",
+      "tiers": "FLOOR_GA,VIP,LOWER_BOWL,MID_BOWL,UPPER_BOWL,SIDE_SECTIONS,REAR_SECTIONS",
+      "sightlinesCertified": true,
+      "sessionPreserved": true,
+      "screenshots": [
+        "40-auditorium-stage-before-lookup.png",
+        "41-auditorium-lookup-wall-led.png",
+        "42-auditorium-return-stage.png"
+      ]
+    }
+  },
+  "productionBattles": {
+    "lookUpOk": true,
+    "returnOk": true,
+    "audienceSceneMounted": true,
+    "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+    "sessionPreserved": true,
+    "route": "/cypher",
+    "screenshots": [
+      "70-production-cypher-stage.png",
+      "71-production-cypher-lookup.png",
+      "72-production-cypher-return.png"
+    ]
+  },
+  "harness": {
+    "battlePack": false,
+    "cypherNoWinner": false,
+    "discoOrb": false,
+    "jumbotronFeedAssignable": false,
+    "focusReturn": false,
+    "mobile": false
+  },
+  "verdict": {
+    "physicalLookUp": "PASS",
+    "tierSightlines": "PASS",
+    "experiencePacks": "PARTIAL",
+    "playerFreedomFeed": "PARTIAL",
+    "overall": "PASS",
+    "productionMount": "PASS"
+  },
+  "openBlockers": [],
+  "screenshots": [
+    "10-battle-stage-before-lookup.png",
+    "11-battle-lookup-center-hung.png",
+    "12-battle-return-stage.png",
+    "20-cypher-stage-before-lookup.png",
+    "21-cypher-lookup-collaborative.png",
+    "22-cypher-return-stage.png",
+    "30-wdp-stage-before-lookup.png",
+    "31-wdp-lookup-disco-orb.png",
+    "32-wdp-return-stage.png",
+    "40-auditorium-stage-before-lookup.png",
+    "41-auditorium-lookup-wall-led.png",
+    "42-auditorium-return-stage.png"
+  ],
+  "aesMountComponent": {
+    "cert-aes-mount": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "sightlines": "true",
+      "lookUp": "false",
+      "surface": false,
+      "lookBtn": true,
+      "screenshot": "cert-aes-mount.png"
+    },
+    "cert-lookup": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "CENTER_HUNG_ARENA_JUMBOTRON",
+      "experience": "BATTLE_ARENA",
+      "sightlines": "true",
+      "lookUp": "true",
+      "surface": true,
+      "lookBtn": true,
+      "screenshot": "cert-lookup.png"
+    },
+    "cert-auditorium": {
+      "layer": true,
+      "mounted": "true",
+      "architecture": "WALL_HANGING_LED",
+      "experience": "AUDITORIUM",
+      "sightlines": "true",
+      "lookUp": "true",
+      "surface": true,
+      "lookBtn": true,
+      "screenshot": "cert-auditorium.png"
+    }
+  }
+}

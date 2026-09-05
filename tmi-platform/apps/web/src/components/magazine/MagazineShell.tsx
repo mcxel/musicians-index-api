@@ -22,8 +22,9 @@ const MIN_READ_MS = 5_000;
 // Pages at this index and beyond require a subscription to read
 const FREE_PAGE_THRESHOLD = 4;
 
-// Half of the total flip duration — one half for "curl away", one for "curl in"
-const HALF_FLIP = Math.floor(TIMING.pageFlip / 2);
+// Half of the total slide duration — out then in
+const PAGE_SLIDE_MS = TIMING.pageSlide;
+const HALF_SLIDE = Math.floor(PAGE_SLIDE_MS / 2);
 
 export interface MagazinePage {
   id: string;
@@ -117,7 +118,7 @@ function PagePane({ page, side, archetype }: { page: MagazinePage; side?: "left"
 
       <TypeBadge type={page.type} colorOverride={archetype.accentColor} pageClass={page.pageClass} />
 
-      <div style={{ position: "relative", zIndex: 6, height: "100%" }}>
+      <div style={{ position: "relative", zIndex: 6, height: "100%", touchAction: "pan-y" }} data-magazine-page-body>
         {page.content}
       </div>
 
@@ -213,6 +214,7 @@ export default function MagazineShell({
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const justSwipedRef = useRef(false);
   const audioRef = useRef<TmiMagazineAudioEngine | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -390,10 +392,10 @@ export default function MagazineShell({
           window.setTimeout(() => {
             setFlipping(null);
             setFlipPhase(null);
-          }, HALF_FLIP);
+          }, HALF_SLIDE);
         });
       });
-    }, HALF_FLIP);
+    }, HALF_SLIDE);
   }, [reduced, pages, onPageChange, grantReadXP, stopAudio]);
 
   const goNext = useCallback((turnSource: "manual" | "auto" = "manual") => {
@@ -469,32 +471,30 @@ export default function MagazineShell({
     touchStartY.current = null;
     // Bounded horizontal swipe check: ensure horizontal motion is dominant
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      justSwipedRef.current = true;
+      window.setTimeout(() => { justSwipedRef.current = false; }, 380);
       if (dx < 0) goNext();
       else goPrev();
     }
   }
 
-  let flipTransform = "perspective(1400px) rotateY(0deg) scale(1)";
+  let flipTransform = "translateX(0)";
   let flipTransition: string | undefined =
-    `transform ${TIMING.pageFlip}ms cubic-bezier(0.4,0,0.2,1), opacity ${TIMING.pageFlip * 0.55}ms ease`;
+    `transform ${PAGE_SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1), opacity ${PAGE_SLIDE_MS * 0.55}ms ease`;
   let flipOpacity = 1;
 
   if (!reduced && flipping) {
     if (flipPhase === "out") {
-      flipTransform = flipping === "forward"
-        ? "perspective(1400px) rotateY(-90deg) scale(0.93)"
-        : "perspective(1400px) rotateY(90deg) scale(0.93)";
-      flipTransition = `transform ${HALF_FLIP}ms cubic-bezier(0.55,0,1,1), opacity ${HALF_FLIP}ms ease-in`;
-      flipOpacity = 0.04;
+      flipTransform = flipping === "forward" ? "translateX(-36px)" : "translateX(36px)";
+      flipTransition = `transform ${HALF_SLIDE}ms cubic-bezier(0.55,0,1,1), opacity ${HALF_SLIDE}ms ease-in`;
+      flipOpacity = 0.12;
     } else if (flipPhase === "snap") {
-      flipTransform = flipping === "forward"
-        ? "perspective(1400px) rotateY(90deg) scale(0.93)"
-        : "perspective(1400px) rotateY(-90deg) scale(0.93)";
+      flipTransform = flipping === "forward" ? "translateX(36px)" : "translateX(-36px)";
       flipTransition = "none";
       flipOpacity = 0;
     } else if (flipPhase === "in") {
-      flipTransform = "perspective(1400px) rotateY(0deg) scale(1)";
-      flipTransition = `transform ${HALF_FLIP}ms cubic-bezier(0,0,0.3,1), opacity ${HALF_FLIP}ms ease-out`;
+      flipTransform = "translateX(0)";
+      flipTransition = `transform ${HALF_SLIDE}ms cubic-bezier(0,0,0.3,1), opacity ${HALF_SLIDE}ms ease-out`;
       flipOpacity = 1;
     }
   }
@@ -517,7 +517,7 @@ export default function MagazineShell({
     : "linear-gradient(to right, rgba(0,0,0,0.72) 0%, transparent 55%)";
   const foldShadowTransition = flipPhase === "snap"
     ? "none"
-    : `opacity ${HALF_FLIP}ms ease`;
+    : `opacity ${HALF_SLIDE}ms ease`;
 
   return (
     <div
@@ -559,9 +559,19 @@ export default function MagazineShell({
           padding: ${archetype.pullQuoteStyle.padding ?? "0 0 0 8px"} !important;
           text-transform: ${archetype.pullQuoteStyle.textTransform ?? "none"} !important;
         }
-        .tmi-mag-cols {
-          column-count: ${archetype.columnCount} !important;
-          column-gap: 20px !important;
+        .tmi-mag-shell-container {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+        @media (max-width: 767px) {
+          .tmi-mag-shell-canvas {
+            padding: 8px 4px !important;
+          }
+          .tmi-mag-cols {
+            column-count: 1 !important;
+          }
         }
         .tmi-mag-dropcap::first-letter {
           font-family: ${archetype.headerFont} !important;
@@ -758,9 +768,11 @@ export default function MagazineShell({
       {/* Page canvas */}
       <div
         ref={containerRef}
-        style={{ position: "relative", overflow: "hidden", padding: "24px" }}
+        className="tmi-mag-shell-canvas"
+        style={{ position: "relative", overflow: "hidden", padding: "24px", touchAction: "pan-y" }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        onClick={(e) => { if (justSwipedRef.current) { e.preventDefault(); e.stopPropagation(); } }}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
@@ -801,6 +813,15 @@ export default function MagazineShell({
           {showSpread ? (
             <>
               <PagePane page={leftPage}  side="left"  archetype={archetype} />
+              <div
+                aria-hidden
+                style={{
+                  width: 2,
+                  flexShrink: 0,
+                  background: "linear-gradient(180deg, rgba(0,0,0,0.65), rgba(255,255,255,0.08), rgba(0,0,0,0.65))",
+                  boxShadow: "inset 0 0 6px rgba(0,0,0,0.8)",
+                }}
+              />
               <PagePane page={rightPage!} side="right" archetype={archetype} />
             </>
           ) : (

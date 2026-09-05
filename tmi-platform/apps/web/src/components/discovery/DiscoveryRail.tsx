@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PERFORMER_REGISTRY, getPerformerById, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { VENUE_REGISTRY, getLiveVenues } from '@/lib/venues/VenueRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 
@@ -32,7 +33,7 @@ interface Props {
 const GAMES = [
   { slug: 'weekly-cypher',   name: 'Weekly Cypher',      icon: '🎙️', href: '/live/rooms/cypher-arena',     desc: 'Freestyle battle — all genres'  },
   { slug: 'monday-stage',    name: 'Monday Night Stage', icon: '🎭', href: '/games/monday-night',            desc: 'Live performance competition'    },
-  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/lobby?filter=stream-win', desc: 'Listen, win real cash & XP'     },
+  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/rooms/stream-win', desc: 'Listen, win real cash & XP'     },
   { slug: 'battle-stage',    name: 'Battle Stage',       icon: '⚔️', href: '/live/rooms/battle-stage',      desc: 'Song-for-song battles'          },
   { slug: 'comedy-night',    name: 'Comedy Night',       icon: '😂', href: '/games/comedy-night',           desc: 'Stand-up + audience voting'     },
   { slug: 'deal-or-feud',    name: 'Deal or Feud 1000',  icon: '🎮', href: '/games/deal-or-feud',           desc: 'Game show — win platform cash'  },
@@ -113,7 +114,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
     content = (
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
         {fallback.map(a => (
-          <Link key={a.slug} href={`/magazine/article/${a.slug}`} style={{ textDecoration: 'none' }}>
+          <Link key={a.slug} href={magazineReaderArticleUrl(a.slug)} style={{ textDecoration: 'none' }}>
             <div style={{ ...cardBase(a.heroColor), width: 200 }}>
               <div style={{ height: 6, background: a.heroColor }} />
               <div style={{ padding: '10px 12px 12px' }}>
@@ -334,7 +335,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
     content = (
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
         {writers.map(w => (
-          <Link key={w.name} href={`/magazine/article/${w.lastSlug}`} style={{ textDecoration: 'none' }}>
+          <Link key={w.name} href={magazineReaderArticleUrl(w.lastSlug)} style={{ textDecoration: 'none' }}>
             <div style={{ ...cardBase('#00FF88'), width: 160 }}>
               <div style={{ height: 55, background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(10,6,30,0.95))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
                 ✍️

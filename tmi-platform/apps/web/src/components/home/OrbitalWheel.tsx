@@ -21,6 +21,9 @@ interface OrbitalNode {
   isLive: boolean;
   color: string;
   profileRoute: string;
+  verified?: boolean;
+  honorTitle?: string;
+  points?: number;
 }
 
 const ACCENT_COLORS = ['#FF2DAA', '#FFD700', '#00FF88', '#00E5FF', '#9B59B6', '#FF8C00', '#E63000', '#FFD700', '#00E5FF', '#FF2DAA'];
@@ -40,15 +43,23 @@ function slotToNode(slot: RankSlot, index: number): OrbitalNode {
     rank: slot.rank,
     name: slot.displayName,
     genre: slot.genre ?? (slot.kind === 'bot' ? 'Bot Seat' : 'All Genres'),
-    imageUrl: slot.avatarUrl || `https://i.pravatar.cc/200?u=${slot.slug}`,
+    imageUrl: slot.avatarUrl || '/images/tmi-placeholder.jpg',
     motionUrl: slot.motionUrl,
     isLive: Boolean(slot.isLive),
     color: ACCENT_COLORS[index % ACCENT_COLORS.length]!,
     profileRoute: slot.profileRoute,
+    verified: slot.kind === 'human' && Boolean(slot.verified),
+    honorTitle: slot.honorTitle,
+    points: slot.points,
   };
 }
 
 const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalNode }) {
+  const rank = node.rank;
+  const isPodium = rank === 2 || rank === 3;
+  const cardW = rank === 1 ? 118 : isPodium ? 108 : 88;
+  const portrait = rank === 1 ? 76 : isPodium ? 68 : 52;
+  const badgePx = rank <= 3 ? 28 : 24;
   return (
     <Link href={node.profileRoute} style={{ textDecoration: 'none' }}>
       <div
@@ -61,7 +72,7 @@ const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalN
           flexDirection: 'column',
           alignItems: 'center',
           boxShadow: `0 0 20px ${node.color}33`,
-          width: 100,
+          width: cardW,
           transition: 'all 0.2s ease-in-out',
           ...GPU_LAYER,
         }}
@@ -74,7 +85,7 @@ const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalN
           e.currentTarget.style.boxShadow = `0 0 20px ${node.color}33`;
         }}
       >
-        <div style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${node.color}`, marginBottom: 6 }}>
+        <div style={{ position: 'relative', width: portrait, height: portrait, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${node.color}`, marginBottom: 6 }}>
           <MotionPhotoPreview
             imageSrc={node.imageUrl}
             motionSrc={node.motionUrl}
@@ -83,10 +94,32 @@ const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalN
             autoPlay={true}
             style={{ width: '100%', height: '100%' }}
           />
-          <div style={{ position: 'absolute', top: 0, left: 0, background: 'rgba(0,0,0,0.8)', color: '#FFD700', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderBottomRightRadius: 8, borderTopLeftRadius: 8, zIndex: 12 }}>#{node.rank}</div>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            minWidth: badgePx,
+            background: rank === 1 ? 'linear-gradient(135deg,#FFD700,#FF9500)' : 'rgba(0,0,0,0.88)',
+            color: rank === 1 ? '#050510' : '#FFD700',
+            fontSize: rank <= 3 ? 12 : 11,
+            fontWeight: 900,
+            padding: '3px 7px',
+            borderBottomRightRadius: 8,
+            borderTopLeftRadius: 8,
+            zIndex: 12,
+            fontFamily: "var(--font-orbitron, Impact)",
+          }}>#{rank}</div>
         </div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{node.name}</div>
-        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{node.genre}</div>
+        <div style={{ fontSize: rank <= 3 ? 11 : 10, fontWeight: 900, color: '#fff', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{node.name}</div>
+        {node.verified && (
+          <div style={{ fontSize: 7, color: '#00FFFF', fontWeight: 800, marginTop: 2 }}>Verified</div>
+        )}
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+          {typeof node.points === 'number' && node.points > 0 ? `XP ${node.points.toLocaleString()}` : 'XP —'}
+        </div>
+        {node.honorTitle ? (
+          <div style={{ fontSize: 7, color: '#FFD700', fontWeight: 800, marginTop: 2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.honorTitle}</div>
+        ) : null}
         {node.isLive && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2020', boxShadow: '0 0 6px #FF2020', animation: 'blink 1s infinite' }} />
@@ -116,17 +149,17 @@ export default memo(function OrbitalWheel() {
         setCrownLeader(null);
         return;
       }
-      setNodes(mapped);
+      setNodes(mapped.filter((n) => n.rank !== 1));
       setCrownLeader(mapped[0] ?? null);
     });
   }, []);
 
-  if (!nodes.length || !crownLeader) return null;
+  if (!crownLeader) return null;
 
   // Dimensions
-  const WHEEL_SIZE = 450;
-  const CENTER_SIZE = 120;
-  const RADIUS = 170;
+  const WHEEL_SIZE = 520;
+  const CENTER_SIZE = 220;
+  const RADIUS = 200;
 
   return (
     // Outer container: `contain: layout style` isolates this subtree from
@@ -224,17 +257,18 @@ export default memo(function OrbitalWheel() {
           height: CENTER_SIZE,
           borderRadius: '50%',
           background: 'radial-gradient(circle, #1a0f30 0%, #050210 100%)',
-          border: '3px solid #FFD700',
-          boxShadow: '0 0 40px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.4)',
+          border: '4px solid #FFD700',
+          boxShadow: '0 0 56px rgba(255,215,0,0.9), inset 0 0 24px rgba(255,215,0,0.45)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          position: 'relative',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.12)'; e.currentTarget.style.boxShadow = '0 0 60px #FFD700'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(255,215,0,0.8)'; }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 0 70px #FFD700'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 56px rgba(255,215,0,0.9)'; }}
         >
           <MotionPhotoPreview
             imageSrc={crownLeader.imageUrl}
@@ -242,13 +276,21 @@ export default memo(function OrbitalWheel() {
             altText={crownLeader.name}
             showBadge={false}
             autoPlay={true}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.85 }}
           />
-          <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '4px' }}>
-            <div style={{ fontSize: 10, color: '#FFD700', letterSpacing: '0.15em', fontWeight: 900, textShadow: '0 0 8px #FFD700' }}>👑 #1 LEADER</div>
-            <div style={{ fontFamily: 'var(--font-orbitron, Impact)', fontSize: 12, fontWeight: 900, color: '#fff', textShadow: '0 0 10px #000', lineHeight: 1.1, marginTop: 2 }}>
-              {crownLeader.name.split(' ')[0]}<br/>{crownLeader.name.split(' ')[1] || ''}
+          <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 3, background: 'linear-gradient(135deg,#FFD700,#FF9500)', color: '#050510', fontWeight: 900, fontSize: 16, padding: '4px 10px', borderRadius: 8, fontFamily: 'var(--font-orbitron, Impact)' }}>#1</div>
+          <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '8px', marginTop: 28 }}>
+            <div style={{ fontSize: 18, color: '#FFD700', letterSpacing: '0.12em', fontWeight: 900, textShadow: '0 0 10px #FFD700' }}>👑</div>
+            <div style={{ fontFamily: 'var(--font-orbitron, Impact)', fontSize: 16, fontWeight: 900, color: '#fff', textShadow: '0 2px 10px #000', lineHeight: 1.15, marginTop: 4 }}>
+              {crownLeader.name}
             </div>
+            {crownLeader.verified && <div style={{ fontSize: 9, color: '#00FFFF', fontWeight: 800, marginTop: 3 }}>Verified Performer</div>}
+            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, marginTop: 2 }}>
+              {typeof crownLeader.points === 'number' && crownLeader.points > 0 ? `XP ${crownLeader.points.toLocaleString()}` : 'XP —'}
+            </div>
+            {crownLeader.honorTitle ? (
+              <div style={{ fontSize: 9, color: '#FFD700', fontWeight: 800, marginTop: 4 }}>{crownLeader.honorTitle}</div>
+            ) : null}
             {crownLeader.isLive && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#FF2020', animation: 'blink 1s infinite', marginTop: 4, boxShadow: '0 0 8px #FF2020' }} />}
           </div>
         </div>

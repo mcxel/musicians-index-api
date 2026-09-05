@@ -237,7 +237,7 @@ export default function LiveWorldScreen() {
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 16, lineHeight: 1.5 }}>
               Listen, earn points, and win prizes while you stream.
             </div>
-            <Link href="/stream-win" style={{
+            <Link href="/live/rooms/stream-win" style={{
               fontSize: 10, fontWeight: 700, color: "#00FFFF",
               textDecoration: "none", letterSpacing: "0.12em",
               border: "1px solid rgba(0,255,255,0.4)", padding: "6px 16px", borderRadius: 4,

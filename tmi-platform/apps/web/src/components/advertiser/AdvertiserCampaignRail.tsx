@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type AdCampaign = {
   id: string;
@@ -10,32 +10,95 @@ type AdCampaign = {
   active: boolean;
 };
 
-const INITIAL: AdCampaign[] = [
-  { id: "ad-1", title: "Neon Shoes Drop", assetType: "video", schedule: "Mon-Fri 18:00", active: true },
-  { id: "ad-2", title: "Studio Console Promo", assetType: "image", schedule: "Daily 12:00", active: false },
-];
+type ApiCampaign = {
+  id: string;
+  name: string;
+  slot?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  creativeType?: string;
+};
 
 export default function AdvertiserCampaignRail() {
-  const [campaigns, setCampaigns] = useState(INITIAL);
+  const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [title, setTitle] = useState("Late Night Brand Burst");
   const [assetType, setAssetType] = useState<AdCampaign["assetType"]>("interactive");
   const [schedule, setSchedule] = useState("Fri 21:00");
 
-  const createCampaign = () => {
-    setCampaigns((prev) => [
-      {
-        id: `ad-${prev.length + 1}`,
-        title: title.trim() || "Untitled Ad Campaign",
-        assetType,
-        schedule,
-        active: true,
-      },
-      ...prev,
-    ]);
+  const loadCampaigns = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/campaigns", { credentials: "include", cache: "no-store" });
+      const data = await res.json() as { campaigns?: ApiCampaign[] };
+      setCampaigns(
+        (data.campaigns ?? []).map((c) => ({
+          id: c.id,
+          title: c.name,
+          assetType: (c.creativeType?.toLowerCase() === "video"
+            ? "video"
+            : c.creativeType?.toLowerCase() === "banner"
+              ? "image"
+              : "interactive") as AdCampaign["assetType"],
+          schedule: c.startDate && c.endDate ? `${c.startDate} → ${c.endDate}` : schedule,
+          active: c.status === "active" || c.status === "live" || c.status === "pending_review",
+        })),
+      );
+    } catch {
+      setError("Unable to load campaigns.");
+    }
+    setLoading(false);
+  }, [schedule]);
+
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
+
+  const createCampaign = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: title.trim() || "Untitled Ad Campaign",
+          slot: "billboard",
+          creativeType: assetType === "video" ? "VIDEO" : assetType === "image" ? "BANNER" : "NATIVE",
+          targeting: { schedule },
+          launch: true,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "Failed to create campaign.");
+        setSaving(false);
+        return;
+      }
+      await loadCampaigns();
+    } catch {
+      setError("Network error while saving campaign.");
+    }
+    setSaving(false);
   };
 
-  const toggleActive = (id: string) => {
-    setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c)));
+  const toggleActive = async (id: string, active: boolean) => {
+    try {
+      await fetch("/api/campaigns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id, action: active ? "pause" : "resume" }),
+      });
+      await loadCampaigns();
+    } catch {
+      setError("Unable to update campaign status.");
+    }
   };
 
   return (
@@ -67,12 +130,19 @@ export default function AdvertiserCampaignRail() {
         />
         <button
           type="button"
-          onClick={createCampaign}
-          className="rounded border border-cyan-300/40 bg-cyan-400/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-cyan-100"
+          onClick={() => void createCampaign()}
+          disabled={saving}
+          className="rounded border border-cyan-300/40 bg-cyan-400/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 disabled:opacity-50"
         >
-          Upload + Activate →
+          {saving ? "Saving…" : "Upload + Activate →"}
         </button>
       </div>
+
+      {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+      {loading && campaigns.length === 0 && <p className="text-xs text-zinc-400">Loading campaigns…</p>}
+      {!loading && campaigns.length === 0 && (
+        <p className="text-xs text-zinc-400">No campaigns yet. Create your first campaign above.</p>
+      )}
 
       <div className="space-y-2">
         {campaigns.map((c) => (
@@ -81,7 +151,7 @@ export default function AdvertiserCampaignRail() {
               <p className="text-sm font-black uppercase tracking-[0.12em] text-white">{c.title}</p>
               <button
                 type="button"
-                onClick={() => toggleActive(c.id)}
+                onClick={() => void toggleActive(c.id, c.active)}
                 className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
                   c.active
                     ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"

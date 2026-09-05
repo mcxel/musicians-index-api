@@ -9,6 +9,7 @@ import {
 import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
 import { getFanCreditsBalance, spendFanCredits } from "@/lib/points/pointsFulfillment";
 import { quotePointsDiscount } from "@/lib/points/PointDiscountEngine";
+import { resolveAppOrigin } from "@/lib/runtime/canonicalEndpointResolver";
 
 export const dynamic = "force-dynamic";
 
@@ -125,11 +126,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3001";
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") ?? "http";
+    const appUrl = resolveAppOrigin({ host, proto });
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
       mode: "payment",
       line_items: [
         {

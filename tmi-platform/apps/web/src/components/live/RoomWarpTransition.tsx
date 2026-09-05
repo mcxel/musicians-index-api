@@ -1,7 +1,15 @@
 "use client";
 
+/**
+ * LEGACY B — RoomWarpTransition.
+ * PROD MOUNTS = 0 (no production importers as of 2026-08-28).
+ * Remount reports LEGACY via MediaTransitionDirector.reportLegacyGlobalMount.
+ * Canonical hub path: GoLiveMediaTransition (Monitor B only).
+ */
+
 import { useEffect, useRef, useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useMediaTransitionDirector } from "@/lib/live/MediaTransitionDirector";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -266,6 +274,7 @@ export default function RoomWarpTransition({
   genre,
   onComplete,
 }: RoomWarpProps) {
+  const reportLegacy = useMediaTransitionDirector((s) => s.reportLegacyGlobalMount);
   const [phase, setPhase] = useState<Phase>("warp");
   const [revealStep, setRevealStep] = useState(0);
   const [msgIdx, setMsgIdx] = useState(0);
@@ -276,6 +285,10 @@ export default function RoomWarpTransition({
   const reducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  useEffect(() => {
+    reportLegacy("RoomWarpTransition:/live/rooms");
+  }, [reportLegacy]);
 
   useEffect(() => {
     const handoffStartedAtRaw = typeof window !== "undefined" ? sessionStorage.getItem("tmi_handoff_started_at") : null;

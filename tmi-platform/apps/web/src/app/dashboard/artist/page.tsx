@@ -106,7 +106,7 @@ export default function ArtistDashboardPage() {
           ].map(({ lbl, href }) => (
             <Link key={lbl} href={href} style={{ fontSize: 8, padding: "5px 10px", background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase" as const }}>{lbl}</Link>
           ))}
-          <Link href="/go-live" style={{ fontSize: 8, padding: "5px 10px", background: "rgba(0,255,136,.1)", border: "1px solid rgba(0,255,136,.4)", color: "#00FF88", borderRadius: 4, textDecoration: "none", fontWeight: 700, letterSpacing: ".05em" }}>
+          <Link href="/hub/performer?golive=1" style={{ fontSize: 8, padding: "5px 10px", background: "rgba(0,255,136,.1)", border: "1px solid rgba(0,255,136,.4)", color: "#00FF88", borderRadius: 4, textDecoration: "none", fontWeight: 700, letterSpacing: ".05em" }}>
             🔴 GO LIVE
           </Link>
         </div>

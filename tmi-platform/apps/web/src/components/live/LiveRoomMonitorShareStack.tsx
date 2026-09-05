@@ -10,13 +10,18 @@ import { useMemo, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import CanonicalMonitorAssignmentOverlay from "@/components/personal-media/CanonicalMonitorAssignmentOverlay";
+import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
+import { isLoungeRoomId, resolveLoungeMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import {
   MonitorScreenShareVideo,
   MonitorShareSlotPicker,
+  ScreenShareErrorBanner,
 } from "@/components/monitors/MonitorScreenSharePrimitives";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import { shareSlotTargetsCell } from "@/lib/monitors/monitorScreenShareTypes";
+import { resolveMediaSurfaceLayout } from "@/lib/monitors/MediaSurfaceLayoutDirector";
+import useViewportMode from "@/hooks/useViewportMode";
 
 const STANDBY_URL =
   process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
@@ -73,15 +78,49 @@ export interface LiveRoomMonitorShareStackProps {
 export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER" }: LiveRoomMonitorShareStackProps) {
   const {
     screenStream,
+    shareActive,
+    shareButtonLabel,
     shareSlot,
     slotPickerOpen,
     setSlotPickerOpen,
-    startScreenShare,
+    cycleSharePress,
+    addShareSource,
     stopScreenShare,
     pickShareSlot,
-  } = useMonitorScreenShare();
+    error: shareError,
+    clearError: clearShareError,
+    availableShareSources,
+    shareSourceIndex,
+  } = useMonitorScreenShare({
+    defaultSlot: { monitor: 0, cellIndex: -1 },
+    openPickerOnStart: false,
+  });
 
-  const stageHint = "Main stage stays in the venue view above — route screen share to any open cell here.";
+  const { isPhone, isTablet } = useViewportMode();
+  const deviceTier = isPhone ? "phone" : isTablet ? "tablet" : "desktop";
+  const surfaceLayout = resolveMediaSurfaceLayout({
+    screenShareActive: shareActive,
+    shareSourceIndex,
+    availableShareSources: availableShareSources.map((s) => ({
+      id: s.id,
+      label: s.label,
+      alive: s.alive,
+    })),
+    participantCount: shareActive ? 2 : 0,
+    activeSpeakerId: null,
+    audiencePanelEnabled: true,
+    fullscreenState: "none",
+    deviceTier,
+    roleContext: roleLabel === "PERFORMER" ? "performer" : roleLabel === "FAN" ? "fan" : "viewer",
+  });
+
+  const lounge = isLoungeRoomId(roomId);
+  const loungeA = resolveLoungeMonitorViewport("A");
+  const loungeB = resolveLoungeMonitorViewport("B");
+
+  const stageHint = lounge
+    ? "Fullscreen expands this same viewport — no second lounge renderer. CAM/MIC are explicit."
+    : "Main stage stays in the venue view above — route screen share to any open cell here.";
 
   const renderShareOrStandby = (
     monitor: 0 | 1,
@@ -89,6 +128,22 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
     label: string,
     standby: ReactNode,
   ): ReactNode => {
+    // Director law: when sharing, top full frame is the active display stream
+    if (
+      surfaceLayout.topSurface === "screen_share" &&
+      screenStream &&
+      monitor === 0 &&
+      cellIndex === -1
+    ) {
+      return (
+        <MonitorScreenShareVideo
+          stream={screenStream}
+          onStop={stopScreenShare}
+          label={shareButtonLabel}
+          transitionKey={surfaceLayout.activeShareSourceId ?? "share"}
+        />
+      );
+    }
     if (screenStream && shareSlotTargetsCell(shareSlot, monitor, cellIndex)) {
       return (
         <MonitorScreenShareVideo stream={screenStream} onStop={stopScreenShare} label={label} />
@@ -99,12 +154,23 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
 
   const topStandbyFull = (
     <AuxMonitorStandby
-      label="MONITOR A · AUX"
-      sublabel="Lobby wall, playlist, or co-view — main stage is above."
+      label={lounge ? loungeA.label : "MONITOR A · AUX"}
+      sublabel={
+        lounge
+          ? "Conversation / selected participant / self cam after CAM ON — never auto camera."
+          : "Lobby wall, playlist, or co-view — main stage is above."
+      }
     />
   );
   const bottomStandbyFull = (
-    <AuxMonitorStandby label="MONITOR B · AUX" sublabel="Default target for shared screen + side chat." />
+    <AuxMonitorStandby
+      label={lounge ? loungeB.label : "MONITOR B · AUX"}
+      sublabel={
+        lounge
+          ? "Lounge group / room view — video hangout, no avatar seating."
+          : "Default target for shared screen + side chat."
+      }
+    />
   );
 
   const topCells = useMemo(
@@ -138,8 +204,17 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
       <div style={{ position: "relative" }}>
         <button
           type="button"
-          onClick={screenStream ? () => setSlotPickerOpen((v) => !v) : startScreenShare}
-          title={screenStream ? "Change which slot shows your screen share" : "Share your screen to a monitor slot"}
+          data-testid="tmi-live-share-screen-cycle"
+          onClick={() => void cycleSharePress()}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            void addShareSource();
+          }}
+          title={
+            shareActive
+              ? "Cycle share sources — press after last source to stop"
+              : "Share screen / window / tab via getDisplayMedia"
+          }
           style={{
             fontSize: 8,
             fontWeight: 900,
@@ -151,15 +226,15 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
             display: "flex",
             alignItems: "center",
             gap: 4,
-            border: screenStream ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
-            background: screenStream ? "rgba(0,255,136,0.15)" : "transparent",
+            border: shareActive ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
+            background: shareActive ? "rgba(0,255,136,0.15)" : "transparent",
             color: "#00FF88",
           }}
         >
           <span>⬡</span>
-          <span>{screenStream ? "SHARING…" : "SHARE SCREEN"}</span>
+          <span>{shareButtonLabel}</span>
         </button>
-        {screenStream ? (
+        {shareActive ? (
           <button
             type="button"
             onClick={stopScreenShare}
@@ -177,8 +252,17 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
               fontFamily: "inherit",
             }}
           >
-            STOP
+            OFF
           </button>
+        ) : null}
+        {shareError ? (
+          <div style={{ marginTop: 6 }}>
+            <ScreenShareErrorBanner
+              code={shareError}
+              onDismiss={clearShareError}
+              onRetry={() => void cycleSharePress()}
+            />
+          </div>
         ) : null}
         <AnimatePresence>
           {slotPickerOpen && screenStream ? (
@@ -209,16 +293,22 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
     >
       <CanonicalDualMonitorStack
         variant="chrome"
-        seriesLabel={`LIVE ROOM · ${roleLabel} · DUAL AUX MONITORS · SCREEN SHARE`}
+        seriesLabel={
+          lounge
+            ? `LOUNGE · ${roleLabel} · A CONVERSATION · B GROUP VIEW · NO AVATARS`
+            : `LIVE ROOM · ${roleLabel} · DUAL AUX MONITORS · SCREEN SHARE`
+        }
         toolbar={toolbar}
         monitors={[
           {
             id: "live-mon-a",
-            label: "MONITOR A",
+            label: lounge ? loungeA.shortLabel : "MONITOR A",
             children: (
-              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_A}>
-                {renderShareOrStandby(0, -1, "MON A", topStandbyFull)}
-              </CanonicalMonitorAssignmentOverlay>
+              <InPlaceGoLiveMonitorLayer target={DEFAULT_MONITOR_A} showTransition={false}>
+                <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_A}>
+                  {renderShareOrStandby(0, -1, "MON A", topStandbyFull)}
+                </CanonicalMonitorAssignmentOverlay>
+              </InPlaceGoLiveMonitorLayer>
             ),
             cells: topCells.map((standby, ci) =>
               renderShareOrStandby(0, ci, `A${ci + 1}`, standby),
@@ -226,11 +316,13 @@ export default function LiveRoomMonitorShareStack({ roomId, roleLabel = "VIEWER"
           },
           {
             id: "live-mon-b",
-            label: "MONITOR B",
+            label: lounge ? loungeB.shortLabel : "MONITOR B",
             children: (
-              <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_B}>
-                {renderShareOrStandby(1, -1, "MON B", bottomStandbyFull)}
-              </CanonicalMonitorAssignmentOverlay>
+              <InPlaceGoLiveMonitorLayer target={DEFAULT_MONITOR_B}>
+                <CanonicalMonitorAssignmentOverlay target={DEFAULT_MONITOR_B}>
+                  {renderShareOrStandby(1, -1, "MON B", bottomStandbyFull)}
+                </CanonicalMonitorAssignmentOverlay>
+              </InPlaceGoLiveMonitorLayer>
             ),
             cells: bottomCells.map((standby, ci) =>
               renderShareOrStandby(1, ci, `B${ci + 1}`, standby),

@@ -9,6 +9,8 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import { LIVE_DISCOVERY_CATEGORY_LABELS } from "@/lib/discovery/LiveDiscoveryRecord";
+import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
+import { fanAvatarLobbyEntryHref, loungeSideRoomEntryHref, SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, SYSTEM_OPERATED_PLAYLIST_LOUNGE_ROOM_ID } from "@/lib/live/canonicalWorldViewport";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import ChampionshipBroadcastOverlay from "@/components/championship/ChampionshipBroadcastOverlay";
@@ -16,11 +18,13 @@ import { championCardStyle, getChampionVisualIdentity } from "@/lib/championship
 
 interface LiveDestinationsDrawerPanelProps {
   viewerUserId?: string;
+  viewerRole?: "FAN" | "PERFORMER";
   accentColor?: string;
 }
 
 export default function LiveDestinationsDrawerPanel({
   viewerUserId,
+  viewerRole = "FAN",
   accentColor = "#00FFFF",
 }: LiveDestinationsDrawerPanelProps) {
   const records = useDiscoveryBus(viewerUserId);
@@ -153,7 +157,7 @@ export default function LiveDestinationsDrawerPanel({
                 </div>
               </button>
               <Link
-                href={r.joinRoute || `/live/lobby?room=${encodeURIComponent(r.roomId)}`}
+                href={resolveInstantJoin(r, { role: viewerRole }).href}
                 onClick={() => bindHost(r.hostUserId, r.hostName)}
                 style={{ fontSize: 11, color: accentColor, fontWeight: 800, textDecoration: "none", flexShrink: 0 }}
               >
@@ -171,19 +175,21 @@ export default function LiveDestinationsDrawerPanel({
         </div>
       )}
 
+      {viewerRole !== "PERFORMER" ? (
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
           SOCIAL ROOMS
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <Link href="/rooms/fan-lobby" style={chip(accentColor)}>
+          <Link href={fanAvatarLobbyEntryHref(SYSTEM_OPERATED_FAN_LOBBY_ROOM_ID, { from: "live-destinations" })} style={chip(accentColor)}>
             Fan Lobby
           </Link>
-          <Link href="/rooms/playlist-lounge" style={chip("#AA2DFF")}>
+          <Link href={loungeSideRoomEntryHref(SYSTEM_OPERATED_PLAYLIST_LOUNGE_ROOM_ID, { from: "fan-avatar-lobby" })} style={chip("#AA2DFF")}>
             Playlist Lounge
           </Link>
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

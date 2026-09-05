@@ -33,7 +33,7 @@ type StickerAd = {
 
 const STICKER_ADS: StickerAd[] = [
   { id: "s1",  label: "YOUR AD HERE",       href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 90,  x: 4,   y: 8,   rotate: -12, zIndex: 10, shape: "pill",    glow: "#FF2DAA" },
-  { id: "s2",  label: "GO LIVE ON TMI",     href: "/go-live",                      bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 110, x: 14,  y: 18,  rotate: 7,   zIndex: 8,  shape: "rect",    glow: "#00FFFF" },
+  { id: "s2",  label: "GO LIVE ON TMI",     href: "/hub/performer?golive=1",                      bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 110, x: 14,  y: 18,  rotate: 7,   zIndex: 8,  shape: "rect",    glow: "#00FFFF" },
   { id: "s3",  label: "SELL YOUR BEATS",    href: "/beats/sell",                   bg: "#FFD700", color: "#000",    border: "#000",       size: 80,  x: 28,  y: 5,   rotate: -5,  zIndex: 12, shape: "badge",   glow: "#FFD700", pulse: true },
   { id: "s4",  label: "ADVERTISE HERE",     href: "/sponsors/advertise",           bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 105, x: 42,  y: 22,  rotate: 14,  zIndex: 7,  shape: "rect",    glow: "#AA2DFF" },
   { id: "s5",  label: "JOIN A BATTLE",      href: "/battles",                      bg: "#FF6B35", color: "#fff",    border: "#fff3",      size: 95,  x: 58,  y: 10,  rotate: -18, zIndex: 11, shape: "pill",    glow: "#FF6B35" },

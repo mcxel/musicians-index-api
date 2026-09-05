@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 
 export interface GlobalTmiHeaderProps {
   user?: {
+    id?: string;
     displayName?: string;
     email?: string;
     role?: string;
@@ -13,9 +15,10 @@ export interface GlobalTmiHeaderProps {
   } | null;
 }
 
-export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
+export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
   const pathname = usePathname();
   const [sessionUser, setSessionUser] = useState(user ?? null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     if (user !== undefined) {
@@ -28,6 +31,7 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
       .then((data) => {
         if (active && data?.authenticated && data?.user) {
           setSessionUser({
+            id: data.user.id,
             displayName: data.user.name || data.user.email?.split("@")[0] || "User",
             email: data.user.email,
             role: data.role || data.user.role || "FAN",
@@ -40,6 +44,26 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
       active = false;
     };
   }, [user]);
+
+  // Cart badge — real count from the persistent server-authoritative cart
+  // (GET /api/cart → itemCount), refreshed on sign-in and on navigation so
+  // an add-to-cart on any page shows up here without a full reload.
+  useEffect(() => {
+    if (!sessionUser?.id) {
+      setCartCount(0);
+      return;
+    }
+    let active = true;
+    fetch("/api/cart", { cache: "no-store", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && typeof data?.itemCount === "number") setCartCount(data.itemCount);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [sessionUser?.id, pathname]);
 
   const navLinks = [
     { label: "1", href: "/home/1", title: "Home 1: Crown Orbit" },
@@ -101,59 +125,59 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
 
         {/* Auth or Account Controls (Strictly isolated in right corner) */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          {sessionUser ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Link
-                href="/settings/profile"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  textDecoration: "none",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,45,170,0.3)",
-                  borderRadius: 20,
-                  padding: "4px 10px",
-                }}
-              >
-                <div
+          {sessionUser && (
+            <Link
+              href="/cart"
+              title="Cart"
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                textDecoration: "none",
+                fontSize: 14,
+                flexShrink: 0,
+              }}
+            >
+              🛒
+              {cartCount > 0 && (
+                <span
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg,#5b217a,#301042)",
-                    border: "1px solid #FF2DAA",
+                    position: "absolute",
+                    top: -5,
+                    right: -5,
+                    minWidth: 15,
+                    height: 15,
+                    padding: "0 3px",
+                    borderRadius: 8,
+                    background: "#00FFFF",
+                    color: "#050510",
+                    fontSize: 9,
+                    fontWeight: 900,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    color: "#fff",
+                    lineHeight: 1,
                   }}
                 >
-                  {sessionUser.avatarUrl ? (
-                    <img src={sessionUser.avatarUrl} alt={sessionUser.displayName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    (sessionUser.displayName?.trim()?.[0] || "?").toUpperCase()
-                  )}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {sessionUser.displayName}
+                  {cartCount > 99 ? "99+" : cartCount}
                 </span>
-                <span
-                  style={{
-                    fontSize: 7,
-                    fontWeight: 900,
-                    color: "#FF2DAA",
-                    background: "rgba(255,45,170,0.15)",
-                    padding: "1px 5px",
-                    borderRadius: 4,
-                  }}
-                >
-                  {sessionUser.role}
-                </span>
-              </Link>
-            </div>
+              )}
+            </Link>
+          )}
+          {sessionUser ? (
+            <AccountCommandMenu
+              userId={sessionUser.id ?? "session"}
+              displayName={sessionUser.displayName ?? "Account"}
+              avatarUrl={sessionUser.avatarUrl}
+              accentColor="#FF2DAA"
+              compact
+            />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Link

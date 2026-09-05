@@ -8,11 +8,20 @@ import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import StageCurtain, { type StageState } from '@/components/stage/StageCurtain';
 import ArenaEventShell from "@/components/live/ArenaEventShell";
+import MondayNightStagePresentationShell from '@/components/live/MondayNightStagePresentationShell';
 import { MondayNightStageEngine } from '@/lib/shows/MondayNightStageEngine';
 import type { MondayNightStageState } from '@/lib/shows/MondayNightStageEngine';
 import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel';
 import FollowButton from '@/components/social/FollowButton';
 import BookmarkButton from '@/components/common/BookmarkButton';
+import { getMondayNightStageSchedule } from '@/lib/events/ScheduledEventRegistry';
+import {
+  clearMondayNightStageProgram,
+  composeMondayNightStageProgram,
+  getActiveMondayNightStageProgram,
+  type MondayNightStageLifecyclePhase,
+  type MondayNightStageProgramComposition,
+} from '@/lib/experiencePresentation/composeMondayNightStageProgram';
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -43,6 +52,51 @@ type ChatMsg = { user: string; msg: string };
 
 export default function MondayStagePage() {
   const router = useRouter();
+
+  // ── Calendar gate — Rule 21: Monday Night Stage is bot-only and schedule-locked ──
+  const scheduleWindow = getMondayNightStageSchedule();
+  if (scheduleWindow.phase === 'CLOSED' || scheduleWindow.phase === 'ARCHIVE') {
+    const hoursAway = Math.ceil(scheduleWindow.countdownMs / 3_600_000);
+    return (
+      <PageShell>
+        <div style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'linear-gradient(160deg,#050510,#0a0614)',
+          flexDirection: 'column', gap: 20, padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 40 }}>🌙</div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#00FFFF', letterSpacing: '0.08em', margin: 0 }}>
+            MONDAY NIGHT STAGE
+          </h1>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: 320, lineHeight: 1.5 }}>
+            {scheduleWindow.phase === 'ARCHIVE'
+              ? `Tonight's show has ended. ${scheduleWindow.label}.`
+              : `The show runs every Monday at 8 PM ET. ${scheduleWindow.label}.`
+            }
+          </p>
+          {hoursAway > 0 && (
+            <div style={{
+              background: 'rgba(0,255,255,0.08)', border: '1px solid rgba(0,255,255,0.25)',
+              borderRadius: 10, padding: '10px 20px',
+              fontSize: 12, fontWeight: 800, color: '#00FFFF', letterSpacing: '0.1em',
+            }}>
+              ⏱ Opens in ~{hoursAway}h
+            </div>
+          )}
+          <Link href="/home/5" style={{ textDecoration: 'none' }}>
+            <button style={{
+              padding: '10px 24px', borderRadius: 8,
+              background: 'rgba(255,45,170,0.18)', border: '1px solid #FF2DAA',
+              color: '#FF2DAA', fontWeight: 900, fontSize: 11, letterSpacing: '0.1em', cursor: 'pointer',
+            }}>
+              ← BROWSE COMPETITION ROOMS
+            </button>
+          </Link>
+        </div>
+      </PageShell>
+    );
+  }
+
   const [stageState, setStageState]   = useState<StageState>('CURTAIN_CLOSED');
   const [chatMsgs, setChatMsgs]       = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput]     = useState('');
@@ -275,6 +329,50 @@ export default function MondayStagePage() {
     refreshGame();
   }, [stageEngine, refreshGame]);
 
+  // Phase 1 presentation — PROGRAM.MNS_SHOW from real queue + hosts (never invent lineup/winners).
+  const [mnsProgram, setMnsProgram] = useState<MondayNightStageProgramComposition | null>(null);
+  useEffect(() => {
+    const nextUp =
+      callState === 'calling' && calledArtist
+        ? calledArtist
+        : lineup.find((l) => l.status === 'NEXT') ??
+          lineup.find((l) => l.status === 'UPCOMING');
+
+    let lifecyclePhase: MondayNightStageLifecyclePhase = 'PRESHOW';
+    if (stageState === 'ENDED') lifecyclePhase = 'POST_SHOW';
+    else if (stageState === 'CURTAIN_CLOSED' || stageState === 'CURTAIN_OPENING' || stageState === 'CURTAIN_CLOSING') {
+      lifecyclePhase = currentArtist ? 'FEATURED_ACT' : 'HOST_OPEN';
+    } else if (stageState === 'LIVE') {
+      if (currentArtist) lifecyclePhase = 'FEATURED_ACT';
+      else if (nextUp) lifecyclePhase = 'WHOS_NEXT';
+      else lifecyclePhase = 'HOST_OPEN';
+    } else if (callState === 'calling') {
+      lifecyclePhase = 'WHOS_NEXT';
+    }
+
+    const composed = composeMondayNightStageProgram({
+      sessionId: `mns-session:${ROOM_ID}`,
+      showId: 'monday-night-stage',
+      roomId: ROOM_ID,
+      featuredId: currentArtist?.id ?? null,
+      featuredDisplayName: currentArtist?.artist ?? null,
+      whosNextId: nextUp && nextUp.id !== currentArtist?.id ? nextUp.id : null,
+      whosNextDisplayName:
+        nextUp && nextUp.id !== currentArtist?.id ? nextUp.artist : null,
+      // Presence unknown until seat engines publish — never invent attendance.
+      audiencePresenceCount: null,
+      lifecyclePhase,
+      bindJumbotron: true,
+    });
+    setMnsProgram(composed);
+
+    return () => {
+      if (getActiveMondayNightStageProgram()?.roomId === ROOM_ID) {
+        clearMondayNightStageProgram('monday-stage-room-unmount');
+      }
+    };
+  }, [currentArtist, calledArtist, lineup, callState, stageState]);
+
   // Poll stage status
   useEffect(() => {
     const poll = async () => {
@@ -368,7 +466,10 @@ export default function MondayStagePage() {
             </div>
           </div>
 
-          {/* ── MAIN GRID ── */}
+          {/* ── PRESENTATION (PROGRAM.MNS_SHOW) + MAIN GRID ── */}
+          <div style={{ padding: '16px 32px 0' }}>
+            <MondayNightStagePresentationShell composition={mnsProgram} />
+          </div>
           <ArenaEventShell
             roomId="monday-stage"
             eventType="monday-stage"

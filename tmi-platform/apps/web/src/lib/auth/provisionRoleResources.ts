@@ -23,12 +23,16 @@ export type ProvisionAccountType =
   | "VENUE"
   | "PROMOTER"
   | "SPONSOR"
-  | "ADVERTISER";
+  | "ADVERTISER"
+  /** Specialty — provisions as PERFORMER + UserPerformerType PRODUCER (Prisma has no Role.PRODUCER). */
+  | "PRODUCER";
 
 const ROLE_NORMALIZATION: Record<string, ProvisionAccountType> = {
   MEMBER: "FAN",
   ARTIST: "PERFORMER",
   USER: "FAN",
+  PO: "PRODUCER",
+  PRODUCT_OWNER: "PRODUCER",
 };
 
 const VALID_ACCOUNT_TYPES = new Set<ProvisionAccountType>([
@@ -39,6 +43,7 @@ const VALID_ACCOUNT_TYPES = new Set<ProvisionAccountType>([
   "PROMOTER",
   "SPONSOR",
   "ADVERTISER",
+  "PRODUCER",
 ]);
 
 /** Map signup account type → Prisma Role enum */
@@ -50,6 +55,7 @@ const ACCOUNT_TO_PRISMA_ROLE: Record<ProvisionAccountType, Role> = {
   PROMOTER: "PROMOTER",
   SPONSOR: "SPONSOR",
   ADVERTISER: "ADVERTISER",
+  PRODUCER: "PERFORMER",
 };
 
 export function normalizeAccountType(
@@ -120,7 +126,11 @@ async function provisionCommon(
   // uses (user.role = platformRoles[0]) — while every selected role still
   // gets its own UserRole row below.
   const primaryAccountType = accountTypes[0]!;
-  const starterPoints = accountTypes.some((t) => t === "PERFORMER" || t === "BAND") ? 250 : 100;
+  const starterPoints = accountTypes.some(
+    (t) => t === "PERFORMER" || t === "BAND" || t === "PRODUCER",
+  )
+    ? 250
+    : 100;
 
   const profile = await stepOk("profile_created", async () => {
     const row = await prisma.userProfile.upsert({
@@ -570,6 +580,24 @@ async function provisionForType(
       return provisionFan(userId, displayName);
     case "PERFORMER":
       return provisionPerformerLike(userId, displayName, "PERFORMER");
+    case "PRODUCER": {
+      const performerSteps = await provisionPerformerLike(userId, displayName, "PERFORMER");
+      const producerType = await stepOk("producer_performer_type_set", async () => {
+        await prisma.userPerformerType.upsert({
+          where: {
+            userId_type: { userId, type: "PRODUCER" },
+          },
+          create: { userId, type: "PRODUCER" },
+          update: {},
+        });
+        return { performerType: "PRODUCER" };
+      });
+      const beatLab = await stepOk("beat_lab_access_granted", async () => {
+        // Access is role/type-gated at route level; record audit step as real type write above.
+        return { note: "PRODUCER type enables beat locker + producer surfaces" };
+      });
+      return [...performerSteps.filter((s) => s.step !== "beat_lab_access_granted"), producerType, beatLab];
+    }
     case "BAND":
       return provisionPerformerLike(userId, displayName, "BAND");
     case "VENUE":
@@ -580,6 +608,8 @@ async function provisionForType(
       return provisionSponsor(userId, displayName);
     case "ADVERTISER":
       return provisionAdvertiser(userId, displayName);
+    default:
+      return [stepSkipped("unknown_role", `No provisioner for ${accountType as string}`)];
   }
 }
 

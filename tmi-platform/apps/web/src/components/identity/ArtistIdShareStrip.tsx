@@ -57,10 +57,7 @@ export default function ArtistIdShareStrip({
   }, [resolvedSlug, role]);
 
   const publicSlug = resolvedSlug || userId || slugFromName(displayName, userId);
-  const publicPath =
-    role === "performer"
-      ? `/profile/performer/${encodeURIComponent(publicSlug)}`
-      : `/profile/fan/${encodeURIComponent(publicSlug)}`;
+  const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return publicPath;

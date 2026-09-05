@@ -10,9 +10,10 @@ export function formatLiveNowActiveRoomsLabel(count: number): string {
 export async function fetchActiveRoomTruthCount(
   fetchFn: typeof fetch = fetch,
 ): Promise<number> {
-  const res = await fetchFn("/api/live/go", {
-    credentials: "include",
+  const res = await fetchFn(`/api/live/go?_=${Date.now()}`, {
+    credentials: "omit",
     cache: "no-store",
+    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
   });
   if (!res.ok) return 0;
   const data = (await res.json()) as { count?: unknown };

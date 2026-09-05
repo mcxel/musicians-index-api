@@ -70,11 +70,20 @@ export type TicketRecord = {
   outputFormats: Array<"PDF" | "IMAGE" | "NFT" | "MOBILE_WALLET">;
   mintedAt: string;
   redeemed: boolean;
+  /** Digital offer / artwork / fee metadata (optional — physical tickets omit). */
+  artworkAssetId?: string | null;
+  artworkUrl?: string | null;
+  feePolicyId?: string;
+  priceCents?: number;
+  offerId?: string;
+  checkedInAt?: string | null;
+  checkedInBy?: string | null;
 };
 
-// In-memory store. Works for single-instance dev.
-// TODO-PROD: Replace with Prisma-backed store (see UserStore.ts pattern) when
-// DATABASE_URL is confirmed stable — map TicketRecord → Prisma Ticket model.
+// In-memory L1 cache (24h TTL). Digital offer issuances also write through
+// DigitalIssuedTicket (DB) via DigitalTicketOfferEngine / AtomicCheckIn so
+// Load Ticket + check-in survive Vercel multi-instance. Legacy mint paths that
+// only call saveTicket() remain process-local until migrated.
 const TICKET_TTL_MS = 24 * 60 * 60 * 1000; // 24-hour in-memory retention
 type StoredTicket = TicketRecord & { _evictAt: number };
 const ticketStore = new Map<string, StoredTicket>();

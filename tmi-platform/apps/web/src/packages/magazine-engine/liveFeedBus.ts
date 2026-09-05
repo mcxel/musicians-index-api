@@ -47,16 +47,12 @@ type FeedSocketEnvelope = {
   payload: Partial<TmiAllFeeds>;
 };
 
-function getFeedSocketUrl(): string {
-  if (process.env.NEXT_PUBLIC_TMI_FEED_SOCKET_URL) {
-    return process.env.NEXT_PUBLIC_TMI_FEED_SOCKET_URL;
-  }
-  if (typeof window === "undefined") return "ws://localhost:8080";
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = window.location.hostname;
-  return `${proto}://${host}:8080`;
+/** External feed socket — env only. No silent ws://localhost:8080 (ERR_CONNECTION_REFUSED). */
+function getFeedSocketUrl(): string | null {
+  const fromEnv = process.env.NEXT_PUBLIC_TMI_FEED_SOCKET_URL?.trim();
+  if (fromEnv) return fromEnv;
+  return null;
 }
-const FEED_SOCKET_URL = typeof window !== "undefined" ? getFeedSocketUrl() : "ws://localhost:8080";
 const FEED_SOCKET_SYNC_MS = 180;
 
 let socketSyncTimer: number | null = null;
@@ -169,12 +165,18 @@ function connectFeedSocket(): void {
     return;
   }
 
+  const feedUrl = getFeedSocketUrl();
+  if (!feedUrl) {
+    // Local in-memory feeds only until NEXT_PUBLIC_TMI_FEED_SOCKET_URL is set
+    return;
+  }
+
   const existing = window.__TMI_FEED_SOCKET__;
   if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
     return;
   }
 
-  const socket = new WebSocket(FEED_SOCKET_URL);
+  const socket = new WebSocket(feedUrl);
   window.__TMI_FEED_SOCKET__ = socket;
 
   socket.onopen = () => {

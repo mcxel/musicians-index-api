@@ -2,14 +2,21 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { logger } from '@/lib/logger'
+import { resolveDurablePlayableSrc } from '@/lib/media/durablePlayableUrl'
 
-interface AudioTrack {
+export interface AudioTrack {
   id: string
   title: string
   artist: string
   duration: number
   url: string
   artwork?: string
+}
+
+export interface AudioPlayOptions {
+  loop?: boolean
+  muted?: boolean
+  startSec?: number
 }
 
 interface AudioContextType {
@@ -20,7 +27,7 @@ interface AudioContextType {
   volume: number
   isMuted: boolean
   playlist: AudioTrack[]
-  play: (track?: AudioTrack) => void
+  play: (track?: AudioTrack, opts?: AudioPlayOptions) => Promise<boolean>
   pause: () => void
   stop: () => void
   next: () => void
@@ -55,28 +62,66 @@ export default function AudioProvider({ children }: AudioProviderProps) {
   const [playlist, setPlaylist] = useState<AudioTrack[]>([])
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const loopRef = useRef(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Hoist controls so effects can reference them
-  const play = useCallback(async (track?: AudioTrack) => {
+  // Same URL + same track id does not reload src (skin/position must not restart).
+  const play = useCallback(async (track?: AudioTrack, opts?: AudioPlayOptions): Promise<boolean> => {
+    const audio = audioRef.current
+    if (!audio) return false
+
+    if (opts?.loop != null) {
+      loopRef.current = Boolean(opts.loop)
+      audio.loop = loopRef.current
+    }
+    if (opts?.muted != null) {
+      audio.muted = opts.muted
+      setIsMuted(opts.muted)
+    }
+
     if (track) {
-      setCurrentTrack(track)
-      if (audioRef.current) {
-        audioRef.current.src = track.url
-        try {
-          await audioRef.current.play()
-          setIsPlaying(true)
-        } catch (error) {
-          logger.error('Failed to play audio:', error)
+      const playableSrc = resolveDurablePlayableSrc(track.url)
+      if (!playableSrc) {
+        logger.error('Refusing non-durable audio source (blob: or simulated CDN)')
+        setIsPlaying(false)
+        return false
+      }
+      const sameSource = currentTrack?.id === track.id && currentTrack.url === playableSrc
+      setCurrentTrack({ ...track, url: playableSrc })
+      if (!sameSource) {
+        audio.src = playableSrc
+        if (opts?.startSec != null && opts.startSec > 0) {
+          const start = opts.startSec
+          const onMeta = () => {
+            audio.currentTime = start
+            audio.removeEventListener('loadedmetadata', onMeta)
+          }
+          audio.addEventListener('loadedmetadata', onMeta)
         }
       }
-    } else if (audioRef.current && currentTrack) {
       try {
-        await audioRef.current.play()
+        await audio.play()
         setIsPlaying(true)
+        return true
       } catch (error) {
         logger.error('Failed to play audio:', error)
+        setIsPlaying(false)
+        return false
       }
+    }
+
+    if (!currentTrack || !resolveDurablePlayableSrc(currentTrack.url)) {
+      setIsPlaying(false)
+      return false
+    }
+    try {
+      await audio.play()
+      setIsPlaying(true)
+      return true
+    } catch (error) {
+      logger.error('Failed to play audio:', error)
+      setIsPlaying(false)
+      return false
     }
   }, [currentTrack])
 
@@ -112,12 +157,16 @@ export default function AudioProvider({ children }: AudioProviderProps) {
     }
   }, [playlist, currentTrack, play])
 
-  // Initialize audio element on client
+  // Initialize audio element on client — attached to document so GlobalAudioPlaybackGuard can coordinate.
   useEffect(() => {
     setIsMounted(true)
     if (typeof window !== 'undefined' && !audioRef.current) {
-      audioRef.current = new Audio()
-      audioRef.current.volume = volume
+      const el = new Audio()
+      el.setAttribute('data-audio-owner', 'audio-provider')
+      el.style.display = 'none'
+      document.body.appendChild(el)
+      audioRef.current = el
+      el.volume = volume
     }
 
     const audio = audioRef.current
@@ -125,7 +174,10 @@ export default function AudioProvider({ children }: AudioProviderProps) {
 
     const handleLoadedMetadata = () => setDuration(audio.duration)
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
-    const handleEnded = () => next()
+    const handleEnded = () => {
+      if (loopRef.current) return
+      next()
+    }
     const handleError = () => {
       logger.error('Audio playback error')
       setIsPlaying(false)
@@ -164,7 +216,10 @@ export default function AudioProvider({ children }: AudioProviderProps) {
   const toggleMute = () => setIsMuted(prev => !prev)
 
   const addToPlaylist = (track: AudioTrack) => {
-    setPlaylist(prev => (prev.find(t => t.id === track.id) ? prev : [...prev, track]))
+    const playableSrc = resolveDurablePlayableSrc(track.url)
+    if (!playableSrc) return
+    const next = { ...track, url: playableSrc }
+    setPlaylist(prev => (prev.find(t => t.id === next.id) ? prev : [...prev, next]))
   }
 
   const removeFromPlaylist = (track: AudioTrack) => setPlaylist(prev => prev.filter(t => t.id !== track.id))

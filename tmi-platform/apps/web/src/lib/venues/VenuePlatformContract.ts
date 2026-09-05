@@ -329,7 +329,7 @@ export const BATTLE_ARENA_ELASTICITY_CERT_STATUS = {
   sequenceId: "BATTLE_ARENA_ELASTICITY_CERT_SEQUENCE",
   stepCount: 9,
   certified: false,
-  note: "LOCKED_NOT_RUN — glue contract only. Runtime placement/expansion/compaction/migration/teardown/media continuity are not claimed.",
+  note: "CONTROLLER_UNLOCKED — Scene Factory Controller may request instances via controlRequestVenueScene. Full elasticity runtime cert (placement/expansion/compaction/migration/teardown/media) remains not claimed.",
 } as const;
 
 export type VenueTemplateDefinition = {

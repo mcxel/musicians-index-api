@@ -65,14 +65,14 @@ export default function BetaModeBanner() {
               animation: 'pulse 2s ease-in-out infinite',
             }} />
             <span style={{
-              fontSize: 8, fontWeight: 900, letterSpacing: '0.25em',
-              color: '#AA2DFF', textTransform: 'uppercase', whiteSpace: 'nowrap',
+              fontSize: 9, fontWeight: 900, letterSpacing: '0.12em',
+              color: '#FFD700', textTransform: 'uppercase', whiteSpace: 'nowrap',
             }}>
-              TMI BETA SEASON
+              ★ FOUNDING BETA MEMBER
             </span>
           </div>
-          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            You are a Founding Beta Member. Purchases &amp; unlocks persist permanently.
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Thank you for helping build TMI.
           </span>
         </div>
 

@@ -12,6 +12,9 @@ import {
 } from '@/lib/competition/BattleVoteClosureEngine';
 import { awardXP } from '@/lib/profile/ProfileRewardsEngine';
 import { getXpValue } from '@/lib/xp/XpActionRegistry';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { getGuestId } from '@/lib/identity/getGuestId';
+import { awardArtistXp } from '@/lib/progression/ArtistXpEngine';
 import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboardLobbyWallEngine';
 
 export interface PerformanceVotePanelProps {
@@ -35,8 +38,6 @@ export interface PerformanceVotePanelProps {
   autoOpenVoting?: boolean;
 }
 
-const DEMO_USER = 'viewer-' + Math.random().toString(36).slice(2, 8);
-
 const EMOTES = ['🔥', '⚡', '👑', '💯', '🎤', '💥'];
 
 interface EmoteParticle {
@@ -58,6 +59,8 @@ export default function PerformanceVotePanel({
   onWinnerDeclared,
   autoOpenVoting = true,
 }: PerformanceVotePanelProps) {
+  const { user } = useAuth();
+  const voterId = user?.id || getGuestId();
   const [tally, setTally] = useState<BattleVoteTally | null>(null);
   const [myVote, setMyVote] = useState<VoteOption | null>(null);
   const [emotes, setEmotes] = useState<EmoteParticle[]>([]);
@@ -81,11 +84,15 @@ export default function PerformanceVotePanel({
 
   const vote = (side: VoteOption) => {
     if (myVote || tally?.isClosed) return;
-    const result = castVote(battleId, DEMO_USER, side);
+    const result = castVote(battleId, voterId, side);
     if (result.ok && result.tally) {
       setMyVote(side);
       setTally({ ...result.tally });
       spawnEmotes(side === 'artist-a' ? 'a' : 'b');
+      const votedId = side === 'artist-a' ? artistAId : artistBId;
+      if (votedId) {
+        awardArtistXp({ artistId: votedId, source: 'vote-received', metadata: { battleId } });
+      }
     }
   };
 

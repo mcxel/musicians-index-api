@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 
 // Real "read next" — pick the 3 most recent articles (any category)
 const READ_NEXT = MAGAZINE_ISSUE_1.slice(0, 3);
@@ -26,7 +27,7 @@ export default function Home2ReadNextRail() {
             return (
               <Link
                 key={article.slug}
-                href={`/magazine/article/${article.slug}`}
+                href={magazineReaderArticleUrl(article.slug)}
                 style={{ textDecoration: "none", color: "white", padding: "16px 14px", borderRadius: 10, background: `${color}06`, border: `1px solid ${color}30` }}
               >
                 <div style={{ fontSize: 8, color, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>

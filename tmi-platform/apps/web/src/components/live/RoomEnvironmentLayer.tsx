@@ -89,6 +89,16 @@ export default function RoomEnvironmentLayer({
       ? asset.performerViewVideoUrl
       : asset?.ambientVideoUrl;
 
+  // THE VIDEO DESCRIBES THE WORLD. THE VIDEO DOES NOT BECOME THE WORLD.
+  // Suppress background video rendering when: (a) role is REFERENCE_ONLY — blueprint
+  // reference that must never be rendered; or (b) a canonical 3D world exists and
+  // owns the visual — the real geometry takes precedence over a 2D video layer.
+  const videoRole = asset?.ambientVideoRole ?? "FALLBACK_PREVIEW";
+  // Only FALLBACK_PREVIEW may render as the room background layer.
+  // AMBIENT_SURFACE and IN_WORLD_SCREEN belong on in-world surfaces, not here.
+  const renderVideoLayer =
+    videoRole === "FALLBACK_PREVIEW" &&
+    !asset?.hasCanonical3DWorld;
   const rig = RIG_CONFIG[asset?.geometry?.lightingRig ?? ""] ?? RIG_CONFIG["studio-grid"];
   const bannerUrl = bannerOverrideUrl ?? asset?.bannerUrl;
 
@@ -116,6 +126,7 @@ export default function RoomEnvironmentLayer({
       }}
     >
       {/* ── Layer 1: Ambient video loop ────────────────────────────────── */}
+      {renderVideoLayer && (
       <video
         ref={videoRef}
         src={videoUrl}
@@ -134,6 +145,7 @@ export default function RoomEnvironmentLayer({
           zIndex: 1,
         }}
       />
+      )}
 
       {/* ── Layer 2: Floor reflection / gradient atmosphere ────────────── */}
       <div

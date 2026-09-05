@@ -1,126 +1,233 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const GENRES = ["Hip-Hop", "Afrobeats", "R&B", "Dance Hall", "House", "Trap", "EDM", "Latin", "Gospel", "Drill"];
 
-const PERMISSION_TYPES = [
-  { id: "promotional", label: "Promotional Use", desc: "Allow TMI to use your track in dance parties for fan exposure. Free." },
-  { id: "event-use", label: "Event Use", desc: "License for live dance events. Earn royalty per event use." },
-  { id: "replay-use", label: "Replay Use", desc: "Allow highlight clips and replays. Additional royalty." },
-];
+type PoolStatus = {
+  schedule?: { phase: string; label: string; weekKey: string };
+  fees?: {
+    submitCoinReserve: number;
+    chargePolicy: string;
+    paidBoostAvailable: boolean;
+    paidBoostPriceUsd?: string;
+    paidBoostNote: string;
+  };
+};
 
 export default function DancePartySubmitPage() {
-  const [form, setForm] = useState({ title: "", artist: "", genre: "", bpm: "", permissions: [] as string[], creditLine: "" });
-  const [done, setDone] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    artist: "",
+    genre: "",
+    bpm: "",
+    creditLine: "",
+    url: "",
+  });
+  const [status, setStatus] = useState<PoolStatus | null>(null);
+  const [done, setDone] = useState<{ message: string; queuePosition?: number | null; entryId?: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function togglePermission(id: string) {
-    setForm(p => ({
-      ...p,
-      permissions: p.permissions.includes(id) ? p.permissions.filter(x => x !== id) : [...p.permissions, id],
-    }));
-  }
+  useEffect(() => {
+    fetch("/api/world-dance-party", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setStatus(d as PoolStatus))
+      .catch(() => setStatus(null));
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setDone(true);
-    await fetch("/api/beats/submit", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ ...form, submissionType: "dance-track" }),
-    }).catch(() => {});
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/world-dance-party", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: form.title,
+          artistName: form.artist,
+          genre: form.genre,
+          bpm: form.bpm ? Number(form.bpm) : undefined,
+          creditLine: form.creditLine,
+          url: form.url,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        entry?: { id?: string; queuePosition?: number | null; scheduledEstimate?: string };
+      };
+      if (!res.ok || !data.ok) {
+        setError(
+          data.error === "insufficient_coins"
+            ? `Need ${status?.fees?.submitCoinReserve ?? 50} coins reserved (charged only if your track plays Friday).`
+            : data.error === "submit_window_closed"
+              ? "Submit window closed for this Friday — opens Saturday for next week."
+              : data.error ?? "Submit failed",
+        );
+        setLoading(false);
+        return;
+      }
+      setDone({
+        message: data.entry?.scheduledEstimate ?? data.message ?? "Queued for Friday",
+        queuePosition: data.entry?.queuePosition,
+        entryId: data.entry?.id,
+      });
+    } catch {
+      setError("Network error");
+    }
+    setLoading(false);
   }
 
-  const input: React.CSSProperties = { width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" };
-  const lbl: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 };
+  const input: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 14px",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    color: "#fff",
+    fontSize: 13,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+  const lbl: React.CSSProperties = {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: "0.15em",
+    color: "rgba(255,255,255,0.4)",
+    display: "block",
+    marginBottom: 6,
+  };
 
-  if (done) return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "grid", placeItems: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>🕺</div>
-        <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Track Submitted</h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>Your track is in review. Once approved it joins the dance party rotation with your credit displayed.</p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <Link href="/dance-party" style={{ fontSize: 10, fontWeight: 800, color: "#00FFFF", textDecoration: "none", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 8, padding: "10px 20px" }}>DANCE PARTY</Link>
-          <Link href="/dance-party/live" style={{ fontSize: 10, fontWeight: 800, color: "#050510", background: "#00FFFF", textDecoration: "none", borderRadius: 8, padding: "10px 20px" }}>JOIN LIVE NOW</Link>
+  if (done) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "grid", placeItems: "center" }}>
+        <div style={{ textAlign: "center", maxWidth: 420, padding: 24 }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>🌍</div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>World Dance Party Queue</h1>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 8 }}>{done.message}</p>
+          {done.queuePosition != null && (
+            <p style={{ fontSize: 11, color: "#00FF88", marginBottom: 24 }}>Queue position: #{done.queuePosition}</p>
+          )}
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 24 }}>
+            Points finalize only when DJ Record Ralph plays your track on Friday. Overflow tracks are refunded.
+          </p>
+          {status?.fees?.paidBoostAvailable && done.entryId && (
+            <a
+              href={`/api/stripe/checkout?type=wdp_submission_boost&roomId=world-dance-party&category=world_dance_party&wdpEntryId=${encodeURIComponent(done.entryId)}`}
+              style={{
+                display: "inline-block",
+                fontSize: 10,
+                fontWeight: 800,
+                color: "#050510",
+                background: "linear-gradient(90deg, #FFD700, #FF2DAA)",
+                textDecoration: "none",
+                borderRadius: 8,
+                padding: "10px 20px",
+                marginBottom: 16,
+              }}
+            >
+              BOOST VISIBILITY · ${status.fees.paidBoostPriceUsd ?? "1.99"} (24h priority band)
+            </a>
+          )}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/rooms/world-dance-party" style={{ fontSize: 10, fontWeight: 800, color: "#050510", background: "#00FF88", textDecoration: "none", borderRadius: 8, padding: "10px 20px" }}>
+              WORLD DANCE PARTY
+            </Link>
+            <Link href="/dance-party/submit" style={{ fontSize: 10, fontWeight: 800, color: "#00FFFF", textDecoration: "none", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 8, padding: "10px 20px" }}>
+              SUBMIT ANOTHER
+            </Link>
+          </div>
         </div>
-      </div>
-    </main>
-  );
+      </main>
+    );
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px" }}>
-        <Link href="/dance-party" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← DANCE PARTY</Link>
-        <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#00FFFF", fontWeight: 800, marginTop: 20, marginBottom: 8 }}>TRACK SUBMISSION</div>
-        <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", fontWeight: 900, margin: "0 0 8px" }}>Submit a Dance Track</h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 36 }}>
-          You keep ownership. Select which usage permissions you grant TMI. Track credit shows while your song plays.
+        <Link href="/rooms/world-dance-party" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>
+          ← WORLD DANCE PARTY
+        </Link>
+        <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#00FF88", fontWeight: 800, marginTop: 20, marginBottom: 8 }}>
+          🌍 OFFICIAL FRIDAY ROTATION
+        </div>
+        <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", fontWeight: 900, margin: "0 0 8px" }}>Submit for World Dance Party</h1>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 12 }}>
+          Weekly pool only — plays Friday, then cleared. DJ Record Ralph rotates approved tracks with on-screen artist + title credit.
         </p>
+        {status?.schedule && (
+          <div style={{ fontSize: 11, color: "#00FFFF", marginBottom: 20, padding: "10px 12px", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8 }}>
+            {status.schedule.label} · {status.schedule.weekKey}
+          </div>
+        )}
+        {status?.fees && (
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 24, lineHeight: 1.6 }}>
+            Reserve {status.fees.submitCoinReserve} coins · {status.fees.chargePolicy.replace(/_/g, " ")} · {status.fees.paidBoostNote}
+          </div>
+        )}
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          {/* Upload */}
-          <div style={{ border: "2px dashed rgba(0,255,255,0.2)", borderRadius: 12, padding: "32px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>🎵</div>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Drop audio file here</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>WAV or MP3 · Max 50MB</div>
+          <div>
+            <span style={lbl}>TRACK URL (audio link)</span>
+            <input style={input} placeholder="Direct mp3/wav or hosted link" value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} required />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <span style={lbl}>TRACK TITLE</span>
-              <input style={input} placeholder="e.g. Midnight Wave" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} required />
+              <input style={input} placeholder="Midnight Wave" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
             </div>
             <div>
               <span style={lbl}>ARTIST NAME</span>
-              <input style={input} placeholder="Your artist name" value={form.artist} onChange={e => setForm(p => ({ ...p, artist: e.target.value }))} required />
+              <input style={input} placeholder="Your artist name" value={form.artist} onChange={(e) => setForm((p) => ({ ...p, artist: e.target.value }))} required />
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <span style={lbl}>GENRE</span>
-              <select style={{ ...input }} value={form.genre} onChange={e => setForm(p => ({ ...p, genre: e.target.value }))} required>
+              <select style={{ ...input }} value={form.genre} onChange={(e) => setForm((p) => ({ ...p, genre: e.target.value }))} required>
                 <option value="">Select…</option>
-                {GENRES.map(g => <option key={g}>{g}</option>)}
+                {GENRES.map((g) => (
+                  <option key={g}>{g}</option>
+                ))}
               </select>
             </div>
             <div>
               <span style={lbl}>BPM (optional)</span>
-              <input style={input} type="number" min="60" max="200" placeholder="120" value={form.bpm} onChange={e => setForm(p => ({ ...p, bpm: e.target.value }))} />
+              <input style={input} type="number" min="60" max="200" placeholder="120" value={form.bpm} onChange={(e) => setForm((p) => ({ ...p, bpm: e.target.value }))} />
             </div>
           </div>
 
           <div>
-            <span style={lbl}>CREDIT LINE</span>
-            <input style={input} placeholder="e.g. Produced by Wavetek · © 2026" value={form.creditLine} onChange={e => setForm(p => ({ ...p, creditLine: e.target.value }))} required />
+            <span style={lbl}>ON-SCREEN CREDIT LINE</span>
+            <input style={input} placeholder="Produced by You · © 2026" value={form.creditLine} onChange={(e) => setForm((p) => ({ ...p, creditLine: e.target.value }))} required />
           </div>
 
-          {/* Permission grants */}
-          <div>
-            <span style={lbl}>USAGE PERMISSIONS (select all that apply)</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {PERMISSION_TYPES.map(perm => (
-                <label key={perm.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", background: form.permissions.includes(perm.id) ? "rgba(0,255,255,0.06)" : "rgba(255,255,255,0.02)", border: `1px solid ${form.permissions.includes(perm.id) ? "rgba(0,255,255,0.3)" : "rgba(255,255,255,0.08)"}`, borderRadius: 10, padding: "12px 14px" }}>
-                  <input type="checkbox" checked={form.permissions.includes(perm.id)} onChange={() => togglePermission(perm.id)} style={{ marginTop: 2, flexShrink: 0, accentColor: "#00FFFF" }} />
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#fff", marginBottom: 3 }}>{perm.label}</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>{perm.desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+          {error && <p style={{ color: "#FF4466", fontSize: 12, margin: 0 }}>{error}</p>}
 
-          <div style={{ background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.12)", borderRadius: 10, padding: "14px 16px", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
-            By submitting, you confirm you own or control the rights to this track. TMI will display your credit line while the track plays. Usage beyond selected permissions requires separate agreement.
-          </div>
-
-          <button type="submit" disabled={form.permissions.length === 0}
-            style={{ padding: "14px 0", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: form.permissions.length > 0 ? "#050510" : "rgba(255,255,255,0.3)", background: form.permissions.length > 0 ? "linear-gradient(135deg,#00FFFF,#AA2DFF)" : "rgba(255,255,255,0.06)", borderRadius: 10, border: "none", cursor: form.permissions.length > 0 ? "pointer" : "not-allowed" }}>
-            SUBMIT TO DANCE PARTY QUEUE
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: "14px 0",
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: "0.15em",
+              color: "#050510",
+              background: "linear-gradient(135deg,#00FF88,#00FFFF)",
+              borderRadius: 10,
+              border: "none",
+              cursor: loading ? "wait" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "SUBMITTING…" : "SUBMIT TO FRIDAY POOL"}
           </button>
         </form>
       </div>

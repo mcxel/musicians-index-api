@@ -184,7 +184,7 @@ export default function FaceScanPage() {
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                     {[
                       { href: '/rooms/lobby', label: '🚪 Enter Lobby' },
-                      { href: '/avatar-builder', label: '🎨 Customize Avatar' },
+                      { href: '/avatar/studio', label: '🎨 Customize Avatar' },
                       { href: '/bubble-builder', label: '🌐 Build Bubble' },
                       { href: '/profile/face', label: '⚙️ Face Settings' },
                     ].map(({ href, label }) => (

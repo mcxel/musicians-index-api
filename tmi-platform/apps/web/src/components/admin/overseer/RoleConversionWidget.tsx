@@ -9,16 +9,17 @@
 
 import { useState, type CSSProperties } from "react";
 
-type RoleOption = "FAN" | "PERFORMER" | "BAND" | "VENUE" | "PROMOTER" | "SPONSOR" | "ADVERTISER";
+type RoleOption = "FAN" | "PERFORMER" | "BAND" | "PRODUCER" | "VENUE" | "PROMOTER" | "SPONSOR" | "ADVERTISER";
 type TierOption = "FREE" | "PRO" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
 
-const ROLES: RoleOption[] = ["FAN", "PERFORMER", "BAND", "VENUE", "PROMOTER", "SPONSOR", "ADVERTISER"];
+const ROLES: RoleOption[] = ["FAN", "PERFORMER", "BAND", "PRODUCER", "VENUE", "PROMOTER", "SPONSOR", "ADVERTISER"];
 const TIERS: TierOption[] = ["FREE", "PRO", "RUBY", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
 
 const ROLE_COLOR: Record<RoleOption, string> = {
   FAN: "#FF2DAA",
   PERFORMER: "#AA2DFF",
   BAND: "#00FFFF",
+  PRODUCER: "#FFD700",
   VENUE: "#00FF88",
   PROMOTER: "#FFD700",
   SPONSOR: "#FFD700",

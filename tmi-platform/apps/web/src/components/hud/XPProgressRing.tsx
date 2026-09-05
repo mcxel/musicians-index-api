@@ -3,7 +3,7 @@
  * XPProgressRing — compact circular XP progress indicator for the global HUD
  *
  * Shows: tier emoji · progress ring · tier color glow
- * Click → /avatar-center
+ * Click → /avatar/studio (Fan) or /rankings (other roles)
  *
  * Fetches from /api/tokens/balance?userId=current-user
  * Re-fetches every 60s
@@ -43,8 +43,8 @@ export default function XPProgressRing({ size = 36, userId = "current-user", rol
   const dash = (data.percent / 100) * circumference;
 
   // Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity Policy,
-  // 2026-07-18) — non-Fan roles go to /rankings instead of /avatar-center.
-  const destination = role === "FAN" ? "/avatar-center" : "/rankings";
+  // 2026-07-18) — non-Fan roles go to /rankings instead of Avatar Studio.
+  const destination = role === "FAN" ? "/avatar/studio" : "/rankings";
 
   return (
     <Link href={destination} title={`${data.tier} · ${data.totalXp.toLocaleString()} XP`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", width: size, height: size, flexShrink: 0 }}>

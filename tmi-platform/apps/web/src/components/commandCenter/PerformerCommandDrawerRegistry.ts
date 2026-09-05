@@ -8,7 +8,7 @@
  *   - Playlists, Memory Wall, Store
  *   - Sponsor management chrome intentionally omitted (Rule 26)
  *
- * Instant Go Live: left-rail GO LIVE → /live/go + dock Launch Dock.
+ * Instant Go Live: left-rail GO LIVE → presentInstantGoLiveInPlace on Monitor A.
  *
  * NOT this sprint: full stage show engines (Deal or Feud / Monday Night Stage),
  * face-scan bobbleheads, CIR expansion.

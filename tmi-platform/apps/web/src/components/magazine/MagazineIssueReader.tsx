@@ -3,21 +3,57 @@
 import { useEffect, useMemo, useState } from "react";
 import MagazineShell, { type MagazinePage } from "@/components/magazine/MagazineShell";
 import { readMagazinePosition, writeMagazinePosition } from "@/components/magazine/MagazinePositionStorage";
+import {
+  MAGAZINE_DEFAULT_START_PAGE,
+  resolveMagazineReaderPageIndex,
+} from "@/lib/magazine/MagazineReaderRoutes";
 
 type MagazineIssueReaderProps = {
   issue: string;
   displayIssue?: string;
   issueTitle: string;
   pages: MagazinePage[];
+  initialArticleSlug?: string;
+  initialPageIndex?: number;
+  returnTo?: string;
 };
 
-export default function MagazineIssueReader({ issue, displayIssue, issueTitle, pages }: MagazineIssueReaderProps) {
-  const [initialLeftIndex, setInitialLeftIndex] = useState(0);
+export default function MagazineIssueReader({
+  issue,
+  displayIssue,
+  issueTitle,
+  pages,
+  initialArticleSlug,
+  initialPageIndex,
+  returnTo,
+}: MagazineIssueReaderProps) {
+  const [initialLeftIndex, setInitialLeftIndex] = useState(
+    initialPageIndex ?? MAGAZINE_DEFAULT_START_PAGE,
+  );
 
   useEffect(() => {
+    if (returnTo && returnTo.startsWith("/")) {
+      sessionStorage.setItem("tmi_magazine_origin", returnTo);
+    }
+  }, [returnTo]);
+
+  useEffect(() => {
+    if (initialPageIndex !== undefined) {
+      setInitialLeftIndex(initialPageIndex);
+      return;
+    }
+
+    if (initialArticleSlug) {
+      setInitialLeftIndex(resolveMagazineReaderPageIndex(initialArticleSlug, undefined, issue));
+      return;
+    }
+
     const saved = readMagazinePosition();
-    if (!saved) return;
-    if (saved.lastIssue !== issue) return;
+    if (!saved || saved.lastIssue !== issue) {
+      setInitialLeftIndex(MAGAZINE_DEFAULT_START_PAGE);
+      return;
+    }
+
     setInitialLeftIndex(saved.lastPage);
 
     if (saved.lastScrollX > 0) {
@@ -25,7 +61,7 @@ export default function MagazineIssueReader({ issue, displayIssue, issueTitle, p
         window.scrollTo({ left: saved.lastScrollX, top: 0, behavior: "auto" });
       });
     }
-  }, [issue]);
+  }, [issue, initialArticleSlug, initialPageIndex]);
 
   const title = useMemo(() => issueTitle || "The Musician's Index", [issueTitle]);
 

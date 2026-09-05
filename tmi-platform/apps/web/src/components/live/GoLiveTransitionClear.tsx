@@ -1,11 +1,15 @@
 "use client";
 import { useEffect } from "react";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
+import { useMediaTransitionDirector } from "@/lib/live/MediaTransitionDirector";
 
-/** Drop this anywhere in the live room page tree.
- *  On first mount it clears the go-live starfield transition. */
+/** Clears legacy warp flag + canonical media transition on live room mount. */
 export default function GoLiveTransitionClear() {
   const clear = useGoLiveTransition((s) => s.clear);
-  useEffect(() => { clear(); }, [clear]);
+  const completeStarburst = useMediaTransitionDirector((s) => s.completeStarburst);
+  useEffect(() => {
+    clear();
+    completeStarburst();
+  }, [clear, completeStarburst]);
   return null;
 }

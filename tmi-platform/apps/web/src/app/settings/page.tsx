@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 import ImageUploader from "@/components/media/ImageUploader";
+import TMIMailboxProvisioner from "@/components/account/TMIMailboxProvisioner";
 import { useTmiSession } from "@/hooks/SessionContext";
+import { SocialBrandIcon, type SocialBrandId } from "@/components/brands/SocialBrandIconRegistry";
 
 type Section = "profile" | "appearance" | "notifications" | "privacy" | "password" | "linked" | "danger";
 
@@ -26,16 +28,17 @@ const ACCENT_PRESETS: { label: string; primary: string; secondary: string }[] = 
   { label: "Red",    primary: "#FF2DAA", secondary: "#DC143C" },
 ];
 
-const SOCIAL_PLATFORMS = [
-  { id: "twitter",   label: "Twitter / X",  icon: "🐦", linked: false, handle: "" },
-  { id: "instagram", label: "Instagram",    icon: "📸", linked: false, handle: "" },
-  { id: "spotify",   label: "Spotify",      icon: "🎵", linked: false, handle: "" },
-  { id: "youtube",   label: "YouTube",      icon: "▶️", linked: false, handle: "" },
-  { id: "tiktok",    label: "TikTok",       icon: "🎬", linked: false, handle: "" },
+const SOCIAL_PLATFORMS: { id: SocialBrandId | "twitter"; label: string; linked: boolean; handle: string }[] = [
+  { id: "twitter",   label: "X",         linked: false, handle: "" },
+  { id: "instagram", label: "Instagram", linked: false, handle: "" },
+  { id: "spotify",   label: "Spotify",   linked: false, handle: "" },
+  { id: "youtube",   label: "YouTube",   linked: false, handle: "" },
+  { id: "tiktok",    label: "TikTok",    linked: false, handle: "" },
 ];
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { styleConfig, updateUserColors } = useTmiSession();
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [saved, setSaved] = useState<Section | null>(null);
@@ -62,6 +65,13 @@ export default function SettingsPage() {
   const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
   const [pwError, setPwError] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+
+  useEffect(() => {
+    const section = searchParams?.get("section");
+    if (section === "linked" || section === "password" || section === "danger" || section === "privacy" || section === "notifications" || section === "appearance" || section === "profile") {
+      setActiveSection(section as Section);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
@@ -306,6 +316,13 @@ export default function SettingsPage() {
                     <input type="email" value={profile.email} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: "default" }} title="Email cannot be changed here" />
                   </div>
                 </div>
+
+                {/* TMI Official Mailbox Provisioning Widget */}
+                <TMIMailboxProvisioner
+                  currentEmail={profile.email}
+                  accentColor="#00FFFF"
+                  onMailboxCreated={(email) => setProfile((p) => ({ ...p, email }))}
+                />
                 <div style={{ marginBottom: 14 }}>
                   <label style={labelStyle}>BIO</label>
                   <textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
@@ -459,7 +476,9 @@ export default function SettingsPage() {
                   {platforms.map(platform => (
                     <div key={platform.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 22 }}>{platform.icon}</span>
+                        <span style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                          <SocialBrandIcon brand={platform.id} size={22} />
+                        </span>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700 }}>{platform.label}</div>
                           {platform.linked && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{platform.handle}</div>}

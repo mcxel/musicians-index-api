@@ -1,11 +1,20 @@
 "use client";
 
+/**
+ * LEGACY B — SeatArrivalTransition (audience starburst).
+ * PROD MOUNTS = 0 (unmounted from UniversalLobbyEntry 2026-08-28).
+ * Do not remount with scope="viewport" (GLOBAL OVERLAY forbidden).
+ * Canonical hub GO LIVE starburst: GoLiveMediaTransition on Monitor B only
+ * (InPlaceGoLiveMonitorLayer). File retained — not a production entry path.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSeatArrivalTransition, type ArrivalPhase } from "@/hooks/useSeatArrivalTransition";
 import { SpotlightEventManager } from "@/lib/engine/SpotlightEventManager";
 import { WarpEntryLog } from "@/lib/live/WarpEntryLog";
 import { computeWarpAdapt } from "@/lib/live/WarpAdaptEngine";
+import { useMediaTransitionDirector } from "@/lib/live/MediaTransitionDirector";
 
 // ── Deterministic star geometry (no Math.random in render) ──────────────────
 
@@ -186,6 +195,11 @@ export interface SeatArrivalTransitionProps {
   onComplete?: () => void;
   /** Optional destination label under TMI mark during warp. */
   destinationLabel?: string;
+  /**
+   * viewport = LEGACY full-screen fixed overlay (audience /live routes only).
+   * container = scoped to position:relative parent (preferred).
+   */
+  scope?: "viewport" | "container";
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -194,10 +208,18 @@ export default function SeatArrivalTransition({
   active = true,
   onComplete,
   destinationLabel,
+  scope = "viewport",
 }: SeatArrivalTransitionProps) {
   const { phase, isActive } = useSeatArrivalTransition({ enabled: active, onComplete });
+  const reportLegacy = useMediaTransitionDirector((s) => s.reportLegacyGlobalMount);
   const stars   = useMemo(buildStars,   []);
   const streaks = useMemo(buildStreaks, []);
+
+  useEffect(() => {
+    if (active && scope === "viewport") {
+      reportLegacy("SeatArrivalTransition:viewport");
+    }
+  }, [active, scope, reportLegacy]);
 
   const [magVariant,  setMagVariant]  = useState<FlyVariant>("slash");
   const [showMagFly,  setShowMagFly]  = useState(false);
@@ -261,11 +283,14 @@ export default function SeatArrivalTransition({
           transition={{ duration: 0.55, ease: "easeOut" }}
           aria-hidden
           style={{
-            position: "fixed", inset: 0, zIndex: 9998,
+            position: scope === "viewport" ? "fixed" : "absolute",
+            inset: 0,
+            zIndex: scope === "viewport" ? 9998 : 12,
             background: "radial-gradient(ellipse at center, #0a0520 0%, #050510 60%, #000 100%)",
             overflow: "hidden",
             pointerEvents: "none",
           }}
+          data-legacy-seat-arrival={scope === "viewport" ? "viewport" : "container"}
         >
           <style>{CSS}</style>
 

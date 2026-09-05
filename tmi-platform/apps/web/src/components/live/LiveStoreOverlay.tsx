@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import QuickBuyButton from '@/components/store/QuickBuyButton';
-import { CREATOR_ITEMS, FAN_ITEMS, type StoreItem, formatPrice } from '@/lib/store/StoreItemEngine';
+import { FAN_ITEMS, type StoreItem, formatPrice } from '@/lib/store/StoreItemEngine';
 
 type Props = {
   performerName?: string;
@@ -11,13 +11,18 @@ type Props = {
   accentColor?: string;
 };
 
+// Shoutout/Meet & Greet quick-buys removed (Lane D, 2026-09-01) — their flat
+// platform-wide price IDs didn't resolve against either Stripe mode and were
+// legacy duplicates of the real per-artist commerce system (ArtistCommerceProduct
+// + /api/commerce/checkout, live at /store/creator). Replaced with two more
+// real, verified FAN_ITEMS so this quick-buy panel stays a full six options.
 const QUICK_ITEMS: StoreItem[] = [
   FAN_ITEMS.find((i) => i.id === 'tip-small')!,
   FAN_ITEMS.find((i) => i.id === 'tip-medium')!,
   FAN_ITEMS.find((i) => i.id === 'tip-large')!,
-  CREATOR_ITEMS.find((i) => i.id === 'shoutout')!,
-  CREATOR_ITEMS.find((i) => i.id === 'meet-greet')!,
+  FAN_ITEMS.find((i) => i.id === 'tip-xl')!,
   FAN_ITEMS.find((i) => i.id === 'fan-club-silver')!,
+  FAN_ITEMS.find((i) => i.id === 'fan-club-gold')!,
 ].filter(Boolean);
 
 export default function LiveStoreOverlay({ performerName, performerSlug, accentColor = '#FF2DAA' }: Props) {

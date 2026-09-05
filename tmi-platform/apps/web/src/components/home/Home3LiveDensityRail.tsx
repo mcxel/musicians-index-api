@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { formatLiveNowActiveRoomsLabel } from '@/lib/broadcast/activeRoomTruth';
+import {
+  fetchActiveRoomTruthCount,
+  formatLiveNowActiveRoomsLabel,
+} from '@/lib/broadcast/activeRoomTruth';
 
 interface LiveApiSession { category: string; privacy?: string; }
 
@@ -15,15 +18,19 @@ export default function Home3LiveDensityRail() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store', credentials: 'include' });
+        const res = await fetch(`/api/live/go?_=${Date.now()}`, {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
         const data = await res.json() as { sessions?: LiveApiSession[]; count?: number };
         if (cancelled) return;
         setSessions(data.sessions ?? []);
-        setTruthCount(
+        const next =
           typeof data.count === 'number' && Number.isFinite(data.count)
             ? Math.max(0, Math.floor(data.count))
-            : 0,
-        );
+            : await fetchActiveRoomTruthCount();
+        setTruthCount(next);
       } catch {
         if (!cancelled) {
           setSessions([]);
@@ -32,7 +39,7 @@ export default function Home3LiveDensityRail() {
       }
     };
     void load();
-    const id = setInterval(() => void load(), 10000);
+    const id = setInterval(() => void load(), 2000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
@@ -44,7 +51,12 @@ export default function Home3LiveDensityRail() {
       <div style={{ border: '1px solid rgba(0,255,255,0.35)', borderRadius: 10, background: 'linear-gradient(165deg, rgba(8,26,40,0.94), rgba(5,5,16,0.96))', padding: '10px 12px', display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           <Tag text='LIVE NOW' color='#00FFFF' pulse={rooms > 0} />
-          <span data-testid="live-now-active-rooms" data-active-room-count={String(rooms)} style={{ fontSize: 9, fontWeight: 800, color: '#FF4444', letterSpacing: '0.12em' }}>
+          {/* Single shared badge test id lives on the masthead LiveNowActiveRoomsBadge.
+              Density rail mirrors truth for Open Rooms without a second conflicting test id. */}
+          <span
+            aria-label={formatLiveNowActiveRoomsLabel(rooms)}
+            style={{ fontSize: 9, fontWeight: 800, color: '#FF4444', letterSpacing: '0.12em' }}
+          >
             {formatLiveNowActiveRoomsLabel(rooms)}
           </span>
         </div>

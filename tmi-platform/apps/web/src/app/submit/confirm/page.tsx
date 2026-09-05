@@ -12,7 +12,7 @@ const ROOM_MAP: Record<string, { path: string; label: string; emoji: string; acc
   video:   { path: '/radio',             label: 'Stream & Win Radio', emoji: '🎬', accent: '#FFD700' },
   comedy:  { path: '/radio',             label: 'Stream & Win Radio', emoji: '😂', accent: '#FF2DAA' },
   dance:   { path: '/radio',             label: 'Stream & Win Radio', emoji: '💃', accent: '#AA2DFF' },
-  show:    { path: '/go-live',           label: 'Live Stage',         emoji: '📡', accent: '#FFD700' },
+  show:    { path: '/hub/performer?golive=1', label: 'Live Stage',         emoji: '📡', accent: '#FFD700' },
 };
 
 const CHAIN_STEPS = [

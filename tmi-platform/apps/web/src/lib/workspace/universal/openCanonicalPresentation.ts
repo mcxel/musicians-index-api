@@ -100,6 +100,12 @@ export function presentCanonicalWorkspace(
   return surface;
 }
 
+/** Cert/debug hook — exposes presenter for Playwright (?proof=1 flows). */
+if (typeof window !== "undefined") {
+  (window as Window & { __TMI_PRESENT_WORKSPACE__?: typeof presentCanonicalWorkspace }).__TMI_PRESENT_WORKSPACE__ =
+    presentCanonicalWorkspace;
+}
+
 export function openCanonicalWorkspaceQuick(
   moduleId: CommandCenterPanelId | "appearance" | "settings",
   surfaceOverride?: WorkspaceSurface,

@@ -10,6 +10,7 @@ import {
 } from "@/lib/platform/PlatformCapabilityMatrix";
 import { listAlgorithms } from "@/lib/platform/AlgorithmRegistry";
 import { listEventSchemas } from "@/lib/platform/EventSchemaRegistry";
+import SceneFactoryController from "@/components/venues/SceneFactoryController";
 
 function statusColor(status?: string): string {
   switch (status) {
@@ -213,6 +214,7 @@ export default function PlatformCorePanel() {
           </ul>
         </div>
       </section>
+      <SceneFactoryController />
     </div>
   );
 }

@@ -2,6 +2,8 @@
 // Controls: weighted product rotation, animation state machine, live notification queue
 // Season Pass appears at 40% frequency; store items share remaining 60%
 
+import { getSeasonPassOffer } from "@/lib/season/SeasonPassCatalog";
+
 export type StoreItemType =
   | "season_pass"
   | "gold_tee"
@@ -40,17 +42,19 @@ export type UnlockNotification = {
   timestamp: number;
 };
 
+const starterPassPrice = getSeasonPassOffer("starter")?.priceDisplay ?? "$1.99";
+
 // Weighted rotation catalog — Season Pass has 4x weight of others
 export const ROTATION_CATALOG: StoreRotationItem[] = [
   {
     id: "season-pass-s1",
     type: "season_pass",
     label: "Season 1 Pass",
-    sublabel: "The Rise · Guitar Pass",
+    sublabel: "The Rise · Start from Starter",
     emoji: "🎸",
     accentColor: "#AA2DFF",
-    price: "$24.99",
-    href: "/shop/season-pass",
+    price: starterPassPrice,
+    href: "/season-pass",
     weight: 40,
   },
   {

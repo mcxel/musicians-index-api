@@ -15,6 +15,10 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import {
+  useCanonicalMediaPlayerRuntime,
+  type LayoutMode as RuntimeLayoutMode,
+} from "@/lib/media/canonicalMediaPlayerRuntime";
 
 // Ambient standby loop for panes/cells with no assigned source — same
 // convention as MediaMatrixEngine/LiveFeedRouter/CommandCenterMediaStack,
@@ -113,6 +117,14 @@ export interface CanonicalDualMonitorStackProps {
   availableModes?: MonitorSplitMode[];
   /** Minimum monitors to render; defaults to dual stack behavior. */
   minMonitorCount?: 1 | 2;
+  /**
+   * When true, wires this stack to canonicalMediaPlayerRuntime:
+   *  - Assigns SELF_CAMERA → frame "a" and AUDIENCE_VIEW → frame "b" on mount
+   *  - Renders a [1] [2] [⇄] [⛶] layout-control bar above the monitors
+   *  - Applies CSS-collapse (park) to each monitor when its runtime frame is parked
+   *  - Calls reset() on unmount
+   */
+  enableMediaRuntime?: boolean;
 }
 
 // ─── Split control bar ────────────────────────────────────────────────────────
@@ -174,6 +186,9 @@ function MonitorSplitBar({
 
 // ─── Monitor cell grid ────────────────────────────────────────────────────────
 
+import useViewportMode from "@/hooks/useViewportMode";
+import { resolveMonitorLayoutPreset } from "@/lib/monitors/MonitorLayoutDirector";
+
 function MonitorCellGrid({
   split,
   children,
@@ -185,9 +200,10 @@ function MonitorCellGrid({
   cells?: ReactNode[];
   animKey?: number;
 }) {
+  const { isPhone, isTablet } = useViewportMode();
   if (split === 1) return <>{children}</>;
 
-  const columns = split === 16 ? 4 : split === 8 ? 4 : split === 3 ? 3 : 2;
+  const preset = resolveMonitorLayoutPreset(split, isPhone, isTablet);
   const filled: ReactNode[] = [];
   for (let i = 0; i < split; i++) {
     filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
@@ -200,10 +216,15 @@ function MonitorCellGrid({
         position: "absolute",
         inset: 0,
         display: "grid",
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gap: 1,
+        gridTemplateColumns: preset.gridTemplateColumns,
+        gridTemplateRows: preset.gridTemplateRows,
+        gap: preset.gap,
         background: "#0a0a1a",
         animation: "monitor-cell-in 0.38s cubic-bezier(0.22,1,0.36,1)",
+        width: "100%",
+        height: "100%",
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       {filled.map((cell, i) => (
@@ -345,9 +366,31 @@ export default function CanonicalDualMonitorStack({
   onSplitsChange,
   availableModes,
   minMonitorCount = 2,
+  enableMediaRuntime = false,
 }: CanonicalDualMonitorStackProps) {
   const bezel = BEZEL[variant];
   const accent = variant === "gold" ? "#FF6B1A" : "#00D4FF";
+
+  // ── Canonical media player runtime (opt-in) ──────────────────────────────
+  const { assignSource, swapFrames, setLayout, setFullscreen, reset, frames, layout, fullscreenFrame } =
+    useCanonicalMediaPlayerRuntime();
+
+  useEffect(() => {
+    if (!enableMediaRuntime) return;
+    assignSource("a", "SELF_CAMERA");
+    assignSource("b", "AUDIENCE_VIEW");
+    return () => {
+      reset();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableMediaRuntime]);
+
+  // Derive per-monitor park state from the runtime frames
+  const frameAPark = enableMediaRuntime ? frames["a"].parked : false;
+  const frameBPark = enableMediaRuntime ? frames["b"].parked : false;
+
+  // Derive overall layout from runtime — SINGLE shows only monitor A
+  const runtimeLayoutSingle = enableMediaRuntime && layout === "SINGLE";
   // chrome caps at 8; gold can go to 16 unless caller restricts further
   const effectiveModes: MonitorSplitMode[] =
     availableModes ?? (variant === "chrome" ? [1, 2, 3, 4, 8] : [1, 2, 3, 4, 8, 16]);
@@ -411,6 +454,82 @@ export default function CanonicalDualMonitorStack({
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
+
+      {/* Runtime layout controls — only rendered when enableMediaRuntime is true */}
+      {enableMediaRuntime && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          padding: "4px 0 6px",
+        }}>
+          {(["SINGLE", "SPLIT_2"] as RuntimeLayoutMode[]).map((mode) => {
+            const labels: Record<string, string> = { SINGLE: "⬛ 1", SPLIT_2: "⬜⬜ 2" };
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setLayout(mode)}
+                style={{
+                  padding: "3px 10px",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  border: `1px solid ${layout === mode ? accent : "#1E1E45"}`,
+                  borderRadius: 4,
+                  background: layout === mode ? accent + "cc" : "#0D0D24",
+                  color: layout === mode ? "#fff" : "#7878AA",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.05em",
+                  transition: "background 0.15s, border-color 0.15s, color 0.15s",
+                }}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            title="Swap Monitor A ⇄ Monitor B"
+            onClick={() => swapFrames("a", "b")}
+            style={{
+              padding: "3px 10px",
+              fontSize: 10,
+              fontWeight: 900,
+              border: "1px solid #1E1E45",
+              borderRadius: 4,
+              background: "#0D0D24",
+              color: "#7878AA",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
+            }}
+          >
+            ⇄ SWAP
+          </button>
+          <button
+            type="button"
+            title={fullscreenFrame ? "Exit fullscreen" : "Fullscreen Monitor A"}
+            onClick={() => setFullscreen(fullscreenFrame ? null : "a")}
+            style={{
+              padding: "3px 10px",
+              fontSize: 10,
+              fontWeight: 900,
+              border: `1px solid ${fullscreenFrame ? accent : "#1E1E45"}`,
+              borderRadius: 4,
+              background: fullscreenFrame ? accent + "cc" : "#0D0D24",
+              color: fullscreenFrame ? "#fff" : "#7878AA",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
+            }}
+          >
+            ⛶
+          </button>
+        </div>
+      )}
+
       {toolbar}
       {variant === "chrome" ? (
         /* Chrome: each monitor lives in its own bezel so the two 8-cell groups look physically separate */
@@ -421,9 +540,22 @@ export default function CanonicalDualMonitorStack({
           {panes.map((pane, index) => {
             const split = splits[index as 0 | 1];
             const monLabel = pane.label ?? `MONITOR ${index + 1}`;
+            // Park state from canonical runtime (CSS-only, DOM stays mounted)
+            const isParked = (index === 0 ? frameAPark : frameBPark);
+            const isHiddenByRuntime = runtimeLayoutSingle && index === 1;
             return (
-              <div key={pane.id} style={{ ...bezel.outer }}>
-                {showSplitControls && (
+              <div
+                key={pane.id}
+                style={{
+                  ...bezel.outer,
+                  transition: "max-height 220ms ease, opacity 220ms ease",
+                  maxHeight: isParked || isHiddenByRuntime ? 0 : "none",
+                  overflow: isParked || isHiddenByRuntime ? "hidden" : "visible",
+                  opacity: isParked || isHiddenByRuntime ? 0 : 1,
+                  pointerEvents: isParked || isHiddenByRuntime ? "none" : undefined,
+                }}
+              >
+                {showSplitControls && !isHiddenByRuntime && (
                   <MonitorSplitBar
                     label={monLabel}
                     split={split}
@@ -464,9 +596,22 @@ export default function CanonicalDualMonitorStack({
             {panes.map((pane, index) => {
               const split = splits[index as 0 | 1];
               const monLabel = pane.label ?? `MONITOR ${index + 1}`;
+              const isParked = (index === 0 ? frameAPark : frameBPark);
+              const isHiddenByRuntime = runtimeLayoutSingle && index === 1;
               return (
-                <div key={pane.id} data-canonical-monitor style={{ width: "100%" }}>
-                  {showSplitControls && (
+                <div
+                  key={pane.id}
+                  data-canonical-monitor
+                  style={{
+                    width: "100%",
+                    transition: "max-height 220ms ease, opacity 220ms ease",
+                    maxHeight: isParked || isHiddenByRuntime ? 0 : "none",
+                    overflow: isParked || isHiddenByRuntime ? "hidden" : "visible",
+                    opacity: isParked || isHiddenByRuntime ? 0 : 1,
+                    pointerEvents: isParked || isHiddenByRuntime ? "none" : undefined,
+                  }}
+                >
+                  {showSplitControls && !isHiddenByRuntime && (
                     <MonitorSplitBar
                       label={monLabel}
                       split={split}

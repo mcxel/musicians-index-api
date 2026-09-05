@@ -23,7 +23,7 @@ export default function WorkspacePortal({
   const isAvatar = workspaceId === "AVATAR" || workspaceId === "AVATAR_STUDIO";
 
   const getWidthClass = () => {
-    if (isAvatar) return "w-[780px]";
+    if (isAvatar) return "w-[min(96vw,1120px)]";
     if (isMagazine) return "w-[680px]";
     return "w-96";
   };
@@ -58,7 +58,7 @@ export default function WorkspacePortal({
               </div>
             }
           >
-            <AvatarStudioExperience onClose={onClose} />
+            <AvatarStudioExperience embedded onClose={onClose} />
           </RoleGate>
         ) : isMagazine ? (
           <MagazineExperienceRuntime onClose={onClose} />

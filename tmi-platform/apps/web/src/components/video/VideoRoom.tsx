@@ -5,6 +5,10 @@ import DailyIframe, { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import { DailyProvider, useParticipantIds, useLocalParticipant, useDailyEvent, useParticipant } from '@daily-co/daily-react';
 import SecurityShieldMask from '@/components/stage/SecurityShieldMask';
 import VideoTile from './VideoTile';
+import {
+  leaveLiveRoomMixer,
+  syncDailyCallRemoteAudio,
+} from '@/lib/audio/mixer/LiveRoomMixerBind';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +23,16 @@ interface VideoRoomProps {
 
 interface ChatMessage { id: number; name: string; text: string; }
 
+function roomIdFromUrl(roomUrl: string): string {
+  try {
+    const path = new URL(roomUrl).pathname.replace(/\/$/, '');
+    const seg = path.split('/').filter(Boolean).pop();
+    return seg || 'video-room';
+  } catch {
+    return 'video-room';
+  }
+}
+
 // ─── Remote participant tile (uses daily-react hook) ─────────────────────────
 
 function RemoteTile({ id, isActiveSpeaker }: { id: string; isActiveSpeaker: boolean }) {
@@ -29,7 +43,15 @@ function RemoteTile({ id, isActiveSpeaker }: { id: string; isActiveSpeaker: bool
 
 // ─── Room content (inside DailyProvider) ─────────────────────────────────────
 
-function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; onParticipantsChange?: (ids: string[]) => void }) {
+function RoomContent({
+  onLeave,
+  onParticipantsChange,
+  mixerRoomId,
+}: {
+  onLeave?: () => void;
+  onParticipantsChange?: (ids: string[]) => void;
+  mixerRoomId: string;
+}) {
   const participantIds = useParticipantIds();
   const localParticipant = useLocalParticipant();
 
@@ -44,10 +66,36 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
   const [chatOpen, setChatOpen] = useState(false);
   const chatIdRef = useRef(0);
 
-  // Expose participant list to parent layer
+  const syncMixer = useCallback(() => {
+    const call = DailyIframe.getCallInstance();
+    if (!call) return;
+    const local = call.participants().local;
+    const localAudio =
+      local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track ?? null;
+    const localPlayable =
+      Boolean(localAudio) &&
+      (local?.tracks?.audio?.state === 'playable' ||
+        local?.tracks?.audio?.state === 'sendable');
+    void syncDailyCallRemoteAudio(call, {
+      roomId: mixerRoomId,
+      liveSessionId: `video:${mixerRoomId}`,
+      experienceType: 'LIVE',
+      remoteRole: 'audience',
+      localMicAvailable: localPlayable && !isMuted,
+    });
+  }, [mixerRoomId, isMuted]);
+
+  // Expose participant list to parent layer + bind remote audio → safety mixer
   useEffect(() => {
     onParticipantsChange?.(participantIds);
-  }, [participantIds, onParticipantsChange]);
+    syncMixer();
+  }, [participantIds, onParticipantsChange, syncMixer]);
+
+  useEffect(() => {
+    return () => {
+      leaveLiveRoomMixer();
+    };
+  }, []);
 
   // Energy decay — slow drain toward baseline
   useEffect(() => {
@@ -62,10 +110,27 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
     if (id) setEnergyLevel(prev => Math.min(100, prev + 18));
   }, []));
 
-  // Participant join/leave → small energy pulse
+  // Participant join/leave → small energy pulse + mixer sync
   useDailyEvent('participant-joined', useCallback(() => {
     setEnergyLevel(prev => Math.min(100, prev + 10));
-  }, []));
+    syncMixer();
+  }, [syncMixer]));
+
+  useDailyEvent('participant-updated', useCallback(() => {
+    syncMixer();
+  }, [syncMixer]));
+
+  useDailyEvent('participant-left', useCallback(() => {
+    syncMixer();
+  }, [syncMixer]));
+
+  useDailyEvent('track-started', useCallback(() => {
+    syncMixer();
+  }, [syncMixer]));
+
+  useDailyEvent('track-stopped', useCallback(() => {
+    syncMixer();
+  }, [syncMixer]));
 
   // Chat receive from other participants via Daily app-message
   useDailyEvent('app-message', useCallback((e: any) => {
@@ -228,7 +293,7 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
           <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', color: '#AA2DFF' }}>
             LIVE CHAT
           </div>
-          <div style={{ padding: '8px 12px', minHeight: 56, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ padding: '8px 12px', minHeight: 56, maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {chatMessages.length === 0 ? (
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>No messages yet…</div>
             ) : chatMessages.map(msg => (
@@ -261,6 +326,7 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
 export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConnection = true, onParticipantsChange }: VideoRoomProps) {
   const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const [joined, setJoined] = useState(false);
+  const mixerRoomId = roomIdFromUrl(roomUrl);
 
   const joinCall = useCallback(async () => {
     const call = DailyIframe.createCallObject({ url: roomUrl, token });
@@ -270,6 +336,7 @@ export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConn
   }, [roomUrl, token, userName]);
 
   const leaveCall = useCallback(async () => {
+    leaveLiveRoomMixer();
     await callObject?.leave();
     callObject?.destroy();
     setCallObject(null);
@@ -305,7 +372,7 @@ export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConn
 
   return (
     <DailyProvider callObject={callObject!}>
-      <RoomContent onLeave={leaveCall} onParticipantsChange={onParticipantsChange} />
+      <RoomContent onLeave={leaveCall} onParticipantsChange={onParticipantsChange} mixerRoomId={mixerRoomId} />
     </DailyProvider>
   );
 }

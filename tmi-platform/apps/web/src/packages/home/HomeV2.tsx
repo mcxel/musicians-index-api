@@ -9,8 +9,7 @@ import FrameSlot from "@/packages/magazine-engine/FrameSlot";
 import MagazineGrid from "@/packages/magazine-engine/MagazineGrid";
 import MagazinePageCanvas from "@/packages/magazine-engine/MagazinePageCanvas";
 import MagazineRoot from "@/packages/magazine-engine/MagazineRoot";
-import MagazineFlipViewport from "@/packages/magazine-engine/MagazineFlipViewport";
-import MagazinePager from "@/packages/magazine-engine/MagazinePager";
+
 import { MagazinePagerProvider, getCurrentIssue, useMagazinePager } from "@/packages/magazine-engine/useMagazinePager";
 import { contentRegistry } from "@/packages/magazine-engine/contentRegistry";
 import { zoneMaps, zonePlacements, type IssueZoneKey, type ZoneMapId } from "@/packages/magazine-engine/zoneMaps";
@@ -137,8 +136,8 @@ function HomeV2Runtime({ legacy }: HomeV2Props) {
   const CoverZoneComponent = contentRegistry[coverZone] ?? contentRegistry.coverFront;
 
   return (
-    <MagazineOpenShell openAfterMs={25000}>
-    <MagazineFlipViewport>
+    <MagazineOpenShell openAfterMs={0} startOpen>
+
       <div
         className="homev2-root"
         data-homev2="active"
@@ -183,7 +182,7 @@ function HomeV2Runtime({ legacy }: HomeV2Props) {
           {legacy}
         </div>
       </div>
-    </MagazineFlipViewport>
+
     </MagazineOpenShell>
   );
 }
@@ -193,7 +192,6 @@ export default function HomeV2({ legacy }: HomeV2Props) {
     <MagazineRoot>
       <MagazinePagerProvider>
         <HomeV2Runtime legacy={legacy} />
-        <MagazinePager />
       </MagazinePagerProvider>
     </MagazineRoot>
   );

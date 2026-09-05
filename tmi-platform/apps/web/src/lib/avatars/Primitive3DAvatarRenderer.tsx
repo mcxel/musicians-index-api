@@ -25,7 +25,8 @@ export type Primitive3DAvatarState = AvatarState & {
 
 function Primitive3DAvatarComponent({ state }: { state: AvatarState }) {
   const s = state as Primitive3DAvatarState;
-  const portrait = s.portraitUrl ?? s.avatarSrc;
+  // Fan bobbleheads: never paste portrait as world identity (Marcel lock).
+  const usePortrait = Boolean(s.portraitUrl ?? s.avatarSrc) && !(s as { bobbleheadRatio?: number }).bobbleheadRatio;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
       <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(0,255,255,0.7)" }}>
@@ -35,11 +36,12 @@ function Primitive3DAvatarComponent({ state }: { state: AvatarState }) {
         active
         color={s.bodyColor ?? "#AA2DFF"}
         hairColor={s.hairColor}
-        portraitUrl={portrait}
+        portraitUrl={usePortrait ? (s.portraitUrl ?? s.avatarSrc) : undefined}
         crown={s.crown ?? false}
         attachments={s.attachments}
         size={s.size ?? 160}
         enableOrbit
+        bobbleheadRatio={(s as { bobbleheadRatio?: number }).bobbleheadRatio ?? 1.35}
       />
     </div>
   );

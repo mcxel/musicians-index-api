@@ -4,66 +4,13 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TmiSeasonPassEngine from "@/components/pass/TmiSeasonPassEngine";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+import {
+  listSeasonPassOffers,
+  seasonPassCheckoutHref,
+} from "@/lib/season/SeasonPassCatalog";
 
-const TIERS = [
-  {
-    id: "fan",
-    name: "Fan Pass",
-    price: "$9.99",
-    period: "/ month",
-    color: "#00FFFF",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? "price_1TcJoOEAwH1Fjtu9IrhSwoyA",
-    amount: 999,
-    popular: false,
-    perks: [
-      "Early room access (30 min before public)",
-      "Exclusive Fan emote pack (12 emotes)",
-      "Fan Pass badge on profile",
-      "500 bonus credits per month",
-      "Ad-free contest streams",
-      "Monthly giveaway entries × 3",
-    ],
-  },
-  {
-    id: "artist",
-    name: "Artist Pass",
-    price: "$19.99",
-    period: "/ month",
-    color: "#FF2DAA",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
-    amount: 1999,
-    popular: true,
-    perks: [
-      "Everything in Fan Pass",
-      "3 beat / track upload slots per month",
-      "Full analytics dashboard",
-      "Priority booking queue",
-      "Magazine submission access",
-      "Cypher guaranteed entry × 2 per season",
-      "Artist Pass badge + animated border",
-    ],
-  },
-  {
-    id: "vip",
-    name: "VIP Pass",
-    price: "$49.99",
-    period: "/ month",
-    color: "#FFD700",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? "price_1TcJvaEAwH1Fjtu9me4Aq2UU",
-    amount: 4999,
-    popular: false,
-    perks: [
-      "Everything in Artist Pass",
-      "Unlimited uploads",
-      "30% tip revenue boost",
-      "Private VIP rooms access",
-      "Direct booking request to any artist",
-      "Season 1 Champion badge (permanent)",
-      "10,000 bonus credits per month",
-      "Priority admin support",
-    ],
-  },
-];
+/** Always ASC by priceCents — Starter ($1.99) leads; VIP ($49.99) last. */
+const TIERS = listSeasonPassOffers();
 
 export default function SeasonPassPage() {
   const { totalXp, walletCredits, trackAction } = useGamificationEngine();
@@ -99,7 +46,7 @@ export default function SeasonPassPage() {
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FFD700", fontWeight: 800, marginBottom: 10 }}>TMI SEASON 1</div>
         <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.8rem)", fontWeight: 900, marginBottom: 12 }}>Season Pass</h1>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 460, margin: "0 auto" }}>
-          Unlock the full TMI experience — exclusive rooms, upload access, analytics, and priority everything.
+          Unlock the full TMI experience — start from ${TIERS[0]?.priceDisplay ?? "$1.99"} and climb when you&apos;re ready. Season passes are separate from monthly memberships.
         </p>
         <div style={{ display: "inline-flex", gap: 16, marginTop: 20, padding: "10px 20px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 30 }}>
           <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 700 }}>{totalXp.toLocaleString()} XP</span>
@@ -108,17 +55,48 @@ export default function SeasonPassPage() {
         </div>
       </section>
 
-      <section style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 20 }}>
+      {/* Horizontal rail: scroll starts at low end (no auto-scroll to VIP). */}
+      <section
+        style={{
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: "48px 24px 0",
+          display: "flex",
+          gap: 16,
+          overflowX: "auto",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {TIERS.map(tier => (
-          <div key={tier.id} style={{ position: "relative", background: tier.popular ? `${tier.color}0A` : "rgba(255,255,255,0.02)", border: `1px solid ${tier.color}${tier.popular ? "40" : "20"}`, borderRadius: 16, padding: "28px 24px 24px" }}>
-            {tier.popular && (
+          <div
+            key={tier.id}
+            style={{
+              position: "relative",
+              flex: "0 0 min(280px, 85vw)",
+              scrollSnapAlign: "start",
+              background: tier.popular || tier.entry ? `${tier.color}0A` : "rgba(255,255,255,0.02)",
+              border: `1px solid ${tier.color}${tier.popular || tier.entry ? "40" : "20"}`,
+              borderRadius: 16,
+              padding: "28px 24px 24px",
+              opacity: tier.available ? 1 : 0.55,
+            }}
+          >
+            {tier.entry && (
+              <div style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: tier.color, color: "#050510", fontSize: 7, fontWeight: 900, letterSpacing: "0.15em", padding: "3px 12px", borderRadius: 20 }}>START HERE</div>
+            )}
+            {tier.popular && !tier.entry && (
               <div style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: tier.color, color: "#050510", fontSize: 7, fontWeight: 900, letterSpacing: "0.15em", padding: "3px 12px", borderRadius: 20 }}>MOST POPULAR</div>
             )}
-            <div style={{ fontSize: 11, fontWeight: 700, color: tier.color, letterSpacing: "0.08em", marginBottom: 8 }}>{tier.name.toUpperCase()}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 20 }}>
-              <span style={{ fontSize: 32, fontWeight: 900, color: "#fff" }}>{tier.price}</span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{tier.period}</span>
+            {!tier.available && (
+              <div style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 7, fontWeight: 900, letterSpacing: "0.15em", padding: "3px 12px", borderRadius: 20 }}>UNAVAILABLE</div>
+            )}
+            <div style={{ fontSize: 11, fontWeight: 700, color: tier.color, letterSpacing: "0.08em", marginBottom: 8 }}>{tier.shortLabel.toUpperCase()}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 8 }}>
+              <span style={{ fontSize: 32, fontWeight: 900, color: "#fff" }}>{tier.priceDisplay}</span>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>/ season</span>
             </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: "0 0 16px", lineHeight: 1.45 }}>{tier.description}</p>
             <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: 8 }}>
               {tier.perks.map(perk => (
                 <li key={perk} style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -127,12 +105,18 @@ export default function SeasonPassPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href={`/api/stripe/checkout?priceId=${tier.priceId}&mode=subscription&amount=${tier.amount}&productName=${encodeURIComponent(tier.name)}`}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "11px", minHeight: "44px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: tier.popular ? "#050510" : tier.color, background: tier.popular ? tier.color : "transparent", border: `1px solid ${tier.color}`, borderRadius: 8, textDecoration: "none" }}
-            >
-              GET {tier.name.toUpperCase()} →
-            </Link>
+            {tier.available ? (
+              <Link
+                href={seasonPassCheckoutHref(tier)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "11px", minHeight: "44px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: tier.entry || tier.popular ? "#050510" : tier.color, background: tier.entry || tier.popular ? tier.color : "transparent", border: `1px solid ${tier.color}`, borderRadius: 8, textDecoration: "none" }}
+              >
+                GET {tier.shortLabel.toUpperCase()} →
+              </Link>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "11px", minHeight: "44px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8 }}>
+                CURRENTLY UNAVAILABLE
+              </div>
+            )}
           </div>
         ))}
       </section>
@@ -144,12 +128,13 @@ export default function SeasonPassPage() {
 
       <section style={{ maxWidth: 680, margin: "48px auto 0", padding: "0 24px", textAlign: "center" }}>
         <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", lineHeight: 1.8 }}>
-          All passes billed monthly. Cancel anytime. Season 1 runs April 2026 – March 2027.
+          Season passes are one-time for Season 1 (April 2026 – March 2027) — not the same as monthly account subscriptions.
           <br />
-          Passes are non-transferable. Credits expire at end of billing period.
+          Passes are non-transferable. Cancel anytime via account billing for memberships separately.
         </div>
-        <div style={{ marginTop: 20 }}>
-          <Link href="/earnings" style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none" }}>See how passes affect your earnings →</Link>
+        <div style={{ marginTop: 20, display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/account/subscription" style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", textDecoration: "none" }}>Monthly memberships →</Link>
+          <Link href="/earnings" style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none" }}>See how passes affect earnings →</Link>
         </div>
       </section>
     </main>

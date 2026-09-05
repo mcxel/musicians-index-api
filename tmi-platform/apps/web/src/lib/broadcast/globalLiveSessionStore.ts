@@ -12,7 +12,7 @@ export type StageState   = "pre-show" | "live" | "intermission" | "post-show";
 // "lounge" added 2026-08-12 — DestinationResolver.ts's LobbyWallKind already
 // routed to lounges (?mode=lounge on /live/rooms/[roomId]) before this session
 // could store/filter a session AS a lounge. Now first-class here too.
-export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge";
+export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby";
 
 export interface AudienceCountrySlice {
   countryCode: string;
@@ -77,6 +77,11 @@ export interface LiveSession {
   audienceCountries: AudienceCountrySlice[];
   recentAudienceEntries: AudienceEntryEvent[];
   lastAudienceEntryAt: number | null;
+
+  /** Indoor | outdoor venue mode from Mini Event Creator / go-live (EventVenueEnvironment). */
+  venueEnvironment?: "indoor" | "outdoor" | null;
+  /** Optional venue skin id paired with venueEnvironment (existing venueSkinEngine ids). */
+  venueSkinId?: string | null;
 }
 
 export interface LivePingPayload {
@@ -105,9 +110,18 @@ function mirrorToLiveRegistry(session: LiveSession): void {
   });
 }
 
-/** Server hydrate — insert durable session without re-firing persist side effects. */
+/** Server hydrate — insert/refresh durable session without re-firing persist side effects. */
 export function upsertHydratedSession(session: LiveSession): void {
-  if (sessions.has(session.userId)) return;
+  const existing = sessions.get(session.userId);
+  // Always accept newer pings or roomId changes so multi-worker reconcile cannot
+  // leave a stale in-memory row that blocks LIVE NOW n→n+1 (Gate 3).
+  if (
+    existing &&
+    existing.roomId === session.roomId &&
+    existing.lastPingAt >= session.lastPingAt
+  ) {
+    return;
+  }
   sessions.set(session.userId, session);
   mirrorToLiveRegistry(session);
   broadcast();
@@ -158,6 +172,8 @@ export interface GoLivePayload {
   entryPriceUsd?: number;
   accentColor?:  string;
   performerTier?: LiveSession["performerTier"];
+  venueEnvironment?: LiveSession["venueEnvironment"];
+  venueSkinId?: LiveSession["venueSkinId"];
 }
 
 export function registerLiveSession(payload: GoLivePayload): LiveSession {
@@ -188,6 +204,8 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     audienceCountries: [],
     recentAudienceEntries: [],
     lastAudienceEntryAt: null,
+    venueEnvironment: payload.venueEnvironment ?? null,
+    venueSkinId: payload.venueSkinId ?? null,
   };
 
   sessions.set(payload.userId, session);
@@ -361,6 +379,10 @@ export function registerAudienceEntry(payload: AudienceEntryPayload): LiveSessio
 
 export function getSession(userId: string): LiveSession | null {
   return sessions.get(userId) ?? null;
+}
+
+export function getSessionByRoomId(roomId: string): LiveSession | null {
+  return Array.from(sessions.values()).find((s) => s.roomId === roomId) ?? null;
 }
 
 export function getActiveSessions(): LiveSession[] {

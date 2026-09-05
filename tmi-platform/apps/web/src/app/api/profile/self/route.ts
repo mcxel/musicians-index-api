@@ -22,12 +22,14 @@ export async function GET(req: NextRequest) {
             bio: true,
             avatarUrl: true,
             bannerUrl: true,
+            username: true,
           },
         },
         artistProfile: {
           select: {
             genres: true,
             stageName: true,
+            slug: true,
           },
         },
       },
@@ -61,6 +63,8 @@ export async function GET(req: NextRequest) {
         bannerUrl: user.userProfile?.bannerUrl ?? null,
         genres: user.artistProfile?.genres ?? [],
         stageName: user.artistProfile?.stageName ?? null,
+        artistSlug: user.artistProfile?.slug ?? null,
+        username: user.userProfile?.username ?? null,
         followersCount,
         followingCount,
         playlistsCount,

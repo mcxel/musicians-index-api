@@ -159,6 +159,20 @@ export function unlockPreset(venueId: string): void {
   lightingStates.set(venueId, { ...current, lockedPreset: null, autoMode: true });
 }
 
+export function setDimmingLevel(venueId: string, dimmingLevel: number): LightingState | null {
+  const current = lightingStates.get(venueId);
+  if (!current) return null;
+  const clamped = Math.max(0, Math.min(1, dimmingLevel));
+  const updated: LightingState = {
+    ...current,
+    dimmingLevel: clamped,
+    lastChangedAt: Date.now(),
+  };
+  lightingStates.set(venueId, updated);
+  notify(venueId, updated);
+  return updated;
+}
+
 export function getLightingState(venueId: string): LightingState | null {
   return lightingStates.get(venueId) ?? null;
 }

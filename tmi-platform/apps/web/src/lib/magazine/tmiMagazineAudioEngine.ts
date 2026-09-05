@@ -64,14 +64,47 @@ export class TmiMagazineAudioEngine {
     if (!canUseDom()) return;
 
     const src = this.sounds[key];
-    if (!src) return;
+    if (src) {
+      try {
+        const audio = new Audio(src);
+        audio.preload = "auto";
+        audio.volume = 0.3;
+        await audio.play();
+        return;
+      } catch {
+        // Fall back to Web Audio synthesis
+      }
+    }
 
+    // Non-blocking Web Audio API synthesized paper swish
     try {
-      const audio = new Audio(src);
-      audio.preload = "auto";
-      await audio.play();
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const bufferSize = ctx.sampleRate * 0.15;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1200, ctx.currentTime);
+      filter.Q.setValueAtTime(1.5, ctx.currentTime);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      noise.start();
+      setTimeout(() => { ctx.close().catch(() => {}); }, 200);
     } catch {
-      // safe fallback when files are missing or blocked
+      // Safe fallback
     }
   }
 

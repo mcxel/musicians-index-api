@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Foundry bobblehead_v0 fit proof</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #050510; overflow: hidden; }
+    #c { width: 100%; height: 100%; display: block; }
+    #hud {
+      position: fixed; left: 12px; top: 12px; color: #00ffff; z-index: 2;
+      font: 700 11px/1.4 ui-monospace, monospace; letter-spacing: 0.06em;
+      text-transform: uppercase; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Loading Foundry GLB…</div>
+  <canvas id="c"></canvas>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
+
+    const hud = document.getElementById("hud");
+    const canvas = document.getElementById("c");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 40);
+    camera.position.set(0, 0.85, 2.85);
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.set(0, 0.75, 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    scene.add(new THREE.HemisphereLight(0x88ccff, 0x12002b, 0.7));
+    const dir = new THREE.DirectionalLight(0xffffff, 2.0);
+    dir.position.set(3, 6, 4);
+    scene.add(dir);
+
+    const MAX = 8;
+    function contentBox(mesh) {
+      const pos = mesh.geometry.attributes.position;
+      const local = new THREE.Box3();
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        if (![v.x, v.y, v.z].every((n) => Number.isFinite(n) && Math.abs(n) < MAX)) continue;
+        local.expandByPoint(v);
+      }
+      if (local.isEmpty()) return null;
+      mesh.geometry.boundingBox = local.clone();
+      return local.clone().applyMatrix4(mesh.matrixWorld);
+    }
+    function sane(box) {
+      if (box.isEmpty()) return false;
+      const s = box.getSize(new THREE.Vector3());
+      return [s.x, s.y, s.z].every((n) => Number.isFinite(n) && n >= 0 && n < MAX) && s.length() >= 1e-4;
+    }
+    function fit(root) {
+      root.updateMatrixWorld(true);
+      root.traverse((o) => {
+        if (o.name === "Avatar_LOD1" || o.name === "Avatar_LOD2") o.visible = false;
+      });
+      const collect = () => {
+        const box = new THREE.Box3();
+        root.traverse((obj) => {
+          if (!obj.isSkinnedMesh || !obj.visible) return;
+          const w = contentBox(obj);
+          if (!w || !sane(w)) return;
+          box.union(w);
+          obj.frustumCulled = false;
+        });
+        return box;
+      };
+      let box = collect();
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 1e-3);
+      root.scale.setScalar(THREE.MathUtils.clamp(1.65 / maxDim, 0.25, 4));
+      root.updateMatrixWorld(true);
+      box = collect();
+      const center = box.getCenter(new THREE.Vector3());
+      const h = box.getSize(new THREE.Vector3()).y;
+      root.position.sub(center);
+      root.position.y += h * 0.5;
+      return box.getSize(new THREE.Vector3());
+    }
+
+    new GLTFLoader().load(
+      "/models/avatars/bobblehead_v0.glb",
+      (gltf) => {
+        const root = cloneSkinned(gltf.scene);
+        root.traverse((obj) => {
+          const morphs = obj.geometry?.morphAttributes?.position;
+          if (!morphs) return;
+          for (const attr of morphs) {
+            const a = attr.array;
+            for (let i = 0; i < a.length; i++) {
+              if (!Number.isFinite(a[i]) || Math.abs(a[i]) > 0.12) a[i] = 0;
+            }
+          }
+        });
+        const size = fit(root);
+        scene.add(root);
+        hud.textContent = `FOUNDRY MESH VISIBLE · ${size.y.toFixed(2)}m · SkeletonUtils + base-pos fit`;
+        hud.dataset.meshVisible = "1";
+      },
+      undefined,
+      (err) => {
+        hud.textContent = "LOAD ERROR: " + (err?.message || String(err));
+        hud.style.color = "#ff2daa";
+        hud.dataset.meshVisible = "0";
+      },
+    );
+
+    function frame() {
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    frame();
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>

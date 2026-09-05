@@ -40,7 +40,7 @@ export const PROFILE_LOBBY_ROUTE_MAP: Record<TMIRole, RouteMap> = {
     dashboard:    "/performer/dashboard",
     analytics:    "/performer/analytics",
     settings:     "/settings",
-    newContent:   "/go-live",
+    newContent:   "/hub/performer?golive=1",
   },
   artist: {
     hub:          "/hub/artist",

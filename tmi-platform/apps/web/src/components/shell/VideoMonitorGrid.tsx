@@ -455,6 +455,8 @@ export interface VideoMonitorGridProps {
   style?: React.CSSProperties;
 }
 
+import useViewportMode from '@/hooks/useViewportMode';
+
 export default function VideoMonitorGrid({
   slot1, slot2, slot3, slot4,
   accentColor = '#00FFFF',
@@ -462,8 +464,10 @@ export default function VideoMonitorGrid({
   className,
   style,
 }: VideoMonitorGridProps) {
+  const { isPhone } = useViewportMode();
+
   return (
-    <div className={className} style={{ position: 'relative', width: '100%', ...style }}>
+    <div className={className} style={{ position: 'relative', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', ...style }}>
       {/* Inject keyframes once */}
       <style>{`
         @keyframes tmiScan { 0%{top:-5%} 100%{top:105%} }
@@ -483,37 +487,51 @@ export default function VideoMonitorGrid({
       )}
 
       {/*
-        Broadcast Director layout (2 big + 2 mini):
-          ┌────────────────────────┬───────────────────┐
-          │      slot1 BIG HERO    │    slot2 BIG      │
-          │      (spans 2 rows)    ├──────────┬────────┤
-          │                        │ slot3 M  │ slot4 M│
-          └────────────────────────┴──────────┴────────┘
+        Broadcast Director layout:
+          Desktop: 2 big + 2 mini (1.7fr 1.3fr)
+          Phone: Adaptive 2×2 stacked layout with zero overflow
       */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1.7fr 1.3fr',
-        gridTemplateRows: '1.2fr 0.8fr',
-        gap: 8,
-        width: '100%',
-        aspectRatio: '16/9',
-      }}>
-        {/* Big hero monitor */}
-        <div style={{ gridColumn: '1', gridRow: '1 / span 2' }}>
-          <Monitor config={slot1} size="big" />
-        </div>
-
-        {/* Big secondary monitor */}
-        <div style={{ gridColumn: '2', gridRow: '1' }}>
-          <Monitor config={slot2} size="big" />
-        </div>
-
-        {/* Mini utility monitors */}
-        <div style={{ gridColumn: '2', gridRow: '2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {isPhone ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gap: 6,
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <Monitor config={slot1} size="mini" />
+          <Monitor config={slot2} size="mini" />
           <Monitor config={slot3} size="mini" />
           <Monitor config={slot4} size="mini" />
         </div>
-      </div>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1.7fr 1.3fr',
+          gridTemplateRows: '1.2fr 0.8fr',
+          gap: 8,
+          width: '100%',
+          aspectRatio: '16/9',
+          boxSizing: 'border-box',
+        }}>
+          {/* Big hero monitor */}
+          <div style={{ gridColumn: '1', gridRow: '1 / span 2' }}>
+            <Monitor config={slot1} size="big" />
+          </div>
+
+          {/* Big secondary monitor */}
+          <div style={{ gridColumn: '2', gridRow: '1' }}>
+            <Monitor config={slot2} size="big" />
+          </div>
+
+          {/* Mini utility monitors */}
+          <div style={{ gridColumn: '2', gridRow: '2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Monitor config={slot3} size="mini" />
+            <Monitor config={slot4} size="mini" />
+          </div>
+        </div>
+      )}
 
       {/* Accent glow frame */}
       <div style={{

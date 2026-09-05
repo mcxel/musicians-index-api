@@ -2,9 +2,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
-import { listOwnedVenueSkins, hasVenueSkinAccess } from '@/lib/venue/VenueSkinCommerce';
+import {
+  listOwnedVenueSkins,
+  hasVenueSkinAccess,
+  resolveVenueAppearance,
+  SEASON_PASS_INCLUDED_SKINS,
+} from '@/lib/venue/VenueSkinCommerce';
 import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
-import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
+import { resolveBaseVenueSkin, getAllTierBaseVenueSkins } from '@/lib/venues/TierBaseVenueSkin';
+import type { UserTier } from '@/lib/auth/UserStore';
 
 async function resolveUser(req: NextRequest): Promise<{ id: string; email: string; tier: string | null } | null> {
   const email = req.cookies.get('tmi_user_email')?.value;
@@ -24,6 +30,7 @@ export async function GET(req: NextRequest) {
     tags: skin.tags,
   }));
 
+  const equippedSkinId = req.nextUrl.searchParams.get('equippedSkinId');
   const user = await resolveUser(req);
   if (!user) {
     return NextResponse.json({
@@ -32,18 +39,43 @@ export async function GET(req: NextRequest) {
       authenticated: false,
       accountTier: 'FREE',
       baseSkin: resolveBaseVenueSkin('FREE'),
+      tierBaseSkins: getAllTierBaseVenueSkins(),
+      seasonPassIncludedSkinIds: [...SEASON_PASS_INCLUDED_SKINS],
+      entitlementSplit: {
+        tierBase: 'included_with_account_tier',
+        purchased: 'permanent_after_stripe_fulfillment',
+        seasonPass: 'listed_skins_only_while_pass_active',
+      },
+      appearance: await resolveVenueAppearance({
+        userId: null,
+        accountTier: 'FREE',
+        equippedSkinId: null,
+      }),
     });
   }
 
-  const accountTier = resolveTierFromDb(user.email, user.tier);
+  const accountTier = resolveTierFromDb(user.email, user.tier) as UserTier;
   const owned = await listOwnedVenueSkins(user.id);
   const ownership = Object.fromEntries(owned.map((o) => [o.skinId, o]));
+  const appearance = await resolveVenueAppearance({
+    userId: user.id,
+    accountTier,
+    equippedSkinId,
+  });
   return NextResponse.json({
     skins,
     ownership,
     authenticated: true,
     accountTier,
     baseSkin: resolveBaseVenueSkin(accountTier),
+    tierBaseSkins: getAllTierBaseVenueSkins(),
+    seasonPassIncludedSkinIds: [...SEASON_PASS_INCLUDED_SKINS],
+    entitlementSplit: {
+      tierBase: 'included_with_account_tier',
+      purchased: 'permanent_after_stripe_fulfillment',
+      seasonPass: 'listed_skins_only_while_pass_active',
+    },
+    appearance,
   });
 }
 

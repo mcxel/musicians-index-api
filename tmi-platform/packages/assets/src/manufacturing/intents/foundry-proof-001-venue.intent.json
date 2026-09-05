@@ -1,0 +1,34 @@
+{
+  "jobId": "JOB-VENUE-PROOF001",
+  "assetId": "monday-night-stage",
+  "recipeId": "MondayNightStage",
+  "recipeVersion": "1.0-proof",
+  "artifactRoot": "packages/assets/generated/manufacturing/artifacts/JOB-VENUE-PROOF001",
+  "widthMeters": 26,
+  "depthMeters": 34,
+  "heightMeters": 12,
+  "stage": {
+    "widthMeters": 14,
+    "depthMeters": 8,
+    "heightMeters": 1.2
+  },
+  "seating": {
+    "rows": 8,
+    "seatsPerRow": 12,
+    "aisleEvery": 6
+  },
+  "screens": [
+    "Screen_Main",
+    "Screen_Left",
+    "Screen_Right"
+  ],
+  "sponsorSurfaceCount": 2,
+  "outputName": "monday-night-stage-world.glb",
+  "coordinateSystem": {
+    "upAxis": "Z",
+    "metersPerUnit": 1,
+    "gltfUpAxis": "Y",
+    "forwardAxis": "-Y"
+  },
+  "proof": "Foundry Proof 001 - Zero-External-Mesh"
+}

@@ -1,0 +1,23 @@
+{
+  "obsoleteSecondaryNavRemoved": true,
+  "canonicalCommandStripMounted": true,
+  "betaFeedbackPositionAndCollision": true,
+  "yophoCanonicalPresentation": true,
+  "universalPlayerSourceOwnership": true,
+  "fanHubDesktop": true,
+  "fanHubMobile": true,
+  "performerHubDesktop": false,
+  "performerHubMobile": false,
+  "screenshots": [
+    "02_fan_hub_yopho_open.png",
+    "01_fan_hub_desktop.png",
+    "03_explore_matrix_snips.png",
+    "04_mini_live_lobby_wall.png",
+    "05_fan_hub_mobile_390x844.png",
+    "08_universal_player_routed.png"
+  ],
+  "notes": [
+    "YoPho PASS after waiting for data-shell-build + __TMI_OPEN_YOPHO__ (not SSR-only cast buttons).",
+    "Performer hub physical pass blocked by Next.dev connection reset / OOM during /hub/performer compile."
+  ]
+}

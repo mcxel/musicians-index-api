@@ -20,6 +20,11 @@ export default function CypherExperience({
 }: CypherExperienceProps) {
   const manifest = useExperienceRuntime();
   const resolvedRoom = venueId ? `${roomId}-${venueId}` : roomId;
+  const flags = manifest.experience.featureFlags ?? [];
+  const cypherKing = flags.some((f) => {
+    const x = f.toLowerCase();
+    return x.includes("cypher_king") || x.includes("cypher-king") || x === "cypherking";
+  });
 
   if (manifest.experience.id !== "cypher") {
     return (
@@ -30,7 +35,7 @@ export default function CypherExperience({
   }
 
   return (
-    <CypherRuntimeProvider roomId={resolvedRoom} sessionGenre="Hip-Hop">
+    <CypherRuntimeProvider roomId={resolvedRoom} sessionGenre="Hip-Hop" cypherKing={cypherKing}>
       <EosArenaEventShell
         config={{
           roomId: resolvedRoom,

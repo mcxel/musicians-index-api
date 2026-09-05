@@ -11,7 +11,8 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useEffect, useRef, type CSSProperties } from "react";
-import YoPhoOpenFullStudioButton from "@/components/yopho/YoPhoOpenFullStudioButton";
+import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import YoPhoActivityHub from "@/components/yopho/YoPhoActivityHub";
 import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -31,7 +32,7 @@ import { drawerStateStore, useDrawerState, type AnalyticsPeriod, ANALYTICS_PERIO
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
-import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
+import VenueToolsShellHint from "@/components/hud/VenueToolsShellHint";
 import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazineDrawer";
 import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
@@ -54,16 +55,15 @@ import {
   panelsForRole,
 } from "./commandCenterRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
+import { resolveFanWorldEntry } from "@/lib/live/canonicalWorldViewport";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   ssr: false,
   loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
 });
 
-const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
-  ssr: false,
-  loading: () => <SlotLoading label="Loading YoPho Card…" />,
-});
 
 function SlotLoading({ label }: { label: string }) {
   return (
@@ -94,39 +94,13 @@ function YoPhoSlot({
   role: CommandCenterRole;
   displayName: string;
   userId: string;
-  /** ACTIVE_PERFORMER bind — remounts card without full page reload. */
+  /** ACTIVE_PERFORMER bind — remounts hub without full page reload. */
   bindKey?: string;
   slug?: string;
 }) {
-  const cardRole = role === "performer" ? "performer" : "fan";
-
   return (
-    <div
-      key={bindKey ?? userId}
-      style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
-            YOPHO CARD · WHO I AM RIGHT NOW
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-            Living layered card · effects · song · share URL
-            {bindKey ? ` · ${displayName}` : ""}
-          </div>
-        </div>
-        <YoPhoOpenFullStudioButton role={role} userId={userId} label="FULL STUDIO →" />
-      </div>
-      <YoPhoTradingCard
-        role={cardRole}
-        displayName={displayName}
-        userKey={userId}
-        slug={slug}
-        compact
-        showEditor
-        showShare
-        showMoneyCtas
-      />
+    <div key={bindKey ?? userId} data-yopho-canonical-workspace data-yopho-surface="command-center-drawer" style={{ height: "100%", minHeight: 360 }}>
+      <YoPhoActivityHub role={role} displayName={displayName} userId={userId} slug={slug} />
     </div>
   );
 }
@@ -324,7 +298,17 @@ export default function CommandCenterDrawer({
   const contextDisplayName =
     activePerformer?.name ?? contextPerformer?.name ?? displayName;
   const contextSlug = activePerformer?.slug ?? contextPerformer?.slug ?? contextPerformerId ?? undefined;
-  const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const fanWorld = useMemo(
+    () =>
+      resolveFanWorldEntry({
+        publishedRoomId: publishedRoomId ?? inPlaceRoomId,
+        from: "command-center-drawer",
+      }),
+    [publishedRoomId, inPlaceRoomId],
+  );
+  const roomId = role === "fan" ? fanWorld.roomId : `performer-lobby-cc-${userId}`;
   const open =
     appearanceOpen || (activePanel != null && activePanel !== "playlist");
 
@@ -555,7 +539,11 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "live_destinations" ? (
-        <LiveDestinationsDrawerPanel viewerUserId={userId} accentColor={theme.primary} />
+        <LiveDestinationsDrawerPanel
+          viewerUserId={userId}
+          viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
+          accentColor={theme.primary}
+        />
       ) : null}
 
       {activePanel === "room_controls" && role === "fan" ? (
@@ -694,17 +682,27 @@ export default function CommandCenterDrawer({
       {activePanel === "stage_tools" && role === "performer" ? (
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            Stage & broadcast tools — curtain control + real destinations.
+            Stage & broadcast tools — curtain/lighting/mood live in VENUE TOOLS.
           </div>
-          <PerformerCurtainControlPanel
-            performerId={userId}
-            sessionId={`hub-curtain-${userId}`}
-            accentColor={theme.primary}
-            compact
-          />
-          <Link href="/live/go" style={toolLink(theme.primary)}>
-            🔴 Go Live →
-          </Link>
+          <VenueToolsShellHint accent={theme.primary} roomId={`hub-curtain-${userId}`} />
+          <button
+            type="button"
+            onClick={() => {
+              void presentInstantGoLiveInPlace({
+                role: "PERFORMER",
+                preferredExperience: "live",
+                publishSession: true,
+              });
+            }}
+            style={{
+              ...toolLink(theme.primary),
+              cursor: "pointer",
+              fontFamily: "inherit",
+              textAlign: "left",
+            }}
+          >
+            🔴 Go Live
+          </button>
           <Link href="/performer/studio" style={toolLink(theme.secondary)}>
             Studio & stage engines →
           </Link>

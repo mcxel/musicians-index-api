@@ -13,7 +13,7 @@ import {
   type ConversationRouteType,
   type Conversation,
 } from "./ConversationEngine";
-
+import { canOneToOneSocial, subjectFromLegacyAgeClass } from "@/lib/trustSafety/YouthSocialGuard";
 import type { ContactActor, ContactTarget } from "@/lib/safety/TeenMessagingPolicyEngine";
 
 export type MessageRouteParty = {
@@ -66,6 +66,19 @@ export function resolveMessageRoute(
       routeType: "fan-fan",
       allowed: false,
       reason: `Messaging between '${sender.role}' and '${recipient.role}' is not permitted`,
+    };
+  }
+
+  const social = canOneToOneSocial(
+    subjectFromLegacyAgeClass(sender.userId, sender.ageClass),
+    subjectFromLegacyAgeClass(recipient.userId, recipient.ageClass),
+  );
+  if (!social.allowed) {
+    return {
+      conversationId: "",
+      routeType: "fan-fan",
+      allowed: false,
+      reason: social.reason,
     };
   }
 

@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import { checkRateLimit } from "@/lib/security/TMISecurityEngine";
+import { persistUploadedMediaFile } from "@/lib/media/persistUploadedMedia";
 
 const ALLOWED_MIME_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave",
@@ -58,26 +59,16 @@ export async function POST(req: NextRequest) {
   }
   if (audioFile.size === 0) return NextResponse.json({ error: "empty_file" }, { status: 400 });
 
-  const buf = Buffer.from(await audioFile.arrayBuffer());
-  const fileName = `beats/${auth.user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-
   try {
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const { put } = await import("@vercel/blob");
-      const blob = await put(fileName, buf, {
-        access: "public",
-        contentType: audioFile.type || "audio/mpeg",
-        addRandomSuffix: false,
-      });
-      return NextResponse.json({ success: true, url: blob.url }, { status: 201 });
+    const stored = await persistUploadedMediaFile({
+      file: audioFile,
+      ownerId: auth.user.id,
+      fallbackExt: ext.replace(".", "") || "mp3",
+    });
+    if (!stored.ok) {
+      return NextResponse.json({ error: "upload_failed", details: stored.error }, { status: stored.status });
     }
-
-    // Dev fallback without Blob storage configured — data URL so local
-    // testing still works. Not viable for real-size audio in production,
-    // which is exactly why the BLOB_READ_WRITE_TOKEN path above is used
-    // whenever it's configured.
-    const dataUrl = `data:${audioFile.type || "audio/mpeg"};base64,${buf.toString("base64")}`;
-    return NextResponse.json({ success: true, url: dataUrl }, { status: 201 });
+    return NextResponse.json({ success: true, url: stored.url }, { status: 201 });
   } catch (err) {
     console.error("[beats/upload-audio] upload failed:", err);
     return NextResponse.json({ error: "upload_failed", details: "Storage unavailable. Retry." }, { status: 502 });

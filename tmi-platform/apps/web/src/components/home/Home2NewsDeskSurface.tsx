@@ -29,6 +29,7 @@ import {
   type MagazineArticle,
 } from '@/lib/magazine/magazineIssueData';
 import { resolveArticleEditorialImage } from '@/lib/magazine/resolveArticleEditorialImage';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import "@/styles/tmiTypography.css";
 
 const FEATURE_HERO: MagazineArticle | null =
@@ -120,7 +121,7 @@ export default function Home2NewsDeskSurface() {
           }}
         >
           {FEATURE_HERO ? (
-            <a href={`/magazine/article/${FEATURE_HERO.slug}`} style={{ textDecoration: 'none', color: '#fff' }}>
+            <a href={magazineReaderArticleUrl(FEATURE_HERO.slug, { from: '/home/2' })} style={{ textDecoration: 'none', color: '#fff' }}>
               <div style={{ minHeight: 220, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${FEATURE_HERO.heroColor}55`, background: `linear-gradient(145deg, ${FEATURE_HERO.heroColor}33, rgba(5,5,16,0.72)), url('${resolveArticleEditorialImage(FEATURE_HERO)}') center/cover` }}>
                 <div style={{ position: 'absolute', top: 12, right: 12, background: FEATURE_HERO.heroColor, color: '#000', fontSize: 10, padding: '4px 10px', borderRadius: 4, fontWeight: 800 }}>{FEATURE_HERO.category.toUpperCase()}</div>
                 <div style={{ padding: 16 }}>
@@ -139,7 +140,7 @@ export default function Home2NewsDeskSurface() {
             const img = resolveArticleEditorialImage(article);
             const color = article.heroColor || '#00FFFF';
             return (
-              <a key={article.slug} href={`/magazine/article/${article.slug}`} style={{ textDecoration: 'none', color: '#fff' }}>
+              <a key={article.slug} href={magazineReaderArticleUrl(article.slug, { from: '/home/2' })} style={{ textDecoration: 'none', color: '#fff' }}>
                 <div style={{ minHeight: 104, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${color}55`, background: `linear-gradient(to bottom, ${color}10 0%, rgba(5,5,16,0.05) 45%, rgba(5,5,16,0.88) 100%), url('${img}') center/cover`, display: 'flex', alignItems: 'flex-end', padding: 12 }}>
                   {index === 0 && <div style={{ position: 'absolute', top: 8, right: 8, background: color, color: '#000', fontSize: 9, padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>{article.category.toUpperCase()}</div>}
                   <div style={{ fontSize: 12, letterSpacing: '0.08em', fontWeight: 800 }}>

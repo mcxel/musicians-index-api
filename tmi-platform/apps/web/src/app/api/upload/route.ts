@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { recordMediaObservabilityEvent } from '@/lib/media/media-observability-store';
+import { isBlobStorageAvailable, toBlobPlaybackUrl } from '@/lib/media/blobStorage';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -34,12 +35,11 @@ export async function POST(req: NextRequest) {
     const ext      = file.name.split('.').pop() ?? 'jpg';
     const fileName = `uploads/${context}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-    // Vercel Blob — used automatically when BLOB_READ_WRITE_TOKEN is present
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    if (isBlobStorageAvailable()) {
       const { put } = await import('@vercel/blob');
-      const blob = await put(fileName, file, { access: 'public' });
+      const blob = await put(fileName, file, { access: 'private', addRandomSuffix: true });
       recordMediaObservabilityEvent('image_upload_success', { storage: 'blob', context });
-      return NextResponse.json({ success: true, url: blob.url }, { status: 201 });
+      return NextResponse.json({ success: true, url: toBlobPlaybackUrl(blob.pathname) }, { status: 201 });
     }
 
     // Dev fallback: base64 data URL so previews work locally without blob storage

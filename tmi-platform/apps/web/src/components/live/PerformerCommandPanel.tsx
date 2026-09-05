@@ -30,6 +30,7 @@ interface PerformerCommandPanelProps {
   onWelcome?: () => void;
   onWave?: () => void;
   accentColor?: string;
+  contained?: boolean;
 }
 
 const TABS: { id: CommandTab; label: string }[] = [
@@ -60,8 +61,9 @@ export default function PerformerCommandPanel({
   onWelcome,
   onWave,
   accentColor = "#FF2DAA",
+  contained = false,
 }: PerformerCommandPanelProps) {
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(contained);
   const [tab, setTab] = useState<CommandTab>("audience");
   const [hostModeLocal, setHostModeLocal] = useState(true);
   const [activeShot, setActiveShot] = useState<CameraShotType>("StageView");
@@ -109,10 +111,10 @@ export default function PerformerCommandPanel({
         onClick={() => setMinimized(false)}
         title="Expand Command Panel"
         style={{
-          position: "fixed",
-          top: 72,
-          right: 16,
-          zIndex: 9200,
+          position: contained ? "absolute" : "fixed",
+          top: contained ? 8 : 72,
+          right: contained ? 8 : 16,
+          zIndex: contained ? 70 : 9200,
           padding: "8px 12px",
           borderRadius: 12,
           border: `1px solid ${accentColor}88`,
@@ -135,11 +137,11 @@ export default function PerformerCommandPanel({
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
-        position: "fixed",
-        top: 72,
-        right: 16,
-        width: 280,
-        zIndex: 9200,
+        position: contained ? "absolute" : "fixed",
+        top: contained ? 36 : 72,
+        right: contained ? 8 : 16,
+        width: contained ? 220 : 280,
+        zIndex: contained ? 70 : 9200,
         pointerEvents: "auto",
         background: "rgba(8,6,20,0.94)",
         backdropFilter: "blur(18px)",
@@ -227,16 +229,18 @@ export default function PerformerCommandPanel({
           >
             {tab === "audience" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 900,
-                    letterSpacing: "0.14em",
-                    color: "#00FF88",
-                  }}
-                >
-                  VENUE READY
-                </div>
+                {!contained ? (
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                      color: "#00FF88",
+                    }}
+                  >
+                    VENUE READY
+                  </div>
+                ) : null}
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", lineHeight: 1.55 }}>
                   <div>
                     🎭 Environment {environmentVerified || metrics ? "Verified" : "Checking…"}
@@ -263,12 +267,16 @@ export default function PerformerCommandPanel({
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button type="button" onClick={() => onWelcome?.()} style={actionBtn(accentColor)}>
-                    👋 Welcome
-                  </button>
-                  <button type="button" onClick={() => onWave?.()} style={actionBtn(accentColor)}>
-                    🌊 Wave
-                  </button>
+                  {!contained && onWelcome ? (
+                    <button type="button" onClick={() => onWelcome()} style={actionBtn(accentColor)}>
+                      👋 Welcome
+                    </button>
+                  ) : null}
+                  {!contained && onWave ? (
+                    <button type="button" onClick={() => onWave()} style={actionBtn(accentColor)}>
+                      🌊 Wave
+                    </button>
+                  ) : null}
                 </div>
               </div>
             )}

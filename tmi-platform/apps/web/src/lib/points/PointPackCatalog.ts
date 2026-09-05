@@ -85,9 +85,12 @@ export function getPointPackByPriceCents(priceCents: number): PointPackDef | nul
 
 /** Season pass one-time purchases → bonus fanCredits (in addition to pass ownership). */
 export const SEASON_PASS_BONUS_POINTS: Record<string, number> = {
+  starter: 100,
+  plus: 250,
   fan: 500,
   artist: 1000,
   bundle: 1500,
+  vip: 3000,
 };
 
 export function seasonPassBonusPoints(passType: string | null | undefined): number {

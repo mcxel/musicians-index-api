@@ -1,6 +1,11 @@
 import { getTicket, burnTicket, verifyOwnership } from "@/lib/ticketing/TicketOwnershipEngine";
+import { atomicCheckIn as atomicCheckInCore } from "@/lib/tickets/AtomicCheckIn";
 
 export type CheckInStatus = "not-checked-in" | "checked-in" | "already-used" | "invalid" | "denied";
+
+/** Re-export canonical atomic check-in for door / kiosk / scanner. */
+export const AtomicCheckIn = atomicCheckInCore;
+export { atomicCheckInCore as atomicCheckIn };
 
 export interface CheckInRecord {
   checkInId: string;

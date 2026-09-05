@@ -139,7 +139,7 @@ export default function Home1CoverOverlay({
       {/* ── Footer strip: Weekly Cyphers promo ── */}
       <div className="home1-cover-overlay__footer pointer-events-auto absolute bottom-0 left-0 right-0 bg-gradient-to-r from-purple-900/90 via-cyan-900/90 to-purple-900/90 px-3 py-1">
         <Link
-          href="/magazine/issues/current/cyphers"
+          href="/live/rooms/cypher-arena"
           className="flex items-center justify-center gap-2 text-[11px] font-bold text-cyan-300 pointer-events-auto"
           data-testid="weekly-cyphers-footer"
         >

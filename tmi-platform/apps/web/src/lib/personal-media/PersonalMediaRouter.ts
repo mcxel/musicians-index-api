@@ -32,6 +32,19 @@ import {
   type ParticipantMediaIdentity,
 } from "./types";
 
+export type PrivateSocialGateDecision = {
+  allowed: boolean;
+  reason: string;
+  code?: string;
+};
+
+export type PrivateSocialInteractGate = (input: {
+  viewerUserId: string;
+  targetCanonicalId: string;
+  participantId: string;
+  context: "PRIVATE_MONITOR_ROUTE" | "CALL";
+}) => PrivateSocialGateDecision;
+
 export type PersonalMediaRouterOptions = {
   mediaTransport?: PersonalMediaTransport;
   roomAuthority?: RoomAuthorityPort;
@@ -39,6 +52,8 @@ export type PersonalMediaRouterOptions = {
   roomId?: string;
   persist?: boolean;
   proximityRangeMeters?: number;
+  /** Server decision (e.g. /api/trustSafety/one-to-one). Missing gate = deny private routes. */
+  privateInteractGate?: PrivateSocialInteractGate;
 };
 
 export type MonitorAssignmentRow = {
@@ -76,6 +91,8 @@ export class PersonalMediaRouter {
   private readonly userId?: string;
   private readonly persistEnabled: boolean;
   private readonly proximityRangeMeters: number;
+  private readonly privateInteractGate?: PrivateSocialInteractGate;
+  private lastPrivateDeny: { participantId: string; reason: string; code?: string } | null = null;
 
   private participants = new Map<string, ParticipantMediaIdentity>();
   private assignments = new Map<string, string>();
@@ -100,6 +117,7 @@ export class PersonalMediaRouter {
     this.userId = options.userId;
     this.persistEnabled = options.persist === true;
     this.proximityRangeMeters = options.proximityRangeMeters ?? DEFAULT_PROXIMITY_RANGE_METERS;
+    this.privateInteractGate = options.privateInteractGate;
     this.roomId = options.roomId ?? null;
     if (this.persistEnabled && this.userId && this.roomId) {
       this.hydrate();
@@ -147,7 +165,11 @@ export class PersonalMediaRouter {
   assignToMonitor(
     participantId: string,
     target: MonitorTarget,
-  ): { ok: boolean; key: string } {
+    options?: { privateSocial?: boolean },
+  ): { ok: boolean; key: string; reason?: string } {
+    if (options?.privateSocial) {
+      return this.assignPrivateSocialRoute(participantId, target);
+    }
     if (!this.participants.has(participantId)) {
       return { ok: false, key: "" };
     }
@@ -155,6 +177,75 @@ export class PersonalMediaRouter {
     this.assignments.set(key, participantId);
     this.commit();
     return { ok: true, key };
+  }
+
+  /**
+   * Private WATCH ON / 1:1 monitor conversation. Public stage watch uses assignToMonitor.
+   * Fail closed without a gate. Does not reconnect WebRTC.
+   */
+  assignPrivateSocialRoute(
+    participantId: string,
+    target: MonitorTarget,
+  ): { ok: boolean; key: string; reason?: string } {
+    const decision = this.evaluatePrivateSocial(participantId, "PRIVATE_MONITOR_ROUTE");
+    if (!decision.allowed) {
+      this.privateChannelRestricted.add(participantId);
+      this.lastPrivateDeny = { participantId, reason: decision.reason, code: decision.code };
+      this.commit();
+      return { ok: false, key: "", reason: decision.reason };
+    }
+    if (!this.participants.has(participantId)) {
+      return { ok: false, key: "", reason: "blocked: participant is not in this room" };
+    }
+    const key = monitorSlotKey(target);
+    this.assignments.set(key, participantId);
+    this.commit();
+    return { ok: true, key };
+  }
+
+  beginPrivateTalk(participantId: string): { ok: boolean; reason: string } {
+    const decision = this.evaluatePrivateSocial(participantId, "CALL");
+    if (!decision.allowed) {
+      this.privateChannelRestricted.add(participantId);
+      this.lastPrivateDeny = { participantId, reason: decision.reason, code: decision.code };
+      this.commit();
+      return { ok: false, reason: decision.reason };
+    }
+    this.setInteractionTarget(participantId);
+    return { ok: true, reason: decision.reason };
+  }
+
+  getLastPrivateDeny(): { participantId: string; reason: string; code?: string } | null {
+    return this.lastPrivateDeny;
+  }
+
+  evaluatePrivateSocial(
+    participantId: string,
+    context: "PRIVATE_MONITOR_ROUTE" | "CALL" = "PRIVATE_MONITOR_ROUTE",
+  ): PrivateSocialGateDecision {
+    const identity = this.participants.get(participantId);
+    const targetCanonicalId = identity?.canonicalIdentityId ?? "";
+    const viewerUserId = this.userId ?? "";
+    if (!this.privateInteractGate) {
+      return {
+        allowed: false,
+        reason: "blocked: private social route denied until age policy is confirmed",
+        code: "UNKNOWN_AGE",
+      };
+    }
+    if (!viewerUserId || !targetCanonicalId) {
+      return {
+        allowed: false,
+        reason: "blocked: private interaction requires two real account identities",
+        code: "NO_TARGET",
+      };
+    }
+    return this.privateInteractGate({
+      viewerUserId,
+      targetCanonicalId,
+      participantId,
+      context,
+    });
   }
 
   removeFromMonitor(target: MonitorTarget): { ok: boolean; previousParticipantId: string | null } {

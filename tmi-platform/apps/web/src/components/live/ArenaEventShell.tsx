@@ -28,21 +28,34 @@ import type {
   CompetitionParticipantView,
   CompetitionPhase,
 } from "@/components/competition/presentation/competitionPresentation.types";
+import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import { MemoryLedger } from "@/core/eos/memoryLedger";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
 import { getGuestId } from "@/lib/identity/getGuestId";
+import { resolveExperiencePersonality } from "@/lib/live/ExperiencePersonality";
+import {
+  resolveEventVenueEnvironment,
+  type VenueEnvironmentKind,
+} from "@/lib/venues/EventVenueEnvironment";
+import type { VenueSpatialMap, WorldViewMode } from "@/lib/world/WorldScenePlan";
+import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
-  { ssr: false }
+  { ssr: false },
+);
+
+const TMIInteractiveVenueHud = dynamic(
+  () => import("@/components/venue-hud/TMIInteractiveVenueHud"),
+  { ssr: false },
 );
 
 const AvatarVenueAnchor = dynamic(
   () => import("@/components/avatar/AvatarVenueAnchor"),
-  { ssr: false }
+  { ssr: false },
 );
 
 // NOTE (2026-07-23): components/competition/CompetitionAudienceViewport is
@@ -67,7 +80,8 @@ export type ArenaEventType =
   | "monday-stage"
   | "deal-or-feud"
   | "lounge"
-  | "world-dance-party";
+  | "world-dance-party"
+  | "slow-jams";
 
 export type ArenaLiveState = "soon" | "live" | "ended";
 
@@ -82,6 +96,7 @@ const VENUE_MAP: Record<ArenaEventType, VenueIndex> = {
   "deal-or-feud":      3,
   "lounge":            0,
   "world-dance-party": 1,
+  "slow-jams":         3,
 };
 
 const EVENT_LABELS: Record<ArenaEventType, string> = {
@@ -92,9 +107,10 @@ const EVENT_LABELS: Record<ArenaEventType, string> = {
   "song-challenge":    "SONG CHALLENGE STAGE",
   "live-show":         "LIVE STAGE",
   "monday-stage":      "MONDAY NIGHT STAGE",
-  "deal-or-feud":      "DEAL OR FEUD",
+  "deal-or-feud":      "DEAL OR FEUD 1000",
   "lounge":            "VIP LOUNGE",
   "world-dance-party": "WORLD DANCE PARTY",
+  "slow-jams":         "SUNDAY SLOW JAMS",
 };
 
 // Maps ArenaEventType → venueSlug used by HeroPresenceRegistry
@@ -109,6 +125,7 @@ const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
   "deal-or-feud":      "deal-or-feud",
   "lounge":            "vip-lounge",
   "world-dance-party": "world-dance-party",
+  "slow-jams":         "slow-jams",
 };
 
 // Only battle/cypher/challenge are competition formats with a themeable
@@ -152,6 +169,34 @@ interface ArenaEventShellProps {
   readonly rubricPerformerLabels?: Record<string, string>;
   readonly rubricEventId?: string;
   readonly rubricVoterId?: string | null;
+  /**
+   * Indoor | outdoor venue mode (Marcel lock). Lounges ignore.
+   * Monday Night Stage + official game shows force indoor unless specialYearlyOutdoor.
+   */
+  readonly venueEnvironment?: VenueEnvironmentKind | null;
+  readonly venueSkinId?: string | null;
+  readonly specialYearlyOutdoor?: boolean;
+  /**
+   * PREVIEW VENUE / VENUE TEST — same UniversalVenueRenderer path as GO LIVE.
+   * Never published as real viewers (Rule 20).
+   */
+  readonly isPreview?: boolean;
+  readonly isCertification?: boolean;
+  /** 0–1 TEST occupancy when isPreview. */
+  readonly testOccupancyRatio?: number | null;
+  readonly testCapacity?: number;
+  /** Labeled TEST counter for HUD (e.g. "TEST: 250 / 1,000 OCCUPANCY"). */
+  readonly testOccupancyLabel?: string | null;
+  /** World Director view mode — falls back to stored WorldScenePlan for roomId. */
+  readonly viewMode?: WorldViewMode;
+  /** Square-feet spatial map — falls back to stored WorldScenePlan. */
+  readonly spatialMap?: VenueSpatialMap | null;
+  /**
+   * LOOK UP / Jumbotron focus — reveals world-space Jumbotron without seat/session reset.
+   * When omitted: panorama/spherical modes auto-reveal; FREE_ROAM stays stage until LOOK UP.
+   * Certification must toggle this explicitly (never force always-on).
+   */
+  readonly jumbotronLookUpActive?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -195,8 +240,65 @@ export default function ArenaEventShell({
   rubricPerformerLabels,
   rubricEventId,
   rubricVoterId,
+  venueEnvironment = null,
+  venueSkinId = null,
+  specialYearlyOutdoor = false,
+  isPreview = false,
+  isCertification = false,
+  testOccupancyRatio = null,
+  testCapacity = 1000,
+  testOccupancyLabel = null,
+  viewMode: viewModeProp,
+  spatialMap: spatialMapProp,
+  jumbotronLookUpActive,
 }: ArenaEventShellProps) {
-  const venueIndex = VENUE_MAP[eventType] ?? 0;
+  const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
+  const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
+  const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
+  /** Internal LOOK UP when parent does not drive focus (public shells). */
+  const [internalLookUp, setInternalLookUp] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyQuery = () => {
+      const q = new URLSearchParams(window.location.search).get("jumboLookUp");
+      if (q === "1" || q === "true") setInternalLookUp(true);
+      if (q === "0" || q === "false") setInternalLookUp(false);
+    };
+    applyQuery();
+    window.addEventListener("popstate", applyQuery);
+    return () => window.removeEventListener("popstate", applyQuery);
+  }, []);
+  const lookUpActive =
+    jumbotronLookUpActive === true ||
+    (jumbotronLookUpActive !== false && internalLookUp) ||
+    viewMode === "PANORAMA_180" ||
+    viewMode === "SPHERICAL_360";
+  const lookUpSessionToken = useMemo(
+    () => `jumbotron-presence-${roomId}`,
+    [roomId],
+  );
+  const venueKindForEnv =
+    eventType === "monday-stage"
+      ? "monday-night-stage"
+      : eventType === "slow-jams"
+        ? "slow-jams"
+        : eventType === "world-dance-party"
+          ? "world-dance-party"
+          : eventType === "lounge"
+            ? "lounge"
+            : eventType === "deal-or-feud"
+              ? "deal-or-feud"
+              : eventType;
+  const envResolution = resolveEventVenueEnvironment({
+    kind: venueKindForEnv,
+    environment: venueEnvironment,
+    skinId: venueSkinId,
+    specialYearlyOutdoor,
+  });
+  const venueIndex =
+    envResolution.policy === "exempt"
+      ? (VENUE_MAP[eventType] ?? 0)
+      : envResolution.venueIndex;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
   const venueSlug = VENUE_SLUG_MAP[eventType];
   const showHeroes = liveState === "live";
@@ -213,6 +315,14 @@ export default function ArenaEventShell({
 
   const venueType = arenaEventTypeToVenueType(eventType);
   const isLive = liveState === "live";
+  const energyLevel =
+    envResolution.policy === "exempt"
+      ? isLive
+        ? 0.75
+        : 0.3
+      : isLive
+        ? envResolution.ambientEnergy
+        : envResolution.ambientEnergy * 0.45;
 
   const rubricIds = useMemo(() => {
     if (rubricPerformerIds && rubricPerformerIds.length > 0) return rubricPerformerIds;
@@ -260,13 +370,17 @@ export default function ArenaEventShell({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveState]);   // intentionally omit eventType/roomId — fires once on end
 
-  const liveStateLabel = LIVE_STATE_LABEL[liveState];
+  const liveStateLabel = isPreview
+    ? isCertification
+      ? "VENUE CERT"
+      : "VENUE TEST"
+    : LIVE_STATE_LABEL[liveState];
 
   return (
     <RoomEnvironmentLayer
       venueType={venueType}
       mode={mode}
-      energyLevel={isLive ? 0.75 : 0.3}
+      energyLevel={energyLevel}
       showSponsorZones={false}
     >
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -276,13 +390,16 @@ export default function ArenaEventShell({
         background: "rgba(5,5,16,0.88)", borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}>
         <span style={{
-          width: 7, height: 7, borderRadius: "50%", background: liveColor, flexShrink: 0,
-          animation: "tmiArenaBlink 1s step-end infinite",
-          boxShadow: `0 0 6px ${liveColor}`,
+          width: 7, height: 7, borderRadius: "50%",
+          background: isPreview ? "#FFD700" : liveColor,
+          flexShrink: 0,
+          animation: isPreview ? undefined : "tmiArenaBlink 1s step-end infinite",
+          boxShadow: `0 0 6px ${isPreview ? "#FFD700" : liveColor}`,
         }} />
         <style>{`@keyframes tmiArenaBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
         <span style={{
-          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: liveColor,
+          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em",
+          color: isPreview ? "#FFD700" : liveColor,
         }}>
           {liveStateLabel}
         </span>
@@ -292,11 +409,15 @@ export default function ArenaEventShell({
         }}>
           {label}
         </span>
-        {watcherCount !== undefined && (
+        {isPreview && testOccupancyLabel ? (
+          <span style={{ marginLeft: "auto", fontSize: 9, color: "#FFD700", fontWeight: 700 }}>
+            {testOccupancyLabel}
+          </span>
+        ) : watcherCount !== undefined ? (
           <span style={{ marginLeft: "auto", fontSize: 9, color: watchingColor, fontWeight: 700 }}>
             {watcherCount.toLocaleString()} watching
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* ── Hero overlay sits above the renderer's own AudienceScene ──
@@ -318,8 +439,73 @@ export default function ArenaEventShell({
           roomId={roomId}
           mode={mode}
           venueIndex={venueIndex}
-          instantEmptyStage={instantEmptyStage}
+          instantEmptyStage={instantEmptyStage && !isPreview}
+          isPreview={isPreview}
+          forcedOccupancyRatio={isPreview ? (testOccupancyRatio ?? 0) : null}
+          previewCapacity={testCapacity}
+          viewMode={viewMode}
+          spatialMap={spatialMap}
+          eventType={eventType}
+          jumbotronLookUpActive={lookUpActive}
+          venueId={venueSlug}
         />
+        {/* World-space Automated Jumbotron — geometry from venue dims; LOOK UP reveals surface */}
+        {!suppressPresentation && (
+          <VenueAutomatedJumbotronMount
+            roomId={roomId}
+            eventType={eventType}
+            venueId={venueSlug}
+            lookUpActive={lookUpActive}
+          />
+        )}
+        {!suppressPresentation && jumbotronLookUpActive === undefined && (
+          <div
+            data-presence-session={lookUpSessionToken}
+            data-jumbotron-look-up={lookUpActive ? "true" : "false"}
+            style={{
+              position: "absolute",
+              right: 10,
+              bottom: 10,
+              zIndex: 8,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              alignItems: "flex-end",
+              pointerEvents: "auto",
+            }}
+          >
+            <a
+              href={lookUpActive ? "?jumboLookUp=0" : "?jumboLookUp=1"}
+              data-testid="btn-venue-look-up-jumbotron"
+              onClick={(e) => {
+                // Prefer soft toggle when hydrated; native href remains the fallback.
+                e.preventDefault();
+                setInternalLookUp((v) => !v);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: "0.12em",
+                cursor: "pointer",
+                borderRadius: 6,
+                textDecoration: "none",
+                border: lookUpActive ? "1px solid #FF2DAA" : "1px solid #00FFFF",
+                background: lookUpActive ? "rgba(255,45,170,0.2)" : "rgba(0,255,255,0.12)",
+                color: lookUpActive ? "#FF2DAA" : "#00FFFF",
+              }}
+            >
+              {lookUpActive ? "RETURN TO STAGE" : "LOOK UP / FOCUS JUMBOTRON"}
+            </a>
+            <span
+              data-testid="venue-look-up-focus-indicator"
+              data-session-token={lookUpSessionToken}
+              style={{ fontSize: 8, color: "rgba(255,255,255,0.55)", fontWeight: 700 }}
+            >
+              {lookUpActive ? "JUMBOTRON FOCUS" : "STAGE VIEW"}
+            </span>
+          </div>
+        )}
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
             format={competitionFormat}
@@ -331,8 +517,47 @@ export default function ArenaEventShell({
             rightParticipant={rightParticipant}
             crowdEnergy={crowdEnergy}
             winnerParticipantId={winnerParticipantId}
+            personality={resolveExperiencePersonality({
+              format: competitionFormat,
+              eventType,
+              roomKind:
+                eventType === "cypher"
+                  ? "cypher"
+                  : eventType === "battle"
+                    ? "battle"
+                    : eventType === "challenge" || eventType === "song-challenge"
+                      ? "challenge"
+                      : undefined,
+            })}
           />
         )}
+        {/* Participation Law HUD — votingOpen from real rubric/phase signals only */}
+        <TMIInteractiveVenueHud
+          roomId={roomId}
+          roomTitle={label}
+          experienceType={
+            eventType === "battle"
+              ? "BATTLE"
+              : eventType === "cypher"
+                ? "CYPHER"
+                : eventType === "challenge" || eventType === "song-challenge"
+                  ? "CHALLENGE"
+                  : eventType === "deal-or-feud"
+                    ? "GAME_SHOW"
+                    : "LIVE"
+          }
+          role={mode === "performer" ? "performer" : "fan"}
+          votingOpen={showRubric}
+          ownership={
+            eventType === "monday-stage" || eventType === "deal-or-feud"
+              ? "bot_operated"
+              : "human_owned"
+          }
+          battleId={roomId.startsWith("battle-") ? roomId.replace(/^battle-/, "") : roomId}
+          humanViewerCount={isPreview ? 0 : typeof watcherCount === "number" ? watcherCount : 0}
+          isPreview={isPreview}
+          testOccupancyLabel={isPreview ? testOccupancyLabel : null}
+        />
       </div>
 
       {/* Fan rubric dock — shared wire for battle / challenge / monday-stage /

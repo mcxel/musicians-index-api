@@ -24,6 +24,7 @@ const SURFACES = new Set<TrustSafetySurface>([
   "magazine",
   "marketplace",
   "messaging",
+  "dating",
   "other",
 ]);
 

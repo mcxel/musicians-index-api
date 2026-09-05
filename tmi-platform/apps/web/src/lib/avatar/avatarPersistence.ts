@@ -11,7 +11,11 @@ export type AvatarSlot =
   | "outfit"
   | "prop"
   | "background"
-  | "lighting";
+  | "lighting"
+  | "emote"
+  | "instrument"
+  | "aura"
+  | "entrance";
 
 export type AvatarProfile = {
   userId: string;
@@ -65,16 +69,20 @@ function nowIso(): string {
 
 const SLOT_CATEGORY_ALLOWLIST: Record<AvatarSlot, AvatarInventoryItem["category"][]> = {
   skin: ["skins"],
-  hair: ["collectibles"],
+  hair: ["collectibles", "hair"],
   eyes: ["eyes"],
-  accessory: ["accessories", "hats", "glasses", "jewelry"],
-  outfit: ["outfits", "jackets"],
-  prop: ["props", "mic-skins", "stage-skins"],
+  accessory: ["accessories", "hats", "glasses", "jewelry", "headphones", "shoes"],
+  outfit: ["outfits", "jackets", "clothing", "tops", "bottoms", "sets"],
+  prop: ["props", "mic-skins", "stage-skins", "vfx"],
   background: ["backgrounds"],
   lighting: ["lighting", "lighting-packs"],
+  emote: ["emotes", "dances", "gestures", "action-emotes"],
+  instrument: ["instruments"],
+  aura: ["auras"],
+  entrance: ["entrances"],
 };
 
-/** Grant ownership of a catalog cosmetic (points unlock / Flex bridge). */
+/** Grant ownership of a catalog cosmetic — canonical CosmeticEntitlement persist path. */
 export async function grantAvatarCosmetic(
   userId: string,
   item: AvatarInventoryItem,
@@ -117,6 +125,10 @@ function defaultLoadout(userId: string): AvatarLoadout {
       prop: null,
       background: null,
       lighting: null,
+      emote: null,
+      instrument: null,
+      aura: null,
+      entrance: null,
     },
     updatedAt: nowIso(),
   };
@@ -203,7 +215,18 @@ export async function getAvatarInventory(userId: string): Promise<AvatarInventor
 
 export function getAvatarLoadout(userId: string): AvatarLoadout {
   const existing = loadoutStore.get(userId);
-  if (existing) return existing;
+  if (existing) {
+    // Backfill new Fan cosmetic slots without dropping prior loadout.
+    const merged: AvatarLoadout = {
+      ...existing,
+      slots: {
+        ...defaultLoadout(userId).slots,
+        ...existing.slots,
+      },
+    };
+    loadoutStore.set(userId, merged);
+    return merged;
+  }
   const created = defaultLoadout(userId);
   loadoutStore.set(userId, created);
   return created;

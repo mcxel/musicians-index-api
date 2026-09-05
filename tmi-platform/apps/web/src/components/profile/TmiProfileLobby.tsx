@@ -202,6 +202,7 @@ export default function TmiProfileLobby({
                   size={64}
                   tierColor={color}
                   showCreateCTA={!avatarUrl}
+                  createHref="/performer/canvas"
                 />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{displayName}</div>
@@ -251,7 +252,7 @@ export default function TmiProfileLobby({
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Link
-                      href="/avatar/scan/wardrobe"
+                      href="/avatar/studio"
                       style={{
                         padding: '5px 12px', borderRadius: 6,
                         border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)',
@@ -259,10 +260,10 @@ export default function TmiProfileLobby({
                         textDecoration: 'none',
                       }}
                     >
-                      WARDROBE
+                      DECORATE
                     </Link>
                     <Link
-                      href="/avatar/create"
+                      href="/avatar/studio"
                       style={{
                         padding: '5px 12px', borderRadius: 6,
                         border: `1px solid ${color}44`, background: `${color}08`,

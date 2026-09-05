@@ -1,5 +1,1 @@
-import AvatarForgeShell from "@/components/avatar/AvatarForgeShell";
-
-export default function AvatarBuildPage() {
-  return <AvatarForgeShell />;
-}
+export { default } from "@/lib/avatar/RedirectToAvatarStudioPage";

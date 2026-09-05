@@ -17,6 +17,7 @@ import {
   type PersonalMediaRouter,
   type ParticipantMediaMenuItem,
 } from "@/lib/personal-media";
+import { requestOneToOneSocial } from "@/lib/trustSafety/requestOneToOneSocial";
 
 const CYAN = "#00FFFF";
 const GOLD = "#FFD700";
@@ -40,6 +41,7 @@ export default function ParticipantMediaContextMenu({
 }: ParticipantMediaContextMenuProps) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<"WATCH_ON" | "MOVE_TO" | "REMOVE_FROM_MONITOR" | null>(null);
+  const [blockReason, setBlockReason] = useState<string | null>(null);
 
   const items = useMemo(
     () =>
@@ -58,24 +60,44 @@ export default function ParticipantMediaContextMenu({
     );
   }
 
-  function runItem(item: ParticipantMediaMenuItem, target = item.targets?.[0]) {
+  async function assertPersonalOneToOne(): Promise<boolean> {
+    const identity = router.getParticipant(participantId);
+    const targetUserId = identity?.canonicalIdentityId || participantId;
+    const decision = await requestOneToOneSocial(targetUserId);
+    if (!decision.allowed) {
+      setBlockReason(decision.reason);
+      return false;
+    }
+    setBlockReason(null);
+    return true;
+  }
+
+  async function runItem(item: ParticipantMediaMenuItem, target = item.targets?.[0]) {
     if (item.id === "PROFILE" && item.href) {
       if (onProfile) onProfile(item.href);
       else if (typeof window !== "undefined") window.location.assign(item.href);
       return;
     }
     if (item.id === "PRIVATE_TALK") {
+      const ok = await assertPersonalOneToOne();
+      if (!ok) return;
       onPrivateTalk?.(participantId);
       return;
     }
     if (!item.command) return;
     if (item.command === "MEDIA.ASSIGN_TO_MONITOR" && target) {
+      const ok = await assertPersonalOneToOne();
+      if (!ok) return;
       commandBus.execute("MEDIA.ASSIGN_TO_MONITOR", { participantId, target });
       return;
     }
     if (item.command === "MEDIA.REMOVE_FROM_MONITOR" && target) {
       commandBus.execute("MEDIA.REMOVE_FROM_MONITOR", { target });
       return;
+    }
+    if (item.command === "MEDIA.PIN_AUDIO") {
+      const ok = await assertPersonalOneToOne();
+      if (!ok) return;
     }
     commandBus.execute(item.command as PersonalMediaCommand, { participantId } as never);
   }
@@ -87,6 +109,7 @@ export default function ParticipantMediaContextMenu({
       </button>
       {open ? (
         <div style={menu}>
+          {blockReason ? <div style={blockedNote}>{blockReason}</div> : null}
           {items.map((item) => {
             const nested =
               item.id === "WATCH_ON" || item.id === "MOVE_TO" || item.id === "REMOVE_FROM_MONITOR"
@@ -99,7 +122,7 @@ export default function ParticipantMediaContextMenu({
                   style={itemBtn}
                   onClick={() => {
                     if (nested) setExpanded((cur) => (cur === nested ? null : nested));
-                    else runItem(item);
+                    else void runItem(item);
                   }}
                 >
                   {item.label}
@@ -115,7 +138,7 @@ export default function ParticipantMediaContextMenu({
                           key={`${target.monitorId}:${target.slotId}`}
                           type="button"
                           style={subBtn}
-                          onClick={() => runItem(item, target)}
+                          onClick={() => void runItem(item, target)}
                         >
                           {labelMonitorTarget(target)}
                         </button>
@@ -184,4 +207,15 @@ const emptySlot: CSSProperties = {
   color: "rgba(255,255,255,0.4)",
   fontSize: 10,
   padding: "4px 8px",
+};
+
+const blockedNote: CSSProperties = {
+  color: "#fca5a5",
+  fontSize: 10,
+  fontWeight: 700,
+  padding: "6px 8px",
+  marginBottom: 4,
+  borderRadius: 8,
+  border: "1px solid rgba(252,165,165,0.35)",
+  background: "rgba(127,29,29,0.35)",
 };

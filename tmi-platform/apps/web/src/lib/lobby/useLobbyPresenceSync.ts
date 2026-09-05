@@ -12,6 +12,7 @@ import {
   withLegacyAliases,
   type LobbyParticipant,
 } from "./FanLobbyPresence";
+import { FAN_EQUIPPED_LOOK_EVENT, readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 
 const SYNC_INTERVAL_MS = 1500;
 
@@ -59,6 +60,16 @@ export function useLobbyPresenceSync({
   const [conversationGroupId, setConversationGroupId] = useState<string | null>(null);
   const [locomotion, setLocomotion] = useState<LobbyAvatarLocomotion>("STANDING");
   const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
+  const [loadoutId, setLoadoutId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadoutId(readPersistedFanEquippedLook()?.loadoutId ?? null);
+    const onLook = () => {
+      setLoadoutId(readPersistedFanEquippedLook()?.loadoutId ?? null);
+    };
+    window.addEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
+    return () => window.removeEventListener(FAN_EQUIPPED_LOOK_EVENT, onLook);
+  }, []);
 
   const latest = useRef({
     position,
@@ -71,6 +82,7 @@ export function useLobbyPresenceSync({
     seatId,
     conversationGroupId,
     locomotion,
+    loadoutId,
   });
   latest.current = {
     position,
@@ -83,6 +95,7 @@ export function useLobbyPresenceSync({
     seatId,
     conversationGroupId,
     locomotion,
+    loadoutId,
   };
 
   const propClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +121,7 @@ export function useLobbyPresenceSync({
       cameraEnabled: cur.hasCameraOn,
       isSpeaking: cur.isSpeaking,
       activeSpeaker: cur.isSpeaking,
-      loadoutId: null,
+      loadoutId: cur.loadoutId,
     });
   }, [resolvedVenueId, roomId, userId, userName, emoji]);
 
@@ -147,6 +160,7 @@ export function useLobbyPresenceSync({
           locomotion: cur.locomotion,
           conversationGroupId: cur.isSeated ? cur.conversationGroupId : null,
           activeSpeaker: cur.isSpeaking,
+          loadoutId: cur.loadoutId,
         }),
       });
       if (!res.ok) return;

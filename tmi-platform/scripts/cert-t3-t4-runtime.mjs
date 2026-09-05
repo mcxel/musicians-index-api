@@ -44,14 +44,19 @@ async function readLiveGo(context) {
 }
 
 async function readUiCount(page, { expectCount = null, timeoutMs = 20000 } = {}) {
-  // Authenticated sessions are redirected /home/3 → /dashboard (middleware).
+  // Authenticated sessions are redirected /home/3 → hub (middleware).
   await page.goto(`${BASE}/home/3`, { waitUntil: "domcontentloaded", timeout: 120000 });
   if (expectCount != null) {
     await page
       .waitForFunction(
         (n) => {
           const els = Array.from(document.querySelectorAll("[data-testid='live-now-active-rooms']"));
-          return els.some((el) => el.getAttribute("data-active-room-count") === String(n));
+          return els.some((el) => {
+            const ready = el.getAttribute("data-count-ready") !== "false";
+            const attr = el.getAttribute("data-active-room-count");
+            const text = (el.textContent || "").trim();
+            return ready && attr === String(n) && !text.includes("…");
+          });
         },
         expectCount,
         { timeout: timeoutMs },
@@ -63,12 +68,23 @@ async function readUiCount(page, { expectCount = null, timeoutMs = 20000 } = {})
   const text = await page.evaluate(async () => {
     let liveFetch = null;
     try {
-      const res = await fetch("/api/live/go", { cache: "no-store" });
+      const res = await fetch(`/api/live/go?_=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "omit",
+        headers: { "Cache-Control": "no-cache" },
+      });
       liveFetch = { status: res.status, body: await res.json() };
     } catch (e) {
       liveFetch = { error: String(e) };
     }
-    const el = document.querySelector("[data-testid='live-now-active-rooms']");
+    const els = Array.from(document.querySelectorAll("[data-testid='live-now-active-rooms']"));
+    // Prefer a node whose attr already matches the truth fetch when present
+    const truth = typeof liveFetch?.body?.count === "number" ? String(liveFetch.body.count) : null;
+    const el =
+      (truth && els.find((e) => e.getAttribute("data-active-room-count") === truth)) ||
+      els.find((e) => e.getAttribute("data-active-room-count") != null) ||
+      els[0] ||
+      null;
     if (el) {
       return {
         label: (el.textContent || "").trim(),
@@ -200,7 +216,22 @@ async function main() {
     hostUserId: found.userId,
   };
 
-  const afterUi = await readUiCount(uiPage, { expectCount: N + 1, timeoutMs: 25000 });
+  // Anonymous LIVE NOW must observe the same durable registry (not a stale worker Map).
+  // Poll GET /api/live/go from the UI context until count === N+1 before asserting DOM.
+  let anonApi = { status: 0, count: null, body: {} };
+  for (let i = 0; i < 20; i++) {
+    anonApi = await readLiveGo(uiCtx);
+    if (anonApi.count === N + 1) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  report.steps.afterCreateAnonApi = {
+    status: anonApi.status,
+    count: anonApi.count,
+    roomIds: (anonApi.body.sessions || []).map((s) => s.roomId),
+  };
+  if (anonApi.count !== N + 1) fail(report, "anon_api_count_not_n_plus_1");
+
+  const afterUi = await readUiCount(uiPage, { expectCount: N + 1, timeoutMs: 30000 });
   report.steps.afterCreateUi = afterUi;
   if (Number(afterUi.attr) !== N + 1) fail(report, "ui_count_not_n_plus_1");
 

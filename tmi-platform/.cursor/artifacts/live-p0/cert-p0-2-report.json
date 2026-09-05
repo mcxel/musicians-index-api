@@ -1,0 +1,220 @@
+{
+  "gate": "LIVE_P0_2",
+  "ok": true,
+  "base": "http://localhost:3000",
+  "email": "suedejs2000@gmail.com",
+  "hub": "/hub/performer",
+  "testedAt": "2026-08-31T21:00:12.342Z",
+  "checks": [
+    {
+      "id": "auth-login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "live-go-post",
+      "status": "PASS",
+      "detail": "status=200 via=api"
+    },
+    {
+      "id": "registry-room",
+      "status": "PASS",
+      "detail": "roomId=room-hub-p02-1788210034545 bodyOk=true"
+    },
+    {
+      "id": "baseline-humans",
+      "status": "PASS",
+      "detail": "humans=0 present=0 (bots may inflate present)"
+    },
+    {
+      "id": "audience-join-api",
+      "status": "PASS",
+      "detail": "status=200 fanId=cert-fan-p0-2-1788210073767"
+    },
+    {
+      "id": "humans-after-join",
+      "status": "PASS",
+      "detail": "baseline=0 after=1"
+    },
+    {
+      "id": "monitor-b-real-count",
+      "status": "PASS",
+      "detail": "data-audience-watching=1 apiHumans=1"
+    },
+    {
+      "id": "watch-bind-audience-join",
+      "status": "PASS",
+      "detail": "POST /api/live/audience join from host ?watch= bind=true"
+    },
+    {
+      "id": "registry-human-viewers",
+      "status": "PASS",
+      "detail": "viewerCount=1 humans=1"
+    },
+    {
+      "id": "lobby-wall-coherent",
+      "status": "PASS",
+      "detail": "found card route=/hub/fan?watch=room-hub-p02-1788210034545&from=live-lobby-wall"
+    },
+    {
+      "id": "watch-bind-dual-context",
+      "status": "PASS",
+      "detail": "secondTabJoin=false hostWatchJoin=true"
+    },
+    {
+      "id": "audience-leave-api",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "humans-after-leave",
+      "status": "PASS",
+      "detail": "beforeLeave=1 afterLeave=0"
+    },
+    {
+      "id": "session-survives-empty-audience",
+      "status": "PASS",
+      "detail": "published session still live after fan leave=true"
+    }
+  ],
+  "network": {
+    "liveGoPosts": [
+      {
+        "status": 200,
+        "at": 1788210037926,
+        "via": "api"
+      }
+    ],
+    "audienceJoins": [
+      {
+        "status": 200,
+        "userId": "cert-fan-p0-2-1788210073767",
+        "via": "api"
+      },
+      {
+        "status": "pending",
+        "via": "host-watch-bind",
+        "body": {
+          "action": "join",
+          "venueSlug": "room-hub-p02-1788210034545",
+          "member": {
+            "userId": "7e8be3681d82f1f49e477f3546de51e8",
+            "displayName": "Performer",
+            "role": "fan",
+            "seatId": null,
+            "captureEnabled": false
+          }
+        }
+      }
+    ],
+    "audienceLeaves": [
+      {
+        "status": 200,
+        "userId": "cert-fan-p0-2-1788210073767"
+      }
+    ]
+  },
+  "roomId": "room-hub-p02-1788210034545",
+  "presence": {
+    "baselineHumans": 0,
+    "afterJoinHumans": 1,
+    "afterLeaveHumans": 0,
+    "monitorWatching": 1,
+    "registryViewers": 1
+  },
+  "lobbyWall": {
+    "status": 200,
+    "card": {
+      "id": "session-ccff73de-7ea6-4278-b8e7-5c8c9f9ef113",
+      "sourceType": "LIVE_SESSION",
+      "category": "live",
+      "title": "P0-2 Audience Cert",
+      "status": "LIVE",
+      "route": "/hub/fan?watch=room-hub-p02-1788210034545&from=live-lobby-wall",
+      "host": {
+        "userId": "ccff73de-7ea6-4278-b8e7-5c8c9f9ef113",
+        "displayName": "Cert Host",
+        "avatarUrl": null
+      },
+      "realHumanCount": 0,
+      "capacity": 200,
+      "availableSlots": 200
+    }
+  },
+  "summary": {
+    "overall": "PASS",
+    "failed": [],
+    "checks": [
+      {
+        "id": "auth-login",
+        "status": "PASS",
+        "detail": "status=200"
+      },
+      {
+        "id": "live-go-post",
+        "status": "PASS",
+        "detail": "status=200 via=api"
+      },
+      {
+        "id": "registry-room",
+        "status": "PASS",
+        "detail": "roomId=room-hub-p02-1788210034545 bodyOk=true"
+      },
+      {
+        "id": "baseline-humans",
+        "status": "PASS",
+        "detail": "humans=0 present=0 (bots may inflate present)"
+      },
+      {
+        "id": "audience-join-api",
+        "status": "PASS",
+        "detail": "status=200 fanId=cert-fan-p0-2-1788210073767"
+      },
+      {
+        "id": "humans-after-join",
+        "status": "PASS",
+        "detail": "baseline=0 after=1"
+      },
+      {
+        "id": "monitor-b-real-count",
+        "status": "PASS",
+        "detail": "data-audience-watching=1 apiHumans=1"
+      },
+      {
+        "id": "watch-bind-audience-join",
+        "status": "PASS",
+        "detail": "POST /api/live/audience join from host ?watch= bind=true"
+      },
+      {
+        "id": "registry-human-viewers",
+        "status": "PASS",
+        "detail": "viewerCount=1 humans=1"
+      },
+      {
+        "id": "lobby-wall-coherent",
+        "status": "PASS",
+        "detail": "found card route=/hub/fan?watch=room-hub-p02-1788210034545&from=live-lobby-wall"
+      },
+      {
+        "id": "watch-bind-dual-context",
+        "status": "PASS",
+        "detail": "secondTabJoin=false hostWatchJoin=true"
+      },
+      {
+        "id": "audience-leave-api",
+        "status": "PASS",
+        "detail": "status=200"
+      },
+      {
+        "id": "humans-after-leave",
+        "status": "PASS",
+        "detail": "beforeLeave=1 afterLeave=0"
+      },
+      {
+        "id": "session-survives-empty-audience",
+        "status": "PASS",
+        "detail": "published session still live after fan leave=true"
+      }
+    ]
+  }
+}

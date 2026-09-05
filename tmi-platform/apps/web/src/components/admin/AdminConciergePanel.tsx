@@ -61,6 +61,8 @@ export default function AdminConciergePanel({
   }, [open]);
 
   const catalog = useMemo(() => {
+    // Security Stability Slice B — partner workspace pills only via explicit includeWorkspaces
+    // (callers must keep false for normal admin; governance override is separate + audited).
     const base = includeWorkspaces
       ? [...ADMIN_CONCIERGE_DESTINATIONS, ...OVERSEER_WORKSPACE_DESTINATIONS]
       : ADMIN_CONCIERGE_DESTINATIONS;

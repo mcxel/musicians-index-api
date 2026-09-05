@@ -23,7 +23,9 @@ export default function StreamAndWinRadioPlayer() {
           const queue: PlaylistTrack[] = (data.submissions as Submission[]).map((s, i) => ({
             id: s.id ?? `${i}`,
             title: s.title ?? `Track ${i + 1}`,
+            artist: s.submitterId,
             genre: s.genre ?? undefined,
+            sourceUrl: s.url,
           }));
           playlist.hydrateQueue(queue);
           playlist.attachToRuntime({ roomId: 'stream-and-win-radio' });

@@ -53,10 +53,12 @@ async function fetchSession(): Promise<void> {
       role?: string;
       tier?: string;
     };
+    const rawRole = data.role ?? data.user?.role ?? null;
+    const rawTier = data.tier ?? data.user?.tier ?? null;
     cachedState = {
       user: data.authenticated && data.user ? data.user : null,
-      role: data.role ?? null,
-      tier: data.tier ?? null,
+      role: rawRole ? String(rawRole).toUpperCase() : null,
+      tier: rawTier ? String(rawTier).toUpperCase() : null,
       authenticated: data.authenticated === true,
     };
   } catch {

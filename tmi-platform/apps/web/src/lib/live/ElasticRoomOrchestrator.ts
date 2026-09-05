@@ -71,6 +71,8 @@ const overflowRooms = new Map<string, OverflowRoom>();
 let overflowCounter = 0;
 const lastExpandAt = new Map<string, number>();
 const lastCollapseAt = new Map<string, number>();
+/** Anchor-level expand dwell clock — starts when every assignable shard is ≥ expandAboveRatio. */
+const expandReadySinceByAnchor = new Map<string, number>();
 const durablePlacements = new Map<string, AttendeePlacementRecord>();
 const destinationReservations = new Map<string, DestinationReservation>();
 
@@ -269,9 +271,6 @@ export function createOverflow(anchorSlug: string): OverflowRoom {
       structureUnchanged: true,
     },
   });
-  activateVenueSceneInstance(scene.id);
-  lastExpandAt.set(anchorSlug, Date.now());
-
   const overflow: OverflowRoom = {
     id,
     parentAnchorSlug: anchorSlug,
@@ -280,7 +279,7 @@ export function createOverflow(anchorSlug: string): OverflowRoom {
     templateId: anchor.overflowTemplateId,
     createdAt: Date.now(),
     route: `${anchor.route}-overflow-${overflowCounter}`,
-    lifecycle: "ACTIVE",
+    lifecycle: "WARMING",
     auditoriumIndex,
     meshAddress,
     meshKey: formatVenueMeshAddress(meshAddress),
@@ -289,6 +288,9 @@ export function createOverflow(anchorSlug: string): OverflowRoom {
     expandReadySince: null,
     sceneInstanceId: scene.id,
   };
+  activateVenueSceneInstance(scene.id);
+  overflow.lifecycle = "ACTIVE";
+  lastExpandAt.set(anchorSlug, Date.now());
   overflowRooms.set(id, overflow);
   void syncOverflowRoomToDb(overflow).catch(() => {});
   audit("overflow_created", anchorSlug, `Created ${overflow.title} (${slug}) mesh ${overflow.meshKey} scene ${scene.id}`);
@@ -303,11 +305,66 @@ function shardsAtHardCap(anchorSlug: string, capacity: number): boolean {
   return siblings.every((o) => readRealOccupancy(o.slug) >= capacity);
 }
 
+function shardFillRatio(slug: string, capacity: number): number {
+  return readRealOccupancy(slug) / Math.max(1, capacity);
+}
+
+/** Healthy = below expandAboveRatio with absolute seat spare. Fill these first (no new shard). */
+function healthyAssignableTargets(
+  anchorSlug: string,
+  capacity: number,
+): Array<{ slug: string; isOverflow: boolean; meshKey: string | null }> {
+  const { expandAboveRatio } = ELASTIC_SHARD_THRESHOLDS;
+  const targets: Array<{ slug: string; isOverflow: boolean; meshKey: string | null }> = [];
+  if (
+    shardFillRatio(anchorSlug, capacity) < expandAboveRatio &&
+    readRealOccupancy(anchorSlug) < capacity
+  ) {
+    targets.push({ slug: anchorSlug, isOverflow: false, meshKey: null });
+  }
+  for (const overflow of assignableOverflows(anchorSlug)) {
+    if (
+      shardFillRatio(overflow.slug, capacity) < expandAboveRatio &&
+      readRealOccupancy(overflow.slug) < capacity
+    ) {
+      targets.push({ slug: overflow.slug, isOverflow: true, meshKey: overflow.meshKey });
+    }
+  }
+  return targets;
+}
+
+function allShardsAtOrAboveExpandRatio(anchorSlug: string, capacity: number): boolean {
+  const { expandAboveRatio } = ELASTIC_SHARD_THRESHOLDS;
+  if (shardFillRatio(anchorSlug, capacity) < expandAboveRatio) return false;
+  return assignableOverflows(anchorSlug).every(
+    (o) => shardFillRatio(o.slug, capacity) >= expandAboveRatio,
+  );
+}
+
+/**
+ * Expand when:
+ *   - every assignable shard is at hard capacity (bypass dwell + cooldown), OR
+ *   - every assignable shard has been ≥ expandAboveRatio for expandDwellMs AND cooldown cleared.
+ */
 function canExpand(anchorSlug: string, capacity: number): boolean {
-  if (shardsAtHardCap(anchorSlug, capacity)) return true;
+  const now = Date.now();
+  if (shardsAtHardCap(anchorSlug, capacity)) {
+    expandReadySinceByAnchor.delete(anchorSlug);
+    return true;
+  }
+  if (!allShardsAtOrAboveExpandRatio(anchorSlug, capacity)) {
+    expandReadySinceByAnchor.delete(anchorSlug);
+    return false;
+  }
+  const readySince = expandReadySinceByAnchor.get(anchorSlug);
+  if (readySince == null) {
+    expandReadySinceByAnchor.set(anchorSlug, now);
+    return false;
+  }
+  if (now - readySince < ELASTIC_SHARD_THRESHOLDS.expandDwellMs) return false;
+
   const last = lastExpandAt.get(anchorSlug) ?? 0;
   const lastClose = lastCollapseAt.get(anchorSlug) ?? 0;
-  const now = Date.now();
   if (now - last < ELASTIC_SHARD_THRESHOLDS.expandCooldownMs) return false;
   if (now - lastClose < ELASTIC_SHARD_THRESHOLDS.expandCooldownMs) return false;
   return true;
@@ -325,17 +382,40 @@ export function assignParticipant(anchorSlug: string): {
   meshKey: string | null;
   parentAnchorSlug: string;
 } {
-  const report = evaluateCapacity(anchorSlug);
   const anchor = resolveAnchor(anchorSlug);
+  const capacity = anchor.maximumHumans;
 
-  const anchorSpare = readRealOccupancy(anchorSlug) < anchor.maximumHumans;
-  if (anchorSpare && !report.needsOverflow) {
-    return { slug: anchorSlug, isOverflow: false, meshKey: null, parentAnchorSlug: anchorSlug };
+  // 1. Fill healthy compatible capacity first (below expandAboveRatio).
+  const healthy = healthyAssignableTargets(anchorSlug, capacity);
+  if (healthy.length > 0) {
+    healthy.sort((a, b) => readRealOccupancy(a.slug) - readRealOccupancy(b.slug));
+    const pick = healthy[0];
+    return {
+      slug: pick.slug,
+      isOverflow: pick.isOverflow,
+      meshKey: pick.meshKey,
+      parentAnchorSlug: anchorSlug,
+    };
   }
 
+  // 2. Expand after expandAboveRatio + expandDwellMs (or hard-capacity bypass).
+  if (canExpand(anchorSlug, capacity)) {
+    expandReadySinceByAnchor.delete(anchorSlug);
+    const newOverflow = createOverflow(anchorSlug);
+    return {
+      slug: newOverflow.slug,
+      isOverflow: true,
+      meshKey: newOverflow.meshKey,
+      parentAnchorSlug: anchorSlug,
+    };
+  }
+
+  // 3. Crowded but not expanded yet — use remaining absolute seats.
+  if (readRealOccupancy(anchorSlug) < capacity) {
+    return { slug: anchorSlug, isOverflow: false, meshKey: null, parentAnchorSlug: anchorSlug };
+  }
   for (const overflow of assignableOverflows(anchorSlug)) {
-    const overflowReal = readRealOccupancy(overflow.slug);
-    if (overflowReal < anchor.maximumHumans) {
+    if (readRealOccupancy(overflow.slug) < capacity) {
       return {
         slug: overflow.slug,
         isOverflow: true,
@@ -345,21 +425,8 @@ export function assignParticipant(anchorSlug: string): {
     }
   }
 
-  if (anchorSpare) {
-    return { slug: anchorSlug, isOverflow: false, meshKey: null, parentAnchorSlug: anchorSlug };
-  }
-
-  if (!canExpand(anchorSlug, anchor.maximumHumans)) {
-    return { slug: anchorSlug, isOverflow: false, meshKey: null, parentAnchorSlug: anchorSlug };
-  }
-
-  const newOverflow = createOverflow(anchorSlug);
-  return {
-    slug: newOverflow.slug,
-    isOverflow: true,
-    meshKey: newOverflow.meshKey,
-    parentAnchorSlug: anchorSlug,
-  };
+  // 4. No spare anywhere and expand blocked — strand on anchor (honest full).
+  return { slug: anchorSlug, isOverflow: false, meshKey: null, parentAnchorSlug: anchorSlug };
 }
 
 export function getOverflowBySlug(slug: string): OverflowRoom | undefined {

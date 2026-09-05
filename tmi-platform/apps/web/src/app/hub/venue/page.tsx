@@ -1,14 +1,14 @@
 "use client";
 
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import VenueHubShell from "@/components/venue/VenueHubShell";
 import LiveMediaWall from "@/components/media/LiveMediaWall";
 import Link from "next/link";
 import { HubBackNav } from "@/components/nav/HubBackNav";
 import RoomContainer from "@/components/room/RoomContainer";
-import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
+import MediaMonitor from "@/components/video/MediaMonitor";
 
 const NAV_LINKS = [
   { href: "/hub/venue",       label: "Dashboard"  },
@@ -20,14 +20,6 @@ const NAV_LINKS = [
   { href: "/tickets/print",   label: "Print"      },
   { href: "/tickets/scanner", label: "Scanner"    },
   { href: "/settings",        label: "Settings"   },
-];
-
-const VENUE_ACTIONS = [
-  { id: "bookings",      icon: "📅", label: "Bookings"   },
-  { id: "revenue",       icon: "💰", label: "Revenue"    },
-  { id: "messages",      icon: "💬", label: "Messages"   },
-  { id: "notifications", icon: "🔔", label: "Alerts"     },
-  { id: "live-rooms",    icon: "🏟️", label: "Rooms"      },
 ];
 
 export default function VenueHubPage() {
@@ -46,14 +38,60 @@ export default function VenueHubPage() {
               {link.label}
             </Link>
           ))}
-          <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-            <PersonaSwitcher currentRole="venue" compact />
+          <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            <RoleHubAccountMenu accentColor="#22c55e" />
           </div>
         </div>
 
         <div style={{ position: "relative", zIndex: 1 }}>
           <VenueHubShell />
-          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px" }}>
+
+          {/* Promote Event CTA — routes via VenueEventPromotionRoutingEngine */}
+          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px 24px 0" }}>
+            <div style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.08), rgba(0,255,255,0.05))", border: "1.5px solid rgba(34,197,94,0.25)", borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#22c55e", fontWeight: 800, marginBottom: 4 }}>📣 PROMOTE YOUR EVENTS</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>Drive ticket sales with targeted event campaigns</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>Select an event from your dashboard to launch a promotion campaign.</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <Link href="/promoter/events" style={{ padding: "10px 22px", background: "linear-gradient(90deg,#22c55e,#00FFFF)", borderRadius: 8, color: "#050510", fontWeight: 900, fontSize: 12, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                  PROMOTE EVENT
+                </Link>
+                <Link href="/venue/events" style={{ padding: "10px 18px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, color: "#22c55e", fontWeight: 800, fontSize: 12, textDecoration: "none", whiteSpace: "nowrap" }}>
+                  MY EVENTS
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
+            <div
+              style={{
+                borderRadius: 16,
+                overflow: "hidden",
+                border: "1px solid rgba(34,197,94,0.28)",
+                background: "#000",
+                minHeight: 200,
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  padding: "8px 14px",
+                  borderBottom: "1px solid rgba(34,197,94,0.2)",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: "0.16em",
+                  color: "#22c55e",
+                }}
+              >
+                MEDIA · VENUE PREVIEW
+              </div>
+              <div style={{ height: 180, position: "relative" }}>
+                <MediaMonitor mode="standby" isActive={false} />
+              </div>
+            </div>
             <LiveMediaWall
               roomId="venue-hub"
               title="YOUR VENUE ROOMS — LIVE"
@@ -66,7 +104,6 @@ export default function VenueHubPage() {
           </div>
         </div>
 
-        <ActionCanister actions={VENUE_ACTIONS} />
         <WidgetDrawer />
       </div>
     </RoomContainer>

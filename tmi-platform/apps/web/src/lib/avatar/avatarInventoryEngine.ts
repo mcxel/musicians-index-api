@@ -3,7 +3,9 @@ import { fanCosmeticStarterItems } from "@/lib/avatars/fanAvatarLoadout";
 export type AvatarInventoryCategory =
   | "skins" | "eyes" | "accessories" | "outfits" | "props" | "backgrounds"
   | "lighting" | "emotes" | "collectibles" | "hats" | "glasses" | "jewelry"
-  | "jackets" | "mic-skins" | "stage-skins" | "lighting-packs" | "tickets" | "nfts";
+  | "jackets" | "mic-skins" | "stage-skins" | "lighting-packs" | "tickets" | "nfts"
+  | "hair" | "headphones" | "clothing" | "tops" | "bottoms" | "shoes" | "instruments" | "vfx"
+  | "action-emotes" | "dances" | "gestures" | "auras" | "entrances" | "sets";
 
 export type AvatarRarity = "free" | "rare" | "epic" | "legendary";
 

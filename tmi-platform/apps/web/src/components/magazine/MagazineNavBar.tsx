@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 
 const HOME_PAGE_TABS = [
   { href: "/home/1",   label: "1"   },
@@ -13,18 +14,6 @@ const HOME_PAGE_TABS = [
   { href: "/home/5",   label: "5"   },
 ];
 
-const ROLE_PROFILE: Record<string, string> = {
-  artist:    '/profile/artist',
-  performer: '/profile/performer',
-  fan:       '/profile/fan',
-  venue:     '/profile/venue',
-  promoter:  '/profile/promoter',
-  advertiser:'/profile/advertiser',
-  sponsor:   '/profile/sponsor',
-  admin:     '/admin/overview',
-  superadmin:'/admin/overview',
-};
-
 const ROLE_COLOR: Record<string, string> = {
   superadmin: '#FF2DAA', admin: '#FF2DAA', artist: '#FFD700',
   performer: '#00FFFF', fan: '#AA2DFF', venue: '#FF6B35',
@@ -33,7 +22,10 @@ const ROLE_COLOR: Record<string, string> = {
 
 export default function MagazineNavBar() {
   const pathname = usePathname();
-  const [session, setSession] = useState<{ authenticated: boolean; user?: { id?: string; role?: string } } | null>(null);
+  const [session, setSession] = useState<{
+    authenticated: boolean;
+    user?: { id?: string; name?: string; role?: string; avatarUrl?: string | null };
+  } | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
@@ -42,12 +34,15 @@ export default function MagazineNavBar() {
       .catch(() => setSession({ authenticated: false }));
   }, []);
 
-  const isAuth    = session?.authenticated === true;
-  const role      = (session?.user?.role ?? 'default').toLowerCase();
-  const userId    = session?.user?.id ?? '';
-  const initial   = userId.charAt(0).toUpperCase() || '?';
+  const isAuth = session?.authenticated === true;
+  const role = (session?.user?.role ?? 'default').toLowerCase();
+  const userId = session?.user?.id ?? '';
+  const displayName =
+    session?.user?.name?.trim() ||
+    session?.user?.id?.slice(0, 8) ||
+    'Account';
+  const avatarUrl = session?.user?.avatarUrl ?? null;
   const roleColor = ROLE_COLOR[role] ?? '#00FFFF';
-  const profileHref = isAuth ? `${ROLE_PROFILE[role] ?? '/profile'}/${userId}` : '/auth';
 
   return (
     <>
@@ -174,40 +169,28 @@ export default function MagazineNavBar() {
           {/* Auth zone — always visible, always right-aligned */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             {isAuth ? (
-              <>
-                <Link
-                  href={profileHref}
-                  aria-label="My Profile"
-                  title="My Profile"
-                  style={{
-                    width: 34, height: 34, borderRadius: "50%",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    border: `2px solid ${roleColor}`, background: `${roleColor}22`,
-                    color: roleColor, fontSize: 13, fontWeight: 900,
-                    textDecoration: "none", flexShrink: 0,
-                    boxShadow: `0 0 10px ${roleColor}44`,
-                  }}
-                >
-                  {initial}
-                </Link>
-                {/* Separate from the profile avatar — this is the actual
-                    discoverable path to Account Settings / Sign Out, which
-                    previously had no entry point in this bar at all. */}
-                <Link
-                  href="/account"
-                  aria-label="Account Settings & Sign Out"
-                  title="Account Settings & Sign Out"
-                  style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.7)", fontSize: 13,
-                    textDecoration: "none", flexShrink: 0,
-                  }}
-                >
-                  ⚙
-                </Link>
-              </>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `2px solid ${roleColor}`,
+                  background: `${roleColor}22`,
+                  boxShadow: `0 0 10px ${roleColor}44`,
+                  flexShrink: 0,
+                }}
+              >
+                <AccountCommandMenu
+                  userId={userId}
+                  displayName={displayName}
+                  avatarUrl={avatarUrl}
+                  accentColor={roleColor}
+                  compact
+                />
+              </div>
             ) : (
               <>
                 <Link href="/auth"   className="tmi-auth-btn tmi-auth-login">Log In</Link>

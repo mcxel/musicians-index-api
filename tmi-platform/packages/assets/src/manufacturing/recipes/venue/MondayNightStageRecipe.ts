@@ -1,0 +1,41 @@
+import { ManufacturingRecipe } from "../../ManufacturingRecipe";
+import { ManufacturingState } from "../../ManufacturingState";
+
+export const MONDAY_NIGHT_STAGE_RECIPE: ManufacturingRecipe = {
+  id: "MondayNightStage",
+  version: "1.0-proof",
+  assetType: "VENUE",
+  intentTemplate: {
+    assetId: "monday-night-stage",
+    recipeId: "MondayNightStage",
+    recipeVersion: "1.0-proof",
+    widthMeters: 26,
+    depthMeters: 34,
+    heightMeters: 12,
+    stage: { widthMeters: 14, depthMeters: 8, heightMeters: 1.2 },
+    seating: { rows: 8, seatsPerRow: 12, aisleEvery: 6 },
+    screens: ["Screen_Main", "Screen_Left", "Screen_Right"],
+    sponsorSurfaceCount: 2,
+    proof: "Foundry Proof 001 - Zero-External-Mesh",
+    outputName: "monday-night-stage-world.glb",
+  },
+  steps: [
+    { id: "plan", stateOnSuccess: ManufacturingState.PLANNING, description: "Resolve venue intent." },
+    { id: "concept", stateOnSuccess: ManufacturingState.CONCEPT_CREATED, description: "Persist procedural room plan." },
+    { id: "manufacture", script: "scripts/blender/manufactureVenue.py", stateOnSuccess: ManufacturingState.MESH_CREATED, description: "Generate world geometry from code." },
+    { id: "uv", stateOnSuccess: ManufacturingState.UV_CREATED, description: "Generate simple UVs/material coordinates." },
+    { id: "rig-placeholder", stateOnSuccess: ManufacturingState.RIG_CREATED, description: "Venue has no deform rig; advance shared state machine with N/A record." },
+    { id: "skinning-placeholder", stateOnSuccess: ManufacturingState.SKINNING_CREATED, description: "N/A for venue; provenance record only." },
+    { id: "arkit-placeholder", stateOnSuccess: ManufacturingState.ARKIT_CREATED, description: "N/A for venue; provenance record only." },
+    { id: "materials", stateOnSuccess: ManufacturingState.MATERIALS_CREATED, description: "Create procedural venue materials." },
+    { id: "animations-placeholder", stateOnSuccess: ManufacturingState.ANIMATIONS_ATTACHED, description: "N/A for proof venue." },
+    { id: "lod", stateOnSuccess: ManufacturingState.LOD_CREATED, description: "Generate proof-level world LOD metadata." },
+    { id: "collision", stateOnSuccess: ManufacturingState.COLLISION_CREATED, description: "Generate collision geometry." },
+    { id: "anchors", stateOnSuccess: ManufacturingState.ANCHORS_CREATED, description: "Generate seat/spawn/screen/camera/sponsor anchors." },
+    { id: "normalize", stateOnSuccess: ManufacturingState.NORMALIZATION_PASS, description: "Verify Z-up authoring + meter scale; glTF exporter handles Y-up." },
+    { id: "validate", stateOnSuccess: ManufacturingState.VALIDATION_PASS, description: "Run venue validation/preflight." },
+    { id: "export", stateOnSuccess: ManufacturingState.EXPORT_COMPLETE, description: "Export world/collision GLBs.", expectedArtifacts: ["monday-night-stage-world.glb", "monday-night-stage-collision.glb"] },
+    { id: "ingest", stateOnSuccess: ManufacturingState.INGESTION_COMPLETE, description: "Ingest venue artifacts." },
+    { id: "cert-ready", stateOnSuccess: ManufacturingState.CERTIFICATION_READY, description: "Ready for TMI runtime proof." },
+  ],
+};

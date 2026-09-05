@@ -1,4 +1,15 @@
+/**
+ * Teen contact overlay for DM / call / invite channels.
+ * Public room_chat and lobby_chat stay open.
+ * Private 1:1 delegates to YouthSocialGuard: protected teens = 16–17, adults = 18+.
+ */
 import { logSafetyViolation } from "@/lib/safety/safetyViolationLogger";
+import {
+  canOneToOneSocial,
+  isOneToOneSocialChannel,
+  subjectFromLegacyAgeClass,
+  type YouthSocialSubject,
+} from "@/lib/trustSafety/YouthSocialGuard";
 
 export type SafetyAgeClass = "minor" | "adult" | "unknown" | "room_public" | "test_minor" | "test_adult";
 
@@ -15,6 +26,9 @@ export type ContactChannel =
 export type ContactActor = {
   userId: string;
   ageClass: SafetyAgeClass;
+  ageYears?: number | null;
+  familyAccountId?: string | null;
+  isBot?: boolean;
   familyVerified?: boolean;
   guardianApproved?: boolean;
   isModerator?: boolean;
@@ -23,6 +37,9 @@ export type ContactActor = {
 export type ContactTarget = {
   userId: string;
   ageClass: SafetyAgeClass;
+  ageYears?: number | null;
+  familyAccountId?: string | null;
+  isBot?: boolean;
   familyMember?: boolean;
   guardianLink?: boolean;
 };
@@ -41,80 +58,40 @@ export type ContactPolicyDecision = {
   hardBlock: boolean;
 };
 
-function isMinor(ageClass: SafetyAgeClass): boolean {
-  return ageClass === "minor" || ageClass === "test_minor";
+function toSubject(party: ContactActor | ContactTarget): YouthSocialSubject {
+  return subjectFromLegacyAgeClass(party.userId, party.ageClass, {
+    ageYears: party.ageYears,
+    familyAccountId: party.familyAccountId,
+    isBot: party.isBot,
+  });
 }
 
-function isAdult(ageClass: SafetyAgeClass): boolean {
-  return ageClass === "adult" || ageClass === "test_adult";
-}
-
-function requiresHardFamilyVerification(channel: ContactChannel): boolean {
-  return channel === "dm" || channel === "voice" || channel === "talkback" || channel === "friend_request" || channel === "party_invite" || channel === "video_presence";
+function logBlocked(input: ContactPolicyInput, reason: string): ContactPolicyDecision {
+  logSafetyViolation({
+    source: input.source,
+    actorId: input.actor.userId,
+    actorAgeClass: input.actor.ageClass === "room_public" ? "unknown" : input.actor.ageClass,
+    action: input.channel,
+    target: input.target.userId,
+    reason,
+    blocked: true,
+  });
+  return { allowed: false, reason, blocked: true, hardBlock: true };
 }
 
 export function evaluateTeenContactPolicy(input: ContactPolicyInput): ContactPolicyDecision {
+  if (input.channel === "room_chat" || input.channel === "lobby_chat") {
+    return { allowed: true, reason: "allowed: public room channel is not 1:1 social", blocked: false, hardBlock: false };
+  }
+
   if (input.actor.ageClass === "room_public" || input.target.ageClass === "room_public") {
-    return { allowed: true, reason: "allowed: public room channel bypasses DM policy", blocked: false, hardBlock: false };
+    return { allowed: true, reason: "allowed: public room channel bypasses 1:1 policy", blocked: false, hardBlock: false };
   }
 
-  const actorUnknown = input.actor.ageClass === "unknown";
-  const targetUnknown = input.target.ageClass === "unknown";
-
-  if (actorUnknown || targetUnknown) {
-    const reason = "blocked: unknown age classification cannot initiate or receive teen contact";
-    logSafetyViolation({
-      source: input.source,
-      actorId: input.actor.userId,
-      actorAgeClass: input.actor.ageClass,
-      action: input.channel,
-      target: input.target.userId,
-      reason,
-      blocked: true,
-    });
-    return { allowed: false, reason, blocked: true, hardBlock: true };
-  }
-
-  const actorMinor = isMinor(input.actor.ageClass);
-  const targetMinor = isMinor(input.target.ageClass);
-  const actorAdult = isAdult(input.actor.ageClass);
-  const targetAdult = isAdult(input.target.ageClass);
-
-  const crossAgeContact = (actorMinor && targetAdult) || (actorAdult && targetMinor);
-  if (crossAgeContact) {
-    const familyVerified = Boolean(input.actor.familyVerified && input.target.familyMember);
-    const guardianApproved = Boolean(input.actor.guardianApproved || input.target.guardianLink);
-
-    if (!familyVerified || !guardianApproved) {
-      const reason = "blocked: adult-teen contact requires verified family relationship and guardian approval";
-      logSafetyViolation({
-        source: input.source,
-        actorId: input.actor.userId,
-        actorAgeClass: input.actor.ageClass,
-        action: input.channel,
-        target: input.target.userId,
-        reason,
-        blocked: true,
-      });
-      return { allowed: false, reason, blocked: true, hardBlock: true };
-    }
-
-    if (requiresHardFamilyVerification(input.channel)) {
-      return {
-        allowed: true,
-        reason: "allowed: verified family and guardian approval for protected cross-age contact",
-        blocked: false,
-        hardBlock: false,
-      };
-    }
-  }
-
-  if (input.channel === "dm" && actorMinor && targetMinor) {
-    return { allowed: true, reason: "allowed: teen-to-teen direct message", blocked: false, hardBlock: false };
-  }
-
-  if (input.channel === "friend_request" && actorAdult && targetAdult) {
-    return { allowed: true, reason: "allowed: adult-to-adult friend request", blocked: false, hardBlock: false };
+  if (isOneToOneSocialChannel(input.channel) || input.channel === "dm" || input.channel === "voice" || input.channel === "talkback" || input.channel === "video_presence" || input.channel === "friend_request" || input.channel === "party_invite") {
+    const decision = canOneToOneSocial(toSubject(input.actor), toSubject(input.target));
+    if (!decision.allowed) return logBlocked(input, decision.reason);
+    return { allowed: true, reason: decision.reason, blocked: false, hardBlock: false };
   }
 
   return { allowed: true, reason: "allowed: policy check passed", blocked: false, hardBlock: false };

@@ -34,7 +34,7 @@ const RIM_KEYFRAMES = `
 }
 `;
 
-const ROTATE_MS_DEFAULT = 25000;
+import { HOME_BROADCAST_ROTATION_MS } from "@/lib/broadcast/BroadcastRotationEngine";
 const CHANNEL_ACCENTS = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF"] as const;
 
 function ensureRimKeyframes() {
@@ -321,7 +321,7 @@ export default function HomeFeaturedChannelPanels({
     if (pool.length <= slotCount) return;
     const rotateMs = Math.max(
       getGovernedIdleFallbackPolicy().rotationIntervalMs,
-      ROTATE_MS_DEFAULT,
+      HOME_BROADCAST_ROTATION_MS,
     );
     const id = window.setInterval(() => {
       setRotationOffset((o) => o + 1);

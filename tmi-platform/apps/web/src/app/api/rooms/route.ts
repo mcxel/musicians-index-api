@@ -10,11 +10,23 @@ import { competitionMusicEngine, MusicConfig, CompetitionType, CypherMode } from
 import { assertCreateRoomEntitlement } from '@/lib/subscriptions/assertCreateRoomEntitlement';
 import { registerLiveSession, getSession, getSessionsByCategory, endLiveSession } from '@/lib/broadcast/globalLiveSessionStore';
 import { ensureHydrated, persistSessionNow } from '@/lib/broadcast/GlobalLiveSessionRegistry.server';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
+import {
+  datingAccessPayload,
+  DATING_EXPERIENCE_MANIFEST,
+  datingExperienceMayLaunch,
+  isDatingExperience,
+  type DatingExperienceRef,
+} from '@/lib/trustSafety/DatingExperiencePolicy';
+import {
+  evaluateDatingJoinForUserId,
+  filterDatingExperiencesForUserId,
+} from '@/lib/trustSafety/datingExperienceGuard';
 
 interface Room {
   id: string;
   name: string;
-  type: 'BATTLE' | 'CYPHER' | 'SHOWCASE' | 'CHALLENGE' | 'GENERAL';
+  type: 'BATTLE' | 'CYPHER' | 'SHOWCASE' | 'CHALLENGE' | 'GENERAL' | 'DATING';
   hostId: string;
   hostName: string;
   capacity: number;
@@ -24,6 +36,9 @@ interface Room {
   format?: string;
   musicConfig?: MusicConfig;
   createdAt: string;
+  experienceClass?: 'DATING';
+  minimumAge?: number;
+  ageVerificationRequired?: boolean;
 }
 
 /** Legacy GET inventory — NOT the active-room truth counter (use GET /api/live/go). */
@@ -35,6 +50,15 @@ export async function GET(req: NextRequest) {
   let result = [...rooms];
   if (type) result = result.filter(r => r.type === type.toUpperCase());
   if (live === 'true') result = result.filter(r => r.isLive);
+  const auth = await getTmiAuth();
+  result = await filterDatingExperiencesForUserId(auth?.user?.id, result, (r) => ({
+    id: r.id,
+    name: r.name,
+    type: r.type,
+    experienceClass: r.experienceClass,
+    minimumAge: r.minimumAge,
+    ageVerificationRequired: r.ageVerificationRequired,
+  }));
   return NextResponse.json({
     rooms: result,
     total: result.length,
@@ -73,20 +97,50 @@ export async function POST(req: NextRequest) {
     sponsorId?: string;
     beatIds?: string[];
     metadata?: { battleType?: string };
+    experienceClass?: string;
+    minimumAge?: number;
+    ageVerificationRequired?: boolean;
   };
   if (!body.name || !body.type) {
     return NextResponse.json({ error: 'name and type required' }, { status: 400 });
   }
 
+  const datingRef: DatingExperienceRef = {
+    name: body.name,
+    type: body.type,
+    experienceClass: body.experienceClass,
+    minimumAge: body.minimumAge,
+    ageVerificationRequired: body.ageVerificationRequired,
+    tags: body.type ? [body.type] : undefined,
+  };
+  const dating = isDatingExperience(datingRef);
+
+  if (dating) {
+    const launch = datingExperienceMayLaunch(datingRef);
+    if (!launch.allowed) {
+      return NextResponse.json(datingAccessPayload(launch), { status: 403 });
+    }
+    const access = await evaluateDatingJoinForUserId(gate.userId, {
+      ...DATING_EXPERIENCE_MANIFEST,
+      name: body.name,
+      type: body.type,
+    });
+    if (!access.allowed) {
+      return NextResponse.json(datingAccessPayload(access), { status: 403 });
+    }
+  }
+
   const competitionType: CompetitionType = TYPE_TO_COMPETITION[body.type] ?? 'battle';
-  const musicConfig = competitionMusicEngine.resolveMusicConfig({
-    competitionType,
-    format: body.format ?? body.metadata?.battleType,
-    genre: body.genre,
-    sponsorId: body.sponsorId,
-    cypherMode: body.cypherMode,
-    beatIds: body.beatIds,
-  });
+  const musicConfig = dating
+    ? undefined
+    : competitionMusicEngine.resolveMusicConfig({
+        competitionType,
+        format: body.format ?? body.metadata?.battleType,
+        genre: body.genre,
+        sponsorId: body.sponsorId,
+        cypherMode: body.cypherMode,
+        beatIds: body.beatIds,
+      });
 
   const roomId = `room-${gate.userId}-${Date.now()}`;
   const category = TYPE_TO_CATEGORY[body.type] ?? 'live';
@@ -122,7 +176,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  competitionMusicEngine.bindToRoom(roomId, musicConfig);
+  if (musicConfig) {
+    competitionMusicEngine.bindToRoom(roomId, musicConfig);
+  }
 
   const room: Room = {
     id: roomId,
@@ -137,6 +193,9 @@ export async function POST(req: NextRequest) {
     format: body.format,
     musicConfig,
     createdAt: new Date().toISOString(),
+    experienceClass: dating ? DATING_EXPERIENCE_MANIFEST.experienceClass : undefined,
+    minimumAge: dating ? DATING_EXPERIENCE_MANIFEST.minimumAge : undefined,
+    ageVerificationRequired: dating ? DATING_EXPERIENCE_MANIFEST.ageVerificationRequired : undefined,
   };
   rooms.unshift(room);
 

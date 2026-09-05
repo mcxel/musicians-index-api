@@ -21,6 +21,10 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import {
+  leaveLiveRoomMixer,
+  syncDailyCallRemoteAudio,
+} from "@/lib/audio/mixer/LiveRoomMixerBind";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type VideoRoomRole = "host" | "participant" | "viewer";
@@ -163,6 +167,7 @@ export default function TMIVideoRoom({
         });
 
         callObject.on("left-meeting", () => {
+          leaveLiveRoomMixer();
           setState("left");
           onLeft?.();
         });
@@ -195,7 +200,26 @@ export default function TMIVideoRoom({
           }));
           setParticipants(list);
           onParticipantUpdate?.(list);
+
+          const local = ps.local as any;
+          const localAudio =
+            local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track ?? null;
+          const localPlayable =
+            Boolean(localAudio) &&
+            (local?.tracks?.audio?.state === "playable" ||
+              local?.tracks?.audio?.state === "sendable");
+          void syncDailyCallRemoteAudio(callObject, {
+            roomId,
+            liveSessionId: `stage:${roomId}`,
+            experienceType: "LIVE",
+            remoteRole: role === "viewer" ? "performer" : "audience",
+            localMicAvailable:
+              localPlayable && Boolean(local?.audio) && role !== "viewer",
+          });
         }
+
+        callObject.on("track-started", updateParticipants);
+        callObject.on("track-stopped", updateParticipants);
 
         /* ── Join ── */
         await callObject.join({ url: roomData!.url, token: roomData!.token });
@@ -209,6 +233,7 @@ export default function TMIVideoRoom({
     initDaily();
 
     return () => {
+      leaveLiveRoomMixer();
       callObjectRef.current?.leave().catch(() => {});
       callObjectRef.current?.destroy().catch(() => {});
       callObjectRef.current = null;
@@ -241,6 +266,7 @@ export default function TMIVideoRoom({
   }, [localVideoOff]);
 
   const leaveRoom = useCallback(() => {
+    leaveLiveRoomMixer();
     callObjectRef.current?.leave().catch(() => {});
     setState("left");
     onLeft?.();

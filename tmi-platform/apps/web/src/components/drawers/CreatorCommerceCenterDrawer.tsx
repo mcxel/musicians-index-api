@@ -264,9 +264,11 @@ export default function CreatorCommerceCenterDrawer({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <StoreCanister
             entityId={performerId}
+            artistSlug={performerId}
             entityName={displayName}
             storeType="performer"
             accentColor={ac}
+            maxItems={8}
           />
           {byType("MERCH").length === 0
             ? emptyBlock("MERCH LINKS", "No merch product links yet. Add MERCH products in Products.", ac)

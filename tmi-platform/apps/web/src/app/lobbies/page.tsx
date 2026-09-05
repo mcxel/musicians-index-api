@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LOBBY_ITEMS, formatPrice, getCheckoutUrl, type StoreItem } from "@/lib/store/StoreItemEngine";
+import { persistFanLobbySkinId, type FanLobbySkinId } from "@/lib/lobby/FanLobbySkinRegistry";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const LOBBY_ROOMS = [
   { slug: "arena-east",       title: "Arena East",       mode: "arena",   count: 214, hot: true  },
@@ -34,10 +36,44 @@ const SKIN_PREVIEWS: Record<string, { bg: string; accent: string; particles: str
 };
 
 export default function LobbiesPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"rooms" | "skins">("rooms");
   const [activeSkin, setActiveSkin] = useState("lobby-neon");
   const [previewSkin, setPreviewSkin] = useState<string | null>(null);
-  const [ownedSkins] = useState<Set<string>>(new Set(["lobby-neon"]));
+  const [ownedSkins, setOwnedSkins] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user?.id) {
+      setOwnedSkins(new Set());
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/account/purchases", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.ownedStoreItems) return;
+        const owned = new Set<string>(
+          (data.ownedStoreItems as { itemId: string; category: string }[])
+            .filter((row) => row.category === "lobby")
+            .map((row) => row.itemId),
+        );
+        setOwnedSkins(owned);
+        if (owned.size > 0) {
+          setActiveSkin((current) => (owned.has(current) ? current : [...owned][0]!));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOwnedSkins(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  function applyOwnedSkin(skinId: string) {
+    setActiveSkin(skinId);
+    persistFanLobbySkinId(skinId as FanLobbySkinId);
+  }
 
   const displayedSkin = previewSkin ?? activeSkin;
   const preview = SKIN_PREVIEWS[displayedSkin];
@@ -147,7 +183,7 @@ export default function LobbiesPage() {
                                 ✓ Active
                               </div>
                             ) : owned ? (
-                              <button onClick={() => setActiveSkin(item.id)}
+                              <button onClick={() => applyOwnedSkin(item.id)}
                                 style={{ flex: 1, padding: "8px", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.25)", borderRadius: 7, color: "#00FF88", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>
                                 Apply Skin
                               </button>
@@ -193,7 +229,7 @@ export default function LobbiesPage() {
                       </Link>
                     )}
                     {ownedSkins.has(displayedSkin) && activeSkin !== displayedSkin && (
-                      <button onClick={() => setActiveSkin(displayedSkin)}
+                      <button onClick={() => applyOwnedSkin(displayedSkin)}
                         style={{ width: "100%", padding: "10px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", borderRadius: 8, color: "#00FF88", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                         Apply This Skin
                       </button>

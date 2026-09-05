@@ -22,7 +22,7 @@ const FAQS = [
     items: [
       { q: "What is included in Member Pro?", a: "Member Pro ($9.99/mo) includes all live rooms, priority chat, HD streams, monthly bonus XP, and no ads." },
       { q: "Can I cancel my subscription?", a: "Yes. All subscriptions are month-to-month and can be cancelled any time from your account settings. No cancellation fees." },
-      { q: "What is the Season Pass?", a: "The Season Pass ($49.99, one-time) grants access to all season events, exclusive merch drops, VIP room access, and season champion eligibility." },
+      { q: "What is the Season Pass?", a: "Season Passes start at $1.99 (one-time for the season) and go up through Plus, Fan, Artist, Bundle, and VIP ($49.99). They unlock season rewards and events. Season passes are separate from monthly membership subscriptions." },
     ],
   },
   {

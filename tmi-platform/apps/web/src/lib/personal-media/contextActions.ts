@@ -147,12 +147,15 @@ export function getParticipantMediaMenu(
   }
 
   if (options.privateTalkAvailable) {
-    items.push({
-      id: "PRIVATE_TALK",
-      label: "PRIVATE TALK",
-      command: "LOUNGE_PRIVATE_TALK",
-      participantId,
-    });
+    const privateTalk = router.evaluatePrivateSocial(participantId, "CALL");
+    if (privateTalk.allowed) {
+      items.push({
+        id: "PRIVATE_TALK",
+        label: "PRIVATE TALK",
+        command: "LOUNGE_PRIVATE_TALK",
+        participantId,
+      });
+    }
   }
 
   return items;

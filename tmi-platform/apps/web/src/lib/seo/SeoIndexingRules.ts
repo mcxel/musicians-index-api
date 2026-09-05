@@ -1,4 +1,4 @@
-export const CANONICAL_ROOT = "https://bernoutglobal.com";
+export const CANONICAL_ROOT = "https://themusiciansindex.com";
 
 export const INDEXABLE_STATIC_ROUTES = [
   "/",
@@ -9,6 +9,7 @@ export const INDEXABLE_STATIC_ROUTES = [
   "/home/4",
   "/home/5",
   "/magazine",
+  "/magazine/issue/current",
   "/tickets",
   "/song-battle/live",
   "/dance-party/live",
@@ -32,7 +33,6 @@ export const INDEXABLE_STATIC_ROUTES = [
 ] as const;
 
 export const INDEXABLE_ROUTE_GROUPS = [
-  "/magazine/article/",
   "/articles/news/",
   "/articles/artist/",
   "/articles/performer/",
@@ -61,6 +61,26 @@ export const EXCLUDED_ROUTE_PREFIXES = [
   "/debug",
   "/tests",
   "/internal",
+  "/hub",
+  "/onboarding",
+  "/checkout",
+  "/coming-soon",
+  "/launch-board",
+  "/investor-preview",
+  "/magazine/issues",
+  "/magazine/archive",
+  "/magazine/article",
+  "/magazine/articles",
+  "/magazine/news",
+  "/magazine/artist",
+  "/editorial",
+] as const;
+
+export const NOINDEX_ROUTE_PREFIXES = [
+  ...EXCLUDED_ROUTE_PREFIXES,
+  "/api",
+  "/live/go",
+  "/venue/preview",
 ] as const;
 
 function normalizeRoute(route: string): string {
@@ -73,15 +93,26 @@ export function isRouteExcluded(route: string): boolean {
   return EXCLUDED_ROUTE_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 }
 
+export function shouldNoIndexRoute(route: string): boolean {
+  const normalized = normalizeRoute(route);
+  return NOINDEX_ROUTE_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+}
+
 export function isRouteIndexable(route: string): boolean {
   const normalized = normalizeRoute(route);
-  if (isRouteExcluded(normalized)) return false;
+  const pathname = normalized.split("?")[0] ?? normalized;
 
-  if (INDEXABLE_STATIC_ROUTES.includes(normalized as (typeof INDEXABLE_STATIC_ROUTES)[number])) {
+  if (pathname === "/magazine/issue/current" && normalized.includes("article=")) {
     return true;
   }
 
-  return INDEXABLE_ROUTE_GROUPS.some((prefix) => normalized.startsWith(prefix));
+  if (isRouteExcluded(pathname)) return false;
+
+  if (INDEXABLE_STATIC_ROUTES.includes(pathname as (typeof INDEXABLE_STATIC_ROUTES)[number])) {
+    return true;
+  }
+
+  return INDEXABLE_ROUTE_GROUPS.some((prefix) => pathname.startsWith(prefix));
 }
 
 export function toCanonicalUrl(route: string): string {

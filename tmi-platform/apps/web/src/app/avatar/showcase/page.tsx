@@ -22,8 +22,8 @@ export default function AvatarShowcasePage() {
           ))}
         </div>
         <div style={{ marginTop: 14 }}>
-          <Link href="/avatar/build" style={{ color: "#bde7ff", textDecoration: "underline" }}>
-            Back to Avatar Build
+          <Link href="/avatar/studio" style={{ color: "#bde7ff", textDecoration: "underline" }}>
+            Open Avatar Studio
           </Link>
         </div>
       </section>

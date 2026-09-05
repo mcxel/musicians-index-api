@@ -1,6 +1,7 @@
 "use client";
 
 import type { MobileControlMode } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import VenueControlPanel from "@/components/hud/panels/VenueControlPanel";
 
 const MODE_LABELS: Record<Exclude<MobileControlMode, null>, string> = {
   AVATAR_NAVIGATION: "Avatar Navigation Controller",
@@ -44,8 +45,37 @@ function controlButton(label: string) {
   );
 }
 
-export default function ExperienceControlDeck({ mode }: { mode: MobileControlMode | null }) {
+export default function ExperienceControlDeck({
+  mode,
+  userId = "session",
+  role = "fan",
+}: {
+  mode: MobileControlMode | null;
+  userId?: string;
+  role?: "fan" | "performer";
+}) {
   const resolvedMode = mode ?? "SPECTATOR";
+
+  if (resolvedMode === "VENUE_PRODUCTION") {
+    return (
+      <section
+        data-experience-control-deck
+        data-control-mode={resolvedMode}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "min(58vh, 640px)",
+          borderRadius: 14,
+          border: "1px solid rgba(0,255,255,0.22)",
+          background: "linear-gradient(180deg, rgba(6,10,22,0.98), rgba(9,14,30,0.98))",
+          overflow: "hidden",
+        }}
+      >
+        <VenueControlPanel role={role} userId={userId} accentColor="#00FF88" />
+      </section>
+    );
+  }
+
   const labels = MODE_LABELS[resolvedMode];
   const hints = MODE_HINTS[resolvedMode] ?? ["Control", "Adjust", "Broadcast", "Focus", "Sync", "Return"];
 

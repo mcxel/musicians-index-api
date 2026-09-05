@@ -5,8 +5,10 @@ import {
   createDefaultYoPhoBlueprint,
   type YoPhoPortraitBlueprint,
 } from "@/lib/yopho/YoPhoPortraitEngine";
-import { getYoPhoImageCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import { normalizeYoPhoTier, trimYoPhoBlueprintToCapacity } from "@/lib/yopho/YoPhoImageCapacity";
+import { ensureTripleLayerStack } from "@/lib/yopho/YoPhoLayerStack";
 import YoPhoTripleStageStudio from "@/components/yopho/YoPhoTripleStageStudio";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface YoPhoFanPortraitWorkspaceProps {
   userId: string;
@@ -17,7 +19,7 @@ interface YoPhoFanPortraitWorkspaceProps {
 
 /**
  * Fan YoPho triple-stage studio — Media Console BOTTOM_DEEP + /fan/canvas.
- * Tier capacity gates multi-image / dimensional layers (FREE = 1).
+ * Tier capacity gates multi-image / dimensional layers (FREE = 3 pictures).
  */
 export default function YoPhoFanPortraitWorkspace({
   userId,
@@ -27,51 +29,44 @@ export default function YoPhoFanPortraitWorkspace({
 }: YoPhoFanPortraitWorkspaceProps) {
   const [blueprint, setBlueprint] = useState<YoPhoPortraitBlueprint | null>(null);
   const [tierKey, setTierKey] = useState("FREE");
+  const { tier: sessionTier } = useAuth();
 
   useEffect(() => {
-    const tier = tierProp?.toUpperCase() ?? "FREE";
-    setTierKey(tier);
-    const capacity = getYoPhoImageCapacity(tier);
+    const resolved = normalizeYoPhoTier(tierProp ?? sessionTier ?? "FREE");
+    setTierKey(resolved);
 
     try {
       const raw = localStorage.getItem("tmi_yopho_editions_fan");
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
       if (parsed.length > 0 && parsed[0]) {
-        // Trim layers if saved edition exceeds current tier capacity (honest gate)
-        let bp = parsed[0];
-        const total = 1 + bp.secondaryLayers.length;
-        if (total > capacity.maxImages) {
-          bp = {
-            ...bp,
-            secondaryLayers: bp.secondaryLayers.slice(0, Math.max(0, capacity.maxImages - 1)),
-            activePortraitsCount: Math.min(bp.activePortraitsCount, capacity.maxImages),
-          };
-        }
-        setBlueprint(bp);
+        setBlueprint(ensureTripleLayerStack(trimYoPhoBlueprintToCapacity(parsed[0], resolved)));
       } else {
         setBlueprint(createDefaultYoPhoBlueprint("fan", displayName));
       }
     } catch {
       setBlueprint(createDefaultYoPhoBlueprint("fan", displayName));
     }
-  }, [userId, displayName, tierProp]);
+  }, [userId, displayName, tierProp, sessionTier]);
 
   const handleSaveEdition = (saved: YoPhoPortraitBlueprint) => {
+    const normalized = ensureTripleLayerStack(saved);
     try {
       const raw = localStorage.getItem("tmi_yopho_editions_fan");
       const parsed = raw ? (JSON.parse(raw) as YoPhoPortraitBlueprint[]) : [];
-      const updated = parsed.length > 0 ? [...parsed] : [saved];
-      updated[0] = saved;
+      const updated = parsed.length > 0 ? [...parsed] : [normalized];
+      updated[0] = normalized;
       localStorage.setItem("tmi_yopho_editions_fan", JSON.stringify(updated));
     } catch {
       /* quota */
     }
-    setBlueprint(saved);
+    setBlueprint(normalized);
   };
 
   if (!blueprint) {
     return (
       <div
+        data-yopho-canonical-workspace
+        data-yopho-tier={tierKey}
         style={{
           padding: compact ? 16 : 32,
           color: "#00FFFF",
@@ -87,7 +82,7 @@ export default function YoPhoFanPortraitWorkspace({
   }
 
   return (
-    <div style={{ padding: compact ? "8px 12px 16px" : "16px 20px 24px" }}>
+    <div data-yopho-canonical-workspace data-yopho-tier={tierKey} style={{ padding: compact ? "8px 12px 16px" : "16px 20px 24px" }}>
       {!compact ? (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FF2DAA" }}>
@@ -104,6 +99,8 @@ export default function YoPhoFanPortraitWorkspace({
         onSaveEdition={handleSaveEdition}
         storageKey="tmi_yopho_editions_fan_active"
         tierOrRole={tierKey}
+        cardRole="fan"
+        userKey={userId}
       />
     </div>
   );

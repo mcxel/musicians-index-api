@@ -1,5 +1,6 @@
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { MAGAZINE_ISSUE_1 } from "./magazineIssueData";
+import { magazineReaderArticleUrl } from "./MagazineReaderRoutes";
 
 export type MagazineArticleSourceType = "staff" | "writer" | "bot" | "artist" | "performer" | "sponsor";
 
@@ -107,10 +108,6 @@ export function listMagazineArticlesByCategory(category: string): MagazineArticl
   return listMagazineArticles().filter((article) => article.category === category);
 }
 
-export function resolveMagazineArticleRoute(slug: string, category?: string): string {
-  if (category === "news")      return `/magazine/news/${slug}`;
-  if (category === "artist")    return `/magazine/artist/${slug}`;
-  if (category === "performer") return `/magazine/article/${slug}`;
-  if (category === "sponsor")   return `/magazine/article/${slug}`;
-  return `/magazine/article/${slug}`;
+export function resolveMagazineArticleRoute(slug: string): string {
+  return magazineReaderArticleUrl(slug);
 }

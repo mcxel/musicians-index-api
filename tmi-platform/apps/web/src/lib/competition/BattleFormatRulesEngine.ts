@@ -15,10 +15,12 @@ export type BattleFormatType =
   | "rapper-vs-rapper"
   | "singer-vs-singer"
   | "producer-vs-producer"
+  | "dj-vs-dj"
   | "instrumentalist-vs-instrumentalist"
   | "jug-off"
   | "dance-off"
   | "dirty-dozens"
+  | "joke-off"
   | "mini-dozens"
   | "open-performer-challenge"
   | "musical-gauntlet";
@@ -42,10 +44,12 @@ const FORMAT_RULES: Record<BattleFormatType, BattleFormatRule> = {
   "rapper-vs-rapper": { format: "rapper-vs-rapper", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "battle", label: "Rapper" },
   "singer-vs-singer": { format: "singer-vs-singer", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "battle", label: "Singer" },
   "producer-vs-producer": { format: "producer-vs-producer", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "battle", label: "Producer" },
+  "dj-vs-dj": { format: "dj-vs-dj", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "battle", label: "DJ" },
   "instrumentalist-vs-instrumentalist": { format: "instrumentalist-vs-instrumentalist", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "battle", label: "Instrumentalist" },
   "jug-off": { format: "jug-off", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Jug-Off" },
   "dance-off": { format: "dance-off", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Dance-Off" },
   "dirty-dozens": { format: "dirty-dozens", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Dirty Dozens" },
+  "joke-off": { format: "joke-off", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "contest", label: "Joke-Off" },
   "mini-dozens": { format: "mini-dozens", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Mini Dozens" },
   "open-performer-challenge": { format: "open-performer-challenge", minTeamSize: 1, maxTeamSize: 20, defaultTeamSize: 4, category: "showcase", label: "Open Circle" },
   "musical-gauntlet": { format: "musical-gauntlet", minTeamSize: 2, maxTeamSize: 32, defaultTeamSize: 16, category: "contest", label: "Musical Gauntlet" },

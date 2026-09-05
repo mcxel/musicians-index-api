@@ -3,7 +3,9 @@
 /**
  * /rooms/world-dance-party — EOS-mounted World Dance Party experience.
  * StageLoader validates contract → mounts WorldDancePartyExperience.
- * Full avatar dance floor, DJ Record Ralph, venue skin picker via EOS widget layer.
+ * Phase 1 presentation: composeDancePartyProgram → DancePartyPresentationShell
+ * → PROGRAM.WDP_COMPOSITE (DJ Record Ralph + floor; never Battle VS / Cypher).
+ * Full avatar dance floor, venue skin picker via EOS widget layer.
  */
 
 import Link from "next/link";

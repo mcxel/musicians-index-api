@@ -11,6 +11,7 @@
 
 import { challengeQueueEngine } from "@/lib/competition/ChallengeQueueEngine";
 import { battleBroadcastStateMachine } from "@/lib/competition/BattleBroadcastStateMachine";
+import { runCompetitionRestartLoop } from "@/lib/live/CompetitionRestartLoop";
 
 export type WinnerStaysPhase =
   | "ACTIVE_MATCH"
@@ -196,6 +197,11 @@ export class WinnerStaysLifecycleEngine {
     session.phaseStartedAt = Date.now();
     session.phaseEndsAt = Date.now();
     this.emit(session);
+    runCompetitionRestartLoop({
+      venueSlug: session.roomId || battleId,
+      roomKind: "battle",
+      afterResultReveal: true,
+    });
     return session;
   }
 

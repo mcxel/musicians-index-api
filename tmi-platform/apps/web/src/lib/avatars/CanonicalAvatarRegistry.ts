@@ -88,3 +88,12 @@ export const DEFAULT_CANONICAL_AVATAR: CanonicalAvatarProfile = {
 export function getArchetypeById(id: string): ArchetypeBase {
   return GLOBAL_12_ARCHETYPES.find((a) => a.id === id) || GLOBAL_12_ARCHETYPES[0];
 }
+
+/** Fan bobblehead concept bases — see BobbleheadBaseRegistry (do not duplicate here). */
+export {
+  BOBBLEHEAD_BASES,
+  getBobbleheadBaseById,
+  listFanSelectableBases,
+  BOBBLEHEAD_PIPELINE_GAP,
+} from "./BobbleheadBaseRegistry";
+

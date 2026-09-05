@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import prisma from '@/lib/prisma';
 import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 import { recordMediaObservabilityEvent } from '@/lib/media/media-observability-store';
+import { persistUploadedMediaFile, persistVerifiedBlobPathname } from '@/lib/media/persistUploadedMedia';
+import { isDurablePlayableMediaUrl } from '@/lib/media/durablePlayableUrl';
+import { isSafeBlobPathname, pathnameOwnedByUser } from '@/lib/media/blobStorage';
 
 const ALLOWED_AUDIO = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac', 'audio/flac', 'audio/webm', 'audio/x-m4a'];
 const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/ogg'];
@@ -24,35 +25,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Log in to upload media.' }, { status: 401 });
   }
 
-  let formData: FormData;
-  try {
-    formData = await req.formData();
-  } catch {
-    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'invalid_form_data' });
-    return NextResponse.json({ error: 'Invalid form data.' }, { status: 400 });
+  const contentType = req.headers.get('content-type') ?? '';
+  let uploadedFile: File | null = null;
+  let blobPathname: string | null = null;
+  let jsonTitle = '';
+  let jsonIsVideo = false;
+
+  if (contentType.includes('application/json')) {
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'invalid_json' });
+      return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
+    }
+    const path = typeof body.blobPathname === 'string' ? body.blobPathname : '';
+    if (!isSafeBlobPathname(path)) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'invalid_blob_path' });
+      return NextResponse.json({ error: 'Invalid storage path.' }, { status: 400 });
+    }
+    blobPathname = path;
+    jsonTitle = typeof body.title === 'string' ? body.title : '';
+    jsonIsVideo = body.isVideo === true || body.type === 'video' || String(body.type ?? '').toLowerCase() === 'video';
+  } else {
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'invalid_form_data' });
+      return NextResponse.json({ error: 'Invalid form data.' }, { status: 400 });
+    }
+    const file = formData.get('file');
+    uploadedFile = file instanceof File && file.size > 0 ? file : null;
+    if (!uploadedFile) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'missing_file' });
+      return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
+    }
   }
 
-  const file = formData.get('file') as File | null;
-  if (!file) {
-    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'missing_file' });
-    return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
-  }
-
-  const allowed_types = [...ALLOWED_AUDIO, ...ALLOWED_VIDEO];
-  if (!allowed_types.includes(file.type)) {
-    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'unsupported_type', fileType: file.type });
-    return NextResponse.json(
-      { error: `Unsupported file type "${file.type}". Upload MP3, WAV, OGG, M4A, MP4, or WebM files.` },
-      { status: 415 },
-    );
-  }
-
-  if (file.size > MAX_BYTES) {
-    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'file_too_large', bytes: file.size });
-    return NextResponse.json(
-      { error: `File too large (${Math.round(file.size / 1024 / 1024)}MB). Maximum is 100MB.` },
-      { status: 413 },
-    );
+  if (uploadedFile) {
+    const allowed_types = [...ALLOWED_AUDIO, ...ALLOWED_VIDEO];
+    if (!allowed_types.includes(uploadedFile.type)) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'unsupported_type', fileType: uploadedFile.type });
+      return NextResponse.json(
+        { error: `Unsupported file type "${uploadedFile.type}". Upload MP3, WAV, OGG, M4A, MP4, or WebM files.` },
+        { status: 415 },
+      );
+    }
+    if (uploadedFile.size > MAX_BYTES) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'file_too_large', bytes: uploadedFile.size });
+      return NextResponse.json(
+        { error: `File too large (${Math.round(uploadedFile.size / 1024 / 1024)}MB). Maximum is 100MB.` },
+        { status: 413 },
+      );
+    }
   }
 
   const dbUser = await prisma.user.findUnique({
@@ -60,7 +86,6 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   }).catch(() => null);
 
-  // If auth fell back to session hex (no email), resolve via email cookie once more
   let uploaderId = dbUser?.id ?? null;
   if (!uploaderId && auth.user.email) {
     const byEmail = await prisma.user.findUnique({
@@ -78,18 +103,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const isAudio = ALLOWED_AUDIO.includes(file.type);
-  const isVideo = ALLOWED_VIDEO.includes(file.type);
-  const title = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  if (blobPathname && !pathnameOwnedByUser(blobPathname, uploaderId, auth.user.email)) {
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'blob_path_not_owned' });
+    return NextResponse.json({ error: 'Storage path is not owned by this account.' }, { status: 403 });
+  }
+
+  const isVideo = uploadedFile
+    ? ALLOWED_VIDEO.includes(uploadedFile.type)
+    : jsonIsVideo || Boolean(blobPathname?.match(/\.(mp4|webm|mov|avi)$/i));
+  const isAudio = !isVideo;
+  const title = jsonTitle.trim()
+    || (uploadedFile ? uploadedFile.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') : 'Untitled');
 
   async function persistToDB(url: string): Promise<{ id: string; type: 'songs' | 'videos' }> {
     if (isVideo) {
+      const existing = await prisma.video.findFirst({
+        where: { uploaderId: uploaderId!, videoUrl: url },
+        select: { id: true },
+      });
+      if (existing) return { id: existing.id, type: 'videos' };
       const row = await prisma.video.create({
         data: { uploaderId: uploaderId!, title, videoUrl: url, status: 'ACTIVE' },
         select: { id: true },
       });
       return { id: row.id, type: 'videos' };
     }
+    const existing = await prisma.song.findFirst({
+      where: { uploaderId: uploaderId!, audioUrl: url },
+      select: { id: true },
+    });
+    if (existing) return { id: existing.id, type: 'songs' };
     const row = await prisma.song.create({
       data: { uploaderId: uploaderId!, title, audioUrl: url, status: 'ACTIVE' },
       select: { id: true },
@@ -98,71 +141,40 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    let url: string;
-    let storage: 'blob' | 'local_disk';
-
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const { put } = await import('@vercel/blob');
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const pathname = `tmi-media/${uploaderId}/${Date.now()}-${safeName}`;
-      const blob = await put(pathname, file, { access: 'public' });
-      url = blob.url;
-      storage = 'blob';
-    } else {
-      // Soft-launch fallback when Vercel Blob is not configured.
-      //
-      // In LOCAL dev: write to /tmp (Vercel-compatible writable dir) and
-      // serve via the /api/upload/media/local/[fileName] route.
-      //
-      // In PRODUCTION (Vercel) without Blob: the project filesystem is
-      // read-only so we convert to a base64 data URL and store it directly
-      // in the DB's audioUrl/videoUrl column.  This keeps uploads working at
-      // soft-launch scale without requiring Blob setup first.  Large files
-      // (>10 MB) are rejected with a clear message — those must use Blob.
-      const bytes = Buffer.from(await file.arrayBuffer());
-      const isLocalDev = process.env.NODE_ENV !== 'production';
-
-      if (isLocalDev) {
-        const ext = file.name.split('.').pop()?.toLowerCase() ?? (isVideo ? 'mp4' : 'mp3');
-        const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload';
-        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}.${ext}`;
-        const uploadDir = '/tmp/tmi-uploads';
-        const absolutePath = path.join(uploadDir, fileName);
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(absolutePath, bytes);
-        url = `/api/upload/media/local/${encodeURIComponent(fileName)}`;
-      } else {
-        // Production without Blob: store as base64 data URL.
-        // Cap at 10 MB encoded to avoid oversized DB rows.
-        if (bytes.length > 10 * 1024 * 1024) {
-          return NextResponse.json(
-            { error: 'File storage is not fully configured yet. Files larger than 10 MB cannot be uploaded right now. Please contact support or try a smaller file.' },
-            { status: 503 },
-          );
-        }
-        url = `data:${file.type};base64,${bytes.toString('base64')}`;
-      }
-      storage = 'local_disk';
+    const stored = blobPathname
+      ? await persistVerifiedBlobPathname(blobPathname)
+      : await persistUploadedMediaFile({
+          file: uploadedFile!,
+          ownerId: uploaderId,
+          fallbackExt: isVideo ? 'mp4' : 'mp3',
+        });
+    if (!stored.ok) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'storage_unavailable' });
+      return NextResponse.json({ error: stored.error }, { status: stored.status });
+    }
+    if (!isDurablePlayableMediaUrl(stored.url)) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'unplayable_url' });
+      return NextResponse.json({ error: 'Storage returned an unplayable URL. Nothing was saved.' }, { status: 503 });
     }
 
-    const persisted = await persistToDB(url);
+    const persisted = await persistToDB(stored.url);
     recordMediaObservabilityEvent(isVideo ? 'video_upload_success' : 'song_upload_success', {
-      storage,
-      mimeType: file.type,
+      storage: stored.storage,
+      mimeType: uploadedFile?.type ?? 'blob',
       assetId: persisted.id,
       ownerUserId: uploaderId,
     });
 
     return NextResponse.json({
       ok: true,
-      url,
+      url: stored.url,
       id: persisted.id,
       type: persisted.type,
       title,
       isAudio,
       isVideo,
-      ...(storage === 'local_disk' ? { _local: true } : {}),
-    });
+      ...(stored.storage === 'local_disk' ? { _local: true } : {}),
+    }, { status: 201 });
   } catch (err) {
     console.error('[upload/media] persist failed', err);
     recordMediaObservabilityEvent('upload_failed', { mediaType: 'media', reason: 'persist_failed' });

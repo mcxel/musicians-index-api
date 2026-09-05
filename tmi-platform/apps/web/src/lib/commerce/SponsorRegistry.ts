@@ -62,7 +62,7 @@ export interface AdSlotDescriptor {
 }
 
 const PLATFORM_PROMOS: AdSlotDescriptor['platformPromo'][] = [
-  { headline: 'GO LIVE ON TMI', body: 'Reach thousands of fans in real time.', ctaLabel: 'START BROADCASTING', ctaHref: '/go-live', accentColor: '#00E5FF' },
+  { headline: 'GO LIVE ON TMI', body: 'Reach thousands of fans in real time.', ctaLabel: 'START BROADCASTING', ctaHref: '/hub/performer?golive=1', accentColor: '#00E5FF' },
   { headline: 'SELL YOUR BEATS', body: 'Producers earn 90% on every license sale.', ctaLabel: 'OPEN YOUR STORE', ctaHref: '/beats/sell', accentColor: '#FFD700' },
   { headline: 'JOIN A BATTLE', body: 'Weekly cyphers, monthly idol finals. Earn XP.', ctaLabel: 'SEE BATTLES', ctaHref: '/battles', accentColor: '#FF2DAA' },
   { headline: 'DIAMOND MEMBERSHIP', body: 'Ad-free. Priority queue. Exclusive rooms.', ctaLabel: 'UPGRADE NOW', ctaHref: '/pricing', accentColor: '#00E5FF' },

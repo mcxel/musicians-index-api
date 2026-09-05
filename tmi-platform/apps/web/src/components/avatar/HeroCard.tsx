@@ -98,7 +98,7 @@ export default function HeroCard({ heroId, xp = 0, compact = false, showXp = tru
         <Link href={`/rooms/${hero.homeVenue}?autoSeat=1`} style={{ flex: 1, padding: "9px 0", borderRadius: 8, background: `linear-gradient(90deg, ${hero.accentColor}, ${hero.accentColor}88)`, color: "#000", fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.08em" }}>
           ENTER VENUE →
         </Link>
-        <Link href="/avatar-center" style={{ padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)", fontWeight: 800, fontSize: 10, textDecoration: "none" }}>
+        <Link href="/avatar/studio" style={{ padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)", fontWeight: 800, fontSize: 10, textDecoration: "none" }}>
           CUSTOMIZE
         </Link>
       </div>

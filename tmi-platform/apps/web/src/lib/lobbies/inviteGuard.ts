@@ -86,14 +86,10 @@ export function checkInviteAllowed(
     actor: {
       userId: senderId,
       ageClass: actorAgeClass,
-      familyVerified: true,
-      guardianApproved: true,
     },
     target: {
       userId: recipientId,
       ageClass: targetAgeClass,
-      familyMember: true,
-      guardianLink: true,
     },
   });
 

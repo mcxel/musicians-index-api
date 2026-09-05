@@ -4,6 +4,11 @@
  * Permanent promotion block on Home 5.
  */
 
+import {
+  getMondayNightStageWindow,
+  getNextMondayShowtimeET,
+} from "@/lib/shows/MondayShowtime";
+
 export interface FeaturedContestant {
   id: string;
   name: string;
@@ -77,13 +82,7 @@ export class MondayNightStageEngine {
    * Gets the next Monday date (or current Monday if today is Monday).
    */
   private getNextMonday(): Date {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
-    nextMonday.setHours(20, 0, 0, 0); // 8 PM show time
-    return nextMonday;
+    return getNextMondayShowtimeET();
   }
 
   /**

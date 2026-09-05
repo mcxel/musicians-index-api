@@ -7,10 +7,10 @@ import FooterHUD from '@/components/hud/FooterHUD';
 import SectionTitle from '@/components/ui/SectionTitle';
 
 const AVATAR_MODULES = [
-  { href: '/avatar/create', emoji: '🧬', label: 'CREATE', sub: '3D Avatar Runtime v0 — evolving', accent: '#FF2DAA' },
+  { href: '/avatar/studio', emoji: '🧬', label: 'CREATE', sub: '3D Avatar Runtime v0 — evolving', accent: '#FF2DAA' },
   { href: '/avatar/scan', emoji: '📷', label: 'FACE SCAN', sub: 'Scan your face for a likeness', accent: '#00FFFF' },
-  { href: '/avatar/build', emoji: '🛠️', label: 'FORGE', sub: 'Build from scratch', accent: '#AA2DFF' },
-  { href: '/avatar/customize', emoji: '✏️', label: 'CUSTOMIZE', sub: 'Fine-tune your look', accent: '#00FFFF' },
+  { href: '/avatar/studio', emoji: '🛠️', label: 'FORGE', sub: 'Build from scratch', accent: '#AA2DFF' },
+  { href: '/avatar/studio', emoji: '✏️', label: 'CUSTOMIZE', sub: 'Fine-tune your look', accent: '#00FFFF' },
   { href: '/avatar/inventory', emoji: '🎒', label: 'INVENTORY', sub: 'Your owned items', accent: '#AA2DFF' },
   { href: '/avatar/shop', emoji: '🛍️', label: 'SHOP', sub: 'Buy props & clothing', accent: '#FFD700' },
   { href: '/avatar/nft', emoji: '🖼️', label: 'NFT STORE', sub: 'Mint & collect', accent: '#FF2DAA' },
@@ -29,7 +29,7 @@ export default function AvatarHubPage() {
               <h1 style={{ fontSize: 52, fontWeight: 900, color: '#fff', margin: '0 0 12px', lineHeight: 1.1 }}>AVATAR CENTER</h1>
               <p style={{ color: '#aaa', fontSize: 16, maxWidth: 520 }}>Create your fan avatar (capsule + socket props), outfit it with cosmetics, and show up in lobbies. Not a finished photoreal pipeline.</p>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
-                <Link href="/avatar/create" style={{ background: '#AA2DFF', color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: 2, padding: '12px 28px', borderRadius: 8, textDecoration: 'none' }}>CREATE AVATAR →</Link>
+                <Link href="/avatar/studio" style={{ background: '#AA2DFF', color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: 2, padding: '12px 28px', borderRadius: 8, textDecoration: 'none' }}>CREATE AVATAR →</Link>
                 <Link href="/avatar/shop" style={{ background: 'transparent', color: '#AA2DFF', fontWeight: 800, fontSize: 13, letterSpacing: 2, padding: '12px 28px', borderRadius: 8, border: '1px solid #AA2DFF', textDecoration: 'none' }}>SHOP</Link>
               </div>
             </motion.div>

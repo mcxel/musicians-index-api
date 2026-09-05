@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { listSeasonPassOffers } from "@/lib/season/SeasonPassCatalog";
 
 export const metadata: Metadata = {
   title: "Seasons | TMI",
   description: "TMI Season Pass — earn XP, unlock rewards, compete for championship prizes every season.",
 };
 
+/** Paid tiers from catalog ASC; Free is informational only (not a checkout SKU). */
+const PAID_TIERS = listSeasonPassOffers();
 const TIERS = [
-  { key: "FREE",           label: "Free",           price: "Free",    color: "rgba(255,255,255,0.5)", rewards: ["Basic XP tracking", "Community leaderboard access"] },
-  { key: "FAN_PASS",       label: "Fan Pass",        price: "$9.99",   color: "#00FFFF",              rewards: ["Crown Wave Emote at 500 XP", "$10 store credit at 1,500 XP", "Exclusive fan badge"] },
-  { key: "PERFORMER_PASS", label: "Performer Pass",  price: "$14.99",  color: "#FF2DAA",              rewards: ["Everything in Fan", "Season NFT at 2,000 XP", "Performer showcase slot"] },
-  { key: "VIP_PASS",       label: "VIP Pass",        price: "$29.99",  color: "#AA2DFF",              rewards: ["Everything in Performer", "Gold avatar skin at 1,000 XP", "Backstage access at 3,000 XP"] },
-  { key: "LEGEND_PASS",    label: "Legend Pass",     price: "$49.99",  color: "#FFD700",              rewards: ["All rewards unlocked", "Legend badge at 5,000 XP", "$25 credit at 7,500 XP", "Top 10 eligibility"] },
+  {
+    key: "FREE",
+    label: "Free",
+    price: "Free",
+    color: "rgba(255,255,255,0.5)",
+    rewards: ["Basic XP tracking", "Community leaderboard access"],
+  },
+  ...PAID_TIERS.map((p) => ({
+    key: p.id.toUpperCase(),
+    label: p.shortLabel,
+    price: p.priceDisplay,
+    color: p.color,
+    rewards: p.perks.slice(0, 3),
+  })),
 ];
 
 const SEASONS = [
@@ -56,7 +68,7 @@ export default function SeasonsPage() {
           </div>
         )}
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/subscriptions" style={{ padding: "13px 32px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FFD700,#FF9500)", borderRadius: 10, textDecoration: "none" }}>
+          <Link href="/season-pass" style={{ padding: "13px 32px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FFD700,#FF9500)", borderRadius: 10, textDecoration: "none" }}>
             GET SEASON PASS →
           </Link>
           <Link href="/leaderboard" style={{ padding: "13px 32px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#00FFFF", border: "1px solid rgba(0,255,255,0.4)", borderRadius: 10, textDecoration: "none" }}>
@@ -111,8 +123,8 @@ export default function SeasonsPage() {
           ))}
         </div>
         <div style={{ marginTop: 24, textAlign: "center" }}>
-          <Link href="/subscriptions" style={{ display: "inline-block", padding: "11px 28px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "#FFD700", borderRadius: 8, textDecoration: "none" }}>
-            UPGRADE YOUR PASS →
+          <Link href="/season-pass" style={{ display: "inline-block", padding: "11px 28px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "#FFD700", borderRadius: 8, textDecoration: "none" }}>
+            GET YOUR PASS →
           </Link>
         </div>
       </section>

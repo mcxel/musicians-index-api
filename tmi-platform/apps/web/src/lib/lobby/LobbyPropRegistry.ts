@@ -27,6 +27,17 @@ export const LOBBY_HOLDABLE_PROPS: LobbyPropDef[] = [
   { id: "glow_stick",   label: "Glow Stick",   icon: "🪄", effect: "hold", durationMs: 6000, accent: "#00FF88", minTier: "pro" },
   { id: "foam_finger",  label: "Foam Finger",  icon: "🧤", effect: "hold", durationMs: 6000, accent: "#00CCFF", minTier: "pro" },
   { id: "rose",         label: "Rose",         icon: "🌹", effect: "hold", durationMs: 6000, accent: "#FF2DAA", minTier: "pro" },
+  { id: "heart_prop",   label: "Heart Prop",   icon: "❤️", effect: "hold", durationMs: 5000, accent: "#FF2DAA", minTier: "free" },
+  { id: "money_cannon", label: "Money Cannon", icon: "💸", effect: "hold", durationMs: 4500, accent: "#00FF88", minTier: "gold" },
+  { id: "sky_cannon",   label: "Sky Cannon",   icon: "🎆", effect: "hold", durationMs: 4500, accent: "#FFD700", minTier: "gold" },
+  // Fan social band instruments (camp-band style — same hold pipeline, not InstrumentRuntimeV2)
+  { id: "inst_acoustic_guitar", label: "Acoustic Guitar", icon: "🎸", effect: "hold", durationMs: 12000, accent: "#C68642", minTier: "pro" },
+  { id: "inst_electric_guitar", label: "Electric Guitar", icon: "🎸", effect: "hold", durationMs: 12000, accent: "#00FFFF", minTier: "gold" },
+  { id: "inst_bass",            label: "Bass",            icon: "🎸", effect: "hold", durationMs: 12000, accent: "#AA2DFF", minTier: "gold" },
+  { id: "inst_drums",           label: "Hand Drums",      icon: "🥁", effect: "hold", durationMs: 12000, accent: "#FF6600", minTier: "pro" },
+  { id: "inst_keys",            label: "Keys",            icon: "🎹", effect: "hold", durationMs: 12000, accent: "#FF2DAA", minTier: "gold" },
+  { id: "inst_sax",             label: "Sax",             icon: "🎷", effect: "hold", durationMs: 12000, accent: "#FFD700", minTier: "gold" },
+  { id: "inst_ukulele",         label: "Ukulele",         icon: "🪕", effect: "hold", durationMs: 12000, accent: "#F0C895", minTier: "pro" },
 ];
 
 /** One-shot burst reactions — fire, animate, and self-clear. */
@@ -37,6 +48,8 @@ export const LOBBY_REACTION_PROPS: LobbyPropDef[] = [
   { id: "crown",     label: "Crown",     icon: "👑", effect: "burst", durationMs: 1400, accent: "#FFD700", minTier: "gold" },
   { id: "jester_hat", label: "Jester Hat", icon: "🃏", effect: "burst", durationMs: 1600, accent: "#FF2DAA", minTier: "pro" },
   { id: "sunglasses", label: "Sunglasses", icon: "🕶️", effect: "burst", durationMs: 1400, accent: "#00FFFF", minTier: "pro" },
+  { id: "money_rain", label: "Money Rain", icon: "💵", effect: "burst", durationMs: 1800, accent: "#00FF88", minTier: "gold" },
+  { id: "sky_burst",  label: "Sky Burst",  icon: "🎇", effect: "burst", durationMs: 1800, accent: "#FFD700", minTier: "gold" },
 ];
 
 export const LOBBY_INVENTORY_PROPS: LobbyPropDef[] = [...LOBBY_HOLDABLE_PROPS, ...LOBBY_REACTION_PROPS];

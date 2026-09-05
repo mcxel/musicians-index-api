@@ -2,123 +2,124 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import {
+  listSeasonPassOffers,
+  seasonPassCheckoutHref,
+  type SeasonPassOffer,
+} from "@/lib/season/SeasonPassCatalog";
 
-interface PassItem {
+interface EmotePack {
   id: string;
   label: string;
   icon: string;
-  price: number;
+  priceCents: number;
   description: string;
   perks: string[];
   color: string;
-  popular?: boolean;
 }
 
-const SEASON_PASSES: PassItem[] = [
-  {
-    id: "silver",
-    label: "Silver Pass",
-    icon: "🥈",
-    price: 9.99,
-    description: "Core access to all live rooms + community features.",
-    perks: ["All live rooms", "Chat + reactions", "250 XP/month", "Monthly badge"],
-    color: "#888",
-  },
-  {
-    id: "gold",
-    label: "Gold Pass",
-    icon: "🥇",
-    price: 19.99,
-    description: "Priority seating, bonus XP, early access to events.",
-    perks: ["Priority seating", "2x XP multiplier", "Backstage access", "Gold badge + emotes", "Early event access"],
-    color: "#FFD700",
-    popular: true,
-  },
-  {
-    id: "diamond",
-    label: "Diamond Pass",
-    icon: "💎",
-    price: 49.99,
-    description: "VIP everything — front row, drops, crown glow.",
-    perks: ["VIP front-row seat", "4x XP multiplier", "Crown glow on avatar", "NFT season drop", "Direct artist access", "Diamond badge + exclusive emotes"],
-    color: "#00FFFF",
-  },
-];
+/** Emote packs stay separate; season passes come from authoritative catalog ASC. */
+const EMOTE_PACKS: EmotePack[] = [
+  { id: "ep1", label: "Fire Pack",   icon: "🔥", priceCents: 299, description: "6 fire-themed animated emotes", perks: ["🔥💥🌋🎆✨⚡"], color: "#FF9500" },
+  { id: "ep2", label: "Crown Pack",  icon: "👑", priceCents: 499, description: "8 crown & royalty emotes",       perks: ["👑💰🏆🎖🥇💎🌟⭐"], color: "#FFD700" },
+  { id: "ep3", label: "Cypher Pack", icon: "🎤", priceCents: 399, description: "7 battle rap emotes",            perks: ["🎤⚔️🥊🔊📢🎵🎶"], color: "#FF2DAA" },
+].sort((a, b) => a.priceCents - b.priceCents);
 
-const EMOTE_PACKS: PassItem[] = [
-  { id: "ep1", label: "Fire Pack",    icon: "🔥", price: 2.99,  description: "6 fire-themed animated emotes", perks: ["🔥💥🌋🎆✨⚡"], color: "#FF9500" },
-  { id: "ep2", label: "Crown Pack",   icon: "👑", price: 4.99,  description: "8 crown & royalty emotes",       perks: ["👑💰🏆🎖🥇💎🌟⭐"], color: "#FFD700" },
-  { id: "ep3", label: "Cypher Pack",  icon: "🎤", price: 3.99,  description: "7 battle rap emotes",            perks: ["🎤⚔️🥊🔊📢🎵🎶"], color: "#FF2DAA" },
-];
+function formatUsd(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
-function PassCard({ item, onBuy }: { item: PassItem; onBuy: (id: string) => void }) {
+function PassCard({ offer }: { offer: SeasonPassOffer }) {
   return (
     <motion.div
       whileHover={{ y: -3 }}
       style={{
         borderRadius: 14,
-        border: `1px solid ${item.color}30`,
-        background: `linear-gradient(160deg, ${item.color}08 0%, rgba(4,4,20,0.96) 100%)`,
+        border: `1px solid ${offer.color}30`,
+        background: `linear-gradient(160deg, ${offer.color}08 0%, rgba(4,4,20,0.96) 100%)`,
         padding: "20px",
         position: "relative",
         overflow: "hidden",
+        flex: "0 0 min(220px, 80vw)",
+        scrollSnapAlign: "start",
+        opacity: offer.available ? 1 : 0.55,
       }}
     >
-      {item.popular && (
-        <div style={{ position: "absolute", top: 0, right: 0, background: item.color, color: "#000", fontSize: 8, fontWeight: 900, padding: "3px 10px", borderRadius: "0 0 0 8px", letterSpacing: "0.1em" }}>
+      {offer.entry && (
+        <div style={{ position: "absolute", top: 0, right: 0, background: offer.color, color: "#000", fontSize: 8, fontWeight: 900, padding: "3px 10px", borderRadius: "0 0 0 8px", letterSpacing: "0.1em" }}>
+          START HERE
+        </div>
+      )}
+      {offer.popular && !offer.entry && (
+        <div style={{ position: "absolute", top: 0, right: 0, background: offer.color, color: "#000", fontSize: 8, fontWeight: 900, padding: "3px 10px", borderRadius: "0 0 0 8px", letterSpacing: "0.1em" }}>
           POPULAR
         </div>
       )}
-      <div style={{ fontSize: 32, marginBottom: 10 }}>{item.icon}</div>
-      <div style={{ fontSize: 15, fontWeight: 900, color: item.color, marginBottom: 4 }}>{item.label}</div>
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.4 }}>{item.description}</div>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>{offer.icon}</div>
+      <div style={{ fontSize: 15, fontWeight: 900, color: offer.color, marginBottom: 4 }}>{offer.shortLabel}</div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.4 }}>{offer.description}</div>
       <ul style={{ listStyle: "none", padding: 0, margin: "0 0 16px", display: "flex", flexDirection: "column", gap: 5 }}>
-        {item.perks.map(p => (
+        {offer.perks.map((p) => (
           <li key={p} style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", display: "flex", gap: 7, alignItems: "center" }}>
-            <span style={{ color: item.color, fontSize: 9 }}>✓</span>{p}
+            <span style={{ color: offer.color, fontSize: 9 }}>✓</span>{p}
           </li>
         ))}
       </ul>
-      <motion.button
-        whileTap={{ scale: 0.96 }}
-        onClick={() => onBuy(item.id)}
-        style={{
-          width: "100%", padding: "10px", borderRadius: 8, border: "none", cursor: "pointer",
-          background: `linear-gradient(135deg, ${item.color}, ${item.color}99)`,
-          color: "#050510", fontSize: 10, fontWeight: 900, letterSpacing: "0.14em",
-        }}
-      >
-        GET FOR ${item.price}/mo
-      </motion.button>
+      {offer.available ? (
+        <Link
+          href={seasonPassCheckoutHref(offer)}
+          style={{
+            display: "block",
+            width: "100%",
+            padding: "10px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer",
+            textAlign: "center",
+            textDecoration: "none",
+            background: `linear-gradient(135deg, ${offer.color}, ${offer.color}99)`,
+            color: "#050510",
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.14em",
+            boxSizing: "border-box",
+          }}
+        >
+          GET FOR {offer.priceDisplay}
+        </Link>
+      ) : (
+        <div style={{ padding: "10px", textAlign: "center", fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8 }}>
+          UNAVAILABLE
+        </div>
+      )}
     </motion.div>
   );
 }
 
 export default function SeasonPassStore() {
   const [tab, setTab] = useState<"passes" | "emotes">("passes");
-  const [purchased, setPurchased] = useState<Set<string>>(new Set());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const seasonPasses = listSeasonPassOffers();
 
-  function handleBuy(id: string) {
-    setPurchased(prev => new Set([...prev, id]));
-    const item = [...SEASON_PASSES, ...EMOTE_PACKS].find(p => p.id === id);
-    setToastMsg(`${item?.label ?? "Item"} activated!`);
+  function handleEmoteBuy(id: string) {
+    const item = EMOTE_PACKS.find((p) => p.id === id);
+    setToastMsg(`${item?.label ?? "Item"} — checkout coming soon`);
     setTimeout(() => setToastMsg(null), 2500);
   }
 
-  const items = tab === "passes" ? SEASON_PASSES : EMOTE_PACKS;
-
   return (
     <div style={{ padding: "24px 0" }}>
-      {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: "0.22em", fontWeight: 800, color: "#AA2DFF", marginBottom: 6 }}>SEASON STORE</div>
         <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, letterSpacing: "-0.01em" }}>Passes & Emote Packs</h2>
+        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
+          Season passes start at {seasonPasses[0]?.priceDisplay ?? "$1.99"} — separate from monthly memberships.
+        </p>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-        {(["passes", "emotes"] as const).map(t => (
+        {(["passes", "emotes"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -134,21 +135,53 @@ export default function SeasonPassStore() {
         ))}
       </div>
 
-      {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-        {items.map(item => (
-          purchased.has(item.id) ? (
-            <div key={item.id} style={{ borderRadius: 14, border: "1px solid rgba(0,255,136,0.2)", background: "rgba(0,255,136,0.04)", padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <span style={{ fontSize: 28 }}>✅</span>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00FF88" }}>{item.label} Active</div>
-            </div>
-          ) : (
-            <PassCard key={item.id} item={item} onBuy={handleBuy} />
-          )
-        ))}
-      </div>
+      {tab === "passes" ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            overflowX: "auto",
+            scrollSnapType: "x mandatory",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: 4,
+          }}
+        >
+          {seasonPasses.map((offer) => (
+            <PassCard key={offer.id} offer={offer} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
+          {EMOTE_PACKS.map((item) => (
+            <motion.div
+              key={item.id}
+              whileHover={{ y: -3 }}
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${item.color}30`,
+                background: `linear-gradient(160deg, ${item.color}08 0%, rgba(4,4,20,0.96) 100%)`,
+                padding: "20px",
+              }}
+            >
+              <div style={{ fontSize: 32, marginBottom: 10 }}>{item.icon}</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: item.color, marginBottom: 4 }}>{item.label}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 14 }}>{item.description}</div>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => handleEmoteBuy(item.id)}
+                style={{
+                  width: "100%", padding: "10px", borderRadius: 8, border: "none", cursor: "pointer",
+                  background: `linear-gradient(135deg, ${item.color}, ${item.color}99)`,
+                  color: "#050510", fontSize: 10, fontWeight: 900, letterSpacing: "0.14em",
+                }}
+              >
+                GET FOR {formatUsd(item.priceCents)}
+              </motion.button>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-      {/* Toast */}
       <AnimatePresence>
         {toastMsg && (
           <motion.div

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 import { HubBackNav } from '@/components/nav/HubBackNav';
+import RoleHubAccountMenu from '@/components/navigation/RoleHubAccountMenu';
 import ArtistStats from '@/components/artist/ArtistStats';
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
 import ArtistCommandRail from '@/components/artist/ArtistCommandRail';
@@ -38,7 +39,6 @@ export default function ArtistHubPage() {
     { href: '/beat-vault',                       label: 'Beat Vault' },
     { href: '/nft',                              label: 'NFT Studio' },
     { href: '/settings',                         label: 'Settings' },
-    { href: '/api/auth/logout',                   label: 'Logout' },
   ];
 
   function advanceShow(state: ArtistShowState) {
@@ -58,7 +58,8 @@ export default function ArtistHubPage() {
             {link.label}
           </Link>
         ))}
-        <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+        <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <RoleHubAccountMenu accentColor="#00FFFF" />
           <PersonaSwitcher currentRole="artist" compact />
         </div>
       </div>

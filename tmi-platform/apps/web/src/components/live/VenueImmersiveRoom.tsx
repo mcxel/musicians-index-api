@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import StageCurtain from '@/components/live/StageCurtain';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 import AudienceScene from '@/components/live/AudienceScene';
 import {
   startCountdown,
@@ -428,76 +429,7 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
 
         {/* Performer curtain controls */}
         {mode === 'performer' && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              marginBottom: 12,
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              padding: '10px 12px',
-              borderRadius: 10,
-              border: '1px solid rgba(255,215,0,0.2)',
-              background: 'rgba(255,215,0,0.04)',
-            }}
-          >
-            <div style={{ width: '100%', fontSize: 8, color: 'rgba(255,215,0,0.6)', fontWeight: 800, letterSpacing: '0.14em', textAlign: 'center', marginBottom: 6 }}>
-              STAGE CONTROLS
-            </div>
-            <button
-              type="button"
-              onClick={() => startCountdown()}
-              style={{
-                padding: '8px 18px',
-                borderRadius: 8,
-                fontSize: 11,
-                fontWeight: 900,
-                background: 'rgba(255,215,0,0.12)',
-                border: '1px solid rgba(255,215,0,0.4)',
-                color: '#FFD700',
-                cursor: 'pointer',
-                letterSpacing: '0.08em',
-              }}
-            >
-              ▶ PREPARE STAGE
-            </button>
-            <button
-              type="button"
-              onClick={() => openCurtain()}
-              disabled={curtainState !== 'COUNTDOWN'}
-              style={{
-                padding: '8px 18px',
-                borderRadius: 8,
-                fontSize: 11,
-                fontWeight: 900,
-                background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)',
-                cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed',
-                letterSpacing: '0.08em',
-              }}
-            >
-              🎭 OPEN CURTAIN
-            </button>
-            <button
-              type="button"
-              onClick={() => closeCurtainAndEnd()}
-              disabled={!isOpen}
-              style={{
-                padding: '8px 18px',
-                borderRadius: 8,
-                fontSize: 11,
-                fontWeight: 900,
-                background: isOpen ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${isOpen ? 'rgba(255,68,68,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                color: isOpen ? '#FF7070' : 'rgba(255,255,255,0.25)',
-                cursor: isOpen ? 'pointer' : 'not-allowed',
-                letterSpacing: '0.08em',
-              }}
-            >
-              ■ CLOSE CURTAIN
-            </button>
-          </div>
+          <VenueToolsShellHint roomId={roomId} compact />
         )}
 
         {/* Chat */}

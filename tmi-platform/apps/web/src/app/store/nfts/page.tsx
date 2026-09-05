@@ -1,5 +1,5 @@
 import StoreCategoryClient from "@/components/store/StoreCategoryClient";
 
 export default function StoreNftsPage() {
-  return <StoreCategoryClient category="nfts" title="Store NFTs" />;
+  return <StoreCategoryClient category="nft" title="Store NFTs" />;
 }

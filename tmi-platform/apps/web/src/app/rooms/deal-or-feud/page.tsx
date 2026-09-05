@@ -1,9 +1,7 @@
-import LobbyTheaterShell from "@/components/lobbies/LobbyTheaterShell";
+import { redirect } from "next/navigation";
+import { millHrefForExperience } from "@/lib/live/ExperienceRoomRegistry";
 
+/** Alias → canonical mill. HUD modules mount on /live/rooms/[id] + UVR. */
 export default function DealOrFeudRoomPage() {
-  return (
-    <main data-testid="room-deal-or-feud">
-      <LobbyTheaterShell slug="deal-or-feud" mode="room" />
-    </main>
-  );
+  redirect(millHrefForExperience("DEALERS_CHOICE", { from: "rooms-deal-or-feud" }));
 }

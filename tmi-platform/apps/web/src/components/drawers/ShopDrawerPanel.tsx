@@ -274,6 +274,7 @@ export default function ShopDrawerPanel({
               ) : null}
               <StoreCanister
                 entityId={performerId}
+                artistSlug={activePerformer?.slug ?? performerId}
                 entityName={name}
                 storeType="performer"
                 accentColor={accentColor}

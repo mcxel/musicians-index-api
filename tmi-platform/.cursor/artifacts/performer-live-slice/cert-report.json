@@ -1,0 +1,172 @@
+{
+  "gate": "PERFORMER_LIVE_PRESENTATION_SLICE",
+  "ok": false,
+  "base": "http://127.0.0.1:3000",
+  "testedAt": "2026-09-02T18:49:31.856Z",
+  "checks": [
+    {
+      "id": "auth-login",
+      "status": "PASS",
+      "detail": "status=200 role=performer"
+    },
+    {
+      "id": "hub_hydration",
+      "status": "PASS",
+      "detail": "hydrated=true chunks=0"
+    },
+    {
+      "id": "page_session",
+      "status": "PASS",
+      "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\"}"
+    },
+    {
+      "id": "media_player_host",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "preflight_not_live",
+      "status": "PASS",
+      "detail": "{\"canaryActive\":false,\"state\":null}"
+    },
+    {
+      "id": "publication_post",
+      "status": "FAIL",
+      "detail": "{\"posts\":[],\"uiError\":\"Network error publishing live session: signal timed out\"}"
+    },
+    {
+      "id": "fabric_canary_observatory",
+      "status": "FAIL",
+      "detail": "state=READY sources=0 history=PREFLIGHT→READY audio=null"
+    },
+    {
+      "id": "production_presentation",
+      "status": "FAIL",
+      "detail": "{\"program\":null,\"presentationDom\":null}"
+    },
+    {
+      "id": "slot_swap_continuity",
+      "status": "SOFT_PASS",
+      "detail": "{\"beforeSession\":\"sess-room-hub-1788375303697-1788375303699-ri6loo\",\"afterSwap\":{\"programSession\":null,\"canarySession\":\"sess-room-hub-1788375303697-1788375303699-ri6loo\",\"canaryState\":\"READY\"}}"
+    },
+    {
+      "id": "discovery_lobby_wall",
+      "status": "FAIL",
+      "detail": "TimeoutError: apiRequestContext.get: Timeout 120000ms exceeded.\nCall log:\n  - → GET http://127.0.0.1:3000/api/live/lobby-wall\n    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - cookie: tmi_tier=DIAMOND; tmi_roles=%5B%22PERFORMER%22%5D; tmi_session_id=b4c38b3d716d3c55c965e453c515459f; tmi_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_user_email=suedejs2000%40gmail.com; phase11_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_role=PERFORMER; tmi_onboarding_state=no_role_selected\n"
+    },
+    {
+      "id": "registry_live",
+      "status": "FAIL",
+      "detail": "TimeoutError: apiRequestContext.get: Timeout 60000ms exceeded.\nCall log:\n  - → GET http://127.0.0.1:3000/api/live/go\n    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - cookie: tmi_tier=DIAMOND; tmi_roles=%5B%22PERFORMER%22%5D; tmi_session_id=b4c38b3d716d3c55c965e453c515459f; tmi_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_user_email=suedejs2000%40gmail.com; phase11_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_role=PERFORMER; tmi_onboarding_state=no_role_selected\n"
+    },
+    {
+      "id": "teardown",
+      "status": "PASS",
+      "detail": "{\"state\":\"READY\",\"active\":false,\"teardownComplete\":true}"
+    }
+  ],
+  "liveGoPosts": [],
+  "canary": {
+    "canaryActive": false,
+    "experienceType": "REGULAR_GO_LIVE",
+    "sessionId": "sess-room-hub-1788375303697-1788375303699-ri6loo",
+    "roomId": "room-hub-1788375303697",
+    "state": "READY",
+    "stateHistory": [
+      "PREFLIGHT",
+      "READY"
+    ],
+    "generation": 1,
+    "revision": 2,
+    "mediaClockMs": 128469,
+    "sources": [],
+    "programPrimary": null,
+    "previewPrimary": null,
+    "layout": "FLAT",
+    "audioAuthoritySourceId": null,
+    "programAudibleSourceIds": [],
+    "audienceHumanCount": 0,
+    "recoveryIncidents": [],
+    "transport": {
+      "reconnectCount": 0,
+      "lastError": null
+    },
+    "preflightDefaults": {
+      "cameraPreviewActive": false,
+      "micPreviewActive": false,
+      "isLivePublished": false
+    },
+    "teardownComplete": true,
+    "errors": []
+  },
+  "program": null,
+  "lobbyWall": null,
+  "summary": {
+    "overall": "FAIL",
+    "failCount": 5,
+    "physicalGoLiveClick": "FAIL",
+    "fabricCanary": "FAIL",
+    "checks": [
+      {
+        "id": "auth-login",
+        "status": "PASS",
+        "detail": "status=200 role=performer"
+      },
+      {
+        "id": "hub_hydration",
+        "status": "PASS",
+        "detail": "hydrated=true chunks=0"
+      },
+      {
+        "id": "page_session",
+        "status": "PASS",
+        "detail": "{\"authenticated\":true,\"role\":\"PERFORMER\"}"
+      },
+      {
+        "id": "media_player_host",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "id": "preflight_not_live",
+        "status": "PASS",
+        "detail": "{\"canaryActive\":false,\"state\":null}"
+      },
+      {
+        "id": "publication_post",
+        "status": "FAIL",
+        "detail": "{\"posts\":[],\"uiError\":\"Network error publishing live session: signal timed out\"}"
+      },
+      {
+        "id": "fabric_canary_observatory",
+        "status": "FAIL",
+        "detail": "state=READY sources=0 history=PREFLIGHT→READY audio=null"
+      },
+      {
+        "id": "production_presentation",
+        "status": "FAIL",
+        "detail": "{\"program\":null,\"presentationDom\":null}"
+      },
+      {
+        "id": "slot_swap_continuity",
+        "status": "SOFT_PASS",
+        "detail": "{\"beforeSession\":\"sess-room-hub-1788375303697-1788375303699-ri6loo\",\"afterSwap\":{\"programSession\":null,\"canarySession\":\"sess-room-hub-1788375303697-1788375303699-ri6loo\",\"canaryState\":\"READY\"}}"
+      },
+      {
+        "id": "discovery_lobby_wall",
+        "status": "FAIL",
+        "detail": "TimeoutError: apiRequestContext.get: Timeout 120000ms exceeded.\nCall log:\n  - → GET http://127.0.0.1:3000/api/live/lobby-wall\n    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - cookie: tmi_tier=DIAMOND; tmi_roles=%5B%22PERFORMER%22%5D; tmi_session_id=b4c38b3d716d3c55c965e453c515459f; tmi_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_user_email=suedejs2000%40gmail.com; phase11_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_role=PERFORMER; tmi_onboarding_state=no_role_selected\n"
+      },
+      {
+        "id": "registry_live",
+        "status": "FAIL",
+        "detail": "TimeoutError: apiRequestContext.get: Timeout 60000ms exceeded.\nCall log:\n  - → GET http://127.0.0.1:3000/api/live/go\n    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - cookie: tmi_tier=DIAMOND; tmi_roles=%5B%22PERFORMER%22%5D; tmi_session_id=b4c38b3d716d3c55c965e453c515459f; tmi_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_user_email=suedejs2000%40gmail.com; phase11_session=4ee7786c02a967a61df8c0702cf0300dd4a0a310c0d78a5d3651cc828683c71b; tmi_role=PERFORMER; tmi_onboarding_state=no_role_selected\n"
+      },
+      {
+        "id": "teardown",
+        "status": "PASS",
+        "detail": "{\"state\":\"READY\",\"active\":false,\"teardownComplete\":true}"
+      }
+    ]
+  }
+}

@@ -115,6 +115,7 @@ export default function VenueHealthPage() {
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <Link href="/admin/global-pulse" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← GLOBAL PULSE</Link>
+            <Link href="/venue/preview?cert=1" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", color: "#FFD700", textDecoration: "none", marginLeft: 16 }}>VENUE CERT / PREVIEW →</Link>
           </div>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.35em", color: "#00FF88", marginBottom: 8 }}>ADMIN — RUNTIME GOVERNANCE</div>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>

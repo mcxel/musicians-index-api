@@ -1,31 +1,57 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import type { MonitorShareSlot } from "@/lib/monitors/monitorScreenShareTypes";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { MonitorShareSlot, ScreenShareErrorCode } from "@/lib/monitors/monitorScreenShareTypes";
 
+/**
+ * Renders a getDisplayMedia stream. Audio plays through THIS video element only
+ * when `audioOwned` is true — never spawn a second <audio> for the same track.
+ */
 export function MonitorScreenShareVideo({
   stream,
   onStop,
   label,
+  audioOwned = false,
+  transitionKey,
 }: {
   stream: MediaStream;
   onStop: () => void;
   label: string;
+  /** When true, unmute this element as the single screen-share audio owner. */
+  audioOwned?: boolean;
+  /** Stable identity for crossfade when cycling Screen1 → Screen2. */
+  transitionKey?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const prefersReduced = useReducedMotion();
+
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = stream;
-  }, [stream]);
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+    }
+    el.muted = !audioOwned;
+    void el.play().catch(() => undefined);
+  }, [stream, audioOwned]);
 
   return (
-    <div style={{ position: "absolute", inset: 0, background: "#000", display: "flex", flexDirection: "column" }}>
+    <motion.div
+      key={transitionKey ?? "screen-share"}
+      initial={prefersReduced ? false : { opacity: 0, x: 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={prefersReduced ? undefined : { opacity: 0, x: -12 }}
+      transition={prefersReduced ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      style={{ position: "absolute", inset: 0, background: "#000", display: "flex", flexDirection: "column" }}
+      data-screen-share-surface
+    >
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted
+        muted={!audioOwned}
         style={{ flex: 1, minHeight: 0, width: "100%", objectFit: "contain", background: "#000" }}
       />
       <div
@@ -51,7 +77,7 @@ export function MonitorScreenShareVideo({
               background: "#00FF88",
               boxShadow: "0 0 8px #00FF88",
               display: "inline-block",
-              animation: "scrSharePulse 1.2s ease-in-out infinite",
+              animation: prefersReduced ? undefined : "scrSharePulse 1.2s ease-in-out infinite",
             }}
           />
           <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#00FF88" }}>
@@ -73,12 +99,84 @@ export function MonitorScreenShareVideo({
             cursor: "pointer",
           }}
         >
-          ✕ STOP
+          ✕ STOP SHARE
         </button>
       </div>
       <style>{`
         @keyframes scrSharePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
       `}</style>
+    </motion.div>
+  );
+}
+
+export function ScreenShareErrorBanner({
+  code,
+  onDismiss,
+  onRetry,
+}: {
+  code: ScreenShareErrorCode;
+  onDismiss?: () => void;
+  onRetry?: () => void;
+}) {
+  if (!code) return null;
+  const copy: Record<Exclude<ScreenShareErrorCode, null>, string> = {
+    cancelled: "Screen share cancelled.",
+    denied: "Screen share permission denied.",
+    ended: "Screen share ended.",
+    unsupported: "Screen share is not supported in this browser.",
+    audio_unavailable: "Screen video active — tab audio unavailable.",
+    track_disconnected: "Screen share track disconnected.",
+  };
+  return (
+    <div
+      role="status"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "4px 8px",
+        borderRadius: 6,
+        border: "1px solid rgba(255,180,0,0.45)",
+        background: "rgba(255,180,0,0.1)",
+        color: "#FFD700",
+        fontSize: 8,
+        fontWeight: 800,
+      }}
+    >
+      <span>{copy[code]}</span>
+      {onRetry && (code === "denied" || code === "cancelled" || code === "unsupported") ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{
+            border: "1px solid rgba(255,215,0,0.5)",
+            background: "transparent",
+            color: "#FFD700",
+            fontSize: 8,
+            fontWeight: 900,
+            borderRadius: 4,
+            padding: "2px 6px",
+            cursor: "pointer",
+          }}
+        >
+          RETRY
+        </button>
+      ) : null}
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "rgba(255,215,0,0.7)",
+            cursor: "pointer",
+            fontSize: 10,
+          }}
+        >
+          ✕
+        </button>
+      ) : null}
     </div>
   );
 }

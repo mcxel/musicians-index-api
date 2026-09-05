@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 
 // Show real magazine articles as trending issues — grouped by category
 const TRENDING = MAGAZINE_ISSUE_1
@@ -18,7 +19,7 @@ export default function Home2TrendingIssueRail() {
           {TRENDING.map((article) => (
             <Link
               key={article.slug}
-              href={`/magazine/article/${article.slug}`}
+              href={magazineReaderArticleUrl(article.slug)}
               style={{ textDecoration: "none", color: "white", padding: "16px 14px", borderRadius: 10, background: "rgba(170,45,255,0.03)", border: "1px solid rgba(170,45,255,0.2)" }}
             >
               <div style={{ fontSize: 8, color: "#aa2dff", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>

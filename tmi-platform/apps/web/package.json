@@ -59,6 +59,7 @@
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",
     "@types/canvas-confetti": "^1.9.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.24",
     "@types/nodemailer": "^6.4.23",
     "@types/pg": "^8.11.10",
@@ -68,6 +69,8 @@
     "eslint": "^8.0.0",
     "eslint-config-next": "14.2.3",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
     "ts-loader": "^9.5.4",
     "typescript": "^5.0.0"
   }

@@ -14,6 +14,8 @@ interface HighFidelityAvatarProps {
   size?: number;
   tierColor?: string;
   showCreateCTA?: boolean;
+  /** Destination for the empty-state CREATE chip. Default: canonical Avatar Studio. */
+  createHref?: string;
   enable3D?: boolean;
   isPlaying?: boolean;
 }
@@ -24,6 +26,7 @@ export default function HighFidelityAvatar({
   size = 48,
   tierColor = '#00FFFF',
   showCreateCTA = false,
+  createHref = "/avatar/studio",
   enable3D = false,
   isPlaying = false,
 }: HighFidelityAvatarProps) {
@@ -63,7 +66,7 @@ export default function HighFidelityAvatar({
   if (showCreateCTA) {
     return (
       <Link
-        href="/avatar/scan/wardrobe"
+        href={createHref}
         style={{
           width: size,
           height: size,

@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
 
   const seed = catalogItemToInventorySeed(def);
   seed.owned = true;
+  seed.metadata = {
+    ...seed.metadata,
+    entitlementSource: payment === "grant_free" ? "starter" : "points",
+    cosmeticEntitlement: true,
+  };
   const next = await grantAvatarCosmetic(auth.user.id, seed);
 
   let equippedLoadout = null;

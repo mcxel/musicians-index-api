@@ -15,6 +15,8 @@ export const TIMING = {
   // Homepage rotation loop
   top10Hold: 5000,          // hold each face/position for 5s
   homepagePageHold: 25000,  // hold full home page for ~25s before cycling
+  /** Broadcast deck / live-world tile rotation — Home 3, Home 5, Home 1 rails (Marcel lock) */
+  broadcastDeckRotation: 13_000,
   starburstDuration: 600,   // genre-change burst window
 
   // Glitch effects (short, controlled bursts)

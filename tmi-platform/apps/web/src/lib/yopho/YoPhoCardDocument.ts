@@ -18,7 +18,8 @@ import {
   type YoPhoMotionDurationSec,
   type YoPhoTextOverlay,
 } from "./YoPhoCardComposition";
-import type { YoPhoCardRole, YoPhoNowPlaying } from "./YoPhoCardRegistry";
+import type { YoPhoCardRole } from "./YoPhoCardRegistry";
+import type { YoPhoMediaModule, YoPhoNowPlaying } from "./YoPhoMediaModule";
 
 /** Card document kinds — canonical identity vs edition variants */
 export type YoPhoCardKind =
@@ -219,6 +220,8 @@ export interface YoPhoCardDocument {
   canvas: YoPhoCanvasSpec;
   layers: YoPhoLayer[];
   audio: YoPhoNowPlaying | null;
+  /** Optional media modules — skin/position are visual only */
+  mediaModules?: YoPhoMediaModule[];
   playback: YoPhoPlaybackConfig;
   brandingFooter: YoPhoBrandingFooterConfig;
   interactions: YoPhoInteractionsStub;
@@ -450,6 +453,7 @@ export function compositionToDocument(
     momentTag?: string | null;
     quote?: string | null;
     audio?: YoPhoNowPlaying | null;
+    mediaModules?: YoPhoMediaModule[] | null;
     createdAt?: string;
   },
 ): YoPhoCardDocument {
@@ -498,6 +502,7 @@ export function compositionToDocument(
       rarity,
     }),
     audio: meta.audio ?? null,
+    mediaModules: meta.mediaModules ?? comp.mediaModules ?? [],
     playback: {
       durationSec: motion.durationSec,
       loop: true,
@@ -527,6 +532,7 @@ export function documentToComposition(doc: YoPhoCardDocument): YoPhoCardComposit
     textOverlay: text?.textOverlay ?? base.textOverlay,
     cardId: doc.id,
     playlistId: doc.audio?.playlistId ?? null,
+    mediaModules: doc.mediaModules ?? [],
     motion: person?.motion ?? defaultMotionClip(),
     magicEffects: effects,
     isCanonical: doc.isCanonical,

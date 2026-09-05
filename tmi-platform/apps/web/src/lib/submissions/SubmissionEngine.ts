@@ -9,6 +9,7 @@
 import { awardXP } from '@/lib/profile/ProfileRewardsEngine';
 import { recordPlaylistShareEvent, buildPlaylistReferralUrl } from '@/lib/share/ShareTrackingEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
+import { StreamAndWinEngine } from '@/lib/economy/StreamAndWinEngine';
 
 export type SubmissionType = 'track' | 'video' | 'beat' | 'cypher' | 'battle' | 'comedy' | 'dance' | 'show';
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'live' | 'expired';
@@ -148,6 +149,17 @@ export function updateSubmissionStatus(id: string, status: SubmissionStatus): Su
         submissionType: updated.type,
         status: updated.status,
       },
+    });
+  }
+
+  // Track submissions entering rotation → canonical StreamAndWinEngine inventory (Rule 8).
+  if (status === 'live' && updated.type === 'track' && updated.url) {
+    StreamAndWinEngine.start();
+    StreamAndWinEngine.submitSong({
+      artistId: updated.submitterId,
+      title: updated.title,
+      genre: updated.genre,
+      audioUrl: updated.url,
     });
   }
 

@@ -43,7 +43,8 @@ const PASSIVE_CHAT_LINES = [
 export type GhostBotCallbacks = {
   onChat: (botName: string, text: string) => void;
   onHype: (botName: string) => void;
-  onTip: (botName: string) => void;
+  /** Rule 20 — bots never simulate real money tips. */
+  onTip?: (botName: string) => void;
   onDiag: (msg: string) => void;
 };
 
@@ -100,15 +101,6 @@ export function startGhostForceV1(
         timers.push(pT);
       };
       passiveTick();
-
-      // Second bot only: may tip once after 90-120s (25% chance)
-      if (botCount === 2 && Math.random() < 0.25) {
-        const tipT = setTimeout(() => {
-          callbacks.onTip(name);
-          callbacks.onChat(name, "💸 had to tip — worth it fr");
-        }, rand(90000, 120000));
-        timers.push(tipT);
-      }
 
       // Schedule next bot
       scheduleArrival(rand(45000, 90000));

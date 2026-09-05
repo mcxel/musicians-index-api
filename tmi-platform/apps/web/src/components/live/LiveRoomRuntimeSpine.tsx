@@ -137,20 +137,12 @@ export default function LiveRoomRuntimeSpine({
   const [momentumWindowActive, setMomentumWindowActive] = useState(false);
   const [momentumPulseId, setMomentumPulseId] = useState(0);
   const [postWaveNudgeActive, setPostWaveNudgeActive] = useState(false);
-  const [tippingNow, setTippingNow] = useState(1);
+  const [tippingNow, setTippingNow] = useState(0);
   const [perceivedOccupied, setPerceivedOccupied] = useState(0);
   const [seatPressurePulse, setSeatPressurePulse] = useState(false);
-  const [tipHistory, setTipHistory] = useState<{ name: string; amount: number }[]>([
-    { name: "Jay", amount: 1 },
-    { name: "Nova", amount: 2 },
-    { name: "Ace", amount: 1 },
-  ]);
+  const [tipHistory, setTipHistory] = useState<{ name: string; amount: number }[]>([]);
   const [tipTickerIdx, setTipTickerIdx] = useState(0);
-  const [topTippers, setTopTippers] = useState<{ name: string; count: number }[]>([
-    { name: "Jay", count: 3 },
-    { name: "Nova", count: 2 },
-    { name: "Ace", count: 1 },
-  ]);
+  const [topTippers, setTopTippers] = useState<{ name: string; count: number }[]>([]);
   const [userTipCount, setUserTipCount] = useState(0);
   const [sentinelState, setSentinelState] = useState<{ label: string; color: string }>({
     label: "🟢 Systems Nominal",
@@ -266,20 +258,6 @@ export default function LiveRoomRuntimeSpine({
         tickPopulation(normalizedRoomId);
         setIntentSummary(getIntentSummary(normalizedRoomId, Date.now()));
         setPopulation(getRoomPopulation(normalizedRoomId));
-        if (Math.random() < 0.3) {
-          const botName = randomBot();
-          const amt = Math.random() < 0.7 ? 1 : 2;
-          setTipHistory((prev) => [...prev.slice(-4), { name: botName, amount: amt }]);
-          setTopTippers((prev) => {
-            const idx = prev.findIndex((t) => t.name === botName);
-            if (idx >= 0) {
-              const updated = [...prev];
-              updated[idx] = { name: botName, count: updated[idx]!.count + 1 };
-              return updated.sort((a, b) => b.count - a.count).slice(0, 3);
-            }
-            return [...prev, { name: botName, count: 1 }].sort((a, b) => b.count - a.count).slice(0, 3);
-          });
-        }
       }
     }
 
@@ -321,7 +299,7 @@ export default function LiveRoomRuntimeSpine({
 
   useEffect(() => {
     const id = setInterval(() => {
-      setTippingNow((prev) => Math.max(1, prev - 1));
+      setTippingNow((prev) => Math.max(0, prev - 1));
     }, 9000);
     return () => clearInterval(id);
   }, []);
@@ -462,20 +440,6 @@ export default function LiveRoomRuntimeSpine({
         applyIntentToRoom(normalizedRoomId, "hype", 65);
         tickPopulation(normalizedRoomId);
         setPopulation(getRoomPopulation(normalizedRoomId));
-      },
-      onTip: (botName) => {
-        registerMomentumSignal("tip");
-        setTipHistory((prev) => [...prev.slice(-4), { name: botName, amount: 1 }]);
-        setTopTippers((prev) => {
-          const idx = prev.findIndex((t) => t.name === botName);
-          if (idx >= 0) {
-            const updated = [...prev];
-            updated[idx] = { name: botName, count: updated[idx]!.count + 1 };
-            return updated.sort((a, b) => b.count - a.count).slice(0, 3);
-          }
-          return [...prev, { name: botName, count: 1 }].sort((a, b) => b.count - a.count).slice(0, 3);
-        });
-        setTippingNow((prev) => Math.min(14, prev + 1));
       },
       onDiag: (msg) => {
         if (process.env.NODE_ENV !== "production") {
@@ -758,6 +722,7 @@ export default function LiveRoomRuntimeSpine({
         </div>
       )}
 
+      {tippingNow > 0 || userTipCount > 0 ? (
       <div style={{
         marginTop: 8,
         padding: "8px 12px",
@@ -774,6 +739,7 @@ export default function LiveRoomRuntimeSpine({
       }}>
         ⚡ {tippingNow} people tipping right now
       </div>
+      ) : null}
 
       <div style={{
         marginTop: 6,
@@ -807,7 +773,7 @@ export default function LiveRoomRuntimeSpine({
         </div>
       )}
 
-      {/* Persistent tip feed ticker */}
+      {tipHistory.length > 0 ? (
       <div style={{
         marginTop: 8,
         padding: "8px 12px",
@@ -827,6 +793,7 @@ export default function LiveRoomRuntimeSpine({
           💸 {tipHistory[tipTickerIdx % tipHistory.length]?.name ?? "—"} tipped ${tipHistory[tipTickerIdx % tipHistory.length]?.amount ?? 1}
         </span>
       </div>
+      ) : null}
 
       {roomStateLine ? (
         <div style={{

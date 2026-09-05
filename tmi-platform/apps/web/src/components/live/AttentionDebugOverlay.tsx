@@ -40,12 +40,15 @@ export function AttentionDebugOverlay({
   roomId,
   avatarIds = [],
   performerId,
-  enabled = true,
+  enabled = false,
+  contained = false,
 }: {
   roomId: string;
   avatarIds?: string[];
   performerId?: string;
   enabled?: boolean;
+  /** When true, dock inside monitor player — never fixed over hub shell. */
+  contained?: boolean;
 }) {
   const [debugState, setDebugState] = useState<AttentionDebugState>({
     roomId,
@@ -178,9 +181,9 @@ export function AttentionDebugOverlay({
   return (
     <div
       style={{
-        position: 'fixed',
-        top: 16,
-        right: 16,
+        position: contained ? 'absolute' : 'fixed',
+        top: contained ? 8 : 16,
+        right: contained ? 8 : 16,
         background: 'rgba(5, 5, 15, 0.98)',
         border: '1px solid rgba(170, 45, 255, 0.6)',
         borderRadius: 8,
@@ -188,8 +191,8 @@ export function AttentionDebugOverlay({
         fontFamily: 'monospace',
         fontSize: 10,
         color: '#00FFFF',
-        zIndex: 9999,
-        maxWidth: 380,
+        zIndex: contained ? 20 : 9999,
+        maxWidth: contained ? 280 : 380,
         boxShadow: '0 0 30px rgba(170, 45, 255, 0.3)',
         pointerEvents: 'none',
       }}

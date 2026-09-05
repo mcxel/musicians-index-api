@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { SEASON_ONE_REWARDS, SEASON_ONE_META } from "@/config/seasonOneRewards";
+import {
+  listSeasonPassOffers,
+  seasonPassCheckoutHref,
+} from "@/lib/season/SeasonPassCatalog";
 
 export const metadata: Metadata = {
   title: "Season Pass | TMI",
@@ -8,59 +12,8 @@ export const metadata: Metadata = {
     "Buy a Season Pass for The Musician's Index. Get exclusive rewards, XP boosts, and access to a full season of live events.",
 };
 
-const PASS_OPTIONS = [
-  {
-    id: "fan",
-    label: "Fan Season Pass",
-    price: "$9.99",
-    amountCents: 999,
-    interval: "Season",
-    color: "#00FFFF",
-    description:
-      "Full season of fan rewards: avatar cosmetics, emotes, action icons, and companion bots.",
-    perks: [
-      "All Fan track rewards unlocked as you earn XP",
-      "Season 1 exclusive avatar items",
-      "Priority seating in live rooms",
-      "Season Pass badge on profile",
-    ],
-    track: "fan" as const,
-  },
-  {
-    id: "artist",
-    label: "Artist Season Pass",
-    price: "$19.99",
-    amountCents: 1999,
-    interval: "Season",
-    color: "#FF2DAA",
-    description:
-      "Full season of artist rewards: billboard promos, bandwidth keys, magazine features.",
-    perks: [
-      "All Artist track rewards unlocked as you earn XP",
-      "HD WebRTC bandwidth upgrade keys",
-      "Live World billboard promo slots",
-      "Monthly Magazine feature eligibility",
-    ],
-    track: "artist" as const,
-  },
-  {
-    id: "bundle",
-    label: "Full Bundle",
-    price: "$24.99",
-    amountCents: 2499,
-    interval: "Season",
-    color: "#FFD700",
-    description:
-      "Every reward on both tracks. Maximum visibility, maximum rewards.",
-    perks: [
-      "All Fan + Artist track rewards",
-      "Exclusive Bundle badge",
-      "Priority support channel",
-      "Early access to Season 2",
-    ],
-    track: "fan" as const,
-  },
-];
+/** ASC by priceCents — never lead with VIP. */
+const PASS_OPTIONS = listSeasonPassOffers();
 
 export default function SeasonPassPage() {
   const fanRewards = SEASON_ONE_REWARDS.filter((r) => r.track === "fan");
@@ -124,8 +77,8 @@ export default function SeasonPassPage() {
             lineHeight: 1.6,
           }}
         >
-          One pass, a full year of rewards. Earn XP through the season and
-          unlock exclusive items at every tier.
+          Start at {PASS_OPTIONS[0]?.priceDisplay ?? "$1.99"} — one pass, a full
+          year of rewards. Separate from monthly account subscriptions.
         </p>
         <div
           style={{
@@ -138,29 +91,54 @@ export default function SeasonPassPage() {
         </div>
       </section>
 
-      {/* Pass options */}
+      {/* Pass options — horizontal ASC carousel (low end first, no auto-scroll) */}
       <section
         style={{
-          maxWidth: 1000,
+          maxWidth: 1100,
           margin: "0 auto",
           padding: "48px 24px 0",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+          display: "flex",
           gap: 16,
+          overflowX: "auto",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {PASS_OPTIONS.map((pass) => (
           <div
             key={pass.id}
             style={{
+              flex: "0 0 min(280px, 85vw)",
+              scrollSnapAlign: "start",
               background: `${pass.color}08`,
               border: `1px solid ${pass.color}28`,
               borderRadius: 16,
               padding: "28px 24px",
               display: "flex",
               flexDirection: "column",
+              opacity: pass.available ? 1 : 0.55,
+              position: "relative",
             }}
           >
+            {pass.entry && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: -10,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 7,
+                  fontWeight: 900,
+                  letterSpacing: "0.12em",
+                  background: pass.color,
+                  color: "#050510",
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                }}
+              >
+                START HERE
+              </div>
+            )}
             <div
               style={{
                 fontSize: 10,
@@ -170,12 +148,12 @@ export default function SeasonPassPage() {
                 marginBottom: 6,
               }}
             >
-              {pass.interval.toUpperCase()}
+              SEASON
             </div>
             <div
               style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}
             >
-              {pass.label}
+              {pass.shortLabel}
             </div>
             <div
               style={{
@@ -185,7 +163,7 @@ export default function SeasonPassPage() {
                 marginBottom: 12,
               }}
             >
-              {pass.price}
+              {pass.priceDisplay}
             </div>
             <p
               style={{
@@ -225,24 +203,41 @@ export default function SeasonPassPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href={`/api/stripe/checkout?amount=${pass.amountCents}&productName=${encodeURIComponent(pass.label)}&mode=payment`}
-              style={{
-                display: "block",
-                textAlign: "center",
-                padding: "13px",
-                borderRadius: 10,
-                background: pass.color,
-                color: "#050510",
-                fontWeight: 900,
-                fontSize: 13,
-                textDecoration: "none",
-                letterSpacing: "0.06em",
-                marginTop: "auto",
-              }}
-            >
-              GET PASS →
-            </Link>
+            {pass.available ? (
+              <Link
+                href={seasonPassCheckoutHref(pass)}
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: "13px",
+                  borderRadius: 10,
+                  background: pass.color,
+                  color: "#050510",
+                  fontWeight: 900,
+                  fontSize: 13,
+                  textDecoration: "none",
+                  letterSpacing: "0.06em",
+                  marginTop: "auto",
+                }}
+              >
+                GET PASS →
+              </Link>
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "13px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.4)",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  marginTop: "auto",
+                }}
+              >
+                UNAVAILABLE
+              </div>
+            )}
           </div>
         ))}
       </section>

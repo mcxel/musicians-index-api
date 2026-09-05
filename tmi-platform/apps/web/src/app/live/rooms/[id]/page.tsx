@@ -16,7 +16,6 @@ import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
-import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 import BotRoomActivator from "@/components/bots/BotRoomActivator";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
@@ -40,6 +39,26 @@ import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 import InstantGoLiveStage from "@/components/live/InstantGoLiveStage";
 import LiveRoomMonitorShareSection from "@/components/live/LiveRoomMonitorShareSection";
 import GoLiveTransitionClear from "@/components/live/GoLiveTransitionClear";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
+import {
+  CANONICAL_WORLD_ZONE,
+  isLoungeZone,
+  parseCanonicalWorldZone,
+} from "@/lib/live/canonicalWorldViewport";
+import {
+  arenaEventTypeForExperience,
+  parseExperienceClass,
+} from "@/lib/live/ExperienceRoomRegistry";
+import { isLoungeExperience, isPerformerLobbyExperience } from "@/lib/venue-hud/loungeContainer";
+import { isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
+import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
+import { ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
+import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
+import type { VenueEnvironmentKind } from "@/lib/venues/EventVenueEnvironment";
+import {
+  evaluateLiveRoomJoinAccess,
+  normalizeLivePrivacyMode,
+} from "@/lib/live/liveRoomPrivacyGate";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -53,6 +72,12 @@ const LOBBY_AUTHORIZED_ORIGINS = new Set([
   "billboard-wall",
   "home-3",
   "launch-dock",
+  "playlist-lounge",
+  "lounge-side-room",
+  "fan-avatar-lobby",
+  "anchor-network",
+  "stream-win",
+  "profile",
 ]);
 
 interface LiveRoomPageProps {
@@ -88,8 +113,27 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const autoParam = typeof sp['auto'] === 'string' ? sp['auto'] : Array.isArray(sp['auto']) ? sp['auto'][0] : '';
   const categoryParam = typeof sp['category'] === 'string' ? sp['category'] : Array.isArray(sp['category']) ? sp['category'][0] : 'live';
   const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : 'public';
+  const venueEnvParam = typeof sp['venueEnv'] === 'string' ? sp['venueEnv'] : Array.isArray(sp['venueEnv']) ? sp['venueEnv'][0] : '';
+  const venueSkinParam = typeof sp['venueSkin'] === 'string' ? sp['venueSkin'] : Array.isArray(sp['venueSkin']) ? sp['venueSkin'][0] : '';
   const isInstantPerformer =
     modeParam === 'performer' && (autoParam === 'true' || autoParam === '1' || fromValue === 'launch-dock');
+  const zoneParam = typeof sp['zone'] === 'string' ? sp['zone'] : Array.isArray(sp['zone']) ? sp['zone'][0] : '';
+  const canonicalZone = parseCanonicalWorldZone(zoneParam);
+  const _lobbyModeParam = typeof sp['lobbyMode'] === 'string' ? sp['lobbyMode'] : Array.isArray(sp['lobbyMode']) ? sp['lobbyMode'][0] : '';
+  const experienceClassParam = typeof sp['experienceClass'] === 'string' ? sp['experienceClass'] : Array.isArray(sp['experienceClass']) ? sp['experienceClass'][0] : '';
+  const experienceClass = parseExperienceClass(experienceClassParam);
+  const millArenaEventType = experienceClass ? arenaEventTypeForExperience(experienceClass) : null;
+  const performerLobby =
+    isPerformerLobbyExperience(id, canonicalZone) ||
+    modeParam === "performer-lobby" ||
+    experienceClass === "PERFORMER_LOBBY";
+  const loungeSideRoom =
+    !performerLobby &&
+    (isLoungeExperience(id, canonicalZone) ||
+      isLoungeZone(zoneParam) ||
+      modeParam === "lounge" ||
+      experienceClass === "LOUNGE_SIDE_ROOM");
+  const videoPanelRoom = loungeSideRoom || performerLobby;
   const returnHref = performerSlug && performerSid
     ? `/performers/${encodeURIComponent(performerSlug)}/dashboard?returnedFrom=${encodeURIComponent(id)}&sid=${encodeURIComponent(performerSid)}`
     : fanSlug
@@ -106,18 +150,127 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   // Performers arriving with ?performer= OR Instant Go Live (?mode=performer&auto=true)
   // bypass the gate — venue must paint empty immediately (never wait on audience).
   const isPerformerEntry = Boolean(performerSlug && performerSid) || isInstantPerformer;
-  const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby');
+  const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby') || fromValue.includes('lounge');
   if (!isPerformerEntry && !hasLobbyAuthorization) {
     redirect(`/live/lobby?room=${encodeURIComponent(id)}&seat=1`);
   }
 
+  if (isDatingExperience(id) || isDatingExperience({ slug: id, roomId: id })) {
+    const auth = await getTmiAuth();
+    const decision = await evaluateDatingJoinForUserId(auth?.user.id ?? "", id);
+    if (!decision.allowed) {
+      return (
+        <main style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "#050510", color: "#fff", padding: 32, textAlign: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>DATING · 21+</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginTop: 10 }}>Dating lounge blocked</h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 8, maxWidth: 420 }}>{decision.reason}</p>
+            <Link href="/live/lobby" style={{ display: "inline-block", marginTop: 16, color: "#00FFFF", fontWeight: 800 }}>← Live Lobby</Link>
+          </div>
+        </main>
+      );
+    }
+  }
+
+  // Live privacy gate — public / friends / invite / private (no fake passes)
+  if (!isInstantPerformer) {
+    await ensureHydrated();
+    const privacySession = getSessionByRoomId(id);
+    const privacyMode = normalizeLivePrivacyMode(
+      privacyParam ||
+        (privacySession?.privacy === "INVITE_ONLY" ? "private" : "public"),
+    );
+    if (privacyMode !== "public" || privacySession?.privacy === "INVITE_ONLY") {
+      const auth = await getTmiAuth();
+      const join = await evaluateLiveRoomJoinAccess({
+        viewerUserId: auth?.user.id ?? null,
+        hostUserId: privacySession?.userId ?? null,
+        privacy:
+          privacyMode !== "public"
+            ? privacyMode
+            : privacySession?.privacy === "INVITE_ONLY"
+              ? "private"
+              : "public",
+        isHost: Boolean(
+          privacySession?.userId &&
+            auth?.user.id &&
+            privacySession.userId === auth.user.id,
+        ),
+      });
+      if (!join.allowed) {
+        return (
+          <main
+            style={{
+              minHeight: "60vh",
+              display: "grid",
+              placeItems: "center",
+              background: "#050510",
+              color: "#fff",
+              padding: 32,
+              textAlign: "center",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: "0.16em",
+                  color: "#FF2DAA",
+                }}
+              >
+                LIVE PRIVACY · {join.privacy.toUpperCase()}
+              </div>
+              <h1 style={{ fontSize: 22, fontWeight: 900, marginTop: 10 }}>Room access denied</h1>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.5)",
+                  fontSize: 13,
+                  marginTop: 8,
+                  maxWidth: 440,
+                }}
+              >
+                {join.reason}
+              </p>
+              <Link
+                href="/live/lobby"
+                style={{
+                  display: "inline-block",
+                  marginTop: 16,
+                  color: "#00FFFF",
+                  fontWeight: 800,
+                }}
+              >
+                ← Live Lobby
+              </Link>
+            </div>
+          </main>
+        );
+      }
+    }
+  }
+
   // Instant Go Live — full-bleed empty stage + command panel (no marketing chrome)
   if (isInstantPerformer) {
+    await ensureHydrated();
+    const liveSession = getSessionByRoomId(id);
+    const envFromUrl =
+      venueEnvParam === "indoor" || venueEnvParam === "outdoor"
+        ? (venueEnvParam as VenueEnvironmentKind)
+        : null;
+    const envFromSession =
+      liveSession?.venueEnvironment === "indoor" || liveSession?.venueEnvironment === "outdoor"
+        ? liveSession.venueEnvironment
+        : null;
+    const skinFromUrl = venueSkinParam.trim() || null;
+    const skinFromSession = liveSession?.venueSkinId?.trim() || null;
     return (
       <InstantGoLiveStage
         roomId={id}
         category={categoryParam || 'live'}
         privacy={privacyParam || 'public'}
+        venueEnvironment={envFromUrl ?? envFromSession}
+        venueSkinId={skinFromUrl ?? skinFromSession}
       />
     );
   }
@@ -160,9 +313,24 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   // Rule 12: No Empty Inventory
   const roomAd = getAdSlotForZone(`live-room-${id}`);
 
+  await ensureHydrated();
+  const audienceLiveSession = getSessionByRoomId(id);
+  const audienceEnvFromUrl =
+    venueEnvParam === "indoor" || venueEnvParam === "outdoor"
+      ? (venueEnvParam as VenueEnvironmentKind)
+      : null;
+  const audienceEnvFromSession =
+    audienceLiveSession?.venueEnvironment === "indoor" ||
+    audienceLiveSession?.venueEnvironment === "outdoor"
+      ? audienceLiveSession.venueEnvironment
+      : null;
+  const audienceVenueEnvironment = audienceEnvFromUrl ?? audienceEnvFromSession;
+  const audienceVenueSkinId =
+    (venueSkinParam.trim() || null) ??
+    (audienceLiveSession?.venueSkinId?.trim() || null);
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
-      <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
       <GoLiveTransitionClear />
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
@@ -196,6 +364,17 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             }}
             rubricVotingOpen
             rubricEventId={battleId ?? id}
+            venueEnvironment={audienceVenueEnvironment}
+            venueSkinId={audienceVenueSkinId}
+          />
+        ) : millArenaEventType && millArenaEventType !== "lounge" && millArenaEventType !== "live-show" ? (
+          <ArenaEventShell
+            roomId={id}
+            eventType={millArenaEventType}
+            mode={performerSlug ? "performer" : "audience"}
+            liveState="live"
+            venueEnvironment={audienceVenueEnvironment}
+            venueSkinId={audienceVenueSkinId}
           />
         ) : (
           /* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —
@@ -205,6 +384,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             roomId={id}
             mode={performerSlug ? "performer" : "audience"}
             fanIdOverride={fanSlug ?? sessionId ?? undefined}
+            canonicalZone={
+              performerLobby
+                ? CANONICAL_WORLD_ZONE.PERFORMER_LOBBY
+                : loungeSideRoom
+                  ? CANONICAL_WORLD_ZONE.LOUNGE_SIDE_ROOM
+                  : canonicalZone ?? undefined
+            }
+            suppressAvatars={videoPanelRoom}
           />
         )}
 
@@ -228,14 +415,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         {/* Real seat-bound audience view — assignSeatForFan()/joinAudienceSeat()
             engines already existed in lib/audience/ but were never wired into
             a route. Every seat here is a real fanId, never a fabricated count. */}
-        {!performerSlug && (
+        {!performerSlug && !videoPanelRoom && (
           <div style={{ marginTop: 16 }}>
             <AudienceEntryBeacon roomId={id} viewerId={fanSlug ?? sessionId ?? undefined} source={fromValue || "live-room"} />
             <TmiAudiencePerspectiveShell roomId={id} fanId={fanSlug ?? sessionId ?? undefined} />
           </div>
         )}
 
-        <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} />
+        {!videoPanelRoom ? <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} /> : null}
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 
         {/* Unified Audience Shell — Messages/Playlist/Memory Wall/Avatar/
@@ -251,7 +438,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           <ControlCanisterCluster
             eventId={id}
             eventMode="casual"
-            availableCanisters={['lighting', 'effects', 'banner', 'camera', 'support', 'stage', 'director', 'event-owner', 'curtain']}
+            availableCanisters={['lighting', 'event-owner']}
           />
         )}
 
@@ -266,7 +453,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         </div>
 
         {/* Rule 12: No Empty Inventory — platform promo between room and discovery */}
-        {roomAd.type === 'platform' && roomAd.platformPromo && (
+        {!videoPanelRoom && roomAd.type === 'platform' && roomAd.platformPromo && (
           <div style={{ margin: "20px 0", background: `${roomAd.platformPromo.accentColor}0a`, border: `1px solid ${roomAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 900, color: roomAd.platformPromo.accentColor }}>{roomAd.platformPromo.headline}</div>
@@ -277,7 +464,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             </a>
           </div>
         )}
-        {roomAd.type === 'advertise-cta' && (
+        {!videoPanelRoom && roomAd.type === 'advertise-cta' && (
           <div style={{ margin: "16px 0", textAlign: "center" }}>
             <a href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
               ADVERTISE ON TMI · FROM $25
@@ -303,16 +490,18 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           <MessagingCanister recipientId={performerSlug ?? id} height={340} compact />
           {/* Store — support the performer */}
           {performerSlug && (
-            <StoreCanister entityId={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={4} />
+            <StoreCanister entityId={performerSlug} artistSlug={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={6} />
           )}
           {/* Avatar Creation Center / Workspace / Inventory — Fan-only per the
               Identity Policy (CLAUDE.md Rule 26, added 2026-07-18). Performers
               are represented by real photo/video, not an owned avatar. */}
+          {!loungeSideRoom ? (
           <RoleGate allow={['FAN']}>
             <AvatarCreationCenter accentColor="#AA2DFF" />
             <AvatarWorkspaceCanister accentColor="#00FFFF" />
             <InventoryCanister accentColor="#FF6B35" />
           </RoleGate>
+          ) : null}
           {/* Private Lobby */}
           {performerSlug && (
             <PrivateLobbyCanister entityId={performerSlug} accentColor="#AA2DFF" />

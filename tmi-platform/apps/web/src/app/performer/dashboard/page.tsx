@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
+import ShowsReleasePublisher from '@/components/events/ShowsReleasePublisher';
+import { MiniEventCreator } from '@/components/live/MiniEventCreator';
+import { useUniversalShowroom } from '@/lib/discovery/UniversalShowroomEngine';
+import LiveSessionPreviewSlot from '@/components/discovery/LiveSessionPreviewSlot';
+import HappyDaysPromptCard from '@/components/happydays/HappyDaysPromptCard';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -36,6 +41,7 @@ export default function PerformerDashboardPage() {
   const [stats, setStats] = useState<DashboardStat[]>([]);
   const [revBars, setRevBars] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [revMax, setRevMax] = useState(0);
+  const { slots: liveSlots } = useUniversalShowroom({ surface: "performer_dashboard", slotCount: 2 });
 
   useEffect(() => {
     const load = async () => {
@@ -97,7 +103,7 @@ export default function PerformerDashboardPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <Link href="/go-live" style={{ padding: '8px 16px', background: 'rgba(0,255,136,.1)', border: '1px solid #00FF88', color: '#00FF88', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4, boxShadow: '0 0 10px rgba(0,255,136,.2)' }}>
+            <Link href="/hub/performer?golive=1" style={{ padding: '8px 16px', background: 'rgba(0,255,136,.1)', border: '1px solid #00FF88', color: '#00FF88', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4, boxShadow: '0 0 10px rgba(0,255,136,.2)' }}>
               🔴 GO LIVE NOW
             </Link>
             <Link href="/performer/studio" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(170,45,255,.5)', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4 }}>
@@ -146,6 +152,26 @@ export default function PerformerDashboardPage() {
                 <span style={{ fontSize: 20 }}>🥊</span>BEAT BATTLE
               </Link>
             </div>
+
+            {/* Happy Days Positive Reflection Prompt */}
+            <div style={{ marginBottom: 12 }}>
+              <HappyDaysPromptCard userRole="performer" displayName={displayName} />
+            </div>
+
+            {/* Live Showroom Activity Strip */}
+            {liveSlots.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 9, color: '#00FFFF', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FFFF', display: 'inline-block', boxShadow: '0 0 6px #00FFFF' }} />
+                  Live Showroom · Active Broadcasts & Cyphers
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+                  {liveSlots.map((s) => (
+                    <LiveSessionPreviewSlot key={s.id} slot={s} variant="compact" />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick action grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
@@ -213,6 +239,19 @@ export default function PerformerDashboardPage() {
               <span style={{ fontSize: 8, color: 'rgba(170,45,255,.5)' }}>{b.name}</span>
             </div>
           ))}
+        </div>
+
+        <ShowsReleasePublisher />
+
+        <div style={{ marginTop: 16, padding: 14, borderRadius: 10, border: '1px solid rgba(0,255,255,0.25)', background: 'rgba(8,14,38,0.95)' }}>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.14em', color: '#00FFFF', marginBottom: 8 }}>
+            INSTANT MINI (GOLD+)
+          </div>
+          <MiniEventCreator
+            displayName={displayName}
+            show={['concert', 'release-party']}
+            layout="compact"
+          />
         </div>
       </div>
     </main>

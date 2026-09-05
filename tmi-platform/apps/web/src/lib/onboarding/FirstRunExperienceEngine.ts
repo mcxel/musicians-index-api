@@ -92,6 +92,16 @@ const ALL_STEPS: FirstRunStep[] = [
     role: 'fan',
   },
   {
+    id: 'fan-yopho-card',
+    title: 'Build Your YoPho Baseball Card',
+    description:
+      'Add your background first, then layer images into a shareable performance baseball card / album cover (QR on the footer). Complete the Free learning track for up to 500 XP.',
+    ctaLabel: 'Open YoPho',
+    ctaHref: '/hub/fan?drawer=yopho',
+    xpGrant: 0,
+    role: 'fan',
+  },
+  {
     id: 'artist-upload-beat',
     title: 'Upload Your First Beat',
     description: 'List a beat on the marketplace and start earning.',
@@ -125,6 +135,16 @@ const ALL_STEPS: FirstRunStep[] = [
     ctaLabel: 'Open Studio',
     ctaHref: '/performer/studio',
     xpGrant: 20,
+    role: 'performer',
+  },
+  {
+    id: 'performer-yopho-card',
+    title: 'Create Your YoPho Trading Card',
+    description:
+      'Layer a background, then photos into your performance baseball card. Share with QR — Free learning track pays up to 500 XP via XpActionRegistry.',
+    ctaLabel: 'Open YoPho',
+    ctaHref: '/hub/performer?drawer=yopho',
+    xpGrant: 0,
     role: 'performer',
   },
   {

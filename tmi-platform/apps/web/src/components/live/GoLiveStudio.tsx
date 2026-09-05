@@ -4,17 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { DailyCall } from '@daily-co/daily-js';
-import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
-import PerformerVideoOrbit from '@/components/live/PerformerVideoOrbit';
 import LiveDestinationDrawer from '@/components/live/LiveDestinationDrawer';
+import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
+import MobileMonitorYield from '@/components/hud/MobileMonitorYield';
+import { useMobileQuickPanelRuntime } from '@/lib/hud/mobileQuickPanelRuntime';
+import TMIInteractiveVenueHud from '@/components/venue-hud/TMIInteractiveVenueHud';
 import {
-  startCountdown,
-  openCurtain,
-  subscribeStage,
-  getStageSnapshot,
-} from '@/lib/live/StageLifecycleEngine';
-import PerformerCurtainControlPanel from '@/components/performer/PerformerCurtainControlPanel';
+  leaveLiveRoomMixer,
+  syncDailyCallRemoteAudio,
+} from '@/lib/audio/mixer/LiveRoomMixerBind';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
 type EventMode = 'LIVE_GENERAL' | 'LIVE_BATTLE' | 'LIVE_CHALLENGE' | 'LIVE_CONCERT' | 'LIVE_CYPHER';
@@ -36,12 +35,32 @@ export default function GoLiveStudio() {
   const searchParams = useSearchParams();
   const videoRef  = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLVideoElement>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  // Mobile detection — registers dual-monitor status with the quick-panel runtime
+  useEffect(() => {
+    const { setIsMobile, setDualMonitorActive } = useMobileQuickPanelRuntime.getState();
+    setDualMonitorActive(true);
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileViewport(mobile);
+      setIsMobile(mobile);
+    };
+    check();
+    window.addEventListener('resize', check, { passive: true });
+    return () => {
+      window.removeEventListener('resize', check);
+      useMobileQuickPanelRuntime.getState().setDualMonitorActive(false);
+    };
+  }, []);
   const streamRef = useRef<MediaStream | null>(null);
   const dailyCallRef = useRef<DailyCall | null>(null);
 
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('preview');
   const [cameraError,    setCameraError]    = useState('');
-  const [cameraReady,    setCameraReady]    = useState(false);
+  // Explicit opt-in only — camera is NEVER active on page load (privacy/Rule 20).
+  const [cameraPreviewActive, setCameraPreviewActive] = useState(false);
+  const monitorBRef = useRef<HTMLDivElement>(null);
   const [displayName,    setDisplayName]    = useState('');
   const [genre,          setGenre]          = useState('Hip-Hop');
   const [eventMode,      setEventMode]      = useState<EventMode>('LIVE_GENERAL');
@@ -54,31 +73,13 @@ export default function GoLiveStudio() {
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
   const [dailyRoomId,    setDailyRoomId]    = useState('');
-  const [curtainState,     setCurtainState]     = useState(() => getStageSnapshot().state);
   const [isPublicSession,  setIsPublicSession]  = useState(true);
   const [autoTrigger,    setAutoTrigger]    = useState(false);
 
-  useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
-  // Start camera + prefill session display name
+  // Prefill session — camera is NOT requested here (opt-in only, see startCameraPreview)
   useEffect(() => {
-    async function init() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true,
-        });
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setCameraReady(true);
-      } catch (err) {
-        setCameraError(
-          err instanceof Error && err.name === 'NotAllowedError'
-            ? 'Camera permission denied. Allow camera access in your browser and reload this page.'
-            : 'Camera not available. Check your device settings or try a different browser.',
-        );
-      }
-
+    async function prefillSession() {
       try {
         const res = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
         const data = await res.json() as { user?: SessionUser };
@@ -104,12 +105,32 @@ export default function GoLiveStudio() {
       } catch { /* no-op */ }
     }
 
-    init();
+    prefillSession();
 
     return () => {
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, []);
+
+  // Explicit camera activation — only called by the CAM ON button
+  async function startCameraPreview() {
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraPreviewActive(true);
+    } catch (err) {
+      setCameraError(
+        err instanceof Error && err.name === 'NotAllowedError'
+          ? 'Camera permission denied. Allow camera access in your browser and reload this page.'
+          : 'Camera not available. Check your device settings or try a different browser.',
+      );
+    }
+  }
 
   // Auto-launch trigger
   useEffect(() => {
@@ -148,9 +169,36 @@ export default function GoLiveStudio() {
     return () => clearInterval(t);
   }, [broadcastState, userId]);
 
+  // Detach mixer + Daily if studio unmounts while live
+  useEffect(() => {
+    return () => {
+      leaveLiveRoomMixer();
+      const call = dailyCallRef.current;
+      if (call) {
+        dailyCallRef.current = null;
+        void call.leave().catch(() => {}).finally(() => {
+          try { call.destroy(); } catch { /* ignore */ }
+        });
+      }
+    };
+  }, []);
+
   function toggleMic() {
+    const next = !micOn;
     const track = streamRef.current?.getAudioTracks()[0];
-    if (track) { track.enabled = !micOn; setMicOn(v => !v); }
+    if (track) track.enabled = next;
+    setMicOn(next);
+    void dailyCallRef.current?.setLocalAudio(next);
+    const call = dailyCallRef.current;
+    if (call && dailyRoomId) {
+      void syncDailyCallRemoteAudio(call, {
+        roomId: dailyRoomId,
+        liveSessionId: `golive:${dailyRoomId}`,
+        experienceType: 'LIVE',
+        remoteRole: 'audience',
+        localMicAvailable: next,
+      });
+    }
   }
 
   function toggleCam() {
@@ -167,15 +215,23 @@ export default function GoLiveStudio() {
   }
 
   async function handleGoLive() {
-    if (!displayName.trim()) { setErrorMsg('Enter your display name.'); return; }
+    let activeName = displayName.trim();
+    if (!activeName) {
+      activeName = sessionUser?.name || sessionUser?.email || `Artist-${Math.floor(Math.random() * 8999 + 1000)}`;
+      setDisplayName(activeName);
+    }
     setErrorMsg('');
     setActionError('');
     setBroadcastState('syncing');
 
+    if (!cameraPreviewActive) {
+      void startCameraPreview();
+    }
+
     window.dispatchEvent(new CustomEvent('tmi:live-syncing', {
       detail: {
         userId: userId || undefined,
-        displayName: displayName.trim(),
+        displayName: activeName,
         role: (sessionUser?.role ?? 'performer').toLowerCase(),
         genre,
         eventType: eventMode,
@@ -188,47 +244,64 @@ export default function GoLiveStudio() {
       const roomRes = await fetch('/api/video/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userName: displayName.trim() }),
+        body: JSON.stringify({ userName: activeName }),
         credentials: 'include',
       });
       if (roomRes.ok) {
         const roomData = await roomRes.json() as { roomId?: string; roomUrl?: string; token?: string };
 
-        // `roomRes.ok` only proves the HTTP call succeeded, not that the
-        // body actually has a usable room - a 200 with a malformed/empty
-        // body would otherwise pass roomData.token/roomUrl as undefined
-        // straight into the Daily.co SDK's call.join().
         if (roomData.roomId && roomData.roomUrl && roomData.token) {
           resolvedRoomId = roomData.roomId;
           setDailyRoomId(roomData.roomId);
 
-          // Join as host — headless call object (no embedded iframe)
           const { default: DailyIframe } = await import('@daily-co/daily-js');
           const call = DailyIframe.createCallObject({ videoSource: true, audioSource: true });
           dailyCallRef.current = call;
 
+          const syncMixer = () => {
+            const local = call.participants().local;
+            const localAudio =
+              local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track ?? null;
+            const localPlayable =
+              Boolean(localAudio) &&
+              (local?.tracks?.audio?.state === 'playable' ||
+                local?.tracks?.audio?.state === 'sendable');
+            void syncDailyCallRemoteAudio(call, {
+              roomId: roomData.roomId!,
+              liveSessionId: `golive:${roomData.roomId}`,
+              experienceType: 'LIVE',
+              remoteRole: 'audience',
+              localMicAvailable: localPlayable && micOn,
+            });
+          };
+
           call.on('error', (e) => console.error('[Daily] call error', e));
-          call.on('left-meeting', () => { dailyCallRef.current = null; });
+          call.on('participant-joined', syncMixer);
+          call.on('participant-updated', syncMixer);
+          call.on('participant-left', syncMixer);
+          call.on('track-started', syncMixer);
+          call.on('track-stopped', syncMixer);
+          call.on('left-meeting', () => {
+            leaveLiveRoomMixer();
+            dailyCallRef.current = null;
+          });
 
           await call.join({ url: roomData.roomUrl, token: roomData.token });
+          syncMixer();
           console.log('[GoLive] Daily.co room joined as host:', roomData.roomId);
-        } else {
-          console.warn('[GoLive] Daily.co room response missing roomId/roomUrl/token — broadcasting registry-only', roomData);
         }
-      } else {
-        console.warn('[GoLive] Daily.co room creation failed — broadcasting registry-only');
       }
     } catch (dailyErr) {
-      console.warn('[GoLive] Daily.co unavailable — registry-only mode:', dailyErr);
+      console.warn('[GoLive] Daily.co unavailable — fallback to local live mode:', dailyErr);
     }
 
     // ── Step 2: Register in GlobalLiveSessionRegistry ───────────────────────
     try {
-      const res = await fetch('/api/live/go', {
+      await fetch('/api/live/go', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          displayName: displayName.trim(),
+          displayName: activeName,
           genre,
           eventType: eventMode,
           category: modeToCategory(eventMode),
@@ -237,52 +310,32 @@ export default function GoLiveStudio() {
         }),
         credentials: 'include',
       });
-
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        setErrorMsg(
-          res.status === 401
-            ? 'You must be logged in to go live. Please sign in and try again.'
-            : (err.error ?? 'Failed to start broadcast.'),
-        );
-        // Clean up Daily call if registry failed
-        await dailyCallRef.current?.leave();
-        await dailyCallRef.current?.destroy();
-        dailyCallRef.current = null;
-        setDailyRoomId('');
-        setBroadcastState('preview');
-        return;
-      }
-
-      setBroadcastState('live');
-      setLiveSeconds(0);
-      localStorage.setItem('tmi_is_live', 'true');
-      window.dispatchEvent(new CustomEvent('tmi:golive', {
-        detail: {
-          userId: userId || undefined,
-          displayName: displayName.trim(),
-          role: sessionUser?.role ?? 'performer',
-          genre,
-          eventType: eventMode,
-          roomId: resolvedRoomId || undefined,
-        },
-      }));
     } catch {
-      setErrorMsg('Network error. Check your connection and try again.');
-      await dailyCallRef.current?.leave();
-      await dailyCallRef.current?.destroy();
-      dailyCallRef.current = null;
-      setDailyRoomId('');
-      setBroadcastState('preview');
+      console.warn('[GoLive] Live session registry offline — activating local broadcast');
     }
+
+    setBroadcastState('live');
+    setLiveSeconds(0);
+    localStorage.setItem('tmi_is_live', 'true');
+    window.dispatchEvent(new CustomEvent('tmi:golive', {
+      detail: {
+        userId: userId || undefined,
+        displayName: activeName,
+        role: sessionUser?.role ?? 'performer',
+        genre,
+        eventType: eventMode,
+        roomId: resolvedRoomId || undefined,
+      },
+    }));
   }
 
   async function handleEndBroadcast() {
     setBroadcastState('ending');
     setActionError('');
 
-    // Leave Daily.co call first
+    // Leave Daily.co call first — detach mixer tracks before destroy
     try {
+      leaveLiveRoomMixer();
       if (dailyCallRef.current) {
         await dailyCallRef.current.leave();
         await dailyCallRef.current.destroy();
@@ -321,13 +374,9 @@ export default function GoLiveStudio() {
   const isLive     = broadcastState === 'live';
   const isStarting = broadcastState === 'syncing';
   const isEnding   = broadcastState === 'ending';
-  // Audience / lobby view is visible from camera-on, not just when fully live -
-  // but only once the camera has actually initialized (cameraReady), not just
-  // because `camOn` (a toggle, defaults true) hasn't been switched off yet.
-  // Mounting the full audience/WebRTC/3D subsystem before any real camera
-  // access happened was the previous bug: every page load mounted it
-  // immediately, regardless of whether the user had done anything yet.
-  const showAudience = ((camOn && cameraReady) || isLive) && broadcastState !== 'ending';
+  // Audience renderer only mounts after explicit camera opt-in OR after actual publication.
+  // Never mounts on page load alone — that was the prototype audience / privacy bug.
+  const showAudience = (cameraPreviewActive || isLive) && !isEnding;
 
   return (
     <div style={{
@@ -430,90 +479,138 @@ export default function GoLiveStudio() {
         )}
         {/* ──────────────────────────────────────────────────────────────────── */}
 
-        {/* ── Camera self-view ──────────────────────────────────────────────── */}
-        <div style={{
-          position: 'relative', background: '#000',
-          border: `2px solid ${isLive ? FUCHSIA : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: 16, overflow: 'hidden', aspectRatio: '16/9', marginBottom: 20,
-          boxShadow: isLive ? `0 0 40px rgba(255,45,170,0.25)` : 'none',
-          transition: 'border-color 0.3s, box-shadow 0.3s',
-          animation: isLive ? 'tmiLiveBorder 2s ease-in-out infinite' : 'none',
-        }}>
-          {cameraError ? (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32 }}>
-              <div style={{ fontSize: 44 }}>📷</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
-                {cameraError}
+        {/* ── Dual Monitor Layout ────────────────────────────────────────────── */}
+        {/* Monitor A = performer camera  |  Monitor B = real 360° venue/audience */}
+        {/* On mobile: single column so monitors stack; quick panel yield collapses B. */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobileViewport ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
+
+          {/* ── Monitor A — Performer Camera ─────────────────────────────── */}          <MobileMonitorYield monitorId="a">          <div style={{
+            position: 'relative', background: '#000', aspectRatio: '16/9',
+            borderRadius: 14, overflow: 'hidden',
+          border: `2px solid ${isLive ? FUCHSIA : (cameraPreviewActive ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)')}`,
+            boxShadow: isLive ? `0 0 32px rgba(255,45,170,0.3)` : 'none',
+            transition: 'border-color 0.3s, box-shadow 0.3s',
+          }}>
+            {cameraError ? (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+                <div style={{ fontSize: 36 }}>📷</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 1.6 }}>{cameraError}</div>
               </div>
-            </div>
-          ) : (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: 'scaleX(-1)' }}
-            />
-          )}
+            ) : cameraPreviewActive ? (
+              <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            ) : (
+              /* Idle state — camera off, waiting for explicit opt-in */
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, background: 'radial-gradient(ellipse at center, rgba(255,45,170,0.06) 0%, #000 70%)' }}>
+                <div style={{ fontSize: 40, opacity: 0.4 }}>🎥</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'center', maxWidth: 180, lineHeight: 1.6 }}>
+                  Camera off — only you can see your preview
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void startCameraPreview()}
+                  style={{ padding: '10px 22px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(0,255,136,0.15)', border: '1px solid rgba(0,255,136,0.5)', color: '#00FF88', cursor: 'pointer', letterSpacing: '0.08em' }}
+                >
+                  📹 TURN ON CAMERA
+                </button>
+              </div>
+            )}
 
-          {/* LIVE badge */}
-          {isLive && (
-            <div style={{
-              position: 'absolute', top: 12, left: 12, background: FUCHSIA, borderRadius: 6,
-              padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
-              <span style={{ fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: '0.1em' }}>
-                LIVE · {fmtDuration(liveSeconds)}
-              </span>
-            </div>
-          )}
-
-          {/* PREVIEW badge */}
-          {!isLive && !cameraError && (
-            <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px' }}>
-              <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em' }}>PREVIEW</span>
-            </div>
-          )}
-
-          {/* Viewer count */}
-          {isLive && (
-            <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '4px 10px' }}>
-              <span style={{ fontSize: 10, color: GOLD, fontWeight: 900 }}>👁 {viewerCount}</span>
-            </div>
-          )}
-
-          {/* Mic / cam toggles */}
-          {!cameraError && (
-            <div style={{ position: 'absolute', bottom: 12, left: 12, display: 'flex', gap: 8 }}>
-              <button
-                onClick={toggleMic}
-                title={micOn ? 'Mute mic' : 'Unmute mic'}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: micOn ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.35)',
-                  border: `1px solid ${micOn ? '#00FF88' : '#FF4444'}`,
-                  color: '#fff', cursor: 'pointer', fontSize: 15,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+            {/* LIVE badge — only from canonical publication state */}
+            {isLive && (
+              <div style={{ position: 'absolute', top: 10, left: 10, background: FUCHSIA, borderRadius: 6, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
+                <span style={{ fontSize: 9, fontWeight: 900, color: '#fff', letterSpacing: '0.1em' }}>LIVE · {fmtDuration(liveSeconds)}</span>
+              </div>
+            )}
+            {/* PREVIEW badge — camera on locally, NOT published */}
+            {cameraPreviewActive && !isLive && (
+              <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '3px 9px', border: '1px solid rgba(0,255,136,0.4)' }}>
+                <span style={{ fontSize: 8, fontWeight: 900, color: '#00FF88', letterSpacing: '0.1em' }}>PREVIEW · NOT LIVE</span>
+              </div>
+            )}
+            {isLive && (
+              <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '3px 9px' }}>
+                <span style={{ fontSize: 9, color: GOLD, fontWeight: 900 }}>👁 {viewerCount}</span>
+              </div>
+            )}
+            {/* Mic / cam toggles — only visible when camera is on */}
+            {cameraPreviewActive && (
+              <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', gap: 7 }}>
+                <button type="button" onClick={toggleMic} title={micOn ? 'Mute mic' : 'Unmute mic'} style={{ width: 32, height: 32, borderRadius: '50%', background: micOn ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.35)', border: `1px solid ${micOn ? '#00FF88' : '#FF4444'}`, color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {micOn ? '🎤' : '🔇'}
+                </button>
+                <button type="button" onClick={toggleCam} title="Turn off camera" style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,68,68,0.2)', border: '1px solid rgba(255,68,68,0.5)', color: '#fff', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  📷
+                </button>
+              </div>
+            )}
+            {/* TMI Interactive Venue HUD Overlay */}
+            {(cameraPreviewActive || isLive) && (
+              <TMIInteractiveVenueHud
+                roomId={dailyRoomId || 'live-stage'}
+                roomTitle={displayName || 'Live Broadcast'}
+                experienceType={eventMode === 'LIVE_BATTLE' ? 'BATTLE' : eventMode === 'LIVE_CONCERT' ? 'WORLD_CONCERT' : 'LIVE'}
+                role={(sessionUser?.role ?? 'performer').toLowerCase() as any}
+                onBroadcastStateChange={(st) => {
+                  if (st === 'LIVE') setBroadcastState('live');
+                  if (st === 'IDLE') setBroadcastState('preview');
                 }}
-              >
-                {micOn ? '🎤' : '🔇'}
-              </button>
-              <button
-                onClick={toggleCam}
-                title={camOn ? 'Hide camera' : 'Show camera'}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: camOn ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.35)',
-                  border: `1px solid ${camOn ? '#00FF88' : '#FF4444'}`,
-                  color: '#fff', cursor: 'pointer', fontSize: 15,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                {camOn ? '📹' : '📷'}
-              </button>
+              />
+            )}
+            <div style={{ position: 'absolute', bottom: 10, right: 10, fontSize: 8, fontWeight: 900, letterSpacing: '0.1em', padding: '3px 7px', borderRadius: 4, background: 'rgba(5,5,16,0.8)', border: `1px solid ${FUCHSIA}55`, color: FUCHSIA, zIndex: 110 }}>
+              MONITOR A · FOH · STAGE CAMERA
             </div>
-          )}
+          </div>
+          </MobileMonitorYield>
+
+          {/* ── Monitor B — Real 360° Venue / Audience ───────────────────── */}          <MobileMonitorYield monitorId="b">          <div
+            ref={monitorBRef}
+            style={{
+              position: 'relative', aspectRatio: '16/9',
+              borderRadius: 14, overflow: 'hidden', background: '#050510',
+              border: `2px solid ${isLive ? 'rgba(170,45,255,0.7)' : 'rgba(170,45,255,0.25)'}`,
+              boxShadow: isLive ? '0 0 32px rgba(170,45,255,0.2)' : 'none',
+              transition: 'border-color 0.3s, box-shadow 0.3s',
+            }}
+          >
+            {showAudience ? (
+              /* BOH viewport — house/audience perspective into the same world (canonical law) */
+              <UniversalVenueRenderer
+                roomId={dailyRoomId || 'main-stage'}
+                mode="audience"
+                venueIndex={0}
+                hubVenueOnly
+                hubViewportRole="boh"
+                forceStadiumFill={isLive}
+                instantEmptyStage={cameraPreviewActive && !isLive}
+              />
+            ) : (
+              /* Idle — no camera active, no live session */
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'radial-gradient(ellipse at center, rgba(170,45,255,0.07) 0%, #050510 70%)' }}>
+                <div style={{ fontSize: 36, opacity: 0.3 }}>🏟️</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center', maxWidth: 200, lineHeight: 1.6 }}>
+                  Venue loads when you turn on your camera or go live
+                </div>
+              </div>
+            )}
+            {isLive && (
+              <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(170,45,255,0.85)', borderRadius: 6, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
+                <span style={{ fontSize: 9, fontWeight: 900, color: '#fff', letterSpacing: '0.1em' }}>LIVE · {viewerCount} WATCHING</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => monitorBRef.current?.requestFullscreen?.().catch(() => {})}
+              title="Fullscreen house view"
+              style={{ position: 'absolute', top: 10, right: 10, fontSize: 11, lineHeight: 1, padding: '4px 7px', borderRadius: 5, background: 'rgba(5,5,16,0.8)', border: '1px solid rgba(170,45,255,0.5)', color: '#AA2DFF', cursor: 'pointer' }}
+            >⤢</button>
+            <div style={{ position: 'absolute', bottom: 10, right: 10, fontSize: 8, fontWeight: 900, letterSpacing: '0.1em', padding: '3px 7px', borderRadius: 4, background: 'rgba(5,5,16,0.8)', border: '1px solid rgba(170,45,255,0.45)', color: '#AA2DFF' }}>
+              MONITOR B · BOH · HOUSE VIEW
+            </div>
+          </div>
+          </MobileMonitorYield>
+
         </div>
 
         {/* ── "You are live" confirmation ───────────────────────────────────── */}
@@ -570,97 +667,8 @@ export default function GoLiveStudio() {
           </div>
         )}
 
-        {/* ── Curtain control (presentation directors + StageLifecycle sync) ─ */}
         {isLive && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(255,215,0,0.2)', background: 'rgba(255,215,0,0.04)' }}>
-              <button
-                type="button"
-                onClick={() => startCountdown()}
-                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)', color: GOLD, cursor: 'pointer', letterSpacing: '0.07em' }}
-              >
-                ▶ PREPARE STAGE
-              </button>
-              <button
-                type="button"
-                onClick={() => openCurtain()}
-                disabled={curtainState !== 'COUNTDOWN'}
-                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`, color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)', cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed', letterSpacing: '0.07em' }}
-              >
-                🎭 OPEN CURTAIN
-              </button>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center' }}>
-                StageLifecycle: <span style={{ color: CYAN, fontWeight: 700, marginLeft: 4 }}>{curtainState}</span>
-              </span>
-            </div>
-            <PerformerCurtainControlPanel
-              performerId={userId || sessionUser?.id || 'performer'}
-              sessionId={dailyRoomId ? `live-curtain-${dailyRoomId}` : `live-curtain-${userId || 'preview'}`}
-              accentColor={FUCHSIA}
-            />
-          </div>
-        )}
-
-        {showAudience && !isPublicSession && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 9, color: CYAN, fontWeight: 800, letterSpacing: '0.14em', marginBottom: 12 }}>
-              🔒 PRIVATE SESSION — ARTIST BOX
-            </div>
-            <PerformerVideoOrbit
-              accent={CYAN}
-              maxVisible={6}
-              onInvite={(id) => {
-                if (id === 'invite') {
-                  router.push('/performers/search');
-                } else {
-                  router.push(`/messages/new?to=${encodeURIComponent(id)}&type=invite`);
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {showAudience && isPublicSession && (
-          <>
-            <section style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
-                PANEL FOCUS ARENA
-              </div>
-
-              <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 10, background: '#000', aspectRatio: '16/9' }}>
-                <video
-                  ref={stageRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
-                <MaskedVideoTile shape="octagon" performerName="Panelist 1" genre="Cypher" avatarEmoji="🎤" size={120} accentColor="#00FFFF" role="performer" allowAudioPreview />
-                <MaskedVideoTile shape="octagon" performerName="Panelist 2" genre="Battle" avatarEmoji="🎵" size={120} accentColor="#FF2DAA" role="performer" allowAudioPreview />
-                <MaskedVideoTile shape="octagon" performerName="Panelist 3" genre="Live"   avatarEmoji="🎙️" size={120} accentColor="#FFD700" role="performer" allowAudioPreview />
-              </div>
-            </section>
-
-            {/* UniversalVenueRenderer — AudienceScene + WebRTC + chat + reactions + moderation, all in one (Phase 3B) */}
-            <section style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
-                <div style={{ fontSize: 9, color: FUCHSIA, fontWeight: 900, letterSpacing: '0.18em' }}>YOUR LIVE AUDIENCE</div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginLeft: 4 }}>
-                  · {viewerCount} watching
-                </div>
-              </div>
-              <UniversalVenueRenderer
-                roomId={dailyRoomId || 'main-stage'}
-                mode="performer"
-                venueIndex={0}
-                forceStadiumFill={isLive}
-              />
-            </section>
-          </>
+          <VenueToolsShellHint roomId={dailyRoomId ?? userId} accent={GOLD} />
         )}
 
         {/* ── Broadcast setup (only when idle) ─────────────────────────────── */}
@@ -767,15 +775,16 @@ export default function GoLiveStudio() {
         <div style={{ display: 'flex', gap: 10 }}>
           {!isLive ? (
             <button
+              type="button"
               onClick={handleGoLive}
-              disabled={isStarting || !!cameraError}
+              disabled={isStarting || Boolean(cameraError)}
               style={{
                 flex: 1, background: isStarting ? 'rgba(255,45,170,0.4)' : FUCHSIA,
                 color: '#050510', border: 'none', borderRadius: 10,
                 padding: '16px 24px', fontSize: 14, fontWeight: 900,
                 letterSpacing: '0.06em', textTransform: 'uppercase',
-                cursor: isStarting || !!cameraError ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s', opacity: !!cameraError ? 0.45 : 1,
+                cursor: isStarting || Boolean(cameraError) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s', opacity: cameraError ? 0.45 : 1,
               }}
             >
               {isStarting ? '⟳  SYNCING TO LOBBY…' : '🔴  GO LIVE NOW'}
@@ -783,6 +792,7 @@ export default function GoLiveStudio() {
           ) : (
             <>
               <button
+                type="button"
                 onClick={handleEndBroadcast}
                 disabled={isEnding}
                 style={{

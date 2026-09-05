@@ -1,8 +1,11 @@
+"use client";
+
 import AdminShell from "@/components/admin/AdminShell";
 import AdminCommandRail from "@/components/admin/AdminCommandRail";
 import AdminInboxRail from "@/components/admin/AdminInboxRail";
 import AdminAnalyticsRail from "@/components/admin/AdminAnalyticsRail";
 import AdminRevenueRail from "@/components/admin/AdminRevenueRail";
+import { useEffect, useState } from "react";
 
 const BOOKING_PANELS = [
   { label: "Open Bookings",     value: "34",    color: "#fcd34d" },
@@ -11,21 +14,32 @@ const BOOKING_PANELS = [
   { label: "Venue Slots Live",  value: "6",     color: "#00FFFF" },
 ];
 
-const ARTIST_QUEUE = [
-  { name: "KOVA",       genre: "R&B",       status: "Confirmed", venue: "Crown Stage" },
-  { name: "Verse.XL",   genre: "Hip-Hop",   status: "Pending",   venue: "Electric Blue" },
-  { name: "Nera Vex",   genre: "Neo-Soul",  status: "Review",    venue: "The Vault" },
-  { name: "DJ Fenix",   genre: "House",     status: "Confirmed", venue: "Pulse Arena" },
-  { name: "Wavetek",    genre: "Electronic",status: "Pending",   venue: "Sky Terrace" },
-];
+type BookingRequest = {
+  id: string;
+  venueSlug: string;
+  artistSlug: string;
+  offerAmount: number;
+  expectedRevenue: number;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
+};
 
 const STATUS_COLOR: Record<string, string> = {
-  Confirmed: "#22c55e",
-  Pending:   "#f59e0b",
-  Review:    "#c4b5fd",
+  accepted: "#22c55e",
+  pending:  "#f59e0b",
+  rejected: "#ef4444",
 };
 
 export default function JayHubPage() {
+  const [bookingQueue, setBookingQueue] = useState<BookingRequest[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/booking/requests", { credentials: "include", cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { requests?: BookingRequest[] }) => setBookingQueue(d.requests ?? []))
+      .catch(() => setBookingQueue([]));
+  }, []);
+
   return (
     <AdminShell
       hubId="jay"
@@ -90,9 +104,15 @@ export default function JayHubPage() {
               </strong>
             </div>
             <div style={{ padding: 10, display: "grid", gap: 6 }}>
-              {ARTIST_QUEUE.map((artist) => (
+              {bookingQueue === null && (
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", textAlign: "center", padding: "12px 0" }}>Loading requests…</p>
+              )}
+              {bookingQueue !== null && bookingQueue.length === 0 && (
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", textAlign: "center", padding: "12px 0" }}>No booking requests yet.</p>
+              )}
+              {bookingQueue !== null && bookingQueue.map((req) => (
                 <div
-                  key={artist.name}
+                  key={req.id}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr auto auto auto",
@@ -105,19 +125,19 @@ export default function JayHubPage() {
                   }}
                 >
                   <div>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9" }}>{artist.name}</p>
-                    <p style={{ margin: 0, fontSize: 9, color: "#64748b" }}>{artist.genre} · {artist.venue}</p>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9" }}>{req.artistSlug}</p>
+                    <p style={{ margin: 0, fontSize: 9, color: "#64748b" }}>Venue: {req.venueSlug} · ${req.offerAmount}</p>
                   </div>
                   <span
                     style={{
                       fontSize: 9,
                       fontWeight: 800,
                       letterSpacing: "0.1em",
-                      color: STATUS_COLOR[artist.status] ?? "#94a3b8",
+                      color: STATUS_COLOR[req.status] ?? "#94a3b8",
                       textTransform: "uppercase",
                     }}
                   >
-                    {artist.status}
+                    {req.status}
                   </span>
                   <button
                     type="button"

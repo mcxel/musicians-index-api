@@ -312,7 +312,16 @@ export default function UniversalViewportEngine({
       );
       break;
     case 'AVATAR_LOBBY':
-      body = <AvatarLobbyCanvas roomName={role === 'performer' ? 'Backstage Lobby' : 'Avatar Lobby'} accentColor={stageAccent} />;
+      body = role === 'performer'
+        ? (
+          <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'rgba(255,255,255,0.45)', padding: 24 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: stageAccent }}>Performer Lobby</div>
+              <div style={{ fontSize: 11, marginTop: 6 }}>Real video panels · no avatar ownership (Rule 26)</div>
+            </div>
+          </div>
+        )
+        : <AvatarLobbyCanvas roomName="Avatar Lobby" accentColor={stageAccent} />;
       break;
     case 'PLAYLIST':
       body = <PlaylistViewportState trackUrl={fanPlaylistTrackUrl} accentColor={accentColor} />;

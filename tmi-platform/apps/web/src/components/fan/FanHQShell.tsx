@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Fan HQ / Command Center — thin wrapper over shared CommandCenterShell.
- * Drawer: Avatar Fan Lobby, YoPho, playlists, memory, inventory (Rule 26 Fan-only).
+ * Fan HQ — thin alias to FanShell (standalone root).
+ * Kept for leftover imports; prefer FanShell / AuthenticatedRoleBoundary.
  */
 
-import CommandCenterShell from "@/components/commandCenter/CommandCenterShell";
+import FanShell from "@/components/shell/FanShell";
 
 interface FanHQShellProps {
   fanId: string;
@@ -13,5 +13,5 @@ interface FanHQShellProps {
 }
 
 export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
-  return <CommandCenterShell role="fan" userId={fanId} displayName={fanDisplayName} />;
+  return <FanShell fanId={fanId} fanDisplayName={fanDisplayName} />;
 }

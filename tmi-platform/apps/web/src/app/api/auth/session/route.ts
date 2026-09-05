@@ -5,6 +5,7 @@ import { resolveTierFromDb, computeAuthoritativeTier } from '@/lib/auth/resolveA
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
+import { ageYearsFromDateOfBirth, youthBandFromAgeYears } from '@/lib/trustSafety/YouthSocialGuard';
 
 const SESSION_DB_LOOKUP_TIMEOUT_MS = 1200;
 
@@ -73,6 +74,11 @@ export async function GET(req: NextRequest) {
   let dbOnboardingStep = '2';
   let dbDisplayName: string | null = null;
   let dbActiveRole: string | null = null;
+  let dbUsername: string | null = null;
+  let dbArtistSlug: string | null = null;
+  let dbUserRef: string | null = null;
+  let sessionYouthBand: 'YOUTH' | 'ADULT' | null = null;
+  let sessionAgeKnown = false;
 
   try {
     const dbUser = await withTimeout(
@@ -93,11 +99,20 @@ export async function GET(req: NextRequest) {
           isLive: true,
           liveRoomId: true,
           onboardingState: true,
+          age: true,
+          dateOfBirth: true,
+          userRef: true,
           userProfile: {
             select: {
               avatarUrl: true,
               socialLinks: true,
               displayName: true,
+              username: true,
+            },
+          },
+          artistProfile: {
+            select: {
+              slug: true,
             },
           },
         },
@@ -122,6 +137,19 @@ export async function GET(req: NextRequest) {
         dbUser.userProfile?.displayName ??
         dbUser.name ??
         null;
+      dbUsername = dbUser.userProfile?.username ?? null;
+      dbArtistSlug = dbUser.artistProfile?.slug ?? null;
+      dbUserRef = dbUser.userRef ?? null;
+      const ageYears =
+        typeof dbUser.age === 'number' && dbUser.age > 0
+          ? Math.floor(dbUser.age)
+          : dbUser.dateOfBirth
+            ? ageYearsFromDateOfBirth(dbUser.dateOfBirth)
+            : null;
+      const band = youthBandFromAgeYears(ageYears);
+      sessionAgeKnown = band === 'YOUTH' || band === 'ADULT' || band === 'BELOW_PLATFORM';
+      // youthBand: YOUTH = protected teens 16–17; ADULT = 18+. Never a 16–18 youth band.
+      sessionYouthBand = band === 'YOUTH' || band === 'ADULT' ? band : null;
     } else if (rawEmail) {
       // DB timed out — apply founder-email check in-memory so founder accounts
       // never fall back to a stale FREE cookie on a cold-start DB delay.
@@ -175,8 +203,13 @@ export async function GET(req: NextRequest) {
       isLive,
       liveRoomId,
       avatarUrl,
+      username: dbUsername,
+      userRef: dbUserRef,
+      artistSlug: dbArtistSlug,
       onboardingState: dbOnboardingState.toLowerCase(),
       onboardingStep: dbOnboardingStep,
+      youthBand: sessionYouthBand,
+      ageKnown: sessionAgeKnown,
     },
     role,
     tier,

@@ -40,7 +40,7 @@ const DOCK_BUTTONS: DockButton[] = [
   { id: "security", label: "Summon Big Ace", href: "/admin/overseer#chain-command",    tone: "fuchsia" },
   { id: "inbox",    label: "Approve Queue", href: "/admin/overseer#revenue-analytics", tone: "green" },
   { id: "settings", label: "Settings",      href: "/admin/settings",                    tone: "zinc" },
-  { id: "logout",   label: "Exit",          href: "/",                                  tone: "red" },
+  { id: "logout",   label: "Exit",          href: "/api/auth/logout",                   tone: "red" },
 ];
 
 interface OverseerDockProps {

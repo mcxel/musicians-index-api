@@ -1,54 +1,54 @@
-"use client";
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import FanHubMount from "@/components/auth/FanHubMount";
+import FanHubSessionFallback from "@/components/auth/FanHubSessionFallback";
+import {
+  classifyShellIdentity,
+  hubPathForIdentity,
+} from "@/lib/auth/sessionRole";
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import FanHQShell from "@/components/fan/FanHQShell";
-
-interface SessionUser {
-  id: string;
-  name?: string;
-  email?: string;
-  role?: string;
-}
+/**
+ * Fan hub — prefer cookie role (no ROLE_RESOLVING). Static FanShell only.
+ * Client SessionRoleGate only when role cookie is missing/unclassified.
+ * Suspense boundary keeps SSR hub chrome mounted while searchParams bridge resolves.
+ */
 
 export default function FanHubPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const store = cookies();
+  const sessionToken = store.get("tmi_session")?.value;
+  const sessionUserId = store.get("tmi_session_id")?.value;
+  if (!sessionToken && !sessionUserId) {
+    redirect("/auth?next=/hub/fan");
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { authenticated?: boolean; user?: SessionUser }) => {
-        if (cancelled) return;
-        if (!d.authenticated || !d.user) {
-          router.replace("/auth?next=/hub/fan");
-          return;
-        }
-        setUser(d.user);
-      })
-      .catch(() => {
-        if (!cancelled) router.replace("/auth?next=/hub/fan");
-      });
-    return () => {
-      cancelled = true;
+  const roleCookie = store.get("tmi_role")?.value;
+  const identity = classifyShellIdentity(roleCookie);
+
+  if (identity === "PERFORMER") {
+    redirect("/hub/performer");
+  }
+  if (identity === "OTHER") {
+    redirect(hubPathForIdentity("OTHER", roleCookie ?? ""));
+  }
+
+  if (identity === "FAN") {
+    const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
+    const displayName = store.get("tmi_display_name")?.value?.trim() || "Fan";
+    const session = {
+      identity: "FAN" as const,
+      rawRole: (roleCookie ?? "FAN").toUpperCase(),
+      userId,
+      displayName,
     };
-  }, [router]);
-
-  if (!user) {
     return (
-      <main style={{ minHeight: "100vh", background: "#050510", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, letterSpacing: "0.14em" }}>LOADING COMMAND CENTER…</p>
-      </main>
+      <Suspense fallback={<FanHubMount session={session} />}>
+        <FanHubMount session={session} />
+      </Suspense>
     );
   }
 
-  return (
-    <FanHQShell
-      fanId={user.id}
-      fanDisplayName={user.name?.trim() || "Fan"}
-    />
-  );
+  return <FanHubSessionFallback />;
 }

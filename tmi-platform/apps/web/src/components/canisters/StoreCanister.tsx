@@ -1,38 +1,107 @@
 "use client";
 
 /**
- * StoreCanister — Phase 5.4 High-Fidelity Cyberpunk Merch & Digital Storefront Deck (Image 4 Match)
- * 3-Column Cyberpunk Store Deck:
- *   Left: Featured Item Spotlight (Spinning Album / Merch Card + Price + Checkout)
- *   Center: Digital Store Grid (VIP Passes, Beat Packs, Subscriptions, Fan-Club Badges)
- *   Right: Artist DSP Links & TMI Points Storefront
+ * StoreCanister — artist catalog from /api/commerce/products (per-artist prices).
+ * Checkout: /api/commerce/checkout with productId (never client price / STRIPE_PRICE_*).
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CREATOR_ITEMS, FAN_ITEMS, type StoreItem } from "@/lib/store/StoreItemEngine";
+import { useCheckoutClickLock } from "@/hooks/useCheckoutClickLock";
+import {
+  ARTIST_COMMERCE_TYPE_ICONS,
+  formatArtistCommercePrice,
+  type ArtistCommerceProduct,
+} from "@/lib/commerce/ArtistCommerceTypes";
 
 interface StoreCanisterProps {
   entityId: string;
   entityName?: string;
+  /** When set, loads that artist's catalog (slug or user id). */
+  artistSlug?: string;
   storeType?: "performer" | "fan" | "shared";
   accentColor?: string;
   maxItems?: number;
+  /** Artist management mode — link to create products */
+  manageHref?: string;
 }
 
 export function StoreCanister({
   entityId,
-  entityName = "MarcellD",
+  entityName = "Artist",
+  artistSlug,
   storeType = "performer",
   accentColor = "#FFD700",
-  maxItems = 6,
+  maxItems = 8,
+  manageHref,
 }: StoreCanisterProps) {
-  const items: StoreItem[] =
-    storeType === "performer"
-      ? CREATOR_ITEMS.slice(0, maxItems)
-      : storeType === "fan"
-      ? FAN_ITEMS.slice(0, maxItems)
-      : [...CREATOR_ITEMS, ...FAN_ITEMS].slice(0, maxItems);
+  const [products, setProducts] = useState<ArtistCommerceProduct[]>([]);
+  const [empty, setEmpty] = useState(false);
+  const [error, setError] = useState("");
+  const { busy, label, runCheckout, reset } = useCheckoutClickLock();
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+
+  const catalogKey = artistSlug || (storeType === "performer" ? entityId : "");
+
+  useEffect(() => {
+    if (!catalogKey || storeType === "fan") {
+      setProducts([]);
+      setEmpty(true);
+      return;
+    }
+    let cancelled = false;
+    const qs = artistSlug
+      ? `artistSlug=${encodeURIComponent(artistSlug)}&seed=1`
+      : entityId === "me"
+        ? `mine=1&seed=1`
+        : `artistId=${encodeURIComponent(entityId)}&seed=1`;
+    fetch(`/api/commerce/products?${qs}`, { cache: "no-store", credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { products?: ArtistCommerceProduct[]; error?: string }) => {
+        if (cancelled) return;
+        if (d.error) {
+          setError(d.error);
+          setEmpty(true);
+          return;
+        }
+        const list = (d.products ?? []).filter((p) => p.active).slice(0, maxItems);
+        setProducts(list);
+        setEmpty(list.length === 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError("Store unavailable");
+          setEmpty(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [artistSlug, entityId, maxItems, storeType, catalogKey]);
+
+  function buy(product: ArtistCommerceProduct) {
+    if (busy) return;
+    setBuyingId(product.id);
+    setError("");
+    void runCheckout(async () => {
+      const res = await fetch("/api/commerce/checkout", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string; code?: string };
+      if (!res.ok || !data.url) {
+        setError(
+          data.code === "AUTH_REQUIRED" ? "Sign in to purchase" : data.error ?? "Checkout failed",
+        );
+        setBuyingId(null);
+        reset();
+        return null;
+      }
+      return data.url;
+    });
+  }
 
   return (
     <div
@@ -49,7 +118,6 @@ export function StoreCanister({
         boxShadow: `0 0 25px ${accentColor}33`,
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -76,16 +144,16 @@ export function StoreCanister({
           </div>
           <div>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
-              DIGITAL STORE & MERCH VAULT {entityName ? `— ${entityName.toUpperCase()}` : ""}
+              ARTIST STORE {entityName ? `— ${entityName.toUpperCase()}` : ""}
             </div>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-              Official Merch, Beat Licenses, Fan-Club Subscriptions & Digital Collectibles
+              Prices set by this artist · Stripe checkout
             </div>
           </div>
         </div>
 
         <Link
-          href="/store"
+          href={manageHref || (artistSlug ? `/shoutout/${artistSlug}` : "/store/creator")}
           style={{
             fontSize: 9,
             fontWeight: 900,
@@ -98,51 +166,91 @@ export function StoreCanister({
             background: `${accentColor}18`,
           }}
         >
-          VIEW FULL STORE ↗
+          {manageHref ? "MANAGE →" : "VIEW STORE ↗"}
         </Link>
       </div>
 
-      {/* 3-Column Store Deck */}
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 240px", gap: 12 }}>
-        {/* Left Column: Featured Spotlight */}
-        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8, textAlign: "center" }}>
-          <div style={{ fontSize: 8, fontWeight: 900, color: "#FFD700", letterSpacing: "0.12em" }}>FEATURED MERCH</div>
-          <div style={{ height: 130, borderRadius: 8, background: "linear-gradient(135deg, #FF5500, #AA2DFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>
-            👕
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>Official MarcellD Neon Hoodie</div>
-          <div style={{ fontSize: 13, fontWeight: 900, color: "#00FF88" }}>$65.00</div>
-          <button type="button" style={{ fontSize: 9, fontWeight: 900, padding: "6px 12px", borderRadius: 6, border: "none", background: "linear-gradient(135deg, #FFD700, #FF5500)", color: "#000", cursor: "pointer" }}>
-            PURCHASE NOW
-          </button>
-        </div>
+      {error && (
+        <div style={{ fontSize: 11, color: "#FF2DAA", fontWeight: 700 }}>{error}</div>
+      )}
 
-        {/* Center Column: Digital Store Cards Grid */}
-        <div style={{ background: "rgba(10,5,25,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, letterSpacing: "0.12em" }}>DIGITAL PRODUCTS & BEAT PACKS</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, flex: 1, overflowY: "auto" }}>
-            {items.map((item) => (
-              <div key={item.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 16 }}>{item.icon}</span>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: "#00FF88", background: "rgba(0,255,136,0.15)", padding: "2px 4px", borderRadius: 4 }}>{item.badge || "DIGITAL"}</span>
-                </div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{item.name}</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{item.description}</div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: accentColor }}>${(item.price / 100).toFixed(2)}</div>
+      {empty ? (
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", padding: "20px 8px", textAlign: "center" }}>
+          No products listed yet.
+          {manageHref && (
+            <>
+              {" "}
+              <Link href={manageHref} style={{ color: accentColor }}>
+                Add products
+              </Link>
+            </>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+          {products.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,215,0,0.2)",
+                borderRadius: 8,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 16 }}>{ARTIST_COMMERCE_TYPE_ICONS[item.type] ?? "🛍️"}</span>
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "#00FF88",
+                    background: "rgba(0,255,136,0.15)",
+                    padding: "2px 4px",
+                    borderRadius: 4,
+                  }}
+                >
+                  {item.type.replace(/_/g, " ")}
+                </span>
               </div>
-            ))}
-          </div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{item.title}</div>
+              {item.description && (
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>{item.description}</div>
+              )}
+              <div style={{ fontSize: 11, fontWeight: 900, color: accentColor }}>
+                {formatArtistCommercePrice(item)}
+              </div>
+              <button
+                type="button"
+                disabled={busy || (item.inventory != null && item.inventory <= 0)}
+                onClick={() => buy(item)}
+                style={{
+                  fontSize: 9,
+                  fontWeight: 900,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "none",
+                  background:
+                    busy && buyingId === item.id
+                      ? "rgba(255,255,255,0.15)"
+                      : `linear-gradient(135deg, ${accentColor}, #FF5500)`,
+                  color: "#000",
+                  cursor: busy ? "wait" : "pointer",
+                }}
+              >
+                {busy && buyingId === item.id
+                  ? label ?? "…"
+                  : item.inventory != null && item.inventory <= 0
+                    ? "SOLD OUT"
+                    : "BUY"}
+              </button>
+            </div>
+          ))}
         </div>
-
-        {/* Right Column: DSP & TMI Support */}
-        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, fontSize: 9, display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF" }}>DSP & CREATOR LINKS</div>
-          <div>🟢 <strong>Spotify Storefront:</strong> Connected</div>
-          <div>🍎 <strong>Apple Music:</strong> Verified</div>
-          <div>💎 <strong>Creator Split:</strong> 90% Direct to Artist</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

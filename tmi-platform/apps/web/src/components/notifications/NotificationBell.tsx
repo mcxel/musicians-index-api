@@ -15,7 +15,7 @@ interface Notification {
   emoji?: string;
 }
 
-export function NotificationBell({ userId }: { userId: string }) {
+export function NotificationBell({ userId = '' }: { userId?: string }) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);

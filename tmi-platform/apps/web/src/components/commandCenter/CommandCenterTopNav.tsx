@@ -11,47 +11,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
-import { DiamondTierBadge, type TierLevel } from "@/components/profile/DiamondTierBadge";
+import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 import { useTheme } from "@/lib/design/ThemeEngine";
-import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
+import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
   userId: string;
   displayName: string;
 }
 
+/** Shell-owned destinations only — no legacy Home/Discover/Live Now/Lobby board. */
 const NAV_LINKS = [
-  { label: "HOME", href: "/" },
-  { label: "DISCOVER", href: null as string | null, liveWall: true },
-  { label: "LIVE NOW", href: null as string | null, liveWall: true },
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
   { label: "ARENA", href: "/arena" },
 ];
 
-function mapSessionTier(raw: string | null | undefined): TierLevel {
-  switch ((raw ?? "").toUpperCase()) {
-    case "DIAMOND":
-      return "diamond";
-    case "PLATINUM":
-    case "GOLD":
-      return "gold";
-    case "RUBY":
-    case "SILVER":
-      return "RUBY";
-    default:
-      return "free";
-  }
-}
-
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [tier, setTier] = useState<TierLevel>("free");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [isMobile, setIsMobile] = useState(true); // mobile-first: nav links collapse on phones
 
@@ -61,9 +44,14 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       try {
         const res = await fetch("/api/auth/session", { cache: "no-store" });
         if (!res.ok || cancelled) return;
-        const data = await res.json();
-        setAvatarUrl(data.avatarUrl ?? null);
-        setTier(mapSessionTier(data.tier));
+        const data = (await res.json()) as {
+          authenticated?: boolean;
+          user?: {
+            avatarUrl?: string | null;
+          };
+        };
+        if (!data.authenticated) return;
+        setAvatarUrl(data.user?.avatarUrl ?? null);
       } catch {
         /* honest fallback: no avatar, free tier */
       }
@@ -75,27 +63,53 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
 
   useEffect(() => {
     let cancelled = false;
-    async function poll() {
+    void NotificationEngine.hydrateFromApi().then(() => {
+      if (!cancelled) setUnreadNotifications(NotificationEngine.getUnreadCount());
+    });
+    const refresh = () => setUnreadNotifications(NotificationEngine.getUnreadCount());
+    const unsub = NotificationEngine.subscribe(refresh);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pollMessages() {
       try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch("/api/notifications", { cache: "no-store" }),
-          fetch("/api/messages", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-        if (notifRes.ok) {
-          const d = await notifRes.json();
-          setUnreadNotifications(typeof d.unreadCount === "number" ? d.unreadCount : 0);
-        }
-        if (msgRes.ok) {
-          const d = await msgRes.json();
-          setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
-        }
+        const msgRes = await fetch("/api/messages", { cache: "no-store" });
+        if (cancelled || !msgRes.ok) return;
+        const d = await msgRes.json();
+        setUnreadMessages(typeof d.unreadTotal === "number" ? d.unreadTotal : 0);
       } catch {
         /* leave counts at last-known value */
       }
     }
-    void poll();
-    const id = setInterval(poll, 30_000);
+    void pollMessages();
+    const id = setInterval(pollMessages, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [userId]);
+
+  // Cart badge — real count from the persistent server-authoritative cart
+  // (GET /api/cart → itemCount), not a client-side/in-memory estimate.
+  useEffect(() => {
+    let cancelled = false;
+    async function pollCart() {
+      try {
+        const res = await fetch("/api/cart", { cache: "no-store", credentials: "include" });
+        if (cancelled || !res.ok) return;
+        const d = await res.json();
+        setCartCount(typeof d.itemCount === "number" ? d.itemCount : 0);
+      } catch {
+        /* leave count at last-known value */
+      }
+    }
+    void pollCart();
+    const id = setInterval(pollCart, 30_000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -116,7 +130,22 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
     router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
-  const initial = displayName?.trim()?.[0]?.toUpperCase() ?? "?";
+  const openNotifications = () => {
+    // Canonical single entry: toggle notifications drawer in-shell (never leave Fan/Performer shell).
+    openCanonicalWorkspaceQuick("notifications", "DRAWER");
+    NotificationEngine.markAllSeen();
+    void fetch("/api/notifications", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ action: "mark_all_seen" }),
+    }).catch(() => {});
+    setUnreadNotifications(NotificationEngine.getUnreadCount());
+  };
+
+  const openMessages = () => {
+    openCanonicalWorkspaceQuick("messaging", "DRAWER");
+  };
 
   return (
     <div
@@ -148,31 +177,10 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         TMI
       </Link>
 
-      {/* Primary nav — hidden on mobile (☰ OPS in status bar handles mobile navigation) */}
+      {/* Primary nav — shell secondary destinations only (no legacy Home/Discover/Live Now/Lobby board) */}
       {!isMobile && (
       <nav style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-        {NAV_LINKS.map((link) =>
-          link.href === null || ("liveWall" in link && link.liveWall) ? (
-            <button
-              key={link.label}
-              type="button"
-              onClick={() => presentCanonicalWorkspace("lobby", "DRAWER")}
-              style={{
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.75)",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                padding: 0,
-                fontFamily: "inherit",
-              }}
-            >
-              {link.label}
-            </button>
-          ) : (
+        {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -187,8 +195,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             >
               {link.label}
             </Link>
-          ),
-        )}
+        ))}
       </nav>
       )}
 
@@ -230,11 +237,40 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         <TokenBalance userId={userId} accentColor={theme.primary} compact />
       </div>
 
-      {/* Notifications */}
+      {/* Cart — real persistent count from GET /api/cart, never fabricated */}
       <Link
-        href="/notifications"
+        href="/cart"
+        aria-label={`Cart${cartCount > 0 ? `, ${cartCount} item${cartCount === 1 ? "" : "s"}` : ""}`}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, textDecoration: "none" }}
+      >
+        🛒
+        {cartCount > 0 ? (
+          <span
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -7,
+              background: theme.primary,
+              color: "#050510",
+              fontSize: 8,
+              fontWeight: 900,
+              borderRadius: 999,
+              padding: "1px 4px",
+              minWidth: 14,
+              textAlign: "center",
+            }}
+          >
+            {cartCount > 99 ? "99+" : cartCount}
+          </span>
+        ) : null}
+      </Link>
+
+      {/* Notifications */}
+      <button
+        type="button"
+        onClick={openNotifications}
         aria-label={`Notifications${unreadNotifications > 0 ? `, ${unreadNotifications} unread` : ""}`}
-        style={{ position: "relative", flexShrink: 0, fontSize: 16, textDecoration: "none", lineHeight: 1 }}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         🔔
         {unreadNotifications > 0 ? (
@@ -256,13 +292,14 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             {unreadNotifications > 99 ? "99+" : unreadNotifications}
           </span>
         ) : null}
-      </Link>
+      </button>
 
       {/* Messages */}
-      <Link
-        href="/messages"
+      <button
+        type="button"
+        onClick={openMessages}
         aria-label={`Messages${unreadMessages > 0 ? `, ${unreadMessages} unread` : ""}`}
-        style={{ position: "relative", flexShrink: 0, fontSize: 16, textDecoration: "none", lineHeight: 1 }}
+        style={{ position: "relative", flexShrink: 0, fontSize: 16, lineHeight: 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         ✉️
         {unreadMessages > 0 ? (
@@ -284,104 +321,17 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             {unreadMessages > 99 ? "99+" : unreadMessages}
           </span>
         ) : null}
-      </Link>
+      </button>
 
-      {/* Profile */}
+      {/* Profile — anchored overlay; identity tier from session hydration */}
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={() => setProfileOpen((v) => !v)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            fontFamily: "inherit",
-          }}
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", border: `1px solid ${theme.primary}55` }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 900,
-                color: "#050510",
-              }}
-            >
-              {initial}
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{displayName}</span>
-            <DiamondTierBadge tier={tier} />
-          </div>
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{profileOpen ? "▲" : "▼"}</span>
-        </button>
-
-        {profileOpen ? (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              zIndex: 50,
-              minWidth: 160,
-              background: "#0d1117",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 10,
-              padding: 6,
-              boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <Link
-              href="/profile"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              My Profile
-            </Link>
-            <Link
-              href="/settings"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              Settings
-            </Link>
-            <Link
-              href="/rewards"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#fff", textDecoration: "none" }}
-            >
-              Rewards
-            </Link>
-            <Link
-              href="/api/auth/logout"
-              onClick={() => setProfileOpen(false)}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 11, color: "#FF6666", textDecoration: "none" }}
-            >
-              Sign Out
-            </Link>
-          </div>
-        ) : null}
+        <AccountCommandMenu
+          userId={userId}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          accentColor={theme.primary}
+          compact
+        />
       </div>
     </div>
   );
