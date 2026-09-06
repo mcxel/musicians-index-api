@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
 
 export interface GlobalTmiHeaderProps {
   user?: {
@@ -171,11 +171,9 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
             </Link>
           )}
           {sessionUser ? (
-            <AccountCommandMenu
-              userId={sessionUser.id ?? "session"}
-              displayName={sessionUser.displayName ?? "Account"}
-              avatarUrl={sessionUser.avatarUrl}
-              accentColor="#FF2DAA"
+            <UniversalAccountIdentityControl
+              fallbackDisplayName={sessionUser.displayName ?? "Account"}
+              fallbackAvatarUrl={sessionUser.avatarUrl}
               compact
             />
           ) : (
@@ -250,3 +248,4 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
     </header>
   );
 }
+

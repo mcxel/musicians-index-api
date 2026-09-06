@@ -32,17 +32,67 @@ export type ActiveProfileKind = "ACCOUNT_FALLBACK" | "FAN_PROFILE" | "PERFORMER_
 
 export interface ActiveProfileIdentity {
   accountUserId: string;
-  activeRole: string;
-
+  activeRole: "FAN" | "PERFORMER" | string;
   publicDisplayName: string;
-  publicHandle: string | null;
-  publicImageUrl: string | null;
+  publicHandle?: string | null;
+  publicImageUrl?: string | null;
   canonicalInitials: string;
-
   profileKind: ActiveProfileKind;
   profileComplete: boolean;
-
   ownedRoles: string[];
+}
+
+/** Input shape for the pure builder -- mirrors today's User + UserRole + UserProfile join. */
+export interface AccountIdentitySource {
+  id: string;
+  role: string;
+  activeRole?: string | null;
+  displayName?: string | null;
+  name?: string | null;
+  userRoles?: Array<{ role: string }>;
+  username?: string | null;
+  avatarUrl?: string | null;
+}
+
+/**
+ * Pure, unit-testable projection. Always ACCOUNT_FALLBACK until dedicated
+ * FanProfile/PerformerProfile tables exist -- never invents per-role names.
+ */
+export function buildActiveProfileIdentityFromAccount(
+  source: AccountIdentitySource,
+): ActiveProfileIdentity {
+  const ownedRoles = Array.from(
+    new Set(
+      [source.role, ...(source.userRoles ?? []).map((r) => r.role)]
+        .filter(Boolean)
+        .map((r) => String(r).toUpperCase()),
+    ),
+  );
+
+  const activeRole = String(source.activeRole ?? source.role ?? "FAN").toUpperCase();
+  const username = source.username ?? null;
+  const avatarUrl = source.avatarUrl ?? null;
+
+  // No FanProfile/PerformerProfile row exists in this schema era -- the only
+  // honest identity to show is the one real canonical User identity. Do not
+  // fabricate a separate "Fan name" or "Performer stage name" from it.
+  const publicDisplayName =
+    source.displayName?.trim() ||
+    source.name?.trim() ||
+    username?.trim() ||
+    "Member";
+
+  return {
+    accountUserId: source.id,
+    activeRole,
+    publicDisplayName,
+    publicHandle: username,
+    publicImageUrl: avatarUrl,
+    canonicalInitials: getCanonicalInitials(publicDisplayName),
+    profileKind: "ACCOUNT_FALLBACK",
+    profileComplete: Boolean(publicDisplayName && publicDisplayName !== "Member"),
+    ownedRoles,
+  };
 }
 
 /**
@@ -70,35 +120,14 @@ export async function resolveActiveProfileIdentity(
 
   if (!user) return null;
 
-  const ownedRoles = Array.from(
-    new Set(
-      [user.role as string, ...user.userRoles.map((r: { role: string }) => r.role)].map((r) =>
-        r.toUpperCase(),
-      ),
-    ),
-  );
-
-  const activeRole = ((user.activeRole as string | null) ?? (user.role as string)).toUpperCase();
-
-  const username = user.userProfile?.username ?? null;
-  const avatarUrl = user.userProfile?.avatarUrl ?? null;
-
-  // No FanProfile/PerformerProfile row exists in this schema era -- the only
-  // honest identity to show is the one real canonical User identity. Do not
-  // fabricate a separate "Fan name" or "Performer stage name" from it.
-  const publicDisplayName = user.displayName ?? user.name ?? username ?? "Member";
-
-  return {
-    accountUserId: user.id,
-    activeRole,
-    publicDisplayName,
-    publicHandle: username,
-    publicImageUrl: avatarUrl,
-    canonicalInitials: getCanonicalInitials(publicDisplayName),
-    profileKind: "ACCOUNT_FALLBACK",
-    // Current schema has no per-role onboarding/completeness state -- the
-    // only real, checkable field is whether a display name exists at all.
-    profileComplete: Boolean(publicDisplayName && publicDisplayName !== "Member"),
-    ownedRoles,
-  };
+  return buildActiveProfileIdentityFromAccount({
+    id: user.id,
+    role: user.role as string,
+    activeRole: user.activeRole as string | null,
+    displayName: user.displayName,
+    name: user.name,
+    userRoles: user.userRoles.map((r: { role: string }) => ({ role: r.role })),
+    username: user.userProfile?.username ?? null,
+    avatarUrl: user.userProfile?.avatarUrl ?? null,
+  });
 }
