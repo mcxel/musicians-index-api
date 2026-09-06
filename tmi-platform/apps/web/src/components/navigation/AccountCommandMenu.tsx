@@ -177,10 +177,22 @@ export default function AccountCommandMenu({
 
   const hydrateIdentity = useCallback(async () => {
     try {
-      const [sessionRes, profileRes, rolesRes] = await Promise.all([
-        fetch("/api/auth/session",  { cache: "no-store", credentials: "include" }),
-        fetch("/api/profile/self",  { cache: "no-store", credentials: "include" }),
-        fetch("/api/auth/my-roles", { cache: "no-store", credentials: "include" }),
+      // Display name/avatar/handle/active-role now come from the one
+      // canonical resolveActiveProfileIdentity() endpoint (CLAUDE.md Rule
+      // 31) -- when the real FanProfile/PerformerProfile schema lands, only
+      // that resolver changes; this component doesn't. /api/auth/my-roles
+      // stays as the source for the `roles` list specifically: unlike the
+      // identity resolver's genuinely-owned-only `ownedRoles`, my-roles
+      // deliberately widens the list for admin/governance accounts (the
+      // ADMIN/FAN/PERFORMER/ARTIST triad) so Justin/Jay Paul see full
+      // oversight tiles without needing seeded UserRole rows -- that's a
+      // privilege-preview concern, not an identity-projection one, so it
+      // stays on its own path rather than folding into the new resolver.
+      const [sessionRes, profileRes, rolesRes, identityRes] = await Promise.all([
+        fetch("/api/auth/session",     { cache: "no-store", credentials: "include" }),
+        fetch("/api/profile/self",     { cache: "no-store", credentials: "include" }),
+        fetch("/api/auth/my-roles",    { cache: "no-store", credentials: "include" }),
+        fetch("/api/account/identity", { cache: "no-store", credentials: "include" }),
       ]);
       const s = sessionRes.ok ? (await sessionRes.json() as {
         authenticated?: boolean; tier?: string;
@@ -195,22 +207,28 @@ export default function AccountCommandMenu({
       const r = rolesRes.ok ? (await rolesRes.json() as {
         roles?: string[]; activeRole?: string | null;
       }) : { roles: [], activeRole: null };
+      const identityData = identityRes.ok ? (await identityRes.json() as {
+        identity?: {
+          accountUserId: string; activeRole: string; publicDisplayName: string;
+          publicHandle: string | null; publicImageUrl: string | null;
+        };
+      }) : null;
+      const ap = identityData?.identity;
 
       const user    = s?.authenticated ? s.user : undefined;
       const profile = p?.profile;
-      const role    = (user?.activeRole ?? user?.role ?? profile?.role ?? "USER").toUpperCase();
-      const active  = (r.activeRole ?? user?.activeRole ?? role).toUpperCase();
+      const active  = (ap?.activeRole ?? r.activeRole ?? user?.activeRole ?? user?.role ?? "USER").toUpperCase();
 
       setRoles((r.roles ?? []).map((x) => x.toUpperCase()));
       setIdentity({
-        userId:      user?.id ?? profile?.id ?? userId,
-        displayName: user?.name ?? profile?.displayName ?? displayName,
+        userId:      ap?.accountUserId ?? user?.id ?? profile?.id ?? userId,
+        displayName: ap?.publicDisplayName ?? user?.name ?? profile?.displayName ?? displayName,
         email:       user?.email || profile?.email || "",
-        username:    user?.username ?? profile?.username ?? null,
+        username:    ap?.publicHandle ?? user?.username ?? profile?.username ?? null,
         artistSlug:  profile?.artistSlug ?? null,
-        role, activeRole: active,
+        role: active, activeRole: active,
         tier: user?.tier ?? s?.tier ?? profile?.tier ?? "FREE",
-        avatarUrl: user?.avatarUrl ?? profile?.avatarUrl ?? null,
+        avatarUrl: ap?.publicImageUrl ?? user?.avatarUrl ?? profile?.avatarUrl ?? null,
       });
     } catch {
       setIdentity({
@@ -223,7 +241,7 @@ export default function AccountCommandMenu({
   useEffect(() => { void hydrateIdentity(); }, [hydrateIdentity]);
 
   // Companion-profile pricing/entitlement -- canonical source for the
-  // "ADD PERFORMER FREE" / "ADD PERFORMER -- $X.XX" label. Never hardcode
+  // "ADD PERFORMER FREE" / "ADD FAN FREE" / dynamic pricing label. Never hardcode
   // "FREE" in the UI; render whatever this endpoint reports.
   useEffect(() => {
     fetch("/api/account/companion-profile", { credentials: "include", cache: "no-store" })
@@ -922,7 +940,7 @@ export default function AccountCommandMenu({
                 }}
               >
                 <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.08em" }}>
-                  ADD YOUR FAN PROFILE
+                  ADD YOUR FAN ACCOUNT — FREE
                 </div>
                 <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
                   Get your Fan profile and switch between Performer and Fan anytime without creating another login.

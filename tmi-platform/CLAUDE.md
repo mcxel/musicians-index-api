@@ -1567,3 +1567,79 @@ BILL-10  UI never shows paid access after entitlement has expired
 **Scope honesty (2026-09-06)**: none of the billing state machine, grace-period logic, or automatic entitlement restoration exists as code yet — this is a permanent financial/product guardrail for whenever subscription billing is built for Fan/Performer tiers, the same treatment as Rule 23's Revenue-First Rewards Governor. Do not build a stub "downgrade" that doesn't actually track grace periods or restore entitlement on repayment (would violate Rule 20).
 
 *Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 33 — Profile Visibility & Privacy Law (locked 2026-09-06, not yet implemented)
+
+**Every new Fan and Performer profile defaults to PUBLIC.** From Settings & Privacy, a user can change visibility — but PUBLIC / PRIVATE / HIDDEN-FROM-DISCOVERY are three distinct states, never collapsed into one toggle:
+
+```
+PUBLIC     → public profile page visible; can appear in discovery/search;
+             public identity shows where the product normally allows it;
+             public-facing video/profile surfaces render per live/privacy rules
+PRIVATE    → profile still exists, user can still use TMI; public identity is
+             restricted; profile content visible only to allowed/approved
+             people per privacy rules; public-facing video identity is not
+             automatically exposed
+HIDDEN     → "Hide Public Profile Page": not listed/browsable in normal public
+             profile discovery, does not appear when people scroll through
+             public profiles; direct public-profile route resolves to the
+             correct hidden/private state, never a bypass
+```
+
+**Per-profile visibility contract** (independent per Rule 31 profile, with account-level defaults a profile can override):
+```
+AccountPrivacyDefaults → FanProfilePrivacy / PerformerProfilePrivacy
+
+ProfileVisibility {
+  visibility: "PUBLIC" | "PRIVATE"
+  publicPageEnabled: boolean
+  discoveryEnabled: boolean
+  searchEnabled: boolean
+  searchEngineIndexingEnabled: boolean
+  showOnlineStatus: boolean
+  showVenuePresence: boolean
+  allowPublicMediaExposure: boolean
+}
+```
+A user may have Fan PUBLIC + Performer PRIVATE, Fan PRIVATE + Performer HIDDEN, or any other combination — Fan and Performer privacy never cascade into each other, same independence law as their names/photos/bios (Rule 31).
+
+**PRIVATE never means camera-off, mic-off, or ending a live session** — this is the critical distinction:
+```
+PRIVATE PROFILE  ≠  CAMERA OFF  ≠  MIC OFF  ≠  END LIVE
+PRIVATE PROFILE  →  suppress public identity/video exposure on surfaces not authorized to show it
+```
+If someone is in a room they explicitly entered and that room requires video to function, the authorized-participant view still works normally. What PRIVATE blocks is that same video/identity being *reused* elsewhere — public profile page, public discovery wall, public recommendation rail, random browse surfaces, public previews — without explicit authorization. This distinguishes two identity concepts that must never be conflated: **PUBLIC DISCOVERY IDENTITY** (what strangers browsing see) vs. **AUTHORIZED INTERACTION IDENTITY** (what someone inside an interaction they joined sees) — privacy settings govern the former; they must never create an anonymous-abuse surface by stripping the latter inside an interaction the person chose to join.
+
+**Server-authoritative enforcement, never CSS-hidden:**
+```
+PUBLIC PROFILE REQUEST → resolve target profile → resolve visibility →
+resolve publicPageEnabled → resolve viewer relationship/permissions →
+return only allowed public fields
+```
+`publicPageEnabled=false` must prevent the profile from appearing in public-profile browsing and must be enforced on the server for direct-URL requests too — a hidden profile is never "fetch everything then hide it with CSS." The same discipline applies to discovery, search, and recommendations: `DISCOVERY QUERY`/`SEARCH`/`RECOMMENDATIONS` must each exclude profiles with `discoveryEnabled=false` or hidden/private status at the query level, never filtered client-side after a full fetch.
+
+**Individual identity-exposure toggles** (within Privacy & Visibility): show display name publicly, show profile photo publicly, show location publicly, show follower/following counts, show activity, show current venue, show listening/activity history, show social links.
+
+**Certification required:**
+```
+PRIVACY-11  New profile defaults PUBLIC
+PRIVACY-12  User can switch Fan profile PRIVATE
+PRIVACY-13  User can switch Performer profile PRIVATE
+PRIVACY-14  Fan privacy does not alter Performer privacy
+PRIVACY-15  Performer privacy does not alter Fan privacy
+PRIVACY-16  Hide Public Profile removes profile from public profile browsing
+PRIVACY-17  Hide Public Profile removes profile from normal discovery
+PRIVACY-18  Private/hidden profile does not leak through search
+PRIVACY-19  Private/hidden profile does not leak through recommendations
+PRIVACY-20  Private setting is server-authoritative
+PRIVACY-21  Private does not silently disable camera/mic/live session
+PRIVACY-22  Public video exposure is suppressed where privacy disallows it
+PRIVACY-23  Direct URL cannot bypass hidden-profile policy
+PRIVACY-24  Search-engine indexing disabled when the user turns indexing off
+```
+
+**Scope honesty (2026-09-06)**: none of `ProfileVisibility`, the discovery/search/recommendation privacy filters, or the PUBLIC/PRIVATE/HIDDEN state machine exist as code yet. This rule depends on Rule 31's `FanProfile`/`PerformerProfile` split for true per-profile independence — until that schema exists, any interim implementation must be explicit that it's applying visibility at the account level only (`ACCOUNT_FALLBACK`, per Rule 31's `ActiveProfileIdentity.profileKind`), never pretend independent Fan/Performer privacy exists before it does. Do not build a client-side-only "private" toggle that doesn't actually filter server-side queries (would violate Rule 20 and this rule both).
+
+*Established 2026-09-06 by Marcel Dickens.*
