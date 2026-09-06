@@ -147,6 +147,9 @@ export default function AccountCommandMenu({
   const [identity, setIdentity]       = useState<SessionIdentity | null>(null);
   const [roles, setRoles]             = useState<string[]>([]);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
+  const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
+  interface CompanionOffer { isFree: boolean; price: number; currency: string }
+  const [companionOffers, setCompanionOffers] = useState<Record<"FAN" | "PERFORMER", CompanionOffer> | null>(null);
   const [panelPos, setPanelPos]       = useState({ top: 56, right: 12 });
   const [subScreen, setSubScreen]     = useState<"main" | "notifications" | "settings" | "linked-accounts">("main");
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -218,6 +221,18 @@ export default function AccountCommandMenu({
   }, [avatarUrlProp, displayName, userId]);
 
   useEffect(() => { void hydrateIdentity(); }, [hydrateIdentity]);
+
+  // Companion-profile pricing/entitlement -- canonical source for the
+  // "ADD PERFORMER FREE" / "ADD PERFORMER -- $X.XX" label. Never hardcode
+  // "FREE" in the UI; render whatever this endpoint reports.
+  useEffect(() => {
+    fetch("/api/account/companion-profile", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { offers?: Record<"FAN" | "PERFORMER", CompanionOffer> } | null) => {
+        if (d?.offers) setCompanionOffers(d.offers);
+      })
+      .catch(() => {});
+  }, []);
 
   // load linked OAuth providers when that sub-screen opens
   useEffect(() => {
@@ -342,12 +357,13 @@ export default function AccountCommandMenu({
   // it only ever sees the ONE hub matching its own current active/primary
   // role. Admins/staff keep full multi-hub visibility for oversight/QA.
   const primaryRoleUpper = (resolved.activeRole || resolved.role || "").toUpperCase();
+  // Dual-Profile Architecture: Users can own both profiles; activeRole is strictly one at a time.
   const hasFan = showAdmin
     ? [...roleSet].some((r) => FAN_ROLES.has(r)) || FAN_ROLES.has(resolved.activeRole.toUpperCase())
-    : FAN_ROLES.has(primaryRoleUpper);
+    : [...roleSet].some((r) => FAN_ROLES.has(r)) || FAN_ROLES.has(primaryRoleUpper);
   const hasPerformer = showAdmin
     ? [...roleSet].some((r) => PERFORMER_ROLES.has(r)) || PERFORMER_ROLES.has(resolved.activeRole.toUpperCase())
-    : PERFORMER_ROLES.has(primaryRoleUpper);
+    : [...roleSet].some((r) => PERFORMER_ROLES.has(r)) || PERFORMER_ROLES.has(primaryRoleUpper);
 
   const activeMode    = modeLabel(resolved.activeRole);
   const activeModeClr = modeColor(resolved.activeRole);
@@ -408,6 +424,37 @@ export default function AccountCommandMenu({
         }, 120);
       }
     } catch { /* keep open */ } finally { setSwitchingRole(null); }
+  };
+
+  // Provisions a missing companion profile (never calls switchToRole for a
+  // role the account doesn't hold yet -- that correctly 403s, since it
+  // switches among owned roles rather than creating new ones).
+  const addCompanionProfile = async (targetProfile: "FAN" | "PERFORMER") => {
+    if (provisioningProfile) return;
+    setProvisioningProfile(targetProfile);
+    try {
+      const res = await fetch("/api/account/companion-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ targetProfile, switchToNewProfile: true }),
+      });
+      const data = (await res.json()) as { ok?: boolean; hubUrl?: string; error?: string };
+      if (res.ok && data.ok) {
+        setRoles((prev) => (prev.includes(targetProfile) ? prev : [...prev, targetProfile]));
+        close();
+        const ws = targetProfile === "PERFORMER" ? "performer" : "fan";
+        localStorage.setItem("tmi_last_workspace", ws);
+        setTimeout(() => {
+          router.push(data.hubUrl ?? (targetProfile === "PERFORMER" ? "/hub/performer" : "/hub/fan"));
+          router.refresh();
+        }, 120);
+      }
+      // A non-2xx response (e.g. 402 if this profile ever requires purchase,
+      // 403 if the target isn't self-service-provisionable) intentionally
+      // leaves the menu open with no navigation -- there's nothing to fall
+      // back to silently.
+    } catch { /* keep open */ } finally { setProvisioningProfile(null); }
   };
 
   const markAllRead = async () => {
@@ -802,8 +849,135 @@ export default function AccountCommandMenu({
               </Link>
             )}
           </div>
+
+          {/* Contextual companion-profile prompt. Provisions the missing
+              role via /api/account/companion-profile -- never switchToRole,
+              which correctly 403s for a role the account doesn't hold yet.
+              Label/price come from the companion-profile offer endpoint;
+              "FREE" is never hardcoded, only rendered when the offer says so. */}
+          {!hasPerformer && (() => {
+            const offer = companionOffers?.PERFORMER;
+            const priceLabel = offer
+              ? offer.isFree ? "FREE" : `— $${(offer.price / 100).toFixed(2)}`
+              : "";
+            const isProvisioning = provisioningProfile === "PERFORMER";
+            return (
+              <div
+                data-testid="tmi-companion-add-performer"
+                style={{
+                  marginTop: 8,
+                  padding: "8px 10px",
+                  background: "rgba(255,45,170,0.08)",
+                  border: "1px solid rgba(255,45,170,0.3)",
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.08em" }}>
+                  UNLOCK YOUR OTHER SIDE
+                </div>
+                <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                  You already have a Fan account. Add your Performer profile and switch between Fan and Performer anytime with the same login.
+                </div>
+                <button
+                  type="button"
+                  disabled={!!provisioningProfile || !companionOffers}
+                  onClick={() => void addCompanionProfile("PERFORMER")}
+                  style={{
+                    marginTop: 6,
+                    width: "100%",
+                    padding: "5px 8px",
+                    background: "#FF2DAA",
+                    color: "#050510",
+                    border: "none",
+                    borderRadius: 6,
+                    fontWeight: 900,
+                    fontSize: 8.5,
+                    cursor: companionOffers ? "pointer" : "default",
+                    letterSpacing: "0.06em",
+                    opacity: companionOffers ? 1 : 0.6,
+                  }}
+                  data-testid="tmi-btn-add-performer-free"
+                >
+                  {isProvisioning ? "ADDING…" : `ADD PERFORMER ${priceLabel}`.trim()}
+                </button>
+              </div>
+            );
+          })()}
+
+          {!hasFan && (() => {
+            const offer = companionOffers?.FAN;
+            const priceLabel = offer
+              ? offer.isFree ? "FREE" : `— $${(offer.price / 100).toFixed(2)}`
+              : "";
+            const isProvisioning = provisioningProfile === "FAN";
+            return (
+              <div
+                data-testid="tmi-companion-add-fan"
+                style={{
+                  marginTop: 8,
+                  padding: "8px 10px",
+                  background: "rgba(0,255,255,0.08)",
+                  border: "1px solid rgba(0,255,255,0.3)",
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.08em" }}>
+                  ADD YOUR FAN PROFILE
+                </div>
+                <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                  Get your Fan profile and switch between Performer and Fan anytime without creating another login.
+                </div>
+                <button
+                  type="button"
+                  disabled={!!provisioningProfile || !companionOffers}
+                  onClick={() => void addCompanionProfile("FAN")}
+                  style={{
+                    marginTop: 6,
+                    width: "100%",
+                    padding: "5px 8px",
+                    background: "#00FFFF",
+                    color: "#050510",
+                    border: "none",
+                    borderRadius: 6,
+                    fontWeight: 900,
+                    fontSize: 8.5,
+                    cursor: companionOffers ? "pointer" : "default",
+                    letterSpacing: "0.06em",
+                    opacity: companionOffers ? 1 : 0.6,
+                  }}
+                  data-testid="tmi-btn-add-fan-free"
+                >
+                  {isProvisioning ? "ADDING…" : `ADD FAN ${priceLabel}`.trim()}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
+
+      {/* Contextual Tier Upgrade Row */}
+      <div style={{ padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <Link
+          href={activeMode === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"}
+          onClick={close}
+          data-testid={activeMode === "PERFORMER" ? "tmi-upgrade-performer-link" : "tmi-upgrade-fan-link"}
+          style={{
+            display: "block",
+            textAlign: "center",
+            padding: "6px 10px",
+            borderRadius: 6,
+            background: activeMode === "PERFORMER" ? "rgba(255,215,0,0.12)" : "rgba(0,255,255,0.12)",
+            border: `1px solid ${activeMode === "PERFORMER" ? "#FFD700" : "#00FFFF"}44`,
+            color: activeMode === "PERFORMER" ? "#FFD700" : "#00FFFF",
+            fontSize: 9.5,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textDecoration: "none",
+          }}
+        >
+          {activeMode === "PERFORMER" ? "★ UPGRADE PERFORMER PROFILE" : "★ UPGRADE FAN PROFILE"}
+        </Link>
+      </div>
 
       {/* Canonical rows */}
       <div style={{ padding: "6px 4px", display: "flex", flexDirection: "column", gap: 0 }}>
