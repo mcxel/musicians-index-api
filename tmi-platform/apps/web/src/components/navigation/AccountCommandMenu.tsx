@@ -329,18 +329,25 @@ export default function AccountCommandMenu({
   for (const r of [resolved.role, resolved.activeRole]) {
     if (r) roleSet.add(r.toUpperCase());
   }
-  const hasFan =
-    [...roleSet].some((r) => FAN_ROLES.has(r)) ||
-    FAN_ROLES.has(resolved.activeRole.toUpperCase());
-  const hasPerformer =
-    [...roleSet].some((r) => PERFORMER_ROLES.has(r)) ||
-    PERFORMER_ROLES.has(resolved.activeRole.toUpperCase());
   const showAdmin =
     ADMIN_ROLES.has(resolved.role) ||
     ADMIN_ROLES.has(resolved.activeRole) ||
     roleSet.has("ADMIN") ||
     roleSet.has("STAFF") ||
     roleSet.has("SUPERADMIN");
+  // Fans and performers cannot switch to each other's accounts — only
+  // administrators can (Marcel Dickens, 2026-07-24). A non-admin account may
+  // hold multiple real UserRole rows (e.g. after an admin-driven role
+  // conversion), but that must never surface a self-service hub switcher —
+  // it only ever sees the ONE hub matching its own current active/primary
+  // role. Admins/staff keep full multi-hub visibility for oversight/QA.
+  const primaryRoleUpper = (resolved.activeRole || resolved.role || "").toUpperCase();
+  const hasFan = showAdmin
+    ? [...roleSet].some((r) => FAN_ROLES.has(r)) || FAN_ROLES.has(resolved.activeRole.toUpperCase())
+    : FAN_ROLES.has(primaryRoleUpper);
+  const hasPerformer = showAdmin
+    ? [...roleSet].some((r) => PERFORMER_ROLES.has(r)) || PERFORMER_ROLES.has(resolved.activeRole.toUpperCase())
+    : PERFORMER_ROLES.has(primaryRoleUpper);
 
   const activeMode    = modeLabel(resolved.activeRole);
   const activeModeClr = modeColor(resolved.activeRole);

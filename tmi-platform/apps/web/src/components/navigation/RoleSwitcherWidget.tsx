@@ -8,7 +8,10 @@
  * Clicking a role tile switches the active role and navigates to that hub.
  *
  * Rules:
- *  - Only renders if the user holds 2+ roles (invisible otherwise)
+ *  - Only renders for ADMIN/STAFF accounts, and only when they hold 2+ roles
+ *    (fans and performers cannot switch to each other's accounts — only
+ *    administrators can, Marcel Dickens 2026-07-24 — a non-admin account
+ *    holding multiple real UserRole rows must never see this switcher)
  *  - Panel is dismissable via ESC, backdrop click, or the toggle button
  *  - Calls POST /api/auth/switch-role → sets tmi_role cookie → navigates
  */
@@ -214,8 +217,13 @@ export default function RoleSwitcherWidget({
     [router, switching],
   );
 
-  // Don't render if only one role (nothing to switch between)
-  if (!loading && roles.length < 2) return null;
+  // Don't render if only one role (nothing to switch between), and never
+  // render for a non-admin account even if it genuinely holds multiple real
+  // roles — dashboard switching is admin-only (Marcel Dickens, 2026-07-24).
+  // `/api/auth/my-roles` only ever includes ADMIN/STAFF in `roles` for
+  // accounts that are actually admin/staff/governance (see
+  // synthesizeAdminSwitchRoles's isAdmin/isGovernanceMember gate).
+  if (!loading && (roles.length < 2 || !roles.some(isAdminRoleId))) return null;
 
   const currentRole = activeRole ?? roles[0] ?? "USER";
   const currentDef = getRoleDef(currentRole);

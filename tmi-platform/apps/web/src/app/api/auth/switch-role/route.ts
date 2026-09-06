@@ -31,8 +31,18 @@ function adminHubForEmail(email: string): string {
 /**
  * POST /api/auth/switch-role
  *
- * Switch the active role for an account that holds multiple roles.
- * Only roles present in userRoles[] are allowed — no privilege escalation.
+ * Admin-only dashboard switching (Marcel Dickens, 2026-07-24: "fans and
+ * performers cannot switch to each other's accounts. Only administrators
+ * can do this."). A non-admin account may genuinely hold multiple real
+ * UserRole rows (e.g. after an admin-driven role conversion via
+ * /api/admin/convert-role, which is additive and never removes the old
+ * role), but that must never grant it self-service switching between its
+ * own hubs — only ADMIN/STAFF/governance accounts may call this endpoint.
+ * The UI gate (RoleSwitcherWidget, AccountCommandMenu's Hubs section) is
+ * enforced client-side too, but this server check is the real boundary.
+ *
+ * Only roles present in userRoles[] are allowed for the caller — no
+ * privilege escalation into a role never assigned to the account.
  *
  * Body: { role: string }
  * Response: { ok, activeRole, hubUrl }
@@ -83,18 +93,28 @@ export async function POST(req: NextRequest) {
     ),
   );
 
-  // Governance / ADMIN operators may switch ADMIN ↔ FAN ↔ PERFORMER
-  // even when UserRole rows were never seeded — triad switch for Justin / Jay Paul.
+  // Admin-only dashboard switching, checked against the account's real DB
+  // role/userRoles (not the tmi_role cookie, which is exactly what this
+  // endpoint mutates on every switch — a cookie-based check would lock a
+  // governance member out the moment they'd switched into a non-admin view).
   const primary = (user.role as string).toUpperCase();
-  if (
+  const isAdminAccount =
     primary === "ADMIN" ||
     primary === "STAFF" ||
     allowedRoles.has("ADMIN") ||
     allowedRoles.has("STAFF") ||
-    isGovernanceMember(auth.user.email)
-  ) {
-    for (const r of GOVERNANCE_SWITCHABLE_ROLES) allowedRoles.add(r);
+    isGovernanceMember(auth.user.email);
+
+  if (!isAdminAccount) {
+    return NextResponse.json(
+      { error: "Forbidden: dashboard switching is admin-only" },
+      { status: 403 },
+    );
   }
+
+  // Governance / ADMIN operators may switch ADMIN ↔ FAN ↔ PERFORMER
+  // even when UserRole rows were never seeded — triad switch for Justin / Jay Paul.
+  for (const r of GOVERNANCE_SWITCHABLE_ROLES) allowedRoles.add(r);
 
   if (!allowedRoles.has(targetRole)) {
     return NextResponse.json(

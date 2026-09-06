@@ -1220,3 +1220,192 @@ Each maps to an automatic recovery policy: retry → fallback asset → fallback
 The face-capture → rigged-3D-avatar → lip-synced pipeline remains multi-session, multi-specialist work (computer-vision + 3D-animation). Do not fake a stub version. The near-term work is: (1) connect the runtime to the existing Herser assets via the canonical registries, (2) wire the Avatar Quick Panel and Creation Center to those registries, (3) run the Avatar QA Lab certification. The full face-scan pipeline is scoped separately and cannot begin before the canonical rig/environment binding is complete.
 
 *Established 2026-08-27 by Marcel Dickens.*
+
+---
+
+### Rule 29 — Three-Tier Venue Authority Separation (locked 2026-09-06)
+
+**The profile/account shell is not the venue.** A profile is a window into a venue; the venue is an independent, authoritative runtime. This was locked after a 2026-09-06 UI convergence audit found `CurtainCanister.tsx` (already dead/unmounted) built as if curtain control were a per-account capability — the correction is architectural, not just a dead-code deletion: nothing that mutates a venue may ever be modeled as a Rule 15 canister or live inside the personal profile/account shell again.
+
+**Four distinct authorities, never collapsed into each other:**
+
+```
+PERSON           → controls themselves (account/profile/identity)
+VENUE            → controls the world (the room/session/3D environment)
+VENUE OPERATOR   → controls authorized venue presentation, from inside the venue
+LIVE PROGRAM     → controls what is broadcast/distributed externally
+```
+
+**The tier architecture:**
+
+```
+TIER 1 — PERSONAL / ACCOUNT SPACE
+─────────────────────────────────
+Universal Account Shell, Profile, Public Profile, Notifications, Billing,
+Security, Privacy, Subscriptions, personal preferences, Discovery/navigation,
+read-only Venue Preview.
+
+NO: Curtains, stage mechanics, house lights, venue mixer, audience
+administration, Jumbotron director, venue production controls.
+
+                    ENTER / GO LIVE
+                           ↓
+
+TIER 2 — VENUE RUNTIME
+─────────────────────────────────
+Keyed by venueId / roomId / liveSessionId / experienceId — never userId/profileId.
+3D world, stage, audience, seating, collision, spatial audio, Jumbotrons,
+venue cameras, occupancy, experience runtime, venue state, telemetry.
+The venue exists independently of any single user — if a performer steps
+away, the venue's physical state (lighting, seating) persists.
+
+                           ↓
+                    AUTHORIZED ⚙ (contextual, not a permanent global rail)
+
+TIER 3 — VENUE OPERATOR OVERLAY
+─────────────────────────────────
+Curtains, intermission, countdowns, house lights, stage FX, stage mechanics,
+venue audio, audience modes, seating management, Jumbotron controls,
+camera/scene controls, experience-specific controls, safety controls,
+production overlays. Audience-facing (curtains, Jumbotron) vs operator-only
+(the button that controls them) are different render layers — the audience
+never sees Tier 3 controls, only their Tier 2 effects.
+```
+
+**Alongside all three — not underneath the profile, not owned by the venue:**
+
+```
+LIVE PROGRAM / BROADCAST SESSION
+─────────────────────────────────
+GO LIVE, Program Mixer, Preview/Program, Record, Share Screen, CAST,
+Destination Bezel (YouTube/Facebook/Twitch/Kick/Custom), broadcast health,
+external egress.
+```
+
+The Broadcast Destination Bezel is accessible from inside Venue Tools for operator convenience, but is **owned by the Live Program/session, not the venue** — provider credentials and distribution never become venue-owned just because the venue gear links to them.
+
+**Ownership chains (the law, not a suggestion):**
+
+```
+FORBIDDEN:                          REQUIRED:
+ProfileShell                        Active Venue
+  → CurtainSystem                     → authorized Venue Gear (⚙)
+                                       → VenueCapabilityResolver
+                                       → VenueCommandBus
+                                       → VenuePresentationDirector
+                                       → CurtainDirector
+                                       → authoritative VenuePresentationState
+                                       → synchronized audience rendering
+```
+
+`VenuePresentationDirector` children: `CurtainDirector`, `LightingDirector`, `StageOverlayDirector`, `JumbotronDirector`, `SponsorOverlayDirector`, `ScoreboardDirector`, `CrowdPresentationDirector`, `TransitionDirector`, `ProgramLayoutBridge`.
+
+**Read path vs write path** — profile/home/discovery previews consume a read-only feed and never receive mutation authority:
+
+```
+READ:  VenueRuntime → VenuePresentationSnapshot → Profile/Home/Discovery previews
+WRITE: Authorized user inside venue → VenueCommandBus → VenueRuntime
+```
+
+`VenuePresentationSnapshot` may expose: venue name, experience, live/offline, approved thumbnail/program frame, curtain visual state, current performer, legitimate audience count, event status. It must never expose: operator mutation tokens, venue command authority, private mixer controls, stage authorization, broadcast credentials, admin capability.
+
+**Curtain state is authoritative and synchronized**, not a local boolean per browser: `CLOSED → OPENING → OPEN → CLOSING → INTERMISSION → COUNTDOWN → HOLD → ERROR`, each transition carrying `transitionId`, `effectiveAt`, `duration`, `requestedBy`, `authorizedBy`, and an incrementing `venuePresentationVersion`. Late joiners fetch current state rather than replaying the transition from the start; a refreshed operator's browser reconnects to existing state rather than resetting to defaults.
+
+**Role authority is resolved, not assumed from presence** — being physically in the venue does not grant control:
+
+```
+VenueGearButton → VenueCapabilityResolver → HudControlRegistry → VenueCommandBus
+→ VenuePresentationDirector → authoritative venue state → renderer → audience
+```
+
+`HOST`/`AUTHORIZED PRODUCER` get venue presentation (+ program) controls, `PERFORMER` gets performer-specific controls, `FAN`/`GUEST` get audience-only or permitted-guest controls respectively.
+
+**Venue tools are manifest-driven per experience, not one global control list** — a `VenueToolManifest` resolves from experience + venue capabilities + operator role + current venue state, so a Battle (Curtain, Intro, Round State, A/B Stage, Lighting, Jumbotron, Audience Reaction, Scoreboard, Camera, Safety), a Cypher (Curtain, Rotation, Active Performer, Group Stage, Lighting, Jumbotron, Audio, Audience), and Regular Go Live (Curtain, Lighting, Guests, Audience, Jumbotron, Program View, Sponsor Treatment) each get the right tools behind the *same* single ⚙ control — never a new permanent rail per experience.
+
+**Venue lifecycle gates tool availability**: `NOT_ENTERED → ENTERING → ACTIVE → PAUSED → ENDING → ENDED`. No venue context, no venue tools — `canMountVenueTools` requires an active `venueId`+`liveSessionId` and `venueCapabilities.canOperateVenue === true`; the gear doesn't render disabled, it doesn't exist.
+
+**Dependency law (certifiable)**: `profile/**`, `account/**`, `settings/**` must never import venue-mutating modules (`CurtainDirector`, `VenueCommandBus`, `VenueLightingDirector`, `VenueStageController`, `VenueAudienceController`) — they may import read-only `VenuePreview`/`VenuePresentationSnapshot` only. Venue runtime must never depend on private profile UI components. This should become an automated import-boundary check, not a one-time manual scan, so the architecture can't slowly recollapse.
+
+**Certification (VENUE-01 through VENUE-13):**
+```
+VENUE-01  Profile shows venue preview but exposes zero venue mutation controls.
+VENUE-02  Without active venue/session, Curtain/Stage/Lighting/Jumbotron controls are absent.
+VENUE-03  Enter authorized venue → Venue Gear appears.
+VENUE-04  Open Venue Gear → correct experience-specific tool manifest appears.
+VENUE-05  Unauthorized audience member cannot mutate curtains/stage.
+VENUE-06  Authorized operator closes curtain → all viewers see synchronized close.
+VENUE-07  Profile preview reflects venue state without owning it.
+VENUE-08  Refresh operator browser → venue presentation state persists.
+VENUE-09  Late viewer joins → receives current state without restarting animation incorrectly.
+VENUE-10  Venue state change does not restart camera, mic, WebRTC, recording, Program Mixer, or external egress.
+VENUE-11  Different experience loads different VenueToolManifest without adding global buttons.
+VENUE-12  Leaving/ending venue removes Venue Gear and all venue-only controls.
+VENUE-13  AUTHORITY SEPARATION — ProfileShell cannot directly mutate VenueRuntime; all writes traverse
+          Authorized Venue HUD → capability resolver → command bus → venue runtime/service → authoritative state.
+```
+
+**Required end state:**
+```
+VENUE CONTROLS IN PERSONAL UI          = 0
+CURTAIN CONTROLS OUTSIDE ACTIVE VENUE  = 0
+PROFILE → VENUE MUTATION PATHS         = 0
+UNAUTHORIZED VENUE MUTATION PATHS      = 0
+DUPLICATE VENUE CONTROL RAILS          = 0
+READ-ONLY PROFILE VENUE PREVIEWS       = PASS
+VENUE STATE RECONNECT                  = PASS
+LATE-JOIN VENUE STATE                  = PASS
+AUDIENCE CURTAIN SYNCHRONIZATION       = PASS
+EXPERIENCE-AWARE VENUE TOOL MANIFEST   = PASS
+```
+
+**Scope honesty (2026-09-06)**: none of `VenueCapabilityResolver`, `VenueCommandBus`, `VenueToolManifest`, `VenuePresentationDirector`, `CurtainDirector`, or authoritative `VenuePresentationState`/`venuePresentationVersion` exist as code yet — this is a locked architectural law for how the venue-tools convergence (already underway per the same-day UI audit) must be built, not a claim any of it is implemented. The audit's confirmed-dead `CurtainCanister.tsx` and 4 other retired curtain implementations were already correctly pointed at `VenueToolsDirector`/`VenueToolsQuickPanel` by an earlier session — this rule formalizes why that direction was right and extends it to every venue-presentation control, not curtains alone. Do not build a stub version of any Director named above that doesn't actually enforce server-authoritative, synchronized state (a `CurtainDirector` that just flips local React state per viewer would itself violate this rule and Rule 20).
+
+*Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 30 — Live Pause / Intermission Monetization State (locked 2026-09-06)
+
+**PAUSE LIVE is a session state transition, not a stream stop.** When a performer pauses, the canonical `liveSessionId`, WebRTC contribution session, Program Mixer, recording continuity, external egress, and destination provider sessions all stay alive — only the program *content* changes, from live performance to a real venue intermission presentation (curtains closed, approved ad/sponsor program running). `PAUSE LIVE != END LIVE`, full stop.
+
+**One contextual live-state control, not four permanent buttons:**
+```
+[ GO LIVE ] → [ PAUSE LIVE ] → [ RESUME LIVE ] → [ END LIVE ]
+```
+
+**State machine**: `OFF → STARTING → LIVE → PAUSING → INTERMISSION → RESUMING → LIVE`, with `WARNING`/`ERROR`/`STOPPING` as needed. Venue presentation maps onto it directly: `LIVE`=curtains open, `PAUSING`=curtain closing, `INTERMISSION`=curtain closed + approved ad/program content, `RESUMING`=curtain opening.
+
+**Ownership chain on pause:**
+```
+LiveSessionDirector → ENTER_INTERMISSION → VenuePresentationDirector → CurtainDirector.CLOSE
+→ IntermissionProgramDirector → AdDecisionService (canonical ad/sponsor inventory — never fabricated)
+→ Program Mixer → canonical Program Output → TMI audience + cast surfaces + external destinations
+```
+
+**What gets cast/distributed is the Program Output, never the raw performer feed** — `Venue/Program Mixer → Program Output → CAST target`, not `performer camera → cast`. A viewer on YouTube, Twitch, a casted TMI screen, or a Jumbotron all see the same intermission presentation the in-venue audience sees; the connection never appears to just disappear.
+
+**`IntermissionAdPod`** (fallback ladder, same anti-fabrication law as Rule 12): paid-eligible ad → sponsor creative → venue sponsor slate → TMI house promo → neutral intermission curtain (never a fabricated advertiser to fill empty inventory). A non-skippable ad in progress when RESUME is pressed either finishes before resume takes effect or is limited to skippable inventory only — never cut mid-spot, to protect advertiser reporting.
+
+**Pause reasons change runtime behavior**: `MANUAL_INTERMISSION` (ideal for monetized ad inventory), `TECHNICAL_PAUSE` (prioritize a neutral holding slate over ads if the system is unstable), `PRIVACY_PAUSE` (suppress performer audio/video first, then close curtains), `BREAK`, `SAFETY_HOLD`.
+
+**Telemetry required per pause/resume cycle** (no fabricated impressions): `pauseStartedAt`, `pauseReason`, `venueId`, `liveSessionId`, `adPodId`, `campaignId`, `creativeId`, `impressionStarted`, `impressionCompleted`, `externalDestinationCount`, `castSurfaceCount`, `resumeRequestedAt`, `resumeEffectiveAt`.
+
+**Certification (LIVE-PAUSE-01 through 12):**
+```
+LIVE-PAUSE-01  Go live → external destination confirmed LIVE.
+LIVE-PAUSE-02  Press PAUSE LIVE → session ID unchanged.
+LIVE-PAUSE-03  Curtains close for all viewers.
+LIVE-PAUSE-04  Performer camera/audio no longer exposed to audience program during pause.
+LIVE-PAUSE-05  Approved ad/intermission program appears on TMI audience view.
+LIVE-PAUSE-06  Same intermission appears on casted surface.
+LIVE-PAUSE-07  Same intermission appears on external provider viewer.
+LIVE-PAUSE-08  External provider session remains connected.
+LIVE-PAUSE-09  Press RESUME → current non-skippable ad resolves correctly.
+LIVE-PAUSE-10  Curtains reopen and performer returns without creating a new liveSessionId.
+LIVE-PAUSE-11  Recording continuity follows configured policy.
+LIVE-PAUSE-12  No fake ad impression/revenue event if no real creative was served.
+```
+
+**Scope honesty (2026-09-06)**: none of `LiveSessionDirector`'s pause/intermission states, `IntermissionProgramDirector`, `IntermissionAdPod`, or the pause/resume telemetry schema exist as code yet. This rule depends on Rule 29's `VenuePresentationDirector`/`CurtainDirector` existing first — sequence accordingly. Do not build a stub "pause" that actually ends the session (violates the core law above) or a fake ad-impression counter (violates Rule 20).
+
+*Established 2026-09-06 by Marcel Dickens.*
