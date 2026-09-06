@@ -9,12 +9,17 @@ import {
   CANONICAL_BEZEL_PROVIDERS,
   destinationIdFor,
   destinationStatusGlyph,
+  resolveAuthoritativeDestinationState,
+  resolveMasterLiveStatus,
+  type AuthoritativeDestinationState,
   type BroadcastDestinationPublic,
   type BroadcastProvider,
   type DestinationConnectionStatus,
+  type MasterLiveBroadcastStatus,
 } from "./BroadcastDestinationTypes";
 
-export { destinationStatusGlyph };
+export { destinationStatusGlyph, resolveAuthoritativeDestinationState, resolveMasterLiveStatus };
+export type { AuthoritativeDestinationState, MasterLiveBroadcastStatus };
 
 type Listener = (destinations: BroadcastDestinationPublic[]) => void;
 
@@ -36,6 +41,7 @@ function seedDefaults(userId: string): void {
       label: p.label,
       shortCode: p.shortCode,
       connectionStatus: "off",
+      authoritativeState: "OFF",
       authState: "unlinked",
       ingestType: "rtmp",
       enabled: false,
@@ -83,7 +89,15 @@ export function patchBroadcastDestination(
 ): BroadcastDestinationPublic | null {
   const cur = byId.get(destinationId);
   if (!cur) return null;
-  const next = { ...cur, ...patch, destinationId: cur.destinationId, provider: cur.provider };
+  const next: BroadcastDestinationPublic = {
+    ...cur,
+    ...patch,
+    destinationId: cur.destinationId,
+    provider: cur.provider,
+  };
+  if (!patch.authoritativeState) {
+    next.authoritativeState = resolveAuthoritativeDestinationState(next, next.connectionStatus === "live");
+  }
   byId.set(destinationId, next);
   emit();
   return next;
@@ -94,8 +108,20 @@ export function setDestinationConnectionStatus(
   connectionStatus: DestinationConnectionStatus,
   statusLine?: string,
 ): void {
+  const authoritativeState: AuthoritativeDestinationState =
+    connectionStatus === "live"
+      ? "LIVE"
+      : connectionStatus === "error"
+        ? "ERROR"
+        : connectionStatus === "connecting" || connectionStatus === "retry"
+          ? "WARNING"
+          : connectionStatus === "selected_off"
+            ? "READY"
+            : "OFF";
+
   patchBroadcastDestination(destinationId, {
     connectionStatus,
+    authoritativeState,
     ...(statusLine !== undefined ? { statusLine } : {}),
     health:
       connectionStatus === "live"
