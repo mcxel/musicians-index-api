@@ -697,6 +697,38 @@ export default function CommandCenterMediaStack({
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [avatarQuickOpen, setAvatarQuickOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const toggleRecording = useCallback(() => {
+    setIsRecording((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tmi:recording-toggle', { detail: { recording: next } }));
+      }
+      return next;
+    });
+  }, []);
+
+  const onShareClick = useCallback(async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: "The Musician's Index — Live Hub",
+          url,
+        });
+        return;
+      } catch {
+        /* user dismissed */
+      }
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        /* fallback */
+      }
+    }
+  }, []);
   const [exploreMatrixOpen, setExploreMatrixOpen] = useState(false);
   const [exploreInitialColumn, setExploreInitialColumn] = useState<ExploreColumnType>("SNIPS");
   const [miniLobbyWallOpen, setMiniLobbyWallOpen] = useState(false);
@@ -1091,92 +1123,34 @@ export default function CommandCenterMediaStack({
         borderRadius: 10,
       }}
     >
-      {/* Action Row: CAST Group, QUICK Group, VENUE TOOLS */}
+      {/* Action Row: Converged Top Cluster (CAST · USER ID / ARTIST ID · SPONSORS · SHARE SCREEN · RECORD · SHARE · GO LIVE), EXPLORE, VENUE TOOLS */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12 }}>
-        {/* CAST GROUP */}
+        {/* TOP CONTROL CLUSTER */}
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#AA2DFF" }}>
-            CAST
+            COMMAND CONTROLS
           </span>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
-            {/* 1. PLAYLIST */}
+            {/* 1. CAST */}
             <div style={{ position: "relative" }}>
-              {utilityBtn(playlistCastOpen, "#00FFFF", "PLAYLIST", () => setPlaylistCastOpen((v) => !v), {
-                testId: "tmi-cast-playlist-btn",
-                title: "Cast playlist / song to room",
-                icon: "🎵",
-              })}
-              {playlistCastOpen ? (
-                <FastPlaylistCastPicker
-                  onClose={() => setPlaylistCastOpen(false)}
-                  targetSlotId={topSlots[0]?.id ?? "mon-a"}
-                />
-              ) : null}
-            </div>
-
-            {/* 2. GO LIVE */}
-            {utilityBtn(Boolean(publishedRoomId), "#FF4444", "GO LIVE", () => {
-              void presentInstantGoLiveInPlace({
-                role: role === "performer" ? "PERFORMER" : "FAN",
-                preferredExperience: "live",
-                roomId: hubLiveRoomId ?? undefined,
-                publishSession: true,
-              });
-            }, {
-              testId: "tmi-cast-golive-btn",
-              title: "Go Live / broadcast to stage",
-              icon: "🔴",
-            })}
-
-            {/* 3. MEMORY */}
-            {utilityBtn(false, "#AA2DFF", "MEMORY", () => {
-              useCompactQuickPanelStore.getState().togglePanel("memory-wall");
-            }, {
-              testId: "tmi-cast-memory-btn",
-              title: "Cast photos & memories to room display",
-              icon: "🧠",
-            })}
-
-            {/* 4. YOPHO */}
-            {utilityBtn(false, "#FF2DAA", "YOPHO", () => {
-              document.documentElement.setAttribute("data-yopho-btn-click", "1");
-              useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
-              if (onOpenYopho) {
-                onOpenYopho();
-                return;
-              }
-              presentCanonicalWorkspace("yopho", "DRAWER");
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("tmi:hub-cast-yopho"));
-                (
-                  window as Window & { __TMI_OPEN_YOPHO__?: () => void }
-                ).__TMI_OPEN_YOPHO__?.();
-              }
-            }, {
-              testId: "tmi-cast-yopho-btn",
-              title: "Open YoPho living canvas (background-first Free tier)",
-              icon: "📱",
-            })}
-
-            {/* 5. SHARE SCREEN */}
-            <div style={{ position: "relative" }}>
-              {utilityBtn(castPanelOpen || shareActive || isFullscreen, "#00FF88", "SHARE SCREEN", () => setCastPanelOpen((v) => !v), {
-                testId: "tmi-cast-sharescreen-btn",
-                title: "Share screen / window / tab",
-                icon: "🖥️",
+              {utilityBtn(castPanelOpen || playlistCastOpen, "#AA2DFF", "CAST", () => setCastPanelOpen((v) => !v), {
+                testId: "tmi-top-cluster-cast",
+                title: "Cast playlist, screen, or living canvas",
+                icon: "📡",
               })}
               {castPanelOpen ? (
                 <div
+                  data-testid="tmi-cast-options-panel"
                   style={{
                     position: "absolute",
                     top: "calc(100% + 8px)",
                     left: 0,
                     zIndex: 40,
-                    width: 280,
+                    width: 290,
                     background: "#0d1117",
-                    border: "1px solid rgba(0,255,136,0.45)",
+                    border: "1px solid rgba(170,45,255,0.45)",
                     borderRadius: 10,
-                    padding: 8,
+                    padding: 10,
                     boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
                     display: "flex",
                     flexDirection: "column",
@@ -1185,32 +1159,74 @@ export default function CommandCenterMediaStack({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
-                    SCREEN CAST OPTIONS
+                    CASTING DESTINATIONS & SOURCES
                   </span>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                     <button
                       type="button"
-                      data-testid="tmi-share-screen-cycle"
-                      onClick={() => void cycleSharePress()}
-                      title={shareActive ? "Cycle share sources" : "Share screen / window / tab"}
+                      data-testid="tmi-cast-playlist-btn"
+                      onClick={() => {
+                        setPlaylistCastOpen((v) => !v);
+                        setCastPanelOpen(false);
+                      }}
                       style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        padding: "8px 10px",
+                        padding: "8px",
                         borderRadius: 6,
+                        border: playlistCastOpen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.15)",
+                        background: playlistCastOpen ? "rgba(0,255,255,0.15)" : "transparent",
+                        color: "#00FFFF",
+                        fontSize: 9,
+                        fontWeight: 900,
                         cursor: "pointer",
-                        border: shareActive ? "1px solid #00FF88" : "1px solid rgba(0,255,136,0.45)",
-                        background: shareActive ? "rgba(0,255,136,0.15)" : "transparent",
-                        color: "#00FF88",
-                        fontFamily: "inherit",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
                       }}
                     >
-                      <span>⬡</span>
-                      <span>{shareActive ? "CYCLE SHARE" : "START SHARE"}</span>
+                      🎵 PLAYLIST
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="tmi-cast-yopho-btn"
+                      onClick={() => {
+                        document.documentElement.setAttribute("data-yopho-btn-click", "1");
+                        useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
+                        if (onOpenYopho) {
+                          onOpenYopho();
+                        } else {
+                          presentCanonicalWorkspace("yopho", "DRAWER");
+                        }
+                        setCastPanelOpen(false);
+                      }}
+                      style={{
+                        padding: "8px",
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,45,170,0.35)",
+                        background: "transparent",
+                        color: "#FF2DAA",
+                        fontSize: 9,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                      }}
+                    >
+                      📱 YOPHO
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="tmi-cast-memory-btn"
+                      onClick={() => {
+                        useCompactQuickPanelStore.getState().togglePanel("memory-wall");
+                        setCastPanelOpen(false);
+                      }}
+                      style={{
+                        padding: "8px",
+                        borderRadius: 6,
+                        border: "1px solid rgba(170,45,255,0.35)",
+                        background: "transparent",
+                        color: "#AA2DFF",
+                        fontSize: 9,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                      }}
+                    >
+                      🧠 MEMORY
                     </button>
                     <button
                       type="button"
@@ -1218,58 +1234,24 @@ export default function CommandCenterMediaStack({
                         toggleFullscreen();
                         setCastPanelOpen(false);
                       }}
-                      title={isFullscreen ? "Exit big screen" : "Big screen — native fullscreen"}
                       style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        padding: "8px 10px",
+                        padding: "8px",
                         borderRadius: 6,
-                        cursor: "pointer",
-                        border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(0,255,255,0.4)",
-                        background: isFullscreen ? "rgba(0,255,255,0.18)" : "transparent",
+                        border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.15)",
+                        background: isFullscreen ? "rgba(0,255,255,0.15)" : "transparent",
                         color: "#00FFFF",
-                        fontFamily: "inherit",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
+                        fontSize: 9,
+                        fontWeight: 900,
+                        cursor: "pointer",
                       }}
                     >
-                      <span>⛶</span>
-                      <span>{isFullscreen ? "EXIT FULL" : "FULLSCREEN"}</span>
+                      ⛶ {isFullscreen ? "EXIT FULL" : "FULLSCREEN"}
                     </button>
                   </div>
-                  {shareActive ? (
-                    <button
-                      type="button"
-                      onClick={stopScreenShare}
-                      style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        padding: "5px 8px",
-                        borderRadius: 5,
-                        border: "1px solid rgba(255,68,68,0.5)",
-                        background: "rgba(255,68,68,0.12)",
-                        color: "#FF6B6B",
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      STOP SHARE
-                    </button>
-                  ) : null}
-                  {shareError ? (
-                    <ScreenShareErrorBanner
-                      code={shareError}
-                      onDismiss={clearShareError}
-                      onRetry={() => void cycleSharePress()}
-                    />
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => setCastPanelOpen(false)}
                     style={{
-                      marginTop: 2,
                       padding: "4px 8px",
                       borderRadius: 6,
                       border: "1px solid rgba(255,255,255,0.2)",
@@ -1278,53 +1260,31 @@ export default function CommandCenterMediaStack({
                       fontSize: 8,
                       fontWeight: 800,
                       cursor: "pointer",
+                      marginTop: 4,
                     }}
                   >
                     CLOSE
                   </button>
                 </div>
               ) : null}
-            </div>
-
-            {/* 6. SPONSOR */}
-            {utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSOR", () => setSponsorPanelOpen((v) => !v), {
-              testId: "tmi-cast-sponsor-btn",
-              title: "Cast sponsor overlay or creative to audience",
-              icon: "🏷️",
-            })}
-          </div>
-        </div>
-
-        {/* QUICK GROUP */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#00FFFF" }}>
-            QUICK
-          </span>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
-            {/* AVATAR QUICK PANEL */}
-            <div style={{ position: "relative" }}>
-              {utilityBtn(avatarQuickOpen, "#00FFFF", "AVATAR", () => setAvatarQuickOpen((v) => !v), {
-                testId: "tmi-quick-avatar-btn",
-                title: "Quick avatar customizer & loadouts",
-                icon: "👤",
-              })}
-              {avatarQuickOpen ? (
-                <AvatarQuickChangeDrawer
-                  onClose={() => setAvatarQuickOpen(false)}
+              {playlistCastOpen ? (
+                <FastPlaylistCastPicker
+                  onClose={() => setPlaylistCastOpen(false)}
+                  targetSlotId={topSlots[0]?.id ?? "mon-a"}
                 />
               ) : null}
             </div>
 
-            {/* FAN ID / PERFORMER ID */}
+            {/* 2. USER ID / ARTIST ID */}
             <div style={{ position: "relative" }}>
               {utilityBtn(
                 identityOpen,
                 role === "performer" ? "#FFD700" : "#00FF88",
-                role === "performer" ? "PERFORMER ID" : "FAN ID",
+                role === "performer" ? "ARTIST ID" : "USER ID",
                 () => setIdentityOpen((v) => !v),
                 {
-                  testId: role === "performer" ? "tmi-artist-id-rail" : "tmi-fan-id-rail",
-                  title: role === "performer" ? "Performer ID / QR credentials" : "Fan ID / QR card",
+                  testId: "tmi-top-cluster-user-id",
+                  title: role === "performer" ? "Performer Artist ID & QR card" : "TMI User ID & QR card",
                   icon: "🪪",
                 },
               )}
@@ -1335,12 +1295,12 @@ export default function CommandCenterMediaStack({
                     top: "calc(100% + 8px)",
                     left: 0,
                     zIndex: 30,
-                    width: 280,
+                    width: 290,
                     padding: 10,
-                    borderRadius: 10,
-                    background: "rgba(5,5,16,0.96)",
-                    border: `1px solid ${role === "performer" ? "rgba(255,215,0,0.45)" : "rgba(0,255,136,0.45)"}`,
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
+                    borderRadius: 12,
+                    background: "rgba(5,5,16,0.98)",
+                    border: role === "performer" ? "1px solid rgba(255,215,0,0.45)" : "1px solid rgba(0,255,136,0.45)",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.75)",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -1369,6 +1329,62 @@ export default function CommandCenterMediaStack({
                     CLOSE
                   </button>
                 </div>
+              ) : null}
+            </div>
+
+            {/* 3. SPONSORS */}
+            {utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSORS", () => setSponsorPanelOpen((v) => !v), {
+              testId: "tmi-top-cluster-sponsors",
+              title: "Cast sponsor presentation overlay or brand cabinet",
+              icon: "🏷️",
+            })}
+
+            {/* 4. SHARE SCREEN */}
+            {utilityBtn(shareActive, "#00FF88", shareActive ? "SHARING SCREEN" : "SHARE SCREEN", () => void cycleSharePress(), {
+              testId: "tmi-top-cluster-sharescreen",
+              title: "Cycle or toggle screen share to Monitor A",
+              icon: "🖥️",
+            })}
+
+            {/* 5. RECORD */}
+            {utilityBtn(isRecording, "#FF4444", isRecording ? "● RECORDING" : "RECORD", () => toggleRecording(), {
+              testId: "tmi-top-cluster-record",
+              title: "Toggle local performance recording",
+              icon: "⏺",
+            })}
+
+            {/* 6. SHARE */}
+            {utilityBtn(false, "#AA2DFF", "SHARE", () => void onShareClick(), {
+              testId: "tmi-top-cluster-share",
+              title: "Share live room link or trigger native share sheet",
+              icon: "↗",
+            })}
+
+            {/* 7. GO LIVE */}
+            {utilityBtn(Boolean(publishedRoomId), "#FF2DAA", publishedRoomId ? "● LIVE" : "GO LIVE", () => {
+              void presentInstantGoLiveInPlace({
+                role: role === "performer" ? "PERFORMER" : "FAN",
+                preferredExperience: "live",
+                roomId: hubLiveRoomId ?? undefined,
+                publishSession: true,
+              });
+            }, {
+              testId: "tmi-top-cluster-golive",
+              title: "Go Live / broadcast to stage",
+              icon: "🔴",
+            })}
+
+            {/* QUICK AVATAR */}
+            <div style={{ position: "relative", marginLeft: 4 }}>
+              {utilityBtn(avatarQuickOpen, "#00FFFF", "AVATAR", () => setAvatarQuickOpen((v) => !v), {
+                testId: "tmi-quick-avatar-btn",
+                title: "Quick avatar customizer & loadouts",
+                icon: "👤",
+              })}
+              {avatarQuickOpen ? (
+                <AvatarQuickChangeDrawer
+                  onClose={() => setAvatarQuickOpen(false)}
+                />
               ) : null}
             </div>
           </div>

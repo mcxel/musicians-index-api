@@ -1,18 +1,26 @@
 "use client";
 
 /**
- * LiveDistributionBezel — external simulcast strip ABOVE Monitor A/B.
- * Order: OUT · YT · IG · FB · KK · TW · +
- * Phone: YT IG FB KK TW + (no horizontal overflow; + expands tray)
- * NO TMI light on this strip. ● live only after verified ingest ack.
+ * LiveDistributionBezel — Master Live Status Indicator & External Simulcast Bezel.
+ *
+ * Architecture (Locked Slice 4):
+ * - MASTER LIVE STATUS: Separated overall TMI session broadcast indicator (OFF / LIVE / WARNING / ERROR).
+ * - DESTINATION TARGETS: Independent multi-platform ingest targets (YouTube, Instagram, Facebook, Kick, Twitch, Custom).
+ * - SINGLE CANONICAL SESSION: One TMI live session fans out to selected destinations without stream duplication.
+ *
+ * Order: [MASTER LIVE] | OUT · ‹ · YT · IG · FB · KK · TW · CST · › · +
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import {
   destinationStatusGlyph,
   ensureBroadcastDestinationSeed,
   getBroadcastDestinations,
+  resolveAuthoritativeDestinationState,
+  resolveMasterLiveStatus,
   subscribeBroadcastDestinations,
+  type AuthoritativeDestinationState,
+  type MasterLiveBroadcastStatus,
 } from "@/lib/broadcast/BroadcastDestinationRegistry";
 import type {
   BroadcastDestinationPublic,
@@ -27,8 +35,7 @@ import {
   toggleExternalDestination,
 } from "@/lib/broadcast/ExternalBroadcastDistributor";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
-
-const OTHER_PROVIDERS: BroadcastProvider[] = ["other"];
+import { MEDIA_PLAYER_GO_LIVE_INTENT } from "@/components/commandCenter/MediaPlayerGoLiveControl";
 
 export type LiveDistributionBezelProps = {
   userId?: string | null;
@@ -48,6 +55,9 @@ export default function LiveDistributionBezel({
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkMessage, setLinkMessage] = useState("");
   const [isPhone, setIsPhone] = useState(false);
+  const [customRtmpUrl, setCustomRtmpUrl] = useState("");
+  const [customStreamKey, setCustomStreamKey] = useState("");
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
@@ -73,16 +83,34 @@ export default function LiveDistributionBezel({
 
   const phoneMode = compact ?? isPhone;
 
+  // Master live session status (OFF / LIVE / WARNING / ERROR)
+  const masterLiveStatus: MasterLiveBroadcastStatus = useMemo(() => {
+    return resolveMasterLiveStatus(isLivePublished);
+  }, [isLivePublished]);
+
+  // Primary destinations in canonical order: YT, IG, FB, KK, TW, CST
   const primary = useMemo(
     () =>
       destinations.filter((d) =>
-        ["youtube", "instagram", "facebook", "kick", "twitch"].includes(d.provider),
+        ["youtube", "instagram", "facebook", "kick", "twitch", "custom"].includes(d.provider),
       ),
     [destinations],
   );
 
   const liveCount = destinations.filter((d) => d.connectionStatus === "live").length;
   const connectingCount = destinations.filter((d) => d.connectionStatus === "connecting").length;
+
+  const scrollCarousel = (direction: "left" | "right") => {
+    if (!carouselRef.current) return;
+    const delta = direction === "left" ? -120 : 120;
+    carouselRef.current.scrollBy({ left: delta, behavior: "smooth" });
+  };
+
+  const onMasterLiveClick = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(MEDIA_PLAYER_GO_LIVE_INTENT));
+    }
+  };
 
   const onTapDestination = useCallback(
     async (dest: BroadcastDestinationPublic) => {
@@ -92,7 +120,7 @@ export default function LiveDistributionBezel({
         return;
       }
       if (!isLivePublished) {
-        // Pre-live: select / deselect only
+        // Pre-live: select / deselect for auto transmission upon GO LIVE
         const nextEnabled = !dest.enabled;
         const { patchBroadcastDestination } = await import(
           "@/lib/broadcast/BroadcastDestinationRegistry"
@@ -100,17 +128,32 @@ export default function LiveDistributionBezel({
         patchBroadcastDestination(dest.destinationId, {
           enabled: nextEnabled,
           connectionStatus: nextEnabled ? "selected_off" : "off",
-          statusLine: nextEnabled ? "Selected — goes out on GO LIVE" : "Off",
+          authoritativeState: nextEnabled ? "READY" : "OFF",
+          statusLine: nextEnabled ? "Primed — transmits on GO LIVE" : "Off",
         });
         return;
       }
-      // Post-live: health toggle without camera/venue restart
+      // Post-live: toggle distribution without encoder/session duplication
       await toggleExternalDestination(dest.destinationId);
     },
     [isLivePublished],
   );
 
-  // When going live, start any pre-selected destinations (non-blocking fan-out)
+  // Keyboard navigation on destination tiles
+  const onTileKeyDown = (e: KeyboardEvent<HTMLButtonElement>, dest: BroadcastDestinationPublic) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      void onTapDestination(dest);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      scrollCarousel("left");
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      scrollCarousel("right");
+    }
+  };
+
+  // When going live, start any pre-selected destinations (non-blocking single session fan-out)
   useEffect(() => {
     if (!isLivePublished || !publishedRoomId) return;
     setActiveExternalBroadcastRoomId(publishedRoomId);
@@ -130,7 +173,7 @@ export default function LiveDistributionBezel({
     if (!result.ok) {
       setLinkMessage(
         result.reason === "oauth_not_configured"
-          ? "Provider OAuth / stream key not configured on this deploy. Stay locked until keys exist."
+          ? "Provider OAuth / stream key not configured on this deploy. Ingest keys stay secure."
           : result.reason ?? "Could not link account.",
       );
       return;
@@ -143,33 +186,50 @@ export default function LiveDistributionBezel({
 
   const openSummary = () => setTrayOpen((v) => !v);
 
+  // Authoritative 5-state tile styling
   const chipStyle = (dest: BroadcastDestinationPublic): CSSProperties => {
-    const live = dest.connectionStatus === "live";
-    const connecting = dest.connectionStatus === "connecting" || dest.connectionStatus === "retry";
-    const err = dest.connectionStatus === "error";
-    const locked = dest.connectionStatus === "locked" || dest.authState === "unlinked";
-    const selected = dest.enabled || dest.connectionStatus === "selected_off";
+    const state: AuthoritativeDestinationState =
+      dest.authoritativeState ??
+      resolveAuthoritativeDestinationState(dest, isLivePublished);
+
+    const isLive = state === "LIVE";
+    const isReady = state === "READY";
+    const isWarning = state === "WARNING";
+    const isError = state === "ERROR";
+
     return {
-      flex: phoneMode ? "1 1 0" : "0 0 auto",
-      minWidth: phoneMode ? 0 : 44,
-      maxWidth: phoneMode ? undefined : 56,
-      padding: phoneMode ? "6px 2px" : "6px 8px",
+      flex: "0 0 auto",
+      minWidth: phoneMode ? 44 : 52,
+      maxWidth: phoneMode ? 54 : 64,
+      padding: phoneMode ? "5px 3px" : "6px 8px",
       borderRadius: 8,
-      border: live
+      border: isLive
         ? "1px solid #FF2DAA"
-        : err
-          ? "1px solid #FF6B35"
-          : locked
-            ? "1px solid rgba(255,255,255,0.12)"
-            : selected
-              ? "1px solid rgba(0,255,255,0.45)"
+        : isWarning
+          ? "1px solid #FFD700"
+          : isError
+            ? "1px solid #FF4444"
+            : isReady
+              ? "1px solid rgba(0,255,255,0.55)"
               : "1px solid rgba(255,255,255,0.14)",
-      background: live
-        ? "rgba(255,45,170,0.18)"
-        : connecting
-          ? "rgba(255,215,0,0.12)"
-          : "rgba(0,0,0,0.35)",
-      color: live ? "#FF2DAA" : err ? "#FF6B35" : "#E8F7FF",
+      background: isLive
+        ? "rgba(255,45,170,0.22)"
+        : isWarning
+          ? "rgba(255,215,0,0.16)"
+          : isError
+            ? "rgba(255,68,68,0.2)"
+            : isReady
+              ? "rgba(0,255,255,0.08)"
+              : "rgba(0,0,0,0.4)",
+      color: isLive
+        ? "#FF2DAA"
+        : isWarning
+          ? "#FFD700"
+          : isError
+            ? "#FF6B6B"
+            : isReady
+              ? "#00FFFF"
+              : "rgba(255,255,255,0.55)",
       fontSize: phoneMode ? 9 : 10,
       fontWeight: 900,
       letterSpacing: "0.06em",
@@ -179,13 +239,19 @@ export default function LiveDistributionBezel({
       flexDirection: "column",
       alignItems: "center",
       gap: 2,
-      animation: connecting ? "tmi-bdest-pulse 1.2s ease-in-out infinite" : undefined,
+      boxShadow: isLive
+        ? "0 0 10px rgba(255,45,170,0.35)"
+        : isReady
+          ? "0 0 8px rgba(0,255,255,0.2)"
+          : undefined,
+      animation: isLive ? "tmi-live-pulse 1.4s ease-in-out infinite" : undefined,
     };
   };
 
   return (
     <div
       data-tmi-live-distribution-bezel="1"
+      data-media-player-live-bezel="1"
       style={{
         flexShrink: 0,
         marginBottom: 8,
@@ -196,6 +262,10 @@ export default function LiveDistributionBezel({
       }}
     >
       <style>{`
+        @keyframes tmi-live-pulse {
+          0%, 100% { opacity: 0.75; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.02); }
+        }
         @keyframes tmi-bdest-pulse {
           0%, 100% { opacity: 0.55; }
           50% { opacity: 1; }
@@ -208,12 +278,76 @@ export default function LiveDistributionBezel({
           alignItems: "center",
           gap: phoneMode ? 4 : 6,
           width: "100%",
-          overflow: "hidden",
         }}
       >
+        {/* 1. MASTER LIVE STATUS INDICATOR (Explicitly isolated from destinations) */}
+        <button
+          type="button"
+          data-testid="tmi-master-live-status"
+          data-master-live-state={masterLiveStatus}
+          title={`Master Broadcast: ${masterLiveStatus} · Click to ${isLivePublished ? "view live broadcast" : "initiate Go Live"}`}
+          onClick={onMasterLiveClick}
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: phoneMode ? "6px 8px" : "6px 12px",
+            borderRadius: 8,
+            border: masterLiveStatus === "LIVE"
+              ? "1px solid #FF2DAA"
+              : masterLiveStatus === "WARNING"
+                ? "1px solid #FFD700"
+                : masterLiveStatus === "ERROR"
+                  ? "1px solid #FF4444"
+                  : "1px solid rgba(255,255,255,0.2)",
+            background: masterLiveStatus === "LIVE"
+              ? "linear-gradient(135deg, rgba(255,45,170,0.3), rgba(170,45,255,0.25))"
+              : masterLiveStatus === "WARNING"
+                ? "rgba(255,215,0,0.18)"
+                : masterLiveStatus === "ERROR"
+                  ? "rgba(255,68,68,0.2)"
+                  : "rgba(0,0,0,0.5)",
+            color: masterLiveStatus === "LIVE"
+              ? "#FF2DAA"
+              : masterLiveStatus === "WARNING"
+                ? "#FFD700"
+                : masterLiveStatus === "ERROR"
+                  ? "#FF6B6B"
+                  : "rgba(255,255,255,0.45)",
+            fontWeight: 900,
+            fontSize: phoneMode ? 9 : 10,
+            letterSpacing: "0.12em",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            boxShadow: masterLiveStatus === "LIVE" ? "0 0 14px rgba(255,45,170,0.4)" : undefined,
+          }}
+        >
+          <span style={{ fontSize: 11, lineHeight: 1 }}>
+            {masterLiveStatus === "LIVE"
+              ? "●"
+              : masterLiveStatus === "WARNING"
+                ? "⚠"
+                : masterLiveStatus === "ERROR"
+                  ? "✕"
+                  : "○"}
+          </span>
+          <span>LIVE</span>
+          {!phoneMode ? (
+            <span style={{ opacity: 0.6, fontSize: 8, marginLeft: 2 }}>
+              {masterLiveStatus}
+            </span>
+          ) : null}
+        </button>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.15)", margin: "0 2px" }} />
+
+        {/* 2. OUT Summary Toggle */}
         {!phoneMode ? (
           <button
             type="button"
+            data-testid="tmi-bezel-out-summary-btn"
             title="External distribution summary"
             onClick={openSummary}
             style={{
@@ -239,27 +373,110 @@ export default function LiveDistributionBezel({
           </button>
         ) : null}
 
-        {primary.map((dest) => (
-          <button
-            key={dest.destinationId}
-            type="button"
-            title={`${dest.label}: ${dest.statusLine ?? dest.connectionStatus}`}
-            onClick={() => void onTapDestination(dest)}
-            style={chipStyle(dest)}
-          >
-            <span style={{ fontSize: phoneMode ? 11 : 12, lineHeight: 1 }}>
-              {destinationStatusGlyph(dest.connectionStatus)}
-            </span>
-            <span>{dest.shortCode}</span>
-          </button>
-        ))}
-
+        {/* 3. CAROUSEL LEFT ARROW ‹ */}
         <button
           type="button"
-          title="More destinations"
+          data-testid="tmi-bezel-carousel-prev"
+          aria-label="Previous broadcast destinations"
+          onClick={() => scrollCarousel("left")}
+          style={{
+            flexShrink: 0,
+            width: 20,
+            height: 28,
+            borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.35)",
+            color: "rgba(255,255,255,0.7)",
+            fontSize: 12,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "inherit",
+          }}
+        >
+          ‹
+        </button>
+
+        {/* 4. DESTINATION TILES CAROUSEL CONTAINER */}
+        <div
+          ref={carouselRef}
+          data-testid="tmi-bezel-destinations-track"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: phoneMode ? 4 : 6,
+            overflowX: "auto",
+            scrollBehavior: "smooth",
+            scrollbarWidth: "none",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {primary.map((dest) => {
+            const authoritativeState =
+              dest.authoritativeState ??
+              resolveAuthoritativeDestinationState(dest, isLivePublished);
+
+            return (
+              <button
+                key={dest.destinationId}
+                type="button"
+                data-testid={`tmi-dest-tile-${dest.provider}`}
+                data-destination-id={dest.destinationId}
+                data-destination-provider={dest.provider}
+                data-destination-state={authoritativeState}
+                data-destination-status={dest.connectionStatus}
+                tabIndex={0}
+                title={`${dest.label}: ${authoritativeState} (${dest.statusLine ?? dest.connectionStatus})`}
+                onClick={() => void onTapDestination(dest)}
+                onKeyDown={(e) => onTileKeyDown(e, dest)}
+                style={chipStyle(dest)}
+              >
+                <span style={{ fontSize: phoneMode ? 10 : 11, lineHeight: 1 }}>
+                  {destinationStatusGlyph(authoritativeState)}
+                </span>
+                <span>{dest.shortCode}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 5. CAROUSEL RIGHT ARROW › */}
+        <button
+          type="button"
+          data-testid="tmi-bezel-carousel-next"
+          aria-label="Next broadcast destinations"
+          onClick={() => scrollCarousel("right")}
+          style={{
+            flexShrink: 0,
+            width: 20,
+            height: 28,
+            borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.35)",
+            color: "rgba(255,255,255,0.7)",
+            fontSize: 12,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "inherit",
+          }}
+        >
+          ›
+        </button>
+
+        {/* 6. + More Destinations / Custom RTMP Ingest */}
+        <button
+          type="button"
+          data-testid="tmi-bezel-more-btn"
+          title="Custom RTMP & External Destinations Configuration"
           onClick={() => setTrayOpen((v) => !v)}
           style={{
-            flex: phoneMode ? "0 0 auto" : "0 0 auto",
+            flexShrink: 0,
             padding: phoneMode ? "6px 8px" : "6px 10px",
             borderRadius: 8,
             border: "1px solid rgba(255,255,255,0.2)",
@@ -275,120 +492,172 @@ export default function LiveDistributionBezel({
         </button>
       </div>
 
+      {/* EXPANDABLE EXTERNAL DISTRIBUTION TRAY */}
       {trayOpen ? (
         <div
+          data-testid="tmi-bezel-tray-panel"
           style={{
             marginTop: 8,
-            padding: 8,
+            padding: 10,
             borderRadius: 8,
-            background: "rgba(0,0,0,0.4)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(0,0,0,0.55)",
+            border: "1px solid rgba(255,255,255,0.1)",
             fontSize: 11,
-            color: "rgba(255,255,255,0.7)",
+            color: "rgba(255,255,255,0.75)",
           }}
         >
-          <div style={{ fontWeight: 800, letterSpacing: "0.1em", color: "#00D4FF", marginBottom: 6 }}>
-            EXTERNAL DISTRIBUTION
-          </div>
-          <div style={{ marginBottom: 8, fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
-            TMI stays live on failure. Red ● only after verified ingest — never faked.
-          </div>
-          {destinations.map((d) => (
-            <div
-              key={d.destinationId}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontWeight: 800, letterSpacing: "0.1em", color: "#00D4FF" }}>
+              EXTERNAL MULTI-DESTINATION DISTRIBUTION
+            </span>
+            <button
+              type="button"
+              onClick={() => setTrayOpen(false)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-                padding: "4px 0",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
+                background: "transparent",
+                border: "none",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: 14,
+                cursor: "pointer",
               }}
             >
-              <span>
-                {destinationStatusGlyph(d.connectionStatus)} {d.label}{" "}
-                <span style={{ color: "rgba(255,255,255,0.4)" }}>({d.shortCode})</span>
-              </span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-                {d.statusLine ?? d.connectionStatus}
-              </span>
-            </div>
-          ))}
-          {OTHER_PROVIDERS.map((provider) => {
-            const existing = destinations.find((d) => d.provider === provider);
-            return (
-              <button
-                key={provider}
-                type="button"
-                onClick={() => {
-                  if (existing) void onTapDestination(existing);
-                  else
-                    setLinkTarget({
-                      destinationId: `pending-${provider}`,
-                      provider,
-                      label: "Other RTMP",
-                      shortCode: "+",
-                      connectionStatus: "locked",
-                      authState: "unlinked",
-                      ingestType: "rtmp",
-                      enabled: false,
-                      health: "unknown",
-                      retryState: { attempts: 0, nextRetryAt: null },
-                      latencyMs: null,
-                    });
-                }}
-                style={{
-                  marginTop: 8,
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px dashed rgba(255,255,255,0.2)",
-                  background: "transparent",
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                + Other RTMP destination
-              </button>
-            );
-          })}
-          {isLivePublished
-            ? primary
-                .filter((d) => d.connectionStatus === "live" || d.connectionStatus === "connecting")
-                .map((d) => (
+              ✕
+            </button>
+          </div>
+          <div style={{ marginBottom: 10, fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
+            One canonical TMI session fans out to all linked platforms. Master LIVE light governs transmission; external failures never interrupt TMI.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: phoneMode ? "1fr" : "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
+            {destinations.map((d) => {
+              const authoritativeState =
+                d.authoritativeState ??
+                resolveAuthoritativeDestinationState(d, isLivePublished);
+
+              return (
+                <div
+                  key={d.destinationId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ color: authoritativeState === "LIVE" ? "#FF2DAA" : authoritativeState === "READY" ? "#00FFFF" : "rgba(255,255,255,0.5)" }}>
+                      {destinationStatusGlyph(authoritativeState)}
+                    </span>
+                    <span style={{ fontWeight: 700, color: "#fff" }}>{d.label}</span>
+                  </div>
                   <button
-                    key={`stop-${d.destinationId}`}
                     type="button"
-                    onClick={() => void stopExternalDestination(d.destinationId)}
+                    onClick={() => void onTapDestination(d)}
                     style={{
-                      marginTop: 6,
-                      fontSize: 10,
-                      color: "#FF6B35",
-                      background: "transparent",
-                      border: "none",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: "3px 7px",
+                      borderRadius: 4,
+                      border: d.authState === "linked" ? "1px solid rgba(0,255,255,0.4)" : "1px solid rgba(255,255,255,0.2)",
+                      background: d.authState === "linked" ? "rgba(0,255,255,0.12)" : "transparent",
+                      color: d.authState === "linked" ? "#00FFFF" : "rgba(255,255,255,0.7)",
                       cursor: "pointer",
                       fontFamily: "inherit",
                     }}
                   >
-                    Stop {d.shortCode}
+                    {d.authState === "linked" ? (d.enabled ? "ENABLED" : "ENABLE") : "LINK"}
                   </button>
-                ))
-            : null}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Custom Ingest Configuration Form */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", marginBottom: 4 }}>
+              CUSTOM RTMP INGEST PROFILE
+            </div>
+            <div style={{ display: "flex", flexDirection: phoneMode ? "column" : "row", gap: 6 }}>
+              <input
+                type="text"
+                placeholder="rtmp://custom.ingest.endpoint/live"
+                value={customRtmpUrl}
+                onChange={(e) => setCustomRtmpUrl(e.target.value)}
+                style={{
+                  flex: 2,
+                  padding: "5px 8px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "rgba(0,0,0,0.4)",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                }}
+              />
+              <input
+                type="password"
+                placeholder="Stream Key (encrypted server-side)"
+                value={customStreamKey}
+                onChange={(e) => setCustomStreamKey(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "5px 8px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "rgba(0,0,0,0.4)",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!customRtmpUrl.trim()) return;
+                  const customDest = destinations.find((d) => d.provider === "custom");
+                  if (customDest) {
+                    const { patchBroadcastDestination } = require("@/lib/broadcast/BroadcastDestinationRegistry");
+                    patchBroadcastDestination(customDest.destinationId, {
+                      authState: "linked",
+                      enabled: true,
+                      connectionStatus: "selected_off",
+                      authoritativeState: "READY",
+                      statusLine: "Custom RTMP configured",
+                    });
+                    setCustomStreamKey("");
+                  }
+                }}
+                style={{
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #FFD700",
+                  background: "rgba(255,215,0,0.15)",
+                  color: "#FFD700",
+                  fontWeight: 800,
+                  fontSize: 10,
+                  cursor: "pointer",
+                }}
+              >
+                SAVE INGEST
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
+      {/* LINK MODAL */}
       {linkTarget ? (
         <div
-          role="dialog"
-          aria-label="Link account"
+          data-testid="tmi-bezel-link-modal"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 12000,
-            background: "rgba(0,0,0,0.65)",
+            zIndex: 10005,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -400,7 +669,7 @@ export default function LiveDistributionBezel({
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
-              maxWidth: 360,
+              maxWidth: 380,
               borderRadius: 14,
               border: "1px solid rgba(0,212,255,0.35)",
               background: "#0a0614",
@@ -417,13 +686,13 @@ export default function LiveDistributionBezel({
                 marginBottom: 8,
               }}
             >
-              LINK ACCOUNT
+              LINK DESTINATION ACCOUNT
             </div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
               {linkTarget.label}
             </div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 14 }}>
-              Connect once. While you are LIVE you can toggle this destination on/off without
+              Connect once. While you are LIVE on TMI, you can toggle this destination without
               restarting camera, venue, or room.
             </div>
             {linkMessage ? (

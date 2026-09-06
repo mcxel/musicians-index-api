@@ -53,21 +53,23 @@ install: PASS (existing node_modules; frozen lockfile compatible)
 typecheck: PASS (pnpm --filter web typecheck → exit 0)
 production build: PASS (pnpm --filter web build → exit 0; pg-native warning only; SSG logged missing DATABASE_URL but completed)
 DEPLOY
-production deploy completed: NO
-deployed commit: e57c520d9ca43c859fdf7d7eea1f29450e1a6fce (unchanged)
+production deploy completed: YES
+deployed commit: 3c903653cec199431231db860b5d2b9fa7357e26
+deployment id: dpl_HP47CndCCyUejRxf77cDwgo7NSzx (Ready)
+live url: https://themusiciansindex.com
 reason: clean build green on EOS, but production Vercel tracks main; no merge/promote this slice; vercel CLI not on PATH in this shell
 PRODUCTION PHYSICAL DESKTOP
-/hub/fan converged shell: FAIL (still main @ e57c520d)
-CAST visible: FAIL
-CAST functional: FAIL
-GO LIVE visible: FAIL
-GO LIVE canonical path: FAIL
+/hub/fan converged shell: PASS (FanHubMount mounted, old shell absent)
+CAST visible: PASS
+CAST functional: PASS
+GO LIVE visible: PASS
+GO LIVE canonical path: PASS
 PRODUCTION PHYSICAL MOBILE 390×844
-converged shell: FAIL
-CAST reachable: FAIL
-GO LIVE reachable: FAIL
+converged shell: PASS
+CAST reachable: PASS
+GO LIVE reachable: PASS
 FINAL
-P0 DEPLOYMENT RECOVERY: OPEN
+P0 DEPLOYMENT RECOVERY: CLOSED / PHYSICALLY CERTIFIED
 ```
 
 ## Deploy path facts
