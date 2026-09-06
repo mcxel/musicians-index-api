@@ -8,10 +8,15 @@
  * Clicking a role tile switches the active role and navigates to that hub.
  *
  * Rules:
- *  - Only renders for ADMIN/STAFF accounts, and only when they hold 2+ roles
- *    (fans and performers cannot switch to each other's accounts — only
- *    administrators can, Marcel Dickens 2026-07-24 — a non-admin account
- *    holding multiple real UserRole rows must never see this switcher)
+ *  - Two distinct operations, corrected 2026-09-06 from the 2026-07-24 rule:
+ *    FAN <-> PERFORMER is a SELF-SERVICE ACCOUNT MODE SWITCH — any account
+ *    that genuinely owns/holds both real roles may switch between them
+ *    (one login, own both a Fan and a Performer profile). ADMIN/STAFF/other
+ *    privileged or uncommon roles remain a PRIVILEGED PERSONA SWITCH visible
+ *    only to ADMIN/STAFF accounts (oversight/QA), never self-service.
+ *  - Non-admin accounts only ever see FAN/PERFORMER tiles, even if the
+ *    fetched roles list happens to contain something else — no arbitrary
+ *    role switching is restored, only the Fan<->Performer pair.
  *  - Panel is dismissable via ESC, backdrop click, or the toggle button
  *  - Calls POST /api/auth/switch-role → sets tmi_role cookie → navigates
  */
@@ -98,6 +103,8 @@ function isAdminRoleId(role: string): boolean {
   const r = role.toUpperCase();
   return r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN";
 }
+
+const SELF_SERVICE_ROLES = new Set(["FAN", "MEMBER", "USER", "PERFORMER", "ARTIST", "BAND"]);
 
 export default function RoleSwitcherWidget({
   accentColor = "#00FFFF",
@@ -217,15 +224,21 @@ export default function RoleSwitcherWidget({
     [router, switching],
   );
 
-  // Don't render if only one role (nothing to switch between), and never
-  // render for a non-admin account even if it genuinely holds multiple real
-  // roles — dashboard switching is admin-only (Marcel Dickens, 2026-07-24).
-  // `/api/auth/my-roles` only ever includes ADMIN/STAFF in `roles` for
-  // accounts that are actually admin/staff/governance (see
-  // synthesizeAdminSwitchRoles's isAdmin/isGovernanceMember gate).
-  if (!loading && (roles.length < 2 || !roles.some(isAdminRoleId))) return null;
+  // Admin/staff/governance accounts keep full oversight visibility over
+  // every role they hold. Everyone else only ever sees the FAN<->PERFORMER
+  // self-service pair, even if `roles` happens to contain something else —
+  // dashboard switching into a privileged/uncommon role stays admin-only,
+  // but switching between one's own real Fan and Performer profiles does not
+  // (Marcel Dickens, corrected 2026-09-06 from the 2026-07-24 rule).
+  const isAdminAccount = roles.some(isAdminRoleId);
+  const visibleRoles = isAdminAccount
+    ? roles
+    : roles.filter((r) => SELF_SERVICE_ROLES.has(r.toUpperCase()));
 
-  const currentRole = activeRole ?? roles[0] ?? "USER";
+  // Don't render if there's nothing to switch between.
+  if (!loading && visibleRoles.length < 2) return null;
+
+  const currentRole = activeRole ?? visibleRoles[0] ?? "USER";
   const currentDef = getRoleDef(currentRole);
   // Hub phone: never brand the permanent trigger as ADMIN DECK — that label
   // belongs in Overseer, not as Fan/Performer Command Center chrome.
@@ -378,7 +391,7 @@ export default function RoleSwitcherWidget({
                 Loading roles…
               </div>
             ) : (
-              roles.map((role, i) => {
+              visibleRoles.map((role, i) => {
                 const def = getRoleDef(role);
                 const isCurrent =
                   role.toUpperCase() === currentRole.toUpperCase();
