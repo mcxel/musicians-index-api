@@ -22,7 +22,11 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const identity = await resolveActiveProfileIdentity(auth.user.id);
+  const identity = await resolveActiveProfileIdentity(auth.user.id, {
+    role: auth.user.role,
+    activeRole: auth.user.role,
+    displayName: auth.user.name,
+  });
   if (!identity) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }

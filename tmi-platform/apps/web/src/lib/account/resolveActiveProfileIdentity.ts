@@ -103,6 +103,7 @@ export function buildActiveProfileIdentityFromAccount(
  */
 export async function resolveActiveProfileIdentity(
   userId: string,
+  fallback?: Partial<AccountIdentitySource>,
 ): Promise<ActiveProfileIdentity | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -118,7 +119,19 @@ export async function resolveActiveProfileIdentity(
     },
   });
 
-  if (!user) return null;
+  if (!user) {
+    if (!fallback) return null;
+    return buildActiveProfileIdentityFromAccount({
+      id: userId,
+      role: fallback.role ?? "FAN",
+      activeRole: fallback.activeRole ?? fallback.role ?? "FAN",
+      displayName: fallback.displayName ?? null,
+      name: fallback.name ?? null,
+      username: fallback.username ?? null,
+      avatarUrl: fallback.avatarUrl ?? null,
+      userRoles: fallback.userRoles ?? (fallback.role ? [{ role: fallback.role }] : []),
+    });
+  }
 
   return buildActiveProfileIdentityFromAccount({
     id: user.id,

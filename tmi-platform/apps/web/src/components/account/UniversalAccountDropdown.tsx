@@ -10,7 +10,10 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ActiveProfileIdentity } from "@/lib/account/resolveActiveProfileIdentity";
-import { resolveAccountShellCapabilities } from "@/lib/account/resolveAccountShellCapabilities";
+import {
+  resolveAccountShellCapabilities,
+  resolveAccountHubDestination,
+} from "@/lib/account/resolveAccountShellCapabilities";
 import { clearPrivateClientAccountCache } from "@/lib/account/clearPrivateClientAccountCache";
 import { selfPublicPath } from "@/lib/identity/PublicProfileRuntime";
 
@@ -99,7 +102,18 @@ export default function UniversalAccountDropdown({
     username: identity.publicHandle ?? null,
   });
 
-  const switchToRole = async (targetRole: "FAN" | "PERFORMER") => {
+  const handleRoleHubClick = async (targetRole: "FAN" | "PERFORMER") => {
+    const dest = resolveAccountHubDestination(targetRole);
+
+    // ACCOUNT-ROUTE-01: If already in target role, navigate directly without redundant API switch call
+    if (caps.activeModeLabel.toUpperCase() === targetRole.toUpperCase()) {
+      onClose();
+      localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
+      router.push(dest);
+      router.refresh();
+      return;
+    }
+
     if (switchingRole) return;
     setSwitchingRole(targetRole);
     try {
@@ -112,11 +126,10 @@ export default function UniversalAccountDropdown({
       const data = (await res.json()) as { ok?: boolean; hubUrl?: string };
       if (res.ok && data.ok) {
         onClose();
-        localStorage.setItem("tmi_last_workspace", targetRole === "PERFORMER" ? "performer" : "fan");
-        setTimeout(() => {
-          router.push(data.hubUrl ?? (targetRole === "PERFORMER" ? "/hub/performer" : "/hub/fan"));
-          router.refresh();
-        }, 120);
+        localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
+        const targetDest = data.hubUrl ?? dest;
+        router.push(targetDest);
+        router.refresh();
       }
     } catch {
       /* keep open */
@@ -139,10 +152,9 @@ export default function UniversalAccountDropdown({
       if (res.ok && data.ok) {
         onClose();
         localStorage.setItem("tmi_last_workspace", targetProfile === "PERFORMER" ? "performer" : "fan");
-        setTimeout(() => {
-          router.push(data.hubUrl ?? (targetProfile === "PERFORMER" ? "/hub/performer" : "/hub/fan"));
-          router.refresh();
-        }, 120);
+        const dest = data.hubUrl ?? resolveAccountHubDestination(targetProfile);
+        router.push(dest);
+        router.refresh();
       }
     } catch {
       /* keep open */
@@ -170,6 +182,7 @@ export default function UniversalAccountDropdown({
     <div
       ref={panelRef}
       data-testid="tmi-universal-account-dropdown"
+      data-tmi-account-menu-panel="1"
       data-profile-kind={identity.profileKind}
       role="menu"
       style={{
@@ -220,7 +233,7 @@ export default function UniversalAccountDropdown({
                 type="button"
                 disabled={!!switchingRole}
                 data-testid={`tmi-switch-to-${role.toLowerCase()}`}
-                onClick={() => void switchToRole(role)}
+                onClick={() => void handleRoleHubClick(role)}
                 style={{
                   ...rowStyle,
                   justifyContent: "center",
@@ -245,12 +258,35 @@ export default function UniversalAccountDropdown({
         </div>
       )}
 
+      {caps.isAdmin && (
+        <div style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <Link
+            href="/admin/overseer"
+            onClick={onClose}
+            data-testid="tmi-menu-admin-hub"
+            style={{
+              ...rowStyle,
+              justifyContent: "center",
+              border: "1px solid rgba(255,215,0,0.35)",
+              background: "rgba(255,215,0,0.08)",
+              color: "#FFD700",
+              fontSize: 10,
+              fontWeight: 900,
+            }}
+          >
+            ADMIN HUB
+          </Link>
+        </div>
+      )}
+
       {caps.companionOfferTarget && (
-        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-companion-cta">
+        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-companion-cta"
+          data-companion-container={caps.companionOfferTarget === "PERFORMER" ? "tmi-companion-add-performer" : "tmi-companion-add-fan"}>
           <button
             type="button"
             disabled={!!provisioningProfile || !companionOffers}
             data-testid={`tmi-btn-add-${caps.companionOfferTarget.toLowerCase()}`}
+            data-companion-prompt={caps.companionOfferTarget === "PERFORMER" ? "tmi-btn-add-performer-free" : "tmi-btn-add-fan-free"}
             onClick={() => void addCompanionProfile(caps.companionOfferTarget!)}
             style={{
               ...rowStyle,
@@ -268,6 +304,29 @@ export default function UniversalAccountDropdown({
         </div>
       )}
 
+      {/* Contextual Tier Upgrade Link */}
+      <div style={{ padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <Link
+          href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"}
+          onClick={onClose}
+          data-testid={caps.activeModeLabel === "PERFORMER" ? "tmi-upgrade-performer-link" : "tmi-upgrade-fan-link"}
+          style={{
+            display: "block",
+            textAlign: "center",
+            padding: "6px 10px",
+            borderRadius: 6,
+            background: caps.activeModeLabel === "PERFORMER" ? "rgba(255,215,0,0.12)" : "rgba(0,255,255,0.12)",
+            border: `1px solid ${caps.activeModeLabel === "PERFORMER" ? "#FFD700" : "#00FFFF"}44`,
+            color: caps.activeModeLabel === "PERFORMER" ? "#FFD700" : "#00FFFF",
+            fontSize: 9.5,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textDecoration: "none",
+          }}
+        >
+          {caps.activeModeLabel === "PERFORMER" ? "★ UPGRADE PERFORMER PROFILE" : "★ UPGRADE FAN PROFILE"}
+        </Link>
+      </div>
       <div style={{ padding: "6px 8px" }}>
         <Link href={publicPath} onClick={onClose} data-testid="tmi-menu-view-profile" style={rowStyle}>
           View Profile

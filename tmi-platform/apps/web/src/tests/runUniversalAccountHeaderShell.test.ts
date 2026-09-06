@@ -12,6 +12,7 @@ import {
 } from "../lib/account/resolveActiveProfileIdentity";
 import {
   resolveAccountShellCapabilities,
+  resolveAccountHubDestination,
   UNIVERSAL_ACCOUNT_MENU_ITEMS,
 } from "../lib/account/resolveAccountShellCapabilities";
 import { clearPrivateClientAccountCache } from "../lib/account/clearPrivateClientAccountCache";
@@ -235,6 +236,15 @@ export function runUniversalAccountHeaderShellTest(): {
     switchPerfRes.activeModeLabel === "PERFORMER" &&
     switchFanRes.canSwitchFanPerformer === true &&
     switchPerfRes.canSwitchFanPerformer === true;
+
+  // ACCOUNT-ROUTE-01: Canonical Hub destination resolution & navigation after role resolution
+  results["ACCOUNT-ROUTE-01_canonical_hub_destination_resolution"] =
+    resolveAccountHubDestination("FAN") === "/hub/fan" &&
+    resolveAccountHubDestination("PERFORMER") === "/hub/performer" &&
+    resolveAccountHubDestination("ADMIN") === "/admin" &&
+    dropdownSrc.includes("handleRoleHubClick") &&
+    dropdownSrc.includes("router.push") &&
+    dropdownSrc.includes("router.refresh");
 
   const allPassed = Object.values(results).every(Boolean);
   console.log(

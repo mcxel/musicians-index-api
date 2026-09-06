@@ -1,9 +1,16 @@
 "use client";
 
+/**
+ * MagazineNavBar — home page-dot strip + account zone.
+ * Slice 1A: account zone uses UniversalAccountIdentityControl (same authority
+ * as GlobalTmiHeader). Prefer mounting GlobalTmiHeader from home/layout;
+ * this file remains for any residual mounts that still need page dots.
+ */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
 
 const HOME_PAGE_TABS = [
   { href: "/home/1",   label: "1"   },
@@ -13,12 +20,6 @@ const HOME_PAGE_TABS = [
   { href: "/home/4",   label: "4"   },
   { href: "/home/5",   label: "5"   },
 ];
-
-const ROLE_COLOR: Record<string, string> = {
-  superadmin: '#FF2DAA', admin: '#FF2DAA', artist: '#FFD700',
-  performer: '#00FFFF', fan: '#AA2DFF', venue: '#FF6B35',
-  promoter: '#00FF88', advertiser: '#5CE1E6', sponsor: '#FFD700',
-};
 
 export default function MagazineNavBar() {
   const pathname = usePathname();
@@ -35,22 +36,19 @@ export default function MagazineNavBar() {
   }, []);
 
   const isAuth = session?.authenticated === true;
-  const role = (session?.user?.role ?? 'default').toLowerCase();
-  const userId = session?.user?.id ?? '';
   const displayName =
     session?.user?.name?.trim() ||
     session?.user?.id?.slice(0, 8) ||
     'Account';
   const avatarUrl = session?.user?.avatarUrl ?? null;
-  const roleColor = ROLE_COLOR[role] ?? '#00FFFF';
 
   return (
     <>
       <style>{`
         /*
-         * --tmi-nav-h is consumed by home/layout.tsx paddingTop.
+         * --tmi-nav-h is consumed by residual fixed-nav consumers.
          * Mobile: row1 (44px) + row2 (36px) = 80px.
-         * Desktop (≥640px): single-row 48px — row2 is absolutely positioned
+         * Desktop (>=640px): single-row 48px — row2 is absolutely positioned
          * centred inside row1 so the header stays 48px tall.
          */
         :root { --tmi-nav-h: 80px; }
@@ -67,7 +65,6 @@ export default function MagazineNavBar() {
           -webkit-backdrop-filter: blur(12px);
         }
 
-        /* ── Row 1: brand + auth (always visible, never overflow:hidden) ── */
         .tmi-nav-row1 {
           height: 44px;
           display: flex;
@@ -78,7 +75,6 @@ export default function MagazineNavBar() {
           z-index: 2;
         }
 
-        /* ── Row 2: page-number pagination ── */
         .tmi-nav-row2 {
           height: 36px;
           display: flex;
@@ -93,10 +89,6 @@ export default function MagazineNavBar() {
         }
         .tmi-nav-row2::-webkit-scrollbar { display: none; }
 
-        /*
-         * ── Desktop ≥640px: collapse to single 48px row ──
-         * Row2 is absolutely centred over row1 so it doesn't add height.
-         */
         @media (min-width: 640px) {
           .tmi-nav-root  { height: 48px; overflow: visible; }
           .tmi-nav-row1  { height: 48px; }
@@ -107,14 +99,12 @@ export default function MagazineNavBar() {
             border: none;
             background: transparent;
             pointer-events: auto;
-            /* Must be above row1 (z-index:2) so dot clicks aren't intercepted */
             z-index: 3;
           }
         }
 
         .tmi-nav-tab {
           display: inline-flex; align-items: center; justify-content: center;
-          /* 20×20 px gives a comfortable click/tap target */
           width: 20px; height: 20px;
           text-decoration: none;
           flex-shrink: 0;
@@ -122,7 +112,6 @@ export default function MagazineNavBar() {
           background: transparent;
           padding: 0;
         }
-        /* Visual dot — child span, not the link itself */
         .tmi-nav-dot {
           display: block;
           border-radius: 999px;
@@ -156,8 +145,6 @@ export default function MagazineNavBar() {
       `}</style>
 
       <header className="tmi-nav-root" aria-label="Global navigation">
-
-        {/* ── Row 1: Logo ←→ Auth (NEVER hidden, NEVER overflow clipped) ── */}
         <div className="tmi-nav-row1">
           <Link
             href="/home/1"
@@ -166,41 +153,22 @@ export default function MagazineNavBar() {
             TMI
           </Link>
 
-          {/* Auth zone — always visible, always right-aligned */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             {isAuth ? (
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: `2px solid ${roleColor}`,
-                  background: `${roleColor}22`,
-                  boxShadow: `0 0 10px ${roleColor}44`,
-                  flexShrink: 0,
-                }}
-              >
-                <AccountCommandMenu
-                  userId={userId}
-                  displayName={displayName}
-                  avatarUrl={avatarUrl}
-                  accentColor={roleColor}
-                  compact
-                />
-              </div>
+              <UniversalAccountIdentityControl
+                fallbackDisplayName={displayName}
+                fallbackAvatarUrl={avatarUrl}
+                compact
+              />
             ) : (
               <>
-                <Link href="/auth"   className="tmi-auth-btn tmi-auth-login">Log In</Link>
-                <Link href="/signup" className="tmi-auth-btn tmi-auth-signup">Sign Up</Link>
+                <Link href="/auth"   className="tmi-auth-btn tmi-auth-login">LOGIN</Link>
+                <Link href="/signup" className="tmi-auth-btn tmi-auth-signup">SIGN UP</Link>
               </>
             )}
           </div>
         </div>
 
-        {/* ── Row 2: Page navigation (own row on mobile, centred overlay on desktop) ── */}
         <nav className="tmi-nav-row2" aria-label="Homepage sections">
           {HOME_PAGE_TABS.map((tab) => {
             const active = pathname === tab.href;
@@ -218,7 +186,6 @@ export default function MagazineNavBar() {
             );
           })}
         </nav>
-
       </header>
     </>
   );

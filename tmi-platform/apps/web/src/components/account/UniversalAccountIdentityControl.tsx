@@ -94,6 +94,7 @@ export default function UniversalAccountIdentityControl({
         aria-expanded={open}
         aria-label={`Account menu for ${displayName}`}
         data-testid="tmi-universal-account-trigger"
+        data-tmi-account-menu-trigger="1"
         data-profile-kind={identity?.profileKind ?? "ACCOUNT_FALLBACK"}
         data-active-mode={caps?.activeModeLabel ?? activeRole}
         onClick={() => setOpen((v) => !v)}
