@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/**
+ * GlobalTopNavRail — secondary lobby/discovery destination strip.
+ *
+ * Slice 1A: identity lives ONLY in GlobalTmiHeader (SHELL-01/02).
+ * This rail must never mount a second account circle.
+ * Lobby-wall pages outside /home get GlobalTmiHeader via includeHeader.
+ * Home surfaces already mount GlobalTmiHeader from home/layout — pass includeHeader={false}.
+ */
+
 import Link from "next/link";
-import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
+import GlobalTmiHeader from "@/components/shell/GlobalTmiHeader";
 
 const NAV_ITEMS = [
   { label: "Magazine", href: "/magazine" },
@@ -16,41 +24,38 @@ const NAV_ITEMS = [
   { label: "About", href: "/about" },
 ];
 
-export default function GlobalTopNavRail() {
-  const [sessionUser, setSessionUser] = useState<{ displayName?: string; avatarUrl?: string | null } | null>(null);
+export interface GlobalTopNavRailProps {
+  /** When true (default), mount canonical GlobalTmiHeader above the strip. */
+  includeHeader?: boolean;
+}
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (active && data?.authenticated && data?.user) {
-          setSessionUser({
-            displayName: data.user.name || data.user.email?.split("@")[0] || "Account",
-            avatarUrl: data.user.avatarUrl ?? null,
-          });
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-
+export default function GlobalTopNavRail({ includeHeader = true }: GlobalTopNavRailProps) {
   return (
-    <nav
-      aria-label="TMI top navigation"
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 40,
-        backdropFilter: "blur(8px)",
-        background: "linear-gradient(90deg, rgba(5,5,16,0.94), rgba(12,8,26,0.92))",
-        borderBottom: "1px solid rgba(0,255,255,0.3)",
-      }}
-    >
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "10px 18px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, flex: 1 }}>
+    <>
+      {includeHeader ? <GlobalTmiHeader /> : null}
+      <nav
+        aria-label="Lobby discovery destinations"
+        data-shell-discovery-strip="true"
+        style={{
+          position: "sticky",
+          top: includeHeader ? 0 : undefined,
+          zIndex: 39,
+          backdropFilter: "blur(8px)",
+          background: "linear-gradient(90deg, rgba(5,5,16,0.94), rgba(12,8,26,0.92))",
+          borderBottom: "1px solid rgba(0,255,255,0.3)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "8px 18px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -72,52 +77,7 @@ export default function GlobalTopNavRail() {
             </Link>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          {sessionUser ? (
-            <UniversalAccountIdentityControl
-              fallbackDisplayName={sessionUser.displayName}
-              fallbackAvatarUrl={sessionUser.avatarUrl}
-              compact
-            />
-          ) : (
-            <>
-              <Link
-                href="/pricing"
-                style={{
-                  textDecoration: "none",
-                  color: "#FFD700",
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,215,0,0.35)",
-                  background: "rgba(255,215,0,0.06)",
-                }}
-              >
-                Plans from $0
-              </Link>
-              <Link
-                href="/join"
-                style={{
-                  textDecoration: "none",
-                  color: "#050510",
-                  padding: "6px 14px",
-                  fontSize: 11,
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  borderRadius: 999,
-                  background: "#00FFFF",
-                }}
-              >
-                Join Free
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }

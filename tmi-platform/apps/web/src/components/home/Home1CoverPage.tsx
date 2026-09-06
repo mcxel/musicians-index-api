@@ -790,8 +790,8 @@ export default function Home1CoverPage() {
   const [heroVisible, setHeroVisible] = useState(true);
   const [leftRailIndex, setLeftRailIndex] = useState(0);
   const [rightRailIndex, setRightRailIndex] = useState(0);
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(false); // Slice 1A: no permanent discovery rails (SHELL-04/05)
+  const [rightOpen, setRightOpen] = useState(false); // Slice 1A: summon via PANEL tab only
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
   const [discoveryJoinRoom, setDiscoveryJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
@@ -2956,3 +2956,4 @@ export default function Home1CoverPage() {
     </>
   );
 }
+

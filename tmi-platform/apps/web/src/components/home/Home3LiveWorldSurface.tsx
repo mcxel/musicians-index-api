@@ -141,7 +141,7 @@ export default function Home3LiveWorldSurface() {
       <DesktopAtmosphereRails />
       {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       <NeonWaveUnderlay colorA="#00FF88" colorB="#00FFFF" colorC="#AA2DFF" opacity={0.1} zIndex={0} />
-      <GlobalTopNavRail />
+      <GlobalTopNavRail includeHeader={false} />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-3" accent="#00FFFF" />
@@ -356,3 +356,4 @@ export default function Home3LiveWorldSurface() {
     </RoomContainer>
   );
 }
+

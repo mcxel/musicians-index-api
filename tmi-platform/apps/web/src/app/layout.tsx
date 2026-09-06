@@ -9,7 +9,6 @@ import { TmiSessionProvider } from "@/hooks/SessionContext";
 import GamificationHUD from "@/components/hud/GamificationHUD";
 import LiveSyncProvider from "@/components/media/LiveSyncProvider";
 import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
-import TMIGlobalHUD from "@/components/hud/TMIGlobalHUD";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
@@ -213,7 +212,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <GamificationHUD />
               <LiveSyncProvider />
               <FirstRunExperienceOverlay />
-              <TMIGlobalHUD />
+              {/* TMIGlobalHUD unmounted Slice 1A — duplicate identity/persona/GO LIVE vs GlobalTmiHeader + LaunchDock */}
               <BotRuntimeProvider />
               <LiveMarqueeTicker />
               {/* VoiceDirector / TMIVideoMonitor floaters permanently unmounted — Admin Cam = Overseer gem OverlayHost only */}
@@ -232,3 +231,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+

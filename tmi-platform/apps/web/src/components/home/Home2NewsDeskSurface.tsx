@@ -60,7 +60,7 @@ export default function Home2NewsDeskSurface() {
           }
         }
       `}</style>
-      <GlobalTopNavRail />
+      <GlobalTopNavRail includeHeader={false} />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-2" accent="#AA2DFF" />
@@ -194,3 +194,4 @@ export default function Home2NewsDeskSurface() {
     </RoomContainer>
   );
 }
+

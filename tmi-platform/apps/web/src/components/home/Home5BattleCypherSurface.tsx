@@ -164,7 +164,7 @@ export default function Home5BattleCypherSurface() {
         }
       `}</style>
 
-      <GlobalTopNavRail />
+      <GlobalTopNavRail includeHeader={false} />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-5" accent="#FF2DAA" />
@@ -700,3 +700,4 @@ export default function Home5BattleCypherSurface() {
     </RoomContainer>
   );
 }
+
