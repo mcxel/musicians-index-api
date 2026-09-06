@@ -1,5 +1,6 @@
 "use client";
 
+import { canBroadcastExternalDestinations } from "@/lib/broadcast/BroadcastCapabilityResolver";
 import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
@@ -1476,7 +1477,7 @@ export default function CommandCenterMediaStack({
   return (
     <div
       ref={containerRef}
-      data-command-center-media-stack
+      data-command-center-media-stack="1"
       data-tmi-dev-runtime-instance-id={isDevDiagnostics ? continuitySnapshot.runtimeInstanceId : undefined}
       data-tmi-dev-venue-instance-id={isDevDiagnostics ? continuitySnapshot.venueInstanceId : undefined}
       data-tmi-dev-room-session-id={isDevDiagnostics ? continuitySnapshot.roomSessionId : undefined}
@@ -1543,7 +1544,7 @@ export default function CommandCenterMediaStack({
           role={role === "performer" ? "performer" : "fan"}
           compact={compactHubLayout}
         />
-        {role === "performer" ? (
+        {canBroadcastExternalDestinations({ activeRole: role }) ? (
           <div style={{ flex: 1, minWidth: 160 }}>
             <LiveDistributionBezel userId={userId} />
           </div>

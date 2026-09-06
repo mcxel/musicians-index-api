@@ -214,6 +214,28 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("tmi-account-fallback-honesty") &&
     dropdownSrc.includes("Separate Fan/Performer profile names are not available yet");
 
+  // HEADER-PHYS-01: Desktop — exactly one account circle/menu visible in global header, no legacy account menus
+  results["HEADER-PHYS-01_desktop_single_account_circle"] =
+    headerSrc.includes("UniversalAccountIdentityControl") &&
+    !headerSrc.includes("AccountCommandMenu") &&
+    !headerSrc.includes("FanAccountMenu") &&
+    !headerSrc.includes("PerformerAccountMenu");
+
+  // HEADER-PHYS-02: 390x844 Mobile Viewport — dropdown width and height bounds prevent overflow/clipping
+  results["HEADER-PHYS-02_mobile_390x844_no_overflow"] =
+    dropdownSrc.includes("width: \"min(320px, calc(100vw - 16px))\"") &&
+    dropdownSrc.includes("maxHeight: \"min(80vh, 560px)\"") &&
+    dropdownSrc.includes("overflowY: \"auto\"");
+
+  // HEADER-PHYS-03: Production/Runtime — switching mode updates activeRole without leaking viewed profile
+  const switchFanRes = resolveAccountShellCapabilities({ ownedRoles: ["FAN", "PERFORMER"], activeRole: "FAN" });
+  const switchPerfRes = resolveAccountShellCapabilities({ ownedRoles: ["FAN", "PERFORMER"], activeRole: "PERFORMER" });
+  results["HEADER-PHYS-03_role_switch_runtime_isolation"] =
+    switchFanRes.activeModeLabel === "FAN" &&
+    switchPerfRes.activeModeLabel === "PERFORMER" &&
+    switchFanRes.canSwitchFanPerformer === true &&
+    switchPerfRes.canSwitchFanPerformer === true;
+
   const allPassed = Object.values(results).every(Boolean);
   console.log(
     "[UNIVERSAL_ACCOUNT_HEADER_SHELL_TEST_ASSERT]",

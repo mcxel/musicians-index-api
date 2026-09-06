@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
 
 const NAV_ITEMS = [
   { label: "Magazine", href: "/magazine" },
@@ -15,6 +17,26 @@ const NAV_ITEMS = [
 ];
 
 export default function GlobalTopNavRail() {
+  const [sessionUser, setSessionUser] = useState<{ displayName?: string; avatarUrl?: string | null } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && data?.authenticated && data?.user) {
+          setSessionUser({
+            displayName: data.user.name || data.user.email?.split("@")[0] || "Account",
+            avatarUrl: data.user.avatarUrl ?? null,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <nav
       aria-label="TMI top navigation"
@@ -50,40 +72,50 @@ export default function GlobalTopNavRail() {
             </Link>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <Link
-            href="/pricing"
-            style={{
-              textDecoration: "none",
-              color: "#FFD700",
-              padding: "6px 12px",
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              borderRadius: 999,
-              border: "1px solid rgba(255,215,0,0.35)",
-              background: "rgba(255,215,0,0.06)",
-            }}
-          >
-            Plans from $0
-          </Link>
-          <Link
-            href="/join"
-            style={{
-              textDecoration: "none",
-              color: "#050510",
-              padding: "6px 14px",
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              borderRadius: 999,
-              background: "#00FFFF",
-            }}
-          >
-            Join Free
-          </Link>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          {sessionUser ? (
+            <UniversalAccountIdentityControl
+              fallbackDisplayName={sessionUser.displayName}
+              fallbackAvatarUrl={sessionUser.avatarUrl}
+              compact
+            />
+          ) : (
+            <>
+              <Link
+                href="/pricing"
+                style={{
+                  textDecoration: "none",
+                  color: "#FFD700",
+                  padding: "6px 12px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,215,0,0.35)",
+                  background: "rgba(255,215,0,0.06)",
+                }}
+              >
+                Plans from $0
+              </Link>
+              <Link
+                href="/join"
+                style={{
+                  textDecoration: "none",
+                  color: "#050510",
+                  padding: "6px 14px",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  borderRadius: 999,
+                  background: "#00FFFF",
+                }}
+              >
+                Join Free
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>
