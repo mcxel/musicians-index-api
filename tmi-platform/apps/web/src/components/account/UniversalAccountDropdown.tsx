@@ -171,8 +171,11 @@ export default function UniversalAccountDropdown({
     if (caps.activeModeLabel.toUpperCase() === targetRole.toUpperCase()) {
       onClose();
       localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
+      // router.refresh() called immediately after push() races the push's own
+      // in-flight RSC fetch and can abort the navigation entirely (confirmed
+      // via ERR_ABORTED on the target route's RSC request during physical
+      // testing) — push() already fetches fresh server data for the new route.
       router.push(dest);
-      router.refresh();
       return;
     }
 
@@ -191,7 +194,6 @@ export default function UniversalAccountDropdown({
         localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
         const targetDest = data.hubUrl ?? dest;
         router.push(targetDest);
-        router.refresh();
       }
     } catch {
       /* keep open */
@@ -216,7 +218,6 @@ export default function UniversalAccountDropdown({
         localStorage.setItem("tmi_last_workspace", targetProfile === "PERFORMER" ? "performer" : "fan");
         const dest = data.hubUrl ?? resolveAccountHubDestination(targetProfile);
         router.push(dest);
-        router.refresh();
       }
     } catch {
       /* keep open */
