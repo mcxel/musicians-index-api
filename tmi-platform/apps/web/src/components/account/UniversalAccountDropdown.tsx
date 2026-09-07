@@ -346,27 +346,84 @@ export default function UniversalAccountDropdown({
       )}
 
       {caps.companionOfferTarget && (
-        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-companion-cta"
-          data-companion-container={caps.companionOfferTarget === "PERFORMER" ? "tmi-companion-add-performer" : "tmi-companion-add-fan"}>
-          <button
-            type="button"
-            disabled={!!provisioningProfile || !companionOffers}
-            data-testid={`tmi-btn-add-${caps.companionOfferTarget.toLowerCase()}`}
-            data-companion-prompt={caps.companionOfferTarget === "PERFORMER" ? "tmi-btn-add-performer-free" : "tmi-btn-add-fan-free"}
-            onClick={() => void addCompanionProfile(caps.companionOfferTarget!)}
-            style={{
-              ...rowStyle,
-              justifyContent: "center",
-              background: caps.companionOfferTarget === "PERFORMER" ? "#FF2DAA" : "#00FFFF",
-              color: "#050510",
-              fontSize: 10,
-              fontWeight: 900,
-            }}
-          >
-            {provisioningProfile
-              ? "ADDING…"
-              : `ADD ${caps.companionOfferTarget} ${priceLabel}`.trim()}
-          </button>
+        <div
+          style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          data-testid="tmi-companion-cta"
+          data-companion-container={caps.companionOfferTarget === "PERFORMER" ? "tmi-companion-add-performer" : "tmi-companion-add-fan"}
+        >
+          {caps.companionOfferTarget === "PERFORMER" ? (
+            <div
+              data-testid="tmi-companion-add-performer"
+              style={{
+                padding: "8px 10px",
+                background: "rgba(255,45,170,0.08)",
+                border: "1px solid rgba(255,45,170,0.3)",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.08em" }}>
+                UNLOCK YOUR OTHER SIDE
+              </div>
+              <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                You already have a Fan account. Add your Performer account FREE and switch between Fan and Performer anytime with the same login.
+              </div>
+              <button
+                type="button"
+                disabled={!!provisioningProfile}
+                data-testid="tmi-btn-add-performer-free"
+                data-companion-prompt="tmi-btn-add-performer-free"
+                onClick={() => void addCompanionProfile("PERFORMER")}
+                style={{
+                  ...rowStyle,
+                  marginTop: 6,
+                  justifyContent: "center",
+                  background: "#FF2DAA",
+                  color: "#050510",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  padding: "6px 8px",
+                }}
+              >
+                {provisioningProfile ? "ADDING…" : (offer && !offer.isFree ? `ADD PERFORMER $${(offer.price / 100).toFixed(2)}` : "ADD PERFORMER FREE")}
+              </button>
+            </div>
+          ) : (
+            <div
+              data-testid="tmi-companion-add-fan"
+              style={{
+                padding: "8px 10px",
+                background: "rgba(0,255,255,0.08)",
+                border: "1px solid rgba(0,255,255,0.3)",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.08em" }}>
+                ADD YOUR FAN ACCOUNT — FREE
+              </div>
+              <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                Get your Fan profile and switch between Performer and Fan anytime without creating another login.
+              </div>
+              <button
+                type="button"
+                disabled={!!provisioningProfile}
+                data-testid="tmi-btn-add-fan-free"
+                data-companion-prompt="tmi-btn-add-fan-free"
+                onClick={() => void addCompanionProfile("FAN")}
+                style={{
+                  ...rowStyle,
+                  marginTop: 6,
+                  justifyContent: "center",
+                  background: "#00FFFF",
+                  color: "#050510",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  padding: "6px 8px",
+                }}
+              >
+                {provisioningProfile ? "ADDING…" : (offer && !offer.isFree ? `ADD FAN $${(offer.price / 100).toFixed(2)}` : "ADD FAN FREE")}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

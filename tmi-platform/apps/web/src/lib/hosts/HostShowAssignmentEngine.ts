@@ -31,7 +31,15 @@ export const SHOW_HOST_ASSIGNMENTS: Record<string, ShowHostAssignment> = {
   'monday-night-stage': {
     showId: 'monday-night-stage',
     mainHostId: 'bobby-stanley',
-    coHostIds: ['kira', 'bebo'],
+    coHostIds: ['kira', 'bebo', 'tiana'],
+    judgeIds: [],
+    paAnnouncerId: 'aura-pa',
+  },
+
+  'world-dance-party': {
+    showId: 'world-dance-party',
+    mainHostId: 'record-ralph',
+    coHostIds: [],
     judgeIds: [],
     paAnnouncerId: 'aura-pa',
   },

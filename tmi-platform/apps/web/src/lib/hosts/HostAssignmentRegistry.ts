@@ -64,7 +64,7 @@ export const HOST_ASSIGNMENT_REGISTRY: HostAssignment[] = [
     authority: "world",
     primaryHostId: "gregory-marcel",
     backupHostIds: ["bobby-stanley", "tiana"],
-    coHostIds: ["kira"],
+    coHostIds: ["kira", "bebo"],
     paAnnouncerId: "aura-pa",
     priority: 3,
   },

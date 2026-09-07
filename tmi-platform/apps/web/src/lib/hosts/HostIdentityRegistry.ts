@@ -1,8 +1,27 @@
 /**
  * Host Identity Registry
  * Central registry for all TMI platform hosts — identity, assignments, voice/motion tags.
+ *
+ * Ownership: PLATFORM_HOST only (Rule 26 — not Fan-owned avatar accounts).
+ * Rendering: same IAvatarRenderer switch as fans (AvatarRendererRegistry);
+ * today hosts resolve to 2D_ANIMATED / HostAvatarPresence idle sprites.
+ * Fidelity ladder is asset+certification gated — never fake photorealism learning.
  */
 import type { HostRole } from './hostEngine';
+
+/** Platform characters — not Fan-owned personal avatars (Rule 26). */
+export type HostOwnership = "PLATFORM_HOST";
+
+/**
+ * Honest fidelity ladder. Higher tiers unlock only when real Herser assets
+ * + certification exist (Rule 20 / Rule 28). Do not invent learning XP.
+ */
+export type HostFidelityTier =
+  | "UNBOUND"
+  | "STATIC_PORTRAIT"
+  | "IDLE_MOTION_SPRITE"
+  | "RIGGED_BOBBLEHEAD"
+  | "ULTRA_REALISTIC";
 
 export interface HostIdentity {
   id: string;
@@ -24,6 +43,8 @@ export interface HostIdentity {
   // PA announcements and conversational chat responses. Only populated for
   // hosts with real, given personality direction (2026-07-24).
   personaPrompt?: string;
+  /** Future Herser mesh bind (Rule 28). Only set when certified GLB/rig exists. */
+  canonicalMeshAssetId?: string;
 }
 
 export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
@@ -316,4 +337,33 @@ export function getHostById(id: string): HostIdentity | undefined {
 
 export function getHostsForShow(showId: string): HostIdentity[] {
   return HOST_IDENTITY_REGISTRY.filter((h) => h.showAssignments.includes(showId));
+}
+
+export function getHostOwnership(_host: HostIdentity): HostOwnership {
+  return "PLATFORM_HOST";
+}
+
+export function resolveHostFidelityTier(host: HostIdentity): HostFidelityTier {
+  if (host.canonicalMeshAssetId) return "RIGGED_BOBBLEHEAD";
+  if (host.portraitUrl) return "IDLE_MOTION_SPRITE";
+  return "UNBOUND";
+}
+
+export function getStageHosts(): HostIdentity[] {
+  return HOST_IDENTITY_REGISTRY.filter(
+    (h) =>
+      h.role === "MAIN_HOST" ||
+      h.role === "BATTLE_HOST" ||
+      h.role === "CYPHER_HOST" ||
+      h.role === "CROWD_HYPE" ||
+      h.role === "BATTLE_REF" ||
+      h.role === "PRIZE_HOST",
+  );
+}
+
+/** Co-hosts + Julius (AR) + PA — includes Bebo (id bebo). */
+export function getCoHostLineup(): HostIdentity[] {
+  return HOST_IDENTITY_REGISTRY.filter(
+    (h) => h.role === "CO_HOST" || h.role === "AR_COMPANION" || h.role === "PA_ANNOUNCER",
+  );
 }

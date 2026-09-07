@@ -1,3 +1,7 @@
+/**
+ * LEGACY — do not use for new host UI.
+ * Canonical: HostIdentityRegistry + HostAvatarPresence / HostMotionAvatarRenderer.
+ */
 export type HostAvatarState = "visible" | "hidden" | "transition";
 export type HostVoiceState = "muted" | "ready" | "speaking";
 export type HostAnimationState = "idle" | "cue" | "speaking" | "transition";
