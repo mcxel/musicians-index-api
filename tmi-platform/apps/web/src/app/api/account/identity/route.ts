@@ -14,7 +14,11 @@ import { resolveActiveProfileIdentity } from "@/lib/account/resolveActiveProfile
  * Server-derived userId only -- never trusts a client-supplied id, so a
  * signed-in user can only ever resolve their own identity here.
  *
- * Response: { identity: ActiveProfileIdentity }
+ * Response: { identity: ActiveProfileIdentity } on success.
+ * A stale/invalid session (account deleted/revoked) returns 401 with
+ * invalidSession: true -- callers must treat this as "sign in again," never
+ * render a fabricated identity. A DB-unavailable degrade returns a
+ * `degraded: true` flag so it is never mistaken for a verified identity.
  */
 export async function GET() {
   const auth = await getTmiAuth();
@@ -22,14 +26,25 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const identity = await resolveActiveProfileIdentity(auth.user.id, {
+  const result = await resolveActiveProfileIdentity(auth.user.id, {
     role: auth.user.role,
     activeRole: auth.user.role,
     displayName: auth.user.name,
   });
-  if (!identity) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if (result.status === "INVALID_ACCOUNT") {
+    return NextResponse.json(
+      { error: "Account not found", invalidSession: true },
+      { status: 401 },
+    );
   }
 
-  return NextResponse.json({ identity });
+  if (result.status === "DB_UNAVAILABLE") {
+    return NextResponse.json(
+      { identity: result.identity, degraded: true, reason: "database_unavailable" },
+      { status: result.identity ? 200 : 503 },
+    );
+  }
+
+  return NextResponse.json({ identity: result.identity });
 }
