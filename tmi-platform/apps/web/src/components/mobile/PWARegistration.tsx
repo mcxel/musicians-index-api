@@ -41,6 +41,12 @@ export function PWARegistration() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    // Service-worker update/repair (including the hard window.location.reload()
+    // below) targets production caching semantics. In dev, Next's Fast Refresh
+    // already handles freshness, and a constantly-recompiling server makes the
+    // browser treat /sw.js as perpetually "waiting", turning this into a
+    // self-sustaining register -> timeout -> reload loop.
+    if (process.env.NODE_ENV !== 'production') return;
 
     let reloading = false;
     let activationTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
