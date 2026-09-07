@@ -1,6 +1,6 @@
 const STORAGE_KEY = "tmi_magazine_sound_enabled";
 
-type TmiMagazineSoundKey = "pageTurn" | "pageOpen" | "pageClose" | "softSwipe";
+type TmiMagazineSoundKey = "pageTurn" | "pageOpen" | "pageClose" | "softSwipe" | "pagesTurning";
 
 type TmiMagazineAudioMap = Record<TmiMagazineSoundKey, string | null>;
 
@@ -9,7 +9,15 @@ const DEFAULT_SOUNDS: TmiMagazineAudioMap = {
   pageOpen: null,
   pageClose: null,
   softSwipe: null,
+  pagesTurning: null,
 };
+
+/** Single-page turn plays at this gain — at least 50% quieter than the prior 0.3 default. */
+const PAGE_TURN_VOLUME = 0.14;
+/** Multi-page section-jump flip is allowed to sit slightly above the single-turn floor. */
+const PAGES_TURNING_VOLUME = 0.16;
+/** Hard cap so a long "rapid flipping" source clip never outlasts a bounded jump animation. */
+const PAGES_TURNING_MAX_MS = 1400;
 
 function canUseDom(): boolean {
   return typeof window !== "undefined";
@@ -18,10 +26,13 @@ function canUseDom(): boolean {
 export class TmiMagazineAudioEngine {
   private enabled: boolean;
   private sounds: TmiMagazineAudioMap;
+  private elements: Partial<Record<TmiMagazineSoundKey, HTMLAudioElement>> = {};
+  private pagesTurningStopTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(soundMap?: Partial<TmiMagazineAudioMap>) {
     this.sounds = { ...DEFAULT_SOUNDS, ...(soundMap ?? {}) };
     this.enabled = this.readEnabledFromStorage();
+    this.preload();
   }
 
   get soundEnabled(): boolean {
@@ -43,34 +54,77 @@ export class TmiMagazineAudioEngine {
     return this.enabled;
   }
 
+  /** Preload/cache every configured source now so the first real page turn has no fetch lag. */
+  private preload(): void {
+    if (!canUseDom()) return;
+    (Object.keys(this.sounds) as TmiMagazineSoundKey[]).forEach((key) => {
+      const src = this.sounds[key];
+      if (!src) return;
+      const audio = new Audio(src);
+      audio.preload = "auto";
+      audio.load();
+      this.elements[key] = audio;
+    });
+  }
+
+  /** One ordinary page turn — used for both swipe and Next/Previous. Plays once, no overlap. */
   async playPageTurn(): Promise<void> {
-    await this.play("pageTurn");
+    await this.play("pageTurn", PAGE_TURN_VOLUME);
   }
 
   async playPageOpen(): Promise<void> {
-    await this.play("pageOpen");
+    await this.play("pageOpen", 0.3);
   }
 
   async playPageClose(): Promise<void> {
-    await this.play("pageClose");
+    await this.play("pageClose", 0.3);
   }
 
   async playSoftSwipe(): Promise<void> {
-    await this.play("softSwipe");
+    await this.play("softSwipe", PAGE_TURN_VOLUME);
   }
 
-  private async play(key: TmiMagazineSoundKey): Promise<void> {
-    if (!this.enabled) return;
-    if (!canUseDom()) return;
+  /**
+   * Multi-page section jump. `jumpDistance` (number of pages skipped) lets the
+   * caller scale animation duration; the sound itself is always cut at
+   * PAGES_TURNING_MAX_MS so a long source clip never makes users wait.
+   */
+  async playPagesTurning(): Promise<void> {
+    if (this.pagesTurningStopTimer) {
+      clearTimeout(this.pagesTurningStopTimer);
+      this.pagesTurningStopTimer = null;
+    }
+    const el = await this.play("pagesTurning", PAGES_TURNING_VOLUME);
+    if (!el) return;
+    this.pagesTurningStopTimer = setTimeout(() => {
+      try {
+        el.pause();
+        el.currentTime = 0;
+      } catch {
+        // safe fallback
+      }
+      this.pagesTurningStopTimer = null;
+    }, PAGES_TURNING_MAX_MS);
+  }
+
+  private async play(key: TmiMagazineSoundKey, volume: number): Promise<HTMLAudioElement | null> {
+    if (!this.enabled) return null;
+    if (!canUseDom()) return null;
 
     const src = this.sounds[key];
     if (src) {
       try {
-        const audio = new Audio(src);
-        audio.preload = "auto";
-        audio.volume = 0.3;
+        // Reuse the preloaded element and reset it, rather than constructing a
+        // fresh Audio() per call — this is both what makes preloading actually
+        // avoid first-turn lag, and what prevents the same sound stacking on
+        // top of itself during fast navigation (reset+replay, never pile up).
+        const audio = this.elements[key] ?? new Audio(src);
+        this.elements[key] = audio;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = volume;
         await audio.play();
-        return;
+        return audio;
       } catch {
         // Fall back to Web Audio synthesis
       }
@@ -79,7 +133,7 @@ export class TmiMagazineAudioEngine {
     // Non-blocking Web Audio API synthesized paper swish
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
+      if (!AudioCtx) return null;
       const ctx = new AudioCtx();
       const bufferSize = ctx.sampleRate * 0.15;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -94,7 +148,7 @@ export class TmiMagazineAudioEngine {
       filter.frequency.setValueAtTime(1200, ctx.currentTime);
       filter.Q.setValueAtTime(1.5, ctx.currentTime);
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
 
       noise.connect(filter);
@@ -106,6 +160,7 @@ export class TmiMagazineAudioEngine {
     } catch {
       // Safe fallback
     }
+    return null;
   }
 
   private readEnabledFromStorage(): boolean {

@@ -157,7 +157,7 @@ function LockedSpreadModal({ onBack }: { onBack: () => void }) {
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <Link
-            href="/checkout"
+            href="/pricing?ref=magazine"
             style={{ padding: "10px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", borderRadius: 8, textDecoration: "none" }}
           >
             SUBSCRIBE →
@@ -255,13 +255,14 @@ export default function MagazineShell({
     }
   }, [currentLeft, issue]);
 
-  // Boot audio engine with crisp page turn sounds
+  // Boot audio engine with real paper page-turn sounds (not generic UI SFX).
   useEffect(() => {
     audioRef.current = new TmiMagazineAudioEngine({
-      pageTurn: "/sounds/ui/ui-whoosh-bubbles.mp3",
+      pageTurn: "/sounds/magazine/page-turn.mp3",
+      pagesTurning: "/sounds/magazine/pages-turning.mp3",
       pageOpen: "/sounds/ui/ui-menu-pack.mp3",
       pageClose: "/sounds/ui/ui-menu-pack.mp3",
-      softSwipe: "/sounds/ui/ui-whoosh-bubbles.mp3",
+      softSwipe: "/sounds/magazine/page-turn.mp3",
     });
   }, []);
 
