@@ -12,9 +12,10 @@
  * 6. Background experience remains visibly active throughout.
  */
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
@@ -22,7 +23,7 @@ import {
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
-import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
+import { resolveInstantJoin, type InstantJoinDecision } from "@/lib/discovery/InstantJoinRuntime";
 
 export interface MiniLiveLobbyWallRuntimeProps {
   role: "fan" | "performer";
@@ -52,6 +53,7 @@ export default function MiniLiveLobbyWallRuntime({
 
   const [activeCategoryId, setActiveCategoryId] = useState<LobbyWallCoreCategoryId>("battles");
   const [selectedRecord, setSelectedRecord] = useState<LiveDiscoveryRecord | null>(null);
+  const [joinDecision, setJoinDecision] = useState<InstantJoinDecision | null>(null);
 
   // Filtered rooms from canonical discovery bus
   const activeRooms = useMemo(() => {
@@ -108,18 +110,37 @@ export default function MiniLiveLobbyWallRuntime({
 
   const handleJoin = (record: LiveDiscoveryRecord) => {
     onSelectRoom?.(record);
-    const joinResult = resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" });
-    if (joinResult.href) {
-      router.push(joinResult.href);
-    } else {
-      router.push(`/live/rooms/${record.roomId}`);
-    }
-    onClose();
+    // Same path as LiveLobbyWallHost → resolveInstantJoin → LobbyEntryFlow
+    // (auth / seat / queue / session / exact room). Never bypass canonical entry.
+    setJoinDecision(
+      resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" }),
+    );
   };
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
 
-  return createPortal(
+  const entryFlow =
+    joinDecision != null
+      ? createPortal(
+          <LobbyEntryFlow
+            room={joinDecision.room}
+            instant={joinDecision.instant}
+            onClose={() => {
+              setJoinDecision(null);
+              onClose();
+            }}
+          />,
+          document.body,
+        )
+      : null;
+
+  if (!isOpen && !joinDecision) return null;
+
+  return (
+    <>
+      {entryFlow}
+      {isOpen
+        ? createPortal(
     <div
       data-testid="tmi-mini-live-lobby-wall"
       role="dialog"
@@ -391,6 +412,9 @@ export default function MiniLiveLobbyWallRuntime({
         )}
       </div>
     </div>,
-    document.body
+          document.body,
+        )
+        : null}
+    </>
   );
 }

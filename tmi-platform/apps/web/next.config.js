@@ -153,14 +153,18 @@ const nextConfig = {
 
       // ── Rooms: legacy /rooms/live/[x] → /live/rooms/[x] ─────────────────
       { source: '/rooms/live/:room', destination: '/live/rooms/:room', permanent: false },
-      { source: '/rooms/live', destination: '/live/lobby', permanent: false },
+      // P0 lobby convergence: superseded discovery walls → canonical LiveLobbyWallHost
+      { source: '/rooms/live', destination: '/live/lobby-wall', permanent: false },
       { source: '/live/world', destination: '/home/3', permanent: false },
       { source: '/live/arena/:id', destination: '/live/rooms/:id', permanent: false },
 
-      // ── Lobbies ───────────────────────────────────────────────────────────
-      { source: '/lobbies/live-world', destination: '/live/lobby', permanent: false },
+      // ── Lobbies → canonical /live/lobby-wall (never BillboardLiveWall) ───
+      { source: '/live/lobby', destination: '/live/lobby-wall', permanent: false },
+      { source: '/live/lobbies', destination: '/live/lobby-wall', permanent: false },
+      { source: '/lobbies', destination: '/live/lobby-wall', permanent: false },
+      { source: '/lobbies/live-world', destination: '/live/lobby-wall', permanent: false },
       { source: '/lobbies/monday-cypher', destination: '/cypher/stage', permanent: false },
-      { source: '/lobbies/:slug', destination: '/live/lobby', permanent: false },
+      { source: '/lobbies/:slug', destination: '/live/lobby-wall', permanent: false },
 
       // ── Magazine ──────────────────────────────────────────────────────────
       { source: '/magazine/1', destination: '/magazine/issue/1', permanent: false },
