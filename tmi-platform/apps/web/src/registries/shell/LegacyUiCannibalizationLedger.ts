@@ -299,6 +299,28 @@ export const LEGACY_UI_CANNIBALIZATION_LEDGER: LegacyUiLedgerEntry[] = [
     notes: "Now single lighting=VENUE TOOLS chip + event-owner only",
   },
   {
+    legacyId: "LEG-SHELL-025",
+    file: "components/lobby/MiniLiveLobbyWallRuntime.tsx",
+    what: "Mini JOIN raw router.push room bypass (pre-P0)",
+    mountedBy: "CommandCenterMediaStack / CompactQuickPanelHost",
+    routes: "/hub/fan|/hub/performer (mini wall)",
+    classification: "REHOME INTO CANONICAL UI",
+    productionReachable: "YES",
+    canonicalTarget: "Discovery",
+    notes: "CLOSED 2026-09-07 — JOIN now resolveInstantJoin → LobbyEntryFlow (LiveLobbyWallHost path)",
+  },
+  {
+    legacyId: "LEG-SHELL-026",
+    file: "components/commandCenter/CommandCenterMediaStack.tsx",
+    what: "Phantom RECORD + orphan tmi:recording-toggle",
+    mountedBy: "Fan/Performer CommandCenterMediaStack top cluster",
+    routes: "/hub/*",
+    classification: "OBSOLETE",
+    productionReachable: "YES",
+    canonicalTarget: "Media Player",
+    notes: "CLOSED honesty 2026-09-07 — RECORD UNAVAILABLE until certified Program/ISO recording wired; no MediaRecorder stub",
+  },
+  {
     legacyId: "LEG-SHELL-024",
     file: "components/commandCenter/PerformanceRailControls.tsx",
     what: "Had VenueToolsToggleButton beside INTERMISSION",
@@ -311,7 +333,7 @@ export const LEGACY_UI_CANNIBALIZATION_LEDGER: LegacyUiLedgerEntry[] = [
   },
 ];
 
-export const LEGACY_UI_LEDGER_LAST_RUN = "2026-08-28";
+export const LEGACY_UI_LEDGER_LAST_RUN = "2026-09-07";
 
 export function listLegacyUiByReachable(reachable: "YES" | "NO"): LegacyUiLedgerEntry[] {
   return LEGACY_UI_CANNIBALIZATION_LEDGER.filter((e) => e.productionReachable === reachable);

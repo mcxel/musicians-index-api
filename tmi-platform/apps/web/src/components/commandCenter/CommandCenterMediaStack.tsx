@@ -698,16 +698,13 @@ export default function CommandCenterMediaStack({
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [avatarQuickOpen, setAvatarQuickOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const toggleRecording = useCallback(() => {
-    setIsRecording((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('tmi:recording-toggle', { detail: { recording: next } }));
-      }
-      return next;
-    });
-  }, []);
+  /**
+   * RECORD honesty (P0): no certified session/cloud recording consumer is wired to
+   * the hub top cluster. Live-fabric startRecording is metadata-only today;
+   * prior orphan toggle event had zero listeners. Do not stub browser MediaRecorder here.
+   */
+  const RECORD_UNAVAILABLE_REASON =
+    "Session recording runtime not certified — RECORD unavailable until Program/ISO recording is wired";
 
   const onShareClick = useCallback(async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -1347,12 +1344,35 @@ export default function CommandCenterMediaStack({
               icon: "🖥️",
             })}
 
-            {/* 5. RECORD */}
-            {utilityBtn(isRecording, "#FF4444", isRecording ? "● RECORDING" : "RECORD", () => toggleRecording(), {
-              testId: "tmi-top-cluster-record",
-              title: "Toggle local performance recording",
-              icon: "⏺",
-            })}
+            {/* 5. RECORD — honest unavailable (no certified recording authority wired) */}
+            <button
+              type="button"
+              data-testid="tmi-top-cluster-record"
+              data-record-state="unavailable"
+              data-record-reason={RECORD_UNAVAILABLE_REASON}
+              disabled
+              aria-disabled="true"
+              title={RECORD_UNAVAILABLE_REASON}
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                padding: "3px 9px",
+                borderRadius: 6,
+                cursor: "not-allowed",
+                border: "1px solid rgba(255,68,68,0.35)",
+                background: "transparent",
+                color: "rgba(255,68,68,0.45)",
+                fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                opacity: 0.55,
+              }}
+            >
+              <span aria-hidden>⏺</span>
+              RECORD UNAVAILABLE
+            </button>
 
             {/* 6. SHARE */}
             {utilityBtn(false, "#AA2DFF", "SHARE", () => void onShareClick(), {
