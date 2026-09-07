@@ -246,6 +246,34 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("router.push") &&
     dropdownSrc.includes("router.refresh");
 
+  // ACCOUNT-MENU-01..08: Inactivity auto-close & immediate close behaviors
+  results["ACCOUNT-MENU-01_idle_close_timeout_defined"] =
+    dropdownSrc.includes("const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;");
+  results["ACCOUNT-MENU-02_timer_resets_on_interaction"] =
+    dropdownSrc.includes("resetIdleTimer()") &&
+    dropdownSrc.includes("panel.addEventListener(\"mousemove\", onInteraction)") &&
+    dropdownSrc.includes("panel.addEventListener(\"touchstart\", onInteraction)") &&
+    dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
+  results["ACCOUNT-MENU-03_outside_click_closes_immediately"] =
+    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(e.target as Node))") &&
+    dropdownSrc.includes("onClose()");
+  results["ACCOUNT-MENU-04_escape_closes_immediately"] =
+    dropdownSrc.includes("if (e.key === \"Escape\") {") &&
+    dropdownSrc.includes("onClose()");
+  results["ACCOUNT-MENU-05_hub_navigation_closes"] =
+    dropdownSrc.includes("onClose();") &&
+    dropdownSrc.includes("router.push(dest);") &&
+    dropdownSrc.includes("router.push(targetDest);");
+  results["ACCOUNT-MENU-06_reopen_works_normally"] =
+    dropdownSrc.includes("useEffect(() => {") &&
+    dropdownSrc.includes("resetIdleTimer();");
+  results["ACCOUNT-MENU-07_keyboard_focus_not_broken"] =
+    dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
+  results["ACCOUNT-MENU-08_timer_cleanup_on_unmount"] =
+    dropdownSrc.includes("if (idleTimerRef.current) clearTimeout(idleTimerRef.current);") &&
+    dropdownSrc.includes("return () => {") &&
+    dropdownSrc.includes("clearTimeout(idleTimerRef.current);");
+
   const allPassed = Object.values(results).every(Boolean);
   console.log(
     "[UNIVERSAL_ACCOUNT_HEADER_SHELL_TEST_ASSERT]",

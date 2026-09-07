@@ -6,7 +6,7 @@
  * authorization rules in React (Rule 31 ACCOUNT-SHELL, current-schema mode).
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ActiveProfileIdentity } from "@/lib/account/resolveActiveProfileIdentity";
@@ -50,6 +50,8 @@ const rowStyle: CSSProperties = {
   gap: 8,
 };
 
+const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;
+
 export default function UniversalAccountDropdown({
   identity,
   open,
@@ -59,6 +61,7 @@ export default function UniversalAccountDropdown({
 }: UniversalAccountDropdownProps) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
   const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
   const [companionOffers, setCompanionOffers] = useState<Record<"FAN" | "PERFORMER", CompanionOffer> | null>(null);
@@ -67,6 +70,30 @@ export default function UniversalAccountDropdown({
     ownedRoles: identity.ownedRoles,
     activeRole: identity.activeRole,
   });
+
+  const resetIdleTimer = useCallback(() => {
+    if (!open) return;
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      onClose();
+    }, ACCOUNT_MENU_IDLE_CLOSE_MS);
+  }, [open, onClose]);
+
+  // Cleanup idle timer on unmount
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      resetIdleTimer();
+    } else if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, [open, resetIdleTimer]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,16 +108,51 @@ export default function UniversalAccountDropdown({
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      } else {
+        resetIdleTimer();
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+      } else {
+        resetIdleTimer();
+      }
     };
+    const onInteraction = () => resetIdleTimer();
+
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+
+    const panel = panelRef.current;
+    if (panel) {
+      panel.addEventListener("mousemove", onInteraction);
+      panel.addEventListener("touchstart", onInteraction);
+      panel.addEventListener("focusin", onInteraction);
+    }
+
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      if (panel) {
+        panel.removeEventListener("mousemove", onInteraction);
+        panel.removeEventListener("touchstart", onInteraction);
+        panel.removeEventListener("focusin", onInteraction);
+      }
+    };
+  }, [open, onClose, resetIdleTimer]);
+
+  // Close on route change
+  useEffect(() => {
+    if (!open) return;
+    const onRouteChange = () => onClose();
+    window.addEventListener("popstate", onRouteChange);
+    // Next.js router events are omitted here, but standard navigation via router.push
+    // inside this component triggers onClose() manually before navigating.
+    return () => {
+      window.removeEventListener("popstate", onRouteChange);
     };
   }, [open, onClose]);
 
@@ -199,6 +261,9 @@ export default function UniversalAccountDropdown({
         boxShadow: "0 18px 48px rgba(0,0,0,0.55)",
         fontFamily: "inherit",
       }}
+      onClick={() => resetIdleTimer()}
+      onMouseEnter={() => resetIdleTimer()}
+      onFocus={() => resetIdleTimer()}
     >
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
