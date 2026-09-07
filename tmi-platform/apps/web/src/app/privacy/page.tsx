@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           },
           {
             title: "Cookies & Sessions",
-            body: "We use session cookies for authentication and preferences. We do not use third-party advertising cookies. You can clear cookies at any time through your browser settings.",
+            body: "We use session cookies for authentication and preferences. TMI also partners with Google AdSense and authorized advertising networks to display ads on eligible public pages. When personalized ads are enabled through your consent, Google and other third-party vendors may use cookies, web beacons, IP addresses, or other identifiers to serve ads based on your visits to this and other websites. You can manage or revoke ad consent at any time in our Disclosures, and you can clear cookies at any time through your browser settings.",
           },
           {
             title: "Your Rights",
@@ -55,6 +55,7 @@ export default function PrivacyPage() {
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", gap: 12 }}>
           <Link href="/support" style={{ fontSize: 11, color: "#00FFFF", textDecoration: "none" }}>Support Portal →</Link>
           <Link href="/community-guidelines" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Community Guidelines</Link>
+          <Link href="/disclosures" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Advertising Disclosures</Link>
         </div>
       </div>
     </main>
