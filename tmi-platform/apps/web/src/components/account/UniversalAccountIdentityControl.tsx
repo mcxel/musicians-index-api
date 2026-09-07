@@ -148,10 +148,22 @@ export default function UniversalAccountIdentityControl({
       </button>
 
       {mounted &&
-        identity &&
+        open &&
         createPortal(
           <UniversalAccountDropdown
-            identity={identity}
+            identity={
+              identity ?? {
+                accountUserId: "pending",
+                profileKind: "ACCOUNT_FALLBACK",
+                activeRole: "FAN",
+                ownedRoles: ["FAN"],
+                profileComplete: false,
+                publicDisplayName: displayName,
+                publicHandle: null,
+                publicImageUrl: avatarUrl,
+                canonicalInitials: initials,
+              }
+            }
             open={open}
             onClose={() => setOpen(false)}
             anchorTop={panelPos.top}
