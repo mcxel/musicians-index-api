@@ -274,6 +274,34 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("return () => {") &&
     dropdownSrc.includes("clearTimeout(idleTimerRef.current);");
 
+  // CONVERGENCE-GUARD-01..05 (2026-09-06): AccountCommandMenu.tsx was found
+  // reverted in the working tree to its full ~1000-line pre-convergence
+  // standalone implementation (uncommitted, since fixed by restoring from
+  // commit a38f010a). These gates make that exact regression fail
+  // certification immediately rather than silently resurrecting a second,
+  // independently-stateful account menu across its 7 legacy callers.
+  const acmSrc = readSrc("components/navigation/AccountCommandMenu.tsx");
+
+  results["CONVERGENCE-GUARD-01_adapter_imports_canonical_control"] =
+    acmSrc.includes(
+      'import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl"',
+    );
+
+  results["CONVERGENCE-GUARD-02_adapter_has_no_own_session_or_state_machine"] =
+    !acmSrc.includes("useState") &&
+    !acmSrc.includes("useEffect") &&
+    !acmSrc.includes("interface SessionIdentity") &&
+    !acmSrc.includes("interface Notification");
+
+  results["CONVERGENCE-GUARD-03_adapter_never_calls_session_or_switch_role_apis"] =
+    !acmSrc.includes("/api/auth/session") && !acmSrc.includes("/api/auth/switch-role");
+
+  results["CONVERGENCE-GUARD-04_adapter_stays_under_size_threshold"] =
+    acmSrc.split("\n").length <= 60;
+
+  results["CONVERGENCE-GUARD-05_header_never_imports_adapter_directly"] =
+    !headerSrc.includes("AccountCommandMenu");
+
   const allPassed = Object.values(results).every(Boolean);
   console.log(
     "[UNIVERSAL_ACCOUNT_HEADER_SHELL_TEST_ASSERT]",
