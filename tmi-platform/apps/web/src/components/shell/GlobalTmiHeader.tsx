@@ -21,15 +21,18 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
-    if (user !== undefined) {
+    // Prop may seed an optimistic display, but never skip the session read.
+    // Skipping when `user !== undefined` (including explicit `user={null}`)
+    // left signed-in headers stuck on LOGIN/SIGN UP (HEADER-PHYS-03).
+    if (user) {
       setSessionUser(user);
-      return;
     }
     let active = true;
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (active && data?.authenticated && data?.user) {
+        if (!active || !data) return;
+        if (data.authenticated && data.user) {
           setSessionUser({
             id: data.user.id,
             displayName: data.user.name || data.user.email?.split("@")[0] || "User",
@@ -37,7 +40,9 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
             role: data.role || data.user.role || "FAN",
             avatarUrl: data.user.avatarUrl,
           });
+          return;
         }
+        if (!user) setSessionUser(null);
       })
       .catch(() => {});
     return () => {
