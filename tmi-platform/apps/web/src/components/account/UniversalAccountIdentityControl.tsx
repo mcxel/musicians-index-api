@@ -97,7 +97,11 @@ export default function UniversalAccountIdentityControl({
         data-tmi-account-menu-trigger="1"
         data-profile-kind={identity?.profileKind ?? "ACCOUNT_FALLBACK"}
         data-active-mode={caps?.activeModeLabel ?? activeRole}
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setOpen((v) => !v);
+        }}
         style={{
           display: "flex",
           alignItems: "center",
