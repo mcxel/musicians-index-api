@@ -6,6 +6,7 @@ import {
 } from "@/lib/editorial-economy";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import EditorialReviewActions from "./EditorialReviewActions";
+import PublishIssueButton from "./PublishIssueButton";
 
 export const metadata = {
   title: "Editorial Review | TMI",
@@ -48,6 +49,14 @@ export default async function EditorialReviewPage() {
       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
         Source validation and safety checks run before approval and payout.
       </div>
+
+      <section style={{ border: "1px solid rgba(255,215,0,0.35)", borderRadius: 10, padding: 12, background: "rgba(255,215,0,0.05)" }}>
+        <div style={{ fontSize: 11, color: "#FFD700", fontWeight: 900, marginBottom: 8 }}>ISSUE COMPOSITION</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>
+          Approval only makes a submission eligible. Nothing goes live until this composition step actually selects it into a built issue — that's the moment its status becomes &quot;published&quot;, not before.
+        </div>
+        <PublishIssueButton />
+      </section>
 
       <section style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 10, padding: 10 }}>
         <div style={{ fontSize: 11, color: "#00FFFF", fontWeight: 900, marginBottom: 8 }}>PENDING QUEUE ({queue.length})</div>

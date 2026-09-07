@@ -535,7 +535,10 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
 export function listQueuedWriterStories(): EditorialStory[] {
   return editorialSubmissionEngine
     .list()
-    .filter((submission) => submission.status === "approved")
+    // "published" stays eligible too — otherwise a story would drop out of
+    // the pool the moment it's first placed and could never rotate back in
+    // on a later issue build.
+    .filter((submission) => submission.status === "approved" || submission.status === "published")
     .map((submission) =>
       editorialSubmissionToStory({
         submissionId: submission.submissionId,
@@ -581,25 +584,52 @@ export function assembleDefaultIssuePools(): {
   };
 }
 
+/**
+ * Pure — computes what the issue would look like right now. Safe to call
+ * from any reader GET, crawler, or cache revalidation: it never mutates
+ * submission state. A reader opening the magazine must never be the event
+ * that permanently changes editorial publication state.
+ */
 export function buildCanonicalMagazineIssueSlots(issueKey: string): MagazineIssueSlot[] {
   const pools = assembleDefaultIssuePools();
   const seed = hashStringToSeed(`${issueKey}|${new Date().toISOString().slice(0, 10)}`);
-  const slots = buildMagazineIssueSequence({
+  return buildMagazineIssueSequence({
     ...pools,
     rng: mulberry32(seed),
     maxPerformerSlots: 8,
   });
+}
 
-  // The magazine composition authority — not the writer, not the reviewer —
-  // is what actually decides placement. A submission only becomes
-  // "published" the moment it's genuinely selected into a real built issue.
+/**
+ * The real commit boundary: APPROVED → (this function, an explicit,
+ * authorized action — see POST /api/editorial/publish-issue) → PUBLISHED.
+ * Idempotent — re-publishing an already-published submission is a no-op, so
+ * calling this again for the same day's composition never flaps state.
+ *
+ * Scope-honest: this is an on-demand transaction a staff-editor/admin
+ * triggers, not a scheduled composition job — no cron/queue infra exists in
+ * this codebase yet to hang a real "nightly issue build" off of. Building
+ * that scheduler is separate, larger work; this is the correct commit
+ * boundary for whenever that scheduler calls it too.
+ */
+export function publishIssueComposition(issueKey: string): {
+  slots: MagazineIssueSlot[];
+  publishedSubmissionIds: string[];
+} {
+  const slots = buildCanonicalMagazineIssueSlots(issueKey);
+  const publishedSubmissionIds: string[] = [];
+
   for (const slot of slots) {
-    if (slot.pageClass === "NEWS" && slot.articleSlug) {
-      editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
+    if (slot.pageClass !== "NEWS" || !slot.articleSlug) continue;
+    const result = editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
+    // markPublished() no-ops (returns null) for staff-article slugs that
+    // aren't real submission ids, and for anything not currently "approved".
+    if (result && result.status === "published") {
+      publishedSubmissionIds.push(slot.articleSlug);
     }
   }
 
-  return slots;
+  return { slots, publishedSubmissionIds };
 }
 
 export function issueSlotMonetizationLabel(layer: MonetizationLayer): string {
