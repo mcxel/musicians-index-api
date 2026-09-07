@@ -22,6 +22,7 @@ import {
   type PersonaType,
   type Capability,
 } from '@/lib/identity/MultiPersonaEngine';
+import { TelemetryTransportGovernor } from '@/lib/analytics/TelemetryTransportGovernor';
 
 // ── Event Schema ──────────────────────────────────────────────────────────────
 
@@ -276,11 +277,8 @@ function _dispatch(event: PersonaAnalyticsEvent): void {
   // @ts-expect-error intentional global for analytics debugging
   window.tmiAnalytics.push(event);
 
-  // Forward to ingest API (fire-and-forget)
-  void fetch('/api/telemetry/ingest', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(event),
-  }).catch(() => undefined);
+  // Forward to ingest API through the governed transport (batched, backed off,
+  // circuit-broken) rather than a raw fetch per event — high-frequency emitters
+  // like BotActivationEngine's per-bot pulses would otherwise flood the endpoint.
+  TelemetryTransportGovernor.dispatch(event);
 }
