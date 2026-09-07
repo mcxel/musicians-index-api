@@ -1,27 +1,26 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { contributorAccountEngine, editorialSubmissionEngine } from "@/lib/editorial-economy";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 
 export const metadata = {
   title: "Contributor Submissions | TMI",
-  description: "Create and inspect editorial submissions.",
+  description: "Your editorial submissions and their review status.",
 };
 
-export default function ContributorSubmissionsPage() {
-  const contributor = contributorAccountEngine.create({
-    contributorId: "contrib-demo-02",
-    displayName: "Verified Demo",
-    level: "verified-contributor",
+export default async function ContributorSubmissionsPage() {
+  const session = await getTmiAuth();
+  if (!session) redirect("/login?redirect=/contributors/submissions");
+
+  contributorAccountEngine.getOrCreate({
+    contributorId: session.user.id,
+    displayName: session.user.name,
+    level: "new-contributor",
   });
 
-  const result = editorialSubmissionEngine.submit({
-    contributorId: contributor.contributorId,
-    title: "Battle Recap: Crown Shift in Week 16",
-    body: "Week 16 delivered a major ranking shift with verified crowd voting and sponsor-backed prize pools. This recap follows the final bracket and artist conversion traffic.",
-    category: "news",
-    sourceUrls: ["https://example.com/tmi-week16", "https://example.com/tmi-ranking"],
-    artistSlug: "ray-journey",
-  });
-
-  const submissions = editorialSubmissionEngine.list();
+  // Real submission creation lives at /writers/submit (canonical form) — this
+  // page only lists what you've already submitted, it never fabricates one.
+  const submissions = editorialSubmissionEngine.list().filter((s) => s.contributorId === session.user.id);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "72px 20px 28px", display: "grid", gap: 14 }}>
@@ -30,23 +29,21 @@ export default function ContributorSubmissionsPage() {
         Submit, review, approve, then publish into issue builder rotation.
       </div>
 
-      {result.ok ? (
-        <div style={{ border: "1px solid rgba(0,255,136,0.4)", borderRadius: 10, padding: 10, background: "rgba(0,255,136,0.08)", fontSize: 12 }}>
-          Submission created: {result.submission.submissionId}
-        </div>
-      ) : (
-        <div style={{ border: "1px solid rgba(255,45,170,0.4)", borderRadius: 10, padding: 10, background: "rgba(255,45,170,0.08)", fontSize: 12 }}>
-          Submission blocked: {result.reason}
-        </div>
-      )}
+      <Link href="/writers/submit" style={{ textDecoration: "none", width: "fit-content", color: "#050510", background: "#00FFFF", padding: "8px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900 }}>
+        NEW SUBMISSION
+      </Link>
 
-      <ul style={{ margin: 0, paddingLeft: 16 }}>
-        {submissions.map((submission) => (
-          <li key={submission.submissionId} style={{ marginBottom: 8, fontSize: 12 }}>
-            {submission.title} · {submission.status} · {submission.category}
-          </li>
-        ))}
-      </ul>
+      {submissions.length === 0 ? (
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>No submissions yet.</div>
+      ) : (
+        <ul style={{ margin: 0, paddingLeft: 16 }}>
+          {submissions.map((submission) => (
+            <li key={submission.submissionId} style={{ marginBottom: 8, fontSize: 12 }}>
+              {submission.title} · {submission.status} · {submission.category}
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

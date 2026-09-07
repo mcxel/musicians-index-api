@@ -55,6 +55,28 @@ class EditorialSubmissionEngine {
     this.submissions.set(submission.submissionId, next);
     return next;
   }
+
+  /**
+   * Magazine composition authority calls this once it actually selects an
+   * approved submission into a built issue — the writer/editor never calls
+   * this directly (approval only clears review; placement is a separate,
+   * later decision owned by MagazineRotationEngine). Idempotent: re-selecting
+   * an already-published submission into a later issue build is a no-op.
+   */
+  markPublished(submissionId: string, articleSlug: string): EditorialSubmission | null {
+    const current = this.submissions.get(submissionId);
+    if (!current || current.status !== "approved") return current?.status === "published" ? current : null;
+
+    const next: EditorialSubmission = {
+      ...current,
+      status: "published",
+      publishedArticleSlug: articleSlug,
+      publishedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.submissions.set(submissionId, next);
+    return next;
+  }
 }
 
 export const editorialSubmissionEngine = new EditorialSubmissionEngine();

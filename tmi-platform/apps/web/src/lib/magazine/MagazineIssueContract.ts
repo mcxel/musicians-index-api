@@ -240,7 +240,10 @@ export function editorialSubmissionToStory(input: {
     performerSlug: input.artistSlug,
     category: input.category === "interview" ? "interview" : "news",
     blocks: paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", text: input.title }],
-    href: "/writers/dashboard",
+    // Same URL shape magazineReaderArticleUrl(slug) produces (can't import it
+    // here — MagazineReaderRoutes -> MagazineRotationEngine -> this file
+    // would be circular).
+    href: `/magazine/issue/current?article=${encodeURIComponent(input.submissionId)}`,
     source: "writer-submit",
   };
 }

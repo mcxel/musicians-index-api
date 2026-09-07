@@ -549,6 +549,22 @@ export function listQueuedWriterStories(): EditorialStory[] {
     );
 }
 
+/** Approved writer stories become real NEWS-slot candidates, same shape as
+ * staff articles — the composition engine below decides if/when they're
+ * actually placed into a built issue (writer owns content, magazine owns
+ * placement — CLAUDE.md editorial pipeline law). */
+function writerStoriesToNewsSlotSources(stories: EditorialStory[]): MagazineNewsSlotSource[] {
+  return stories
+    .map((story) => ({
+      slug: story.storyId,
+      title: story.title,
+      subtitle: story.subtitle ?? "",
+      href: story.href,
+      preview: story.blocks.find((block) => block.type === "paragraph")?.text,
+      author: story.author,
+    }));
+}
+
 export function assembleDefaultIssuePools(): {
   performers: MagazinePerformerSlotSource[];
   news: MagazineNewsSlotSource[];
@@ -556,10 +572,11 @@ export function assembleDefaultIssuePools(): {
 } {
   const ranked = computeRanks();
   const performerArticles = getPerformerPoolArticles();
-  const news = newsArticlesToSlotSources(getNewsPoolArticles());
+  const staffNews = newsArticlesToSlotSources(getNewsPoolArticles());
+  const writerNews = writerStoriesToNewsSlotSources(listQueuedWriterStories());
   return {
     performers: performersToSlotSources(ranked, performerArticles),
-    news,
+    news: [...staffNews, ...writerNews],
     randomPool: assembleDefaultRandomPool(),
   };
 }
@@ -567,11 +584,22 @@ export function assembleDefaultIssuePools(): {
 export function buildCanonicalMagazineIssueSlots(issueKey: string): MagazineIssueSlot[] {
   const pools = assembleDefaultIssuePools();
   const seed = hashStringToSeed(`${issueKey}|${new Date().toISOString().slice(0, 10)}`);
-  return buildMagazineIssueSequence({
+  const slots = buildMagazineIssueSequence({
     ...pools,
     rng: mulberry32(seed),
     maxPerformerSlots: 8,
   });
+
+  // The magazine composition authority — not the writer, not the reviewer —
+  // is what actually decides placement. A submission only becomes
+  // "published" the moment it's genuinely selected into a real built issue.
+  for (const slot of slots) {
+    if (slot.pageClass === "NEWS" && slot.articleSlug) {
+      editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
+    }
+  }
+
+  return slots;
 }
 
 export function issueSlotMonetizationLabel(layer: MonetizationLayer): string {

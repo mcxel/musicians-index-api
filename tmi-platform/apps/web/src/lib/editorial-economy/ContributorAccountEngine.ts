@@ -22,6 +22,13 @@ class ContributorAccountEngine {
     return this.accounts.get(contributorId);
   }
 
+  /** Idempotent — preserves an existing account's trust/level/payout progression. `create()` always resets to defaults, so real session-backed callers must use this instead. */
+  getOrCreate(input: { contributorId: string; displayName: string; level?: ContributorLevel }): ContributorAccount {
+    const existing = this.accounts.get(input.contributorId);
+    if (existing) return existing;
+    return this.create(input);
+  }
+
   list(): ContributorAccount[] {
     return Array.from(this.accounts.values());
   }

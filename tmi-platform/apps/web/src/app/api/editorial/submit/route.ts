@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubmissionEngine";
 import { contributorAccountEngine } from "@/lib/editorial-economy/ContributorAccountEngine";
+import { resolveContributorSession } from "@/lib/editorial-economy/resolveContributorSession";
 
 export async function POST(req: NextRequest) {
   try {
+    // Identity is always server-resolved from the real session — a
+    // client-supplied contributorId is never trusted (it would let anyone
+    // submit as anyone else's contributor account).
+    const session = await resolveContributorSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Sign in to submit an article." }, { status: 401 });
+    }
+
     const body = await req.json() as {
       title: string;
       body: string;
@@ -11,21 +20,18 @@ export async function POST(req: NextRequest) {
       sourceUrls?: string[];
       artistSlug?: string;
       sponsorSlug?: string;
-      contributorId?: string;
     };
 
     if (!body.title || !body.body || !body.category) {
       return NextResponse.json({ error: "title, body, and category are required" }, { status: 400 });
     }
 
-    const contributorId = body.contributorId?.trim() || "writer-demo";
-    if (!contributorAccountEngine.get(contributorId)) {
-      contributorAccountEngine.create({
-        contributorId,
-        displayName: contributorId === "writer-demo" ? "Demo Writer" : contributorId,
-        level: "verified-contributor",
-      });
-    }
+    const contributorId = session.contributorId;
+    contributorAccountEngine.getOrCreate({
+      contributorId,
+      displayName: session.displayName,
+      level: "new-contributor",
+    });
 
     const result = editorialSubmissionEngine.submit({
       contributorId,
