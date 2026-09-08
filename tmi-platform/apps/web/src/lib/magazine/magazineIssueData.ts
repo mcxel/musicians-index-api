@@ -587,8 +587,8 @@ function getMagazineIssue1(): MagazineArticle[] {
  * Unapproved/rejected submissions never resolve here, so a guessed
  * submissionId can't leak unmoderated content onto a public surface.
  */
-function writerArticleFromSubmission(submission: EditorialSubmission): MagazineArticle {
-  const contributor = contributorAccountEngine.get(submission.contributorId);
+async function writerArticleFromSubmission(submission: EditorialSubmission): Promise<MagazineArticle> {
+  const contributor = await contributorAccountEngine.get(submission.contributorId);
   const paragraphs = submission.body
     .split(/\n+/)
     .map((text) => text.trim())
@@ -610,11 +610,11 @@ function writerArticleFromSubmission(submission: EditorialSubmission): MagazineA
   };
 }
 
-export function getArticleBySlug(slug: string): MagazineArticle | undefined {
+export async function getArticleBySlug(slug: string): Promise<MagazineArticle | undefined> {
   const staffArticle = getMagazineIssue1().find(a => a.slug === slug);
   if (staffArticle) return staffArticle;
 
-  const submission = editorialSubmissionEngine.get(slug);
+  const submission = await editorialSubmissionEngine.get(slug);
   if (submission && (submission.status === "approved" || submission.status === "published")) {
     return writerArticleFromSubmission(submission);
   }

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * LEGACY harvest-only — /contributors (+ editorial-economy/*) is canonical.
+ * Capability diff before freeze; do not delete this hub yet.
+ * New writer submit/review/publish flows must land on /contributors + /editorial.
+ */
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";

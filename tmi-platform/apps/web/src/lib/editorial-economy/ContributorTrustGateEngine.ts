@@ -6,8 +6,8 @@ export interface TrustGateResult {
 }
 
 class ContributorTrustGateEngine {
-  canSubmit(contributorId: string): TrustGateResult {
-    const account = contributorAccountEngine.get(contributorId);
+  async canSubmit(contributorId: string): Promise<TrustGateResult> {
+    const account = await contributorAccountEngine.get(contributorId);
     if (!account) {
       return { allowed: false, reason: "contributor-not-found" };
     }
@@ -19,8 +19,8 @@ class ContributorTrustGateEngine {
     return { allowed: true };
   }
 
-  canApprove(contributorId: string): TrustGateResult {
-    const account = contributorAccountEngine.get(contributorId);
+  async canApprove(contributorId: string): Promise<TrustGateResult> {
+    const account = await contributorAccountEngine.get(contributorId);
     if (!account) {
       return { allowed: false, reason: "editor-not-found" };
     }

@@ -12,7 +12,7 @@ export default async function ContributorSubmissionsPage() {
   const session = await getTmiAuth();
   if (!session) redirect("/login?redirect=/contributors/submissions");
 
-  contributorAccountEngine.getOrCreate({
+  await contributorAccountEngine.getOrCreate({
     contributorId: session.user.id,
     displayName: session.user.name,
     level: "new-contributor",
@@ -20,7 +20,8 @@ export default async function ContributorSubmissionsPage() {
 
   // Real submission creation lives at /writers/submit (canonical form) — this
   // page only lists what you've already submitted, it never fabricates one.
-  const submissions = editorialSubmissionEngine.list().filter((s) => s.contributorId === session.user.id);
+  const allSubmissions = await editorialSubmissionEngine.list();
+  const submissions = allSubmissions.filter((s) => s.contributorId === session.user.id);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "72px 20px 28px", display: "grid", gap: 14 }}>

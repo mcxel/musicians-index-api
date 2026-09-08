@@ -27,13 +27,13 @@ export async function POST(req: NextRequest) {
     }
 
     const contributorId = session.contributorId;
-    contributorAccountEngine.getOrCreate({
+    await contributorAccountEngine.getOrCreate({
       contributorId,
       displayName: session.displayName,
       level: "new-contributor",
     });
 
-    const result = editorialSubmissionEngine.submit({
+    const result = await editorialSubmissionEngine.submit({
       contributorId,
       title: body.title,
       body: body.body,

@@ -15,10 +15,11 @@ const VALID_LEVELS: ContributorLevel[] = ["new-contributor", "verified-contribut
  *
  * Body: { email: string; level: ContributorLevel }
  *
- * Scope note: this writes to ContributorAccountEngine's in-memory account
- * (see the persistence audit — the editorial-economy module has no Prisma
- * model yet), so the grant does not survive a server restart until that
- * migration happens. It's still the real promotion action, not a stub.
+ * Scope note: ContributorAccountEngine is now Prisma-backed (see
+ * editorialPersistenceTruth.ts — update its ContributorAccount row from
+ * HYBRID once the migration in packages/db/prisma/schema.prisma is actually
+ * applied to the database; the schema is drafted but not yet migrated).
+ * No self-promotion: getTmiAuth() ADMIN only; never elevates from contributor UI.
  */
 export async function POST(req: NextRequest) {
   const auth = await getTmiAuth();
@@ -47,10 +48,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const previous = contributorAccountEngine.get(user.id);
+  const previous = await contributorAccountEngine.get(user.id);
   const account = previous
-    ? contributorAccountEngine.updateLevel(user.id, level)
-    : contributorAccountEngine.create({
+    ? await contributorAccountEngine.updateLevel(user.id, level)
+    : await contributorAccountEngine.create({
         contributorId: user.id,
         displayName: user.displayName ?? user.name ?? user.email ?? "TMI Contributor",
         level,

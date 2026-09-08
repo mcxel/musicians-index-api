@@ -15,28 +15,31 @@ export default async function ContributorPayoutsPage() {
   const session = await getTmiAuth();
   if (!session) redirect("/login?redirect=/contributors/payouts");
 
-  const account = contributorAccountEngine.getOrCreate({
+  const account = await contributorAccountEngine.getOrCreate({
     contributorId: session.user.id,
     displayName: session.user.name,
     level: "new-contributor",
   });
 
-  const approvedSubs = editorialSubmissionEngine
-    .list()
-    .filter((s) => s.contributorId === session.user.id && (s.status === "approved" || s.status === "published"));
+  const allSubmissions = await editorialSubmissionEngine.list();
+  const approvedSubs = allSubmissions.filter(
+    (s) => s.contributorId === session.user.id && (s.status === "approved" || s.status === "published"),
+  );
 
   // Rule 20: no fabricated readers/conversions/sponsor revenue — real
   // EditorialPerformance rows don't exist until a real analytics pipeline
   // writes them, so every submission pays real zero until then.
-  const payouts = approvedSubs.map((sub) => ({
-    submission: sub,
-    payout: contributorPayoutEngine.calculate({
-      contributorId: account.contributorId,
-      submissionId: sub.submissionId,
-      approved: true,
-      sponsorRevenueUsd: 0,
-    }),
-  }));
+  const payouts = await Promise.all(
+    approvedSubs.map(async (sub) => ({
+      submission: sub,
+      payout: await contributorPayoutEngine.calculate({
+        contributorId: account.contributorId,
+        submissionId: sub.submissionId,
+        approved: true,
+        sponsorRevenueUsd: 0,
+      }),
+    })),
+  );
   const totalPayout = payouts.reduce((sum, p) => sum + p.payout.amountUsd, 0);
 
   return (

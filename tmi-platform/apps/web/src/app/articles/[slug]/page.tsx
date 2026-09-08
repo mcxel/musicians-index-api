@@ -174,7 +174,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   }
 
   // One-action law: magazine articles go straight to the canonical reader
-  if (getArticleBySlug(slug)) {
+  if (await getArticleBySlug(slug)) {
     permanentRedirect(magazineReaderArticleUrl(slug));
   }
 

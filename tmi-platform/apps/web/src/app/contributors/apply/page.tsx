@@ -12,7 +12,7 @@ export default async function ContributorApplyPage() {
   const session = await getTmiAuth();
   if (!session) redirect("/login?redirect=/contributors/apply");
 
-  const account = contributorAccountEngine.getOrCreate({
+  const account = await contributorAccountEngine.getOrCreate({
     contributorId: session.user.id,
     displayName: session.user.name,
     level: "new-contributor",

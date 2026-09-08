@@ -532,9 +532,9 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
   return pool.filter((item) => !NON_LIVING_COMMUNITY_RANDOM.includes(item.subtype));
 }
 
-export function listQueuedWriterStories(): EditorialStory[] {
-  return editorialSubmissionEngine
-    .list()
+export async function listQueuedWriterStories(): Promise<EditorialStory[]> {
+  const submissions = await editorialSubmissionEngine.list();
+  return submissions
     // "published" stays eligible too — otherwise a story would drop out of
     // the pool the moment it's first placed and could never rotate back in
     // on a later issue build.
@@ -568,15 +568,16 @@ function writerStoriesToNewsSlotSources(stories: EditorialStory[]): MagazineNews
     }));
 }
 
-export function assembleDefaultIssuePools(): {
+export async function assembleDefaultIssuePools(): Promise<{
   performers: MagazinePerformerSlotSource[];
   news: MagazineNewsSlotSource[];
   randomPool: MagazineRandomSlotSource[];
-} {
+}> {
   const ranked = computeRanks();
   const performerArticles = getPerformerPoolArticles();
   const staffNews = newsArticlesToSlotSources(getNewsPoolArticles());
-  const writerNews = writerStoriesToNewsSlotSources(listQueuedWriterStories());
+  const writerStories = await listQueuedWriterStories();
+  const writerNews = writerStoriesToNewsSlotSources(writerStories);
   return {
     performers: performersToSlotSources(ranked, performerArticles),
     news: [...staffNews, ...writerNews],
@@ -585,13 +586,13 @@ export function assembleDefaultIssuePools(): {
 }
 
 /**
- * Pure — computes what the issue would look like right now. Safe to call
- * from any reader GET, crawler, or cache revalidation: it never mutates
- * submission state. A reader opening the magazine must never be the event
- * that permanently changes editorial publication state.
+ * Computes what the issue would look like right now. Safe to call from any
+ * reader GET, crawler, or cache revalidation: it never mutates submission
+ * state. A reader opening the magazine must never be the event that
+ * permanently changes editorial publication state.
  */
-export function buildCanonicalMagazineIssueSlots(issueKey: string): MagazineIssueSlot[] {
-  const pools = assembleDefaultIssuePools();
+export async function buildCanonicalMagazineIssueSlots(issueKey: string): Promise<MagazineIssueSlot[]> {
+  const pools = await assembleDefaultIssuePools();
   const seed = hashStringToSeed(`${issueKey}|${new Date().toISOString().slice(0, 10)}`);
   return buildMagazineIssueSequence({
     ...pools,
@@ -612,16 +613,16 @@ export function buildCanonicalMagazineIssueSlots(issueKey: string): MagazineIssu
  * that scheduler is separate, larger work; this is the correct commit
  * boundary for whenever that scheduler calls it too.
  */
-export function publishIssueComposition(issueKey: string): {
+export async function publishIssueComposition(issueKey: string): Promise<{
   slots: MagazineIssueSlot[];
   publishedSubmissionIds: string[];
-} {
-  const slots = buildCanonicalMagazineIssueSlots(issueKey);
+}> {
+  const slots = await buildCanonicalMagazineIssueSlots(issueKey);
   const publishedSubmissionIds: string[] = [];
 
   for (const slot of slots) {
     if (slot.pageClass !== "NEWS" || !slot.articleSlug) continue;
-    const result = editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
+    const result = await editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
     // markPublished() no-ops (returns null) for staff-article slugs that
     // aren't real submission ids, and for anything not currently "approved".
     if (result && result.status === "published") {

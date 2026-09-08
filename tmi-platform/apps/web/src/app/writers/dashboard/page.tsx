@@ -24,26 +24,28 @@ export default async function WritersDashboardPage() {
   if (!session) redirect("/login?redirect=/writers/dashboard");
 
   const contributorId = session.user.id;
-  const account = contributorAccountEngine.getOrCreate({
+  const account = await contributorAccountEngine.getOrCreate({
     contributorId,
     displayName: session.user.name,
     level: "new-contributor",
   });
-  const submissions = editorialSubmissionEngine.list().filter(s => s.contributorId === contributorId);
+  const allSubmissions = await editorialSubmissionEngine.list();
+  const submissions = allSubmissions.filter(s => s.contributorId === contributorId);
 
   const approvedSubs = submissions.filter(s => s.status === "approved" || s.status === "published");
   const pendingSubs = submissions.filter(s => s.status === "submitted");
 
   // Rule 20: no fabricated sponsor revenue — payout calc uses real zeros until ledger exists.
-  const totalPayout = approvedSubs.reduce((sum, sub) => {
-    const result = contributorPayoutEngine.calculate({
+  let totalPayout = 0;
+  for (const sub of approvedSubs) {
+    const result = await contributorPayoutEngine.calculate({
       contributorId,
       submissionId: sub.submissionId,
       approved: true,
       sponsorRevenueUsd: 0,
     });
-    return sum + result.amountUsd;
-  }, 0);
+    totalPayout += result.amountUsd;
+  }
 
   const levelColor = LEVEL_COLOR[account.level];
 

@@ -28,9 +28,9 @@ function ArtistFallback({ slug }: { slug: string }) {
   );
 }
 
-export default function ArtistArticlePage({ params }: Props) {
+export default async function ArtistArticlePage({ params }: Props) {
   // One-action law: magazine articles go straight to the canonical reader
-  if (getArticleBySlug(params.slug)) {
+  if (await getArticleBySlug(params.slug)) {
     permanentRedirect(magazineReaderArticleUrl(params.slug));
   }
 

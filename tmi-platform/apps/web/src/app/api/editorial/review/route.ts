@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
 
     const result =
       body.action === "approve"
-        ? articleReviewQueueEngine.approve(body.submissionId, session.contributorId)
-        : articleReviewQueueEngine.reject(body.submissionId, session.contributorId, body.reason ?? "Rejected");
+        ? await articleReviewQueueEngine.approve(body.submissionId, session.contributorId)
+        : await articleReviewQueueEngine.reject(body.submissionId, session.contributorId, body.reason ?? "Rejected");
 
     if (!result.ok) {
       // insufficient-role / reviewer-blocked are real trust-gate denials, not

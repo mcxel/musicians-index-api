@@ -22,7 +22,7 @@ export default async function EditorialReviewPage() {
   // your own account here never fabricates that level — it only ever
   // reflects a real promotion (contributorAccountEngine.updateLevel), so a
   // regular contributor honestly sees "no access" rather than a fake queue.
-  const account = contributorAccountEngine.getOrCreate({
+  const account = await contributorAccountEngine.getOrCreate({
     contributorId: session.user.id,
     displayName: session.user.name,
     level: "new-contributor",
@@ -40,8 +40,8 @@ export default async function EditorialReviewPage() {
     );
   }
 
-  const queue = articleReviewQueueEngine.listQueue();
-  const all = editorialSubmissionEngine.list();
+  const queue = await articleReviewQueueEngine.listQueue();
+  const all = await editorialSubmissionEngine.list();
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "72px 20px 28px", display: "grid", gap: 14 }}>

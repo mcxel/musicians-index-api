@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       sampleUrl?: string;
     };
 
-    const account = contributorAccountEngine.getOrCreate({
+    const account = await contributorAccountEngine.getOrCreate({
       contributorId: session.contributorId,
       displayName: (body.displayName?.trim() || session.displayName),
       level: "new-contributor",

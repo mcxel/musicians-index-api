@@ -373,9 +373,9 @@ function ExclusionCta({ href, label, accent }: { href: string; label: string; ac
   );
 }
 
-function articleSpreadContent(articleSlug?: string) {
+async function articleSpreadContent(articleSlug?: string) {
   if (!articleSlug) return null;
-  const article = getArticleBySlug(articleSlug);
+  const article = await getArticleBySlug(articleSlug);
   if (!article) return null;
 
   const bodyParagraphs = article.blocks
@@ -388,9 +388,9 @@ function articleSpreadContent(articleSlug?: string) {
   return { article, bodyParagraphs, pullQuote };
 }
 
-function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
+async function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
   const accent = slot.heroColor ?? "#00FFFF";
-  const spread = articleSpreadContent(slot.articleSlug);
+  const spread = await articleSpreadContent(slot.articleSlug);
   return (
     <MagazineEditorialSpreadEngine
       templateId="ARTIST_SCORECARD"
@@ -402,14 +402,15 @@ function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
       cutShape="ONE_CORNER"
       author={spread?.article.author}
       bodyParagraphs={spread?.bodyParagraphs}
+      articleSlug={slot.articleSlug}
       pullQuote={spread?.pullQuote}
     />
   );
 }
 
-function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
+async function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
   const accent = slot.heroColor ?? "#00FF88";
-  const spread = articleSpreadContent(slot.articleSlug);
+  const spread = await articleSpreadContent(slot.articleSlug);
   return (
     <MagazineEditorialSpreadEngine
       templateId="HERITAGE_EDITORIAL"
@@ -420,6 +421,7 @@ function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
       cutShape="RECTANGLE"
       author={spread?.article.author}
       bodyParagraphs={spread?.bodyParagraphs}
+      articleSlug={slot.articleSlug}
       pullQuote={spread?.pullQuote}
     />
   );
@@ -499,9 +501,9 @@ function shellTypeForSlot(slot: MagazineIssueSlot): MagazinePage["type"] {
 // BUILDER — maps P/N/R slots onto the canonical MagazineIssueReader
 // ────────────────────────────────────────────────────────────
 
-export function buildMagazineIssuePages(issue: string): MagazinePage[] {
+export async function buildMagazineIssuePages(issue: string): Promise<MagazinePage[]> {
   const issueNum = issue === "current" ? "1" : issue;
-  const slots = buildCanonicalMagazineIssueSlots(issue === "current" ? "current" : issue);
+  const slots = await buildCanonicalMagazineIssueSlots(issue === "current" ? "current" : issue);
 
   const interior: MagazinePage[] = slots.map((slot) => ({
     id: slot.id,
