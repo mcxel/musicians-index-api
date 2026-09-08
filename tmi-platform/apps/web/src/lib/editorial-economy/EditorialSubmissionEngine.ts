@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import type { EditorialSubmission as DbEditorialSubmission } from "@prisma/client";
 import { contributorTrustGateEngine } from "@/lib/editorial-economy/ContributorTrustGateEngine";
@@ -69,7 +70,9 @@ class EditorialSubmissionEngine {
       return { ok: false as const, reason: gate.reason ?? "blocked" };
     }
 
-    const submissionId = `sub-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    // Collision-safe under real concurrency — Date.now()+small-random was fine
+    // for an in-memory Map but not for a unique DB column under real load.
+    const submissionId = `sub-${randomUUID()}`;
 
     const row = await prisma.editorialSubmission.create({
       data: {
@@ -123,20 +126,28 @@ class EditorialSubmissionEngine {
    * an already-published submission into a later issue build is a no-op.
    */
   async markPublished(submissionId: string, articleSlug: string): Promise<EditorialSubmission | null> {
-    const current = await this.get(submissionId);
-    if (!current) return null;
-    if (current.status === "published") return current;
-    if (current.status !== "approved") return null;
-
-    const row = await prisma.editorialSubmission.update({
-      where: { submissionId },
+    // Atomic conditional transition (UPDATE ... WHERE submissionId = ? AND
+    // status = 'APPROVED') rather than read-then-write — two concurrent
+    // publish attempts (e.g. two issue builds racing) can't both succeed,
+    // and a publish racing an approve/reject can't land on a half-checked state.
+    const result = await prisma.editorialSubmission.updateMany({
+      where: { submissionId, status: "APPROVED" },
       data: {
         status: "PUBLISHED",
         publishedArticleSlug: articleSlug,
         publishedAt: new Date(),
       },
     });
-    return fromDb(row);
+
+    if (result.count === 1) {
+      return (await this.get(submissionId)) ?? null;
+    }
+
+    // The conditional update matched nothing — either already published
+    // (idempotent no-op, return current state) or not in a publishable
+    // state (not found / draft / submitted / rejected).
+    const current = await this.get(submissionId);
+    return current?.status === "published" ? current : null;
   }
 }
 
