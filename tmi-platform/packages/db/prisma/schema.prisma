@@ -1198,6 +1198,96 @@ model Article {
   @@map("articles")
 }
 
+// ------------------------------------------------------------------------------
+// Contributor editorial economy — /contributors, /writers/*, /editorial/*.
+// DRAFTED 2026-09-07, not yet applied to the database (no migration run).
+// contributorId/targetId here are soft references to User.id (same
+// unenforced-string-FK convention as AuditLog.targetId above) rather than a
+// formal @relation, so this addition never touches the User model itself —
+// that model is under heavy concurrent edit and a formal relation would add
+// unnecessary merge-conflict surface for a same-value linkage the app layer
+// already guarantees (contributorId is always session.user.id).
+// ------------------------------------------------------------------------------
+
+enum ContributorLevel {
+  NEW_CONTRIBUTOR
+  VERIFIED_CONTRIBUTOR
+  TRUSTED_EDITOR
+  STAFF_EDITOR
+}
+
+enum EditorialSubmissionCategory {
+  NEWS
+  ARTIST
+  PERFORMER
+  SPONSOR
+  ADVERTISER
+  INTERVIEW
+}
+
+enum EditorialSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+model ContributorAccount {
+  id            String           @id @default(cuid())
+  contributorId String           @unique @map("contributor_id")
+  displayName   String           @map("display_name")
+  level         ContributorLevel @default(NEW_CONTRIBUTOR)
+  trustScore    Int              @default(25) @map("trust_score")
+  payoutCapUsd  Int              @default(1000) @map("payout_cap_usd")
+  verifiedAt    DateTime?        @map("verified_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  @@map("contributor_accounts")
+}
+
+model EditorialSubmission {
+  id                   String                      @id @default(cuid())
+  submissionId         String                      @unique @map("submission_id")
+  contributorId        String                      @map("contributor_id")
+  title                String
+  body                 String                      @db.Text
+  category             EditorialSubmissionCategory
+  sourceUrls           String[]                    @map("source_urls")
+  artistSlug           String?                     @map("artist_slug")
+  sponsorSlug          String?                     @map("sponsor_slug")
+  status               EditorialSubmissionStatus   @default(DRAFT)
+  rejectionReason      String?                     @map("rejection_reason")
+  // Harvested from legacy lib/writer/EditorialQueueEngine's Pitch type per
+  // the /hub/writer capability diff — modeled now even though no UI writes
+  // it yet, so the harvest doesn't need a second migration later.
+  editorNotes          String?                     @map("editor_notes")
+  publishedArticleSlug String?                      @map("published_article_slug")
+  publishedAt          DateTime?                   @map("published_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  @@index([contributorId])
+  @@index([status])
+  @@map("editorial_submissions")
+}
+
+model EditorialPerformance {
+  id                       String   @id @default(cuid())
+  submissionId             String   @unique @map("submission_id")
+  verifiedUniqueReaders    Int      @default(0) @map("verified_unique_readers")
+  readCompletionRate       Float    @default(0) @map("read_completion_rate")
+  artistProfileConversions Int      @default(0) @map("artist_profile_conversions")
+  followsGenerated         Int      @default(0) @map("follows_generated")
+  tipsGeneratedUsd         Float    @default(0) @map("tips_generated_usd")
+  sponsorRevenueUsd        Float    @default(0) @map("sponsor_revenue_usd")
+  suspiciousTrafficRatio   Float    @default(0) @map("suspicious_traffic_ratio")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("editorial_performance")
+}
+
 model PollSnapshot {
   id String @id @default(cuid())
 
