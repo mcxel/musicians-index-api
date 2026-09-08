@@ -1,6 +1,10 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import {
+  purgeAndRankHumanLeaderboard,
+  type LeaderboardTruthCandidate,
+} from "@/lib/rankings/LeaderboardTruthDirector";
 
 // Per Rule #20: replace with real engine data before launch.
 const LIVE_BATTLES = [
@@ -48,13 +52,16 @@ const LIVE_BATTLES = [
   },
 ];
 
-const CROWN_LEADERBOARD = [
-  { rank: 1, name: "Wavetek",    icon: "🎤", xp: 14820, badge: "CHAMPION", color: "#FFD700" },
-  { rank: 2, name: "Zuri Bloom", icon: "🌍", xp: 12340, badge: "TOP 5",    color: "#00FF88" },
-  { rank: 3, name: "Krypt",      icon: "🔒", xp: 10900, badge: "TOP 5",    color: "#AA2DFF" },
-  { rank: 4, name: "Neon Vibe",  icon: "🎧", xp: 9450,  badge: "TOP 10",   color: "#00FFFF" },
-  { rank: 5, name: "Vela Flux",  icon: "⚡", xp: 8120,  badge: "TOP 10",   color: "#FFD700" },
+// Seed pool purged by canonical LeaderboardTruthDirector
+const RAW_CROWN_POOL: LeaderboardTruthCandidate[] = [
+  { id: "wavetek", name: "Wavetek", score: 14820, isSeed: true },
+  { id: "zuri-bloom", name: "Zuri Bloom", score: 12340, isSeed: true },
+  { id: "krypt", name: "Krypt", score: 10900, isSeed: true },
+  { id: "neon-vibe", name: "Neon Vibe", score: 9450, isSeed: true },
+  { id: "vela-flux", name: "Vela Flux", score: 8120, isSeed: true },
 ];
+
+const { rankedEntries: CROWN_LEADERBOARD } = purgeAndRankHumanLeaderboard(RAW_CROWN_POOL);
 
 type VoteMap = Record<string, "1" | "2">;
 
@@ -158,17 +165,29 @@ export default function VotePage() {
             CROWN LEADERBOARD — THIS WEEK
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {CROWN_LEADERBOARD.map(entry => (
-              <div key={entry.rank} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: entry.rank === 1 ? "#FFD700" : "rgba(255,255,255,0.2)", minWidth: 22 }}>#{entry.rank}</span>
-                <span style={{ fontSize: 22, flexShrink: 0 }}>{entry.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{entry.name}</div>
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{entry.xp.toLocaleString()} XP</div>
+            {CROWN_LEADERBOARD.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "28px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,215,0,0.25)" }}>
+                <div style={{ fontSize: 26, marginBottom: 6 }}>👑</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#FFD700", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                  Crown Open For Competition
                 </div>
-                <span style={{ fontSize: 7, fontWeight: 800, color: entry.color, background: `${entry.color}15`, border: `1px solid ${entry.color}30`, borderRadius: 4, padding: "2px 6px" }}>{entry.badge}</span>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 6, maxWidth: 360, margin: "6px auto 0", lineHeight: 1.4 }}>
+                  All non-human seed &amp; bot scores have been purged. Vote in active battles or go live to earn verified XP and claim the #1 Crown rank!
+                </div>
               </div>
-            ))}
+            ) : (
+              CROWN_LEADERBOARD.map(entry => (
+                <div key={entry.rank} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: entry.rank === 1 ? "#FFD700" : "rgba(255,255,255,0.2)", minWidth: 22 }}>#{entry.rank}</span>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{entry.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{entry.name}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{entry.score.toLocaleString()} XP</div>
+                  </div>
+                  <span style={{ fontSize: 7, fontWeight: 800, color: entry.color, background: `${entry.color}15`, border: `1px solid ${entry.color}30`, borderRadius: 4, padding: "2px 6px" }}>{entry.badge}</span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

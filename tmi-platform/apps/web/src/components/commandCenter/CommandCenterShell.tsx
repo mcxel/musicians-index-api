@@ -88,6 +88,7 @@ import CompactQuickPanelHost, { SnipsOverlayHost } from "@/components/hud/Compac
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
+import FloatingLobbyWallTrigger from "@/components/lobby/FloatingLobbyWallTrigger";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 import TmiIdentitySurface from "./TmiIdentitySurface";
@@ -654,7 +655,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     maxWidth: "100%",
     minWidth: 0,
     minHeight: 0,
-    aspectRatio: "1 / 1",
+    aspectRatio: "16 / 9",
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
@@ -1644,6 +1645,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
       <FloatingWorkspacePanel />
       <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
+      <FloatingLobbyWallTrigger />
 
       {localhostDebugEnabled ? (
         <div

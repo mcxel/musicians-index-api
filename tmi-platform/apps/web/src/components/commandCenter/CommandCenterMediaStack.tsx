@@ -951,7 +951,7 @@ export default function CommandCenterMediaStack({
             slot={slot}
             cellIndex={i}
             hubLiveRoomId={hubLiveRoomId}
-            hubLiveMonitor={i === 0 ? "A" : "B"}
+            hubLiveMonitor="B"
             goLiveBootActive={goLiveBootActive}
             displayName={displayName}
           />

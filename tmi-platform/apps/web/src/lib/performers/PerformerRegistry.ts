@@ -138,6 +138,9 @@ export interface PerformerIdentity {
    * Used by: /profile/performer/[slug] permission guard, API mutations.
    */
   ownerId?: string | null;
+  /** Leaderboard Truth Law: Seed/demo identities must never be competitive */
+  rankingEligible?: boolean;
+  isSeed?: boolean;
 }
 
 // ── Registry data ─────────────────────────────────────────────────────────────
@@ -147,6 +150,8 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'wavetek',
     slug: 'wavetek',
     name: 'Wavetek',
+    isSeed: true,
+    rankingEligible: false,
     profileImageUrl: '/bot-images/Bot image 1.png',
     coverImageUrl: '/tmi-curated/mag-20.jpg',
     city: 'Atlanta, GA', countryName: 'United States', flag: '🇺🇸',
@@ -1116,6 +1121,9 @@ const _bySlug = new Map(PERFORMER_REGISTRY.map((p) => [p.slug, p]));
 // (getPerformerById/getPerformerBySlug) are untouched — a bot-filler tile
 // still needs to resolve when clicked from a legitimate filler context.
 export function isRankedEligible(p: PerformerIdentity): boolean {
+  // Leaderboard Truth Law: Seeds, demos, bots, and non-competitive accounts must never be ranked
+  if (p.rankingEligible === false || p.isSeed) return false;
+  if (p.profileImageUrl?.includes('/bot-images/')) return false;
   if (p.category === 'Venues' || p.category === 'Sponsors') return false;
   if (p.lineupType === undefined) return false;
   const route = p.profileRoute || '';
