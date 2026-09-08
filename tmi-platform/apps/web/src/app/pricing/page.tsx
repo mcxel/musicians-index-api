@@ -3,20 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSubscriptionProduct } from '@/lib/stripe/products';
+import { getSubscriptionOffersLowestFirst } from '@/lib/stripe/products';
 
-// PRO/RUBY price + priceId + checkout amount are read from the canonical
-// registry (@/lib/stripe/products.ts), not hardcoded — this page used to
-// carry its own copy of every tier's amount/priceId, which is exactly what
-// let it silently drift from what checkout actually charged after the
-// PRO/RUBY migration (Lane A A5, 2026-09-01: this page still showed no PRO
-// tier at all and priced "Ruby" at the old pre-migration $4.99/$2.99).
-const FAN_PRO = getSubscriptionProduct('fan', 'PRO');
-const FAN_RUBY = getSubscriptionProduct('fan', 'RUBY');
-const PERF_PRO = getSubscriptionProduct('performer', 'PRO');
-const PERF_RUBY = getSubscriptionProduct('performer', 'RUBY');
-
-// ── Founding supporter one-time packs ────────────────────────────────────────
+// ── Founding supporter one-time packs (already lowest→highest) ───────────────
 
 const FOUNDING_PACKS = [
   {
@@ -89,205 +78,69 @@ const FOUNDING_PACKS = [
   },
 ] as const;
 
-// ── Tier data (lowest price first, free always first) ─────────────────────────
+type TierCard = {
+  key: string;
+  name: string;
+  icon: string;
+  color: string;
+  price: string;
+  badge: string | null;
+  perks: readonly string[];
+  cta: string;
+  ctaHref: string;
+  highlighted: boolean;
+};
 
-const FAN_TIERS = [
-  {
-    key: 'fan-free',
-    name: 'FREE',
-    icon: '👤',
-    color: '#00FFFF',
-    price: '$0',
-    badge: null as string | null,
-    perks: ['Read TMI magazine', 'Browse profiles', 'Watch public streams', 'Create fan account'],
-    cta: 'JOIN FREE',
-    ctaHref: '/signup',
-    highlighted: false,
-  },
-  {
-    key: 'fan-pro',
-    name: 'PRO FAN',
-    icon: '⭐',
-    color: '#FF6B35',
-    price: `$${(FAN_PRO.price / 100).toFixed(2)}/mo`,
-    badge: 'START HERE' as string | null,
-    perks: ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements'],
-    cta: 'GET PRO',
-    ctaHref: `/api/stripe/checkout?priceId=${FAN_PRO.priceId}&mode=subscription&amount=${FAN_PRO.price}&productName=TMI+Fan+Pro`,
-    highlighted: true,
-  },
-  {
-    key: 'fan-ruby',
-    name: 'RUBY FAN',
-    icon: '🔴',
-    color: '#FF4444',
-    price: `$${(FAN_RUBY.price / 100).toFixed(2)}/mo`,
-    badge: null as string | null,
-    perks: ['Everything in Pro', 'Early access drops', 'Fan leaderboard placement', 'Ruby avatar glow'],
-    cta: 'GET RUBY',
-    ctaHref: `/api/stripe/checkout?priceId=${FAN_RUBY.priceId}&mode=subscription&amount=${FAN_RUBY.price}&productName=TMI+Fan+Ruby`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-silver',
-    name: 'SILVER FAN',
-    icon: '🥈',
-    color: '#C0C0C0',
-    price: '$9.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Ruby', 'Early access drops', 'Fan leaderboard placement', 'Silver avatar glow'],
-    cta: 'UPGRADE TO SILVER',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? 'price_fan_silver'}&mode=subscription&amount=999&productName=TMI+Fan+Silver`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-gold',
-    name: 'GOLD FAN',
-    icon: '🥇',
-    color: '#FFD700',
-    price: '$14.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Silver', 'Exclusive fan rooms', 'Gold avatar glow', 'Priority merch drops'],
-    cta: 'UPGRADE TO GOLD',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? 'price_fan_gold'}&mode=subscription&amount=1499&productName=TMI+Fan+Gold`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-platinum',
-    name: 'PLATINUM FAN',
-    icon: '💠',
-    color: '#AA2DFF',
-    price: '$24.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Gold', 'Backstage passes', 'Direct artist DMs', 'Platinum badge'],
-    cta: 'UPGRADE TO PLATINUM',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? 'price_fan_platinum'}&mode=subscription&amount=2499&productName=TMI+Fan+Platinum`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-diamond',
-    name: 'DIAMOND FAN',
-    icon: '💎',
-    color: '#00FF88',
-    price: '$49.99/mo',
-    badge: null as string | null,
-    perks: ['All Platinum perks', 'NFT access', 'VIP front-row seats', 'Diamond avatar glow', 'Season Zero recognition'],
-    cta: 'GO DIAMOND',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? 'price_fan_diamond'}&mode=subscription&amount=4999&productName=TMI+Fan+Diamond`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-family',
-    name: 'FAMILY PLAN',
-    icon: '👨‍👩‍👧',
-    color: '#00FFFF',
-    price: '$27.99/mo',
-    badge: 'BEST VALUE' as string | null,
-    perks: ['Gold Fan perks for up to 4 accounts', 'Shared fan room', 'Family badge'],
-    cta: 'GET FAMILY PLAN',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? 'price_fan_family'}&mode=subscription&amount=2799&productName=TMI+Fan+Family`,
-    highlighted: false,
-  },
-];
+const FAN_VISUAL: Record<string, { icon: string; color: string; shortName: string; badge: string | null; cta: string }> = {
+  FREE: { icon: '👤', color: '#00FFFF', shortName: 'FREE', badge: null, cta: 'JOIN FREE' },
+  PRO: { icon: '⭐', color: '#FF6B35', shortName: 'PRO FAN', badge: 'START HERE', cta: 'GET PRO' },
+  RUBY: { icon: '🔴', color: '#FF4444', shortName: 'RUBY FAN', badge: null, cta: 'GET RUBY' },
+  SILVER: { icon: '🥈', color: '#C0C0C0', shortName: 'SILVER FAN', badge: null, cta: 'UPGRADE TO SILVER' },
+  GOLD: { icon: '🥇', color: '#FFD700', shortName: 'GOLD FAN', badge: null, cta: 'UPGRADE TO GOLD' },
+  PLATINUM: { icon: '💠', color: '#AA2DFF', shortName: 'PLATINUM FAN', badge: null, cta: 'UPGRADE TO PLATINUM' },
+  DIAMOND: { icon: '💎', color: '#00FF88', shortName: 'DIAMOND FAN', badge: null, cta: 'GO DIAMOND' },
+  FAMILY: { icon: '👨‍👩‍👧', color: '#00FFFF', shortName: 'FAMILY PLAN', badge: 'BEST VALUE', cta: 'GET FAMILY PLAN' },
+};
 
-const PERFORMER_TIERS = [
-  {
-    key: 'perf-free',
-    name: 'FREE',
-    icon: '🎤',
-    color: '#FF2DAA',
-    price: '$0',
-    badge: null as string | null,
-    perks: ['10 Local + 10 Major Sponsor Slots', 'Performer profile', 'Basic bio + links', 'Submit to magazine', 'Audience discovery', 'Contest eligible (20 sponsors)'],
-    cta: 'JOIN FREE',
-    ctaHref: '/signup?role=performer',
-    highlighted: false,
-  },
-  {
-    key: 'perf-pro',
-    name: 'PRO PERFORMER',
-    icon: '🎧',
-    color: '#FF6B35',
-    price: `$${(PERF_PRO.price / 100).toFixed(2)}/mo`,
-    badge: 'START HERE' as string | null,
-    perks: ['Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard'],
-    cta: 'GET PRO',
-    ctaHref: `/api/stripe/checkout?priceId=${PERF_PRO.priceId}&mode=subscription&amount=${PERF_PRO.price}&productName=TMI+Performer+Pro`,
-    highlighted: true,
-  },
-  {
-    key: 'perf-ruby',
-    name: 'RUBY PERFORMER',
-    icon: '🎙️',
-    color: '#FF2DAA',
-    price: `$${(PERF_RUBY.price / 100).toFixed(2)}/mo`,
-    badge: null as string | null,
-    perks: ['15 Local + 15 Major Sponsor Slots', 'Everything in Pro', 'Fan club tools', 'Tipping enabled', 'Ruby badge'],
-    cta: 'GET RUBY',
-    ctaHref: `/api/stripe/checkout?priceId=${PERF_RUBY.priceId}&mode=subscription&amount=${PERF_RUBY.price}&productName=TMI+Performer+Ruby`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-silver',
-    name: 'SILVER PERFORMER',
-    icon: '🥈',
-    color: '#C0C0C0',
-    price: '$4.99/mo',
-    badge: null as string | null,
-    perks: ['20 Local + 20 Major Sponsor Slots', 'Fan club tools', 'Tipping enabled', 'Merch store access', 'Silver badge', 'Sponsor analytics'],
-    cta: 'UPGRADE TO SILVER',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? 'price_performer_silver'}&mode=subscription&amount=499&productName=TMI+Performer+Silver`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-gold',
-    name: 'GOLD PERFORMER',
-    icon: '🏆',
-    color: '#FFD700',
-    price: '$9.99/mo',
-    badge: null as string | null,
-    perks: ['30 Local + 30 Major Sponsor Slots', 'Priority placement', 'Billboard rotation', 'Gold performer badge', 'Sponsor rotation controls'],
-    cta: 'UPGRADE TO GOLD',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? 'price_performer_gold'}&mode=subscription&amount=999&productName=TMI+Performer+Gold`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-platinum',
-    name: 'PLATINUM PERFORMER',
-    icon: '🎖️',
-    color: '#AA2DFF',
-    price: '$19.99/mo',
-    badge: null as string | null,
-    perks: ['50 Local + 50 Major Sponsor Slots', 'Homepage eligibility', 'Priority booking visibility', 'NFT minting rights', 'Unlimited uploads', 'Platinum badge'],
-    cta: 'UPGRADE TO PLATINUM',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? 'price_performer_platinum'}&mode=subscription&amount=1999&productName=TMI+Performer+Platinum`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-diamond',
-    name: 'DIAMOND PERFORMER',
-    icon: '💎',
-    color: '#00FF88',
-    price: '$29.99/mo',
-    badge: null as string | null,
-    perks: ['100 Local + 100 Major Sponsor Slots', 'Premium sponsor marketplace access', 'Highest visibility + priority promotion', 'Full revenue split access', 'Diamond badge + NFT minting'],
-    cta: 'GO DIAMOND',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? 'price_performer_diamond'}&mode=subscription&amount=2999&productName=TMI+Performer+Diamond`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-band',
-    name: 'BAND / GROUP',
-    icon: '🎸',
-    color: '#FF9500',
-    price: '$24.99/mo',
-    badge: 'GROUPS' as string | null,
-    perks: ['150 Local + 150 Major Sponsor Slots', 'Up to 5 linked members', 'Shared live room', 'Band profile page', 'Diamond Performer perks for all members'],
-    cta: 'REGISTER YOUR GROUP',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? 'price_performer_band'}&mode=subscription&amount=2499&productName=TMI+Band+Group+Diamond`,
-    highlighted: false,
-  },
-];
+const PERF_VISUAL: Record<string, { icon: string; color: string; shortName: string; badge: string | null; cta: string }> = {
+  FREE: { icon: '🎤', color: '#FF2DAA', shortName: 'FREE', badge: null, cta: 'JOIN FREE' },
+  PRO: { icon: '🎧', color: '#FF6B35', shortName: 'PRO PERFORMER', badge: 'START HERE', cta: 'GET PRO' },
+  RUBY: { icon: '🎙️', color: '#FF2DAA', shortName: 'RUBY PERFORMER', badge: null, cta: 'GET RUBY' },
+  SILVER: { icon: '🥈', color: '#C0C0C0', shortName: 'SILVER PERFORMER', badge: null, cta: 'UPGRADE TO SILVER' },
+  GOLD: { icon: '🏆', color: '#FFD700', shortName: 'GOLD PERFORMER', badge: null, cta: 'UPGRADE TO GOLD' },
+  PLATINUM: { icon: '🎖️', color: '#AA2DFF', shortName: 'PLATINUM PERFORMER', badge: null, cta: 'UPGRADE TO PLATINUM' },
+  DIAMOND: { icon: '💎', color: '#00FF88', shortName: 'DIAMOND PERFORMER', badge: null, cta: 'GO DIAMOND' },
+  BAND: { icon: '🎸', color: '#FF9500', shortName: 'BAND / GROUP', badge: 'GROUPS', cta: 'REGISTER YOUR GROUP' },
+};
+
+function buildMembershipTiers(accountType: 'fan' | 'performer'): TierCard[] {
+  const visual = accountType === 'fan' ? FAN_VISUAL : PERF_VISUAL;
+  const offers = getSubscriptionOffersLowestFirst(accountType);
+  return offers.map((o, idx) => {
+    const v = visual[o.tier] ?? { icon: '⭐', color: '#00FFFF', shortName: o.name, badge: null, cta: 'SELECT' };
+    const isFree = o.priceCents === 0;
+    const productName = encodeURIComponent(o.name);
+    return {
+      key: o.id,
+      name: v.shortName,
+      icon: v.icon,
+      color: v.color,
+      price: isFree ? '$0' : `$${(o.priceCents / 100).toFixed(2)}/mo`,
+      badge: idx === 1 ? (v.badge ?? 'START HERE') : v.badge,
+      perks: o.features,
+      cta: v.cta,
+      ctaHref: isFree
+        ? accountType === 'fan'
+          ? '/signup'
+          : '/signup?role=performer'
+        : `/api/stripe/checkout?priceId=${o.priceId}&mode=subscription&amount=${o.priceCents}&productName=${productName}`,
+      highlighted: idx === 1,
+    };
+  });
+}
+
+const FAN_TIERS = buildMembershipTiers('fan');
+const PERFORMER_TIERS = buildMembershipTiers('performer');
 
 // ── Advertiser entry-level products ──────────────────────────────────────────
 

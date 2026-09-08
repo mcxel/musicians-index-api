@@ -34,8 +34,12 @@ export default function PrivacyPage() {
             body: "Your data is stored securely in our databases with industry-standard encryption. Payment data is never stored on our servers — it is processed directly by Stripe. We implement rate limiting, CSRF protection, and session security across all endpoints.",
           },
           {
-            title: "Cookies & Sessions",
-            body: "We use session cookies for authentication and preferences. We do not use third-party advertising cookies. You can clear cookies at any time through your browser settings.",
+            title: "Cookies & Advertising",
+            body: "We use session cookies for authentication and preferences. When you accept advertising consent, we may load Google AdSense and certified ad partners that set advertising/measurement cookies (including personalized ads where permitted by law). You can decline ads, clear cookies in your browser, or reopen consent settings anytime. Declining ads does not remove session cookies required to stay signed in.",
+          },
+          {
+            title: "Advertising Partners",
+            body: "TMI may display ads from Google AdSense and house/sponsor inventory to keep free surfaces available. Ad serving requires explicit consent on eligible public pages. We do not promise AdSense approval, estimated earnings, or payouts — ESTIMATED impressions are not PAYABLE and not PAID until a payment processor confirms settlement. Bots and non-human traffic are never treated as billable ad inventory.",
           },
           {
             title: "Your Rights",

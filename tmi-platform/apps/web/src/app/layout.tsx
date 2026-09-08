@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
@@ -127,9 +126,6 @@ const JSON_LD = {
   ],
 };
 
-const ENABLE_AD_NETWORK_SCRIPTS =
-  process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENABLE_AD_NETWORK_SCRIPTS === "1";
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -145,47 +141,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="tmi-obsidian-cinematic overflow-x-hidden" data-build-sha={process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"} suppressHydrationWarning>
         {/* BidVertiser site verification rendered as real HTML comment in page source */}
         <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
-        {/* Media.net — Yahoo/Bing contextual ads */}
-        {process.env.NEXT_PUBLIC_MEDIANET_CID && (
-          <Script
-            id="medianet-init"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `window._mNDetails = { loadStarted: true }; window._mNHandle = { queue: [] };`,
-            }}
-          />
-        )}
-        {/* Amazon Publisher Services (APS) */}
-        {process.env.NEXT_PUBLIC_AMAZON_PUB_ID && (
-          <Script
-            id="amazon-aps"
-            strategy="afterInteractive"
-            src="https://c.amazon-adsystem.com/aax2/apstag.js"
-            onLoad={() => {
-              const pubId = process.env.NEXT_PUBLIC_AMAZON_PUB_ID;
-              if (!pubId) return;
-              try {
-                (window as any).apstag?.init({ pubID: pubId, adServer: 'googletag' });
-              } catch {}
-            }}
-          />
-        )}
-        {/* Infolinks ad network global script */}
-        {ENABLE_AD_NETWORK_SCRIPTS && (
-          <>
-            <Script id="infolinks-config" strategy="afterInteractive">
-              {`
-                var infolinks_pid = 3445854;
-                var infolinks_wsid = 0;
-              `}
-            </Script>
-            <Script
-              id="infolinks-main"
-              strategy="afterInteractive"
-              src="//resources.infolinks.com/js/infolinks_main.js"
-            />
-          </>
-        )}
+        {/* Third-party ad networks (Infolinks/Media.net/APS) are consent-gated — never auto-load here. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}

@@ -3,12 +3,14 @@
 /** LEGACY — prefer CanonicalAdSlot for new surfaces. Kept for UnifiedAdSlot internal use. */
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   AD_CONSENT_STORAGE_KEY,
   ADSENSE_SLOT_ENV,
   getAdSensePublisherId,
   type AdConsentValue,
 } from '@/lib/ads/adConfig';
+import { decideAdSenseLoad } from '@/lib/ads/AdLoadDirector';
 
 // Re-export slot map — values come from NEXT_PUBLIC_ADSENSE_SLOT_* (empty until ENV set)
 export const AD_SLOTS = {
@@ -58,7 +60,14 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
   const containerRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
   const [consent, setConsent] = useState<AdConsentValue | null>(null);
+  const pathname = usePathname() ?? '/';
   const publisherId = getAdSensePublisherId();
+  const decision = decideAdSenseLoad({
+    pathname,
+    hasConsent: consent === 'accepted',
+    billableAds: true,
+    nonHuman: false,
+  });
 
   useEffect(() => {
     setConsent(readConsent());
@@ -68,7 +77,7 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
   }, []);
 
   useEffect(() => {
-    if (consent !== 'accepted' || !slot || pushed.current) return;
+    if (!decision.allowed || !slot || pushed.current) return;
     pushed.current = true;
     try {
       type AdsByGoogle = { push: (v: Record<string, unknown>) => void };
@@ -77,7 +86,7 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
     } catch {
       /* AdSense script not ready yet */
     }
-  }, [consent, slot]);
+  }, [decision.allowed, slot]);
 
   if (!slot) {
     return (
@@ -89,11 +98,15 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
     );
   }
 
-  if (consent !== 'accepted') {
+  if (!decision.allowed) {
     return (
       <div style={{ position: 'relative', overflow: 'hidden', minHeight: 40, ...style }}>
         <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: 8 }}>
-          {consent === 'declined' ? 'Ads hidden' : 'Awaiting ad consent'}
+          {consent === 'declined'
+            ? 'Ads hidden'
+            : consent !== 'accepted'
+              ? 'Awaiting ad consent'
+              : 'Ads not eligible on this route'}
         </div>
       </div>
     );
