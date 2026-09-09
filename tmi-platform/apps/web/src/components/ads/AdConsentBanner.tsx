@@ -41,8 +41,25 @@ export function readConsent(): AdConsentValue | null {
   return null;
 }
 
-export function loadAdSenseScript(): void {
+/**
+ * Loads the AdSense library. `consent` decides personalized vs
+ * non-personalized ads via Google's documented AdSense NPA flag
+ * (support.google.com/adsense/answer/9007336) — it must be set on
+ * window.adsbygoogle BEFORE the library script runs, so the flag is
+ * applied here, ahead of appending the script tag.
+ *
+ * Declining consent must never mean "don't load AdSense" — that's zero
+ * ads and zero revenue for every user who declines, not the "still get
+ * non-personalized ads" behavior the consent banner promises.
+ */
+export function loadAdSenseScript(consent: AdConsentValue = 'accepted'): void {
   if (typeof document === 'undefined') return;
+
+  const w = window as unknown as { adsbygoogle?: unknown[] & { requestNonPersonalizedAds?: number } };
+  w.adsbygoogle = w.adsbygoogle || ([] as unknown[] & { requestNonPersonalizedAds?: number });
+  (w.adsbygoogle as unknown[] & { requestNonPersonalizedAds?: number }).requestNonPersonalizedAds =
+    consent === 'declined' ? 1 : 0;
+
   if (document.getElementById('tmi-adsense-loader')) return;
   const client = getAdSensePublisherId();
   const s = document.createElement('script');
@@ -129,8 +146,10 @@ export default function AdConsentBanner() {
   useEffect(() => {
     if (isExcludedRoute) return;
     const existing = readConsent();
-    if (existing === 'accepted') {
-      loadAdSenseScript();
+    if (existing === 'accepted' || existing === 'declined') {
+      // Both choices load AdSense — declined just requests non-personalized
+      // ads (set inside loadAdSenseScript), never zero ads.
+      loadAdSenseScript(existing);
       return;
     }
     if (existing === null) {
@@ -144,9 +163,7 @@ export default function AdConsentBanner() {
     } catch {
       /* ignore */
     }
-    if (value === 'accepted') {
-      loadAdSenseScript();
-    }
+    loadAdSenseScript(value);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('tmi:ad-consent', { detail: value }));
     }
