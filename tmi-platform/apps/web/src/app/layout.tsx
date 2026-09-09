@@ -9,6 +9,7 @@ import { TmiSessionProvider } from "@/hooks/SessionContext";
 import GamificationHUD from "@/components/hud/GamificationHUD";
 import LiveSyncProvider from "@/components/media/LiveSyncProvider";
 import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
+import GoogleRoleChoiceRecoveryModal from "@/components/onboarding/GoogleRoleChoiceRecoveryModal";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
@@ -212,6 +213,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <GamificationHUD />
               <LiveSyncProvider />
               <FirstRunExperienceOverlay />
+              <GoogleRoleChoiceRecoveryModal />
               {/* TMIGlobalHUD unmounted Slice 1A — duplicate identity/persona/GO LIVE vs GlobalTmiHeader + LaunchDock */}
               <BotRuntimeProvider />
               <LiveMarqueeTicker />
