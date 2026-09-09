@@ -1,6 +1,13 @@
 // Ad placement pricing — cheap to encourage volume, tiered by position quality.
-// Free member pages carry MORE ad slots (monetizes free usage).
-// Paid tiers carry FEWER ads (reward for paying).
+// PLATFORM_AD load follows membership ladder FREE 100% … DIAMOND 5%
+// (CanonicalPricingRegistry.MEMBER_PLATFORM_AD_LOAD_PERCENT). PERFORMANCE_NATIVE
+// (Jumbotron/Curtain/Ribbon) never counts against that allowance.
+
+import {
+  getPlatformAdLoadPercent,
+  MEMBER_PLATFORM_AD_LOAD_PERCENT,
+} from "@/lib/commerce/CanonicalPricingRegistry";
+import { sortOffersLowestPriceFirst } from "@/lib/commerce/PriceSortAuthority";
 
 export type AdPlacement =
   | "free-member-profile"
@@ -45,16 +52,23 @@ export const AD_PRICES: Record<AdPlacement, Record<AdDuration, number>> = {
   "event-banner":             { day:  999, week:  4999, month: 12999 },
 };
 
-// How many ad slots appear on each member tier's profile page
+/** @deprecated Prefer MEMBER_PLATFORM_AD_LOAD_PERCENT / getMemberPlatformAdLoadPercent */
 export const MEMBER_AD_SLOT_COUNT: Record<string, number> = {
   free:     6,
   pro:      4,
-  RUBY:   3,
+  RUBY:     3,
   silver:   2,
   gold:     1,
   platinum: 1,
-  diamond:  0,
+  diamond:  1, // DIAMOND still shows 5% PLATFORM_AD load — not zero
 };
+
+export { MEMBER_PLATFORM_AD_LOAD_PERCENT, getPlatformAdLoadPercent };
+
+/** PLATFORM_AD load percent for a membership tier (FREE 100 … DIAMOND 5). */
+export function getMemberPlatformAdLoadPercent(memberTier: string): number {
+  return getPlatformAdLoadPercent(memberTier);
+}
 
 // Which placement applies to a given member tier's profile
 export function profileAdPlacement(tier: string): AdPlacement {
@@ -70,4 +84,14 @@ export function formatAdPrice(placement: AdPlacement, duration: AdDuration): str
 
 export function getAdSlotCount(memberTier: string): number {
   return MEMBER_AD_SLOT_COUNT[memberTier] ?? 6;
+}
+
+/** Day prices for a placement, lowest-price-first across all placements. */
+export function listAdDayPricesLowestFirst(): Array<{ id: AdPlacement; priceCents: number }> {
+  return sortOffersLowestPriceFirst(
+    (Object.keys(AD_PRICES) as AdPlacement[]).map((id) => ({
+      id,
+      priceCents: AD_PRICES[id].day,
+    })),
+  );
 }

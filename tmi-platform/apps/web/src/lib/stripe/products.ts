@@ -3,6 +3,9 @@
 // then set the corresponding STRIPE_PRICE_* env var in Vercel.
 // All subscription tiers fall back to inline price_data so checkout works immediately
 // even without real price IDs — no Stripe configuration required to start collecting.
+// Placement / sync ledger: CanonicalPricingRegistry.ts (no second price table).
+
+import { sortOffersLowestPriceFirst } from "../commerce/PriceSortAuthority";
 
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
@@ -260,6 +263,96 @@ export const STRIPE_PRODUCTS = {
     name:      "Advertiser — Premium Package",
     price:     39900, // $399/mo
     interval:  "month" as const,
+  },
+
+  // ── Low-friction one-time ads ($2.99–$29.99) — PLATFORM_AD inventory ───────
+  // Volume path for self-serve placements. Counts against member ad allowance.
+  AD_MICRO_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_MICRO_SPOT ?? "price_ad_micro_spot",
+    name:      "Platform Ad — Micro Spot (24h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  AD_DAY_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_DAY_SPOT ?? "price_ad_day_spot",
+    name:      "Platform Ad — Day Spot",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  AD_WEEK_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_WEEK_SPOT ?? "price_ad_week_spot",
+    name:      "Platform Ad — Week Spot",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  AD_FEATURE_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_FEATURE_SPOT ?? "price_ad_feature_spot",
+    name:      "Platform Ad — Feature Spot",
+    price:     1499, // $14.99
+    interval:  "one_time" as const,
+  },
+  AD_PREMIUM_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_PREMIUM_SPOT ?? "price_ad_premium_spot",
+    name:      "Platform Ad — Premium Spot",
+    price:     2999, // $29.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_STRIP_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_STRIP_OT ?? "price_magazine_strip_ot",
+    name:      "Magazine Strip Ad (one-time)",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_HALF_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_HALF_OT ?? "price_magazine_half_ot",
+    name:      "Magazine Half-Page Ad (one-time)",
+    price:     1499, // $14.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_FULL_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_FULL_OT ?? "price_magazine_full_ot",
+    name:      "Magazine Full-Page Ad (one-time)",
+    price:     2999, // $29.99
+    interval:  "one_time" as const,
+  },
+
+  // ── Performance-native inventory (Jumbotron / Curtain / Ribbon) ───────────
+  // Does NOT count against member PLATFORM_AD allowance. Curtain never interrupts LIVE.
+  JUMBOTRON_FACE_DAY: {
+    productId: "prod_jumbotron_ad",
+    priceId:   process.env.STRIPE_PRICE_JUMBOTRON_FACE_DAY ?? "price_jumbotron_face_day",
+    name:      "Jumbotron Face — Day",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  JUMBOTRON_INTERMISSION: {
+    productId: "prod_jumbotron_ad",
+    priceId:   process.env.STRIPE_PRICE_JUMBOTRON_INTERMISSION ?? "price_jumbotron_intermission",
+    name:      "Jumbotron Intermission Takeover",
+    price:     1999, // $19.99
+    interval:  "one_time" as const,
+  },
+  CURTAIN_INTERMISSION_SPOT: {
+    productId: "prod_curtain_ad",
+    priceId:   process.env.STRIPE_PRICE_CURTAIN_INTERMISSION ?? "price_curtain_intermission_spot",
+    name:      "Curtain Intermission Spot",
+    price:     1499, // $14.99 — intermission / closed curtain only
+    interval:  "one_time" as const,
+  },
+  RIBBON_SPONSOR_DAY: {
+    productId: "prod_ribbon_ad",
+    priceId:   process.env.STRIPE_PRICE_RIBBON_SPONSOR_DAY ?? "price_ribbon_sponsor_day",
+    name:      "Sponsor Ribbon — Day",
+    price:     799, // $7.99
+    interval:  "one_time" as const,
   },
 
   // ── Artist upgrades ───────────────────────────────────────────────────────
@@ -750,6 +843,67 @@ export function getSubscriptionProduct(accountType: SubscriptionAccountType, tie
 /** Full tier ladder for one account type, in canonical FREE→...→DIAMOND order (FREE excluded — no product). */
 export function getAllSubscriptionProducts(accountType: SubscriptionAccountType) {
   return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
+}
+
+/**
+ * Membership + special SKUs sorted by real price ASC (lowest eligible first).
+ * FREE ($0) is prepended. Fan Family / Performer Band included when present.
+ * Display surfaces MUST use this (or PriceSortAuthority) — never hard-coded $ order.
+ */
+export function getSubscriptionOffersLowestFirst(accountType: SubscriptionAccountType): Array<{
+  id: string;
+  tier: SubscriptionTierKey | "FREE" | "FAMILY" | "BAND";
+  name: string;
+  priceCents: number;
+  priceId: string | null;
+  features: readonly string[];
+}> {
+  const paid = getAllSubscriptionProducts(accountType).map((p) => ({
+    id: `${accountType}-${p.tier}`,
+    tier: p.tier as SubscriptionTierKey | "FREE" | "FAMILY" | "BAND",
+    name: p.name,
+    priceCents: p.price,
+    priceId: p.priceId,
+    features: p.features,
+    eligible: true as boolean,
+  }));
+  if (accountType === "fan") {
+    const family = STRIPE_PRODUCTS.FAN_FAMILY_MONTHLY;
+    paid.push({
+      id: "fan-FAMILY",
+      tier: "FAMILY",
+      name: family.name,
+      priceCents: family.price,
+      priceId: family.priceId,
+      features: family.features,
+      eligible: true,
+    });
+  } else {
+    const band = STRIPE_PRODUCTS.PERFORMER_BAND_MONTHLY;
+    paid.push({
+      id: "performer-BAND",
+      tier: "BAND",
+      name: band.name,
+      priceCents: band.price,
+      priceId: band.priceId,
+      features: band.features,
+      eligible: true,
+    });
+  }
+  const sorted = sortOffersLowestPriceFirst(paid);
+  return [
+    {
+      id: `${accountType}-FREE`,
+      tier: "FREE",
+      name: accountType === "fan" ? "TMI Fan — Free" : "TMI Performer — Free",
+      priceCents: 0,
+      priceId: null,
+      features: accountType === "fan"
+        ? (["Read TMI magazine", "Browse profiles", "Watch public streams", "Create fan account"] as const)
+        : (["Performer profile", "Basic bio + links", "Submit to magazine", "Audience discovery"] as const),
+    },
+    ...sorted.map(({ eligible: _e, ...rest }) => rest),
+  ];
 }
 
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
