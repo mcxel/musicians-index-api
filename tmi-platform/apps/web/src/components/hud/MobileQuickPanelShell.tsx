@@ -203,7 +203,7 @@ export default function MobileQuickPanelShell({
             : "tmiPanelRise 230ms cubic-bezier(0.16,1,0.3,1) both",
           transition: isDragging ? "none" : "height 240ms cubic-bezier(0.4,0,0.2,1)",
           willChange: "height",
-          touchAction: "none",
+          touchAction: "pan-y",
         }}
         data-quick-panel="mobile"
       >
@@ -326,13 +326,15 @@ export default function MobileQuickPanelShell({
           </button>
         </div>
 
-        {/* ── Scrollable content ── */}
+        {/* ── Scrollable content — single scroll owner ── */}
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             overscrollBehavior: "contain",
             WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
           }}
         >
           {children}
@@ -350,6 +352,8 @@ export default function MobileQuickPanelShell({
         right: 12,
         width: "min(88vw, 380px)",
         maxHeight: "56dvh",
+        height: "56dvh",
+        overflow: "hidden",
         zIndex: 300,
         display: "flex",
         flexDirection: "column",
@@ -407,8 +411,17 @@ export default function MobileQuickPanelShell({
         </button>
       </div>
 
-      {/* ── Scrollable content ── */}
-      <div style={{ overflowY: "auto", overscrollBehavior: "contain" }}>
+      {/* ── Scrollable content — single scroll owner (P0-04) ── */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+        }}
+      >
         {children}
       </div>
     </div>

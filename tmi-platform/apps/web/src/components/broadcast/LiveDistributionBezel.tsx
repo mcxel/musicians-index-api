@@ -173,7 +173,7 @@ export default function LiveDistributionBezel({
     if (!result.ok) {
       setLinkMessage(
         result.reason === "oauth_not_configured"
-          ? "Provider OAuth / stream key not configured on this deploy. Ingest keys stay secure."
+          ? "NOT CONFIGURED — Add provider OAuth / ingest keys in deploy settings. No keys are shown or invented here."
           : result.reason ?? "Could not link account.",
       );
       return;

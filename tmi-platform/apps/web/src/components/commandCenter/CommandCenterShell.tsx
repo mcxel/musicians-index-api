@@ -1101,9 +1101,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       try {
         const res = await fetch("/api/live/go", { cache: "no-store" });
         const data = (await res.json()) as { sessions?: LiveApiSession[] };
-        const top = data.sessions?.[0];
+        // Featured LIVE chip: registry-published sessions only (never local CAM preview).
+        const top = data.sessions?.find(
+          (s) => Boolean(s?.roomId) && typeof s.viewerCount === "number" && s.viewerCount >= 0,
+        );
         if (cancelled) return;
-        if (!top) {
+        if (!top?.roomId) {
           setFeatured(null);
           return;
         }
@@ -1113,7 +1116,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           route: profile?.liveRoomRoute ?? `/live/rooms/${top.roomId}`,
           videoUrl: profile?.introVideoUrl ?? profile?.motionPosterUrl,
           imageUrl: profile?.profileImageUrl ?? top.avatarUrl ?? undefined,
-          viewers: top.viewerCount,
+          viewers: typeof top.viewerCount === "number" ? top.viewerCount : undefined,
           performerId: top.userId,
           performerSlug: profile?.slug,
         });
@@ -1245,8 +1248,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               }}
               title={featured.performerId ? "Set as ACTIVE_PERFORMER" : undefined}
             >
-              Live: {featured.name}
-              {featured.viewers != null ? ` · ${featured.viewers.toLocaleString()} watching` : ""}
+              LIVE · {featured.name}
+              {featured.viewers != null
+                ? ` · ${featured.viewers.toLocaleString()} watching`
+                : ""}
             </button>
           ) : (
             <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 9, fontWeight: 700 }}>
