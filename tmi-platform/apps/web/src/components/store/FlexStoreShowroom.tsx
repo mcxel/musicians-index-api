@@ -99,24 +99,32 @@ export default function FlexStoreShowroom({ initialWing = 'apparel', initialTrac
     setTimeout(() => setActiveEmoteAnimation(null), 2500);
   };
 
-  // Filter Catalog by active Wing
+  // Filter Catalog by active Wing — always lowest eligible price first
   const getFilteredItems = (): FlexStoreItem[] => {
+    let items: FlexStoreItem[];
     switch (activeWing) {
       case 'apparel':
-        return FLEX_STORE_CATALOG.filter((i) => i.itemType === 'APPAREL' || i.itemType === 'HAIR' || i.itemType === 'ACCESSORY');
+        items = FLEX_STORE_CATALOG.filter((i) => i.itemType === 'APPAREL' || i.itemType === 'HAIR' || i.itemType === 'ACCESSORY');
+        break;
       case 'emotes':
-        return FLEX_STORE_CATALOG.filter((i) => i.itemType === 'EMOTE');
+        items = FLEX_STORE_CATALOG.filter((i) => i.itemType === 'EMOTE');
+        break;
       case 'yopho':
-        return FLEX_STORE_CATALOG.filter((i) => i.itemType === 'YOPHO_TEMPLATE' || i.itemType === 'PLAYLIST_SKIN' || i.itemType === 'PROMOTION_BOOSTER');
+        items = FLEX_STORE_CATALOG.filter((i) => i.itemType === 'YOPHO_TEMPLATE' || i.itemType === 'PLAYLIST_SKIN' || i.itemType === 'PROMOTION_BOOSTER');
+        break;
       case 'beats':
-        return FLEX_STORE_CATALOG.filter((i) => i.itemType === 'BEAT_LICENSE' || i.itemType === 'NFT_COLLECTIBLE');
+        items = FLEX_STORE_CATALOG.filter((i) => i.itemType === 'BEAT_LICENSE' || i.itemType === 'NFT_COLLECTIBLE');
+        break;
       case 'passes':
-        return FLEX_STORE_CATALOG.filter((i) => i.itemType === 'SEASON_PASS');
+        items = FLEX_STORE_CATALOG.filter((i) => i.itemType === 'SEASON_PASS');
+        break;
       case 'locker':
-        return FLEX_STORE_CATALOG.filter((i) => ownedIds.includes(i.id));
+        items = FLEX_STORE_CATALOG.filter((i) => ownedIds.includes(i.id));
+        break;
       default:
-        return FLEX_STORE_CATALOG;
+        items = [...FLEX_STORE_CATALOG];
     }
+    return [...items].sort((a, b) => a.priceCents - b.priceCents);
   };
 
   const filteredItems = getFilteredItems();

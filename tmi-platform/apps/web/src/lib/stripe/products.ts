@@ -4,6 +4,8 @@
 // All subscription tiers fall back to inline price_data so checkout works immediately
 // even without real price IDs — no Stripe configuration required to start collecting.
 
+import { sortOffersLowestPriceFirst } from "@/lib/commerce/PriceSortAuthority";
+
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
   // PRO is the real entry paid tier (Lane A "Option A", locked 2026-09-01) —
@@ -750,6 +752,67 @@ export function getSubscriptionProduct(accountType: SubscriptionAccountType, tie
 /** Full tier ladder for one account type, in canonical FREE→...→DIAMOND order (FREE excluded — no product). */
 export function getAllSubscriptionProducts(accountType: SubscriptionAccountType) {
   return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
+}
+
+/**
+ * Membership + special SKUs sorted by real price ASC (lowest eligible first).
+ * FREE ($0) is prepended. Fan Family / Performer Band included when present.
+ * Display surfaces MUST use this (or PriceSortAuthority) — never hard-coded $ order.
+ */
+export function getSubscriptionOffersLowestFirst(accountType: SubscriptionAccountType): Array<{
+  id: string;
+  tier: SubscriptionTierKey | "FREE" | "FAMILY" | "BAND";
+  name: string;
+  priceCents: number;
+  priceId: string | null;
+  features: readonly string[];
+}> {
+  const paid = getAllSubscriptionProducts(accountType).map((p) => ({
+    id: `${accountType}-${p.tier}`,
+    tier: p.tier as SubscriptionTierKey | "FREE" | "FAMILY" | "BAND",
+    name: p.name,
+    priceCents: p.price,
+    priceId: p.priceId,
+    features: p.features,
+    eligible: true as boolean,
+  }));
+  if (accountType === "fan") {
+    const family = STRIPE_PRODUCTS.FAN_FAMILY_MONTHLY;
+    paid.push({
+      id: "fan-FAMILY",
+      tier: "FAMILY",
+      name: family.name,
+      priceCents: family.price,
+      priceId: family.priceId,
+      features: family.features,
+      eligible: true,
+    });
+  } else {
+    const band = STRIPE_PRODUCTS.PERFORMER_BAND_MONTHLY;
+    paid.push({
+      id: "performer-BAND",
+      tier: "BAND",
+      name: band.name,
+      priceCents: band.price,
+      priceId: band.priceId,
+      features: band.features,
+      eligible: true,
+    });
+  }
+  const sorted = sortOffersLowestPriceFirst(paid);
+  return [
+    {
+      id: `${accountType}-FREE`,
+      tier: "FREE",
+      name: accountType === "fan" ? "TMI Fan — Free" : "TMI Performer — Free",
+      priceCents: 0,
+      priceId: null,
+      features: accountType === "fan"
+        ? (["Read TMI magazine", "Browse profiles", "Watch public streams", "Create fan account"] as const)
+        : (["Performer profile", "Basic bio + links", "Submit to magazine", "Audience discovery"] as const),
+    },
+    ...sorted.map(({ eligible: _e, ...rest }) => rest),
+  ];
 }
 
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */

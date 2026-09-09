@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <div style={{ maxWidth: 720, margin: "40px auto", padding: "0 24px" }}>
         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.2em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 8 }}>LEGAL</div>
         <h1 style={{ fontSize: "clamp(24px,5vw,40px)", fontWeight: 900, margin: "0 0 8px" }}>Privacy Policy</h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 32 }}>Last updated: May 2026 · BernoutGlobal LLC</p>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 32 }}>Last updated: September 2026 · BernoutGlobal LLC</p>
 
         {[
           {
@@ -34,8 +34,12 @@ export default function PrivacyPage() {
             body: "Your data is stored securely in our databases with industry-standard encryption. Payment data is never stored on our servers — it is processed directly by Stripe. We implement rate limiting, CSRF protection, and session security across all endpoints.",
           },
           {
-            title: "Cookies & Sessions",
-            body: "We use session cookies for authentication and preferences. We do not use third-party advertising cookies. You can clear cookies at any time through your browser settings.",
+            title: "Cookies & Advertising",
+            body: "We use session cookies for authentication and preferences. When you accept advertising consent, we may load Google AdSense and certified ad partners that set advertising/measurement cookies (including personalized ads where permitted by law). You can decline ads, clear cookies in your browser, or reopen consent settings anytime. Declining ads does not remove session cookies required to stay signed in.",
+          },
+          {
+            title: "Advertising Partners",
+            body: "TMI may display ads from Google AdSense and house/sponsor inventory to keep free surfaces available. Ad serving requires explicit consent on eligible public pages. We do not promise AdSense approval, estimated earnings, or payouts — ESTIMATED impressions are not PAYABLE and not PAID until a payment processor confirms settlement. Bots and non-human traffic are never treated as billable ad inventory.",
           },
           {
             title: "Your Rights",
@@ -52,8 +56,9 @@ export default function PrivacyPage() {
           </div>
         ))}
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", gap: 12 }}>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link href="/support" style={{ fontSize: 11, color: "#00FFFF", textDecoration: "none" }}>Support Portal →</Link>
+          <Link href="/disclosures" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Disclosures</Link>
           <Link href="/community-guidelines" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Community Guidelines</Link>
         </div>
       </div>

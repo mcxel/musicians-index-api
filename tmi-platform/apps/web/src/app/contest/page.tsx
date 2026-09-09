@@ -11,8 +11,9 @@ function getContestData() {
     seasonName: 'Grand Platform Contest — Season 1',
     totalContestants: 0,
     totalSponsors: 0,
-    prizePool: '$50,000+',
-    daysUntilDeadline: 45,
+    prizePool: 'XP + features',
+    prizePoolNote: 'Cash prizes unlock only in Cash Prize Mode after reserves are funded — not promised as payable today.',
+    daysUntilDeadline: null as number | null,
     categories: [
       { id: 'singers', label: 'Singers', icon: '🎤', count: 0 },
       { id: 'rappers', label: 'Rappers', icon: '🎵', count: 0 },
@@ -74,10 +75,13 @@ export default function ContestPage() {
           </div>
           <div className="stat-divider" />
           <div className="stat-item">
-            <span className="stat-number">{data.daysUntilDeadline}d</span>
+            <span className="stat-number">{data.daysUntilDeadline == null ? '—' : `${data.daysUntilDeadline}d`}</span>
             <span className="stat-label">Until Deadline</span>
           </div>
         </div>
+        <p style={{ marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.55)', maxWidth: 560 }}>
+          {data.prizePoolNote}
+        </p>
 
         {/* CTAs */}
         <div className="hero-ctas">

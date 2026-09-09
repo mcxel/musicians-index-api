@@ -27,7 +27,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
   {
     slug: "wavetek-rise-billboard",
     title: "Wavetek's Rise: From the Block to the Billboard",
-    subtitle: "How the Houston rapper built a $2M streaming empire in 18 months",
+    subtitle: "How a Houston rapper used independent release strategy to climb discovery charts",
     author: "TMI Editorial",
     performerSlug: "wavetek",
     publishedAt: "2026-04-01",
@@ -37,9 +37,9 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     icon: "🎤",
     blocks: [
       { type: "paragraph", text: "Before the plaques, before the magazine covers, Wavetek was just another kid recording on his phone in his cousin's living room in Houston's Fifth Ward." },
-      { type: "paragraph", text: "His debut single hit 100K streams in 72 hours — with zero promotion budget. Three months later, he was on TMI's front page." },
+      { type: "paragraph", text: "His debut single found early listeners through organic sharing — with zero paid promotion budget. Weeks later, he was featured on TMI's discovery surfaces." },
       { type: "pullquote", text: "\"I didn't wait for a label. TMI gave me the platform, the fans gave me the fuel.\"" },
-      { type: "paragraph", text: "Now with over 2 million monthly listeners and a touring schedule that spans 15 cities, Wavetek is proving that independent artists can build empires on their own terms." },
+      { type: "paragraph", text: "Wavetek's story on TMI is about consistent uploads, live sessions, and fan engagement — not invented stream totals. Rankings climb through real platform activity." },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
   {
     slug: "beat-marketplace-economy",
     title: "The Beat Marketplace: Inside TMI's New Economy",
-    subtitle: "How producers are earning five figures a month selling licenses",
+    subtitle: "How beat licensing on TMI is designed to pay producers — without inventing earnings",
     author: "TMI Finance Desk",
     publishedAt: "2026-04-05",
     category: "editorial",
@@ -70,9 +70,9 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     heroColor: "#FFD700",
     icon: "💰",
     blocks: [
-      { type: "paragraph", text: "Six months after launch, TMI's Beat Marketplace has processed over $400,000 in license sales. The average producer earns $3,200 per month." },
-      { type: "paragraph", text: "Basic licenses start at $25. Premium goes for $75. Exclusive deals regularly top $500 — and producers keep 90% of every sale." },
-      { type: "paragraph", text: "The key innovation: tagged previews. Buyers hear the beat with a vocal watermark, making theft nearly impossible while keeping the buying experience frictionless." },
+      { type: "paragraph", text: "TMI's Beat Marketplace separates submission review, commercial licenses, and competition vault usage. Listings and sales only appear when real catalog and checkout are active — this article does not invent GMV or average producer income." },
+      { type: "paragraph", text: "License tiers (basic, premium, exclusive) are priced by the seller. Producers retain ownership; platform fees apply when a sale settles through Stripe." },
+      { type: "paragraph", text: "The key product goal: tagged previews and clear license terms so buyers know what they get before checkout." },
     ],
   },
   {
@@ -114,7 +114,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
   {
     slug: "fan-clubs-artist-revenue",
     title: "How TMI's Fan Club System Is Changing Artist Revenue",
-    subtitle: "Artists are earning $8,000–$40,000 per month from fan club memberships alone",
+    subtitle: "How fan clubs can create recurring support — illustrative math, not promised payouts",
     author: "TMI Finance Desk",
     publishedAt: "2026-04-11",
     category: "news",
@@ -122,9 +122,9 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     heroColor: "#FF2DAA",
     icon: "📊",
     blocks: [
-      { type: "paragraph", text: "The math is simple: 1,000 fans paying $9.99/month = $9,990 in recurring monthly revenue. Minus platform fees, that's roughly $7,900 landing directly in the artist's wallet." },
-      { type: "paragraph", text: "TMI's Fan Club system launched with four tiers — RUBY, Silver, Gold, and Platinum — each offering escalating access." },
-      { type: "paragraph", text: "The top-earning artist on the platform has 4,200 Fan Club members across all tiers, generating $38,000 per month in membership revenue." },
+      { type: "paragraph", text: "Illustrative math only: if 1,000 fans paid $9.99/month, gross membership revenue would be about $9,990 before fees — that is a calculator example, not a claim that any TMI artist currently earns that amount." },
+      { type: "paragraph", text: "TMI Fan Club tiers follow the platform ladder (RUBY → Silver → Gold → Platinum → Diamond). Actual earnings depend on real memberships and Stripe settlement." },
+      { type: "paragraph", text: "Public surfaces never invent fan-club member counts or monthly revenue. Live numbers come from billing and membership systems when those records exist." },
     ],
   },
   {
@@ -141,7 +141,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     blocks: [
       { type: "paragraph", text: "When the third label offered Krypt a deal — $750,000 advance, three-album commitment, standard 360 terms — he said no." },
       { type: "pullquote", text: "\"I looked at the numbers. After recoupment, after touring percentages — they were going to make more off me than I was. TMI changed my math.\"" },
-      { type: "paragraph", text: "Today Krypt owns 100% of his masters and pulls $22,000 per month from the platform before a single show." },
+      { type: "paragraph", text: "Krypt's interview focus is ownership and independence. Any dollar figures quoted in conversation are the artist's statements, not TMI-verified platform payouts." },
     ],
   },
   {
@@ -156,7 +156,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     icon: "🏆",
     blocks: [
       { type: "paragraph", text: "Categories: Singers, Rappers, DJs, Dancers, Comedians, Beatmakers, Bands, Magicians, Influencers, and Freestyle." },
-      { type: "paragraph", text: "Prize pool: $250,000 across all categories. Grand Prize winner takes $100,000 plus a recording contract." },
+      { type: "paragraph", text: "Prize framing for Season 1: XP, badges, features, and placement while Launch Mode is active. Cash prize pools unlock only when the platform's Revenue-First Rewards Governor permits Cash Prize Mode — never promised as payable today." },
       { type: "pullquote", text: "\"This isn't a talent show. This is a launchpad.\"" },
     ],
   },
@@ -173,7 +173,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     blocks: [
       { type: "paragraph", text: "The TMI Booking Engine analyzes 12 data points to match artists with venues: genre compatibility, geographic radius, budget alignment, and more." },
       { type: "paragraph", text: "\"Underserved boost\" deliberately surfaces emerging artists who haven't been booked recently, preventing the rich-get-richer effect." },
-      { type: "paragraph", text: "In its first quarter, the engine facilitated 1,247 bookings across 23 states, with an average artist payout of $1,800 per show." },
+      { type: "paragraph", text: "In early operation the engine records real booking requests between artists and venues. Public pages show honest empty or live counts — not fabricated statewide booking totals." },
     ],
   },
   {

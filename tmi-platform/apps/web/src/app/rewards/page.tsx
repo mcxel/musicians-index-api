@@ -11,12 +11,12 @@ const TABS = ["PRIZES", "WINNERS", "AUDIENCE DROPS", "CLAIMS", "SPONSOR ITEMS", 
 type Tab = typeof TABS[number];
 
 const PRIZE_POOL = [
-  { name: "Monthly Idol Grand Prize", value: "$5,000 + Studio Time", sponsor: "Crown Audio", icon: "🏆", tier: "WINNER" },
-  { name: "Cypher Champion Pack", value: "Beats + Sample Pack", sponsor: "Beat Bots", icon: "⚔️", tier: "WINNER" },
-  { name: "Dirty Dozens Champion", value: "$1,000 + NFT Crown", sponsor: "Platform", icon: "😤", tier: "WINNER" },
-  { name: "Runner-Up Prize Pack", value: "Outfit + Digital Pack", sponsor: "Glow Apparel", icon: "🥈", tier: "RUNNER_UP" },
-  { name: "Audience Random Drop", value: "$50 Platform Credits", sponsor: "Platform", icon: "🎰", tier: "AUDIENCE" },
-  { name: "Consolation Energy Pack", value: "Year Supply Energy Drink", sponsor: "Power Boost", icon: "⚡", tier: "CONSOLATION" },
+  { name: "Monthly Idol Champion Feature", value: "XP + Billboard / Magazine feature", sponsor: "Platform", icon: "🏆", tier: "WINNER" },
+  { name: "Cypher Champion Pack", value: "Beats + Sample Pack (when entitled)", sponsor: "Beat Bots", icon: "⚔️", tier: "WINNER" },
+  { name: "Dirty Dozens Champion", value: "XP + crown badge (cash when funded)", sponsor: "Platform", icon: "😤", tier: "WINNER" },
+  { name: "Runner-Up Recognition", value: "Profile feature + digital pack", sponsor: "Platform", icon: "🥈", tier: "RUNNER_UP" },
+  { name: "Audience Engagement Drop", value: "Platform credits / cosmetics", sponsor: "Platform", icon: "🎰", tier: "AUDIENCE" },
+  { name: "Participation Pack", value: "XP + seasonal cosmetics", sponsor: "Platform", icon: "⚡", tier: "CONSOLATION" },
 ];
 
 const TIER_COLORS: Record<string, string> = {
@@ -26,27 +26,29 @@ const TIER_COLORS: Record<string, string> = {
   CONSOLATION: "#AA2DFF",
 };
 
-const WINNERS_DATA = [
-  { name: "Wavetek_Pro", prize: "Monthly Idol Grand Prize — $5,000 + Studio Time", date: "May 2026", role: "ARTIST", rank: 1, icon: "🏆" },
-  { name: "Nova_K", prize: "Cypher Champion Pack — Beats + Sample Pack", date: "May 2026", role: "ARTIST", rank: 2, icon: "⚔️" },
-  { name: "LyricStone", prize: "Dirty Dozens Champion — $1,000 + NFT Crown", date: "Apr 2026", role: "ARTIST", rank: 1, icon: "😤" },
-  { name: "ZuriBloom", prize: "Runner-Up Prize Pack — Outfit + Digital Pack", date: "Apr 2026", role: "ARTIST", rank: 2, icon: "🥈" },
-  { name: "KryptNoLabel", prize: "Monthly Idol Grand Prize — $5,000 + Studio Time", date: "Mar 2026", role: "ARTIST", rank: 1, icon: "🏆" },
-];
+/** Honest empty — no fabricated past winners on public surfaces (Rule 20). */
+const WINNERS_DATA: Array<{
+  name: string;
+  prize: string;
+  date: string;
+  role: string;
+  rank: number;
+  icon: string;
+}> = [];
 
 const AUDIENCE_DROPS = [
-  { id: "drop_1", name: "500 Platform Credits", desc: "Random drop for active fans in live rooms", ends: "May 31, 2026", entries: 342, icon: "🎰", color: "#00FFFF" },
-  { id: "drop_2", name: "Exclusive Emote Pack", desc: "12 rare emotes from Season 1", ends: "Jun 5, 2026", entries: 189, icon: "🎭", color: "#AA2DFF" },
-  { id: "drop_3", name: "Artist Shoutout Pass", desc: "Get shouted out live by a featured artist", ends: "Jun 10, 2026", entries: 77, icon: "📢", color: "#FF2DAA" },
-  { id: "drop_4", name: "VIP Room Access — 30 Days", desc: "Full VIP access for one month", ends: "Jun 15, 2026", entries: 921, icon: "🔑", color: "#FFD700" },
+  { id: "drop_1", name: "Platform Credits Drop", desc: "Opens when a real sponsored drop is funded", ends: "TBA", entries: 0, icon: "🎰", color: "#00FFFF" },
+  { id: "drop_2", name: "Exclusive Emote Pack", desc: "Unlocks from real season inventory", ends: "TBA", entries: 0, icon: "🎭", color: "#AA2DFF" },
+  { id: "drop_3", name: "Artist Shoutout Pass", desc: "Requires a live artist session", ends: "TBA", entries: 0, icon: "📢", color: "#FF2DAA" },
+  { id: "drop_4", name: "VIP Room Access", desc: "Granted from real entitlements only", ends: "TBA", entries: 0, icon: "🔑", color: "#FFD700" },
 ];
 
 const SPONSOR_ITEMS = [
-  { id: "sp_1", sponsor: "Crown Audio", item: "Professional Mic Kit", value: "$299", category: "GEAR", icon: "🎙️", color: "#FFD700" },
-  { id: "sp_2", sponsor: "Glow Apparel", item: "Artist Edition Hoodie", value: "$89", category: "CLOTHING", icon: "🧥", color: "#AA2DFF" },
-  { id: "sp_3", sponsor: "Power Boost", item: "Year Supply Energy Drinks", value: "$520", category: "LIFESTYLE", icon: "⚡", color: "#00FF88" },
-  { id: "sp_4", sponsor: "Beat Bots", item: "Premium Sample Pack Bundle", value: "$149", category: "MUSIC", icon: "🎵", color: "#FF2DAA" },
-  { id: "sp_5", sponsor: "TMI Platform", item: "Season 2 Early Access + VIP Badge", value: "Exclusive", category: "PLATFORM", icon: "🌐", color: "#00FFFF" },
+  { id: "sp_1", sponsor: "Open for sponsors", item: "Gear / mic kits", value: "Sponsor-funded", category: "GEAR", icon: "🎙️", color: "#FFD700" },
+  { id: "sp_2", sponsor: "Open for sponsors", item: "Apparel drops", value: "Sponsor-funded", category: "CLOTHING", icon: "🧥", color: "#AA2DFF" },
+  { id: "sp_3", sponsor: "TMI Platform", item: "XP + cosmetics (Launch Mode)", value: "Active", category: "PLATFORM", icon: "🌐", color: "#00FFFF" },
+  { id: "sp_4", sponsor: "Open for sponsors", item: "Sample packs", value: "Sponsor-funded", category: "MUSIC", icon: "🎵", color: "#FF2DAA" },
+  { id: "sp_5", sponsor: "TMI Platform", item: "Season early access badge", value: "When seasons launch", category: "PLATFORM", icon: "🏅", color: "#00FF88" },
 ];
 
 const BUNDLES = [
@@ -74,7 +76,7 @@ export default function RewardsPage() {
                   REWARDS
                 </h1>
                 <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
-                  Win prizes. Claim drops. Collect sponsor gifts. Every room has a prize pool.
+                  Launch Mode rewards are XP, badges, features, and cosmetics. Cash and large prize pools unlock only when Cash Prize Mode is funded — never invented as payable today.
                 </p>
               </div>
               <div style={{ marginLeft: "auto" }}>
@@ -90,9 +92,9 @@ export default function RewardsPage() {
             {/* Stats */}
             <div style={{ display: "flex", gap: 32, paddingBottom: 20 }}>
               {[
-                { label: "ACTIVE PRIZES", val: "6", col: "#FFD700" },
+                { label: "ACTIVE PRIZE TYPES", val: String(PRIZE_POOL.length), col: "#FFD700" },
                 { label: "PENDING CLAIMS", val: "0", col: "#FF2DAA" },
-                { label: "DROPS THIS WEEK", val: "12", col: "#00FFFF" },
+                { label: "FUNDED DROPS", val: "0", col: "#00FFFF" },
                 { label: "YOUR POINTS", val: "0", col: "#AA2DFF" },
               ].map(s => (
                 <div key={s.label}>
@@ -147,6 +149,11 @@ export default function RewardsPage() {
 
               {tab === "WINNERS" && (
                 <motion.div key="winners" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  {WINNERS_DATA.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+                      No certified winners yet. Results appear here only after real contests finalize — we do not invent past winners.
+                    </p>
+                  ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {WINNERS_DATA.map((w, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.12)", borderRadius: 12, padding: "16px 20px" }}>
@@ -160,6 +167,7 @@ export default function RewardsPage() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </motion.div>
               )}
 

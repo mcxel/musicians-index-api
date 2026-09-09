@@ -135,6 +135,11 @@ export function getAllTierPrices(accountType: AccountType): TierPrice[] {
   return TIER_ORDER.map(t => getTierPrice(accountType, t));
 }
 
+/** Display order: lowest real price first (PriceSortAuthority law). */
+export function getAllTierPricesLowestFirst(accountType: AccountType): TierPrice[] {
+  return [...getAllTierPrices(accountType)].sort((a, b) => a.usdCents - b.usdCents);
+}
+
 export function getTierBenefits(accountType: AccountType, tier: SubscriptionTier): TierBenefits {
   const isCreator = accountType !== "fan";
   const tierIndex = TIER_ORDER.indexOf(tier);
