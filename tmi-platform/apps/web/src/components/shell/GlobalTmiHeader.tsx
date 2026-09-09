@@ -138,13 +138,17 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "8px 16px",
-          minHeight: 48,
-          gap: 12,
+          padding: "8px 20px",
+          minHeight: 52,
+          gap: 16,
+          maxWidth: 1440,
+          margin: "0 auto",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* Brand */}
-        <Link href="/home/1" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+        <Link href="/home/1" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flexShrink: 0 }}>
           <div
             style={{
               width: 26,
@@ -162,7 +166,7 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
           >
             T
           </div>
-          <span style={{ fontSize: 13, fontWeight: 900, color: "#fff", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: "#fff", letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0 }}>
             TMI <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>FLIGHT DECK</span>
           </span>
         </Link>

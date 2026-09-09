@@ -752,6 +752,74 @@ export function getAllSubscriptionProducts(accountType: SubscriptionAccountType)
   return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
 }
 
+const FREE_OFFER_FEATURES: Record<SubscriptionAccountType, readonly string[]> = {
+  fan: ["Read TMI magazine", "Browse profiles", "Watch public streams", "Create fan account"],
+  performer: [
+    "Performer profile",
+    "Basic bio + links",
+    "Submit to magazine",
+    "Audience discovery",
+    "Contest eligible",
+  ],
+};
+
+/**
+ * Membership offers for pricing UI: FREE first, then paid tiers lowest→highest
+ * by registry `price` cents (canonical STRIPE_PRODUCTS only — no invented amounts).
+ */
+export function getSubscriptionOffersLowestFirst(accountType: SubscriptionAccountType): Array<{
+  id: string;
+  tier: "FREE" | SubscriptionTierKey | "FAMILY" | "BAND";
+  name: string;
+  priceCents: number;
+  priceId: string;
+  features: readonly string[];
+}> {
+  const free = {
+    id: `${accountType}-free`,
+    tier: "FREE" as const,
+    name: accountType === "fan" ? "TMI Fan — Free" : "TMI Performer — Free",
+    priceCents: 0,
+    priceId: "",
+    features: FREE_OFFER_FEATURES[accountType],
+  };
+
+  const paid = getAllSubscriptionProducts(accountType).map((p) => ({
+    id: p.key,
+    tier: p.tier as SubscriptionTierKey,
+    name: p.name,
+    priceCents: p.price,
+    priceId: p.priceId,
+    features: p.features,
+  }));
+
+  // Optional add-ons from the same registry (not in PRO…DIAMOND ladder keys).
+  if (accountType === "fan") {
+    const family = STRIPE_PRODUCTS.FAN_FAMILY_MONTHLY;
+    paid.push({
+      id: "FAN_FAMILY_MONTHLY",
+      tier: "FAMILY",
+      name: family.name,
+      priceCents: family.price,
+      priceId: family.priceId,
+      features: family.features,
+    });
+  } else {
+    const band = STRIPE_PRODUCTS.PERFORMER_BAND_MONTHLY;
+    paid.push({
+      id: "PERFORMER_BAND_MONTHLY",
+      tier: "BAND",
+      name: band.name,
+      priceCents: band.price,
+      priceId: band.priceId,
+      features: band.features,
+    });
+  }
+
+  paid.sort((a, b) => a.priceCents - b.priceCents || a.name.localeCompare(b.name));
+  return [free, ...paid];
+}
+
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
 export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey> = {
   tree: "MEDIA_PLAYER_CHASSIS_TREE",
@@ -804,6 +872,32 @@ export function resolveFanCosmeticUsdCents(
 export function isRealPriceId(priceId: string): boolean {
   return /^price_1[A-Za-z0-9]{14,}$/.test(priceId);
 }
+/** One-time founder packs that currently resolve to a real Stripe Price ID. */
+export function getRealFoundingPacks(): Array<{
+  key: StripeProductKey;
+  name: string;
+  priceCents: number;
+  priceId: string;
+}> {
+  const keys: StripeProductKey[] = [
+    "FOUNDING_SUPPORTER",
+    "FOUNDING_CREATOR",
+    "FOUNDING_MEMBER",
+    "FOUNDING_DIAMOND",
+  ];
+  return keys
+    .map((key) => {
+      const prod = STRIPE_PRODUCTS[key];
+      return {
+        key,
+        name: prod.name,
+        priceCents: prod.price,
+        priceId: prod.priceId,
+      };
+    })
+    .filter((pack) => isRealPriceId(pack.priceId));
+}
+
 
 // Returns only the products that have real Stripe price IDs (safe to checkout)
 export function getWorkingProducts(): Array<{

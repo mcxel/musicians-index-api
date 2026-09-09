@@ -165,8 +165,10 @@ export default function AdConsentBanner() {
         left: 16,
         right: 16,
         bottom: 16,
-        zIndex: 99999,
+        zIndex: 99998,
+        width: 'min(540px, calc(100vw - 32px))',
         maxWidth: 540,
+        boxSizing: 'border-box',
         margin: '0 auto',
         padding: '16px 20px',
         borderRadius: 14,
@@ -181,8 +183,8 @@ export default function AdConsentBanner() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <strong style={{ color: '#00FFFF', fontSize: 14, letterSpacing: '0.04em' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+        <strong style={{ color: '#00FFFF', fontSize: 14, letterSpacing: '0.04em', flex: '1 1 200px', minWidth: 0 }}>
           TMI Privacy &amp; Advertising Preferences
         </strong>
         <span
@@ -206,7 +208,7 @@ export default function AdConsentBanner() {
           Disclosures
         </a>.
       </p>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
         <button
           type="button"
           id="tmi-cmp-accept-btn"
@@ -222,6 +224,9 @@ export default function AdConsentBanner() {
             fontSize: 12,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            flex: '1 1 140px',
+            minWidth: 140,
+            whiteSpace: 'nowrap',
           }}
         >
           Accept All Ads
@@ -241,6 +246,9 @@ export default function AdConsentBanner() {
             fontSize: 12,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            flex: '1 1 140px',
+            minWidth: 140,
+            whiteSpace: 'nowrap',
           }}
         >
           Decline Tracking
