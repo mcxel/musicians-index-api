@@ -278,10 +278,51 @@ export function publishUniversalRankingSnapshot(
   return next;
 }
 
+const discoverySnapshotFetches = new Map<number, Promise<RankCandidate[]>>();
+
+async function fetchRealDiscoveryCandidates(limit: number): Promise<RankCandidate[]> {
+  const cached = discoverySnapshotFetches.get(limit);
+  if (cached) return cached;
+  const promise = fetch(`/api/rankings/discovery-snapshot?limit=${limit}`, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : { candidates: [] }))
+    .then((data: { candidates?: RankCandidate[] }) => data.candidates ?? [])
+    .catch(() => [] as RankCandidate[]);
+  discoverySnapshotFetches.set(limit, promise);
+  // Short TTL so a long-lived tab (genre-cycle remounts, etc.) eventually
+  // re-fetches instead of staying pinned to one request forever.
+  promise.finally(() => {
+    setTimeout(() => {
+      if (discoverySnapshotFetches.get(limit) === promise) discoverySnapshotFetches.delete(limit);
+    }, 15_000);
+  });
+  return promise;
+}
+
+/**
+ * Fetch real, DB-backed candidates from /api/rankings/discovery-snapshot and
+ * publish them. This is the only production-discovery entry point that
+ * should feed publishUniversalRankingSnapshot — never call
+ * publishUniversalRankingSnapshot(undefined, ...) from a discovery surface,
+ * that falls back to the seed/bot pool (collectRankCandidates()).
+ */
+export async function publishRealDiscoverySnapshot(
+  limit: number = ORBITAL_TOP_N,
+): Promise<UniversalRankingSnapshot> {
+  const candidates = await fetchRealDiscoveryCandidates(limit);
+  return publishUniversalRankingSnapshot(candidates, limit);
+}
+
+/**
+ * Read the current snapshot. Does NOT auto-publish the seed/bot default pool
+ * (collectRankCandidates()) when nothing has published yet — production
+ * discovery consumers (OrbitalWheel, Home1CoverPage, Home1Top10DoubleSpreaded)
+ * publish real candidates from /api/rankings/discovery-snapshot on mount, so
+ * before that resolves this correctly returns an honest empty snapshot
+ * (slots: []) rather than flashing seed performers. Callers that legitimately
+ * want the seed/bot pool (tests, non-discovery bookkeeping) should call
+ * publishUniversalRankingSnapshot() explicitly.
+ */
 export function getUniversalRankingSnapshot(): UniversalRankingSnapshot {
-  if (currentSnapshot.publishedAt === 0) {
-    return publishUniversalRankingSnapshot();
-  }
   return currentSnapshot;
 }
 

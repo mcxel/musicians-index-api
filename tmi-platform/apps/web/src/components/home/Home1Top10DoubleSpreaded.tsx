@@ -6,7 +6,7 @@ import TmiBadgeOverlay from '@/components/overlays/TmiBadgeOverlay';
 import { getCrownRankRuntime, type CrownRankRuntimeEntry } from '@/lib/home/CrownRankRuntime';
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import {
-  publishUniversalRankingSnapshot,
+  publishRealDiscoverySnapshot,
   subscribeUniversalRanking,
 } from '@/lib/rankings/UniversalRankingSnapshot';
 
@@ -104,7 +104,10 @@ export default function Home1Top10DoubleSpreaded() {
   const [ranks, setRanks] = useState<CrownRankRuntimeEntry[]>(() => getCrownRankRuntime(10));
 
   useEffect(() => {
-    publishUniversalRankingSnapshot(undefined, 12);
+    // Real, DB-backed candidates only — see publishRealDiscoverySnapshot's
+    // doc comment. getCrownRankRuntime() still honestly returns [] until
+    // this resolves (ORBITAL-04: no seed/demo/bot filler).
+    void publishRealDiscoverySnapshot(12);
     return subscribeUniversalRanking(() => {
       setRanks(getCrownRankRuntime(10));
     });
