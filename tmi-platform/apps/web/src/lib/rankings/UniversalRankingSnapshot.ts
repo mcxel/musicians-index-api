@@ -116,7 +116,7 @@ function botScoreReachedAt(createdAt: string): number {
  * DB-user-merged candidates live in UniversalRankingSnapshot.server.ts,
  * for server-only callers (API routes / Server Components) only.
  */
-export function collectRankCandidates(): RankCandidate[] {
+export function collectRankCandidates(options: { allowBots?: boolean } = { allowBots: false }): RankCandidate[] {
   const registryIds = new Set<string>();
 
   const registryHumans: RankCandidate[] = PERFORMER_REGISTRY.filter(isRankedEligible).map((p) => {
@@ -166,6 +166,10 @@ export function collectRankCandidates(): RankCandidate[] {
       genre: 'Performer',
       isLive: false,
     });
+  }
+
+  if (!options.allowBots) {
+    return [...registryHumans, ...dbHumans];
   }
 
   const bots: RankCandidate[] = getActiveBots().map((b) => ({

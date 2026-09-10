@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useMediaStream } from '@/hooks/useMediaStream';
+import { useCameraOrientationPhysics } from '@/hooks/useCameraOrientationPhysics';
 
 const C = {
   bg: 'rgba(10, 10, 25, 0.8)',
@@ -30,6 +31,10 @@ type LiveCameraPreviewProps = {
 export function LiveCameraPreview({ autoStart = true }: LiveCameraPreviewProps) {
   const { stream, status, error, startStream, stopStream } = useMediaStream(FAST_PREVIEW_CONSTRAINTS);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { transform: previewTransform } = useCameraOrientationPhysics({
+    facingMode: "user",
+    isSelfPreview: true,
+  });
 
   // Snappy gem path: request camera immediately on mount; tear down on unmount.
   useEffect(() => {
@@ -86,7 +91,7 @@ export function LiveCameraPreview({ autoStart = true }: LiveCameraPreviewProps) 
             autoPlay
             playsInline
             muted
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: previewTransform }}
           />
         ) : (
           <div style={{ color: C.dim, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em' }}>

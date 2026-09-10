@@ -131,7 +131,8 @@ export interface MonitorProps {
 
 export function Monitor({ config, size, onFeedChange }: MonitorProps) {
   const [feed, setFeed] = useState<MonitorFeed>(config.defaultFeed);
-  const [isRecording, setIsRecording] = useState(false);
+  /** P0 RECORD honesty: no MediaRecorder / session recorder wired on this monitor. */
+  const RECORD_MONITOR_UNAVAILABLE = "Monitor recording not certified — unavailable";
   const [streamActive, setStreamActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -389,17 +390,23 @@ export function Monitor({ config, size, onFeedChange }: MonitorProps) {
           display: 'flex', justifyContent: 'center', gap: 6, zIndex: 6,
         }}>
           <button
-            onClick={e => { e.stopPropagation(); playSound('ui_camera_shutter'); setIsRecording(r => !r); }}
+            type="button"
+            disabled
+            aria-disabled="true"
+            data-testid="tmi-monitor-record"
+            data-record-state="unavailable"
+            title={RECORD_MONITOR_UNAVAILABLE}
+            onClick={(e) => e.stopPropagation()}
             style={{
-              background: isRecording ? 'rgba(230,48,0,0.9)' : 'rgba(0,0,0,0.7)',
-              border: `1px solid ${isRecording ? '#E63000' : 'rgba(255,255,255,0.3)'}`,
-              color: '#fff', borderRadius: 4,
-              fontSize: size === 'big' ? 9 : 8, padding: '3px 8px', cursor: 'pointer',
+              background: 'rgba(0,0,0,0.7)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'rgba(255,255,255,0.45)', borderRadius: 4,
+              fontSize: size === 'big' ? 9 : 8, padding: '3px 8px', cursor: 'not-allowed',
               display: 'flex', alignItems: 'center', gap: 4,
+              opacity: 0.55,
             }}
           >
-            {isRecording && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', animation: 'tmiRecDot 1s infinite' }} />}
-            {isRecording ? 'Stop' : '● Record'}
+            ● Record unavailable
           </button>
           <button
             onClick={captureScreenshot}

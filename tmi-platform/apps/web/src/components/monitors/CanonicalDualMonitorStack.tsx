@@ -400,6 +400,7 @@ export default function CanonicalDualMonitorStack({
     controlledSplits?.[1] ?? monitors[1]?.defaultSplit ?? 1,
   ]);
   const [animKeys, setAnimKeys] = useState<[number, number]>([0, 0]);
+  const [activeMobileMonitor, setActiveMobileMonitor] = useState<0 | 1>(0);
 
   // sync external controlledSplits into local state
   useEffect(() => {
@@ -453,7 +454,44 @@ export default function CanonicalDualMonitorStack({
           60%  { transform: scale(1.04) translateY(-2px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
+        [data-mobile-monitor-selector] { display: none; }
+        @media (max-width: 640px) {
+          [data-mobile-monitor-selector] { display: flex; }
+          [data-active-mobile-monitor="false"] { display: none; }
+        }
       `}</style>
+
+      <div
+        data-mobile-monitor-selector
+        style={{
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 0 6px",
+        }}
+      >
+        {[0, 1].map((index) => (
+          <button
+            key={index}
+            type="button"
+            data-monitor-selector-tab={index}
+            data-placement-toggle={index}
+            aria-pressed={activeMobileMonitor === index}
+            onClick={() => setActiveMobileMonitor(index as 0 | 1)}
+            style={{
+              flex: 1,
+              padding: "5px 8px",
+              border: `1px solid ${activeMobileMonitor === index ? accent : "#1E1E45"}`,
+              borderRadius: 4,
+              background: activeMobileMonitor === index ? `${accent}33` : "#0D0D24",
+              color: activeMobileMonitor === index ? accent : "#7878AA",
+              fontSize: 10,
+              fontWeight: 900,
+            }}
+          >
+            {monitors[index]?.label ?? `MONITOR ${index + 1}`}
+          </button>
+        ))}
+      </div>
 
       {/* Runtime layout controls — only rendered when enableMediaRuntime is true */}
       {enableMediaRuntime && (
@@ -537,7 +575,7 @@ export default function CanonicalDualMonitorStack({
           {seriesLabel ? (
             <div style={{ ...bezel.label, textAlign: "left", padding: "0 2px 4px" }}>{seriesLabel}</div>
           ) : null}
-          {panes.map((pane, index) => {
+              {panes.map((pane, index) => {
             const split = splits[index as 0 | 1];
             const monLabel = pane.label ?? `MONITOR ${index + 1}`;
             // Park state from canonical runtime (CSS-only, DOM stays mounted)
@@ -546,6 +584,7 @@ export default function CanonicalDualMonitorStack({
             return (
               <div
                 key={pane.id}
+                data-active-mobile-monitor={activeMobileMonitor === index ? "true" : "false"}
                 style={{
                   ...bezel.outer,
                   transition: "max-height 220ms ease, opacity 220ms ease",
