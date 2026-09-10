@@ -8,9 +8,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * LEGACY route — canonical Go Live is in-place via Command Center.
+ * LEGACY route — Step 4 Slice 1 canonical entry is triggerCanonicalGoLive
+ * (hub in-place presentInstantGoLiveInPlace → POST /api/live/go).
  * Always redirects to hub performer golive; UVR + HubMonitor players only.
- * Dev wizard archaeology: /live/go?wizard=1 → /hub/performer?golive=1
  */
 export default function GoLivePage({
   searchParams,

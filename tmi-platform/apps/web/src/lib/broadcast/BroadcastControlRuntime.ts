@@ -259,7 +259,12 @@ let _currentParams: StartBroadcastParams | null = null;
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
- * Start a broadcast. Called by GoLiveStudio (and only GoLiveStudio).
+ * Start a broadcast.
+ *
+ * LEGACY note (Step 4 Slice 1): GoLiveStudio is unmounted from production routes;
+ * canonical entry is triggerCanonicalGoLive → presentInstantGoLiveInPlace →
+ * executeInstantGoLive → POST /api/live/go. Prefer that path for new callers.
+ * This helper remains for archaeology / GoLiveStudio local file if remounted.
  *
  * Coordinates:
  *   1. POST /api/live/go  → registers in GlobalLiveSessionRegistry (server side)

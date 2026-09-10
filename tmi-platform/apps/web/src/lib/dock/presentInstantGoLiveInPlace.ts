@@ -2,6 +2,30 @@
  * Hub / dashboard Instant Go Live — stay in the current TMI shell.
  * ONE TAP: camera → Monitor A, venue → Monitor B, publish LiveSession.
  * Never router.push('/live/rooms/…') or '/live/lobby' for the broadcaster.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CANONICAL GO LIVE ENTRY + SESSION CONTINUITY LAW (Step 4 Slice 1 — locked)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ENTRY AUTHORITY (one):
+ *   triggerCanonicalGoLive()
+ *     → hub/dashboard shell: presentInstantGoLiveInPlace()
+ *     → elsewhere: PENDING_GO_LIVE_KEY + /hub/{role}?golive=1 → presentInstantGoLiveInPlace()
+ *   presentInstantGoLiveInPlace → executeInstantGoLive → POST /api/live/go
+ *     → GlobalLiveSessionRegistry (server) → DiscoveryBus / Lobby Wall
+ *
+ * DO NOT invent a second entry stack (no InstantGoLiveStage2 / GoLiveStudio2 /
+ * second WebRTC publish path). GoLiveStudio / InstantGoLiveLauncher / HUD
+ * GO_LIVE must call this authority or redirect into it.
+ *
+ * SESSION CONTINUITY:
+ *   - roomId / liveSessionId from registry publish is preserved across curtain,
+ *     HUD chrome, and monitor toggles — resume path reuses inPlace + publishedRoomId.
+ *   - isLivePublished is true ONLY after real POST /api/live/go success (Rule 20).
+ *   - Performer presence = WebRTC/camera; Fan presence = avatar — never blurred.
+ *
+ * RUNTIME (not entry): InstantGoLiveStage / GoLiveRuntime / UniversalVenueRenderer
+ * render the venue after the session exists — they do not mint a competing live id.
  */
 
 "use client";

@@ -44,6 +44,10 @@ import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
 import InRoomMixerPanel from "@/components/venue-hud/InRoomMixerPanel";
 import { ChannelMixerDirector } from "@/lib/audio/mixer";
 import { ensureMixerHealthRegistered } from "@/lib/audio/mixer";
+import { endInstantGoLiveSession } from "@/lib/dock/executeInstantGoLive";
+import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -190,6 +194,18 @@ export default function TMIInteractiveVenueHud({
     setLocalParticipation(participationState);
   }, [participationState]);
 
+  // Session continuity: if this room is already registry-published, HUD opens LIVE
+  // without a second mint or fake delay (curtain/HUD toggles must not remount media).
+  useEffect(() => {
+    const privacy = useLivePrivacyState.getState();
+    if (privacy.isLivePublished && privacy.publishedRoomId === roomId) {
+      setBroadcastState("LIVE");
+      setHudState("LIVE_VISIBLE");
+      onBroadcastStateChange?.("LIVE");
+      setStatusLine("You are LIVE!");
+    }
+  }, [roomId, onBroadcastStateChange]);
+
   useEffect(() => {
     syncVotingOpen();
     const onOpen = () => syncVotingOpen();
@@ -235,25 +251,71 @@ export default function TMIInteractiveVenueHud({
   // Register command handlers
   useEffect(() => {
     const unsubs = [
+      // CANONICAL GO LIVE (Step 4 Slice 1): never fake-delay "LIVE".
+      // Authority = presentInstantGoLiveInPlace → executeInstantGoLive → POST /api/live/go.
+      // Continuity: reuse roomId / published session; do not remount media on HUD chrome.
       HudCommandBus.register("GO_LIVE", async () => {
         setBroadcastState("CONNECTING");
         onBroadcastStateChange?.("CONNECTING");
-        setStatusLine("Connecting to venue edge...");
+        setStatusLine("Publishing live session…");
 
-        await new Promise((res) => setTimeout(res, 800));
+        const privacy = useLivePrivacyState.getState();
+        const boundRoomId =
+          useGoLiveTransition.getState().inPlace?.roomId?.trim() ||
+          privacy.publishedRoomId?.trim() ||
+          roomId;
+
+        if (privacy.isLivePublished && privacy.publishedRoomId === boundRoomId) {
+          setBroadcastState("LIVE");
+          setHudState("LIVE_VISIBLE");
+          onBroadcastStateChange?.("LIVE");
+          setStatusLine("You are LIVE!");
+          return true;
+        }
+
+        const result = await presentInstantGoLiveInPlace({
+          role: role === "fan" ? "FAN" : "PERFORMER",
+          preferredExperience: "live",
+          roomId: boundRoomId,
+          publishSession: true,
+        });
+
+        const liveOk =
+          result.ok &&
+          (Boolean(result.published) || useLivePrivacyState.getState().isLivePublished);
+        if (!liveOk) {
+          setBroadcastState("IDLE");
+          setHudState("PRE_LIVE");
+          onBroadcastStateChange?.("IDLE");
+          setStatusLine(result.error ?? "Go Live failed — not claiming LIVE.");
+          return false;
+        }
 
         setBroadcastState("LIVE");
         setHudState("LIVE_VISIBLE");
         onBroadcastStateChange?.("LIVE");
-        setStatusLine("You are LIVE!");
+        setStatusLine(
+          result.error
+            ? `LIVE · ${result.error}`
+            : `You are LIVE${result.roomId ? ` · ${result.roomId}` : ""}!`,
+        );
         return true;
       }),
 
       HudCommandBus.register("END_LIVE", async () => {
         setBroadcastState("ENDING");
         onBroadcastStateChange?.("ENDING");
+        setStatusLine("Ending live session…");
 
-        await new Promise((res) => setTimeout(res, 500));
+        const rid =
+          useGoLiveTransition.getState().inPlace?.roomId?.trim() ||
+          useLivePrivacyState.getState().publishedRoomId?.trim() ||
+          roomId;
+        try {
+          await endInstantGoLiveSession(rid);
+        } catch {
+          /* still clear local HUD — registry may already be empty */
+        }
 
         setBroadcastState("IDLE");
         setHudState("PRE_LIVE");
