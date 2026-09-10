@@ -57,11 +57,17 @@ export default function OnboardingPage() {
         const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
         if (!active) return;
         if (!res.ok) { router.replace("/auth?next=%2Fonboarding"); return; }
-        const me = await res.json() as { authenticated?: boolean; user?: { role?: string } };
+        const me = await res.json() as {
+          authenticated?: boolean;
+          user?: { role?: string; onboardingState?: string };
+        };
         if (!active) return;
         if (!me.authenticated) { router.replace("/auth?next=%2Fonboarding"); return; }
         const role = (me.user?.role ?? "user").toLowerCase();
-        if (role !== "user") {
+        const onboardingState = (me.user?.onboardingState ?? "no_role_selected").toLowerCase();
+        // Stay for explicit choice when still USER / NO_ROLE_SELECTED.
+        // Do not bounce auto-FAN recoveries here — they use the recovery modal.
+        if (role !== "user" && onboardingState !== "no_role_selected") {
           router.replace(roleToDestination(role));
           return;
         }
