@@ -31,7 +31,7 @@ type LiveCameraPreviewProps = {
 export function LiveCameraPreview({ autoStart = true }: LiveCameraPreviewProps) {
   const { stream, status, error, startStream, stopStream } = useMediaStream(FAST_PREVIEW_CONSTRAINTS);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { previewTransform } = useCameraOrientationPhysics({
+  const { transform: previewTransform } = useCameraOrientationPhysics({
     facingMode: "user",
     isSelfPreview: true,
   });
