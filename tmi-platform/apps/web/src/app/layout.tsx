@@ -171,13 +171,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
         )}
-        {/* Infolinks ad network global script */}
-        {ENABLE_AD_NETWORK_SCRIPTS && (
+        {/* Infolinks ad network global script — wsid was hardcoded to the
+            literal placeholder 0 (never a real Infolinks Website ID), which
+            unconditionally loaded a script guaranteed to 400 on every
+            production page view. Gated behind a real env var now, matching
+            the Media.net/Amazon pattern above — stays off until a real
+            wsid is actually configured, instead of shipping a broken
+            third-party request on every page. */}
+        {ENABLE_AD_NETWORK_SCRIPTS && process.env.NEXT_PUBLIC_INFOLINKS_WSID && (
           <>
             <Script id="infolinks-config" strategy="afterInteractive">
               {`
                 var infolinks_pid = 3445854;
-                var infolinks_wsid = 0;
+                var infolinks_wsid = ${process.env.NEXT_PUBLIC_INFOLINKS_WSID};
               `}
             </Script>
             <Script
