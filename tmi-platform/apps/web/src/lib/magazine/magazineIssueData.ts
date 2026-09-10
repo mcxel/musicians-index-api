@@ -1,3 +1,7 @@
+import { editorialSubmissionEngine } from "../editorial-economy/EditorialSubmissionEngine";
+import { contributorAccountEngine } from "../editorial-economy/ContributorAccountEngine";
+import type { EditorialSubmission } from "../editorial-economy/types";
+
 export interface ArticleBlock {
   type: "paragraph" | "heading" | "pullquote" | "image";
   text?: string;
@@ -576,8 +580,45 @@ function getMagazineIssue1(): MagazineArticle[] {
   return MAGAZINE_ISSUE_1;
 }
 
-export function getArticleBySlug(slug: string): MagazineArticle | undefined {
-  return getMagazineIssue1().find(a => a.slug === slug);
+/**
+ * Approved contributor submissions become readable articles under their own
+ * submissionId slug — this is what lets a writer's piece actually resolve to
+ * full content once the review queue clears it (see /editorial/review).
+ * Unapproved/rejected submissions never resolve here, so a guessed
+ * submissionId can't leak unmoderated content onto a public surface.
+ */
+async function writerArticleFromSubmission(submission: EditorialSubmission): Promise<MagazineArticle> {
+  const contributor = await contributorAccountEngine.get(submission.contributorId);
+  const paragraphs = submission.body
+    .split(/\n+/)
+    .map((text) => text.trim())
+    .filter(Boolean);
+
+  return {
+    slug: submission.submissionId,
+    title: submission.title,
+    subtitle: paragraphs[0]?.slice(0, 140) ?? submission.title,
+    author: contributor?.displayName ?? "TMI Contributor",
+    writerSlug: submission.contributorId,
+    performerSlug: submission.artistSlug,
+    publishedAt: submission.publishedAt ?? submission.updatedAt,
+    category: submission.category === "interview" ? "interview" : "news",
+    tags: [submission.category],
+    heroColor: "#00FFFF",
+    icon: "📝",
+    blocks: paragraphs.length > 0 ? paragraphs.map((text) => ({ type: "paragraph" as const, text })) : [{ type: "paragraph", text: submission.title }],
+  };
+}
+
+export async function getArticleBySlug(slug: string): Promise<MagazineArticle | undefined> {
+  const staffArticle = getMagazineIssue1().find(a => a.slug === slug);
+  if (staffArticle) return staffArticle;
+
+  const submission = await editorialSubmissionEngine.get(slug);
+  if (submission && (submission.status === "approved" || submission.status === "published")) {
+    return writerArticleFromSubmission(submission);
+  }
+  return undefined;
 }
 
 export function getArticlesByCategory(category: MagazineArticle["category"]): MagazineArticle[] {

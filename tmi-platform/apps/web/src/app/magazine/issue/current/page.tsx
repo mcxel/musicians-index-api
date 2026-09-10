@@ -17,7 +17,7 @@ type CurrentIssuePageProps = {
 export async function generateMetadata({ searchParams }: CurrentIssuePageProps): Promise<Metadata> {
   const resolved = searchParams ? await searchParams : undefined;
   const articleSlug = resolved?.article;
-  const article = articleSlug ? getArticleBySlug(articleSlug) : undefined;
+  const article = articleSlug ? await getArticleBySlug(articleSlug) : undefined;
 
   if (article) {
     return {
@@ -44,9 +44,9 @@ export default async function CurrentMagazineIssuePage({ searchParams }: Current
   const articleSlug = resolved?.article;
   const explicitPage = resolved?.page ? Number.parseInt(resolved.page, 10) : undefined;
   const from = resolved?.from;
-  const initialPageIndex = resolveMagazineReaderPageIndex(articleSlug, explicitPage, "current");
-  const pages = buildMagazineIssuePages("current");
-  const crawl = articleSlug ? getMagazineArticleCrawlText(articleSlug) : null;
+  const initialPageIndex = await resolveMagazineReaderPageIndex(articleSlug, explicitPage, "current");
+  const pages = await buildMagazineIssuePages("current");
+  const crawl = articleSlug ? await getMagazineArticleCrawlText(articleSlug) : null;
 
   return (
     <>

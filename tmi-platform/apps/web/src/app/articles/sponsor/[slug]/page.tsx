@@ -31,8 +31,8 @@ function SponsorFallback({ slug }: { slug: string }) {
   );
 }
 
-export default function SponsorArticlePage({ params }: Props) {
-  if (getArticleBySlug(params.slug)) {
+export default async function SponsorArticlePage({ params }: Props) {
+  if (await getArticleBySlug(params.slug)) {
     permanentRedirect(magazineReaderArticleUrl(params.slug));
   }
 

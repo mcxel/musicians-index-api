@@ -44,11 +44,11 @@ function ArticleNotFoundFallback({ slug }: { slug: string }) {
   );
 }
 
-export default function NewsArticlePage({ params }: Props) {
+export default async function NewsArticlePage({ params }: Props) {
   const { slug } = params;
 
   // One-action law: if this slug is a magazine article, go straight to the reader
-  if (getArticleBySlug(slug)) {
+  if (await getArticleBySlug(slug)) {
     permanentRedirect(magazineReaderArticleUrl(slug));
   }
 

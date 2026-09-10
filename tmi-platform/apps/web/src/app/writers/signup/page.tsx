@@ -6,16 +6,35 @@ import Link from "next/link";
 export default function WritersSignupPage() {
   const [form, setForm] = useState({ displayName: "", email: "", bio: "", sampleUrl: "" });
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setDone(true);
-    await fetch("/api/writers/signup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ ...form, level: "new-contributor" }),
-    }).catch(() => {});
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/writers/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      if (res.status === 401) {
+        setError("Sign in to your TMI account first, then apply as a contributor.");
+        return;
+      }
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "Application failed. Try again.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Unable to reach the contributor service. Retry shortly.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const input: React.CSSProperties = { width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" };
@@ -70,8 +89,17 @@ export default function WritersSignupPage() {
             New contributors start at trust 25. Approved articles raise your score. Rejected or flagged content lowers it. Reach trust 60 to unlock Verified Contributor status.
           </div>
 
-          <button type="submit" style={{ padding: "14px 0", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FFD700,#FF9500)", borderRadius: 10, border: "none", cursor: "pointer" }}>
-            APPLY AS CONTRIBUTOR
+          {error && (
+            <div style={{ background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.35)", borderRadius: 10, padding: "12px 14px", fontSize: 11, color: "#ff9b9b", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <span>{error}</span>
+              {error.startsWith("Sign in") && (
+                <Link href="/login?redirect=/writers/signup" style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", textDecoration: "none", whiteSpace: "nowrap" }}>SIGN IN →</Link>
+              )}
+            </div>
+          )}
+
+          <button type="submit" disabled={submitting} style={{ padding: "14px 0", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: submitting ? "rgba(5,5,16,0.5)" : "#050510", background: "linear-gradient(135deg,#FFD700,#FF9500)", borderRadius: 10, border: "none", cursor: submitting ? "not-allowed" : "pointer" }}>
+            {submitting ? "SUBMITTING…" : "APPLY AS CONTRIBUTOR"}
           </button>
         </form>
       </div>

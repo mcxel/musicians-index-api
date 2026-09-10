@@ -8,7 +8,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const article = getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug);
   if (!article) return { title: "Article | TMI Magazine" };
   return {
     title: `${article.title} | TMI Magazine`,
@@ -25,7 +25,7 @@ export async function generateStaticParams() {
 export default async function LegacyMagazineArticleRedirect({ params }: Props) {
   const { slug } = await params;
 
-  if (getArticleBySlug(slug) || getMagazineArticleBySlug(slug)) {
+  if ((await getArticleBySlug(slug)) || getMagazineArticleBySlug(slug)) {
     permanentRedirect(magazineReaderArticleUrl(slug));
   }
 

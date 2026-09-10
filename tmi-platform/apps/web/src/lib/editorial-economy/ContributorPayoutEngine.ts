@@ -10,12 +10,12 @@ export interface ContributorPayoutResult {
 }
 
 class ContributorPayoutEngine {
-  calculate(input: {
+  async calculate(input: {
     contributorId: string;
     submissionId: string;
     approved: boolean;
     sponsorRevenueUsd: number;
-  }): ContributorPayoutResult {
+  }): Promise<ContributorPayoutResult> {
     if (!input.approved) {
       return {
         contributorId: input.contributorId,
@@ -26,7 +26,7 @@ class ContributorPayoutEngine {
       };
     }
 
-    const account = contributorAccountEngine.get(input.contributorId);
+    const account = await contributorAccountEngine.get(input.contributorId);
     if (!account) {
       return {
         contributorId: input.contributorId,
@@ -37,7 +37,7 @@ class ContributorPayoutEngine {
       };
     }
 
-    const engagement = editorialPerformanceEngine.verifiedEngagementScore(input.submissionId);
+    const engagement = await editorialPerformanceEngine.verifiedEngagementScore(input.submissionId);
     const base = account.level === "new-contributor" ? 6 : account.level === "verified-contributor" ? 12 : 18;
     const engagementBonus = Math.min(220, engagement * 0.08);
     const sponsorShare = Math.max(0, input.sponsorRevenueUsd * 0.2);

@@ -12,7 +12,7 @@ export function generateStaticParams() {
 
 export default async function LegacyMagazineArticlesRedirect({ params }: MagazineArticlePageProps) {
   const { slug } = await params;
-  if (getArticleBySlug(slug)) {
+  if (await getArticleBySlug(slug)) {
     permanentRedirect(magazineReaderArticleUrl(slug));
   }
   permanentRedirect(magazineReaderArticleUrl("wavetek-rise-billboard"));
