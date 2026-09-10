@@ -35,6 +35,13 @@ export function ArenaCenterHungJumbotron3D({
   challengeFacePlan = null,
   ceilingElevationMeters = 24.0,
 }: ArenaCenterHungJumbotron3DProps) {
+  if (
+    !descriptor?.dimensions ||
+    !Array.isArray(descriptor.centerPosition) ||
+    !Array.isArray(descriptor.faces)
+  ) {
+    return null;
+  }
   const [cx, cy, cz] = descriptor.centerPosition;
   const { widthMeters, heightMeters, depthMeters } = descriptor.dimensions;
 
@@ -55,9 +62,9 @@ export function ArenaCenterHungJumbotron3D({
 
   return (
     <group
-      data-testid="3d-center-hung-jumbotron-root"
       position={[cx, cy, cz]}
       userData={{
+        tmiTestId: "3d-center-hung-jumbotron-root",
         challengeAcgbrFaces: challengeFacePlan
           ? challengeFacePlan.map((f) => `${f.face}:${f.role}`).join("|")
           : "",
@@ -117,8 +124,7 @@ export function ArenaCenterHungJumbotron3D({
       <group
         position={[0, 0, -halfD]}
         rotation={[cantRad, Math.PI, 0]}
-        data-testid="jumbotron-face-north"
-        userData={{ faceRole: roleByFace("NORTH") }}
+        userData={{ tmiTestId: "jumbotron-face-north", faceRole: roleByFace("NORTH") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[widthMeters * 0.92, heightMeters * 0.9]} />
@@ -130,8 +136,7 @@ export function ArenaCenterHungJumbotron3D({
       <group
         position={[0, 0, halfD]}
         rotation={[-cantRad, 0, 0]}
-        data-testid="jumbotron-face-south"
-        userData={{ faceRole: roleByFace("SOUTH") }}
+        userData={{ tmiTestId: "jumbotron-face-south", faceRole: roleByFace("SOUTH") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[widthMeters * 0.92, heightMeters * 0.9]} />
@@ -143,8 +148,7 @@ export function ArenaCenterHungJumbotron3D({
       <group
         position={[halfW, 0, 0]}
         rotation={[0, Math.PI / 2, -cantRad]}
-        data-testid="jumbotron-face-east"
-        userData={{ faceRole: roleByFace("EAST") }}
+        userData={{ tmiTestId: "jumbotron-face-east", faceRole: roleByFace("EAST") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[depthMeters * 0.92, heightMeters * 0.9]} />
@@ -156,8 +160,7 @@ export function ArenaCenterHungJumbotron3D({
       <group
         position={[-halfW, 0, 0]}
         rotation={[0, -Math.PI / 2, cantRad]}
-        data-testid="jumbotron-face-west"
-        userData={{ faceRole: roleByFace("WEST") }}
+        userData={{ tmiTestId: "jumbotron-face-west", faceRole: roleByFace("WEST") }}
       >
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[depthMeters * 0.92, heightMeters * 0.9]} />
@@ -167,7 +170,7 @@ export function ArenaCenterHungJumbotron3D({
 
       {/* ── 5. UNDERBELLY / BOTTOM RING DISPLAY (Facing Courtside & Floor GA) ── */}
       {descriptor.hasBottomRing && (
-        <group position={[0, -halfH, 0]} data-testid="jumbotron-bottom-ring">
+        <group position={[0, -halfH, 0]} userData={{ tmiTestId: "jumbotron-bottom-ring" }}>
           {/* Beveled Underbelly Housing */}
           <mesh position={[0, -0.4, 0]}>
             <cylinderGeometry

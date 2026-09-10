@@ -2267,3 +2267,40 @@ export const FORGE_PROP_TO_SKU: Record<string, string> = {
   Turntable: "glow_stick",
   "Holo Flag": "jester_hat",
 };
+
+/**
+ * Catalog gaps ledger (P1-03) — honest missing Foundry assets.
+ * Do NOT invent GLBs / textures to fill these. Wire when Herser assets certify.
+ */
+export const AVATAR_COSMETIC_CATALOG_GAPS: ReadonlyArray<{
+  id: string;
+  surface: "hair" | "wardrobe" | "accessory" | "rig";
+  status: "MISSING_FOUNDRY_GLB" | "PROCEDURAL_ONLY" | "TAG_FILTER_NEEDED";
+  note: string;
+}> = [
+  {
+    id: "gap-hair-long-flow",
+    surface: "hair",
+    status: "MISSING_FOUNDRY_GLB",
+    note: "Long flowing / feminine styles beyond tint-only procedural hair",
+  },
+  {
+    id: "gap-wardrobe-dresses",
+    surface: "wardrobe",
+    status: "MISSING_FOUNDRY_GLB",
+    note: "Dress / skirt / blouse mesh variants not bound to canonical rig sockets",
+  },
+  {
+    id: "gap-inclusive-tags",
+    surface: "wardrobe",
+    status: "TAG_FILTER_NEEDED",
+    note: "Catalog filtering should use style tags, not gender hard-locks",
+  },
+  {
+    id: "gap-face-scan",
+    surface: "rig",
+    status: "PROCEDURAL_ONLY",
+    note: "Face-scan → UV morph pipeline not shipped; bobblehead remains procedural",
+  },
+];
+

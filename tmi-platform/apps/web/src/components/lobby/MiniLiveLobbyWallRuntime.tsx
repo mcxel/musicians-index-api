@@ -23,6 +23,7 @@ import {
 } from "@/lib/lobby/liveLobbyWallLaw";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 export interface MiniLiveLobbyWallRuntimeProps {
   role: "fan" | "performer";
@@ -52,6 +53,7 @@ export default function MiniLiveLobbyWallRuntime({
 
   const [activeCategoryId, setActiveCategoryId] = useState<LobbyWallCoreCategoryId>("battles");
   const [selectedRecord, setSelectedRecord] = useState<LiveDiscoveryRecord | null>(null);
+  const [entryFlowRoom, setEntryFlowRoom] = useState<UniversalRoom | null>(null);
 
   // Filtered rooms from canonical discovery bus
   const activeRooms = useMemo(() => {
@@ -108,18 +110,27 @@ export default function MiniLiveLobbyWallRuntime({
 
   const handleJoin = (record: LiveDiscoveryRecord) => {
     onSelectRoom?.(record);
-    const joinResult = resolveInstantJoin(record, { role: role === "performer" ? "PERFORMER" : "FAN" });
-    if (joinResult.href) {
-      router.push(joinResult.href);
-    } else {
-      router.push(`/live/rooms/${record.roomId}`);
-    }
-    onClose();
+    const joinResult = resolveInstantJoin(record, {
+      role: role === "performer" ? "PERFORMER" : "FAN",
+    });
+    // Canonical LobbyEntryFlow — never invent /live/lobbies or hard-push past seat assignment.
+    setEntryFlowRoom(joinResult.room);
   };
 
   if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
+    <>
+      {entryFlowRoom ? (
+        <LobbyEntryFlow
+          room={entryFlowRoom}
+          instant
+          onClose={() => {
+            setEntryFlowRoom(null);
+            onClose();
+          }}
+        />
+      ) : null}
     <div
       data-testid="tmi-mini-live-lobby-wall"
       role="dialog"
@@ -131,8 +142,8 @@ export default function MiniLiveLobbyWallRuntime({
         zIndex: 9200,
         width: 360,
         maxWidth: "calc(100vw - 32px)",
-        height: 560,
-        maxHeight: "calc(100vh - 48px)",
+        height: "min(560px, calc(100dvh - 96px))",
+        maxHeight: "calc(100dvh - 96px)",
         background: "rgba(5,5,16,0.98)",
         border: "1px solid rgba(255,45,170,0.45)",
         borderRadius: 20,
@@ -390,7 +401,8 @@ export default function MiniLiveLobbyWallRuntime({
           })
         )}
       </div>
-    </div>,
+    </div>
+    </>,
     document.body
   );
 }

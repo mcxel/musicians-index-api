@@ -213,6 +213,8 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
       set((s) => {
         const frameA = s.frames[a];
         const frameB = s.frames[b];
+        // Remap sources only — never tear WebRTC / recreate tracks.
+        if (!frameA || !frameB) return s;
         return {
           frames: {
             ...s.frames,

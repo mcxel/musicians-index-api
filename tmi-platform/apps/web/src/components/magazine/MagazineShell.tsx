@@ -525,12 +525,16 @@ export default function MagazineShell({
       aria-label="TMI Magazine"
       style={{
         minHeight: "100vh",
+        maxWidth: "100vw",
+        width: "100%",
+        overflowX: "hidden",
         paddingTop: 56,
         background: "linear-gradient(160deg, #0a0014 0%, #020617 60%, #0a0a0f 100%)",
         color: "#e2e8f0",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
         position: "relative",
+        boxSizing: "border-box",
       }}
     >
       <style>{`
@@ -571,6 +575,14 @@ export default function MagazineShell({
           }
           .tmi-mag-cols {
             column-count: 1 !important;
+          }
+          .tmi-mag-shell-container,
+          .tmi-mag-shell-canvas,
+          [data-testid^="magazine-page-"] {
+            max-width: 100vw !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
           }
         }
         .tmi-mag-dropcap::first-letter {
@@ -797,6 +809,8 @@ export default function MagazineShell({
             minHeight: 540,
             maxWidth: showSpread ? 1100 : 680,
             margin: "0 auto",
+            boxSizing: "border-box",
+            overflowX: "hidden",
             position: "relative",
             transition: reduced ? undefined : flipTransition,
             transform: flipTransform,

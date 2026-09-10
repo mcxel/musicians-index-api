@@ -776,6 +776,9 @@ export default function CommandCenterMediaStack({
     return () => window.removeEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
   }, []);
 
+  // LOBBY WALL button: set state only — external listeners use tmi:toggle-mini-lobby-wall.
+  const toggleLobbyWallFromButton = () => setMiniLobbyWallOpen((v) => !v);
+
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) {
       document.exitFullscreen().catch(() => undefined);
@@ -998,6 +1001,13 @@ export default function CommandCenterMediaStack({
 
   const handleSwap = () => {
     setSwapOrder((prev) => !prev);
+    // Keep canonical media runtime frame sources in sync with visual slot order (no track tear).
+    try {
+      const { swapFrames } = useCanonicalMediaPlayerRuntime.getState();
+      swapFrames("a", "b");
+    } catch {
+      /* runtime may be unmounted outside enableMediaRuntime */
+    }
   };
 
   const utilityBtn = (
@@ -1445,10 +1455,7 @@ export default function CommandCenterMediaStack({
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {utilityBtn(miniLobbyWallOpen, "#FF2DAA", "LOBBY WALL", () => {
-              setMiniLobbyWallOpen((v) => !v);
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("tmi:toggle-mini-lobby-wall"));
-              }
+              toggleLobbyWallFromButton();
             }, {
               testId: "tmi-lobby-wall-trigger",
               title: "Open phone-sized Live Lobby Wall",
