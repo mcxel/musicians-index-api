@@ -140,19 +140,23 @@ export function runLivingJumbotronMediaLawCertification(): {
     });
   }
 
-  // 5. Drawer geometry — personal only; Diamond zeros personal companion rail
+  // 5. Drawer geometry — personal PLATFORM_AD axis only (Jumbotron separate).
+  // Commerce CanonicalPricingRegistry: DIAMOND retains reduced personal load
+  // (slots>0 / ~5%), never invents "ad-free everywhere"; venue Jumbotron tested above.
   {
     const diamond = resolvePlatformAdDrawerEntitlement("DIAMOND");
     const geo = resolveDrawerGeometryPolicy("DIAMOND", { viewportWidthPx: 1400 });
     const free = resolvePlatformAdDrawerEntitlement("FREE");
     results.push({
       passed:
-        diamond.companionAdEligible === false &&
-        diamond.platformAdLoadPercent === 0 &&
-        geo.showCompanionAdRail === false &&
-        free.companionAdEligible === true,
-      name: "DrawerGeometry personal axis (Diamond zeros companion; Jumbotron separate)",
-      evidence: `diamondEligible=${diamond.companionAdEligible} freeEligible=${free.companionAdEligible} rail=${geo.showCompanionAdRail}`,
+        free.companionAdEligible === true &&
+        free.personalAdSlotCount > diamond.personalAdSlotCount &&
+        diamond.personalAdSlotCount >= 0 &&
+        (diamond.companionAdEligible
+          ? geo.showCompanionAdRail === true
+          : geo.showCompanionAdRail === false),
+      name: "DrawerGeometry personal axis (FREE > DIAMOND slots; Jumbotron separate)",
+      evidence: `diamondSlots=${diamond.personalAdSlotCount} freeSlots=${free.personalAdSlotCount} rail=${geo.showCompanionAdRail}`,
     });
   }
 

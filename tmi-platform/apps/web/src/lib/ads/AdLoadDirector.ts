@@ -10,7 +10,7 @@ import {
   getAdSenseSlotId,
   hasAnyAdSenseSlotConfigured,
 } from "@/lib/ads/adConfig";
-import { resolveAdRail } from "@/lib/ads/AdRailEngine";
+import { resolveAdRailSlot } from "@/lib/ads/AdRailEngine";
 import { resolveRouteAdEligibility } from "@/lib/ads/RouteAdEligibilityResolver";
 import {
   isAdSenseAllowed,
@@ -151,9 +151,9 @@ export function decideAdSenseLoad(input: {
 
 /** Rail selection still uses AdRailEngine — no parallel inventory. */
 export function selectAdRail(
-  params: Parameters<typeof resolveAdRail>[0],
+  params: Parameters<typeof resolveAdRailSlot>[0],
 ) {
-  return resolveAdRail(params);
+  return resolveAdRailSlot(params);
 }
 
 export const AdLoadDirector = {

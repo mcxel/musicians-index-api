@@ -78,8 +78,10 @@ function tierKeyForSlotLookup(tier: DrawerMembershipTier): string {
 
 /**
  * Resolve *personal* platform-ad drawer entitlement from membership tier.
- * Source of truth on this branch: AdPricingEngine.getAdSlotCount / MEMBER_AD_SLOT_COUNT.
- * Diamond slots = 0 → personal companion ineligible; venue/Jumbotron ads untouched.
+ * Source of truth: AdPricingEngine.getAdSlotCount / MEMBER_AD_SLOT_COUNT
+ * (aligned with CanonicalPricingRegistry personal PLATFORM_AD load — DIAMOND
+ * retains a reduced slot count, not "zero ads everywhere").
+ * Venue/Jumbotron ads are never governed by this policy.
  */
 export function resolvePlatformAdDrawerEntitlement(
   tier: DrawerMembershipTier,

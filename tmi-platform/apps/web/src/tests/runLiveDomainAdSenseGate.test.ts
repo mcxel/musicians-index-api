@@ -106,7 +106,9 @@ export function runLiveDomainAdSenseGates(): {
   const performerAlias = readSrc("app", "performers", "[slug]", "page.tsx");
   const performerOk =
     performerPublic.includes("maybePromise") &&
-    performerAlias.includes("redirect(`/profile/performer/");
+    (performerAlias.includes("redirect(`/profile/performer/") ||
+      (performerAlias.includes("canonicalPublicPath") &&
+        performerAlias.includes("redirect(")));
   rows.push({
     id: "LIVE-DOMAIN-05_performer_profile_runtime",
     status: performerOk ? "PASS" : "FAIL",

@@ -288,13 +288,19 @@ export function runPriceGates(): GateRow[] {
   rows.push({
     id: "PRICE-04",
     status:
-      pricingPage.includes("getSubscriptionOffersLowestFirst") &&
-      pricingPage.includes("buildMembershipTiers")
+      (pricingPage.includes("listMembershipOffersLowestFirst") ||
+        pricingPage.includes("getSubscriptionOffersLowestFirst")) &&
+      (pricingPage.includes("getMembershipTierCards") ||
+        pricingPage.includes("buildMembershipTiers")) &&
+      !pricingPage.includes("const FAN_TIERS = [") &&
+      !pricingPage.includes("const PERFORMER_TIERS = [")
         ? "PASS"
         : "FAIL",
-    evidence: pricingPage.includes("getSubscriptionOffersLowestFirst")
-      ? "pricing membership cards built via getSubscriptionOffersLowestFirst (no hard-coded membership $ ladder)"
-      : "pricing page still hard-codes membership dollar ladder",
+    evidence:
+      pricingPage.includes("listMembershipOffersLowestFirst") ||
+      pricingPage.includes("getSubscriptionOffersLowestFirst")
+        ? "pricing membership cards built via CanonicalPricingRegistry / getSubscriptionOffersLowestFirst (no hard-coded membership $ ladder)"
+        : "pricing page still hard-codes membership dollar ladder",
   });
 
   const passes = listSeasonPassOffers({ includeUnavailable: true });

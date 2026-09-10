@@ -2,60 +2,51 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
+import { listMembershipOffersLowestFirst } from "@/lib/commerce/CanonicalPricingRegistry";
 
-const TIERS = [
-  {
-    key: "FAN_RUBY_MONTHLY" as const,
-    label: "Fan Ruby",
-    testId: "sub-tier-fan",
-    tagline: "All live rooms, chat + reactions, tip performers, monthly magazine, XP + achievements.",
-    color: "#FF4444",
-    highlight: false,
-  },
-  {
-    key: "FAN_DIAMOND_MONTHLY" as const,
-    label: "Fan Diamond",
-    testId: "sub-tier-fan-diamond",
-    tagline: "All Platinum perks, NFT access, VIP front-row seats, Diamond avatar glow, Season Zero recognition.",
-    color: "#00FF88",
-    highlight: true,
-  },
-  {
-    key: "PERFORMER_RUBY_MONTHLY" as const,
-    label: "Performer Ruby",
-    testId: "sub-tier-performer",
-    tagline: "Go live anytime, beat marketplace access, booking requests, analytics dashboard.",
-    color: "#FF2DAA",
-    highlight: false,
-  },
-  {
-    key: "PERFORMER_DIAMOND_MONTHLY" as const,
-    label: "Performer Diamond",
-    testId: "sub-tier-artist",
-    tagline: "All Platinum perks, priority booking, full revenue split access, Diamond badge, NFT minting.",
-    color: "#AA2DFF",
-    highlight: false,
-  },
-] as const;
+const MEMBERSHIP_ACCOUNTS = ["fan", "performer"] as const;
+const TIER_COLORS = {
+  FREE: "#00FFFF",
+  PRO: "#FF6B35",
+  RUBY: "#FF4444",
+  SILVER: "#C0C0C0",
+  GOLD: "#FFD700",
+  PLATINUM: "#AA2DFF",
+  DIAMOND: "#00FF88",
+  FAMILY: "#00FFFF",
+  BAND: "#FF9500",
+} as const;
 
-type TierKey = (typeof TIERS)[number]["key"];
+const TIERS = MEMBERSHIP_ACCOUNTS.flatMap((accountType) =>
+  listMembershipOffersLowestFirst(accountType).map((offer) => ({
+    ...offer,
+    accountType,
+    id: `${accountType}-${offer.tier}`,
+    color: TIER_COLORS[offer.tier],
+    highlight: offer.tier === "PRO",
+    label: offer.name,
+  })),
+);
+
+type TierId = (typeof TIERS)[number]["id"];
 
 export default function SubscriptionsPage() {
-  const [loading, setLoading] = useState<TierKey | null>(null);
+  const [loading, setLoading] = useState<TierId | null>(null);
 
-  async function subscribe(tierKey: TierKey) {
-    setLoading(tierKey);
-    const product = STRIPE_PRODUCTS[tierKey];
-    const mode = "interval" in product ? "subscription" : "payment";
+  async function subscribe(tier: (typeof TIERS)[number]) {
+    if (!tier.priceId) {
+      window.location.href = tier.accountType === "fan" ? "/signup" : "/signup?role=performer";
+      return;
+    }
+    setLoading(tier.id);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          items: [{ priceId: product.priceId, quantity: 1 }],
-          mode,
+          items: [{ priceId: tier.priceId, quantity: 1 }],
+          mode: "subscription",
           successUrl: `${window.location.origin}/fan/dashboard?subscribed=1`,
           cancelUrl: `${window.location.origin}/subscriptions`,
         }),
@@ -83,47 +74,57 @@ export default function SubscriptionsPage() {
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-          {TIERS.map(({ key, label, testId, tagline, color, highlight }) => {
-            const product = STRIPE_PRODUCTS[key];
-            const priceLabel = `$${(product.price / 100).toFixed(2)}${"interval" in product ? `/${product.interval}` : ""}`;
-            const isLoading = loading === key;
+        {MEMBERSHIP_ACCOUNTS.map((accountType) => (
+          <section key={accountType} style={{ marginBottom: 34 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <div style={{ height: 1, flex: 1, background: accountType === "fan" ? "rgba(0,255,255,0.4)" : "rgba(255,45,170,0.4)" }} />
+              <h2 style={{ margin: 0, color: accountType === "fan" ? "#00FFFF" : "#FF2DAA", fontSize: 12, fontWeight: 900, letterSpacing: "0.14em" }}>
+                {accountType === "fan" ? "FAN MEMBERSHIP" : "PERFORMER MEMBERSHIP"}
+              </h2>
+              <div style={{ height: 1, flex: 1, background: accountType === "fan" ? "rgba(0,255,255,0.4)" : "rgba(255,45,170,0.4)" }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+          {TIERS.filter((tier) => tier.accountType === accountType).map((tier) => {
+            const priceLabel = tier.priceId
+              ? `$${(tier.priceCents / 100).toFixed(2)}/month`
+              : "Free";
+            const isLoading = loading === tier.id;
 
             return (
               <div
-                key={key}
-                data-testid={testId}
+                key={tier.id}
+                data-testid={`sub-tier-${tier.id}`}
                 style={{
-                  border: `1px solid ${color}${highlight ? "88" : "33"}`,
+                  border: `1px solid ${tier.color}${tier.highlight ? "88" : "33"}`,
                   borderRadius: 14,
                   padding: "22px 18px",
-                  background: highlight ? `${color}10` : "rgba(255,255,255,0.02)",
+                  background: tier.highlight ? `${tier.color}10` : "rgba(255,255,255,0.02)",
                   display: "flex",
                   flexDirection: "column",
                   gap: 14,
-                  boxShadow: highlight ? `0 0 32px ${color}18` : "none",
+                  boxShadow: tier.highlight ? `0 0 32px ${tier.color}18` : "none",
                   position: "relative",
                 }}
               >
-                {highlight && (
-                  <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: color, color: "#050510", fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", borderRadius: 999, padding: "3px 12px" }}>
+                {tier.highlight && (
+                  <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: tier.color, color: "#050510", fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", borderRadius: 999, padding: "3px 12px" }}>
                     MOST POPULAR
                   </div>
                 )}
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color, letterSpacing: "0.12em", marginBottom: 4 }}>{label.toUpperCase()}</div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: tier.color, letterSpacing: "0.12em", marginBottom: 4 }}>{tier.label.toUpperCase()}</div>
                   <div style={{ fontSize: 26, fontWeight: 900, color: "#fff" }}>{priceLabel}</div>
                 </div>
                 <ul style={{ margin: 0, padding: "0 0 0 14px", listStyle: "none", flex: 1 }}>
-                  {product.features?.map((f: string) => (
+                  {tier.features.map((f) => (
                     <li key={f} style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 6, paddingLeft: 0, display: "flex", gap: 6, alignItems: "flex-start" }}>
-                      <span style={{ color, flexShrink: 0 }}>—</span> {f}
+                      <span style={{ color: tier.color, flexShrink: 0 }}>—</span> {f}
                     </li>
                   ))}
                 </ul>
                 <button
-                  data-testid={`subscribe-${testId.replace("sub-tier-", "")}`}
-                  onClick={() => void subscribe(key)}
+                  data-testid={`subscribe-${tier.id}`}
+                  onClick={() => void subscribe(tier)}
                   disabled={isLoading}
                   style={{
                     padding: "12px",
@@ -131,19 +132,21 @@ export default function SubscriptionsPage() {
                     fontWeight: 800,
                     letterSpacing: "0.15em",
                     color: isLoading ? "rgba(255,255,255,0.4)" : "#050510",
-                    background: isLoading ? "rgba(255,255,255,0.06)" : color,
+                    background: isLoading ? "rgba(255,255,255,0.06)" : tier.color,
                     border: "none",
                     borderRadius: 8,
                     cursor: isLoading ? "not-allowed" : "pointer",
                     width: "100%",
                   }}
                 >
-                  {isLoading ? "REDIRECTING..." : `SUBSCRIBE ${label.toUpperCase()}`}
+                  {isLoading ? "REDIRECTING..." : tier.priceId ? `SUBSCRIBE ${tier.label.toUpperCase()}` : `JOIN ${tier.accountType.toUpperCase()} FREE`}
                 </button>
               </div>
             );
           })}
-        </div>
+            </div>
+          </section>
+        ))}
 
         <div style={{ marginTop: 32, textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.25)", lineHeight: 1.7 }}>
           By subscribing you agree to our{" "}

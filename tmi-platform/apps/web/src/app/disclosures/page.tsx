@@ -24,6 +24,10 @@ export default function DisclosuresPage() {
             body: "The Musician's Index is free to use for fans and performers. Advertising helps fund free access to live streaming, discovery, rankings, and the magazine, so we don't have to charge everyone to keep the platform running. We partner with Google AdSense and other certified advertising networks to display ads across the site.",
           },
           {
+            title: "Google AdSense Consent & Billable Inventory",
+            body: "On eligible public pages, after you accept advertising consent, TMI may load Google AdSense. Declining consent keeps session cookies needed to stay signed in but does not load AdSense for billable inventory. Platform bots, automated QA, certification runners, and other non-human traffic are excluded from billable AdSense inventory and must never be counted as payable impressions. ESTIMATED impressions are not PAYABLE and not PAID until a payment processor confirms settlement.",
+          },
+          {
             title: "Advertising Partners",
             body: "We currently work with Google AdSense as our primary advertising partner, and may work with additional certified networks (such as Amazon Publisher Services or Media.net) from time to time. Each partner operates under its own privacy policy and advertising standards in addition to ours.",
           },

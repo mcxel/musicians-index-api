@@ -1,0 +1,133 @@
+{
+  "createdAt": "2026-09-10T08:33:00Z",
+  "updatedAt": "2026-09-10T09:25:00Z",
+  "integrationBranch": "p0/integration-step3",
+  "base": "origin/main@a3abfdac",
+  "headAfterPartialMerge": "462984f7",
+  "headAfterStep3Resolution": "PENDING_COMMIT",
+  "step3Status": "CERTIFIED",
+  "noMainPush": true,
+  "productionDeploy": false,
+  "step4Started": false,
+  "step2CommerceSha": "1fe6c715a197ef83db6e9ec049c5d765b5ded785",
+  "domainAuthorityResolutions": {
+    "pricing": {
+      "decision": "KEEP_COMMERCE",
+      "authority": "CanonicalPricingRegistry / listMembershipOffersLowestFirst + products.ts TEST/LIVE twins",
+      "preserved": [
+        "Simultaneous Fan + Performer ladders",
+        "TEST/LIVE Price ID separation",
+        "$4.99 Fan Pro / $2.99 Performer Pro",
+        "resolveCheckoutMetadataPlan Performer → PERFORMER"
+      ],
+      "discarded": [
+        "Obsolete hardcoded FAN_TIERS/PERFORMER_TIERS arrays on pricing page",
+        "Legacy FAN/ARTIST/VIP heuristics",
+        "Branch-local product tables overwriting commerce products.ts",
+        "Ticket ladder mixed into subscriptions"
+      ],
+      "cherryPicked": [
+        "Hotfix GlobalTmiHeader / UniversalAccountDropdown / resolveAccountShellCapabilities presentation",
+        "AdConsentBanner layout polish",
+        "AdSense app-ads.txt + AdLoadDirector / compliance / observatory modules",
+        "PriceSortAuthority + price-first cert gates aligned to registry API"
+      ]
+    },
+    "privacy": {
+      "decision": "KEEP_ADSENSE_PRIVACY",
+      "authority": "adsense-privacy-disclosures-magazine (already merged)",
+      "preserved": [
+        "privacy/page.tsx blob fac363b3…",
+        "layout.tsx blob 65036262…",
+        "AdSense accept/decline + NPA",
+        "Consent before ad init",
+        "Disclosure/footer links"
+      ],
+      "jumbotron": "Subordinate — LivingJumbotronProgramScheduler + RoleMediaWorkspaceAuthority merged; privacy not replaced"
+    },
+    "lobby": {
+      "decision": "KEEP_CANONICAL_LOBBY_PLUS_MEDIA_TRUTH",
+      "authority": "physical-ui lobby/session + media-truth camera/monitor",
+      "integrated": [
+        "InstantJoinDecision → LobbyEntryFlow (exact-room, mid-join wall persistence)",
+        "CameraOrientationPhysicsDirector / LiveCameraPreview transform bind",
+        "CanonicalDualMonitorStack / MonitorExperienceDirector",
+        "Lobby route convergence + RECORD honesty tests"
+      ],
+      "preserved": [
+        "Discovery-bus real rooms only",
+        "Fan lobby avatar category vs Performer video-panel category split",
+        "humanViewerCount truth (no fabricated viewers)"
+      ]
+    },
+    "hubImmersive": {
+      "decision": "DEFER",
+      "branch": "p0/hub-immersive-composition",
+      "note": "Not merged during Step 3"
+    }
+  },
+  "reconciliationOrder": [
+    {"wave": 1, "branch": "p0/revenue-checkout-fulfillment-cert", "status": "MERGED"},
+    {"wave": 1, "branch": "p0/pricing-catalog-stripe-sync", "status": "SKIP_ANCESTOR"},
+    {"wave": 1, "branch": "p0/revenue-pricing-ui-hotfix", "status": "MERGED_DOMAIN", "note": "commerce pricing/products restored after merge; shell/header kept"},
+    {"wave": 1, "branch": "p0/revenue-tickets-tips-sponsor", "status": "MERGED"},
+    {"wave": 2, "branch": "p0/google-signup-role-choice-cert", "status": "MERGED"},
+    {"wave": 3, "branch": "p0/revenue-adsense-prod-drift", "status": "MERGED_DOMAIN", "note": "privacy/layout/pricing/products restored to certified authority"},
+    {"wave": 3, "branch": "p0/adsense-privacy-disclosures-magazine", "status": "MERGED"},
+    {"wave": 3, "branch": "p0/revenue-adsense-price-first", "status": "MERGED_DOMAIN", "note": "PRICE-04 gate accepts CanonicalPricingRegistry path"},
+    {"wave": 4, "branch": "p0/living-jumbotron-media-law", "status": "MERGED_DOMAIN", "note": "privacy kept; jumbotron libs added"},
+    {"wave": 4, "branch": "p0/physical-ui-runtime-convergence", "status": "MERGED"},
+    {"wave": 4, "branch": "p0/orbital-wheel-profile-truth", "status": "MERGED"},
+    {"wave": 4, "branch": "p0/media-truth-camera-monitor-closeout", "status": "MERGED_DOMAIN", "note": "MiniLiveLobbyWallRuntime manual resolve"},
+    {"wave": 4, "branch": "p0/magazine-reader-mobile-convergence", "status": "MERGED"},
+    {"wave": 5, "branch": "p0/home-final-convergence", "status": "EMPTY_VS_MAIN"},
+    {"wave": 5, "branch": "p0/performer-earnings-nudge", "status": "EMPTY_VS_MAIN"},
+    {"wave": 5, "branch": "p0/hub-immersive-composition", "status": "DEFER_HIGH_RISK"}
+  ],
+  "verification": {
+    "gitDiffCheck": "PASS",
+    "pricingHttp": {"url": "http://127.0.0.1:3000/pricing", "status": 200, "startForFree": true, "fanLadder": true, "performerLadder": true},
+    "registryLadders": {
+      "fanPro": "$4.99",
+      "performerPro": "$2.99",
+      "fan": "FREE→PRO→RUBY→SILVER→GOLD→PLATINUM→FAMILY→DIAMOND",
+      "performer": "FREE→PRO→RUBY→SILVER→GOLD→PLATINUM→DIAMOND→BAND"
+    },
+    "tests": {
+      "runCheckoutMetadataPlan": "PASS",
+      "runPricingCatalogStripeSync": "PASS",
+      "runGoogleRoleChoiceAuthority": "PASS allPassed=true",
+      "runAdSensePriceFirstCertification": "PASS FAIL=0 (ops BLOCKED slots OK)",
+      "runLiveDomainAdSenseGate": "PASS FAIL=0 BLOCKED=LIVE-DOMAIN-10 slots ENV",
+      "runLivingJumbotronMediaLawCertification": "PASS allPassed=true physical=BLOCKED",
+      "runLobbyConvRecordHonesty": "PASS",
+      "runLeaderboardTruthAndCameraPhysics": "PASS",
+      "runGoLiveMultiFeedGeometryAndLobbyWall": "PASS"
+    },
+    "typecheck": {
+      "note": "Full pnpm typecheck still reports pre-existing editorial-economy Prisma gaps; AdLoadDirector resolveAdRail→resolveAdRailSlot fixed (merge-introduced).",
+      "adLoadDirectorImport": "PASS"
+    },
+    "protectedBlobs": {
+      "pricing/page.tsx": "restored commerce authority then dead ladders removed (registry-only)",
+      "products.ts": "c300bfd7 (commerce)",
+      "privacy/page.tsx": "fac363b3 (adsense-privacy)",
+      "layout.tsx": "65036262 (adsense-privacy)"
+    }
+  },
+  "blockersForMarcel": [],
+  "deferred": [
+    {
+      "branch": "p0/hub-immersive-composition",
+      "action": "Rebase onto integration after Step 3; do not merge in Step 3"
+    },
+    {
+      "item": "LIVE-DOMAIN-10 AdSense slot ENV",
+      "action": "Ops: populate NEXT_PUBLIC AdSense slot IDs before review request (not a code FAIL)"
+    }
+  ],
+  "step4Next": [
+    "3D authority audit (canonical Herser asset binding / AvatarRuntime / VenueRuntime / seat registries)",
+    "No 3D implementation until Step 3 integration certified — Step 3 now CERTIFIED; Step 4 not started this session"
+  ]
+}
