@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
+import { resolveMinMonitorCount } from "@/lib/monitors/RoleMediaWorkspaceAuthority";
 import IdleMonitorFallbackRuntime from "@/components/admin/overseer/IdleMonitorFallbackRuntime";
 import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
 import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
@@ -284,6 +285,12 @@ interface CommandCenterMediaStackProps {
   naturalHeight?: boolean;
   /** Presentation-only layout mode for Stage Deck monitor visibility. */
   monitorLayoutMode?: "dual" | "primary";
+  /**
+   * Optional role for RoleMediaWorkspaceAuthority.
+   * Business roles (advertiser/sponsor/promoter/band/venue) force 1×16:9 portal.
+   * When set, overrides monitorLayoutMode for minMonitorCount.
+   */
+  mediaWorkspaceRole?: string;
   /** Fan vs performer — Rule 26: avatar-ownership controls never show for performers. */
   role?: "fan" | "performer";
   /** Broadcaster user id for Live Distribution Bezel link state. */
@@ -660,6 +667,7 @@ export default function CommandCenterMediaStack({
   seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
   naturalHeight = false,
   monitorLayoutMode = "dual",
+  mediaWorkspaceRole,
   continuityContext,
   role = "fan",
   userId = null,
@@ -1584,7 +1592,13 @@ export default function CommandCenterMediaStack({
       <CanonicalDualMonitorStack
         variant={bezelVariant}
         seriesLabel={seriesLabel}
-        minMonitorCount={monitorLayoutMode === "primary" ? 1 : 2}
+        minMonitorCount={
+          mediaWorkspaceRole
+            ? resolveMinMonitorCount(mediaWorkspaceRole)
+            : monitorLayoutMode === "primary"
+              ? 1
+              : 2
+        }
         enableMediaRuntime
         monitors={[
           {

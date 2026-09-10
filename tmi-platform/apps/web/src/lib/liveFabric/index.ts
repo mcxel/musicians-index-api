@@ -37,3 +37,13 @@ export {
 } from "./contracts/MediaSourceContracts";
 export type { CanonicalExperienceType } from "./contracts/ExperienceContracts";
 export type { SessionReconcileResult } from "./contracts/LiveSessionContracts";
+export {
+  CAN_NATIVE_MULTIWINDOW_SPLIT,
+  probeNativeMultiwindowSplit,
+  resolveDetachedMonitorComposition,
+  buildDetachedVoltronFallbackPlan,
+} from "./DetachedMonitorVoltronFallback";
+export type {
+  DetachCapabilityProbe,
+  DetachedCompositionDecision,
+} from "./DetachedMonitorVoltronFallback";
