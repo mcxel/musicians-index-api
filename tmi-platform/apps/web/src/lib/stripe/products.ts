@@ -16,6 +16,7 @@ export const STRIPE_PRODUCTS = {
   // only, never used for new checkout.
   FAN_PRO_MONTHLY: {
     productId: "prod_fan_pro",
+    // TEST catalog (acct_1T0tag…): price_1UAj28…zQ4dTJv2. LIVE twin price_1TcJnF… is live-only.
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PRO ?? "price_1UAj28EAwH1Fjtu9zQ4dTJv2",
     name:      "TMI Fan — Pro",
     price:     499,  // $4.99/mo
@@ -74,6 +75,7 @@ export const STRIPE_PRODUCTS = {
   // ── Performer subscriptions ───────────────────────────────────────────────
   PERFORMER_PRO_MONTHLY: {
     productId: "prod_performer_pro",
+    // TEST catalog: price_1UAj28…eB1IOCcN ($2.99). LIVE twin price_1TcKDB… is live-only.
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PRO ?? "price_1UAj28EAwH1Fjtu9eB1IOCcN",
     name:      "TMI Performer — Pro",
     price:     299,  // $2.99/mo
@@ -92,7 +94,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_silver",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? "price_1TcK0dEAwH1Fjtu9MXK323Q7",
     name:      "TMI Performer — Silver",
-    price:     499,  // $4.99/mo
+    price:     1299, // $12.99/mo
     interval:  "month" as const,
     features:  ["Everything in Ruby","Fan club tools","Tipping enabled","Merch store access","Silver badge"],
   },
@@ -100,7 +102,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_gold",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
     name:      "TMI Performer — Gold",
-    price:     999,  // $9.99/mo
+    price:     1799, // $17.99/mo
     interval:  "month" as const,
     features:  ["Everything in Silver","Priority placement","Billboard rotation","Gold performer badge"],
   },
@@ -108,7 +110,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_platinum",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
     name:      "TMI Performer — Platinum",
-    price:     1999, // $19.99/mo
+    price:     2299, // $22.99/mo
     interval:  "month" as const,
     features:  ["Everything in Gold","NFT minting rights","Unlimited uploads","Tour booking tools","Platinum badge"],
   },
@@ -957,6 +959,32 @@ export function resolveFanCosmeticUsdCents(
 
 export function isRealPriceId(priceId: string): boolean {
   return /^price_1[A-Za-z0-9]{14,}$/.test(priceId);
+}
+
+/** One-time founder packs that currently resolve to a real Stripe Price ID. */
+export function getRealFoundingPacks(): Array<{
+  key: StripeProductKey;
+  name: string;
+  priceCents: number;
+  priceId: string;
+}> {
+  const keys: StripeProductKey[] = [
+    "FOUNDING_SUPPORTER",
+    "FOUNDING_CREATOR",
+    "FOUNDING_MEMBER",
+    "FOUNDING_DIAMOND",
+  ];
+  return keys
+    .map((key) => {
+      const prod = STRIPE_PRODUCTS[key];
+      return {
+        key,
+        name: prod.name,
+        priceCents: prod.price,
+        priceId: prod.priceId,
+      };
+    })
+    .filter((pack) => isRealPriceId(pack.priceId));
 }
 
 // Returns only the products that have real Stripe price IDs (safe to checkout)

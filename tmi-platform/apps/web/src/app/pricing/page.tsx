@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSubscriptionProduct } from '@/lib/stripe/products';
+import { getRealFoundingPacks, getSubscriptionProduct, isRealPriceId } from '@/lib/stripe/products';
+import { listMembershipOffersLowestFirst } from '@/lib/commerce/CanonicalPricingRegistry';
 
 // PRO/RUBY price + priceId + checkout amount are read from the canonical
 // registry (@/lib/stripe/products.ts), not hardcoded — this page used to
@@ -363,14 +364,70 @@ const SUPPORT_TIERS = [
   },
 ] as const;
 
+const MEMBERSHIP_COLORS = {
+  FREE: '#00FFFF',
+  PRO: '#FF6B35',
+  RUBY: '#FF4444',
+  SILVER: '#C0C0C0',
+  GOLD: '#FFD700',
+  PLATINUM: '#AA2DFF',
+  DIAMOND: '#00FF88',
+  FAMILY: '#00FFFF',
+  BAND: '#FF9500',
+} as const;
+
+const MEMBERSHIP_ICONS = {
+  FREE: '👤',
+  PRO: '⭐',
+  RUBY: '🔴',
+  SILVER: '🥈',
+  GOLD: '🥇',
+  PLATINUM: '💠',
+  DIAMOND: '💎',
+  FAMILY: '👨‍👩‍👧',
+  BAND: '🎸',
+} as const;
+
+function getMembershipTierCards(accountType: 'fan' | 'performer') {
+  return listMembershipOffersLowestFirst(accountType).map((offer) => {
+    const isFree = offer.tier === 'FREE';
+    const roleLabel = accountType === 'fan' ? 'FAN' : 'PERFORMER';
+    return {
+      key: offer.id,
+      name: isFree ? 'FREE' : `${offer.tier} ${roleLabel}`,
+      icon: MEMBERSHIP_ICONS[offer.tier],
+      color: MEMBERSHIP_COLORS[offer.tier],
+      price: isFree ? '$0' : `$${(offer.priceCents / 100).toFixed(2)}/mo`,
+      badge: offer.tier === 'PRO' ? 'START HERE' : offer.tier === 'FAMILY' ? 'BEST VALUE' : offer.tier === 'BAND' ? 'GROUPS' : null,
+      perks: offer.features,
+      cta: isFree ? 'JOIN FREE' : offer.tier === 'PRO' ? 'GET PRO' : `UPGRADE TO ${offer.tier}`,
+      ctaHref: isFree
+        ? accountType === 'fan' ? '/signup' : '/signup?role=performer'
+        : `/api/stripe/checkout?priceId=${encodeURIComponent(offer.priceId!)}&mode=subscription&amount=${offer.priceCents}&productName=${encodeURIComponent(offer.name)}`,
+      highlighted: offer.tier === 'PRO',
+    };
+  });
+}
 
 export default function PricingPage() {
-  const [segment, setSegment] = useState<'fans' | 'performers'>('fans');
   const [showAll, setShowAll] = useState(false);
 
-  const tiers = segment === 'fans' ? FAN_TIERS : PERFORMER_TIERS;
-  // Always show FREE + first paid tier upfront. Show rest on demand.
-  const visibleTiers = showAll ? tiers : tiers.slice(0, 2);
+  const fanTiers = getMembershipTierCards('fan');
+  const performerTiers = getMembershipTierCards('performer');
+  // Both paths stay visible: a Fan can discover Performer creation without
+  // hiding their existing Fan path, and vice versa.
+  const visibleTiers = showAll
+    ? [...fanTiers, ...performerTiers]
+    : [...fanTiers.slice(0, 2), ...performerTiers.slice(0, 2)];
+  // Founder packs stay hidden until registry SKUs have real Stripe Price IDs.
+  const realFounding = getRealFoundingPacks();
+  const purchasableFoundingPacks =
+    realFounding.length === 0
+      ? []
+      : FOUNDING_PACKS.filter((pack) => {
+          const m = pack.ctaHref.match(/priceId=([^&]+)/);
+          return Boolean(m && isRealPriceId(decodeURIComponent(m[1])));
+        });
 
   return (
     <main style={{ minHeight: '100vh', background: '#060410', color: '#fff', padding: '60px 20px 80px', fontFamily: "'Inter',sans-serif" }}>
@@ -383,7 +440,8 @@ export default function PricingPage() {
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 10 }}>Join free. Upgrade when you&apos;re ready. Cancel anytime.</p>
         </div>
 
-        {/* ── Founding Supporters ───────────────────────────────────────────── */}
+        {/* ── Founding Supporters (only when real Stripe Price IDs exist) ── */}
+        {purchasableFoundingPacks.length > 0 && (
         <div style={{
           marginBottom: 52,
           padding: '28px 24px 32px',
@@ -407,7 +465,7 @@ export default function PricingPage() {
 
           {/* Pack cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 24 }}>
-            {FOUNDING_PACKS.map((pack) => (
+            {purchasableFoundingPacks.map((pack) => (
               <div
                 key={pack.key}
                 style={{
@@ -488,27 +546,14 @@ export default function PricingPage() {
             so your input routes directly into live triage.
           </div>
         </div>
+        )}
 
-        {/* Toggle — Fans | Performers */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40 }}>
-          <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 40, padding: 4, gap: 4 }}>
-            {(['fans', 'performers'] as const).map((seg) => (
-              <button
-                key={seg}
-                onClick={() => { setSegment(seg); setShowAll(false); }}
-                style={{
-                  padding: '10px 28px', borderRadius: 36, border: 'none', cursor: 'pointer',
-                  fontWeight: 900, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
-                  background: segment === seg
-                    ? (seg === 'fans' ? 'linear-gradient(135deg,#00FFFF,#00DDFF)' : 'linear-gradient(135deg,#FF2DAA,#AA2DFF)')
-                    : 'transparent',
-                  color: segment === seg ? '#050510' : 'rgba(255,255,255,0.45)',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {seg === 'fans' ? '👤 Fans' : '🎤 Performers'}
-              </button>
-            ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, margin: '0 auto 28px', maxWidth: 720 }}>
+          <div style={{ borderBottom: '2px solid #00FFFF', paddingBottom: 8, color: '#00FFFF', fontSize: 11, fontWeight: 900, letterSpacing: '0.14em', textAlign: 'center' }}>
+            FAN MEMBERSHIP
+          </div>
+          <div style={{ borderBottom: '2px solid #FF2DAA', paddingBottom: 8, color: '#FF2DAA', fontSize: 11, fontWeight: 900, letterSpacing: '0.14em', textAlign: 'center' }}>
+            PERFORMER MEMBERSHIP
           </div>
         </div>
 
@@ -598,7 +643,7 @@ export default function PricingPage() {
                 fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', cursor: 'pointer',
               }}
             >
-              SEE ALL {segment === 'fans' ? 'FAN' : 'PERFORMER'} PLANS ↓
+              SEE ALL FAN &amp; PERFORMER PLANS ↓
             </button>
           </div>
         )}

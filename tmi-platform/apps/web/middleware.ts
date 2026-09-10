@@ -467,6 +467,17 @@ export function middleware(req: NextRequest) {
     const userRoles = getUserRoles(req);
 
     if (!sessionCookie) {
+      // Pricing/membership CTAs navigate to GET /api/stripe/checkout?priceId=…
+      // as a real browser link. A JSON 401 dead-ends that purchase chain;
+      // send them through auth and return to the same checkout URL after login.
+      const isStripeCheckoutNav =
+        pathname === '/api/stripe/checkout' ||
+        pathname.startsWith('/api/stripe/checkout/');
+      if (isStripeCheckoutNav) {
+        const signin = new URL('/auth', req.url);
+        signin.searchParams.set('next', pathname + (search || ''));
+        return NextResponse.redirect(signin, 307);
+      }
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }

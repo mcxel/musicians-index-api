@@ -4,6 +4,7 @@ import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
 import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, isRealPriceId, resolveFanCosmeticStripeKey, resolveFanCosmeticUsdCents, type StripeProductKey } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
+import { resolveCheckoutMetadataPlan, tierForPriceId } from '@/lib/stripe/tierMapping';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
 import { venueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
@@ -32,13 +33,6 @@ const KEY_BY_PRICE_ID: Record<string, StripeProductKey> = Object.fromEntries(
     ([key, p]) => [p.priceId, key],
   ),
 ) as Record<string, StripeProductKey>;
-
-// Map subscription product key → UserTier
-const PLAN_TO_TIER: Record<string, UserTier> = {
-  FAN:    'PRO',
-  ARTIST: 'GOLD',
-  VIP:    'DIAMOND',
-};
 
 function isStripePaused(): boolean {
   return process.env.STRIPE_PAUSE_MODE === 'true';
@@ -228,14 +222,9 @@ export async function GET(req: NextRequest) {
   const passType    = searchParams.get('passType') ?? '';
   const amount      = amountStr ? parseInt(amountStr, 10) : null;
 
-  // Resolve which plan/tier this purchase maps to
-  const planMatch = SUBSCRIPTION_TIERS.find(
-    (t) => t.tier1PriceId === resolvedPriceId ||
-           resolvedPriceId.toLowerCase().includes(t.key.toLowerCase()),
-  );
-  const pn = productName.toUpperCase();
-  const planKey: string = planMatch?.key ?? (pn.includes('VIP') || pn.includes('DIAMOND') ? 'VIP' : pn.includes('ARTIST') ? 'ARTIST' : 'FAN');
-  const tierUpgrade: UserTier = PLAN_TO_TIER[planKey] ?? 'PRO';
+  // metadata.plan = FAN | PERFORMER (account family). Entitlement uses priceId → tier.
+  const planKey = resolveCheckoutMetadataPlan(resolvedPriceId, productName);
+  const tierUpgrade: UserTier = tierForPriceId(resolvedPriceId) ?? 'PRO';
 
   // Read user email from non-httpOnly cookie set at login/register
   const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
