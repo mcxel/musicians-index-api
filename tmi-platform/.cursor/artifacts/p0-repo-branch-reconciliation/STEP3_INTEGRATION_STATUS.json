@@ -4,7 +4,7 @@
   "integrationBranch": "p0/integration-step3",
   "base": "origin/main@a3abfdac",
   "headAfterPartialMerge": "462984f7",
-  "headAfterStep3Resolution": "PENDING_COMMIT",
+  "headAfterStep3Resolution": "1c99046e659056aa6dc9c5f3089404c9a0e1bf43",
   "step3Status": "CERTIFIED",
   "noMainPush": true,
   "productionDeploy": false,
@@ -67,26 +67,101 @@
     }
   },
   "reconciliationOrder": [
-    {"wave": 1, "branch": "p0/revenue-checkout-fulfillment-cert", "status": "MERGED"},
-    {"wave": 1, "branch": "p0/pricing-catalog-stripe-sync", "status": "SKIP_ANCESTOR"},
-    {"wave": 1, "branch": "p0/revenue-pricing-ui-hotfix", "status": "MERGED_DOMAIN", "note": "commerce pricing/products restored after merge; shell/header kept"},
-    {"wave": 1, "branch": "p0/revenue-tickets-tips-sponsor", "status": "MERGED"},
-    {"wave": 2, "branch": "p0/google-signup-role-choice-cert", "status": "MERGED"},
-    {"wave": 3, "branch": "p0/revenue-adsense-prod-drift", "status": "MERGED_DOMAIN", "note": "privacy/layout/pricing/products restored to certified authority"},
-    {"wave": 3, "branch": "p0/adsense-privacy-disclosures-magazine", "status": "MERGED"},
-    {"wave": 3, "branch": "p0/revenue-adsense-price-first", "status": "MERGED_DOMAIN", "note": "PRICE-04 gate accepts CanonicalPricingRegistry path"},
-    {"wave": 4, "branch": "p0/living-jumbotron-media-law", "status": "MERGED_DOMAIN", "note": "privacy kept; jumbotron libs added"},
-    {"wave": 4, "branch": "p0/physical-ui-runtime-convergence", "status": "MERGED"},
-    {"wave": 4, "branch": "p0/orbital-wheel-profile-truth", "status": "MERGED"},
-    {"wave": 4, "branch": "p0/media-truth-camera-monitor-closeout", "status": "MERGED_DOMAIN", "note": "MiniLiveLobbyWallRuntime manual resolve"},
-    {"wave": 4, "branch": "p0/magazine-reader-mobile-convergence", "status": "MERGED"},
-    {"wave": 5, "branch": "p0/home-final-convergence", "status": "EMPTY_VS_MAIN"},
-    {"wave": 5, "branch": "p0/performer-earnings-nudge", "status": "EMPTY_VS_MAIN"},
-    {"wave": 5, "branch": "p0/hub-immersive-composition", "status": "DEFER_HIGH_RISK"}
+    {
+      "wave": 1,
+      "branch": "p0/revenue-checkout-fulfillment-cert",
+      "status": "MERGED"
+    },
+    {
+      "wave": 1,
+      "branch": "p0/pricing-catalog-stripe-sync",
+      "status": "SKIP_ANCESTOR"
+    },
+    {
+      "wave": 1,
+      "branch": "p0/revenue-pricing-ui-hotfix",
+      "status": "MERGED_DOMAIN",
+      "note": "commerce pricing/products restored after merge; shell/header kept"
+    },
+    {
+      "wave": 1,
+      "branch": "p0/revenue-tickets-tips-sponsor",
+      "status": "MERGED"
+    },
+    {
+      "wave": 2,
+      "branch": "p0/google-signup-role-choice-cert",
+      "status": "MERGED"
+    },
+    {
+      "wave": 3,
+      "branch": "p0/revenue-adsense-prod-drift",
+      "status": "MERGED_DOMAIN",
+      "note": "privacy/layout/pricing/products restored to certified authority"
+    },
+    {
+      "wave": 3,
+      "branch": "p0/adsense-privacy-disclosures-magazine",
+      "status": "MERGED"
+    },
+    {
+      "wave": 3,
+      "branch": "p0/revenue-adsense-price-first",
+      "status": "MERGED_DOMAIN",
+      "note": "PRICE-04 gate accepts CanonicalPricingRegistry path"
+    },
+    {
+      "wave": 4,
+      "branch": "p0/living-jumbotron-media-law",
+      "status": "MERGED_DOMAIN",
+      "note": "privacy kept; jumbotron libs added"
+    },
+    {
+      "wave": 4,
+      "branch": "p0/physical-ui-runtime-convergence",
+      "status": "MERGED"
+    },
+    {
+      "wave": 4,
+      "branch": "p0/orbital-wheel-profile-truth",
+      "status": "MERGED"
+    },
+    {
+      "wave": 4,
+      "branch": "p0/media-truth-camera-monitor-closeout",
+      "status": "MERGED_DOMAIN",
+      "note": "MiniLiveLobbyWallRuntime manual resolve"
+    },
+    {
+      "wave": 4,
+      "branch": "p0/magazine-reader-mobile-convergence",
+      "status": "MERGED"
+    },
+    {
+      "wave": 5,
+      "branch": "p0/home-final-convergence",
+      "status": "EMPTY_VS_MAIN"
+    },
+    {
+      "wave": 5,
+      "branch": "p0/performer-earnings-nudge",
+      "status": "EMPTY_VS_MAIN"
+    },
+    {
+      "wave": 5,
+      "branch": "p0/hub-immersive-composition",
+      "status": "DEFER_HIGH_RISK"
+    }
   ],
   "verification": {
     "gitDiffCheck": "PASS",
-    "pricingHttp": {"url": "http://127.0.0.1:3000/pricing", "status": 200, "startForFree": true, "fanLadder": true, "performerLadder": true},
+    "pricingHttp": {
+      "url": "http://127.0.0.1:3000/pricing",
+      "status": 200,
+      "startForFree": true,
+      "fanLadder": true,
+      "performerLadder": true
+    },
     "registryLadders": {
       "fanPro": "$4.99",
       "performerPro": "$2.99",
