@@ -73,7 +73,7 @@ export const UNIVERSAL_ACCOUNT_MENU_ITEMS = [
   { id: "view-profile", label: "View Profile", href: "self-public" },
   { id: "notifications", label: "Notifications", href: "/notifications" },
   { id: "settings-privacy", label: "Settings & Privacy", href: "/settings?section=privacy" },
-  { id: "subscription-billing", label: "Subscription & Billing", href: "/settings/billing" },
+  { id: "subscription-billing", label: "Subscription & Billing", href: "/pricing?role=fan" },
   { id: "help-support", label: "Help & Support", href: "/help" },
   { id: "logout", label: "Logout" },
 ] as const;

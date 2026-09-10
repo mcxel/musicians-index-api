@@ -460,7 +460,7 @@ export default function UniversalAccountDropdown({
         <Link href="/settings?section=privacy" onClick={onClose} data-testid="tmi-menu-settings-privacy" style={rowStyle}>
           Settings & Privacy
         </Link>
-        <Link href="/settings/billing" onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
+        <Link href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"} onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
           Subscription & Billing
         </Link>
         <Link href="/help" onClick={onClose} data-testid="tmi-menu-help" style={rowStyle}>

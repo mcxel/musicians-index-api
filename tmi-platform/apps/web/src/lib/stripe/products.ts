@@ -960,6 +960,32 @@ export function resolveFanCosmeticUsdCents(
 export function isRealPriceId(priceId: string): boolean {
   return /^price_1[A-Za-z0-9]{14,}$/.test(priceId);
 }
+/** One-time founder packs that currently resolve to a real Stripe Price ID. */
+export function getRealFoundingPacks(): Array<{
+  key: StripeProductKey;
+  name: string;
+  priceCents: number;
+  priceId: string;
+}> {
+  const keys: StripeProductKey[] = [
+    "FOUNDING_SUPPORTER",
+    "FOUNDING_CREATOR",
+    "FOUNDING_MEMBER",
+    "FOUNDING_DIAMOND",
+  ];
+  return keys
+    .map((key) => {
+      const prod = STRIPE_PRODUCTS[key];
+      return {
+        key,
+        name: prod.name,
+        priceCents: prod.price,
+        priceId: prod.priceId,
+      };
+    })
+    .filter((pack) => isRealPriceId(pack.priceId));
+}
+
 
 /** One-time founder packs that currently resolve to a real Stripe Price ID. */
 export function getRealFoundingPacks(): Array<{
