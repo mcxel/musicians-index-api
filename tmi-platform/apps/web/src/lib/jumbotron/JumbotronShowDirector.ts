@@ -87,7 +87,8 @@ export class JumbotronShowDirector {
         direction: d,
         currentComposition: "FULL",
         overlayText: null,
-        sponsorCampaignId: d === "EAST" ? "camp-local-restaurant-01" : null,
+        // Real campaign IDs only via VenueAdDirector / LivingJumbotronProgramScheduler.
+        sponsorCampaignId: null,
         sourceId: null,
       });
     }
