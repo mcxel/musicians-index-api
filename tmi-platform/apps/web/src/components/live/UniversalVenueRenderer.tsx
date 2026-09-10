@@ -239,6 +239,8 @@ interface Props {
   /** LOOK UP / focus Jumbotron — presence-preserving camera aim from parent AES. */
   jumbotronLookUpActive?: boolean;
   venueId?: string;
+  /** Step 4 Slice 2 — certified package from VenueAssetRegistry bind layer. */
+  certifiedPackage?: import("@/lib/venues/CertifiedVenuePackage").CertifiedVenuePackage | null;
 }
 
 function publicName(name: string): string {
@@ -277,7 +279,9 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null, eventType = null, jumbotronLookUpActive = false, venueId }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null, eventType = null, jumbotronLookUpActive = false, venueId, certifiedPackage = null }: Props) {
+  const boundVenueId = certifiedPackage?.venueId ?? venueId ?? `venue-${roomId}`;
+  const stageSurfaceId = certifiedPackage?.stageMount?.surfaceId ?? null;
   const canonicalView = canonicalizeWorldViewMode(viewMode);  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
@@ -300,10 +304,10 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
     () => ({
       roomId,
       eventType: eventType ?? null,
-      venueId: venueId ?? `venue-${roomId}`,
+      venueId: boundVenueId,
       lookUpActive: jumbotronLookUpActive === true,
     }),
-    [roomId, eventType, venueId, jumbotronLookUpActive],
+    [roomId, eventType, boundVenueId, jumbotronLookUpActive],
   );
   const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
   const isPerformerLobby = isPerformerLobbyExperience(roomId, canonicalZone);
@@ -917,6 +921,13 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       data-lounge-avatars={isVideoPanelRoom ? "false" : undefined}
       data-performer-lobby={isPerformerLobby ? "true" : undefined}
       data-view-mode={canonicalView}
+      data-certified-venue-id={boundVenueId}
+      data-venue-render-mode={certifiedPackage?.renderMode ?? undefined}
+      data-venue-class={certifiedPackage?.classification ?? undefined}
+      data-stage-surface-id={stageSurfaceId ?? undefined}
+      data-has-real-geometry={
+        certifiedPackage ? String(certifiedPackage.capabilities.HAS_REAL_GEOMETRY) : undefined
+      }
       data-spatial-units={spatialMap?.units ?? "ft"}
       data-spatial-width-ft={spatialMap?.floor.widthFt ?? undefined}
       data-spatial-depth-ft={spatialMap?.floor.depthFt ?? undefined}

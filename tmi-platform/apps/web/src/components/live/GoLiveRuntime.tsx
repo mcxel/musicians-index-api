@@ -35,6 +35,10 @@ import {
 } from '@/lib/live/StageDirectorEngine';
 import RoomEnvironmentLayer from '@/components/live/RoomEnvironmentLayer';
 import { slugToVenueType, getVenueAsset, type VenueType } from '@/lib/venues/VenueAssetRegistry';
+import {
+  resolveGoLiveCertifiedVenuePackage,
+  type CertifiedVenuePackage,
+} from '@/lib/venues/CertifiedVenuePackage';
 
 // ─── Avatar Action Wheel wrapper (gets entityId from context) ──────────────────
 
@@ -259,6 +263,8 @@ interface GoLiveRuntimeProps {
   showLiveChrome?: boolean;
   /** Optional EventVenueEnvironment-resolved index override. */
   venueIndex?: 0 | 1 | 2 | 3 | 4 | 5;
+  /** Step 4 Slice 2 — pre-resolved package; never silently swap venues. */
+  certifiedPackage?: CertifiedVenuePackage | null;
 }
 
 export default function GoLiveRuntime({
@@ -272,10 +278,21 @@ export default function GoLiveRuntime({
   contained = false,
   showLiveChrome = true,
   venueIndex: venueIndexProp,
+  certifiedPackage: certifiedPackageProp = null,
 }: GoLiveRuntimeProps) {
-  // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
-  const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
-  const venueAsset = getVenueAsset(venueType);
+  const certifiedPackage: CertifiedVenuePackage =
+    certifiedPackageProp ??
+    resolveGoLiveCertifiedVenuePackage({
+      venueId: venueTypeProp ?? null,
+      eventType: eventType ?? null,
+      category: eventType ?? null,
+    });
+  // Derive venueType from certified package first — refuse silent wrong venue.
+  const venueType: VenueType =
+    certifiedPackage.venueType ??
+    venueTypeProp ??
+    (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
+  const venueAsset = certifiedPackage.asset ?? getVenueAsset(venueType);
   const accentColor = accentColorProp ?? venueAsset.accentColor;
   const [viewMode, setViewMode] = useState<ViewMode>(initialMode);
 
@@ -283,11 +300,13 @@ export default function GoLiveRuntime({
   const enterDash    = useCallback(() => setViewMode('DASHBOARD'), []);
 
   const isVenueShrunk = viewMode !== 'FULL_VENUE';
-  const resolvedVenueIndex = venueIndexProp ?? 1;
+  const resolvedVenueIndex =
+    venueIndexProp ?? certifiedPackage.venueIndex ?? venueAsset.venueIndex ?? 1;
   return (
     <AudiencePresenceProvider>
     <RoomEnvironmentLayer
       venueType={venueType}
+      certifiedPackage={certifiedPackage}
       mode="performer"
       energyLevel={0.8}
       style={{ height: contained ? "100%" : "100vh" }}
@@ -377,6 +396,9 @@ export default function GoLiveRuntime({
           mode="performer"
           venueIndex={resolvedVenueIndex}
           instantEmptyStage={instantEmptyStage}
+          eventType={eventType ?? null}
+          venueId={certifiedPackage.venueId}
+          certifiedPackage={certifiedPackage}
         />
         {/* Stage banner overlay — renders StageDirectorEngine announcements */}
         <StageBannerOverlay />
