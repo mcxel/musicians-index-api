@@ -219,11 +219,16 @@ export default function AdConsentBanner() {
       </div>
       <p style={{ margin: '0 0 14px 0', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
         We partner with Google AdSense and certified networks to fund free music broadcasts and artist rankings. Accept
-        to enable personalized ads. Decline serves non-personalized ads without tracking. You may update your
-        preferences at any time in our{' '}
+        to enable personalized ads where permitted. Decline keeps ads off for this browser until you change preferences.
+        Details:{' '}
         <a href="/disclosures" style={{ color: '#00FFFF', textDecoration: 'underline' }}>
           Disclosures
-        </a>.
+        </a>
+        {' · '}
+        <a href="/privacy" style={{ color: '#00FFFF', textDecoration: 'underline' }}>
+          Privacy
+        </a>
+        .
       </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
         <button

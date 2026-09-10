@@ -24,6 +24,7 @@ const FOOTER_LINKS = {
   Legal: [
     { label: "Privacy Policy",     href: "/privacy" },
     { label: "Terms of Service",   href: "/terms" },
+    { label: "Disclosures",        href: "/disclosures" },
     // Cookie Policy and DMCA/Copyright don't have dedicated pages yet — these
     // are real legal documents that need counsel review (see Rule 19), not
     // something to fabricate. Point at the real Legal Center index instead
