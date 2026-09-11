@@ -25,10 +25,28 @@ function runTierResolutionTest() {
   results['diamond_db_stays_diamond'] =
     computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'DIAMOND').tier === 'DIAMOND'
 
-  // 3. Any real mid-tier passes through unchanged (proves no role/tier
-  //    conflation and no blanket escalation for ordinary paid tiers)
+  // 3. Mid-tier without entitlement arg (legacy) still passes through —
+  //    honesty mode requires the 3rd arg. Session routes always pass evidence.
   results['gold_db_stays_gold'] =
     computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD').tier === 'GOLD'
+
+  // 3b. Honesty mode: GOLD with empty evidence → FREE (read-path heal)
+  const goldHonesty = computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {})
+  results['gold_without_entitlement_reads_free'] =
+    goldHonesty.tier === 'FREE' && goldHonesty.needsUnpaidTierHeal === true
+
+  // 3c. Honesty mode: GOLD with live subscription preserved
+  results['gold_with_subscription_preserved'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {
+      stripeSubscriptionId: 'sub_live',
+      billingStatus: 'active',
+    }).tier === 'GOLD'
+
+  // 3d. Complimentary grant preserves paid display without inventing Stripe
+  results['gold_complimentary_preserved'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {
+      complimentaryGrant: true,
+    }).tier === 'GOLD'
 
   // 4. Missing/invalid tier must resolve to FREE, never DIAMOND — this is
   //    the exact anti-pattern bf9024fd introduced and this fix reverts.
@@ -51,10 +69,9 @@ function runTierResolutionTest() {
   results['founder_already_diamond_no_redundant_heal'] =
     founderAlreadyDiamond.tier === 'DIAMOND' && founderAlreadyDiamond.needsFounderHeal === false
 
-  // 7. Function signature has no role parameter — administrative authority
-  //    cannot influence tier through this resolver by construction. (Static
-  //    proof: computeAuthoritativeTier.length === 2, i.e. only (email, dbTier).)
-  results['no_role_parameter_exists'] = computeAuthoritativeTier.length === 2
+  // 7. Arity is (email, dbTier, entitlement?) — no role parameter. Optional
+  //    3rd arg still counts toward Function.length in JS (no default value).
+  results['no_role_parameter_exists'] = computeAuthoritativeTier.length === 3
 
   // 8. Two different emails with two different DB tiers never bleed into
   //    each other — same call site, independent inputs, independent

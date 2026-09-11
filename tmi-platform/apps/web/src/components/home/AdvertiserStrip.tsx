@@ -8,11 +8,11 @@ import AdSenseUnit from "@/components/placement/AdSenseUnit";
 type AdSlot = { brand: string; tagline: string; cta: string; metric: string; color: string; isCTA?: boolean };
 
 const AD_SLOTS: AdSlot[] = [
-  { brand: "AMPLIFY RECORDS", tagline: "Discover. Sign. Amplify.", cta: "amplifyrecords.com", metric: "12.4K Impressions", color: "#FF2DAA" },
-  { brand: "BEATLAB STUDIOS", tagline: "Record, Mix, Master — All In One", cta: "beatlabstudios.com", metric: "8.7K Impressions", color: "#00FFFF" },
-  { brand: "VELOCITY AUDIO", tagline: "Distribution That Moves Fast", cta: "velocityaudio.io", metric: "6.2K Impressions", color: "#AA2DFF" },
-  { brand: "NOVA MEDIA GROUP", tagline: "Your Brand. Our Audience. Global Reach.", cta: "novamediagroup.com", metric: "15.1K Impressions", color: "#FFD700" },
-  { brand: "YOUR BRAND HERE", tagline: "Reach 50,000+ musicians and music professionals", cta: "/advertise", metric: "Start at $99/mo", color: "#2DFFAA", isCTA: true },
+  { brand: "AMPLIFY RECORDS", tagline: "Discover. Sign. Amplify.", cta: "amplifyrecords.com", metric: "Sponsored", color: "#FF2DAA" },
+  { brand: "BEATLAB STUDIOS", tagline: "Record, Mix, Master — All In One", cta: "beatlabstudios.com", metric: "Sponsored", color: "#00FFFF" },
+  { brand: "VELOCITY AUDIO", tagline: "Distribution That Moves Fast", cta: "velocityaudio.io", metric: "Sponsored", color: "#AA2DFF" },
+  { brand: "NOVA MEDIA GROUP", tagline: "Your Brand. Our Audience. Global Reach.", cta: "novamediagroup.com", metric: "Sponsored", color: "#FFD700" },
+  { brand: "YOUR BRAND HERE", tagline: "Advertise on The Musician's Index", cta: "/advertise", metric: "Start advertising", color: "#2DFFAA", isCTA: true },
 ];
 
 export default function AdvertiserStrip() {

@@ -1,8 +1,50 @@
 import prisma from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 import { resolveHardcodedTierRole, type UserTier } from '@/lib/auth/UserStore';
+import { tierForPriceId } from '@/lib/stripe/tierMapping';
 
 const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']);
+const PAID_TIERS = new Set<UserTier>(['PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']);
+
+/**
+ * Stripe / complimentary evidence that a paid User.tier is legitimate.
+ * Never invent Stripe objects — only fields already stored on the user row
+ * (or an explicit complimentaryGrant from an admin audit path).
+ */
+export type PaidEntitlementEvidence = {
+  stripeSubscriptionId?: string | null;
+  stripePriceId?: string | null;
+  billingStatus?: string | null;
+  /** True when ADMIN_GRANT_TIER (or equivalent) authorized this paid tier. */
+  complimentaryGrant?: boolean;
+};
+
+/**
+ * Verified paid entitlement = live Stripe subscription/price that maps to a
+ * paid tier, or an explicit complimentary grant. Canceled billing is never
+ * treated as verified. Does not call Stripe APIs.
+ */
+export function hasVerifiedPaidEntitlement(
+  evidence: PaidEntitlementEvidence | null | undefined,
+): boolean {
+  if (!evidence) return false;
+  if (evidence.complimentaryGrant === true) return true;
+
+  const billing = (evidence.billingStatus ?? 'active').toLowerCase();
+  if (billing === 'canceled') return false;
+
+  if (evidence.stripeSubscriptionId && String(evidence.stripeSubscriptionId).trim()) {
+    return true;
+  }
+
+  const priceId = evidence.stripePriceId?.trim();
+  if (priceId) {
+    const mapped = tierForPriceId(priceId);
+    if (mapped && mapped !== 'FREE') return true;
+  }
+
+  return false;
+}
 
 /**
  * P0 Identity/Entitlement Integrity — single source of truth for turning an
@@ -17,11 +59,19 @@ const VALID_TIERS = new Set<UserTier>(['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 
  * defaulting unknown state to the highest privilege tier is a privilege
  * escalation, not a safe fallback. Legacy "ADMIN" in the tier column is
  * normalized to "DIAMOND" for executive accounts or "FREE" otherwise.
+ *
+ * Optional `entitlement` (3rd arg):
+ * - `undefined` — legacy callers/tests: pass through DB paid tiers unchanged
+ *   (except founder/hardcoded/BRONZE/ADMIN rules). Prefer always passing
+ *   evidence from session routes.
+ * - object / `null` — honesty mode: paid DB tiers without verified Stripe/
+ *   complimentary evidence resolve to FREE for display (never invents paid).
  */
 export function computeAuthoritativeTier(
   email: string,
   dbTier: string | null | undefined,
-): { tier: UserTier; needsFounderHeal: boolean } {
+  entitlement?: PaidEntitlementEvidence | null,
+): { tier: UserTier; needsFounderHeal: boolean; needsUnpaidTierHeal: boolean } {
   const normalized = dbTier?.toUpperCase();
   const isFounderEmail = Boolean(email) && isFounderDiamondEmail(email);
 
@@ -41,17 +91,28 @@ export function computeAuthoritativeTier(
   }
 
   if (isFounderEmail && baseTier !== 'DIAMOND') {
-    return { tier: 'DIAMOND', needsFounderHeal: true };
+    return { tier: 'DIAMOND', needsFounderHeal: true, needsUnpaidTierHeal: false };
   }
 
   // Same entitlement chain as login/UserStore — never let a stale FREE DB row
   // downgrade a canonical hardcoded-Diamond or DIAMOND_EMAILS account on session read.
   const hardcoded = email ? resolveHardcodedTierRole(email) : null;
   if (hardcoded?.tier === 'DIAMOND' && baseTier !== 'DIAMOND') {
-    return { tier: 'DIAMOND', needsFounderHeal: true };
+    return { tier: 'DIAMOND', needsFounderHeal: true, needsUnpaidTierHeal: false };
   }
 
-  return { tier: baseTier, needsFounderHeal };
+  // Honesty gate: UI must never show GOLD (etc.) without verified entitlement.
+  // Founder / hardcoded Diamond already returned above. Does not invent Stripe.
+  if (
+    entitlement !== undefined &&
+    PAID_TIERS.has(baseTier) &&
+    hardcoded?.tier !== 'DIAMOND' &&
+    !hasVerifiedPaidEntitlement(entitlement)
+  ) {
+    return { tier: 'FREE', needsFounderHeal: false, needsUnpaidTierHeal: true };
+  }
+
+  return { tier: baseTier, needsFounderHeal, needsUnpaidTierHeal: false };
 }
 
 /**
@@ -59,9 +120,16 @@ export function computeAuthoritativeTier(
  * — future reads see DIAMOND directly from the DB without needing this
  * override again) in one call. Use this from route handlers; use
  * computeAuthoritativeTier directly in tests where a live DB isn't wanted.
+ *
+ * Unpaid-tier heal is READ-PATH only here — never auto-writes FREE on session.
+ * Use admin reconcileUnverifiedPaidTiers for explicit write-path cleanup.
  */
-export function resolveTierFromDb(email: string, dbTier: string | null | undefined): UserTier {
-  const { tier, needsFounderHeal } = computeAuthoritativeTier(email, dbTier);
+export function resolveTierFromDb(
+  email: string,
+  dbTier: string | null | undefined,
+  entitlement?: PaidEntitlementEvidence | null,
+): UserTier {
+  const { tier, needsFounderHeal } = computeAuthoritativeTier(email, dbTier, entitlement);
   if (needsFounderHeal && email) {
     prisma.user.updateMany({ where: { email }, data: { tier: 'DIAMOND' } }).catch(() => {});
   }
@@ -69,4 +137,25 @@ export function resolveTierFromDb(email: string, dbTier: string | null | undefin
     prisma.user.updateMany({ where: { email }, data: { tier: 'RUBY' } }).catch(() => {});
   }
   return tier;
+}
+
+/** Prisma select fragment for entitlement-aware tier resolution. */
+export const TIER_ENTITLEMENT_SELECT = {
+  tier: true,
+  email: true,
+  stripeSubscriptionId: true,
+  stripePriceId: true,
+  billingStatus: true,
+} as const;
+
+export function entitlementEvidenceFromUser(user: {
+  stripeSubscriptionId?: string | null;
+  stripePriceId?: string | null;
+  billingStatus?: string | null;
+}): PaidEntitlementEvidence {
+  return {
+    stripeSubscriptionId: user.stripeSubscriptionId ?? null,
+    stripePriceId: user.stripePriceId ?? null,
+    billingStatus: user.billingStatus ?? null,
+  };
 }

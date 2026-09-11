@@ -2,7 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { resolveTierFromDb } from "@/lib/auth/resolveAuthoritativeTier";
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from "@/lib/auth/resolveAuthoritativeTier";
 import { getProfileConfig, saveProfileConfig } from "@/lib/profile/ProfileConfigService";
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
@@ -14,7 +17,14 @@ async function resolveOwner(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, email: true, tier: true },
+    select: {
+      id: true,
+      email: true,
+      tier: true,
+      stripeSubscriptionId: true,
+      stripePriceId: true,
+      billingStatus: true,
+    },
   });
   return user ?? null;
 }
@@ -65,7 +75,11 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "userId must not be supplied by the client." }, { status: 400 });
   }
 
-  const tier = resolveTierFromDb(user.email ?? "", user.tier);
+  const tier = resolveTierFromDb(
+    user.email ?? "",
+    user.tier,
+    entitlementEvidenceFromUser(user),
+  );
 
   try {
     const result = await saveProfileConfig(user.id, tier, body);

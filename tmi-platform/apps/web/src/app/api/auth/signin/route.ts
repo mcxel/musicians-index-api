@@ -8,7 +8,10 @@ import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
 import { compare } from 'bcryptjs';
 import prisma, { ensureUserDatabaseSchema } from '@/lib/prisma';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 
 const COOKIE_OPTS = {
@@ -142,7 +145,25 @@ export async function POST(req: NextRequest) {
     // Authoritative tier resolution (P0 Identity/Entitlement Integrity) —
     // same rule every session-reading route now shares via
     // resolveAuthoritativeTier.ts, was previously duplicated inline here.
-    const resolvedUser = { ...user, tier: resolveTierFromDb(email, user.tier) };
+    // Honesty: paid DB tier without Stripe/complimentary evidence → FREE display.
+    const entitlementRow = await prisma.user
+      .findUnique({
+        where: { email },
+        select: {
+          stripeSubscriptionId: true,
+          stripePriceId: true,
+          billingStatus: true,
+        },
+      })
+      .catch(() => null);
+    const resolvedUser = {
+      ...user,
+      tier: resolveTierFromDb(
+        email,
+        user.tier,
+        entitlementRow ? entitlementEvidenceFromUser(entitlementRow) : {},
+      ),
+    };
 
     // Trust & safety gate — blocks sign-in for suspended/banned accounts.
     // A temporary auto-suspend self-clears here once its hold window

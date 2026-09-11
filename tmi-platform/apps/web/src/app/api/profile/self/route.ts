@@ -2,7 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from '@/lib/auth/resolveAuthoritativeTier';
 
 export async function GET(req: NextRequest) {
   const email = req.cookies.get('tmi_user_email')?.value;
@@ -56,7 +59,7 @@ export async function GET(req: NextRequest) {
         // ? 'DIAMOND' : (user.tier ?? 'DIAMOND')` (bf9024fd) — conflated
         // admin authority with subscription tier and defaulted any missing
         // tier to the highest privilege instead of the lowest. Reverted.
-        tier: resolveTierFromDb(email, user.tier),
+        tier: resolveTierFromDb(email, user.tier, entitlementEvidenceFromUser(user)),
         displayName: user.userProfile?.displayName ?? user.displayName ?? null,
         bio: user.userProfile?.bio ?? null,
         avatarUrl: user.userProfile?.avatarUrl ?? null,

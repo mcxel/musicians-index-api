@@ -1,7 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { resolveTierFromDb, computeAuthoritativeTier } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  resolveTierFromDb,
+  computeAuthoritativeTier,
+  entitlementEvidenceFromUser,
+} from '@/lib/auth/resolveAuthoritativeTier';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
@@ -96,6 +100,9 @@ export async function GET(req: NextRequest) {
           displayName: true,
           name: true,
           tier: true,
+          stripeSubscriptionId: true,
+          stripePriceId: true,
+          billingStatus: true,
           isLive: true,
           liveRoomId: true,
           onboardingState: true,
@@ -129,7 +136,11 @@ export async function GET(req: NextRequest) {
       // Authoritative tier — overwrites the cookie fallback above with the
       // real DB value (plus founder-pass self-heal) now that the lookup
       // succeeded. Never derived from role.
-      tier = resolveTierFromDb(dbUser.email ?? rawEmail, dbUser.tier);
+      tier = resolveTierFromDb(
+        dbUser.email ?? rawEmail,
+        dbUser.tier,
+        entitlementEvidenceFromUser(dbUser),
+      );
       const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
       dbOnboardingStep = links.onboarding_step ?? '2';
       dbDisplayName =

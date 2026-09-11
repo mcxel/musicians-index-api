@@ -138,181 +138,111 @@ function Ring({ value, max, label, color }: RingDatum) {
 // ─── Role Data ────────────────────────────────────────────────────────────────
 
 const PLATFORM: KPICard[] = [
-  { label: 'Users Online',   value: '87',      delta: '+12 this hour', up: true,  color: '#00FFFF', icon: Users     },
-  { label: 'Live Rooms',     value: '7',        delta: '+2 today',      up: true,  color: '#FF2DAA', icon: Radio     },
-  { label: 'XP Flow / Min',  value: '320',      delta: '▲ trending',    up: true,  color: '#FFD700', icon: Zap       },
-  { label: 'Trending #1',    value: 'DJ Blend', delta: '14 votes',      up: true,  color: '#AA2DFF', icon: Star      },
+  { label: 'Users Online',   value: '0', delta: 'No live feed yet', up: false, color: '#00FFFF', icon: Users },
+  { label: 'Live Rooms',     value: '0', delta: 'No rooms yet',     up: false, color: '#FF2DAA', icon: Radio },
+  { label: 'XP Flow / Min',  value: '0', delta: '—',                up: false, color: '#FFD700', icon: Zap },
+  { label: 'Trending #1',    value: '—', delta: 'No ranking yet',   up: false, color: '#AA2DFF', icon: Star },
 ];
 
 const WEEKLY: LineDatum[] = [
-  { label: 'Mon', value: 420 }, { label: 'Tue', value: 680 }, { label: 'Wed', value: 540 },
-  { label: 'Thu', value: 890 }, { label: 'Fri', value: 1240 }, { label: 'Sat', value: 1580 }, { label: 'Sun', value: 1100 },
+  { label: 'Mon', value: 0 }, { label: 'Tue', value: 0 }, { label: 'Wed', value: 0 },
+  { label: 'Thu', value: 0 }, { label: 'Fri', value: 0 }, { label: 'Sat', value: 0 }, { label: 'Sun', value: 0 },
 ];
 
 function getConfig(role: Role) {
+  const emptyBars = (labels: string[], color: string): BarDatum[] =>
+    labels.map((label) => ({ label, value: 0, max: 1, color }));
+  const emptyRings = (labels: string[], colors: string[]): RingDatum[] =>
+    labels.map((label, i) => ({ value: 0, max: 1, label, color: colors[i] ?? '#00FFFF' }));
+
   const configs: Record<Role, { label: string; color: string; admin: boolean; kpis: KPICard[]; bars: BarDatum[]; rings: RingDatum[] }> = {
     admin: {
       label: 'Admin — Full Spectrum', color: '#00FFFF', admin: true,
       kpis: [
-        { label: 'Revenue Today',     value: '$312.45', delta: '+$45',     up: true,  color: '#00FF88', icon: DollarSign },
-        { label: 'Paid Members',      value: '128',     delta: '+3 today', up: true,  color: '#00FFFF', icon: Users      },
-        { label: 'Submissions Queue', value: '5',       delta: 'pending',  up: false, color: '#FFD700', icon: BarChart2  },
-        { label: 'Bot Fleet Active',  value: '62',      delta: '100%',     up: true,  color: '#AA2DFF', icon: Zap        },
+        { label: 'Revenue Today',     value: '$0', color: '#00FF88', icon: DollarSign },
+        { label: 'Paid Members',      value: '0',  color: '#00FFFF', icon: Users },
+        { label: 'Submissions Queue', value: '0',  color: '#FFD700', icon: BarChart2 },
+        { label: 'Bot Fleet Active',  value: '0',  color: '#AA2DFF', icon: Zap },
       ],
-      bars: [
-        { label: 'Tickets',       value: 4200, max: 6000, color: '#FFD700' },
-        { label: 'Tips',          value: 1180, max: 6000, color: '#00FFFF' },
-        { label: 'Subscriptions', value: 880,  max: 6000, color: '#AA2DFF' },
-        { label: 'Sponsors',      value: 3000, max: 6000, color: '#00FF88' },
-        { label: 'Ads',           value: 420,  max: 6000, color: '#FF2DAA' },
-        { label: 'Bookings',      value: 1600, max: 6000, color: '#FF6B35' },
-      ],
-      rings: [
-        { value: 87,  max: 1243, label: 'Users Online', color: '#00FFFF' },
-        { value: 7,   max: 12,   label: 'Rooms Active', color: '#FF2DAA' },
-        { value: 128, max: 1243, label: 'Paid Members', color: '#00FF88' },
-      ],
+      bars: emptyBars(['Tickets', 'Tips', 'Subscriptions', 'Sponsors', 'Ads', 'Bookings'], '#FFD700'),
+      rings: emptyRings(['Users Online', 'Rooms Active', 'Paid Members'], ['#00FFFF', '#FF2DAA', '#00FF88']),
     },
     artist: {
       label: 'Artist Analytics', color: '#FF2DAA', admin: false,
       kpis: [
-        { label: 'Total Plays',    value: '2,847', delta: '+124 today', up: true,  color: '#FF2DAA', icon: Music      },
-        { label: 'Your XP',        value: '4,200', delta: '+320 today', up: true,  color: '#FFD700', icon: Zap        },
-        { label: 'Fan Base',       value: '312',   delta: '+18',        up: true,  color: '#00FFFF', icon: Users      },
-        { label: 'Revenue Earned', value: '$84.20',delta: '+$12',       up: true,  color: '#00FF88', icon: DollarSign },
+        { label: 'Total Plays',    value: '0',  color: '#FF2DAA', icon: Music },
+        { label: 'Your XP',        value: '0',  color: '#FFD700', icon: Zap },
+        { label: 'Fan Base',       value: '0',  color: '#00FFFF', icon: Users },
+        { label: 'Revenue Earned', value: '$0', color: '#00FF88', icon: DollarSign },
       ],
-      bars: [
-        { label: 'Plays',     value: 2847, max: 5000, color: '#FF2DAA' },
-        { label: 'Votes',     value: 412,  max: 1000, color: '#FFD700' },
-        { label: 'Tips',      value: 84,   max: 500,  color: '#00FF88' },
-        { label: 'Reactions', value: 1240, max: 3000, color: '#00FFFF' },
-      ],
-      rings: [
-        { value: 312,  max: 1000,  label: 'Fan Base',    color: '#FF2DAA' },
-        { value: 2847, max: 10000, label: 'Total Plays', color: '#FFD700' },
-        { value: 8,    max: 20,    label: 'Battle Wins', color: '#00FF88' },
-      ],
+      bars: emptyBars(['Plays', 'Votes', 'Tips', 'Reactions'], '#FF2DAA'),
+      rings: emptyRings(['Fan Base', 'Total Plays', 'Battle Wins'], ['#FF2DAA', '#FFD700', '#00FF88']),
     },
     performer: {
       label: 'Performer Analytics', color: '#AA2DFF', admin: false,
       kpis: [
-        { label: 'Live Sets',      value: '12',     delta: '+2 this month', up: true, color: '#AA2DFF', icon: Radio      },
-        { label: 'Total Votes',    value: '1,840',  delta: '+240',          up: true, color: '#FFD700', icon: Star       },
-        { label: 'Your XP',        value: '6,400',  delta: '+480 today',    up: true, color: '#00FFFF', icon: Zap        },
-        { label: 'Revenue Earned', value: '$142',   delta: '+$22',          up: true, color: '#00FF88', icon: DollarSign },
+        { label: 'Live Sets',      value: '0',  color: '#AA2DFF', icon: Radio },
+        { label: 'Total Votes',    value: '0',  color: '#FFD700', icon: Star },
+        { label: 'Your XP',        value: '0',  color: '#00FFFF', icon: Zap },
+        { label: 'Revenue Earned', value: '$0', color: '#00FF88', icon: DollarSign },
       ],
-      bars: [
-        { label: 'Live Sets',        value: 12,   max: 30,    color: '#AA2DFF' },
-        { label: 'Total Votes',      value: 1840, max: 5000,  color: '#FFD700' },
-        { label: 'Crowd Reactions',  value: 4200, max: 10000, color: '#00FFFF' },
-        { label: 'Tips Received',    value: 142,  max: 1000,  color: '#00FF88' },
-      ],
-      rings: [
-        { value: 12,   max: 30,    label: 'Live Sets',   color: '#AA2DFF' },
-        { value: 1840, max: 5000,  label: 'Total Votes', color: '#FFD700' },
-        { value: 6400, max: 20000, label: 'XP Progress', color: '#00FFFF' },
-      ],
+      bars: emptyBars(['Live Sets', 'Total Votes', 'Crowd Reactions', 'Tips Received'], '#AA2DFF'),
+      rings: emptyRings(['Live Sets', 'Total Votes', 'XP Progress'], ['#AA2DFF', '#FFD700', '#00FFFF']),
     },
     fan: {
       label: 'Fan Dashboard', color: '#00FFFF', admin: false,
       kpis: [
-        { label: 'Your XP',           value: '1,240', delta: '+80 today',   up: true, color: '#00FFFF', icon: Zap   },
-        { label: 'Artists Following', value: '24',    delta: '+2',           up: true, color: '#FF2DAA', icon: Star  },
-        { label: 'Shows Attended',    value: '8',     delta: '+1 this week', up: true, color: '#FFD700', icon: Eye   },
-        { label: 'Votes Cast',        value: '156',   delta: '+12 today',    up: true, color: '#AA2DFF', icon: Award },
+        { label: 'Your XP',           value: '0', color: '#00FFFF', icon: Zap },
+        { label: 'Artists Following', value: '0', color: '#FF2DAA', icon: Star },
+        { label: 'Shows Attended',    value: '0', color: '#FFD700', icon: Eye },
+        { label: 'Votes Cast',        value: '0', color: '#AA2DFF', icon: Award },
       ],
-      bars: [
-        { label: 'Reactions Sent', value: 892,  max: 2000, color: '#00FFFF' },
-        { label: 'Shows Watched',  value: 8,    max: 30,   color: '#FF2DAA' },
-        { label: 'Votes Cast',     value: 156,  max: 500,  color: '#AA2DFF' },
-        { label: 'XP Earned',      value: 1240, max: 5000, color: '#FFD700' },
-      ],
-      rings: [
-        { value: 1240, max: 5000, label: 'XP Progress',       color: '#00FFFF' },
-        { value: 24,   max: 100,  label: 'Artists Followed',  color: '#FF2DAA' },
-        { value: 8,    max: 30,   label: 'Shows This Month',  color: '#FFD700' },
-      ],
+      bars: emptyBars(['Reactions Sent', 'Shows Watched', 'Votes Cast', 'XP Earned'], '#00FFFF'),
+      rings: emptyRings(['XP Progress', 'Artists Followed', 'Shows This Month'], ['#00FFFF', '#FF2DAA', '#FFD700']),
     },
     venue: {
       label: 'Venue Analytics', color: '#00FF88', admin: false,
       kpis: [
-        { label: 'Events This Month', value: '4',      delta: '+1',    up: true, color: '#00FF88', icon: Radio      },
-        { label: 'Ticket Revenue',    value: '$4,200', delta: '+$800', up: true, color: '#FFD700', icon: DollarSign },
-        { label: 'Total Attendance',  value: '1,840',  delta: '+220',  up: true, color: '#00FFFF', icon: Users      },
-        { label: 'Avg Occupancy',     value: '84%',    delta: '+6%',   up: true, color: '#FF2DAA', icon: TrendingUp },
+        { label: 'Events This Month', value: '0',  color: '#00FF88', icon: Radio },
+        { label: 'Ticket Revenue',    value: '$0', color: '#FFD700', icon: DollarSign },
+        { label: 'Total Attendance',  value: '0',  color: '#00FFFF', icon: Users },
+        { label: 'Avg Occupancy',     value: '—',  color: '#FF2DAA', icon: TrendingUp },
       ],
-      bars: [
-        { label: 'Jan', value: 1200, max: 5000, color: '#00FF88' },
-        { label: 'Feb', value: 1800, max: 5000, color: '#00FF88' },
-        { label: 'Mar', value: 2400, max: 5000, color: '#00FF88' },
-        { label: 'Apr', value: 3100, max: 5000, color: '#00FF88' },
-        { label: 'May', value: 4200, max: 5000, color: '#00FF88' },
-      ],
-      rings: [
-        { value: 4200, max: 10000, label: 'Ticket Rev', color: '#FFD700' },
-        { value: 84,   max: 100,   label: 'Occupancy',  color: '#00FF88' },
-        { value: 1840, max: 5000,  label: 'Attendance', color: '#00FFFF' },
-      ],
+      bars: emptyBars(['Jan', 'Feb', 'Mar', 'Apr', 'May'], '#00FF88'),
+      rings: emptyRings(['Ticket Rev', 'Occupancy', 'Attendance'], ['#FFD700', '#00FF88', '#00FFFF']),
     },
     sponsor: {
       label: 'Sponsor Analytics', color: '#FFD700', admin: false,
       kpis: [
-        { label: 'Impressions Today',  value: '0',  color: '#FFD700', icon: Eye        },
+        { label: 'Impressions Today',  value: '0',  color: '#FFD700', icon: Eye },
         { label: 'Click-Through Rate', value: '—',  color: '#00FFFF', icon: TrendingUp },
-        { label: 'Gifts Activated',    value: '0',  color: '#FF2DAA', icon: Award      },
+        { label: 'Gifts Activated',    value: '0',  color: '#FF2DAA', icon: Award },
         { label: 'ROI Estimate',       value: '—',  color: '#00FF88', icon: DollarSign },
       ],
-      bars: [
-        { label: 'Banner Impr.',  value: 0, max: 1, color: '#FFD700' },
-        { label: 'Gifts Active',  value: 0, max: 1, color: '#FF2DAA' },
-        { label: 'Clicks',        value: 0, max: 1, color: '#00FFFF' },
-        { label: 'Conversions',   value: 0, max: 1, color: '#00FF88' },
-      ],
-      rings: [
-        { value: 0, max: 1, label: 'Impressions', color: '#FFD700' },
-        { value: 0, max: 1, label: 'Conversions', color: '#00FF88' },
-        { value: 0, max: 1, label: 'Gifts Active', color: '#FF2DAA' },
-      ],
+      bars: emptyBars(['Banner Impr.', 'Gifts Active', 'Clicks', 'Conversions'], '#FFD700'),
+      rings: emptyRings(['Impressions', 'Conversions', 'Gifts Active'], ['#FFD700', '#00FF88', '#FF2DAA']),
     },
     advertiser: {
       label: 'Advertiser Analytics', color: '#FF6B35', admin: false,
       kpis: [
-        { label: 'Ad Impressions',   value: '0',  color: '#FF6B35', icon: Eye        },
+        { label: 'Ad Impressions',   value: '0',  color: '#FF6B35', icon: Eye },
         { label: 'CTR',              value: '—',  color: '#00FFFF', icon: TrendingUp },
-        { label: 'Campaigns Active', value: '0',  color: '#FFD700', icon: Radio      },
+        { label: 'Campaigns Active', value: '0',  color: '#FFD700', icon: Radio },
         { label: 'Spend Today',      value: '$0', color: '#FF2DAA', icon: DollarSign },
       ],
-      bars: [
-        { label: 'Impressions', value: 0, max: 1, color: '#FF6B35' },
-        { label: 'Clicks',      value: 0, max: 1, color: '#00FFFF' },
-        { label: 'Conversions', value: 0, max: 1, color: '#00FF88' },
-        { label: 'Spend',       value: 0, max: 1, color: '#FF2DAA' },
-      ],
-      rings: [
-        { value: 0, max: 1, label: 'Impressions', color: '#FF6B35' },
-        { value: 0, max: 1, label: 'Clicks',      color: '#00FFFF' },
-        { value: 0, max: 1, label: 'Conversions', color: '#00FF88' },
-      ],
+      bars: emptyBars(['Impressions', 'Clicks', 'Conversions', 'Spend'], '#FF6B35'),
+      rings: emptyRings(['Impressions', 'Clicks', 'Conversions'], ['#FF6B35', '#00FFFF', '#00FF88']),
     },
     promoter: {
       label: 'Promoter Analytics', color: '#FF2DAA', admin: false,
       kpis: [
-        { label: 'Events Promoted', value: '6',      delta: '+1',   up: true, color: '#FF2DAA', icon: Radio      },
-        { label: 'Tickets Sold',    value: '1,240',  delta: '+180', up: true, color: '#FFD700', icon: Star       },
-        { label: 'Revenue Share',   value: '$620',   delta: '+$90', up: true, color: '#00FF88', icon: DollarSign },
-        { label: 'Fan Reach',       value: '4,800',  delta: '+320', up: true, color: '#00FFFF', icon: Users      },
+        { label: 'Events Promoted', value: '0',  color: '#FF2DAA', icon: Radio },
+        { label: 'Tickets Sold',    value: '0',  color: '#FFD700', icon: Star },
+        { label: 'Revenue Share',   value: '$0', color: '#00FF88', icon: DollarSign },
+        { label: 'Fan Reach',       value: '0',  color: '#00FFFF', icon: Users },
       ],
-      bars: [
-        { label: 'Tickets Sold',  value: 1240, max: 3000,  color: '#FF2DAA' },
-        { label: 'Fan Reach',     value: 4800, max: 10000, color: '#00FFFF' },
-        { label: 'Revenue Share', value: 620,  max: 2000,  color: '#00FF88' },
-        { label: 'Events',        value: 6,    max: 20,    color: '#FFD700' },
-      ],
-      rings: [
-        { value: 1240, max: 3000, label: 'Tickets Sold',  color: '#FF2DAA' },
-        { value: 6,    max: 20,   label: 'Events',         color: '#FFD700' },
-        { value: 620,  max: 2000, label: 'Revenue Share',  color: '#00FF88' },
-      ],
+      bars: emptyBars(['Tickets Sold', 'Fan Reach', 'Revenue Share', 'Events'], '#FF2DAA'),
+      rings: emptyRings(['Tickets Sold', 'Events', 'Revenue Share'], ['#FF2DAA', '#FFD700', '#00FF88']),
     },
   };
   return configs[role] ?? configs.fan;

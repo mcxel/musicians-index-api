@@ -2,7 +2,10 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import prisma from '@/lib/prisma';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from '@/lib/auth/resolveAuthoritativeTier';
 
 function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString('en-US', {
@@ -19,8 +22,18 @@ export async function GET(req: NextRequest) {
   let tier: string = req.cookies.get('tmi_tier')?.value ?? 'FREE';
   if (email) {
     try {
-      const dbUser = await prisma.user.findUnique({ where: { email }, select: { tier: true } });
-      if (dbUser) tier = resolveTierFromDb(email, dbUser.tier);
+      const dbUser = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          tier: true,
+          stripeSubscriptionId: true,
+          stripePriceId: true,
+          billingStatus: true,
+        },
+      });
+      if (dbUser) {
+        tier = resolveTierFromDb(email, dbUser.tier, entitlementEvidenceFromUser(dbUser));
+      }
     } catch {
       // Keep cookie fallback when DB is unavailable.
     }

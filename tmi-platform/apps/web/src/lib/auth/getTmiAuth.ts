@@ -1,6 +1,9 @@
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from '@/lib/auth/resolveAuthoritativeTier';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 
 export interface TmiAuthSession {
@@ -45,13 +48,20 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
         email: true,
         displayName: true,
         tier: true,
+        stripeSubscriptionId: true,
+        stripePriceId: true,
+        billingStatus: true,
         userProfile: { select: { displayName: true } },
       },
     });
     if (dbUser?.id) id = dbUser.id;
     dbDisplayName = dbUser?.displayName ?? dbUser?.userProfile?.displayName ?? null;
     if (dbUser) {
-      tier = resolveTierFromDb(dbUser.email ?? rawEmail, dbUser.tier);
+      tier = resolveTierFromDb(
+        dbUser.email ?? rawEmail,
+        dbUser.tier,
+        entitlementEvidenceFromUser(dbUser),
+      );
     }
   } catch {
     // Keep full session fallback identity when DB is unavailable.

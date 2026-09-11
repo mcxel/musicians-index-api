@@ -15,11 +15,11 @@ export interface AdSlot {
 }
 
 export const DEFAULT_AD_SLOTS: AdSlot[] = [
-  { id: "amplify", brand: "AMPLIFY RECORDS", tagline: "Discover. Sign. Amplify.", href: "#", metric: "12.4K Impressions", color: "#FF2DAA" },
-  { id: "beatlab", brand: "BEATLAB STUDIOS", tagline: "Record, Mix, Master — All In One", href: "#", metric: "8.7K Impressions", color: "#00FFFF" },
-  { id: "velocity", brand: "VELOCITY AUDIO", tagline: "Distribution That Moves Fast", href: "#", metric: "6.2K Impressions", color: "#AA2DFF" },
-  { id: "nova", brand: "NOVA MEDIA GROUP", tagline: "Your Brand. Our Audience. Global Reach.", href: "#", metric: "15.1K Impressions", color: "#FFD700" },
-  { id: "cta", brand: "YOUR BRAND HERE", tagline: "Reach 50,000+ musicians and music professionals", href: "/advertise", metric: "From $99/mo", color: "#2DFFAA", isCTA: true },
+  { id: "amplify", brand: "AMPLIFY RECORDS", tagline: "Discover. Sign. Amplify.", href: "/advertise", metric: "Sponsored", color: "#FF2DAA" },
+  { id: "beatlab", brand: "BEATLAB STUDIOS", tagline: "Record, Mix, Master — All In One", href: "/advertise", metric: "Sponsored", color: "#00FFFF" },
+  { id: "velocity", brand: "VELOCITY AUDIO", tagline: "Distribution That Moves Fast", href: "/advertise", metric: "Sponsored", color: "#AA2DFF" },
+  { id: "nova", brand: "NOVA MEDIA GROUP", tagline: "Your Brand. Our Audience. Global Reach.", href: "/advertise", metric: "Sponsored", color: "#FFD700" },
+  { id: "cta", brand: "YOUR BRAND HERE", tagline: "Advertise on The Musician's Index", href: "/advertise", metric: "Start advertising", color: "#2DFFAA", isCTA: true },
 ];
 
 export interface UseAdRotatorOptions {

@@ -1,10 +1,16 @@
 /**
  * Real-Stat + FREE-default honesty certification (assembly slice).
  * Proves TieredAnalyticsEngine no longer fabricates 12.4K / $12,680 metrics,
- * and unpaid tier UI defaults resolve to free/FREE.
+ * unpaid tier UI defaults resolve to free/FREE, and GOLD without Stripe
+ * evidence resolves to FREE on the entitlement-aware read path.
  */
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { getAnalyticsSnapshot } from '../lib/analytics/TieredAnalyticsEngine'
-import { computeAuthoritativeTier } from '../lib/auth/resolveAuthoritativeTier'
+import {
+  computeAuthoritativeTier,
+  hasVerifiedPaidEntitlement,
+} from '../lib/auth/resolveAuthoritativeTier'
 import { roleCan, roleCannot } from '../lib/auth/RoleAuthorityMatrix'
 
 function runRealStatFreeTierHonestyTest() {
@@ -31,9 +37,43 @@ function runRealStatFreeTierHonestyTest() {
   results['null_tier_is_free'] =
     computeAuthoritativeTier('new.user@example.com', null).tier === 'FREE'
 
+  const goldNoEvidence = computeAuthoritativeTier('fan@example.com', 'GOLD', {})
+  results['gold_without_stripe_reads_free'] =
+    goldNoEvidence.tier === 'FREE' && goldNoEvidence.needsUnpaidTierHeal === true
+
+  const goldWithSub = computeAuthoritativeTier('paid@example.com', 'GOLD', {
+    stripeSubscriptionId: 'sub_real_test',
+    billingStatus: 'active',
+  })
+  results['gold_with_subscription_preserved'] = goldWithSub.tier === 'GOLD'
+
+  const goldCanceled = computeAuthoritativeTier('canceled@example.com', 'GOLD', {
+    stripeSubscriptionId: 'sub_old',
+    billingStatus: 'canceled',
+  })
+  results['gold_canceled_billing_reads_free'] = goldCanceled.tier === 'FREE'
+
+  results['verified_entitlement_requires_evidence'] =
+    hasVerifiedPaidEntitlement({}) === false &&
+    hasVerifiedPaidEntitlement({ complimentaryGrant: true }) === true
+
   results['advertiser_can_browse_rooms'] = roleCan('ADVERTISER', 'join_rooms')
   results['advertiser_cannot_go_live'] = roleCannot('ADVERTISER', 'go_live')
   results['advertiser_cannot_manage_seating'] = roleCannot('ADVERTISER', 'manage_seating')
+
+  const srcRoot = join(__dirname, '..')
+  const surfaces = [
+    'components/drawers/TMIRoleDrawerDock.tsx',
+    'components/analytics/RoleAnalyticsDashboard.tsx',
+    'components/home/AdvertiserStrip.tsx',
+    'engine/ads/placementEngine.ts',
+    'lib/analytics/TieredAnalyticsEngine.ts',
+  ]
+  const fakePattern = /12\.4K|12,680|\$12\.4K|847K|\$312\.45|\$184K|\$1\.84M/
+  results['surfaces_scrubbed_of_canonical_fakes'] = surfaces.every((rel) => {
+    const text = readFileSync(join(srcRoot, rel), 'utf8')
+    return !fakePattern.test(text)
+  })
 
   const allPassed = Object.values(results).every(Boolean)
   console.log('[REAL_STAT_FREE_TIER_HONESTY]', { allPassed, results })

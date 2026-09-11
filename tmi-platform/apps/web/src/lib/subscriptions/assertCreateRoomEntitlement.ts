@@ -7,7 +7,10 @@
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { resolveTierFromDb } from "@/lib/auth/resolveAuthoritativeTier";
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from "@/lib/auth/resolveAuthoritativeTier";
 import { resolveEntitlement } from "@/lib/subscriptions/SubscriptionEntitlementEngine";
 import type { AccountType, SubscriptionTier } from "@/lib/subscriptions/SubscriptionPricingEngine";
 
@@ -70,6 +73,9 @@ export async function assertCreateRoomEntitlement(
         id: true,
         email: true,
         tier: true,
+        stripeSubscriptionId: true,
+        stripePriceId: true,
+        billingStatus: true,
         role: true,
         displayName: true,
         name: true,
@@ -86,7 +92,11 @@ export async function assertCreateRoomEntitlement(
     };
   }
 
-  const authoritative = resolveTierFromDb(dbUser.email ?? email, dbUser.tier);
+  const authoritative = resolveTierFromDb(
+    dbUser.email ?? email,
+    dbUser.tier,
+    entitlementEvidenceFromUser(dbUser),
+  );
   const tier = toSubscriptionTier(authoritative);
   const accountType = toAccountType(dbUser.role);
   // Entitlement is tier-only for createRoom — role must not grant bypass.
