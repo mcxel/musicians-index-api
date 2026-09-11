@@ -24,7 +24,8 @@ export default function AdvertiserProfilePage() {
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
 
   const name = session?.user?.displayName ?? 'Advertiser';
-  const tier = session?.tier ?? 'GOLD';
+  // Rule 20: unpaid default is FREE — never invent GOLD without Stripe entitlement.
+  const tier = (session?.tier ?? 'FREE').toUpperCase();
 
   const TIER_COLORS: Record<string, string> = { DIAMOND: '#00FFFF', GOLD: '#FFD700', PLATINUM: '#E5E4E2', SILVER: '#C0C0C0', RUBY: '#CD7F32', PRO: '#AA2DFF', FREE: '#666' };
   const tierColor = TIER_COLORS[tier] ?? '#666';

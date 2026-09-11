@@ -580,71 +580,37 @@ function BookingContent() {
   );
 }
 
-// 💼 SPONSOR HUB
+// 💼 SPONSOR HUB — Rule 20: honest empty until real campaign registry is wired
 function SponsorHubContent() {
-  const sponsors = [
-    { name: "Lawtigers", status: "Active", revenue: "$4,200", renewal: "Sep 15" },
-    { name: "Coca-Cola", status: "Active", revenue: "$12,000", renewal: "Oct 1" },
-    { name: "Chipdust", status: "Pending", revenue: "$3,500", renewal: "—" },
-    { name: "Brothers Apparel", status: "Renewal Due", revenue: "$6,800", renewal: "Aug 20" },
-  ];
   return (
     <Rail>
-      {/* Active Sponsors */}
       <Card minWidth={280} accent="#FFD700">
         <Label color="#FFD700">ACTIVE SPONSORS</Label>
-        {sponsors.map((s) => (
-          <div key={s.name} style={{ background: "#0A0A1A", border: `1px solid #FFD70033`, borderRadius: 6, padding: 8, marginBottom: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: "#E8E8FF" }}>{s.name}</span>
-              <span style={{ fontSize: 8, color: s.status === "Active" ? "#00FF88" : s.status === "Renewal Due" ? "#FF6B1A" : "#FFD700", fontWeight: 700 }}>{s.status}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 8, color: "#00FF88" }}>{s.revenue}</span>
-              <span style={{ fontSize: 7, color: "#7878AA" }}>Renews {s.renewal}</span>
-            </div>
-          </div>
-        ))}
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>
+          No active sponsor deals yet.
+        </div>
         <Btn color="#FFD700">+ Find New Sponsors</Btn>
       </Card>
 
-      {/* Campaign Performance */}
       <Card minWidth={240} accent="#00D4FF">
         <Label color="#00D4FF">CAMPAIGN PERFORMANCE</Label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-          <StatBox label="Impressions" value="847K" color="#00D4FF" />
-          <StatBox label="Engagements" value="24.3K" color="#9B59FF" />
-          <StatBox label="Clicks" value="8,204" color="#FFD700" />
-          <StatBox label="Conversions" value="612" color="#00FF88" />
+          <StatBox label="Impressions" value="0" color="#00D4FF" />
+          <StatBox label="Engagements" value="0" color="#9B59FF" />
+          <StatBox label="Clicks" value="0" color="#FFD700" />
+          <StatBox label="Conversions" value="0" color="#00FF88" />
         </div>
         <Label color="#7878AA">REVENUE FROM SPONSORS</Label>
-        <div style={{ color: "#FFD700" }}>
-          <BarChart bars={[3200, 4100, 5500, 3800, 7200, 6100, 8400, 12000]} />
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "6px 0" }}>
+          $0 — stats appear after real campaign activity.
         </div>
-        <div style={{ fontSize: 7, color: "#7878AA", textAlign: "right", marginTop: 2 }}>Jan → Aug</div>
       </Card>
 
-      {/* Deliverables + Messaging */}
       <Card minWidth={230} accent="#FF6B1A">
         <Label color="#FF6B1A">DELIVERABLES</Label>
-        {[["Coca-Cola Post", "Story posts x3", "Due Aug 5", true], ["Lawtigers Mention", "Shoutout in 2 lives", "Due Aug 9", false]].map(([b, d, due, done]) => (
-          <Row key={b as string} accent="#FF6B1A">
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: "#E8E8FF", fontWeight: 700 }}>{b as string}</div>
-              <div style={{ fontSize: 7, color: "#7878AA" }}>{d as string} · {due as string}</div>
-            </div>
-            <span style={{ fontSize: 9, color: done ? "#00FF88" : "#FF6B1A" }}>{done ? "✓" : "○"}</span>
-          </Row>
-        ))}
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>No deliverables yet.</div>
         <Label color="#9B59FF">SPONSOR MESSAGING</Label>
-        {["Coca-Cola Brand Team", "Lawtigers Legal"].map((name) => (
-          <Row key={name} accent="#9B59FF">
-            <span style={{ fontSize: 8, color: "#E8E8FF", flex: 1 }}>{name}</span>
-            <Btn color="#9B59FF" outline>Chat</Btn>
-          </Row>
-        ))}
-        <Label color="#FFD700">BRAND APPROVALS</Label>
-        <Btn color="#FFD700">📋 Review Queue (3)</Btn>
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>No sponsor threads yet.</div>
       </Card>
     </Rail>
   );

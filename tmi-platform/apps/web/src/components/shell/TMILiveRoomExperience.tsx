@@ -243,7 +243,7 @@ export default function TMILiveRoomExperience({
   quality = '4K',
   userId,
   userName = 'You',
-  userTier = 'Diamond',
+  userTier = 'FREE',
   userLevel = 1,
   userXp = 0,
   userXpMax = 25000,

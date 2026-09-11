@@ -311,8 +311,9 @@ const CANONICAL_ROLE_AUTHORITY: Readonly<Record<TMIRole | SpecialAuthorityRole, 
       "create_giveaways",
       "create_rewards",
       "create_campaigns",
+      "join_rooms", // public browse/preview for partnership targeting
     ],
-    cannot: ["final_ranking_approval", "final_platform_configuration", "moderate"],
+    cannot: ["final_ranking_approval", "final_platform_configuration", "moderate", "go_live", "manage_seating"],
   },
   ADVERTISER: {
     role: "ADVERTISER",
@@ -325,8 +326,10 @@ const CANONICAL_ROLE_AUTHORITY: Readonly<Record<TMIRole | SpecialAuthorityRole, 
       "manage_ad_budgets",
       "view_campaign_analytics",
       "target_audiences",
+      // Public browse/preview for partnership targeting — not venue mutation / Go Live.
+      "join_rooms",
     ],
-    cannot: ["manage_seating", "create_performances", "moderate"],
+    cannot: ["manage_seating", "create_performances", "go_live", "moderate"],
   },
   ADMIN: {
     role: "ADMIN",

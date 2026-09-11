@@ -10,7 +10,7 @@ const TIER_COLORS: Record<SubscriptionTier, string> = {
 };
 
 export default function SponsorAnalyticsPage() {
-  const [tier, setTier] = useState<SubscriptionTier>('gold');
+  const [tier, setTier] = useState<SubscriptionTier>('free');
   const snapshot = getAnalyticsSnapshot(tier, 'sponsor');
   const { capabilities, metrics, insights, upgradePrompt } = snapshot;
 

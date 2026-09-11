@@ -22,7 +22,7 @@ export const routeRegistry: Record<string, RouteContract> = {
     id: "join-random-room",
     path: "/rooms/random",
     pageType: "action",
-    allowedRoles: ["fan", "artist", "admin", "host"],
+    allowedRoles: ["fan", "artist", "admin", "host", "advertiser", "sponsor"],
     sourceZones: ["liveHero", "floatingJoinCTA", "home3Center"],
     destinations: ["/room/[id]"],
     fallback: "/live",
@@ -81,11 +81,11 @@ export const routeRegistry: Record<string, RouteContract> = {
   "room-view":      { id: "room-view",      path: "/room/[id]",    pageType: "entity", allowedRoles: ["*"], sourceZones: ["liveRooms","liveHero","lobbyWall"], destinations: ["/room/[id]/chat","/vote/idol","/home/3"], fallback: "/empty/rooms", backLink: "/home/3", emptyStateRoute: "/empty/rooms", authRequired: false },
   "show-view":      { id: "show-view",      path: "/shows/[id]",   pageType: "entity", allowedRoles: ["*"], sourceZones: ["featuredGame","gameSelector","idolZone"], destinations: ["/shows/[id]/watch","/rooms/random"], fallback: "/empty/events", backLink: "/home/4", emptyStateRoute: "/empty/events", authRequired: false },
   "artist-article": { id: "artist-article", path: "/artist/[slug]/article", pageType: "entity", allowedRoles: ["*"], sourceZones: ["topTenLoop","top10Faces"], destinations: ["/artist/[slug]","/home/1"], fallback: "/home/1", backLink: "/home/1", emptyStateRoute: "/home/1", authRequired: false },
-  "artist-live-room": { id: "artist-live-room", path: "/live/rooms/[slug]", pageType: "entity", allowedRoles: ["fan","artist","performer","admin"], sourceZones: ["topTenLoop","liveRooms"], destinations: ["/room/[id]","/home/3"], fallback: "/empty/rooms", backLink: "/home/3", emptyStateRoute: "/empty/rooms", authRequired: true },
+  "artist-live-room": { id: "artist-live-room", path: "/live/rooms/[slug]", pageType: "entity", allowedRoles: ["fan","artist","performer","admin","advertiser","sponsor"], sourceZones: ["topTenLoop","liveRooms"], destinations: ["/room/[id]","/home/3"], fallback: "/empty/rooms", backLink: "/home/3", emptyStateRoute: "/empty/rooms", authRequired: true },
   "artist-booking": { id: "artist-booking", path: "/booking/[artistId]", pageType: "action", allowedRoles: ["artist","producer","sponsor","admin"], sourceZones: ["topTenLoop","featuredGame","discovery"], destinations: ["/booking/confirmation","/artist/[slug]"], fallback: "/auth-required", backLink: "/home/4", emptyStateRoute: "/empty/events", authRequired: true },
 
   // ── Action routes ──────────────────────────────────────────────────────────
-  "cypher-random":    { id: "cypher-random",    path: "/cypher/random",    pageType: "action", allowedRoles: ["fan","artist","performer","admin"], sourceZones: ["cypherArena","entryQueue"], destinations: ["/room/[id]"], fallback: "/empty/rooms", backLink: "/home/9", emptyStateRoute: "/empty/rooms", authRequired: true },
+  "cypher-random":    { id: "cypher-random",    path: "/cypher/random",    pageType: "action", allowedRoles: ["fan","artist","performer","admin","advertiser","sponsor"], sourceZones: ["cypherArena","entryQueue"], destinations: ["/room/[id]"], fallback: "/empty/rooms", backLink: "/home/9", emptyStateRoute: "/empty/rooms", authRequired: true },
   "battle-join":      { id: "battle-join",      path: "/battle/[id]/join", pageType: "action", allowedRoles: ["artist","performer","admin"],        sourceZones: ["battleBracket"],             destinations: ["/room/[id]"], fallback: "/empty/rooms", backLink: "/home/9", emptyStateRoute: "/empty/rooms", authRequired: true },
   "vote-idol":        { id: "vote-idol",         path: "/vote/idol",        pageType: "action", allowedRoles: ["fan","admin"],                       sourceZones: ["idolZone","votePanel"],      destinations: ["/vote/success"], fallback: "/auth-required", backLink: "/home/7", emptyStateRoute: "/empty/events", authRequired: true },
   "season-pass":      { id: "season-pass",       path: "/season-pass",      pageType: "action", allowedRoles: ["fan","artist","admin"],              sourceZones: ["seasonPass"],               destinations: ["/checkout/season-pass"], fallback: "/auth-required", backLink: "/home/13", emptyStateRoute: "/empty/rewards", authRequired: true },

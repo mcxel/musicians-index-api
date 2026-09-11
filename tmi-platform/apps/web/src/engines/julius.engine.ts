@@ -359,7 +359,10 @@ export class JuliusEngine {
     this.socket?.emit('julius:game_answer', { gameId, answer });
   }
 
-  // ─── VR Mode ────────────────────────────────────────────────────────────────
+  // ─── VR Mode (LEGACY — unmounted from production UI 2026-09-10) ─────────────
+  // Julius socket VR toggles remain for compatibility but must not be surfaced
+  // as a usable VR/immersive entry until Step 5A / XR runtime is certified.
+  // Do NOT wire enableVRMode into venue HUD or spectator overlays.
 
   enableVRMode(): void {
     this.socket?.emit('julius:vr_mode', { enabled: true });

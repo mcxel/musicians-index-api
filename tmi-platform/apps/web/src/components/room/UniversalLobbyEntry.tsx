@@ -26,6 +26,7 @@ import { getGuestId } from "@/lib/identity/getGuestId";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import RoleGate from "@/components/auth/RoleGate";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
 type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
@@ -158,6 +159,12 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   const fillTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { startWatching } = useWatchSession();
   const router = useRouter();
+  const { role } = useAuth();
+  const roleUpper = (role ?? "").toUpperCase();
+  // Advertisers/sponsors may browse public rooms for targeting — spectator only
+  // (no fan avatar seat claim, no venue mutation). Rule 26 avatar ownership stays Fan-only.
+  const isBusinessBrowseRole =
+    roleUpper === "ADVERTISER" || roleUpper === "SPONSOR" || roleUpper === "PROMOTER";
   // Phase 3A — Seat Persistence Convergence (2026-06-20): inherited from
   // SeatingMeshEngine's reclaim-on-return capability. Real seat-claim memory
   // across visits, not a new seat system — the canonical /api/live/audience
@@ -251,6 +258,7 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
    * skip fan audience seat claim — performers watch as queued participants.
    */
   const shouldClaimFanSeat =
+    !isBusinessBrowseRole &&
     room.claimFanSeat !== false &&
     room.participationEntryMode !== "QUEUE" &&
     room.participationEntryMode !== "PERFORMER_LOBBY" &&
@@ -261,12 +269,14 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
     if (step !== "seat") return;
     let cancelled = false;
     (async () => {
-      if (!shouldClaimFanSeat) {
+          if (!shouldClaimFanSeat) {
         if (!cancelled) {
           const mode = room.participationEntryMode ?? "SPECTATOR";
           setSeatId(null);
           setSeatRow(
-            mode === "QUEUE"
+            isBusinessBrowseRole
+              ? "Partnership preview · spectator view"
+              : mode === "QUEUE"
               ? "Queued participant · watching match"
               : mode === "PERFORMER_LOBBY"
                 ? "Performer lobby · video presence"

@@ -161,7 +161,9 @@ export default function AdvertiserSponsorHub() {
               <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">QUICK LINKS</h3>
               <div className="flex flex-col gap-2">
                 {[
-                  { label: "Analytics", href: "/sponsor/analytics" },
+                  { label: "Browse Live Rooms", href: "/live/lobby-wall" },
+                  { label: "Live Discovery", href: "/home/3" },
+                  { label: "Analytics", href: "/hub/advertiser/analytics" },
                   { label: "Placements", href: "/sponsor/placements" },
                   { label: "Contracts", href: "/sponsor/contracts" },
                   { label: "Payments", href: "/sponsor/payments" },

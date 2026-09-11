@@ -15,7 +15,7 @@ const TIER_COLORS: Record<SubscriptionTier, string> = {
 };
 
 export default function ArtistAnalyticsPage() {
-  const [tier, setTier] = useState<SubscriptionTier>('gold');
+  const [tier, setTier] = useState<SubscriptionTier>('free');
   const snapshot = getAnalyticsSnapshot(tier, 'artist');
   const { capabilities, metrics, insights, upgradePrompt } = snapshot;
 

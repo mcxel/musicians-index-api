@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { ageYearsFromDateOfBirthIso } from '@/lib/trustSafety/YouthSocialGuard';
-import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
+import { registerArrival, qualifyReferral } from '@/lib/referral/ReferralEngine';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
@@ -482,12 +482,14 @@ async function ensureUserDatabaseSchema() {
       try {
         registerArrival(parsed.ref, user.id);
         const refResult = qualifyReferral(parsed.ref, user.id, 999, 1);
+        // Rule 20 / revenue honesty: referral milestones must never mint a paid
+        // membership tier. GOLD/etc. only via verified Stripe entitlement.
         if (refResult.qualified && refResult.milestoneBonus > 0) {
-          const link = resolveToken(parsed.ref);
-          if (link) {
-            const owner = await prisma.user.findUnique({ where: { id: link.ownerId } });
-            if (owner) await prisma.user.update({ where: { id: owner.id }, data: { tier: 'GOLD' } });
-          }
+          emitAdminLiveEvent({
+            type: 'info',
+            message: `[${new Date().toLocaleTimeString()}] Referral milestone qualified for ${email} (no tier grant)`,
+            meta: { ref: parsed.ref, userId: user.id, milestoneBonus: refResult.milestoneBonus },
+          });
         }
       } catch (refErr) {
         console.error('[TMI register] referral bonus failed (non-fatal):', refErr);
