@@ -188,8 +188,14 @@ function _runPulse(): void {
   }
 }
 
-// Pulse on a 5-second interval once activated (server-safe)
-if (typeof setInterval !== "undefined") {
+// Pulse on a 5-second interval once activated (server-safe).
+// Guarded against re-registering a second interval if this module gets
+// re-evaluated (e.g. dev-mode Fast Refresh) — without this, each
+// re-evaluation stacks another 5s interval on top of the existing one,
+// multiplying the pulse (and telemetry) rate for the life of the tab/process.
+const PULSE_INTERVAL_GUARD = "__tmiBotActivationPulseRegistered__";
+if (typeof setInterval !== "undefined" && !(globalThis as Record<string, unknown>)[PULSE_INTERVAL_GUARD]) {
+  (globalThis as Record<string, unknown>)[PULSE_INTERVAL_GUARD] = true;
   setInterval(_runPulse, 5_000);
 }
 

@@ -1,6 +1,6 @@
 # LIVE CANARY — Regular GO LIVE → Live Media Fabric
 
-**Date:** 2026-08-31  
+**Date:** 2026-08-31 (physical click closed 2026-09-01)  
 **Branch:** `eos/vocal-improv-clean`  
 **Scope:** Regular GO LIVE **only**  
 **Artifacts:** `.cursor/artifacts/live-canary-regular/`  
@@ -21,9 +21,19 @@
 
 ## Canary status
 
-**PASS (wiring + automated 12-gate suite).**  
+**PASS (wiring + automated 12-gate suite + physical media-player GO LIVE click).**
 
-Physical browser re-run (this session): auth + media-player host **PASS**; `POST /api/live/go` from click was **flaky** on the long-lived `:3000` process (P0-1 already certified publication `389e2e08`). Re-cert physical after a clean Next reload before Experience #2.
+Physical browser (clean Next after killing stale `:3000`, wiped `.next`):
+
+- Performer cert login **PASS**
+- Hub React hydration **PASS**
+- `MediaPlayerGoLiveControl` host **PASS**
+- `POST /api/live/go` **200** **PASS**
+- Registry LIVE (`count=1`) **PASS**
+- Fabric observatory `window.__TMI_LIVE_FABRIC_CANARY__` state=`LIVE`, sources=4, history `PREFLIGHT→READY→CONNECTING→PUBLISHING→LIVE` **PASS**
+- Lobby Wall discoverable (`/api/live/lobby-wall` → `cards`) **PASS**
+- END LIVE teardown → observatory `ENDED` / `canaryActive=false` / registry `count=0` **PASS**
+- Fan `?watch=` presence: **skipped** (optional; no live room left after teardown — expected)
 
 Automated:
 
@@ -32,7 +42,10 @@ npx jest --config jest.config.ts src/tests/runRegularGoLiveFabricCanary.test.ts
 → Tests: 11 passed
 ```
 
-Physical harness: `.cursor/artifacts/live-canary-regular/cert-live-canary.mjs`
+Physical harness: `.cursor/artifacts/live-canary-regular/cert-live-canary.mjs`  
+Latest report: `.cursor/artifacts/live-canary-regular/cert-report.json`
+
+**Harness note (not a product bug):** first physical re-run failed because click hit SSR markup before React fiber hydration (no POST). Aligning with P0-1 hydration + page-session waits closed the PARTIAL. No canary-boundary code change; no commit.
 
 ---
 
@@ -61,17 +74,17 @@ Thin adapter **outside** `lib/liveFabric/`:
 | # | Gate | Result |
 |---|------|--------|
 | 1 | PREFLIGHT — MIC/CAM/privacy OFF by default | **PASS** |
-| 2 | PUBLICATION — media-player path; no duplicate publisher; no fake LIVE | **PASS** (registry still sole LIVE claim) |
+| 2 | PUBLICATION — media-player path; no duplicate publisher; no fake LIVE | **PASS** (physical POST 200 + registry) |
 | 3 | SESSION KERNEL — PREFLIGHT→READY→CONNECTING→PUBLISHING→LIVE | **PASS** |
 | 4 | MEDIA GRAPH — cam, mic, venue renderer, audience renderer | **PASS** |
 | 5 | PROGRAM/PREVIEW — prepare then TAKE; no stream recreation | **PASS** |
 | 6 | SURFACE COMPOSER — FLAT → HYBRID → PIP → FOCUS → FLAT | **PASS** |
 | 7 | AUDIENCE — real human count sync only | **PASS** |
-| 8 | DISCOVERY — experience gate; exact join routes unchanged | **PASS** |
+| 8 | DISCOVERY — experience gate; exact join routes unchanged | **PASS** (Lobby Wall physical) |
 | 9 | AUDIO — single MIC program authority | **PASS** |
 | 10 | RECOVERY — camera loss / NET-DROP; session stays LIVE | **PASS** |
-| 11 | TEARDOWN — END LIVE unbinds fabric + registry cleanup | **PASS** |
-| 12 | OBSERVATORY — `getRegularGoLiveCanaryObservatory()` / `window.__TMI_LIVE_FABRIC_CANARY__` | **PASS** |
+| 11 | TEARDOWN — END LIVE unbinds fabric + registry cleanup | **PASS** (physical) |
+| 12 | OBSERVATORY — `getRegularGoLiveCanaryObservatory()` / `window.__TMI_LIVE_FABRIC_CANARY__` | **PASS** (physical LIVE) |
 
 ```text
 npx jest --config jest.config.ts src/tests/runRegularGoLiveFabricCanary.test.ts
@@ -93,8 +106,8 @@ With flag off, `shouldAttachRegularGoLiveFabricCanary` is false → legacy path 
 
 ## Next (locked)
 
-1. Physical certify media-player GO LIVE with canary observatory visible (`__TMI_LIVE_FABRIC_CANARY__`).
-2. **Do not** start Experience #2 until physical PASS.
+1. ~~Physical certify media-player GO LIVE with canary observatory visible (`__TMI_LIVE_FABRIC_CANARY__`).~~ **DONE PASS**
+2. **Do not** start Experience #2 until owner explicitly unlocks (physical PASS achieved; Experience #2 still locked by product order).
 3. Then expand experience-by-experience under the same boundary pattern.
 
 ---
@@ -102,8 +115,12 @@ With flag off, `shouldAttachRegularGoLiveFabricCanary` is false → legacy path 
 ## Return block
 
 ```
-CANARY STATUS: PASS (wiring + automated 12-gate)
-PHYSICAL GO LIVE CLICK: PENDING (post-wiring physical cert)
+CANARY STATUS: PASS (wiring + automated 12-gate + physical click)
+PHYSICAL GO LIVE CLICK: PASS
+POST /api/live/go: 200
+Fabric LIVE?: YES (state=LIVE, sources=4, PREFLIGHT→…→LIVE)
+Observatory: PASS (window.__TMI_LIVE_FABRIC_CANARY__)
+Teardown: PASS (ENDED, canaryActive=false, registry count=0)
 PUBLICATION: PASS
 SESSION KERNEL: PASS
 MEDIA GRAPH: PASS
@@ -113,8 +130,6 @@ AUDIENCE SYNC: PASS
 DISCOVERY PROPAGATION: PASS
 AUDIO: PASS
 RECOVERY: PASS
-TEARDOWN: PASS
-OBSERVATORY: PASS
 ROLLBACK REQUIRED: NO
 READY FOR EXPERIENCE #2: NO
 ```

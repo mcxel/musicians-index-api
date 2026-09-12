@@ -12,6 +12,9 @@ export type CompactQuickPanelId =
   | "venue"
   | "remote"
   | "snips"
+  | "video-shuffle"
+  | "explore"
+  | "user-id"
   | null;
 
 export type CompactQuickPanelCorner = "bottom-left" | "bottom-right";

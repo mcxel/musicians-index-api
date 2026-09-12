@@ -519,6 +519,15 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
     deck: "Read the format explainer — rotation rooms are not claimed live here.",
     monetizationLayer: "NONE",
   });
+  pool.push({
+    id: "happy-days-community",
+    subtype: "HAPPY_DAYS",
+    paidObligation: false,
+    title: "Happy Days · Community Reflections",
+    href: "/magazine",
+    deck: "What brings us joy across TMI.",
+    monetizationLayer: "NONE",
+  });
 
   return pool.filter((item) => !NON_LIVING_COMMUNITY_RANDOM.includes(item.subtype));
 }

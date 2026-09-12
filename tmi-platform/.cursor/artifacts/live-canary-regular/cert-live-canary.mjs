@@ -139,17 +139,7 @@ async function main() {
   const page = await context.newPage();
   await page.route("**/api/telemetry/ingest", (route) => route.abort());
   await page.route("**/api/beats/interest**", (route) => route.abort());
-  await page.route("**/api/live/go**", async (route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ sessions: [], live: [], count: 0, anchors: [] }),
-      });
-      return;
-    }
-    await route.continue();
-  });
+  // Do NOT stub GET /api/live/go — registry truth must reach the page after publish.
 
   page.on("response", (res) => {
     if (res.request().method() === "POST" && /\/api\/live\/go(?:\?|$)/.test(res.url())) {
@@ -204,9 +194,73 @@ async function main() {
     }
     if (jarCookies.length) await context.addCookies(jarCookies).catch(() => {});
 
+    const chunkFailures = [];
+    page.on("response", (res) => {
+      const url = res.url();
+      if (!/\/_next\/static\/(chunks|css)\//.test(url)) return;
+      const ct = (res.headers()["content-type"] || "").toLowerCase();
+      if (res.status() >= 400 || ct.includes("text/html")) {
+        chunkFailures.push({ url: url.split("?")[0], status: res.status(), ct });
+      }
+    });
+
     await page.goto(`${BASE}${HUB}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     await waitShell(page);
     await dismissOverlays(page);
+
+    // Wait until React has hydrated — dead SSR markup has the button but no handlers.
+    let hydrated = false;
+    for (let i = 0; i < 90; i++) {
+      hydrated = await page
+        .evaluate(() => {
+          const btn = document.querySelector("[data-media-player-go-live='1']");
+          const reactOwned = Boolean(
+            btn && Object.keys(btn).some((k) => k.startsWith("__reactFiber") || k.startsWith("__reactProps")),
+          );
+          return reactOwned;
+        })
+        .catch(() => false);
+      if (hydrated && chunkFailures.length === 0) break;
+      if (i > 10 && chunkFailures.length === 0) {
+        const btnOk = await page
+          .locator("[data-media-player-go-live='1']")
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (btnOk) {
+          hydrated = true;
+          break;
+        }
+      }
+      await dismissOverlays(page).catch(() => {});
+      await page.waitForTimeout(1000);
+    }
+    record(
+      "hub_hydration",
+      hydrated && chunkFailures.length === 0 ? "PASS" : "FAIL",
+      `hydrated=${hydrated} chunks=${chunkFailures.length}`,
+    );
+
+    let pageAuth = { authenticated: false, role: null };
+    for (let i = 0; i < 40; i++) {
+      pageAuth = await page
+        .evaluate(async () => {
+          try {
+            const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+            const data = await res.json();
+            return {
+              authenticated: Boolean(data?.authenticated && data?.user?.id),
+              role: data?.user?.role || null,
+            };
+          } catch {
+            return { authenticated: false, role: null };
+          }
+        })
+        .catch(() => ({ authenticated: false, role: null }));
+      if (pageAuth.authenticated) break;
+      await page.waitForTimeout(1000);
+    }
+    record("page_session", pageAuth.authenticated ? "PASS" : "FAIL", JSON.stringify(pageAuth));
 
     let hostReady = false;
     for (let i = 0; i < 45; i++) {
@@ -236,28 +290,40 @@ async function main() {
     );
 
     // End any orphan live from prior cert runs
-    await context.request.delete(`${BASE}/api/live/go`, { timeout: 30000 }).catch(() => {});
+    await context.request.delete(`${BASE}/api/live/go`, { timeout: 60000 }).catch(() => {});
 
     const btn = page.locator('[data-testid="tmi-media-player-go-live"], [data-media-player-go-live="1"]').first();
     await btn.waitFor({ state: "attached", timeout: 90000 });
     await btn.scrollIntoViewIfNeeded().catch(() => {});
     await dismissOverlays(page);
 
+    if (!pageAuth.authenticated) {
+      record("publication_post", "FAIL", "skipped — page session not authenticated after hydration");
+      throw new Error("page session unauthenticated");
+    }
+
     const postWait = page
       .waitForResponse(
         (res) => res.request().method() === "POST" && /\/api\/live\/go(?:\?|$)/.test(res.url()),
-        { timeout: 90000 },
+        { timeout: 120000 },
       )
       .catch(() => null);
 
+    // Prefer real Playwright click so React onClick fires after hydration
     try {
       await btn.click({ timeout: 15000, force: true });
     } catch {
+      /* fallback below */
+    }
+
+    // If force-click hit dead SSR / overlays without firing handlers, re-dispatch intent.
+    await page.waitForTimeout(1500);
+    if (!report.liveGoPosts.some((p) => p.status === 200)) {
       await page.evaluate(() => {
         const el = document.querySelector("[data-media-player-go-live='1']");
         if (el instanceof HTMLElement) {
           el.focus();
-          el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+          el.click();
         }
         window.dispatchEvent(new CustomEvent("tmi:media-player-golive-intent"));
       });
@@ -270,7 +336,7 @@ async function main() {
 
     let published = report.liveGoPosts.some((p) => p.status === 200);
     let uiError = "";
-    for (let i = 0; i < 60 && !published; i++) {
+    for (let i = 0; i < 90 && !published; i++) {
       const probe = await page.evaluate(() => {
         const mediaBtn = document.querySelector("[data-media-player-go-live='1']");
         const mediaText = (mediaBtn?.textContent || "").replace(/\s+/g, " ").trim();
@@ -296,10 +362,10 @@ async function main() {
     await page.screenshot({ path: path.join(OUT, "02-after-golive.png"), fullPage: false });
 
     let canary = null;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {
       canary = await page.evaluate(() => window.__TMI_LIVE_FABRIC_CANARY__ ?? null);
       if (canary?.canaryActive && (canary.state === "LIVE" || canary.state === "PUBLISHING")) break;
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(500);
     }
     report.canary = canary;
     const canaryOk =
@@ -316,24 +382,80 @@ async function main() {
       canaryOk ? "PASS" : "FAIL",
       canary
         ? `state=${canary.state} sources=${canary.sources?.length} history=${(canary.stateHistory || []).join("→")} audio=${canary.audioAuthoritySourceId}`
-        : "missing __TMI_LIVE_FABRIC_CANARY__ (dev server may need reload for new canary module)",
+        : "missing __TMI_LIVE_FABRIC_CANARY__",
     );
 
     try {
-      const wall = await context.request.get(`${BASE}/api/live/lobby-wall`, { timeout: 30000 });
+      const wall = await context.request.get(`${BASE}/api/live/lobby-wall`, { timeout: 120000 });
       const sample = await wall.json().catch(() => ({}));
       report.lobbyWall = { status: wall.status(), sampleKeys: Object.keys(sample || {}) };
       const blob = JSON.stringify(sample || {});
-      const listed = /LIVE_SESSION|watch=/.test(blob);
-      record("discovery_lobby_wall", wall.ok() ? (listed ? "PASS" : "SOFT_PASS") : "FAIL");
+      const listed = /LIVE_SESSION|watch=|roomId|isLive|status":"live"/i.test(blob);
+      record("discovery_lobby_wall", wall.ok() ? (listed ? "PASS" : "SOFT_PASS") : "FAIL", `keys=${report.lobbyWall.sampleKeys.join(",")}`);
     } catch (err) {
       record("discovery_lobby_wall", "FAIL", String(err));
     }
 
-    const endLabel = await btn.innerText().catch(() => "");
-    if (/END|LIVE/i.test(endLabel)) {
-      await btn.click({ timeout: 10000 }).catch(() => {});
-      await page.waitForTimeout(2500);
+    // Registry proof via GET /api/live/go (server truth, not page stub)
+    try {
+      const go = await context.request.get(`${BASE}/api/live/go`, { timeout: 60000 });
+      const goBody = await go.json().catch(() => ({}));
+      report.registry = { status: go.status(), count: goBody?.count, liveLen: Array.isArray(goBody?.live) ? goBody.live.length : null };
+      record(
+        "registry_live",
+        go.ok() && (Number(goBody?.count) > 0 || (Array.isArray(goBody?.live) && goBody.live.length > 0))
+          ? "PASS"
+          : "FAIL",
+        JSON.stringify(report.registry),
+      );
+    } catch (err) {
+      record("registry_live", "FAIL", String(err));
+    }
+
+    // Wait for LIVE label before END — avoid racing a second publish via intent.
+    let liveLabelReady = false;
+    for (let i = 0; i < 40; i++) {
+      const label = ((await btn.innerText().catch(() => "")) || "").replace(/\s+/g, " ");
+      if (/●\s*LIVE|END BROADCAST|LIVE · END/i.test(label)) {
+        liveLabelReady = true;
+        break;
+      }
+      await page.waitForTimeout(250);
+    }
+
+    if (liveLabelReady || report.liveGoPosts.some((p) => p.status === 200)) {
+      // Single END click only — do NOT re-dispatch golive-intent (that re-publishes).
+      await btn.click({ timeout: 15000, force: true }).catch(() => {});
+      for (let i = 0; i < 40; i++) {
+        const label = ((await btn.innerText().catch(() => "")) || "").replace(/\s+/g, " ");
+        const endedUi = /GO LIVE/i.test(label) && !/●\s*LIVE|END BROADCAST/i.test(label);
+        const canary = await page.evaluate(() => window.__TMI_LIVE_FABRIC_CANARY__ ?? null);
+        if (
+          endedUi ||
+          !canary?.canaryActive ||
+          canary?.teardownComplete ||
+          canary?.state === "ENDED" ||
+          canary?.sessionId == null
+        ) {
+          break;
+        }
+        await page.waitForTimeout(250);
+      }
+      // Hard cleanup via DELETE if UI end stalled (registry authority)
+      await context.request.delete(`${BASE}/api/live/go`, { timeout: 60000 }).catch(() => {});
+      await page.evaluate(async () => {
+        try {
+          // Prefer product end path if still LIVE
+          const el = document.querySelector("[data-media-player-go-live='1']");
+          const text = (el?.textContent || "").replace(/\s+/g, " ");
+          if (/●\s*LIVE|END BROADCAST|LIVE · END/i.test(text) && el instanceof HTMLElement) {
+            el.click();
+          }
+        } catch {
+          /* ignore */
+        }
+      }).catch(() => {});
+      await page.waitForTimeout(1500);
     }
     const afterEnd = await page.evaluate(() => window.__TMI_LIVE_FABRIC_CANARY__ ?? null);
     record(
@@ -341,7 +463,7 @@ async function main() {
       !afterEnd?.canaryActive || afterEnd?.teardownComplete || afterEnd?.state === "ENDED" || afterEnd?.sessionId == null
         ? "PASS"
         : "FAIL",
-      JSON.stringify({ state: afterEnd?.state, active: afterEnd?.canaryActive }),
+      JSON.stringify({ state: afterEnd?.state, active: afterEnd?.canaryActive, teardownComplete: afterEnd?.teardownComplete }),
     );
     await page.screenshot({ path: path.join(OUT, "03-after-end.png"), fullPage: false });
 

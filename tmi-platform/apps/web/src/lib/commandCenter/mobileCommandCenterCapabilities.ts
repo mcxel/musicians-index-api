@@ -26,7 +26,9 @@ export type MobileQuickPanelActionId =
   | "share-screen"
   | "record"
   | "share"
-  | "memory";
+  | "memory"
+  | "cast"
+  | "user-id";
 
 export type MobileCommandCenterRole = "fan" | "performer";
 
@@ -38,7 +40,6 @@ export interface MobileQuickPanelButtonDef {
 
 const LOWER_ROW_FAN: MobileQuickPanelButtonDef[] = [
   { id: "avatar", label: "👤 AVATAR", tier: "primary" },
-  { id: "inventory", label: "🎒 INVENTORY", tier: "primary" },
   { id: "magazine", label: "📰 MAGAZINE", tier: "primary" },
   { id: "yopho", label: "📷 YOPHO", tier: "primary" },
   { id: "playlist", label: "🎵 PLAYLIST", tier: "primary" },
@@ -58,11 +59,7 @@ const LOWER_ROW_PERFORMER: MobileQuickPanelButtonDef[] = [
   { id: "memory", label: "🧠 MEMORY", tier: "primary" },
 ];
 
-const MORE_COMMON: MobileQuickPanelButtonDef[] = [
-  { id: "share-screen", label: "🖥 SHARE SCREEN", tier: "more" },
-  { id: "record", label: "⏺ RECORD", tier: "more" },
-  { id: "share", label: "↗ SHARE", tier: "more" },
-];
+const MORE_COMMON: MobileQuickPanelButtonDef[] = [];
 
 export interface MobileQuickPanelCapabilitiesContext extends VenueToolsPolicyContext {
   role: MobileCommandCenterRole;

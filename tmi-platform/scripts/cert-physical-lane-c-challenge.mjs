@@ -31,7 +31,15 @@ function setGate(id, status, notes, evidence = []) {
 
 async function shot(page, name) {
   const file = path.join(ARTIFACTS, name);
-  await page.screenshot({ path: file, fullPage: false, animations: "disabled" });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.screenshot({ path: file, fullPage: false, animations: "disabled" });
+      break;
+    } catch (e) {
+      if (attempt === 2) throw e;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
   screenshots.push(name);
   console.log(`  [SHOT] ${name}`);
   return name;

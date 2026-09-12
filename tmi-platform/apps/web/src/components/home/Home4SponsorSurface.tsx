@@ -28,7 +28,7 @@ export default function Home4SponsorSurface() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 20% 80%, rgba(255,215,0,0.15), transparent 50%), #050510', color: '#fff', paddingBottom: 80 }}>
-      <GlobalTopNavRail />
+      <GlobalTopNavRail includeHeader={false} />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <Home4SponsorDensityRail />
@@ -88,3 +88,4 @@ export default function Home4SponsorSurface() {
     </main>
   );
 }
+

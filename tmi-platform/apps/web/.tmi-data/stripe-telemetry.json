@@ -1,5 +1,5 @@
 {
-  "counter": 19,
+  "counter": 26,
   "events": [
     {
       "id": "1779937483275-1",
@@ -257,6 +257,118 @@
       "kind": "webhook_verified",
       "category": "success",
       "ts": 1787882038024,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788244993030-20",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788244993031,
+      "meta": {
+        "fingerprint": "cs_test_b1RauohECtUtwAw0ZMurm3SFSxGL0MhXYMabsrfVgiwmyvC14jDOH89DSQ",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248460086-21",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248460086,
+      "meta": {
+        "fingerprint": "cs_test_b1js8bUHbgxdeVqowC05Bu0CR4b2iqsmhXwQDGunDhlvUuIdwyIoINfPuE",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "season_pass",
+        "amountCents": 999,
+        "currency": "usd",
+        "type": "season_pass",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248584353-22",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248584353,
+      "meta": {
+        "fingerprint": "cs_test_b17T4jqvqBLh2i2vAQZETzfGnrzBBk9VldwvJHNFLczPlhMG30f9vTYgY1",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "season_pass",
+        "amountCents": 999,
+        "currency": "usd",
+        "type": "season_pass",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248837241-23",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248837242,
+      "meta": {
+        "fingerprint": "cs_test_b1XOWOwRL5qx1cO43rzciNYkA2eyuZHxcWJmQvYnwyMdNXeUtLCARIlO6b",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 299,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788295125811-24",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788295125811,
+      "meta": {
+        "fingerprint": "cs_test_b1IWTxnyyMJtegUamAWClfkzl9cwrQtHsFC1hDgBAkHXv2GhoShTuSbY4d",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 299,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788320009991-25",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788320009991,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788320009992-26",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788320009992,
       "meta": {
         "fingerprint": "sub_test_diamond_001",
         "eventType": "customer.subscription.created",

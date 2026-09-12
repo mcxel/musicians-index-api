@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import FanHubMount from "@/components/auth/FanHubMount";
@@ -13,7 +12,8 @@ export const dynamic = "force-dynamic";
 /**
  * Fan hub — prefer cookie role (no ROLE_RESOLVING). Static FanShell only.
  * Client SessionRoleGate only when role cookie is missing/unclassified.
- * Suspense boundary keeps SSR hub chrome mounted while searchParams bridge resolves.
+ * No Suspense wrapper: FanHubMount does not suspend; prior Suspense pair was
+ * Antigravity probe noise and a candidate hub-DOM flicker source.
  */
 
 export default function FanHubPage() {
@@ -43,11 +43,7 @@ export default function FanHubPage() {
       userId,
       displayName,
     };
-    return (
-      <Suspense fallback={<FanHubMount session={session} />}>
-        <FanHubMount session={session} />
-      </Suspense>
-    );
+    return <FanHubMount session={session} />;
   }
 
   return <FanHubSessionFallback />;

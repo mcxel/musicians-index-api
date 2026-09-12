@@ -186,7 +186,12 @@ export async function fulfillStoreItemPurchase(input: {
     return { ok: false, reason: 'subscription_fulfilled_via_subscription_webhook' };
   }
 
-  const { persistStoreItemOwnership } = await import('@/lib/commerce/StoreItemOwnershipEngine');
+  if (typeof window !== 'undefined') {
+    return { ok: false, reason: 'server_only' };
+  }
+  // Server-only runtime resolution: avoid bundler pulling Prisma/pg into client bundles
+  const req = eval('require');
+  const { persistStoreItemOwnership } = req('../commerce/StoreItemOwnershipEngine');
   return persistStoreItemOwnership({
     userId: input.buyerId,
     itemId: item.id,

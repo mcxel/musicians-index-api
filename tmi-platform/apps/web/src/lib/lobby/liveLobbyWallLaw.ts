@@ -106,19 +106,19 @@ export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly Ex
 function recordHasArenaCategory(r: LiveDiscoveryRecord): boolean {
   return (
     ARENA_DISCOVERY_CATEGORIES.has(r.category) ||
-    r.categories.some((c) => ARENA_DISCOVERY_CATEGORIES.has(c))
+    Boolean(r.categories?.some((c) => ARENA_DISCOVERY_CATEGORIES.has(c)))
   );
 }
 
 function recordHasLiveGeneralCategory(r: LiveDiscoveryRecord): boolean {
   return (
     LIVE_GENERAL_CATEGORIES.has(r.category) ||
-    r.categories.some((c) => LIVE_GENERAL_CATEGORIES.has(c))
+    Boolean(r.categories?.some((c) => LIVE_GENERAL_CATEGORIES.has(c)))
   );
 }
 
 function isListeningLoungeRecord(r: LiveDiscoveryRecord): boolean {
-  return r.category === "listening" || r.categories.includes("listening");
+  return r.category === "listening" || Boolean(r.categories?.includes("listening"));
 }
 
 export const LOBBY_WALL_MOBILE_ROAM_LAW = {
@@ -138,7 +138,7 @@ export function canSearchFanAvatarLobbies(role: string | null | undefined): bool
 }
 
 export function isFanAvatarLobbyRecord(r: LiveDiscoveryRecord): boolean {
-  if (r.category === "fan_lobbies" || r.categories.includes("fan_lobbies")) return true;
+  if (r.category === "fan_lobbies" || r.categories?.includes("fan_lobbies")) return true;
   const fam = (r.anchorFamily ?? "").toLowerCase();
   if (fam === "fan_genre_lobby" || fam === "fan-lobby" || fam === "fan_lobby") return true;
   const def = getGenreRoomByRoomId(r.roomId);
@@ -148,7 +148,7 @@ export function isFanAvatarLobbyRecord(r: LiveDiscoveryRecord): boolean {
 
 /** Fan Avatar Lobby only — excludes LOUNGE_SIDE_ROOM / playlist lounges. */
 export function isLoungeSideRoomRecord(r: LiveDiscoveryRecord): boolean {
-  if (r.category === "lounges" || r.categories.includes("lounges")) return true;
+  if (r.category === "lounges" || r.categories?.includes("lounges")) return true;
   const fam = (r.anchorFamily ?? "").toLowerCase();
   return fam === "playlist_lounge" || fam === "conversation_lounge" || fam === "lounge";
 }
@@ -244,7 +244,7 @@ export function filterDiscoveryByWallCategory(
     ];
   return records.filter(
     (r) =>
-      (r.category === target || r.categories.includes(target)) &&
+      (r.category === target || r.categories?.includes(target)) &&
       !isPerformerLobbyRecord(r) &&
       !isFanAvatarLobbyRecord(r),
   );

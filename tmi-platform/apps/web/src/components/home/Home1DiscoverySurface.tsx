@@ -52,7 +52,7 @@ export default function Home1DiscoverySurface() {
       <TmiPaperNoise opacity={0.018} />
       <TmiGridFog color="#00FFFF" opacity={0.018} gridSize={60} />
 
-      <GlobalTopNavRail />
+      <GlobalTopNavRail includeHeader={false} />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <Home1CrownDensityRail />
@@ -83,3 +83,4 @@ export default function Home1DiscoverySurface() {
     </main>
   );
 }
+

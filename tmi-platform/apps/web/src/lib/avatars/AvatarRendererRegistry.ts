@@ -29,6 +29,11 @@ export function getFanAvatarRenderer(): IAvatarRenderer {
   return RENDERERS[FAN_RENDERER_TYPE] ?? RENDERERS.Primitive3D ?? HostMotionAvatarRenderer;
 }
 
+/** Platform hosts share IAvatarRenderer contract; ownership PLATFORM_HOST (Rule 26/28). */
+export function getPlatformHostAvatarRenderer(): IAvatarRenderer {
+  return getActiveAvatarRenderer();
+}
+
 export function getAvatarRenderer(type: AvatarRendererType): IAvatarRenderer {
   return RENDERERS[type] ?? getActiveAvatarRenderer();
 }

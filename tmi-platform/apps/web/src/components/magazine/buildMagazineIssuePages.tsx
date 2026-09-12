@@ -5,6 +5,7 @@ import { MAGAZINE_ISSUE_1, getArticleBySlug, type MagazineArticle } from "@/lib/
 import { magazineReaderArticleUrl, magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 import MagazineEditorialSpreadEngine from "@/components/magazine/MagazineEditorialSpreadEngine";
+import MagazineHappyDaysPage from "@/components/magazine/pages/MagazineHappyDaysPage";
 import {
   buildCanonicalMagazineIssueSlots,
   issueSlotMonetizationLabel,
@@ -442,6 +443,10 @@ function RandomIssuePage({ slot }: { slot: MagazineIssueSlot }) {
         </div>
       </div>
     );
+  }
+
+  if (slot.randomSubtype === "HAPPY_DAYS") {
+    return <MagazineHappyDaysPage accentColor={accent} />;
   }
 
   if (slot.randomSubtype === "COMMUNITY_CORKBOARD") {

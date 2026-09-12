@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
 
 export interface GlobalTmiHeaderProps {
   user?: {
@@ -19,31 +19,75 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
   const pathname = usePathname();
   const [sessionUser, setSessionUser] = useState(user ?? null);
   const [cartCount, setCartCount] = useState(0);
+  // Cookie latch: under load /api/auth/session sometimes returns empty bodies and
+  // sessionUser never latches — IdentityControl still hydrates via /api/account/identity
+  // once mounted (HEADER-PHYS-03 closeout).
+  const [cookieAuthed, setCookieAuthed] = useState(false);
 
   useEffect(() => {
-    if (user !== undefined) {
+    setCookieAuthed(/(?:^|; )tmi_user_email=/.test(document.cookie));
+  }, []);
+
+  useEffect(() => {
+    // Prop may seed an optimistic display, but never skip the session read.
+    // Skipping when user prop is explicitly undefined/null previously left
+    // signed-in headers stuck on LOGIN/SIGN UP (HEADER-PHYS-03).
+    if (user) {
       setSessionUser(user);
-      return;
     }
     let active = true;
-    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (active && data?.authenticated && data?.user) {
+
+    async function loadSession(attempt = 0) {
+      try {
+        const r = await fetch("/api/auth/session", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        const text = await r.text();
+        let data = null;
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = null;
+          }
+        }
+        if (!active) return;
+        if (data && data.authenticated && data.user) {
+          setCookieAuthed(true);
           setSessionUser({
             id: data.user.id,
-            displayName: data.user.name || data.user.email?.split("@")[0] || "User",
+            displayName: data.user.name || (data.user.email && data.user.email.split("@")[0]) || "User",
             email: data.user.email,
             role: data.role || data.user.role || "FAN",
             avatarUrl: data.user.avatarUrl,
           });
+          return;
         }
-      })
-      .catch(() => {});
+        if ((!text || !data) && attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+          return loadSession(attempt + 1);
+        }
+        if (data && data.authenticated === false) {
+          setCookieAuthed(false);
+          if (!user) setSessionUser(null);
+        }
+      } catch (e) {
+        if (!active) return;
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+          return loadSession(attempt + 1);
+        }
+      }
+    }
+
+    void loadSession();
     return () => {
       active = false;
     };
   }, [user]);
+
+  const showAccountShell = Boolean(sessionUser || cookieAuthed || user);
 
   // Cart badge — real count from the persistent server-authoritative cart
   // (GET /api/cart → itemCount), refreshed on sign-in and on navigation so
@@ -170,12 +214,10 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
               )}
             </Link>
           )}
-          {sessionUser ? (
-            <AccountCommandMenu
-              userId={sessionUser.id ?? "session"}
-              displayName={sessionUser.displayName ?? "Account"}
-              avatarUrl={sessionUser.avatarUrl}
-              accentColor="#FF2DAA"
+          {showAccountShell ? (
+            <UniversalAccountIdentityControl
+              fallbackDisplayName={sessionUser?.displayName ?? "Account"}
+              fallbackAvatarUrl={sessionUser?.avatarUrl}
               compact
             />
           ) : (
@@ -250,3 +292,4 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps = {}) {
     </header>
   );
 }
+

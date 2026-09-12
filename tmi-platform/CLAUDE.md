@@ -1220,3 +1220,426 @@ Each maps to an automatic recovery policy: retry → fallback asset → fallback
 The face-capture → rigged-3D-avatar → lip-synced pipeline remains multi-session, multi-specialist work (computer-vision + 3D-animation). Do not fake a stub version. The near-term work is: (1) connect the runtime to the existing Herser assets via the canonical registries, (2) wire the Avatar Quick Panel and Creation Center to those registries, (3) run the Avatar QA Lab certification. The full face-scan pipeline is scoped separately and cannot begin before the canonical rig/environment binding is complete.
 
 *Established 2026-08-27 by Marcel Dickens.*
+
+---
+
+### Rule 29 — Three-Tier Venue Authority Separation (locked 2026-09-06)
+
+**The profile/account shell is not the venue.** A profile is a window into a venue; the venue is an independent, authoritative runtime. This was locked after a 2026-09-06 UI convergence audit found `CurtainCanister.tsx` (already dead/unmounted) built as if curtain control were a per-account capability — the correction is architectural, not just a dead-code deletion: nothing that mutates a venue may ever be modeled as a Rule 15 canister or live inside the personal profile/account shell again.
+
+**Four distinct authorities, never collapsed into each other:**
+
+```
+PERSON           → controls themselves (account/profile/identity)
+VENUE            → controls the world (the room/session/3D environment)
+VENUE OPERATOR   → controls authorized venue presentation, from inside the venue
+LIVE PROGRAM     → controls what is broadcast/distributed externally
+```
+
+**The tier architecture:**
+
+```
+TIER 1 — PERSONAL / ACCOUNT SPACE
+─────────────────────────────────
+Universal Account Shell, Profile, Public Profile, Notifications, Billing,
+Security, Privacy, Subscriptions, personal preferences, Discovery/navigation,
+read-only Venue Preview.
+
+NO: Curtains, stage mechanics, house lights, venue mixer, audience
+administration, Jumbotron director, venue production controls.
+
+                    ENTER / GO LIVE
+                           ↓
+
+TIER 2 — VENUE RUNTIME
+─────────────────────────────────
+Keyed by venueId / roomId / liveSessionId / experienceId — never userId/profileId.
+3D world, stage, audience, seating, collision, spatial audio, Jumbotrons,
+venue cameras, occupancy, experience runtime, venue state, telemetry.
+The venue exists independently of any single user — if a performer steps
+away, the venue's physical state (lighting, seating) persists.
+
+                           ↓
+                    AUTHORIZED ⚙ (contextual, not a permanent global rail)
+
+TIER 3 — VENUE OPERATOR OVERLAY
+─────────────────────────────────
+Curtains, intermission, countdowns, house lights, stage FX, stage mechanics,
+venue audio, audience modes, seating management, Jumbotron controls,
+camera/scene controls, experience-specific controls, safety controls,
+production overlays. Audience-facing (curtains, Jumbotron) vs operator-only
+(the button that controls them) are different render layers — the audience
+never sees Tier 3 controls, only their Tier 2 effects.
+```
+
+**Alongside all three — not underneath the profile, not owned by the venue:**
+
+```
+LIVE PROGRAM / BROADCAST SESSION
+─────────────────────────────────
+GO LIVE, Program Mixer, Preview/Program, Record, Share Screen, CAST,
+Destination Bezel (YouTube/Facebook/Twitch/Kick/Custom), broadcast health,
+external egress.
+```
+
+The Broadcast Destination Bezel is accessible from inside Venue Tools for operator convenience, but is **owned by the Live Program/session, not the venue** — provider credentials and distribution never become venue-owned just because the venue gear links to them.
+
+**Ownership chains (the law, not a suggestion):**
+
+```
+FORBIDDEN:                          REQUIRED:
+ProfileShell                        Active Venue
+  → CurtainSystem                     → authorized Venue Gear (⚙)
+                                       → VenueCapabilityResolver
+                                       → VenueCommandBus
+                                       → VenuePresentationDirector
+                                       → CurtainDirector
+                                       → authoritative VenuePresentationState
+                                       → synchronized audience rendering
+```
+
+`VenuePresentationDirector` children: `CurtainDirector`, `LightingDirector`, `StageOverlayDirector`, `JumbotronDirector`, `SponsorOverlayDirector`, `ScoreboardDirector`, `CrowdPresentationDirector`, `TransitionDirector`, `ProgramLayoutBridge`.
+
+**Read path vs write path** — profile/home/discovery previews consume a read-only feed and never receive mutation authority:
+
+```
+READ:  VenueRuntime → VenuePresentationSnapshot → Profile/Home/Discovery previews
+WRITE: Authorized user inside venue → VenueCommandBus → VenueRuntime
+```
+
+`VenuePresentationSnapshot` may expose: venue name, experience, live/offline, approved thumbnail/program frame, curtain visual state, current performer, legitimate audience count, event status. It must never expose: operator mutation tokens, venue command authority, private mixer controls, stage authorization, broadcast credentials, admin capability.
+
+**Curtain state is authoritative and synchronized**, not a local boolean per browser: `CLOSED → OPENING → OPEN → CLOSING → INTERMISSION → COUNTDOWN → HOLD → ERROR`, each transition carrying `transitionId`, `effectiveAt`, `duration`, `requestedBy`, `authorizedBy`, and an incrementing `venuePresentationVersion`. Late joiners fetch current state rather than replaying the transition from the start; a refreshed operator's browser reconnects to existing state rather than resetting to defaults.
+
+**Role authority is resolved, not assumed from presence** — being physically in the venue does not grant control:
+
+```
+VenueGearButton → VenueCapabilityResolver → HudControlRegistry → VenueCommandBus
+→ VenuePresentationDirector → authoritative venue state → renderer → audience
+```
+
+`HOST`/`AUTHORIZED PRODUCER` get venue presentation (+ program) controls, `PERFORMER` gets performer-specific controls, `FAN`/`GUEST` get audience-only or permitted-guest controls respectively.
+
+**Venue tools are manifest-driven per experience, not one global control list** — a `VenueToolManifest` resolves from experience + venue capabilities + operator role + current venue state, so a Battle (Curtain, Intro, Round State, A/B Stage, Lighting, Jumbotron, Audience Reaction, Scoreboard, Camera, Safety), a Cypher (Curtain, Rotation, Active Performer, Group Stage, Lighting, Jumbotron, Audio, Audience), and Regular Go Live (Curtain, Lighting, Guests, Audience, Jumbotron, Program View, Sponsor Treatment) each get the right tools behind the *same* single ⚙ control — never a new permanent rail per experience.
+
+**Venue lifecycle gates tool availability**: `NOT_ENTERED → ENTERING → ACTIVE → PAUSED → ENDING → ENDED`. No venue context, no venue tools — `canMountVenueTools` requires an active `venueId`+`liveSessionId` and `venueCapabilities.canOperateVenue === true`; the gear doesn't render disabled, it doesn't exist.
+
+**Dependency law (certifiable)**: `profile/**`, `account/**`, `settings/**` must never import venue-mutating modules (`CurtainDirector`, `VenueCommandBus`, `VenueLightingDirector`, `VenueStageController`, `VenueAudienceController`) — they may import read-only `VenuePreview`/`VenuePresentationSnapshot` only. Venue runtime must never depend on private profile UI components. This should become an automated import-boundary check, not a one-time manual scan, so the architecture can't slowly recollapse.
+
+**Certification (VENUE-01 through VENUE-13):**
+```
+VENUE-01  Profile shows venue preview but exposes zero venue mutation controls.
+VENUE-02  Without active venue/session, Curtain/Stage/Lighting/Jumbotron controls are absent.
+VENUE-03  Enter authorized venue → Venue Gear appears.
+VENUE-04  Open Venue Gear → correct experience-specific tool manifest appears.
+VENUE-05  Unauthorized audience member cannot mutate curtains/stage.
+VENUE-06  Authorized operator closes curtain → all viewers see synchronized close.
+VENUE-07  Profile preview reflects venue state without owning it.
+VENUE-08  Refresh operator browser → venue presentation state persists.
+VENUE-09  Late viewer joins → receives current state without restarting animation incorrectly.
+VENUE-10  Venue state change does not restart camera, mic, WebRTC, recording, Program Mixer, or external egress.
+VENUE-11  Different experience loads different VenueToolManifest without adding global buttons.
+VENUE-12  Leaving/ending venue removes Venue Gear and all venue-only controls.
+VENUE-13  AUTHORITY SEPARATION — ProfileShell cannot directly mutate VenueRuntime; all writes traverse
+          Authorized Venue HUD → capability resolver → command bus → venue runtime/service → authoritative state.
+```
+
+**Required end state:**
+```
+VENUE CONTROLS IN PERSONAL UI          = 0
+CURTAIN CONTROLS OUTSIDE ACTIVE VENUE  = 0
+PROFILE → VENUE MUTATION PATHS         = 0
+UNAUTHORIZED VENUE MUTATION PATHS      = 0
+DUPLICATE VENUE CONTROL RAILS          = 0
+READ-ONLY PROFILE VENUE PREVIEWS       = PASS
+VENUE STATE RECONNECT                  = PASS
+LATE-JOIN VENUE STATE                  = PASS
+AUDIENCE CURTAIN SYNCHRONIZATION       = PASS
+EXPERIENCE-AWARE VENUE TOOL MANIFEST   = PASS
+```
+
+**Scope honesty (2026-09-06)**: none of `VenueCapabilityResolver`, `VenueCommandBus`, `VenueToolManifest`, `VenuePresentationDirector`, `CurtainDirector`, or authoritative `VenuePresentationState`/`venuePresentationVersion` exist as code yet — this is a locked architectural law for how the venue-tools convergence (already underway per the same-day UI audit) must be built, not a claim any of it is implemented. The audit's confirmed-dead `CurtainCanister.tsx` and 4 other retired curtain implementations were already correctly pointed at `VenueToolsDirector`/`VenueToolsQuickPanel` by an earlier session — this rule formalizes why that direction was right and extends it to every venue-presentation control, not curtains alone. Do not build a stub version of any Director named above that doesn't actually enforce server-authoritative, synchronized state (a `CurtainDirector` that just flips local React state per viewer would itself violate this rule and Rule 20).
+
+*Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 30 — Live Pause / Intermission Monetization State (locked 2026-09-06)
+
+**PAUSE LIVE is a session state transition, not a stream stop.** When a performer pauses, the canonical `liveSessionId`, WebRTC contribution session, Program Mixer, recording continuity, external egress, and destination provider sessions all stay alive — only the program *content* changes, from live performance to a real venue intermission presentation (curtains closed, approved ad/sponsor program running). `PAUSE LIVE != END LIVE`, full stop.
+
+**One contextual live-state control, not four permanent buttons:**
+```
+[ GO LIVE ] → [ PAUSE LIVE ] → [ RESUME LIVE ] → [ END LIVE ]
+```
+
+**State machine**: `OFF → STARTING → LIVE → PAUSING → INTERMISSION → RESUMING → LIVE`, with `WARNING`/`ERROR`/`STOPPING` as needed. Venue presentation maps onto it directly: `LIVE`=curtains open, `PAUSING`=curtain closing, `INTERMISSION`=curtain closed + approved ad/program content, `RESUMING`=curtain opening.
+
+**Ownership chain on pause:**
+```
+LiveSessionDirector → ENTER_INTERMISSION → VenuePresentationDirector → CurtainDirector.CLOSE
+→ IntermissionProgramDirector → AdDecisionService (canonical ad/sponsor inventory — never fabricated)
+→ Program Mixer → canonical Program Output → TMI audience + cast surfaces + external destinations
+```
+
+**What gets cast/distributed is the Program Output, never the raw performer feed** — `Venue/Program Mixer → Program Output → CAST target`, not `performer camera → cast`. A viewer on YouTube, Twitch, a casted TMI screen, or a Jumbotron all see the same intermission presentation the in-venue audience sees; the connection never appears to just disappear.
+
+**`IntermissionAdPod`** (fallback ladder, same anti-fabrication law as Rule 12): paid-eligible ad → sponsor creative → venue sponsor slate → TMI house promo → neutral intermission curtain (never a fabricated advertiser to fill empty inventory). A non-skippable ad in progress when RESUME is pressed either finishes before resume takes effect or is limited to skippable inventory only — never cut mid-spot, to protect advertiser reporting.
+
+**Pause reasons change runtime behavior**: `MANUAL_INTERMISSION` (ideal for monetized ad inventory), `TECHNICAL_PAUSE` (prioritize a neutral holding slate over ads if the system is unstable), `PRIVACY_PAUSE` (suppress performer audio/video first, then close curtains), `BREAK`, `SAFETY_HOLD`.
+
+**Telemetry required per pause/resume cycle** (no fabricated impressions): `pauseStartedAt`, `pauseReason`, `venueId`, `liveSessionId`, `adPodId`, `campaignId`, `creativeId`, `impressionStarted`, `impressionCompleted`, `externalDestinationCount`, `castSurfaceCount`, `resumeRequestedAt`, `resumeEffectiveAt`.
+
+**Certification (LIVE-PAUSE-01 through 12):**
+```
+LIVE-PAUSE-01  Go live → external destination confirmed LIVE.
+LIVE-PAUSE-02  Press PAUSE LIVE → session ID unchanged.
+LIVE-PAUSE-03  Curtains close for all viewers.
+LIVE-PAUSE-04  Performer camera/audio no longer exposed to audience program during pause.
+LIVE-PAUSE-05  Approved ad/intermission program appears on TMI audience view.
+LIVE-PAUSE-06  Same intermission appears on casted surface.
+LIVE-PAUSE-07  Same intermission appears on external provider viewer.
+LIVE-PAUSE-08  External provider session remains connected.
+LIVE-PAUSE-09  Press RESUME → current non-skippable ad resolves correctly.
+LIVE-PAUSE-10  Curtains reopen and performer returns without creating a new liveSessionId.
+LIVE-PAUSE-11  Recording continuity follows configured policy.
+LIVE-PAUSE-12  No fake ad impression/revenue event if no real creative was served.
+```
+
+**Scope honesty (2026-09-06)**: none of `LiveSessionDirector`'s pause/intermission states, `IntermissionProgramDirector`, `IntermissionAdPod`, or the pause/resume telemetry schema exist as code yet. This rule depends on Rule 29's `VenuePresentationDirector`/`CurtainDirector` existing first — sequence accordingly. Do not build a stub "pause" that actually ends the session (violates the core law above) or a fake ad-impression counter (violates Rule 20).
+
+*Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 31 — Dual-Profile Account Architecture + Universal Account Center (locked 2026-09-06, not yet implemented)
+
+**One TMI account. Fan + Performer profiles. Different names if you want. Switch anytime. Upgrade separately.** Use "profile," not "account," when talking about the Fan/Performer sides in UI copy — the account is singular; the profiles are the two identities it can hold ("ADD PERFORMER PROFILE FREE," not "ADD PERFORMER ACCOUNT FREE").
+
+**The account splits into one private core plus two independent public role identities:**
+
+```
+ONE AUTHENTICATED USER ACCOUNT
+│
+├── AccountIdentity [PRIVATE / SHARED — one copy]
+│   legal/account name · primary email · password/passkeys · phone/recovery
+│   · security · billing owner · timezone/language · authenticated session
+│
+├── FanProfile [PUBLIC ROLE IDENTITY]
+│   fanDisplayName · fanHandle · fanPhoto · fanBanner · fanBio · interests
+│   · social/public links · fanPrivacy · fanTier
+│
+└── PerformerProfile [PUBLIC ROLE IDENTITY]
+    stageName · stageHandle · performerPhoto · performerBanner · EPK bio
+    · performerType · genres · booking/public links · performerPrivacy
+    · performerTier
+```
+
+**Never mirror public identity fields between profiles.** All of these are legal and expected to differ: Fan display name ≠ Performer stage name, Fan handle ≠ Performer handle, Fan photo ≠ Performer photo, Fan bio ≠ Performer EPK bio, Fan links ≠ Performer links, Fan privacy ≠ Performer privacy, Fan tier ≠ Performer tier. Changing one must never silently overwrite or touch the other — cache invalidation on a name/photo change must be profile-scoped (invalidate only that profile's chat identity, venue/audience identity, public profile, and discovery record), never a blanket "rewrite everything" pass that touches the other profile's data.
+
+**Performers still don't get an avatar identity** — this extends Rule 26's Identity Policy and Rule 18, doesn't loosen it. A Performer profile gets a profile picture, EPK imagery, cover art, and branding, but that is profile branding, not a second avatar-ownership system. Fan venue presence stays the canonical Fan avatar system; Performer live presence stays real video/WebRTC, exactly as already locked.
+
+**Companion profile completeness is a real state machine, not just a `UserRole` row**: `NOT_CREATED → PROVISIONED → ONBOARDING → INCOMPLETE → COMPLETE → SUSPENDED → DEACTIVATED`. Provisioning a companion profile (`POST /api/account/companion-profile`, built 2026-09-06) must launch the same onboarding a first-time signup gets for that role type — display/stage name, handle, photo, bio, interests/genre, links, privacy — not silently mark it complete because a database row exists. Profile completeness percentages shown in the UI must be calculated from real required/recommended fields, independently per profile (a real "Fan Profile 82% complete / Performer Profile 64% complete," never a fabricated number — Rule 20 applies here as everywhere).
+
+**Delegate/manager access is capability-scoped, never all-or-nothing:**
+```
+DelegateGrant { delegateUserId, ownerUserId, profileScope, permissions[], createdAt, expiresAt, revokedAt, auditTrail }
+```
+Allowed permissions: `EDIT_PERFORMER_PROFILE`, `MANAGE_BOOKINGS`, `MANAGE_SCHEDULE`, `VIEW_ANALYTICS`, `MANAGE_CONTENT`, `OPERATE_LIVE_SESSION`, `MANAGE_SPONSORS`. Never grantable, under any circumstance: `READ_PASSWORD`, `READ_2FA_SECRET`, `READ_PAYMENT_CREDENTIALS`, `BECOME_ACCOUNT_OWNER`. A manager never inherits the whole private account.
+
+**Public and private APIs are physically separate routes, not the same endpoint with a permission check:**
+```
+PUBLIC:   /api/public/profile/[slug]
+PRIVATE:  /api/account/me · /api/account/settings · /api/account/profiles/fan
+          · /api/account/profiles/performer · /api/account/security
+          · /api/account/notifications · /api/account/privacy
+```
+Provider OAuth tokens/secrets never reach the browser — the settings UI shows connection metadata only (connected-as, permissions granted, last verified, reconnect/disconnect); the actual access/refresh tokens live in an encrypted server-side vault.
+
+**The Universal Account Center — one canonical settings surface, not per-role duplicates.** Reached from one avatar/initials identity control mounted in the shared header (photo if uploaded, else canonical initials from the authenticated display name — never derived from a viewed profile). Nineteen canonical sections: Account & Identity · Profiles & Role Management · Privacy & Visibility · Security & Access · Notifications & Alerts · Family & Household · Connected Accounts & Apps · Trusted Delegates/Management · Blocking/Muting/Moderation · Subscription & Billing · Purchases/Wallet/Earnings · Content & Media · Live/Broadcast Defaults · Accessibility · Appearance & Playback · Data & Permissions · Account Status & Appeals · Help/Safety/Support · Deactivation & Deletion. Route family: `/settings/account`, `/settings/profile?profile=fan|performer`, `/settings/privacy`, `/settings/security`, `/settings/notifications`, `/settings/subscriptions`, `/settings/billing`, `/settings/family`, `/settings/accessibility`, `/settings/connections`, `/settings/blocked`, `/settings/content`, `/settings/live`, `/settings/data`, `/settings/account-status`, `/settings/help` — navigable from one drawer/workspace, not `/fan/settings` + `/performer/settings` as separate systems (the 7 orphaned per-role settings pages found in the 2026-09-06 UI convergence audit are exactly the pattern this forbids going forward).
+
+**One canonical Account Settings Registry, not settings hardcoded per component:**
+```
+AccountSettingDefinition { settingId, section, label, description, scope, roles,
+  capability, dataSource, readCommand, writeCommand, visibilityRule,
+  securityLevel, requiresReauth, auditEvent, mobilePriority, accessibilityLabel }
+```
+Every setting declares exactly one scope: `ACCOUNT · FAN_PROFILE · PERFORMER_PROFILE · DEVICE · SECURITY · PRIVACY · FAMILY · NOTIFICATIONS · COMMERCE · CONNECTION · BROADCAST_DEFAULT · ACCESSIBILITY`. Scope answers who owns the setting — password is `ACCOUNT`, Fan display name is `FAN_PROFILE`, preferred camera is `DEVICE`, curtain state is **not a setting here at all**, it's Rule 29's Venue Runtime. One setting → one owner → one read path → one write path → one audit path; no duplicate settings pages drifting apart. Every write traces: `UI → registry → authenticated server-derived userId → scope resolver → authorization → validation → canonical service → DB mutation → audit event → profile-scoped cache invalidation → verified UI state`. No fake save toasts, no `localStorage` for sensitive account/privacy/security values (device-only preferences may use device storage, clearly classified as device-local), no client-supplied authoritative userId.
+
+**Account-level live/broadcast defaults are preferences, not venue controls** — preferred mic/camera, default resolution, noise suppression, caption preference, default destination selection preference belong here. Curtain open/close, house lights, stage mechanics, Jumbotron, audience mode, venue camera director belong to Rule 29's Venue Runtime, never to account settings, regardless of how convenient it'd be to put them in one place.
+
+**Family & Household is a real system, not a decorative toggle**, and platform safety rules always win over a parent's setting: `parent allows dating lounge + user is under required age = STILL DENIED`, never the reverse.
+
+**Account deletion is retention-aware, never a blanket destruction promise.** The correct chain: authenticate/reauthenticate → cooling-off period (if policy uses one) → revoke sessions → disable public profiles → disconnect providers → delete/anonymize deletable personal data → preserve only legally/policy-required records (financial, fraud-prevention, tax, abuse, legal, chargeback, moderation, security) → retention ledger → final deletion/anonymization once retention expires. Never promise "cryptographic purge of all private records" in user-facing copy — say what's actually deleted and what must be temporarily retained. Deleting a Fan profile must never delete the Performer profile or the root account; deleting the root account is a separate, stronger operation.
+
+**Certification required before this is considered done** (all currently unbuilt, 2026-09-06):
+```
+PRIV-01  User A opens User B's public Fan profile → cannot read B's settings
+PRIV-02  User A opens B's Performer profile → cannot read B's notifications
+PRIV-03  Public profile API → no billing/security/private email fields
+PRIV-04  Changing Fan display name → Performer stage name unchanged
+PRIV-05  Changing Performer stage name → Fan display name unchanged
+PRIV-06  Fan photo change → Performer photo unchanged
+PRIV-07  Fan privacy update → Performer privacy unchanged unless setting is explicitly ACCOUNT-scoped
+PRIV-08  Account security setting → applies to root authenticated account
+PRIV-09  Logout → private caches/session destroyed
+PRIV-10  Profile switch → stale prior-profile private UI state removed
+
+PROFILE-01  New Fan companion doesn't count COMPLETE until required Fan onboarding is done
+PROFILE-02  New Performer companion doesn't count COMPLETE until required Performer onboarding is done
+PROFILE-03  Fan public name may differ from Performer stage name
+PROFILE-04  Fan username may differ from Performer username
+PROFILE-05  Each profile has independent photo/bio/social/public settings
+PROFILE-06  Root login/email/password remain shared
+PROFILE-07  Fan tier and Performer tier remain independent
+PROFILE-08  Switching profiles preserves each profile's independent data
+
+ACCOUNT-SHELL-01  One identity circle globally
+ACCOUNT-SHELL-02  Photo if available
+ACCOUNT-SHELL-03  Canonical initials if no photo
+ACCOUNT-SHELL-04  Click opens one universal menu
+ACCOUNT-SHELL-05  Same shell for Fan/Performer/Writer/Sponsor/Venue
+ACCOUNT-SHELL-06  Fan↔Performer switch shown only for genuinely owned profiles
+ACCOUNT-SHELL-07  Missing companion gets the provisioning CTA
+ACCOUNT-SHELL-08  Notifications accessible
+ACCOUNT-SHELL-09  Settings/privacy accessible
+ACCOUNT-SHELL-10  Logout works
+ACCOUNT-SHELL-11  390×844 works without clipping
+ACCOUNT-SHELL-12  Desktop works
+ACCOUNT-SHELL-13  No second legacy profile/account menu remains reachable
+```
+
+**Scope honesty (2026-09-06)**: none of `FanProfile`/`PerformerProfile` as separate entities, the Account Settings Registry, `DelegateGrant`, the public/private API split, or the 19-section Account Center exist as code yet — today's real schema is a single `User` row with `role`/`userRoles[]`/`activeRole` and one shared name/photo/bio (see `resolveRoleSwitchAuthorization.ts`/`resolveCompanionProvisioningDecision.ts`/`POST /api/account/companion-profile`, built same day, which work within that real schema). This rule is the target architecture a dedicated schema/migration effort must build toward — it is explicitly **not** a request to bolt a `FanProfile`/`PerformerProfile` split onto the existing single-name model as a stub. The near-term, buildable-today slice is the header shell (`ACCOUNT-SHELL-*` gates) reusing the already-certified role-switch/companion-provisioning backend against the current single-identity schema; the dual-name/dual-photo split and the full 19-section Account Center are separate, larger, later work.
+
+*Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 32 — Subscription Payment-Failure Fallback: Downgrade, Never Delete (locked 2026-09-06, not yet implemented)
+
+**If a paid profile's payment fails, TMI keeps the person in the ecosystem.** The paid profile falls back to FREE until the bill is resolved — the platform never punishes a failed payment by destroying the account, a profile, or the user's content.
+
+```
+PAYMENT FAILS
+→ do NOT delete the account
+→ do NOT delete Fan/Performer profiles
+→ do NOT erase user content
+→ do NOT break the login
+→ downgrade only the affected paid profile/subscription to FREE
+→ preserve account identity and profile data
+→ remove only paid entitlements
+→ restore paid entitlements automatically once payment succeeds
+```
+
+Because Fan and Performer plans are independent (Rule 31), the downgrade is profile-specific: a failed Fan plan downgrades only `FanProfile` to FREE and leaves `PerformerProfile` untouched, and vice versa. If both fail, both independently fall back to their own free tiers.
+
+**Canonical billing state machine** — no instant downgrade on the first declined card unless that's the explicit policy; use a grace period:
+```
+ACTIVE_PAID → PAST_DUE → GRACE_PERIOD → DOWNGRADED_TO_FREE → PAYMENT_RETRY → RESTORED_PAID
+                                                                            → CANCELED
+```
+Flow: payment fails → mark `PAST_DUE` → notify user → retry payment → grace period → if unresolved by the grace deadline → downgrade the affected profile to `FREE`. A later successful payment re-evaluates entitlement and restores the paid tier automatically — no need to recreate the profile or account, and never a duplicate profile/account created on restore.
+
+**Downgrade ≠ delete.** Paid-only capabilities (extra storage, premium media-player skins, advanced broadcast tools, premium venue features) are suspended, not stripped from the account — those assets stay associated with the account and become unavailable until entitlement returns, subject to any clearly documented retention policy, not silently discarded.
+
+**User-facing notification flow:**
+```
+1st failure   → "We couldn't process your payment."
+during grace  → "Update your payment method to keep your current plan."
+downgrade     → "Your Performer plan has moved to Free. Your profile and content are still here."
+restored      → "Your Performer plan is active again."
+```
+
+**Certification required:**
+```
+BILL-01  Failed Fan payment does not alter the Performer plan
+BILL-02  Failed Performer payment does not alter the Fan plan
+BILL-03  Downgrade preserves the root account
+BILL-04  Downgrade preserves the public profile
+BILL-05  Downgrade preserves user content
+BILL-06  Only paid entitlements are removed
+BILL-07  Successful repayment restores entitlements
+BILL-08  No duplicate account/profile created on restore
+BILL-09  Billing status is server-authoritative
+BILL-10  UI never shows paid access after entitlement has expired
+```
+
+**Scope honesty (2026-09-06)**: none of the billing state machine, grace-period logic, or automatic entitlement restoration exists as code yet — this is a permanent financial/product guardrail for whenever subscription billing is built for Fan/Performer tiers, the same treatment as Rule 23's Revenue-First Rewards Governor. Do not build a stub "downgrade" that doesn't actually track grace periods or restore entitlement on repayment (would violate Rule 20).
+
+*Established 2026-09-06 by Marcel Dickens.*
+
+---
+
+### Rule 33 — Profile Visibility & Privacy Law (locked 2026-09-06, not yet implemented)
+
+**Every new Fan and Performer profile defaults to PUBLIC.** From Settings & Privacy, a user can change visibility — but PUBLIC / PRIVATE / HIDDEN-FROM-DISCOVERY are three distinct states, never collapsed into one toggle:
+
+```
+PUBLIC     → public profile page visible; can appear in discovery/search;
+             public identity shows where the product normally allows it;
+             public-facing video/profile surfaces render per live/privacy rules
+PRIVATE    → profile still exists, user can still use TMI; public identity is
+             restricted; profile content visible only to allowed/approved
+             people per privacy rules; public-facing video identity is not
+             automatically exposed
+HIDDEN     → "Hide Public Profile Page": not listed/browsable in normal public
+             profile discovery, does not appear when people scroll through
+             public profiles; direct public-profile route resolves to the
+             correct hidden/private state, never a bypass
+```
+
+**Per-profile visibility contract** (independent per Rule 31 profile, with account-level defaults a profile can override):
+```
+AccountPrivacyDefaults → FanProfilePrivacy / PerformerProfilePrivacy
+
+ProfileVisibility {
+  visibility: "PUBLIC" | "PRIVATE"
+  publicPageEnabled: boolean
+  discoveryEnabled: boolean
+  searchEnabled: boolean
+  searchEngineIndexingEnabled: boolean
+  showOnlineStatus: boolean
+  showVenuePresence: boolean
+  allowPublicMediaExposure: boolean
+}
+```
+A user may have Fan PUBLIC + Performer PRIVATE, Fan PRIVATE + Performer HIDDEN, or any other combination — Fan and Performer privacy never cascade into each other, same independence law as their names/photos/bios (Rule 31).
+
+**PRIVATE never means camera-off, mic-off, or ending a live session** — this is the critical distinction:
+```
+PRIVATE PROFILE  ≠  CAMERA OFF  ≠  MIC OFF  ≠  END LIVE
+PRIVATE PROFILE  →  suppress public identity/video exposure on surfaces not authorized to show it
+```
+If someone is in a room they explicitly entered and that room requires video to function, the authorized-participant view still works normally. What PRIVATE blocks is that same video/identity being *reused* elsewhere — public profile page, public discovery wall, public recommendation rail, random browse surfaces, public previews — without explicit authorization. This distinguishes two identity concepts that must never be conflated: **PUBLIC DISCOVERY IDENTITY** (what strangers browsing see) vs. **AUTHORIZED INTERACTION IDENTITY** (what someone inside an interaction they joined sees) — privacy settings govern the former; they must never create an anonymous-abuse surface by stripping the latter inside an interaction the person chose to join.
+
+**Server-authoritative enforcement, never CSS-hidden:**
+```
+PUBLIC PROFILE REQUEST → resolve target profile → resolve visibility →
+resolve publicPageEnabled → resolve viewer relationship/permissions →
+return only allowed public fields
+```
+`publicPageEnabled=false` must prevent the profile from appearing in public-profile browsing and must be enforced on the server for direct-URL requests too — a hidden profile is never "fetch everything then hide it with CSS." The same discipline applies to discovery, search, and recommendations: `DISCOVERY QUERY`/`SEARCH`/`RECOMMENDATIONS` must each exclude profiles with `discoveryEnabled=false` or hidden/private status at the query level, never filtered client-side after a full fetch.
+
+**Individual identity-exposure toggles** (within Privacy & Visibility): show display name publicly, show profile photo publicly, show location publicly, show follower/following counts, show activity, show current venue, show listening/activity history, show social links.
+
+**Certification required:**
+```
+PRIVACY-11  New profile defaults PUBLIC
+PRIVACY-12  User can switch Fan profile PRIVATE
+PRIVACY-13  User can switch Performer profile PRIVATE
+PRIVACY-14  Fan privacy does not alter Performer privacy
+PRIVACY-15  Performer privacy does not alter Fan privacy
+PRIVACY-16  Hide Public Profile removes profile from public profile browsing
+PRIVACY-17  Hide Public Profile removes profile from normal discovery
+PRIVACY-18  Private/hidden profile does not leak through search
+PRIVACY-19  Private/hidden profile does not leak through recommendations
+PRIVACY-20  Private setting is server-authoritative
+PRIVACY-21  Private does not silently disable camera/mic/live session
+PRIVACY-22  Public video exposure is suppressed where privacy disallows it
+PRIVACY-23  Direct URL cannot bypass hidden-profile policy
+PRIVACY-24  Search-engine indexing disabled when the user turns indexing off
+```
+
+**Scope honesty (2026-09-06)**: none of `ProfileVisibility`, the discovery/search/recommendation privacy filters, or the PUBLIC/PRIVATE/HIDDEN state machine exist as code yet. This rule depends on Rule 31's `FanProfile`/`PerformerProfile` split for true per-profile independence — until that schema exists, any interim implementation must be explicit that it's applying visibility at the account level only (`ACCOUNT_FALLBACK`, per Rule 31's `ActiveProfileIdentity.profileKind`), never pretend independent Fan/Performer privacy exists before it does. Do not build a client-side-only "private" toggle that doesn't actually filter server-side queries (would violate Rule 20 and this rule both).
+
+*Established 2026-09-06 by Marcel Dickens.*

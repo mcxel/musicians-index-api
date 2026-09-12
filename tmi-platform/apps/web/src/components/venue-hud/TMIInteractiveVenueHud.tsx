@@ -1094,6 +1094,64 @@ export default function TMIInteractiveVenueHud({
               🔊 AUDIO
             </button>
 
+            {/* Canonical HUD INVENTORY entry */}
+            <button
+              type="button"
+              title="Open Inventory Workspace"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("tmi:open-workspace", { detail: { workspaceId: "inventory", surface: "DRAWER" } }));
+                }
+              }}
+              style={{
+                ...iconChip(FUCHSIA),
+                flexShrink: 0,
+                padding: "6px 10px",
+              }}
+              data-testid="tmi-hud-inventory-btn"
+            >
+              🎒 INVENTORY
+            </button>
+
+            {/* Canonical HUD CHAT / Unified Inbox entry */}
+            <button
+              type="button"
+              title="Open Chat & Messages Drawer"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("tmi:open-workspace", { detail: { workspaceId: "messages", surface: "DRAWER" } }));
+                }
+              }}
+              style={{
+                ...iconChip(CYAN),
+                flexShrink: 0,
+                padding: "6px 10px",
+              }}
+              data-testid="tmi-hud-chat-btn"
+            >
+              💬 CHAT
+            </button>
+
+            {/* Canonical HUD GPS entry */}
+            <button
+              type="button"
+              title="Open Venue GPS"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("tmi:venue:open-gps"));
+                }
+                setStatusLine("Opening Venue GPS...");
+              }}
+              style={{
+                ...iconChip(GOLD),
+                flexShrink: 0,
+                padding: "6px 10px",
+              }}
+              data-testid="tmi-hud-gps-btn"
+            >
+              🗺️ GPS
+            </button>
+
             {/* Chat input — video-reference: x ~266–422, y ~647–695 */}
             <input
               ref={chatInputRef}

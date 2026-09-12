@@ -1,24 +1,25 @@
 # Lane C — Challenge Physical Chromium Certification
 
-**STATUS:** 🟢 **PASS** — Lane C **CLOSED / PHYSICALLY CERTIFIED**  
+**STATUS:** 🟢 **PASS** — Lane C **CLOSED / PHYSICALLY CERTIFIED** (re-confirmed)  
 **Branch:** `eos/vocal-improv-clean`  
-**HEAD at cert:** `93a94f8d` + compose useMemo / cert-runner waitForFunction fixes (this commit)  
-**Date:** 2026-09-03 (PT)  
+**HEAD at cert:** `97876e19` + unstaged `CinematicChallengeArenaStage.tsx` (`challenger.id` → `challenger.participantId`; typecheck green; **not committed**)  
+**Date:** 2026-09-03 (PT) — resume re-run after typecheck green  
 **Route under test:** `/rooms/challenge/sess-challenge-prod-01`  
 **Server:** `http://localhost:3002` (single Next; isolated `TMI_BUILD_VERIFY_DISTDIR=.next-lane-c-cert`)  
 **Runner:** `scripts/cert-physical-lane-c-challenge.mjs`  
-**Artifacts:** `.cursor/artifacts/challenge-lane-c-physical/`
+**Artifacts:** `.cursor/artifacts/challenge-lane-c-physical/`  
+**Report timestamp:** `2026-09-03T05:58:19.743Z`
 
 ---
 
-## Verdict
+## Verdict (this re-run)
 
 | Gate | Requirement | Result | Notes |
 |------|-------------|--------|-------|
 | 1 | Route mounts real Challenge venue | 🟢 **PASS** | Venue+shell+jumbo; lookUp=true; pack=Challenge |
-| 2 | Objective-contract assembly visible | 🟢 **PASS** | ChallengeContract; OBJECTIVE_FOCUS; Complete the stated objective |
+| 2 | Objective-contract assembly visible | 🟢 **PASS** | ChallengeContract; OBJECTIVE_FOCUS; OBJECTIVE_CONTRACT_ASSEMBLY |
 | 3 | Challenge DNA (no Battle VS) | 🟢 **PASS** | pack=Challenge; vsLayout=false |
-| 4 | Attempt countdown / active | 🟢 **PASS** | ATTEMPT_1_COUNTDOWN → ATTEMPT_1_ACTIVE (2.5s) |
+| 4 | Attempt countdown / active | 🟢 **PASS** | ATTEMPT_1_COUNTDOWN → ATTEMPT_1_ACTIVE |
 | 5 | Judgment modes | 🟢 **PASS** | AUDIENCE_VOTE / AUTHORIZED_JUDGES / MEASURABLE_RESULT |
 | 6 | Result presentation | 🟢 **PASS** | ResultCard; honest no-winner copy |
 | 7 | Jumbotron LOOK-UP / N/E/S/W | 🟢 **PASS** | NORTH:ACTIVE_ATTEMPT · SOUTH:OBJECTIVE_TIMER · EAST:SPONSOR · WEST:AUDIENCE |
@@ -30,23 +31,21 @@
 | M | Mobile 390×844 | 🟢 **PASS** | Shell+contract retained; attempt+judgment |
 
 **FINAL PHYSICAL VERDICT:** 🟢 **PASS**  
-**Lane C CLOSED?** **YES**  
-**Avatar Preview Parity deepen started?** **YES** (immediately after this PASS close)
+**Lane C CLOSED?** **YES** (stays CLOSED — does not reopen)  
+**participantId fix committed?** **NO** — remains unstaged in working tree
 
 ---
 
-## Environment recovery (this run)
+## Environment (this re-run)
 
-1. Stopped multi-port tmi-platform Next listeners (3000/3002/3005/3010/3781) sharing corrupted `.next`
-2. Wiped `.next`; restarted **one** Next on `:3002` with `TMI_BUILD_VERIFY_DISTDIR=.next-lane-c-cert`
-3. Smoke `GET /rooms/challenge/sess-challenge-prod-01` → HTTP 200 (no webpack_modules crash)
-4. Wiring fixes for physical readiness:
-   - `composeChallengeProgram` derived via `useMemo` (shell no longer stuck on “Waiting for objective contract”)
-   - Cert runner `waitForFunction(fn, undefined, { timeout })` Playwright signature + `NAV_TIMEOUT` defaults
+1. Started **one** Next on `:3002` with `TMI_BUILD_VERIFY_DISTDIR=.next-lane-c-cert` (left unrelated `:3000` alone)
+2. Smoke `GET /rooms/challenge/sess-challenge-prod-01` → HTTP 200 after cold compile (first curl timed out during 113s compile; recovery smoke 200 / ~0.5s; no webpack crash)
+3. First cert launch failed pre-Gate-1: Playwright Chromium missing in sandbox cache → `npx playwright install chromium` once → re-ran cert once → **PASS**
+4. DNA checklist covered by runner: desktop **1280×800** (Gates 1–12) + mobile **390×844** (Gate M)
 
 ---
 
-## ACCEPTANCE TEMPLATE — Final
+## ACCEPTANCE TEMPLATE — This re-run
 
 ```text
 ACCEPTANCE TEMPLATE
@@ -64,7 +63,7 @@ BROWSER:
 Chromium via @playwright/test
 
 BUILD / SHA:
-93a94f8d+ (eos/vocal-improv-clean)
+97876e19 + unstaged participantId fix (eos/vocal-improv-clean)
 
 ROUTE:
 http://localhost:3002/rooms/challenge/sess-challenge-prod-01
@@ -86,3 +85,4 @@ SCREENSHOT / RECORDING:
 
 - `docs/audit/LANE_C_CHALLENGE_OPERATIONAL_ACTIVATION.md` — experienceCert **DONE / PHYSICALLY CERTIFIED**
 - `docs/audit/TMI_EXPERIENCE_COMPLETION_MATRIX.md` — Challenge experience cert **DONE**
+- This doc updated for resume re-run; **no git commit** (user instruction)

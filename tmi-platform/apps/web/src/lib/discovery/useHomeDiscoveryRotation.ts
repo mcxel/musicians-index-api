@@ -14,6 +14,7 @@ import {
   pickHomeOrbitRotationSlots,
   type HomeOrbitDiscoveryCard,
 } from "./HomeDiscoveryRotationEngine";
+import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
 
 export interface UseHomeDiscoveryRotationOptions {
   slotCount?: number;
@@ -23,6 +24,13 @@ export interface UseHomeDiscoveryRotationOptions {
 
 export interface UseHomeDiscoveryRotationResult {
   cards: HomeOrbitDiscoveryCard[];
+  /**
+   * Full eligible (unrotated) live-discovery record set — same DiscoveryBus
+   * subscription the rotation itself uses. Lets a caller look up a specific
+   * host's live status (e.g. Crown Holder) without opening a second,
+   * independently-timed poll of the registry (Rule 20 — one discovery truth).
+   */
+  records: LiveDiscoveryRecord[];
   eligibleCount: number;
   rotationOffset: number;
   isEmpty: boolean;
@@ -65,6 +73,7 @@ export function useHomeDiscoveryRotation(
 
   return {
     cards,
+    records: eligible,
     eligibleCount: eligible.length,
     rotationOffset,
     isEmpty: eligible.length === 0,

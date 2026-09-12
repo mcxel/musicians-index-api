@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import PerformerHubMount from "@/components/auth/PerformerHubMount";
@@ -13,7 +12,8 @@ export const dynamic = "force-dynamic";
 /**
  * Performer hub — prefer cookie role (no ROLE_RESOLVING). Static PerformerShell only.
  * Client SessionRoleGate only when role cookie is missing/unclassified.
- * Suspense boundary keeps SSR hub chrome mounted while searchParams bridge resolves.
+ * No Suspense wrapper: PerformerHubMount does not suspend; prior Suspense pair was
+ * Antigravity probe noise and a candidate hub-DOM flicker source.
  */
 
 export default function PerformerHubPage() {
@@ -43,11 +43,7 @@ export default function PerformerHubPage() {
       userId,
       displayName,
     };
-    return (
-      <Suspense fallback={<PerformerHubMount session={session} />}>
-        <PerformerHubMount session={session} />
-      </Suspense>
-    );
+    return <PerformerHubMount session={session} />;
   }
 
   return <PerformerHubSessionFallback />;

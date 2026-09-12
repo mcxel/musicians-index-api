@@ -12,6 +12,7 @@ const ROLE_TO_HUB: Record<string, string> = {
   BAND: "/hub/performer",
   FAN: "/hub/fan",
   USER: "/hub/fan",
+  MEMBER: "/hub/fan",
   WRITER: "/hub/writer",
   VENUE: "/hub/venue",
   PROMOTER: "/hub/promoter",
@@ -31,11 +32,15 @@ function adminHubForEmail(email: string): string {
 /**
  * POST /api/auth/switch-role
  *
- * Switch the active role for an account that holds multiple roles.
- * Only roles present in userRoles[] are allowed — no privilege escalation.
+ * Canonical Fan ↔ Performer role switcher + Privileged Admin switcher.
  *
- * Body: { role: string }
- * Response: { ok, activeRole, hubUrl }
+ * Product Laws:
+ * 1. ONE authenticated account/login may own both Fan and Performer profiles.
+ * 2. Exactly one activeRole context at a time (FAN | PERFORMER).
+ * 3. Self-service switching between owned FAN ↔ PERFORMER is available to ALL authenticated users.
+ * 4. Switching activeRole does NOT create a second login or account.
+ * 5. ADMIN / STAFF persona switching remains strictly privileged (403 for normal users).
+ * 6. Active live/venue session prevents unsafe role switching until safely ended/left (409).
  */
 export async function POST(req: NextRequest) {
   const auth = await getTmiAuth();
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  let body: { role: string };
+  let body: { role: string; forceEndLive?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -54,21 +59,22 @@ export async function POST(req: NextRequest) {
   if (!targetRole) {
     return NextResponse.json({ error: "role required" }, { status: 400 });
   }
-  // Normalize fan aliases so triad switch always lands on FAN hub
+
+  // Normalize aliases
   if (targetRole === "MEMBER" || targetRole === "USER") targetRole = "FAN";
-  if (targetRole === "ARTIST") {
-    // Artist persona maps to performer hub for governance triad
-    // (ARTIST remains allowed; hub is /hub/performer)
-  }
+  if (targetRole === "ARTIST" || targetRole === "BAND" || targetRole === "PRODUCER") targetRole = "PERFORMER";
 
   const userId = auth.user.id;
 
-  // Look up user with their assigned roles
+  // Look up user with their assigned roles and live broadcast state
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
       role: true,
+      activeRole: true,
+      isLive: true,
+      liveRoomId: true,
       userRoles: { select: { role: true } },
     },
   });
@@ -77,42 +83,68 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Safety Law (ROLE-10, ROLE-12): Active live broadcast requires safe exit before switching to Fan
+  if (user.isLive && targetRole === "FAN" && !body.forceEndLive) {
+    return NextResponse.json(
+      {
+        error: "Active live broadcast session must be safely ended before switching to Fan mode",
+        code: "ACTIVE_LIVE_SESSION_BLOCKED",
+        requiresSafeExit: true,
+      },
+      { status: 409 },
+    );
+  }
+
   const allowedRoles = new Set(
     [user.role as string, ...user.userRoles.map((r) => r.role as string)].map((r) =>
       r.toUpperCase(),
     ),
   );
 
-  // Governance / ADMIN operators may switch ADMIN ↔ FAN ↔ PERFORMER
-  // even when UserRole rows were never seeded — triad switch for Justin / Jay Paul.
   const primary = (user.role as string).toUpperCase();
-  if (
+  const isAdminAccount =
     primary === "ADMIN" ||
     primary === "STAFF" ||
     allowedRoles.has("ADMIN") ||
     allowedRoles.has("STAFF") ||
-    isGovernanceMember(auth.user.email)
-  ) {
-    for (const r of GOVERNANCE_SWITCHABLE_ROLES) allowedRoles.add(r);
+    isGovernanceMember(auth.user.email);
+
+  const PRIVILEGED_ROLES = new Set(["ADMIN", "STAFF", "SUPERADMIN", "OVERSEER"]);
+  const isTargetPrivileged = PRIVILEGED_ROLES.has(targetRole);
+
+  // Security Law (ROLE-08): Privileged target roles require admin/staff privilege
+  if (isTargetPrivileged && !isAdminAccount) {
+    return NextResponse.json(
+      { error: "Forbidden: privileged role escalation denied" },
+      { status: 403 },
+    );
   }
 
-  if (!allowedRoles.has(targetRole)) {
+  // Governance / ADMIN operators may switch ADMIN ↔ FAN ↔ PERFORMER
+  for (const r of GOVERNANCE_SWITCHABLE_ROLES) allowedRoles.add(r);
+
+  // Dual-Profile Law (ROLE-01..04): Normal users may freely switch between FAN and PERFORMER
+  const isStandardDualRole = targetRole === "FAN" || targetRole === "PERFORMER";
+  if (!isStandardDualRole && !isAdminAccount && !allowedRoles.has(targetRole)) {
     return NextResponse.json(
       { error: `Role ${targetRole} not assigned to your account` },
       { status: 403 },
     );
   }
 
-  // Persist activeRole to DB
+  // Persist activeRole to DB (and safely end live session if forceEndLive was specified)
   await prisma.user.update({
     where: { id: userId },
-    data: { activeRole: targetRole as any },
+    data: {
+      activeRole: targetRole as any,
+      ...(body.forceEndLive ? { isLive: false, liveRoomId: null } : {}),
+    },
   });
 
   const hubUrl =
     targetRole === "ADMIN"
       ? adminHubForEmail(auth.user.email)
-      : (ROLE_TO_HUB[targetRole] ?? "/home/1");
+      : (ROLE_TO_HUB[targetRole] ?? "/hub/fan");
 
   // Update tmi_role cookie so getTmiAuth() reflects the switch immediately
   const isProd = process.env.NODE_ENV === "production";
