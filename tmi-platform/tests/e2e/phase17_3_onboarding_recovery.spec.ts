@@ -10,8 +10,8 @@ test('phase17.3 stale routing state recovers via onboarding root', async ({ page
   const email = `phase173_${Date.now()}@example.com`;
   const password = 'Phase173Pass!';
 
-<<<<<<< HEAD
   // Registration lives on /signup (not a Register button on /auth)
+  // Option 3: signup?role=fan + 409→/auth recovery + provision/FINISH path
   await page.goto(`${baseUrl}/signup?role=fan`);
   await page.locator('input[type="email"]').first().waitFor({ state: 'visible', timeout: 15000 });
 
@@ -62,38 +62,6 @@ test('phase17.3 stale routing state recovers via onboarding root', async ({ page
 
   const cookiesAfterAuth = await page.context().cookies(baseUrl);
   const cookieNames = cookiesAfterAuth.map((cookie) => cookie.name);
-=======
-  await page.goto(`${baseUrl}/signup`);
-  await page.getByPlaceholder('Your name or username').fill('Phase 17.3 Fan');
-  await page.getByPlaceholder('you@example.com').fill(email);
-  await page.getByPlaceholder('8+ characters').fill(password);
-  await page.locator('input[type="date"]').fill('1990-01-01');
-
-  await page.getByLabel(/Terms of Service/).check();
-  await page.getByLabel(/Privacy Policy/).check();
-  await page.getByLabel(/Community Guidelines/).check();
-  await page.getByLabel(/Messaging Conduct/).check();
-  await page.getByLabel(/Liability & Rules Acknowledgment/).check();
-
-  const [registerResponse, provisionResponse] = await Promise.all([
-    page.waitForResponse((response) =>
-      response.url().includes('/api/auth/register') && response.request().method() === 'POST'
-    ),
-    page.waitForResponse((response) =>
-      response.url().includes('/api/auth/provision') && response.request().method() === 'POST'
-    ),
-    page.getByRole('button', { name: /CREATE FAN ACCOUNT/ }).click(),
-  ]);
-  expect(registerResponse.status()).toBe(201);
-
-  expect(provisionResponse.status()).toBe(201);
-
-  await page.getByRole('button', { name: /FINISH SETTING UP YOUR PROFILE/ }).click();
-  await expect(page).toHaveURL(/\/onboarding\/fan$/);
-
-  const cookiesAfterLogin = await page.context().cookies(baseUrl);
-  const cookieNames = cookiesAfterLogin.map((cookie) => cookie.name);
->>>>>>> origin/main
   expect(cookieNames).toContain('tmi_session_id');
 
   // Reach onboarding root before injecting stale routing state

@@ -1,7 +1,4 @@
 -- CreateEnum
-<<<<<<< HEAD
-CREATE TYPE "PerformerType" AS ENUM ('RAPPER', 'SINGER', 'DJ', 'PRODUCER', 'GUITARIST', 'DRUMMER', 'COMEDIAN', 'DANCER', 'ACTOR', 'MAGICIAN', 'SPOKEN_WORD', 'BAND', 'ORCHESTRA', 'CHOIR', 'OTHER');
-=======
 CREATE TYPE "PerformerType" AS ENUM (
     'RAPPER',
     'SINGER',
@@ -19,7 +16,6 @@ CREATE TYPE "PerformerType" AS ENUM (
     'CHOIR',
     'OTHER'
 );
->>>>>>> origin/main
 
 -- CreateTable
 CREATE TABLE "UserPerformerType" (
