@@ -486,7 +486,7 @@ async function ensureUserDatabaseSchema() {
         // membership tier. GOLD/etc. only via verified Stripe entitlement.
         if (refResult.qualified && refResult.milestoneBonus > 0) {
           emitAdminLiveEvent({
-            type: 'info',
+            type: 'engagement',
             message: `[${new Date().toLocaleTimeString()}] Referral milestone qualified for ${email} (no tier grant)`,
             meta: { ref: parsed.ref, userId: user.id, milestoneBonus: refResult.milestoneBonus },
           });
