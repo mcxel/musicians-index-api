@@ -1,15 +1,62 @@
 {
-  "timestamp": "2026-09-02T07:19:16.005Z",
-  "base": "http://localhost:3000",
+  "timestamp": "2026-09-12T15:26:33.822Z",
+  "base": "http://127.0.0.1:3002",
   "fanEmail": "micah@themusiciansindex.com",
   "performerEmail": "suedejs2000@gmail.com",
   "registerNote": "Programmatic register skipped — cert uses existing DB accounts. Prior fan-mosaic-cert@tmi.local register 500 root cause: roles:[{role:'FAN'}] object shape throws .toUpperCase() TypeError (400 expected fields: dateOfBirth, termsAccepted, password>=8).",
   "performer": {
     "role": "performer",
-    "skipped": true,
+    "hubRoute": "/hub/performer",
+    "email": "suedejs2000@gmail.com",
+    "steps": {
+      "login": "PASS",
+      "hydration": "PASS",
+      "goLiveControlVisible": "PASS",
+      "performerNoAvatarOwnership": "PASS",
+      "lobbyWallTriggerVisible": "PASS",
+      "noInlineMosaicDisplacingMonitors": "PASS",
+      "domWiring": "PASS",
+      "pageSession": "PASS",
+      "liveGoPost": "PASS",
+      "liveBadge": "PASS",
+      "lobbyWallOpened": "PASS",
+      "mosaicSelfTile": "PASS",
+      "mosaicRailVisible": "PASS",
+      "registryListed": "PASS"
+    },
+    "network": {
+      "liveGoPosts": [
+        {
+          "status": 200,
+          "at": 1789226787268
+        },
+        {
+          "status": 200,
+          "via": "click"
+        }
+      ]
+    },
     "pass": true,
     "publishPass": true,
-    "steps": {}
+    "userId": "ccff73de-7ea6-4278-b8e7-5c8c9f9ef113",
+    "wiring": {
+      "goLiveHost": true,
+      "lobbyWallTrigger": true,
+      "mediaStack": true,
+      "inlineMosaicRail": false
+    },
+    "liveUi": {
+      "mediaText": "● LIVE · END BROADCAST",
+      "liveLabel": true,
+      "going": false,
+      "err": null,
+      "youBadge": true,
+      "youAreLive": true,
+      "selfTile": true,
+      "mosaicSnippet": "LIVE LOBBY WALL · MOSAIC(performer)YOU ARE LIVE✕🎯 Challenges⚔️ Battles🎤 Cyphers🌍 World Dance🎸 Performer Lobbies🛋️ Lounges🎮 Games🔴 Live📺 Shows & ReleasesLIVE AUDIO / STAGE BROADCAST🔴 LIVEsuedejs2000 — Live · sued"
+    },
+    "uiError": null,
+    "registryRoomId": "room-hub-1789226784457"
   },
   "fan": {
     "role": "fan",
@@ -19,19 +66,23 @@
       "login": "PASS",
       "hydration": "PASS",
       "goLiveControlVisible": "PASS",
-      "mosaicRailVisible": "PASS",
+      "fanAvatarOwnershipAllowed": "PASS",
+      "lobbyWallTriggerVisible": "PASS",
+      "noInlineMosaicDisplacingMonitors": "PASS",
       "domWiring": "PASS",
       "pageSession": "PASS",
       "liveGoPost": "PASS",
-      "mosaicSelfTile": "PASS",
       "liveBadge": "PASS",
+      "lobbyWallOpened": "PASS",
+      "mosaicSelfTile": "PASS",
+      "mosaicRailVisible": "PASS",
       "registryListed": "PASS"
     },
     "network": {
       "liveGoPosts": [
         {
           "status": 200,
-          "at": 1788333466580
+          "at": 1789226745677
         },
         {
           "status": 200,
@@ -44,20 +95,22 @@
     "userId": "519a745e-df15-4a60-9138-2b4620b8ac29",
     "wiring": {
       "goLiveHost": true,
-      "mosaicRail": true,
-      "mediaStack": true
+      "lobbyWallTrigger": true,
+      "mediaStack": true,
+      "inlineMosaicRail": false
     },
     "liveUi": {
       "mediaText": "● LIVE · END BROADCAST",
       "liveLabel": true,
       "going": false,
       "err": null,
-      "youBadge": false,
+      "youBadge": true,
       "youAreLive": true,
-      "mosaicSnippet": "LIVE LOBBY WALL · MOSAIC24 live · scroll · tap opens media playerYOU ARE LIVELIVEYOUPerformer — LivePerformer2PREVIEW BIND · Active performerLIVERock Fan Avatar Lobby24/7 · Rock Fan Avatar Lobby · Amb"
+      "selfTile": true,
+      "mosaicSnippet": "LIVE LOBBY WALL · MOSAIC(fan)YOU ARE LIVE✕🎯 Challenges⚔️ Battles🎤 Cyphers🌍 World Dance👥 Fan Lobbies🛋️ Lounges🎮 Games🔴 Live📺 Shows & ReleasesLIVE AUDIO / STAGE BROADCAST🔴 LIVEmicah — Live · micah👁️ WATCH STAGE🚀"
     },
     "uiError": null,
-    "registryRoomId": "room-hub-1788333342510"
+    "registryRoomId": "room-hub-1789226739889"
   },
   "pass": true,
   "fanPublishPass": true,

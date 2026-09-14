@@ -682,9 +682,29 @@ export default function CommandCenterDrawer({
       {activePanel === "stage_tools" && role === "performer" ? (
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            Stage & broadcast tools — curtain/lighting/mood live in VENUE TOOLS.
+            Connect to a live venue/session first. Curtain/lighting belong to the venue — performers do not author venues from the hub.
           </div>
-          <VenueToolsShellHint accent={theme.primary} roomId={`hub-curtain-${userId}`} />
+          {publishedRoomId || inPlaceRoomId ? (
+            <VenueToolsShellHint
+              accent={theme.primary}
+              roomId={(publishedRoomId || inPlaceRoomId)!}
+            />
+          ) : (
+            <div
+              data-stage-tools-no-venue="1"
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.45)",
+                lineHeight: 1.5,
+                padding: "10px 12px",
+                border: `1px solid ${theme.primary}33`,
+                borderRadius: 10,
+                background: `${theme.primary}08`,
+              }}
+            >
+              No active venue session. GO LIVE or JOIN an experience to connect — Venue Tools stay unavailable until then.
+            </div>
+          )}
           <button
             type="button"
             onClick={() => {

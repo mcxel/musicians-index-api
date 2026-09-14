@@ -19,8 +19,11 @@ import { useHomepageRotation } from "@/hooks/useHomepageRotation";
 import type { HomeChartRow } from "@/components/home/data/getHomeCharts";
 import type { HomeReleaseRow } from "@/components/home/data/getHomeReleases";
 import type { HomeSponsorRow } from "@/components/home/data/getHomeSponsors";
+import { getTopPerformers } from "@/lib/performers/PerformerRegistry";
 
-const CROWN_HOLDER = { name: "Wavetek", title: "This Week's Crown Holder", genre: "Trap · Houston TX", votes: "14,200", battles: 12, wins: 10, href: "/artist/wavetek" };
+// Rule 3: rank is XP-driven, never manual — never a hand-typed name/vote count.
+// Rule 1: single source is PerformerRegistry, never a hardcoded performer here.
+const CROWN_HOLDER = getTopPerformers(1)[0] ?? null;
 
 const FEATURED_ARTICLES = [
   { id: "a1", headline: "Wavetek Drops 808 Exclusive — Highest Bid Wins", tag: "BEAT", color: "#FF2DAA", href: "/articles/wavetek-808" },
@@ -85,12 +88,21 @@ export default function Home1Layout() {
       }}>
         <div style={{ fontSize: 28, lineHeight: 1 }}>👑</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 8, color: "#FFD700", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 2 }}>THIS WEEK&apos;S CROWN</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>{CROWN_HOLDER.name}</div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{CROWN_HOLDER.genre} · {CROWN_HOLDER.votes} votes · {CROWN_HOLDER.wins}/{CROWN_HOLDER.battles} W/L</div>
+          <div style={{ fontSize: 8, color: "#FFD700", fontWeight: 900, letterSpacing: "0.2em", marginBottom: 2 }}>THE CROWN</div>
+          {CROWN_HOLDER ? (
+            <>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>{CROWN_HOLDER.name}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{CROWN_HOLDER.category} · {CROWN_HOLDER.xp.toLocaleString()} XP</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>No Crown Holder Yet</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Be the first to climb the ranks</div>
+            </>
+          )}
         </div>
-        <Link href={CROWN_HOLDER.href} style={{ textDecoration: "none", padding: "6px 14px", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, fontSize: 10, fontWeight: 800, color: "#FFD700" }}>
-          VIEW PROFILE
+        <Link href={CROWN_HOLDER ? `/performers/${CROWN_HOLDER.slug}` : "/leaderboard"} style={{ textDecoration: "none", padding: "6px 14px", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, fontSize: 10, fontWeight: 800, color: "#FFD700" }}>
+          {CROWN_HOLDER ? "VIEW PROFILE" : "VIEW LEADERBOARD"}
         </Link>
       </div>
 

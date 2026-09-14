@@ -40,10 +40,13 @@ export default function MobileQuickPanelBar({
 }: MobileQuickPanelBarProps) {
   const router = useRouter();
   const hubRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const realRoomId = hubRoomId ?? publishedRoomId ?? null;
   const { primary, more } = getMobileQuickPanelCapabilities(role, {
     isLive: isLivePublished,
-    isGoLiveContext: Boolean(hubRoomId),
+    isGoLiveContext: Boolean(realRoomId),
+    roomId: realRoomId,
   });
   const [moreOpen, setMoreOpen] = useState(false);
   const { activePanel, togglePanel, openPanel, closePanel } = useCompactQuickPanelStore();

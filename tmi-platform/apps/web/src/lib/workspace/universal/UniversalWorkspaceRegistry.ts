@@ -280,6 +280,26 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     minHeight: 400,
     phase1Content: false,
   },
+  shop: {
+    id: "shop",
+    label: "3D Shop / Spatial Merch",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 600 },
+    minWidth: 480,
+    minHeight: 380,
+    phase1Content: true,
+    legacyDrawerId: "shop",
+  },
+  merch: {
+    id: "merch",
+    label: "Merch / Storefront",
+    accent: "#00FF88",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 600 },
+    minWidth: 480,
+    minHeight: 380,
+    phase1Content: true,
+    legacyDrawerId: "merch",
+  },
 };
 
 export function getWorkspaceDef(id: UniversalWorkspaceId): UniversalWorkspaceDef {

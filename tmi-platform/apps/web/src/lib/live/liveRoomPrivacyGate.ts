@@ -16,6 +16,26 @@ export type LiveRoomJoinDecision = {
   registryPrivacy: RegistryLivePrivacy;
 };
 
+/**
+ * Resolve join privacy from a registry session.
+ * Prefer stored `audiencePrivacyMode` (fine-grained). Never invent "friends"
+ * from INVITE_ONLY alone — without mode detail, fail closed as private.
+ */
+export function resolveAudiencePrivacyFromSession(session: {
+  privacy?: RegistryLivePrivacy | string | null;
+  audiencePrivacyMode?: LivePrivacy | string | null;
+} | null | undefined): LivePrivacy {
+  if (!session) return "public";
+  if (session.audiencePrivacyMode != null && String(session.audiencePrivacyMode).trim() !== "") {
+    return normalizeLivePrivacyMode(String(session.audiencePrivacyMode));
+  }
+  const reg = String(session.privacy ?? "PUBLIC").toUpperCase();
+  if (reg === "PUBLIC") return "public";
+  if (reg === "PAID_ENTRY") return "public";
+  // INVITE_ONLY without fine-grained mode → private (host-only). Honest deny > fake friends pass.
+  return "private";
+}
+
 /** Map dock/UI privacy onto GlobalLiveSessionRegistry privacy enum. */
 export function mapLivePrivacyToRegistry(privacy: LivePrivacy | string | undefined | null): RegistryLivePrivacy {
   const raw = String(privacy ?? "public").trim();

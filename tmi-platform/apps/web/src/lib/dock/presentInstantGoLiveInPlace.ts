@@ -32,6 +32,8 @@
 
 import { executeInstantGoLive, type InstantGoLiveResult } from "@/lib/dock/executeInstantGoLive";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
+import { pauseDiscoveryPoll } from "@/lib/discovery/DiscoveryPublisher";
+import { TelemetryTransportGovernor } from "@/lib/analytics/TelemetryTransportGovernor";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import {
   mediaErrorToBootstrapCode,
@@ -238,6 +240,10 @@ export async function presentInstantGoLiveInPlace(opts?: {
   const publishSession = opts?.publishSession !== false;
   const privacy = opts?.privacy ?? "public";
   const boot = useGoLiveBootstrapStore.getState();
+
+  // Free same-origin sockets before session probe + publish (discovery GET hits /api/live/go).
+  TelemetryTransportGovernor.pause(25000);
+  pauseDiscoveryPoll(25000);
 
   // Real session truth — never assume authenticated:true
   let sessionAuthenticated = false;

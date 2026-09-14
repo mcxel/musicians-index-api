@@ -84,10 +84,10 @@ function StandbyFill() {
 
 export type DualMonitorBezelVariant = "gold" | "chrome";
 
-/** Per-monitor splits. Gold/admin goes to 16; chrome/fan caps at 8 via availableModes. */
-export type MonitorSplitMode = 1 | 2 | 3 | 4 | 8 | 16;
+/** Per-monitor splits. Gold/admin goes to 16; chrome/fan supports continuous 1 through 8. */
+export type MonitorSplitMode = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16;
 
-const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 8: "8", 16: "16" };
+const SPLIT_LABELS: Record<MonitorSplitMode, string> = { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8", 16: "16" };
 
 export interface CanonicalMonitorPane {
   id: string;
@@ -142,7 +142,7 @@ function MonitorSplitBar({
   accent: string;
   availableModes?: MonitorSplitMode[];
 }) {
-  const MODES: MonitorSplitMode[] = availableModes ?? [1, 2, 3, 4, 8];
+  const MODES: MonitorSplitMode[] = availableModes ?? [1, 2, 3, 4, 5, 6, 7, 8];
   return (
     <div
       style={{

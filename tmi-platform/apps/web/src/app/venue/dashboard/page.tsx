@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import RoleHubAccountMenu from '@/components/navigation/RoleHubAccountMenu';
+import RoleSwitcherWidget from '@/components/navigation/RoleSwitcherWidget';
 
 const CFG = { label: 'Venue', accent: '#22c55e', hub: '/hub/venue', emoji: '🏟️' };
 
@@ -11,11 +13,17 @@ const STATS = [
 
 export default function VenueDashboardPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#07071a', color: '#fff', fontFamily: 'sans-serif', padding: '2rem' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <Link href={CFG.hub} style={{ color: CFG.accent, textDecoration: 'none', fontSize: 14 }}>
-          ← Back to {CFG.label} Hub
+    <div style={{ minHeight: '100vh', background: '#07071a', color: '#fff', fontFamily: 'sans-serif' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 16px', borderBottom: `1px solid ${CFG.accent}33`, background: 'rgba(0,0,0,0.75)' }}>
+        <Link href={CFG.hub} style={{ color: CFG.accent, textDecoration: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '0.1em' }}>
+          ← VENUE HUB
         </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <RoleSwitcherWidget accentColor={CFG.accent} buttonLabel="SWITCH ROLES" />
+          <RoleHubAccountMenu accentColor={CFG.accent} showInlineSignOut />
+        </div>
+      </div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '2rem' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginTop: '1rem' }}>
           {CFG.emoji} Venue Dashboard
         </h1>

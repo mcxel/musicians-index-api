@@ -195,8 +195,7 @@ export function runAdsRevGates(): GateRow[] {
       botVerdict.billableAds === false &&
       botVerdict.truth === "REJECTED" &&
       estVerdict.truth === "ESTIMATED" &&
-      paidVerdict.truth === "PAID" &&
-      estVerdict.truth !== paidVerdict.truth
+      paidVerdict.truth === "PAID"
         ? "PASS"
         : "FAIL",
     evidence: `bot=${botVerdict.truth}; viewable=${estVerdict.truth}; paid=${paidVerdict.truth}`,

@@ -106,14 +106,41 @@ async function waitShell(page) {
     const ready = await page
       .evaluate(() => {
         const goLive = document.querySelector("[data-media-player-go-live='1']");
-        const mosaic = document.querySelector("[data-live-lobby-mosaic-rail]");
         const stack = document.querySelector("[data-media-player-live-bezel]");
-        return Boolean(goLive && mosaic && stack);
+        const lobbyTrigger = document.querySelector('[data-testid="tmi-lobby-wall-trigger"]');
+        // Inline mosaic rail is intentionally unmounted (hub monitors must not be displaced).
+        // Discovery surface is LOBBY WALL → MiniLiveLobbyWallRuntime.
+        return Boolean(goLive && stack && lobbyTrigger);
       })
       .catch(() => false);
     if (ready) return;
     await page.waitForTimeout(2000);
   }
+}
+
+async function openLobbyWallDiscovery(page) {
+  const trigger = page.locator('[data-testid="tmi-lobby-wall-trigger"]').first();
+  if ((await trigger.count()) > 0) {
+    await trigger.click({ timeout: 10000, force: true }).catch(async () => {
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-testid="tmi-lobby-wall-trigger"]');
+        if (btn instanceof HTMLElement) btn.click();
+        window.dispatchEvent(new CustomEvent("tmi:toggle-mini-lobby-wall"));
+      });
+    });
+  } else {
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("tmi:toggle-mini-lobby-wall"));
+    });
+  }
+  for (let i = 0; i < 30; i++) {
+    const open = await page
+      .evaluate(() => Boolean(document.querySelector('[data-testid="tmi-mini-live-lobby-wall"]')))
+      .catch(() => false);
+    if (open) return true;
+    await page.waitForTimeout(500);
+  }
+  return false;
 }
 
 async function certRolePublish(browser, { role, hubRoute, email }) {
@@ -154,16 +181,39 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
   // Prevent HTTP/1.1 slot starvation during publish (P0-1 lesson)
   await page.route("**/api/telemetry/**", (route) => route.abort());
   await page.route("**/api/beats/**", (route) => route.abort());
+  await page.route("**/api/messages**", (route) => route.abort());
+  await page.route("**/api/notifications**", (route) => route.abort());
+  await page.route("**/api/cart**", (route) => route.abort());
+  await page.route("**/api/tokens/**", (route) => route.abort());
+  await page.route("**/api/live/marquee**", (route) => route.abort());
+  await page.route("**/api/media-players**", (route) => route.abort());
+  await page.route("**/api/user/**", (route) => route.abort());
+  await page.route("**/api/account/**", (route) => route.abort());
   await page.route("**/api/auth/session**", async (route) => {
     await route.continue();
   });
   let stubGoGet = true;
   await page.route("**/api/live/go**", async (route) => {
-    if (route.request().method() === "GET" && stubGoGet) {
+    const req = route.request();
+    const url = req.url();
+    // Lite discovery polls must never block the publish POST on HTTP/1.1.
+    if (req.method() === "GET" && (/[?&]lite=1(?:&|$)/.test(url) || stubGoGet)) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ sessions: [], live: [], count: 0, anchors: [] }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  // Non-go /api/live GETs also compete for sockets
+  await page.route("**/api/live", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ rooms: [], live: [], count: 0 }),
       });
       return;
     }
@@ -223,17 +273,38 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
     const goLiveBtn = page.locator('[data-testid="tmi-media-player-go-live"]');
     report.steps.goLiveControlVisible = (await goLiveBtn.count()) > 0 ? "PASS" : "FAIL";
 
-    const mosaicRail = page.locator('[data-testid="tmi-live-mosaic-scroll-rail"]');
-    report.steps.mosaicRailVisible = (await mosaicRail.count()) > 0 ? "PASS" : "FAIL";
+    // Rule 26 — Performer ≠ Fan avatar ownership
+    const avatarBtnCount = await page.locator('[data-testid="tmi-quick-avatar-btn"]').count();
+    if (role === "performer") {
+      report.steps.performerNoAvatarOwnership = avatarBtnCount === 0 ? "PASS" : "FAIL";
+    } else {
+      report.steps.fanAvatarOwnershipAllowed = avatarBtnCount > 0 ? "PASS" : "SOFT";
+    }
+
+    const lobbyTrigger = page.locator('[data-testid="tmi-lobby-wall-trigger"]');
+    report.steps.lobbyWallTriggerVisible = (await lobbyTrigger.count()) > 0 ? "PASS" : "FAIL";
+    // Legacy inline rail must stay OFF hub media stack (monitor displacement law).
+    const inlineRail = page.locator('[data-testid="tmi-live-mosaic-scroll-rail"]');
+    const inlineMounted =
+      (await inlineRail.count()) > 0 &&
+      (await page
+        .evaluate(() => {
+          const rail = document.querySelector('[data-testid="tmi-live-mosaic-scroll-rail"]');
+          const stack = document.querySelector("[data-command-center-media-stack]");
+          return Boolean(rail && stack && stack.contains(rail));
+        })
+        .catch(() => false));
+    report.steps.noInlineMosaicDisplacingMonitors = inlineMounted ? "FAIL" : "PASS";
 
     const wiring = await page.evaluate(() => ({
       goLiveHost: !!document.querySelector("[data-media-player-go-live-host]"),
-      mosaicRail: !!document.querySelector("[data-live-lobby-mosaic-rail]"),
+      lobbyWallTrigger: !!document.querySelector('[data-testid="tmi-lobby-wall-trigger"]'),
       mediaStack: !!document.querySelector("[data-media-player-live-bezel]"),
+      inlineMosaicRail: !!document.querySelector('[data-testid="tmi-live-mosaic-scroll-rail"]'),
     }));
     report.wiring = wiring;
     report.steps.domWiring =
-      wiring.goLiveHost && wiring.mosaicRail && wiring.mediaStack ? "PASS" : "FAIL";
+      wiring.goLiveHost && wiring.lobbyWallTrigger && wiring.mediaStack ? "PASS" : "FAIL";
 
     // Page session must be authenticated before GO LIVE
     let pageAuth = false;
@@ -255,7 +326,8 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
     report.steps.pageSession = pageAuth ? "PASS" : "FAIL";
 
     const mediaBtn = page.locator("[data-media-player-go-live='1']").first();
-    await mediaBtn.waitFor({ state: "attached", timeout: 60000 }).catch(() => {});
+    await mediaBtn.waitFor({ state: "visible", timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(2000);
 
     const postWait = page
       .waitForResponse(
@@ -267,22 +339,51 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
     await mediaBtn.scrollIntoViewIfNeeded().catch(() => {});
     await dismissOverlays(page);
     stubGoGet = false;
+    // Keep lite GETs stubbed even after publish arm — only full GET continues after publish.
     try {
       await mediaBtn.click({ timeout: 15000, force: true });
     } catch {
-      await page.evaluate(() => {
-        const btn = document.querySelector("[data-media-player-go-live='1']");
-        if (btn instanceof HTMLElement) {
-          btn.focus();
-          btn.dispatchEvent(
-            new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
-          );
-        }
-        window.dispatchEvent(new CustomEvent("tmi:media-player-golive-intent"));
-      });
+      /* fall through to synthetic */
     }
 
-    const postRes = await postWait;
+    // Ensure React / intent path fires even if Playwright click is swallowed
+    await page.evaluate(() => {
+      const btn = document.querySelector("[data-media-player-go-live='1']");
+      if (btn instanceof HTMLElement) {
+        btn.focus();
+        const fiberKey = Object.keys(btn).find(
+          (k) => k.startsWith("__reactProps") || k.startsWith("__reactFiber"),
+        );
+        if (fiberKey) {
+          const fiberOrProps = /** @type {any} */ (btn)[fiberKey];
+          const props = fiberOrProps?.memoizedProps || fiberOrProps;
+          if (typeof props?.onClick === "function") {
+            props.onClick({ preventDefault() {}, stopPropagation() {}, nativeEvent: {} });
+          }
+        }
+        btn.click();
+        btn.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
+        );
+      }
+      window.dispatchEvent(new CustomEvent("tmi:media-player-golive-intent"));
+    });
+
+    let postRes = await postWait;
+    if (!postRes && report.network.liveGoPosts.length === 0) {
+      const postWait2 = page
+        .waitForResponse(
+          (res) => res.request().method() === "POST" && /\/api\/live\/go(?:\?|$)/.test(res.url()),
+          { timeout: 120000 },
+        )
+        .catch(() => null);
+      await page
+        .locator('[data-testid="tmi-top-cluster-golive"]')
+        .first()
+        .click({ timeout: 8000, force: true })
+        .catch(() => {});
+      postRes = await postWait2;
+    }
     if (postRes) {
       const last = report.network.liveGoPosts.at(-1);
       if (last && last.status == null) last.status = postRes.status();
@@ -299,15 +400,11 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
           const mediaBtn = document.querySelector("[data-media-player-go-live='1']");
           const mediaText = (mediaBtn?.textContent || "").replace(/\s+/g, " ").trim();
           const errHost = document.querySelector("[data-media-player-go-live-error='1']");
-          const mosaicText = document.querySelector("[data-live-lobby-mosaic-rail]")?.textContent || "";
           return {
             mediaText,
             liveLabel: /●\s*LIVE|END BROADCAST|LIVE · END/i.test(mediaText),
             going: /GOING LIVE/i.test(mediaText),
             err: (errHost?.textContent || "").trim() || null,
-            youBadge: /\bYOU\b/i.test(mosaicText),
-            youAreLive: /YOU ARE LIVE/i.test(mosaicText),
-            mosaicSnippet: mosaicText.slice(0, 200),
           };
         })
         .catch(() => ({
@@ -315,14 +412,11 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
           liveLabel: false,
           going: false,
           err: null,
-          youBadge: false,
-          youAreLive: false,
-          mosaicSnippet: "",
         }));
       uiError = probe.err;
-      uiLive = probe.liveLabel || probe.youAreLive || probe.youBadge;
-      report.liveUi = probe;
-      if (probe.liveLabel || probe.err || probe.youBadge) break;
+      uiLive = probe.liveLabel;
+      report.liveUi = { ...report.liveUi, ...probe };
+      if (probe.liveLabel || probe.err) break;
       if (report.network.liveGoPosts.some((p) => p.status === 200) && i > 5) break;
       await page.waitForTimeout(1000);
     }
@@ -334,21 +428,49 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
       report.network.liveGoPosts.push({ status: postStatus, via: "click" });
     }
 
-    const liveUi = report.liveUi ?? (await page.evaluate(() => {
-      const btn = document.querySelector("[data-media-player-go-live='1']");
-      const btnText = btn?.textContent || "";
-      const mosaicText = document.querySelector("[data-live-lobby-mosaic-rail]")?.textContent || "";
-      const youBadge = /YOU/i.test(mosaicText);
-      const youAreLive = /YOU ARE LIVE/i.test(mosaicText);
-      const liveLabel = /● LIVE|LIVE · END/i.test(btnText);
-      return { btnText, youBadge, youAreLive, liveLabel, mosaicSnippet: mosaicText.slice(0, 200) };
-    }));
-    report.liveUi = liveUi;
-    report.uiError = uiError;
-    report.steps.mosaicSelfTile =
-      liveUi.youBadge || liveUi.youAreLive ? "PASS" : postStatus === 200 ? "SOFT" : "FAIL";
     report.steps.liveBadge =
-      liveUi.liveLabel || uiLive ? "PASS" : postStatus === 200 ? "SOFT" : "FAIL";
+      uiLive || (report.liveUi && report.liveUi.liveLabel) ? "PASS" : postStatus === 200 ? "SOFT" : "FAIL";
+    report.uiError = uiError;
+
+    // Open LOBBY WALL discovery (canonical mosaic surface post hub-role-separation)
+    const lobbyOpened = await openLobbyWallDiscovery(page);
+    report.steps.lobbyWallOpened = lobbyOpened ? "PASS" : "FAIL";
+
+    let mosaicProbe = {
+      youBadge: false,
+      youAreLive: false,
+      selfTile: false,
+      mosaicSnippet: "",
+    };
+    for (let i = 0; i < 40; i++) {
+      mosaicProbe = await page
+        .evaluate(() => {
+          const wall =
+            document.querySelector('[data-testid="tmi-mini-live-lobby-wall"]') ||
+            document.querySelector("[data-live-lobby-mosaic-rail]");
+          const mosaicText = wall?.textContent || "";
+          return {
+            youBadge: /\bYOU\b/i.test(mosaicText),
+            youAreLive:
+              /YOU ARE LIVE/i.test(mosaicText) ||
+              !!document.querySelector("[data-live-mosaic-you-are-live='1']"),
+            selfTile: !!document.querySelector('[data-live-mosaic-self="1"]'),
+            mosaicSnippet: mosaicText.slice(0, 220),
+          };
+        })
+        .catch(() => mosaicProbe);
+      report.liveUi = { ...(report.liveUi || {}), ...mosaicProbe };
+      if (mosaicProbe.youAreLive || mosaicProbe.selfTile || mosaicProbe.youBadge) break;
+      await page.waitForTimeout(500);
+    }
+
+    report.steps.mosaicSelfTile =
+      mosaicProbe.youAreLive || mosaicProbe.selfTile || mosaicProbe.youBadge
+        ? "PASS"
+        : postStatus === 200
+          ? "SOFT"
+          : "FAIL";
+    report.steps.mosaicRailVisible = lobbyOpened || mosaicProbe.mosaicSnippet ? "PASS" : "FAIL";
 
     await page.screenshot({ path: path.join(OUT, `${role}-02-after-golive.png`), fullPage: false, timeout: 120000 }).catch(() => {});
 
@@ -371,7 +493,8 @@ async function certRolePublish(browser, { role, hubRoute, email }) {
       report.steps.login === "PASS" &&
       report.steps.liveGoPost === "PASS" &&
       (report.steps.mosaicSelfTile === "PASS" || report.steps.mosaicSelfTile === "SOFT") &&
-      report.steps.registryListed === "PASS";
+      report.steps.registryListed === "PASS" &&
+      (role !== "performer" || report.steps.performerNoAvatarOwnership === "PASS");
 
     report.pass =
       Object.values(report.steps).every((v) => v === "PASS" || v === "SKIP" || v === "SOFT") &&

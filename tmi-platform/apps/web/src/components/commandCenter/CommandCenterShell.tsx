@@ -37,6 +37,7 @@ import { useMediaPlayerAudiencePresence } from "@/lib/media/useMediaPlayerAudien
 import { inferWatchCategoryFromRoomId } from "@/lib/media/universalMediaPlayerWatchRoute";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { DEFAULT_MONITOR_A } from "@/lib/personal-media";
+import { isDiscoveryPollPaused } from "@/lib/discovery/DiscoveryPublisher";
 import CameraCaptureOverlay from "@/components/panels/CameraCaptureOverlay";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
@@ -68,16 +69,21 @@ import {
   ActivePerformerProvider,
   useActivePerformer,
 } from "@/lib/context/ActivePerformerContext";
-import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import CommandCenterTopNav from "./CommandCenterTopNav";
 import CanonicalCommandCenterFrame from "./CanonicalCommandCenterFrame";
+import HubCommunicationsRail, { type HubCommunicationsTab } from "./HubCommunicationsRail";
+import HubMobileQuickActionBar from "./HubMobileQuickActionBar";
+import HubMobileCommunicationsDrawer from "./HubMobileCommunicationsDrawer";
+import HubMobileMonitorControlBar from "./HubMobileMonitorControlBar";
 import PerformerExperienceQuickStrip from "./PerformerExperienceQuickStrip";
 import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
-import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
+import HubNavigationRail from "./HubNavigationRail";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
+import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
+import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
 import UniversalWorkspaceHost from "@/components/workspace/universal/UniversalWorkspaceHost";
 import GlobalErrorBoundary from "@/components/system/GlobalErrorBoundary";
 import {
@@ -92,6 +98,7 @@ import FloatingLobbyWallTrigger from "@/components/lobby/FloatingLobbyWallTrigge
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 import TmiIdentitySurface from "./TmiIdentitySurface";
+import PerformerQrQuickStrip from "./PerformerQrQuickStrip";
 
 interface LiveApiSession {
   userId: string;
@@ -333,6 +340,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   }, [searchParams, pathname, stopWatching]);
 
   const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
+  const hubShellRole = role === "performer" ? "performer" : "fan";
+  const activeHubRoomId = inPlaceRoomId ?? publishedRoomId ?? mediaRoomId ?? null;
+  const hasLiveFeed = Boolean(activeHubRoomId) || isLivePublished;
+  const openMobileCommunications = useCallback((tab: HubCommunicationsTab) => {
+    setMobileCommsTab(tab);
+    setMobileCommsOpen(true);
+  }, []);
+  const closeMobileCommunications = useCallback(() => {
+    setMobileCommsOpen(false);
+  }, []);
   const isPublishedHost =
     Boolean(isLivePublished && publishedRoomId && inPlaceRoomId && publishedRoomId === inPlaceRoomId);
   const localhostDebugEnabled =
@@ -349,7 +366,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       const [authRes, profileRes, liveRes, cartRes] = await Promise.allSettled([
         fetch("/api/auth/session", { cache: "no-store", credentials: "include" }),
         fetch("/api/profile/self", { cache: "no-store", credentials: "include" }),
-        fetch("/api/live/go", { cache: "no-store", credentials: "include" }),
+        fetch("/api/live/go?lite=1", { cache: "no-store", credentials: "include" }),
         fetch("/api/cart", { cache: "no-store", credentials: "include" }),
       ]);
 
@@ -526,6 +543,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [mobileCommsOpen, setMobileCommsOpen] = useState(false);
+  const [mobileCommsTab, setMobileCommsTab] = useState<HubCommunicationsTab>("messages");
   useEffect(() => {
     document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-27-canonical-slice1");
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -811,7 +830,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     transitionMonitorLayout("HIDDEN");
   };
 
+  /** Mobile: binary 1↔2 monitors (P0 — no HIDDEN in tap cycle). Desktop: DUAL → PRIMARY → HIDDEN → DUAL. */
   const cycleMonitorMode = (): MonitorLayoutMode => {
+    if (isMobile) {
+      if (monitorLayoutMode === "HIDDEN") return "DUAL";
+      return monitorLayoutMode === "DUAL" ? "PRIMARY_ONLY" : "DUAL";
+    }
     if (monitorLayoutMode === "DUAL") return "PRIMARY_ONLY";
     if (monitorLayoutMode === "PRIMARY_ONLY") return "HIDDEN";
     return "DUAL";
@@ -838,6 +862,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     if (stageDeckWork) {
       restoreStageMonitors();
       return;
+    }
+    // Explicit monitor toggle must win over CONTROL mode forcing single-monitor layout.
+    if (mobilePresentation.mode === "CONTROL") {
+      mobilePresentation.closeControl();
     }
     stageCollapsedByControlRef.current = false;
     transitionMonitorLayout(cycleMonitorMode());
@@ -1099,8 +1127,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (isDiscoveryPollPaused()) return;
       try {
-        const res = await fetch("/api/live/go", { cache: "no-store" });
+        // Lite poll: sessions/count only — full anchors/genreDiscovery starve POST GO LIVE.
+        const res = await fetch("/api/live/go?lite=1", { cache: "no-store" });
         const data = (await res.json()) as { sessions?: LiveApiSession[] };
         // Featured LIVE chip: registry-published sessions only (never local CAM preview).
         const top = data.sessions?.find(
@@ -1295,31 +1325,80 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 opacity: monitorTransitionLocked && !isWorkMode ? 0.75 : 1,
               }}
               title={monitorButtonTitle}
+              data-testid="hub-monitor-toggle-mobile"
             >
-              📺 MONITORS {isWorkMode ? 0 : monitorCount}
+              📺 {isWorkMode ? "0" : monitorCount === 2 ? "2" : "1"} MON
             </button>
           )}
           {!isMobile ? (
-            <button
-              type="button"
-              onClick={toggleStageMonitors}
-              disabled={monitorTransitionLocked}
+            <div
+              data-tmi-monitor-count-selector="1"
               style={{
-                background: monitorCount > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,229,255,0.22)",
-                border: "1px solid #00E5FF",
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                background: "rgba(0,0,0,0.55)",
+                border: "1px solid rgba(0,229,255,0.25)",
                 borderRadius: 6,
-                color: "#00E5FF",
-                fontSize: 10,
-                fontWeight: 900,
-                padding: "4px 10px",
-                cursor: monitorTransitionLocked ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                opacity: monitorTransitionLocked ? 0.75 : 1,
+                padding: "2px 5px",
               }}
-              title={monitorButtonTitle}
             >
-              📺 MONITORS {monitorCount}
-            </button>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  color: "#00E5FF",
+                  marginRight: 3,
+                  fontFamily: "'Orbitron', sans-serif",
+                }}
+              >
+                📺 MON:
+              </span>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
+                const isSupported = [1, 2, 3, 4, 8].includes(num);
+                const isSelected = monitorCount === num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    disabled={!isSupported || monitorTransitionLocked}
+                    onClick={() => {
+                      if (!isSupported || monitorTransitionLocked) return;
+                      if (num === 1) {
+                        transitionMonitorLayout("PRIMARY_ONLY");
+                        setPresentationMonitorCount(1);
+                      } else {
+                        transitionMonitorLayout("DUAL");
+                        setPresentationMonitorCount(2);
+                      }
+                    }}
+                    title={
+                      !isSupported
+                        ? `Monitor split ${num} requires 8-bank participant expansion; select 4 or 8`
+                        : `Switch to ${num} Monitor layout`
+                    }
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      padding: "0 4px",
+                      borderRadius: 3,
+                      border: isSelected ? "1px solid #00E5FF" : "1px solid rgba(255,255,255,0.08)",
+                      background: isSelected ? "rgba(0,229,255,0.28)" : isSupported ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.01)",
+                      color: isSelected ? "#00FFFF" : isSupported ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
+                      fontSize: 8,
+                      fontWeight: 900,
+                      cursor: isSupported && !monitorTransitionLocked ? "pointer" : "not-allowed",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s ease",
+                      opacity: isSupported ? 1 : 0.35,
+                    }}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
           ) : null}
         </div>
       </div>
@@ -1413,81 +1492,86 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               ) : null}
             </div>
 
-            {stageDeckWork ? (
-              <CanonicalBottomDrawerHost
-                userId={userId}
-                displayName={resolvedDisplayName}
-                role={role === "performer" ? "performer" : "fan"}
-                stageDeck
-              />
-            ) : null}
           </div>
 
-          {!stageDeckWork ? (
-              <>
-                <CommandCenterSessionControlStrip
-                  role={role === "performer" ? "performer" : "fan"}
-                  userId={userId}
-                  displayName={resolvedDisplayName}
-                />
-                {role === "performer" ? <PerformerExperienceQuickStrip /> : null}
-                <PersistentMediaInteractionDock
-                  role={role === "performer" ? "performer" : "fan"}
-                  userId={userId}
-                  roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
-                  onLobbyNav={
-                    role === "fan"
-                      ? () => openStageWorkspace("lobby")
-                      : () => openPanel("media_locker")
-                  }
-                  onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
-                />
-                <CommandCenterPlaylistBand
-                  role={role}
-                  userId={userId}
-                  displayName={resolvedDisplayName}
-                  expanded={
-                    (drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") ||
-                    activePanel === "playlist"
-                  }
-                  initialPlaylistId={deepLinkPlaylistId}
-                  onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
-                />
-                <CanonicalBottomDrawerHost
-                  userId={userId}
-                  displayName={resolvedDisplayName}
-                  role={role === "performer" ? "performer" : "fan"}
-                />
+          <HubMobileMonitorControlBar
+            role={hubShellRole}
+            hasLiveFeed={hasLiveFeed}
+          />
+          <HubMobileQuickActionBar
+            role={hubShellRole}
+            hasLiveFeed={hasLiveFeed}
+            onOpenCommunications={openMobileCommunications}
+            activeCommsTab={mobileCommsOpen ? mobileCommsTab : null}
+          />
+          <CommandCenterSessionControlStrip
+            role={role === "performer" ? "performer" : "fan"}
+            userId={userId}
+            displayName={resolvedDisplayName}
+          />
+          {role === "performer" ? <PerformerExperienceQuickStrip /> : null}
+          <PersistentMediaInteractionDock
+            role={role === "performer" ? "performer" : "fan"}
+            userId={userId}
+            roomId={featured?.route?.replace(/\//g, "-") ?? "hub-command-center"}
+            hideMobileQuickPanelBar
+            onLobbyNav={
+              role === "fan"
+                ? () => openStageWorkspace("lobby")
+                : () => openPanel("media_locker")
+            }
+            onOpenModule={(mod) => openPanel(mod as CommandCenterPanelId)}
+          />
+          <CommandCenterPlaylistBand
+            role={role}
+            userId={userId}
+            displayName={resolvedDisplayName}
+            expanded={
+              (drawerWorkspace === "playlist-studio" && mediaConsoleMode === "expanded") ||
+              activePanel === "playlist"
+            }
+            initialPlaylistId={deepLinkPlaylistId}
+            onCollapse={() => { useWorkspacePresentationStore.getState().closeSurface("DRAWER"); closeDrawer(); }}
+          />
+          <PerformerQrQuickStrip
+            userId={userId}
+            displayName={resolvedDisplayName}
+            role={role === "performer" ? "performer" : "fan"}
+            accentColor={theme.primary}
+          />
+          <CanonicalBottomDrawerHost
+            userId={userId}
+            displayName={resolvedDisplayName}
+            role={role === "performer" ? "performer" : "fan"}
+          />
 
-                {/* Monetization lives in scroll depth only — never overlays stage controls. */}
-                <div style={{ padding: "0 12px 16px" }}>
-                  {role === "fan" ? (
-                    <>
-                      <AdRail
-                        placement="fan-cc-bottom"
-                        role="fan"
-                        reserve="medium-rectangle"
-                        experienceMode={monetizationExperienceMode}
-                      />
-                      <AdRail
-                        placement="fan-cc-mid"
-                        role="fan"
-                        reserve="mobile-banner"
-                        experienceMode={monetizationExperienceMode}
-                      />
-                    </>
-                  ) : (
-                    <AdRail
-                      placement="performer-cc-bottom"
-                      role="performer"
-                      reserve="medium-rectangle"
-                      experienceMode={monetizationExperienceMode}
-                    />
-                  )}
-                </div>
+          {/* Monetization lives in scroll depth only — never overlays stage controls. */}
+          <div style={{ padding: "0 12px 16px" }}>
+            {role === "fan" ? (
+              <>
+                <AdRail
+                  placement="fan-cc-bottom"
+                  role="fan"
+                  reserve="medium-rectangle"
+                  experienceMode={monetizationExperienceMode}
+                />
+                <AdRail
+                  placement="fan-cc-mid"
+                  role="fan"
+                  reserve="mobile-banner"
+                  experienceMode={monetizationExperienceMode}
+                />
               </>
-          ) : null}
-          {!isMobile && activePanel && (
+            ) : (
+              <AdRail
+                placement="performer-cc-bottom"
+                role="performer"
+                reserve="medium-rectangle"
+                experienceMode={monetizationExperienceMode}
+              />
+            )}
+          </div>
+          {activePanel ? (
             <GlobalErrorBoundary context="Command Center Drawer">
               <CommandCenterDrawer
                 role={role}
@@ -1500,7 +1584,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 initialPlaylistId={deepLinkPlaylistId}
               />
             </GlobalErrorBoundary>
-          )}
+          ) : null}
         </div>
       ) : (
         /* ── DESKTOP: canonical single-column shell (no legacy side rails) ── */
@@ -1520,6 +1604,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         >
           <CanonicalCommandCenterFrame
             role={role === "performer" ? "performer" : "fan"}
+            navigationRail={
+              <HubNavigationRail
+                role={role === "performer" ? "performer" : "fan"}
+                userId={userId}
+                displayName={resolvedDisplayName}
+                centers={centers}
+                activePanel={activePanel}
+                onOpenPanel={openPanel}
+              />
+            }
             mediaStage={
               <div
                 ref={mediaStageRef}
@@ -1584,6 +1678,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 }}
               />
             }
+            identityQrStrip={
+              <PerformerQrQuickStrip
+                userId={userId}
+                displayName={resolvedDisplayName}
+                role={role === "performer" ? "performer" : "fan"}
+                accentColor={theme.primary}
+              />
+            }
             bottomDrawer={
               <CanonicalBottomDrawerHost
                 userId={userId}
@@ -1632,6 +1734,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 )}
               </div>
             }
+            communicationsRail={
+              <HubCommunicationsRail
+                role={role === "performer" ? "performer" : "fan"}
+                userId={userId}
+                displayName={resolvedDisplayName}
+                roomId={inPlaceRoomId ?? publishedRoomId ?? mediaRoomId}
+              />
+            }
           />
         </div>
       )}
@@ -1641,6 +1751,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         displayName={resolvedDisplayName}
         role={role === "performer" ? "performer" : "fan"}
       />
+      {isMobile ? (
+        <HubMobileCommunicationsDrawer
+          open={mobileCommsOpen}
+          tab={mobileCommsTab}
+          onTabChange={setMobileCommsTab}
+          onClose={closeMobileCommunications}
+          role={hubShellRole}
+          userId={userId}
+          displayName={resolvedDisplayName}
+          roomId={activeHubRoomId}
+        />
+      ) : null}
       <SnipsOverlayHost />
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}
@@ -1650,7 +1772,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
       <FloatingWorkspacePanel />
       <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
-      <FloatingLobbyWallTrigger />
+      {/* Desktop floating LOBBY WALL trigger only — mobile uses HubMobileQuickActionBar LOBBIES. */}
+      {!isMobile ? <FloatingLobbyWallTrigger /> : null}
+      <CanonicalLeftQuickPanelHost
+        userId={userId}
+        displayName={resolvedDisplayName}
+        role={role}
+      />
+      <CanonicalRightQuickPanelHost
+        userId={userId}
+        displayName={resolvedDisplayName}
+        role={role}
+      />
 
       {localhostDebugEnabled ? (
         <div

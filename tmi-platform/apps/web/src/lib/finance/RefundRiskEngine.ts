@@ -23,12 +23,14 @@ export const HOLD_WINDOWS_MS: Record<TransactionType, number> = {
 };
 
 // Minimum payout threshold per creator type
+// Canonical Cash Out min = $5.00 (500¢) — SUPERSEDES prior $10 (2026-09-11).
+// Authority: .cursor/artifacts/cash-out-payout/TMI_CASH_OUT_PAYOUT_LAW.md
 export const PAYOUT_THRESHOLDS_CENTS: Record<string, number> = {
-  performer: 1000,  // $10
-  producer:  1000,  // $10
-  venue:     5000,  // $50
-  fan:       500,   // $5 (fan referral rewards)
-  default:   1000,
+  performer: 500,   // $5 — canonical Cash Out minimum
+  producer:  500,   // $5 — canonical Cash Out minimum
+  venue:     5000,  // $50 (venue/promoter proceeds — Rule 17)
+  fan:       500,   // $5 (fan referral rewards — not creator Cash Out of points)
+  default:   500,   // $5 — same as performer/producer
 };
 
 export type HoldRecord = {

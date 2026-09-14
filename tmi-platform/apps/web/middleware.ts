@@ -179,6 +179,15 @@ function applyCrawlHeaders(response: NextResponse, pathname: string): NextRespon
   return response;
 }
 
+/** Forward pathname to RSC so root layout can skip platform chrome on auth. */
+function nextWithPathname(req: NextRequest, pathname: string): NextResponse {
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', pathname);
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+}
+
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const proofMode = req.nextUrl.searchParams.get('proof') === '1';
@@ -194,7 +203,7 @@ export function middleware(req: NextRequest) {
   // Local visual-cert bypass for performer command center proof runs.
   // Never active outside localhost.
   if (proofMode && isLocalHost && (pathname === '/hub/performer' || pathname.startsWith('/hub/performer/'))) {
-    return NextResponse.next();
+    return nextWithPathname(req, pathname);
   }
 
   // Blueprint/design-reference quarantine — return 404 before any other check.
@@ -372,7 +381,7 @@ export function middleware(req: NextRequest) {
         const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/auth';
 
         if (redirectPath === pathname) {
-          return NextResponse.next();
+          return nextWithPathname(req, pathname);
         }
 
         return NextResponse.redirect(new URL(redirectPath, req.url), 307);
@@ -433,7 +442,7 @@ export function middleware(req: NextRequest) {
 
       const target = nextParam && !nextParam.startsWith('/auth') ? nextParam : redirectPath;
       if (target === pathname) {
-        return NextResponse.next();
+        return nextWithPathname(req, pathname);
       }
       return NextResponse.redirect(new URL(target, req.url), 307);
     }
@@ -456,7 +465,7 @@ export function middleware(req: NextRequest) {
   // ───────────────────────────────────────────────────────────────────────────
 
   if (matchesAny(pathname, AUTH_WHITELIST)) {
-    return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
+    return withReferralCookies(applyCrawlHeaders(nextWithPathname(req, pathname), pathname));
   }
 
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
@@ -505,7 +514,7 @@ export function middleware(req: NextRequest) {
       if (!allowed) {
         const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/hub/fan';
         if (redirectPath === pathname) {
-          return NextResponse.next();
+          return nextWithPathname(req, pathname);
         }
         return NextResponse.redirect(new URL(redirectPath, req.url), 307);
       }
@@ -530,7 +539,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return withReferralCookies(applyCrawlHeaders(NextResponse.next(), pathname));
+  return withReferralCookies(applyCrawlHeaders(nextWithPathname(req, pathname), pathname));
 }
 
 export const config = {

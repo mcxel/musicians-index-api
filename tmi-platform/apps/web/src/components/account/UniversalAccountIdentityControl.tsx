@@ -5,11 +5,12 @@
  * global header (Rule 31 ACCOUNT-SHELL). Photo if available, else accurate
  * initials from ActiveProfileIdentity. Click opens UniversalAccountDropdown.
  *
- * Current-schema compatibility: identity always comes from
- * GET /api/account/identity → ACCOUNT_FALLBACK (no fabricated dual names).
+ * Phase 0 escape law: this is the universal persona/account control — not
+ * Admin Concierge, not a role-specific deck chrome. Menu must open reliably
+ * on mobile (touch target + z-index + no outside-click race with trigger).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ActiveProfileIdentity } from "@/lib/account/resolveActiveProfileIdentity";
 import { resolveAccountShellCapabilities } from "@/lib/account/resolveAccountShellCapabilities";
@@ -30,6 +31,12 @@ function modeColor(activeRole: string): string {
   return "#888";
 }
 
+function readHubShellCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(/(?:^|;\s*)tmi_hub_shell=([^;]+)/);
+  return m?.[1]?.trim().toLowerCase() ?? null;
+}
+
 export default function UniversalAccountIdentityControl({
   fallbackDisplayName = "Account",
   fallbackAvatarUrl = null,
@@ -39,6 +46,8 @@ export default function UniversalAccountIdentityControl({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [identity, setIdentity] = useState<ActiveProfileIdentity | null>(null);
+  const [myRoles, setMyRoles] = useState<string[]>([]);
+  const [identityError, setIdentityError] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 56, right: 12 });
 
   useEffect(() => {
@@ -47,15 +56,36 @@ export default function UniversalAccountIdentityControl({
 
   const hydrate = useCallback(async () => {
     try {
-      const res = await fetch("/api/account/identity", {
-        cache: "no-store",
-        credentials: "include",
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as { identity?: ActiveProfileIdentity };
-      if (data.identity) setIdentity(data.identity);
+      const [idRes, rolesRes] = await Promise.all([
+        fetch("/api/account/identity", {
+          cache: "no-store",
+          credentials: "include",
+        }),
+        fetch("/api/auth/my-roles", {
+          cache: "no-store",
+          credentials: "include",
+        }),
+      ]);
+      if (idRes.ok) {
+        const data = (await idRes.json()) as { identity?: ActiveProfileIdentity };
+        if (data.identity) setIdentity(data.identity);
+      }
+      if (rolesRes.ok) {
+        const data = (await rolesRes.json()) as { ok?: boolean; roles?: string[] };
+        if (data.ok === false) {
+          setIdentityError(true);
+        } else {
+          setMyRoles((data.roles ?? []).map((r) => String(r).toUpperCase()));
+        }
+      } else {
+        // Role discovery failed (401/503) — this is an auth/infra failure,
+        // not proof the account owns only one role. Flag it so the dropdown
+        // shows a truthful state instead of silently rendering a single-role
+        // fallback identity as though that were the real permission set.
+        setIdentityError(true);
+      }
     } catch {
-      /* keep fallback */
+      setIdentityError(true);
     }
   }, []);
 
@@ -66,27 +96,66 @@ export default function UniversalAccountIdentityControl({
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const top = Math.min(
+      Math.round(rect.bottom + 8),
+      Math.max(8, window.innerHeight - 120),
+    );
     setPanelPos({
-      top: Math.round(rect.bottom + 8),
+      top,
       right: Math.max(8, Math.round(window.innerWidth - rect.right)),
     });
   }, [open]);
 
-  const displayName = identity?.publicDisplayName ?? fallbackDisplayName;
-  const avatarUrl = identity?.publicImageUrl ?? fallbackAvatarUrl;
-  const initials = identity?.canonicalInitials ?? (displayName.trim()[0]?.toUpperCase() ?? "?");
-  const activeRole = identity?.activeRole ?? "FAN";
+  const mergedIdentity = useMemo((): ActiveProfileIdentity | null => {
+    if (!identity && myRoles.length === 0) return null;
+    const base: ActiveProfileIdentity = identity ?? {
+      accountUserId: "pending",
+      profileKind: "ACCOUNT_FALLBACK",
+      activeRole: "FAN",
+      ownedRoles: ["FAN"],
+      profileComplete: false,
+      publicDisplayName: fallbackDisplayName,
+      publicHandle: null,
+      publicImageUrl: fallbackAvatarUrl,
+      canonicalInitials: fallbackDisplayName.trim()[0]?.toUpperCase() ?? "?",
+    };
+    const ownedRoles = Array.from(
+      new Set([...(base.ownedRoles ?? []).map((r) => r.toUpperCase()), ...myRoles]),
+    );
+    // Admin oversight: navigate-only keeps permanent ADMIN role but tmi_hub_shell
+    // marks the active experience — reflect that so FAN/PERFORMER highlight correctly.
+    const shell = readHubShellCookie();
+    let activeRole = base.activeRole;
+    const isAdminCapable = ownedRoles.some((r) =>
+      ["ADMIN", "STAFF", "SUPERADMIN"].includes(r),
+    );
+    if (isAdminCapable && shell === "fan") activeRole = "FAN";
+    if (isAdminCapable && shell === "performer") activeRole = "PERFORMER";
+    if (isAdminCapable && shell === "admin") activeRole = "ADMIN";
+    return { ...base, ownedRoles, activeRole };
+  }, [identity, myRoles, fallbackDisplayName, fallbackAvatarUrl]);
+
+  const displayName = mergedIdentity?.publicDisplayName ?? fallbackDisplayName;
+  const avatarUrl = mergedIdentity?.publicImageUrl ?? fallbackAvatarUrl;
+  const initials =
+    mergedIdentity?.canonicalInitials ?? (displayName.trim()[0]?.toUpperCase() ?? "?");
+  const activeRole = mergedIdentity?.activeRole ?? "FAN";
   const accent = modeColor(activeRole);
-  const caps = identity
+  const caps = mergedIdentity
     ? resolveAccountShellCapabilities({
-        ownedRoles: identity.ownedRoles,
-        activeRole: identity.activeRole,
+        ownedRoles: mergedIdentity.ownedRoles,
+        activeRole: mergedIdentity.activeRole,
       })
     : null;
-  const size = compact ? 32 : 40;
+  // Mobile escape law: never shrink below a reliable touch target.
+  const size = compact ? 40 : 44;
 
   return (
-    <div data-testid="tmi-universal-account-identity" style={{ position: "relative", flexShrink: 0 }}>
+    <div
+      data-testid="tmi-universal-account-identity"
+      data-tmi-universal-account-escape="1"
+      style={{ position: "relative", flexShrink: 0, zIndex: 70 }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -95,7 +164,7 @@ export default function UniversalAccountIdentityControl({
         aria-label={`Account menu for ${displayName}`}
         data-testid="tmi-universal-account-trigger"
         data-tmi-account-menu-trigger="1"
-        data-profile-kind={identity?.profileKind ?? "ACCOUNT_FALLBACK"}
+        data-profile-kind={mergedIdentity?.profileKind ?? "ACCOUNT_FALLBACK"}
         data-active-mode={caps?.activeModeLabel ?? activeRole}
         onClick={(e) => {
           e.stopPropagation();
@@ -106,11 +175,14 @@ export default function UniversalAccountIdentityControl({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          width: 44,
+          height: 44,
           padding: 0,
           border: "none",
           background: "transparent",
           cursor: "pointer",
           borderRadius: "50%",
+          touchAction: "manipulation",
         }}
       >
         {avatarUrl ? (
@@ -139,7 +211,7 @@ export default function UniversalAccountIdentityControl({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: compact ? 13 : 15,
+              fontSize: compact ? 14 : 16,
               fontWeight: 900,
               color: "#050510",
               border: `2px solid ${open ? accent : `${accent}55`}`,
@@ -153,25 +225,15 @@ export default function UniversalAccountIdentityControl({
 
       {mounted &&
         open &&
+        mergedIdentity &&
         createPortal(
           <UniversalAccountDropdown
-            identity={
-              identity ?? {
-                accountUserId: "pending",
-                profileKind: "ACCOUNT_FALLBACK",
-                activeRole: "FAN",
-                ownedRoles: ["FAN"],
-                profileComplete: false,
-                publicDisplayName: displayName,
-                publicHandle: null,
-                publicImageUrl: avatarUrl,
-                canonicalInitials: initials,
-              }
-            }
+            identity={mergedIdentity}
             open={open}
             onClose={() => setOpen(false)}
             anchorTop={panelPos.top}
             anchorRight={panelPos.right}
+            rolesUnavailable={identityError}
           />,
           document.body,
         )}

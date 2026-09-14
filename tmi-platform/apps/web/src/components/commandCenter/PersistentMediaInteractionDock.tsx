@@ -34,6 +34,8 @@ export interface PersistentMediaInteractionDockProps {
   roomId?: string;
   onLobbyNav?: () => void;
   onOpenModule?: (module: DockModuleId) => void;
+  /** Hub mobile: quick actions live in HubMobileQuickActionBar — hide duplicate strip. */
+  hideMobileQuickPanelBar?: boolean;
 }
 
 function formatTime(seconds: number | undefined): string {
@@ -49,6 +51,7 @@ export default function PersistentMediaInteractionDock({
   roomId = "hub-command-center",
   onLobbyNav,
   onOpenModule,
+  hideMobileQuickPanelBar = false,
 }: PersistentMediaInteractionDockProps) {
   const theme = useTheme();
   const isPerformer = role === "performer";
@@ -361,7 +364,7 @@ export default function PersistentMediaInteractionDock({
           }}
         />
       </div>
-      {isMobile ? (
+      {isMobile && !hideMobileQuickPanelBar ? (
         <MobileQuickPanelBar
           role={role}
           screenShareActive={shareActive || Boolean(screenStream)}
@@ -370,7 +373,7 @@ export default function PersistentMediaInteractionDock({
           onShare={openShareStudio}
           onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
         />
-      ) : (
+      ) : !isMobile ? (
         <CanonicalQuickToolsStrip
           role={role}
           screenShareActive={shareActive || Boolean(screenStream)}
@@ -379,7 +382,7 @@ export default function PersistentMediaInteractionDock({
           onShare={openShareStudio}
           onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
         />
-      )}
+      ) : null}
     </>
   );
 }

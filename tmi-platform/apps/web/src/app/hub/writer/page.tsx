@@ -7,10 +7,8 @@
  */
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
-import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 
 const ACCENT = "#FF2DAA";
 
@@ -98,23 +96,7 @@ export default function WriterHubPage() {
     : null;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
-      {/* Top bar — RoleHubAccountMenu is the sole logout/account authority (same as Venue/Sponsor/Promoter/Advertiser) */}
-      <div style={{ background: "rgba(0,0,0,0.88)", borderBottom: "1px solid rgba(255,45,170,0.2)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>EDITORIAL HUB</div>
-          <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Writer Command Center</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
-          <PersonaSwitcher currentRole="writer" compact />
-          <Link href="/dashboard/writer" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(255,45,170,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
-          <Link href="/editorial" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>EDITORIAL DESK</Link>
-          <Link href="/magazine" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>MAGAZINE</Link>
-          <RoleHubAccountMenu accentColor={ACCENT} />
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 80px" }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 16px 80px", color: "#fff" }}>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 32 }}>
@@ -122,14 +104,16 @@ export default function WriterHubPage() {
             <div style={{ gridColumn: "1/-1", padding: "28px 0", color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center" }}>
               Loading stats…
             </div>
-          ) : statCards ? statCards.map((s) => (
-            <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}30`, borderRadius: 12, padding: "18px", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: s.color }} />
-              <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 10, letterSpacing: 2, color: "#555", marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
-            </div>
-          )) : (
+          ) : statCards ? (
+            statCards.map((s) => (
+              <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}30`, borderRadius: 12, padding: "18px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: s.color }} />
+                <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "#555", marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
+              </div>
+            ))
+          ) : (
             <div style={{ gridColumn: "1/-1", padding: "20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, color: "rgba(255,255,255,0.4)", fontSize: 13 }}>
               No stats available yet. Start writing your first article.
             </div>
@@ -234,12 +218,7 @@ export default function WriterHubPage() {
           <MessagingCanister height={360} />
         </div>
 
+        <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 640px) { .writer-hub-split { grid-template-columns: 1fr !important; } }` }} />
       </div>
-      <style>{`
-        @media (max-width: 640px) {
-          .writer-hub-split { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </main>
   );
 }

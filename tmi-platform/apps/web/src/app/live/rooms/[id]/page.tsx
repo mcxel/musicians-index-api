@@ -58,6 +58,7 @@ import type { VenueEnvironmentKind } from "@/lib/venues/EventVenueEnvironment";
 import {
   evaluateLiveRoomJoinAccess,
   normalizeLivePrivacyMode,
+  resolveAudiencePrivacyFromSession,
 } from "@/lib/live/liveRoomPrivacyGate";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
@@ -177,20 +178,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
     await ensureHydrated();
     const privacySession = getSessionByRoomId(id);
     const privacyMode = normalizeLivePrivacyMode(
-      privacyParam ||
-        (privacySession?.privacy === "INVITE_ONLY" ? "private" : "public"),
+      privacyParam || resolveAudiencePrivacyFromSession(privacySession),
     );
-    if (privacyMode !== "public" || privacySession?.privacy === "INVITE_ONLY") {
+    if (privacyMode !== "public") {
       const auth = await getTmiAuth();
       const join = await evaluateLiveRoomJoinAccess({
         viewerUserId: auth?.user.id ?? null,
         hostUserId: privacySession?.userId ?? null,
-        privacy:
-          privacyMode !== "public"
-            ? privacyMode
-            : privacySession?.privacy === "INVITE_ONLY"
-              ? "private"
-              : "public",
+        privacy: privacyMode,
         isHost: Boolean(
           privacySession?.userId &&
             auth?.user.id &&

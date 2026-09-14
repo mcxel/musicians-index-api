@@ -61,6 +61,8 @@ export type UniversalWorkspaceId =
   | "analytics"
   | "booking"
   | "store"
+  | "shop"
+  | "merch"
   | "beat-lab"
   | "media-locker"
   | "sponsors"

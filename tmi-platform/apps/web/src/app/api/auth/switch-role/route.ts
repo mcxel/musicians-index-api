@@ -1,33 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
-import { getMemberByEmail, isGovernanceMember } from "@/lib/auth/GovernanceClusterEngine";
+import { isGovernanceMember } from "@/lib/auth/GovernanceClusterEngine";
 import { GOVERNANCE_SWITCHABLE_ROLES } from "@/lib/auth/resolveSessionIdentity";
-
-const ROLE_TO_HUB: Record<string, string> = {
-  ADMIN: "/admin",
-  ARTIST: "/hub/performer",
-  PERFORMER: "/hub/performer",
-  PRODUCER: "/hub/performer",
-  BAND: "/hub/performer",
-  FAN: "/hub/fan",
-  USER: "/hub/fan",
-  MEMBER: "/hub/fan",
-  WRITER: "/hub/writer",
-  VENUE: "/hub/venue",
-  PROMOTER: "/hub/promoter",
-  SPONSOR: "/hub/sponsor",
-  ADVERTISER: "/hub/advertiser",
-};
-
-/** Per-member admin hub so Justin/Jay Paul land on their own page, not a shared deck. */
-function adminHubForEmail(email: string): string {
-  const member = getMemberByEmail(email);
-  if (member?.memberId === "justin") return "/admin/justin";
-  if (member?.memberId === "jaypaul") return "/admin/jay-paul";
-  if (member?.memberId === "marcel") return "/admin/marcel";
-  return "/admin";
-}
+import {
+  normalizePersonaSwitchTarget,
+  resolvePersonaHubDestination,
+} from "@/lib/auth/resolvePersonaHubDestination";
 
 /**
  * POST /api/auth/switch-role
@@ -52,41 +31,51 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  let targetRole = body.role?.toUpperCase();
-  if (!targetRole) {
-    return NextResponse.json({ error: "role required" }, { status: 400 });
+  const rawTarget = body.role;
+  if (!rawTarget) {
+    return NextResponse.json({ ok: false, error: "role required" }, { status: 400 });
   }
 
-  // Normalize aliases
-  if (targetRole === "MEMBER" || targetRole === "USER") targetRole = "FAN";
-  if (targetRole === "ARTIST" || targetRole === "BAND" || targetRole === "PRODUCER") targetRole = "PERFORMER";
+  const targetRole = String(normalizePersonaSwitchTarget(rawTarget)).toUpperCase();
 
   const userId = auth.user.id;
 
-  // Look up user with their assigned roles and live broadcast state
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      role: true,
-      activeRole: true,
-      isLive: true,
-      liveRoomId: true,
-      userRoles: { select: { role: true } },
-    },
-  });
+  // Identity/authorization boundary: a DB failure here must never be treated
+  // as "safe to continue" — fail closed with a truthful 503 rather than
+  // letting an unhandled Prisma error surface as a raw 500 page that the
+  // client can't parse.
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+        activeRole: true,
+        isLive: true,
+        liveRoomId: true,
+        userRoles: { select: { role: true } },
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "persona_switch_temporarily_unavailable" },
+      { status: 503 },
+    );
+  }
 
   if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
   }
 
   // Safety Law (ROLE-10, ROLE-12): Active live broadcast requires safe exit before switching to Fan
   if (user.isLive && targetRole === "FAN" && !body.forceEndLive) {
     return NextResponse.json(
       {
+        ok: false,
         error: "Active live broadcast session must be safely ended before switching to Fan mode",
         code: "ACTIVE_LIVE_SESSION_BLOCKED",
         requiresSafeExit: true,
@@ -115,7 +104,7 @@ export async function POST(req: NextRequest) {
   // Security Law (ROLE-08): Privileged target roles require admin/staff privilege
   if (isTargetPrivileged && !isAdminAccount) {
     return NextResponse.json(
-      { error: "Forbidden: privileged role escalation denied" },
+      { ok: false, error: "Forbidden: privileged role escalation denied" },
       { status: 403 },
     );
   }
@@ -127,28 +116,57 @@ export async function POST(req: NextRequest) {
   const isStandardDualRole = targetRole === "FAN" || targetRole === "PERFORMER";
   if (!isStandardDualRole && !isAdminAccount && !allowedRoles.has(targetRole)) {
     return NextResponse.json(
-      { error: `Role ${targetRole} not assigned to your account` },
+      { ok: false, error: `Role ${targetRole} not assigned to your account` },
       { status: 403 },
     );
   }
 
-  // Persist activeRole to DB (and safely end live session if forceEndLive was specified)
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      activeRole: targetRole as any,
-      ...(body.forceEndLive ? { isLive: false, liveRoomId: null } : {}),
-    },
-  });
-
-  const hubUrl =
-    targetRole === "ADMIN"
-      ? adminHubForEmail(auth.user.email)
-      : (ROLE_TO_HUB[targetRole] ?? "/hub/fan");
-
-  // Update tmi_role cookie so getTmiAuth() reflects the switch immediately
+  const hubUrl = resolvePersonaHubDestination(targetRole, auth.user.email);
   const isProd = process.env.NODE_ENV === "production";
   const cookieDomain = process.env.COOKIE_DOMAIN?.trim();
+  const cookieBase = {
+    sameSite: "lax" as const,
+    secure: isProd,
+    path: "/",
+    maxAge: 60 * 60 * 24,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  };
+
+  // Phase 0 — Admin oversight: navigate to Fan/Performer/Admin hubs without
+  // stripping permanent ADMIN authority from tmi_role (Rule 31 / persona law).
+  const isAdminTriadTarget =
+    targetRole === "FAN" || targetRole === "PERFORMER" || targetRole === "ADMIN";
+  if (isAdminAccount && isAdminTriadTarget) {
+    const response = NextResponse.json({
+      ok: true,
+      activeRole: primary,
+      hubUrl,
+      oversight: true,
+    });
+    const shell =
+      targetRole === "ADMIN" ? "admin" : targetRole.toLowerCase();
+    response.cookies.set("tmi_hub_shell", shell, { ...cookieBase, httpOnly: false });
+    return response;
+  }
+
+  // Dual-profile users: persist activeRole + tmi_role for true persona context.
+  // Fail closed — never set the role cookie or claim success on a write that
+  // didn't actually persist (that would let the client believe it switched
+  // while the DB still holds the old activeRole).
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        activeRole: targetRole as any,
+        ...(body.forceEndLive ? { isLive: false, liveRoomId: null } : {}),
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "persona_switch_temporarily_unavailable" },
+      { status: 503 },
+    );
+  }
 
   const response = NextResponse.json({
     ok: true,
@@ -157,12 +175,8 @@ export async function POST(req: NextRequest) {
   });
 
   response.cookies.set("tmi_role", targetRole.toLowerCase(), {
+    ...cookieBase,
     httpOnly: true,
-    sameSite: "lax",
-    secure: isProd,
-    path: "/",
-    maxAge: 60 * 60 * 24, // 24h
-    ...(cookieDomain ? { domain: cookieDomain } : {}),
   });
 
   return response;

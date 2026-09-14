@@ -1,5 +1,9 @@
 /**
- * ElasticRoomOrchestrator
+ * ElasticRoomOrchestrator — CANONICAL room orchestra (LOCKED 2026-09-12).
+ *
+ * Sole authority for auditorium shard count, assignment, drain/collapse,
+ * and scene-instance requests via VenueSceneFactory. Do not mint a parallel
+ * overflow runtime for mapped AnchorRoomRegistry / aliased network IDs.
  *
  * Permanent anchors never collapse. Overflow shards instantiate the
  * same venue template (Voltron auditorium copies) and may:
@@ -12,7 +16,17 @@
  * and never without a committed destination — Anti-Gravity finishes planner).
  *
  * Bots never count as occupancy.
+ * Scene geometry is never constructed here — requestVenueSceneInstance only.
  */
+
+export const ELASTIC_ORCHESTRA_LOCK = {
+  locked: true as const,
+  lockedAt: "2026-09-12",
+  authority: "ElasticRoomOrchestrator",
+  sceneFactory: "VenueSceneFactory",
+  parallelOrchestraForbidden: true,
+  constructsGeometry: false,
+} as const;
 
 import {
   getAllAnchors,

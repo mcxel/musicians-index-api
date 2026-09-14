@@ -30,6 +30,8 @@ import {
 } from "@/lib/playlists/sharePlaylistToThread";
 import { useAudio } from "@/components/AudioProvider";
 import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
+import SpatialAlbumReleaseViewport from "@/components/media/SpatialAlbumReleaseViewport";
+import AdRail from "@/components/monetization/AdRail";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
@@ -870,6 +872,7 @@ export function PlaylistCanister({
 
   return (
     <div
+      data-playlist-canister-full="true"
       style={{
         background: "rgba(5,3,16,0.92)",
         border: `1.5px solid ${accentColor}`,
@@ -982,58 +985,15 @@ export function PlaylistCanister({
             justifyContent: "space-between",
           }}
         >
-          <div style={{ position: "relative", width: 220, height: 220, marginTop: 10 }}>
-            <div
-              style={{
-                position: "absolute",
-                inset: -8,
-                borderRadius: "50%",
-                background: `conic-gradient(from 0deg, ${accentColor}, #AA2DFF, #00FFFF, #FFD700, ${accentColor})`,
-                filter: "blur(6px)",
-                opacity: isPlaying ? 0.8 : 0.2,
-                animation: isPlaying ? "spin 12s linear infinite" : "none",
-              }}
+          {/* Tier 2 Spatial 3D Release Object — Inspectable Album Viewport */}
+          <div style={{ width: "100%", marginBottom: 6 }}>
+            <SpatialAlbumReleaseViewport
+              title={activeTrack?.title}
+              artist={libraryHeader}
+              coverUrl={activeTrack?.coverUrl}
+              isPlaying={isPlaying}
+              accentColor={accentColor}
             />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, #1a052e 30%, #000 70%)",
-                border: `2px solid ${accentColor}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                boxShadow: `0 0 25px ${accentColor}80`,
-              }}
-            >
-              <div
-                style={{
-                  width: 140,
-                  height: 140,
-                  borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${accentColor}, #AA2DFF)`,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  padding: 8,
-                }}
-              >
-                {activeTrack ? (
-                  <>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#fff", textShadow: "0 0 10px #000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
-                      {activeTrack.title}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, marginTop: 2 }}>{libraryHeader}</div>
-                  </>
-                ) : (
-                  <span style={{ fontSize: 24, opacity: 0.5 }}>🎵</span>
-                )}
-              </div>
-            </div>
           </div>
 
           <div style={{ width: "100%", textAlign: "center", marginTop: 12 }}>
@@ -1336,7 +1296,7 @@ export function PlaylistCanister({
             ) : null}
           </div>
 
-          {/* EQUALIZER */}
+          {/* 9-BAND FREQUENCY MONITOR (HONEST NON-PROCESSING UI DISPLAY) */}
           <div
             style={{
               background: "rgba(10,5,25,0.8)",
@@ -1349,8 +1309,13 @@ export function PlaylistCanister({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.1em" }}>
-                EQUALIZER
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.1em" }}>
+                  FREQUENCY MONITOR (9-BAND)
+                </div>
+                <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>
+                  Visual monitor display · Non-processing UI
+                </div>
               </div>
               <button type="button" onClick={() => setEqGains(new Array(9).fill(50))} style={eqModeBtn("#00FFFF")}>
                 RESET
@@ -1461,6 +1426,32 @@ export function PlaylistCanister({
               CLOSE
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {/* Monetization companion rail: Free tier allocation; Reclaimed for Diamond/Platinum */}
+      {!isMobile && (accountTier === "FREE" || accountTier === "free" || accountTier === "pro") ? (
+        <div
+          data-playlist-ad-rail
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.35)", letterSpacing: "0.12em" }}>
+            SPONSOR & ADVERTISING PARTNERS · REGISTERED INVENTORY
+          </div>
+          <AdRail
+            placement={role === "performer" ? "performer-cc-bottom" : "fan-cc-bottom"}
+            role={role}
+            reserve="medium-rectangle"
+            experienceMode="workspace"
+          />
         </div>
       ) : null}
     </div>

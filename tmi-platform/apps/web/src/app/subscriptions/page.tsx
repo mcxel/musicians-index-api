@@ -106,11 +106,6 @@ export default function SubscriptionsPage() {
                   position: "relative",
                 }}
               >
-                {tier.highlight && (
-                  <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: tier.color, color: "#050510", fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", borderRadius: 999, padding: "3px 12px" }}>
-                    MOST POPULAR
-                  </div>
-                )}
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: tier.color, letterSpacing: "0.12em", marginBottom: 4 }}>{tier.label.toUpperCase()}</div>
                   <div style={{ fontSize: 26, fontWeight: 900, color: "#fff" }}>{priceLabel}</div>

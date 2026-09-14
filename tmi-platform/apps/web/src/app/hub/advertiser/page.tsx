@@ -1,232 +1,278 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import RoomContainer from "@/components/room/RoomContainer";
-import WidgetDrawer from "@/components/room/WidgetDrawer";
-import MediaMonitor from "@/components/video/MediaMonitor";
-import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+/**
+ * Advertiser / Sponsor Command Hub — rebuilt onto CanonicalRoleShellChrome.
+ *
+ * Phase 0 law: enter ≠ complete. Account + LOG OUT must stay visible.
+ * Mobile: TOP identity · CENTER workspace · TOOLS drawer — not squeezed desktop 3-col.
+ * Does NOT mount RoomContainer / WidgetDrawer (those belong to live rooms, not role hubs).
+ */
+
+import { useState } from "react";
 import Link from "next/link";
-import { useTmiSession } from "@/hooks/SessionContext";
+import MediaMonitor from "@/components/video/MediaMonitor";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
+import { useTmiSession } from "@/hooks/SessionContext";
 
 type HubMode = "ADVERTISER" | "SPONSOR";
 
 export default function AdvertiserSponsorHub() {
   const [mode, setMode] = useState<HubMode>("ADVERTISER");
   const { userId } = useTmiSession();
-
   const accentColor = mode === "ADVERTISER" ? "#FF8C00" : "#00FFFF";
 
   return (
-    <RoomContainer roomId="hub-adv-sponsor" title="Command Center" accentColor={accentColor} bpm={95}>
-      <WidgetDrawer />
-
-      <div className="min-h-screen flex flex-col p-4 md:p-6 font-sans text-white bg-[#050510]">
-
-        {/* ── HEADER ── */}
-        <header className="flex justify-between items-center bg-black/60 border border-white/10 p-4 rounded-xl backdrop-blur-md mb-6">
-          <div>
-            <h1 className="text-2xl font-black tracking-[0.2em] uppercase" style={{ color: accentColor }}>
-              {mode} COMMAND HUB
-            </h1>
-            <p className="text-xs text-white/50 tracking-widest mt-1">LIVE ADVERTISING &amp; SPONSORSHIP ECONOMY</p>
-          </div>
-
-          <div className="flex gap-3 items-center">
-            <RoleHubAccountMenu accentColor={accentColor} />
-            <div className="flex gap-2 p-1 bg-black/50 border border-white/10 rounded-lg">
+      <div style={{ padding: "12px 14px 28px", maxWidth: 1280, margin: "0 auto", width: "100%" }}>
+        <div
+          data-advertiser-mode-toggle="1"
+          style={{
+            display: "flex",
+            gap: 6,
+            padding: 4,
+            marginBottom: 14,
+            background: "rgba(0,0,0,0.45)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 10,
+            maxWidth: 360,
+          }}
+        >
+          {(["ADVERTISER", "SPONSOR"] as const).map((m) => {
+            const active = mode === m;
+            const color = m === "ADVERTISER" ? "#FF8C00" : "#00FFFF";
+            return (
               <button
-                onClick={() => setMode("ADVERTISER")}
-                className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "ADVERTISER" ? "bg-[#FF8C00] text-black" : "text-white/40 hover:text-white"}`}
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.1em",
+                  borderRadius: 8,
+                  border: active ? `1px solid ${color}` : "1px solid transparent",
+                  background: active ? color : "transparent",
+                  color: active ? "#050510" : "rgba(255,255,255,0.45)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
               >
-                ADVERTISER
+                {m}
               </button>
-              <button
-                onClick={() => setMode("SPONSOR")}
-                className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "SPONSOR" ? "bg-[#00FFFF] text-black" : "text-white/40 hover:text-white"}`}
-              >
-                SPONSOR
-              </button>
+            );
+          })}
+        </div>
+
+        {/* CENTER — monitor first (mobile + desktop) */}
+        <section style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 8,
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)" }}>
+              LIVE PLACEMENT FEED
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.1em",
+                padding: "4px 8px",
+                borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.35)",
+              }}
+            >
+              ● STANDBY — No active ad running
+            </span>
+          </div>
+          <div
+            style={{
+              position: "relative",
+              borderRadius: 14,
+              overflow: "hidden",
+              border: `2px solid ${accentColor}44`,
+              background: "#000",
+              minHeight: 200,
+              aspectRatio: "16 / 9",
+              maxHeight: "min(52vh, 420px)",
+            }}
+          >
+            <MediaMonitor mode="standby" isActive={false} />
+            <div
+              style={{
+                position: "absolute",
+                left: 12,
+                bottom: 12,
+                right: 12,
+                background: "rgba(0,0,0,0.8)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 10,
+                padding: 10,
+                pointerEvents: "none",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>No ad placement active</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                Launch a campaign to begin serving ads.
+              </div>
             </div>
           </div>
-        </header>
+        </section>
 
-        {/* ── MAIN 3-COLUMN GRID ── */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-6 mb-6 min-h-0">
+        {/* Primary actions — always reachable */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <Link
+            href="/sponsor/placements"
+            style={{
+              flex: "1 1 140px",
+              textAlign: "center",
+              padding: "12px 14px",
+              borderRadius: 10,
+              background: "#fff",
+              color: "#050510",
+              fontWeight: 900,
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textDecoration: "none",
+            }}
+          >
+            ▶ RUN AD
+          </Link>
+          <Link
+            href="/sponsor/payments"
+            style={{
+              flex: "1 1 140px",
+              textAlign: "center",
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
+              fontWeight: 900,
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textDecoration: "none",
+            }}
+          >
+            💰 BOOST BUDGET
+          </Link>
+          <Link
+            href="/sponsor/campaigns/new"
+            style={{
+              flex: "1 1 140px",
+              textAlign: "center",
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: `1px solid ${accentColor}`,
+              color: accentColor,
+              fontWeight: 900,
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textDecoration: "none",
+            }}
+          >
+            + LAUNCH CAMPAIGN
+          </Link>
+        </div>
 
-          {/* LEFT PANEL — CAMPAIGN CONTROL */}
-          <aside className="bg-black/70 border border-white/10 rounded-xl p-5 backdrop-blur-xl flex flex-col gap-6 overflow-y-auto">
-            <h2 className="text-xs font-black text-white/40 tracking-[0.15em] border-b border-white/10 pb-2">CAMPAIGN CONTROL</h2>
-
-            <div>
-              <div className="flex justify-between text-xs mb-2">
-                <span className="font-bold text-white/50">No active campaign</span>
-                <span style={{ color: accentColor }} className="font-bold text-white/30">$0 spent</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }} animate={{ width: "0%" }}
-                  className="h-full rounded-full" style={{ background: accentColor }}
-                />
-              </div>
-              <div className="text-[10px] text-white/30 mt-2">Launch a campaign to see budget progress here.</div>
+        {/* Campaign + ROI — stacked cards (not side rails squeezed onto phone) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <aside
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <h2 style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", margin: "0 0 12px" }}>
+              CAMPAIGN CONTROL
+            </h2>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>No active campaign</div>
+            <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: "0%", height: "100%", background: accentColor }} />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white">0</div>
-                <div className="text-[9px] text-white/40 tracking-widest mt-1">ACTIVE SLOTS</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white/40">—</div>
-                <div className="text-[9px] text-white/40 tracking-widest mt-1">TARGET GENRE</div>
-              </div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 12 }}>
+              Launch a campaign to see budget progress here.
             </div>
-
-            <div className="flex flex-col gap-3 mt-auto">
-              <Link
-                href="/sponsor/campaigns/new"
-                className="w-full py-3 bg-white/5 border border-white/20 hover:border-white/50 rounded-lg text-xs font-bold tracking-widest transition-colors text-center text-white no-underline block"
-              >
-                + LAUNCH CAMPAIGN
-              </Link>
-              <Link
-                href="/sponsor/campaigns"
-                className="w-full py-3 bg-white/5 border border-white/20 hover:border-white/50 rounded-lg text-xs font-bold tracking-widest transition-colors text-center text-white no-underline block"
-              >
-                VIEW ALL CAMPAIGNS
-              </Link>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 10, textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 900 }}>0</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em" }}>ACTIVE SLOTS</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 10, textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "rgba(255,255,255,0.35)" }}>—</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em" }}>TARGET GENRE</div>
+              </div>
             </div>
           </aside>
 
-          {/* CENTER — VIDEO COMMAND SCREEN */}
-          <section className="flex flex-col">
-            <div className="flex justify-between items-center mb-3 px-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-white/50 uppercase">LIVE PLACEMENT FEED</span>
-              <span className="px-3 py-1 bg-white/5 text-white/30 border border-white/10 rounded text-[9px] font-black tracking-widest">
-                ● STANDBY — No active ad running
-              </span>
-            </div>
-
-            <div
-              className="flex-1 bg-black rounded-xl overflow-hidden relative transition-all duration-500"
-              style={{ border: `2px solid ${accentColor}44` }}
-            >
-              <MediaMonitor mode="standby" isActive={false} />
-
-              {/* Honest status overlay */}
-              <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
-                <div className="bg-black/80 border border-white/10 p-3 rounded-lg backdrop-blur-md">
-                  <div className="text-xs font-bold text-white/50 mb-1">No ad placement active</div>
-                  <div className="text-[10px] text-white/30">Launch a campaign to begin serving ads.</div>
-                </div>
+          <aside
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <h2 style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", margin: "0 0 12px" }}>
+              ROI &amp; PERFORMANCE
+            </h2>
+            {[
+              { label: "Conversion Rate", value: "—" },
+              { label: "Total Clicks", value: "0" },
+              { label: "Watch Time", value: "—" },
+            ].map((row) => (
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{row.label}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: row.value === "—" ? "rgba(255,255,255,0.3)" : "#fff" }}>
+                  {row.value}
+                </span>
               </div>
-            </div>
-          </section>
-
-          {/* RIGHT PANEL — PERFORMANCE */}
-          <aside className="bg-black/70 border border-white/10 rounded-xl p-5 backdrop-blur-xl flex flex-col gap-6 overflow-y-auto">
-            <h2 className="text-xs font-black text-white/40 tracking-[0.15em] border-b border-white/10 pb-2">ROI &amp; PERFORMANCE</h2>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-white/60 uppercase tracking-wider">Conversion Rate</span>
-                <span className="text-lg font-black text-white/30">—</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-white/60 uppercase tracking-wider">Total Clicks</span>
-                <span className="text-lg font-black text-white">0</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-white/60 uppercase tracking-wider">Watch Time</span>
-                <span className="text-lg font-black text-white/30">—</span>
-              </div>
-              <div className="text-[10px] text-white/25 pt-2 border-t border-white/10">
-                Stats will appear once your first campaign is live.
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">TOP SPONSORED ARTISTS</h3>
-              <div className="text-[10px] text-white/30 text-center py-4">No sponsored artists yet — launch a campaign to begin</div>
-              <Link href="/artists" className="block text-center text-[10px] font-bold no-underline mt-2" style={{ color: accentColor }}>
-                Browse Artists →
-              </Link>
-            </div>
-
-            <div>
-              <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">QUICK LINKS</h3>
-              <div className="flex flex-col gap-2">
-                {[
-                  { label: "Browse Live Rooms", href: "/live/lobby-wall" },
-                  { label: "Live Discovery", href: "/home/3" },
-                  { label: "Analytics", href: "/hub/advertiser/analytics" },
-                  { label: "Placements", href: "/sponsor/placements" },
-                  { label: "Contracts", href: "/sponsor/contracts" },
-                  { label: "Payments", href: "/sponsor/payments" },
-                  { label: "Settings", href: "/settings" },
-                ].map(link => (
-                  <Link key={link.href} href={link.href} className="text-[11px] font-bold no-underline py-2 px-3 rounded-lg border border-white/10 bg-white/3 hover:bg-white/8 transition-colors" style={{ color: accentColor }}>
-                    {link.label} →
-                  </Link>
-                ))}
-              </div>
+            ))}
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 8 }}>
+              Stats appear once your first campaign is live.
             </div>
           </aside>
         </div>
 
-        {/* Discovery — artists / events / sponsorship (zero results OK; no fake inventory) */}
-        <div className="flex flex-col gap-4 mb-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
           <DiscoveryRail type="performers" limit={6} accentColor={accentColor} label="DISCOVER ARTISTS" />
           <DiscoveryRail type="venues" limit={4} accentColor="#00FFFF" label="EVENT & VENUE OPPORTUNITIES" />
           <DiscoveryRail type="sponsors" limit={4} accentColor="#FFD700" label="SPONSORSHIP SURFACES" />
         </div>
 
-        {/* Canisters — Memory Wall + Messaging (Rule 15) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <MemoryWallCanister entityId={userId ?? "advertiser"} entityType="sponsor" title="Campaign Moments" accentColor="#FF8C00" />
-          <MessagingCanister height={360} />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+            gap: 12,
+          }}
+        >
+          <MemoryWallCanister
+            entityId={userId ?? "advertiser"}
+            entityType="sponsor"
+            title="Campaign Moments"
+            accentColor="#FF8C00"
+          />
+          <MessagingCanister height={320} />
         </div>
-
-        {/* BOTTOM ACTION BAR */}
-        <div className="bg-black/80 border border-white/10 rounded-xl p-4 backdrop-blur-xl flex flex-wrap lg:flex-nowrap justify-between items-center gap-4">
-          <div className="flex gap-4 w-full lg:w-auto">
-            <Link
-              href="/sponsor/placements"
-              className="flex-1 lg:flex-none px-6 py-3 rounded-lg text-xs font-black tracking-widest bg-white text-black hover:bg-gray-200 transition-colors text-center no-underline"
-            >
-              ▶ RUN AD
-            </Link>
-            <Link
-              href="/sponsor/payments"
-              className="flex-1 lg:flex-none px-6 py-3 rounded-lg text-xs font-black tracking-widest border border-white/20 hover:bg-white/10 transition-colors text-center no-underline text-white"
-            >
-              💰 BOOST BUDGET
-            </Link>
-          </div>
-
-          <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0">
-            {[
-              { label: "TARGET AUDIENCE", icon: "🎯", href: "/sponsor/campaigns" },
-              { label: "CHOOSE PLACEMENT", icon: "📍", href: "/sponsor/placements" },
-              { label: "ANALYTICS", icon: "📊", href: "/sponsor/analytics" },
-              { label: "CONTRACTS", icon: "📋", href: "/sponsor/contracts" },
-            ].map(btn => (
-              <Link
-                key={btn.label}
-                href={btn.href}
-                className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold tracking-widest text-white/70 hover:text-white hover:bg-white/10 whitespace-nowrap transition-colors flex items-center gap-2 no-underline"
-              >
-                <span className="text-sm">{btn.icon}</span> {btn.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
       </div>
-    </RoomContainer>
   );
 }

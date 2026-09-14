@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { AnimatePresence, motion } from "framer-motion";
 import { focusIntelligenceWorkspace, OVERSEER_DESK_PANEL_EVENT } from "@/lib/admin/overseerDeckConvergence";
 import type { DeskPanelId } from "@/lib/admin/ObservatoryDeskState";
+import { performPersonaSwitch } from "@/lib/auth/performPersonaSwitch";
 
 type CoverageItem = {
   id: string;
@@ -18,11 +19,12 @@ type CoverageItem = {
   panelId?: DeskPanelId;
   /** DOM id to scroll into view in the left/right rail without leaving Overseer. */
   scrollTarget?: string;
-  /** Genuine external page — opens in a new tab, never replaces current page. */
-  externalHref?: string;
+  /** Canonical hub destination — switches active persona then navigates (same window). */
+  personaSwitch?: "FAN" | "PERFORMER" | "ADMIN";
 };
 
 const COVERAGE_ITEMS: CoverageItem[] = [
+  { id: "admin-deck",   label: "ADMIN DECK",   accent: "#FFD700", personaSwitch: "ADMIN"      },
   { id: "overview",     label: "OVERVIEW",     accent: "#FFD700", panelId: "overview"          },
   { id: "analytics",    label: "ANALYTICS",    accent: "#00FFFF", panelId: "analytics"         },
   { id: "revenue",      label: "REVENUE",      accent: "#FFD700", panelId: "revenue"           },
@@ -49,8 +51,8 @@ const COVERAGE_ITEMS: CoverageItem[] = [
   { id: "bot-squad",    label: "BOT SQUAD",    accent: "#FF2DAA", scrollTarget: "bot-roster"   },
   { id: "inbox",        label: "INBOX",        accent: "#00FFFF", scrollTarget: "unified-inbox" },
   // External pages — open new tab, never replace Overseer
-  { id: "fan-page",     label: "FAN PAGE ↗",   accent: "#00FFFF", externalHref: "/hub/fan"      },
-  { id: "performer",    label: "PERFORMER ↗",  accent: "#FF2DAA", externalHref: "/hub/performer"},
+  { id: "fan-page",     label: "FAN HUB",      accent: "#00FFFF", personaSwitch: "FAN"        },
+  { id: "performer",    label: "PERFORMER HUB", accent: "#FF2DAA", personaSwitch: "PERFORMER"  },
 ];
 
 const SCROLL_STEP = 220;
@@ -106,9 +108,12 @@ export default function OverseerCoverageRail({
     scrollRef.current?.scrollBy({ left: dir * SCROLL_STEP, behavior: "smooth" });
   };
 
-  const handleClick = (item: CoverageItem) => {
-    if (item.externalHref) {
-      window.open(item.externalHref, "_blank", "noopener,noreferrer");
+  const handleClick = async (item: CoverageItem) => {
+    if (item.personaSwitch) {
+      const result = await performPersonaSwitch(item.personaSwitch);
+      if (result.ok && result.hubUrl) {
+        window.location.href = result.hubUrl;
+      }
       return;
     }
     if (item.scrollTarget) {
@@ -196,7 +201,7 @@ export default function OverseerCoverageRail({
               <button
                 type="button"
                 onClick={() => handleClick(item)}
-                title={item.externalHref ? `Open ${item.label} in new tab` : `Mount ${item.label} workspace`}
+                title={item.personaSwitch ? `Switch to ${item.label}` : `Mount ${item.label} workspace`}
                 style={{
                   padding: "3px 7px",
                   borderRadius: 5,

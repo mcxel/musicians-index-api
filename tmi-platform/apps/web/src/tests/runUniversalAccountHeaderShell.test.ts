@@ -237,14 +237,20 @@ export function runUniversalAccountHeaderShellTest(): {
     switchFanRes.canSwitchFanPerformer === true &&
     switchPerfRes.canSwitchFanPerformer === true;
 
-  // ACCOUNT-ROUTE-01: Canonical Hub destination resolution & navigation after role resolution
+  // ACCOUNT-ROUTE-01: Canonical Hub destination resolution & navigation after role resolution.
+  // Hub navigation uses a hard reload (window.location.href), not router.push +
+  // router.refresh() — that combination was the actual cause of the persona-switch
+  // black-screen/reset race and was deliberately removed (b7f61808). A hard nav
+  // guarantees the new role's shell mounts clean with no stale client state bleeding
+  // over from the previous role.
   results["ACCOUNT-ROUTE-01_canonical_hub_destination_resolution"] =
     resolveAccountHubDestination("FAN") === "/hub/fan" &&
     resolveAccountHubDestination("PERFORMER") === "/hub/performer" &&
-    resolveAccountHubDestination("ADMIN") === "/admin" &&
+    resolveAccountHubDestination("ADMIN") === "/admin/overseer" &&
     dropdownSrc.includes("handleRoleHubClick") &&
-    dropdownSrc.includes("router.push") &&
-    dropdownSrc.includes("router.refresh");
+    dropdownSrc.includes("window.location.href = dest;") &&
+    dropdownSrc.includes("window.location.href = result.hubUrl;") &&
+    !dropdownSrc.includes("router.refresh()");
 
   // ACCOUNT-MENU-01..08: Inactivity auto-close & immediate close behaviors
   results["ACCOUNT-MENU-01_idle_close_timeout_defined"] =
@@ -255,15 +261,17 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("panel.addEventListener(\"touchstart\", onInteraction)") &&
     dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
   results["ACCOUNT-MENU-03_outside_click_closes_immediately"] =
-    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(e.target as Node))") &&
+    dropdownSrc.includes("const target = e.target as Node | null;") &&
+    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(target))") &&
     dropdownSrc.includes("onClose()");
   results["ACCOUNT-MENU-04_escape_closes_immediately"] =
     dropdownSrc.includes("if (e.key === \"Escape\") {") &&
     dropdownSrc.includes("onClose()");
   results["ACCOUNT-MENU-05_hub_navigation_closes"] =
     dropdownSrc.includes("onClose();") &&
-    dropdownSrc.includes("router.push(dest);") &&
-    dropdownSrc.includes("router.push(targetDest);");
+    dropdownSrc.includes("window.location.href = dest;") &&
+    dropdownSrc.includes("window.location.href = result.hubUrl;") &&
+    dropdownSrc.includes("router.push(dest);");
   results["ACCOUNT-MENU-06_reopen_works_normally"] =
     dropdownSrc.includes("useEffect(() => {") &&
     dropdownSrc.includes("resetIdleTimer();");

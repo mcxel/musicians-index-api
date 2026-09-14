@@ -1,10 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
-import { HubBackNav } from '@/components/nav/HubBackNav';
-import RoleHubAccountMenu from '@/components/navigation/RoleHubAccountMenu';
 import ArtistStats from '@/components/artist/ArtistStats';
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
 import ArtistCommandRail from '@/components/artist/ArtistCommandRail';
@@ -13,6 +9,7 @@ import ArtistShowRail from '@/components/artist/ArtistShowRail';
 import ArtistBackstageRail from '@/components/artist/ArtistBackstageRail';
 import ArtistPulseRail from '@/components/artist/ArtistPulseRail';
 import ArtistTipRail from '@/components/artist/ArtistTipRail';
+import Link from 'next/link';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 
 export default function ArtistHubPage() {
@@ -32,44 +29,17 @@ export default function ArtistHubPage() {
       .catch(() => {});
   }, []);
 
-  const NAV_LINKS = [
-    { href: `/artists/${artistSlug}`,           label: 'Public Profile' },
-    { href: `/artists/${artistSlug}/analytics`, label: 'Analytics' },
-    { href: `/artists/${artistSlug}/article`,   label: 'Article' },
-    { href: '/beat-vault',                       label: 'Beat Vault' },
-    { href: '/nft',                              label: 'NFT Studio' },
-    { href: '/settings',                         label: 'Settings' },
-  ];
-
   function advanceShow(state: ArtistShowState) {
     setShowState(nextShowState(state));
   }
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: '#07071a', color: '#e2e8f0', minHeight: '100vh' }}>
-
-      {/* Top nav strip */}
-      <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(0,255,255,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 16, overflowX: 'auto' }}>
-        <HubBackNav accentColor="#00FFFF" fallbackRoute="/hub/artist" />
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: '#00FFFF', textTransform: 'uppercase', flexShrink: 0 }}>Artist Hub</span>
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
-        {NAV_LINKS.map(link => (
-          <Link key={link.href} href={link.href} style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {link.label}
-          </Link>
-        ))}
-        <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <RoleHubAccountMenu accentColor="#00FFFF" />
-          <PersonaSwitcher currentRole="artist" compact />
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '32px 24px 64px' }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 16px 64px', color: '#e2e8f0' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 10, color: '#00FFFF', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 6 }}>Artist Command Deck</div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>@{displayName}</h1>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>@{displayName || 'artist'}</h1>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
             Live show control · revenue · tips · setlist · backstage · pulse
           </p>
@@ -170,8 +140,7 @@ export default function ArtistHubPage() {
             </div>
           </div>
         </div>
-      </div>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 40px' }}>
+      <div style={{ marginTop: 24 }}>
         <LiveMediaWall
           roomId="artist-hub"
           title="LIVE ROOMS — HAPPENING NOW"

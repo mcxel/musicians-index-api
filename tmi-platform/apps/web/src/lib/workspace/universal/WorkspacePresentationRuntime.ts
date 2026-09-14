@@ -99,6 +99,8 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   messaging: { preferredSurface: "DRAWER", defaultWidth: 340, preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   yopho: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   store: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  shop: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  merch: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   analytics: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   booking: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   settings: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },

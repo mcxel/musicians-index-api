@@ -188,7 +188,7 @@ export const PERSONA_META: Record<PersonaType, PersonaMeta> = {
   advertiser:   { type:'advertiser',   label:'Advertiser',   icon:'📢', color:'#FF6B35', description:'Ad campaigns, placements, analytics.',                  dashboardRoute:'/advertiser/dashboard',   analyticsRoute:'/advertiser/analytics' },
   venue:        { type:'venue',        label:'Venue',        icon:'🏟️', color:'#00FF88', description:'Venue management, booking, ticketing.',                 dashboardRoute:'/venues/dashboard'       },
   'group-member':{ type:'group-member',label:'Group',        icon:'👥', color:'#8B5CF6', description:'Collective/band membership, shared releases.',           dashboardRoute:'/hub/group'              },
-  admin:        { type:'admin',        label:'Admin',        icon:'⚡', color:'#ff6b1a', description:'Full platform administration and governance.',           dashboardRoute:'/admin/observatory',      analyticsRoute:'/admin/analytics' },
+  admin:        { type:'admin',        label:'Admin',        icon:'⚡', color:'#ff6b1a', description:'Full platform administration and governance.',           dashboardRoute:'/admin/overseer',         analyticsRoute:'/admin/analytics' },
   moderator:    { type:'moderator',    label:'Moderator',    icon:'🛡️', color:'#6B7280', description:'Content moderation and community enforcement.',         dashboardRoute:'/admin/moderation'       },
 };
 

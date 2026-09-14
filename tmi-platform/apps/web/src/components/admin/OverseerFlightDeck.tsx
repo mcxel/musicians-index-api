@@ -40,6 +40,7 @@ import { useDrawerManager } from "@/components/admin/overseer/services/DrawerMan
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import OverseerCoverageRail from "@/components/admin/overseer/OverseerCoverageRail";
 import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
@@ -868,12 +869,14 @@ export default function OverseerFlightDeck({
       <div style={{ ...gemStyle(), bottom: 2, left: 2 }} />
       <div style={{ ...gemStyle(), bottom: 2, right: 2 }} />
 
-      {/* Minimal header — brand + LIVE only (no oval congestion) */}
+      {/* Sticky global account escape — not Concierge-owned */}
       <header
         data-row="flight-header"
+        data-tmi-global-account-escape-host="1"
         style={{
-          position: "relative",
-          zIndex: 100,
+          position: "sticky",
+          top: 0,
+          zIndex: 200,
           border: "2px solid #D4AF37",
           borderRadius: 10,
           background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
@@ -881,6 +884,8 @@ export default function OverseerFlightDeck({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
           boxShadow: "0 4px 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(255,215,0,0.15)",
         }}
       >
@@ -984,8 +989,8 @@ export default function OverseerFlightDeck({
           >
             Admin
           </button>
-          {/* Canonical account letter — hubs / settings / logout (not AdminHubShell legacy) */}
-          <RoleHubAccountMenu accentColor="#FFD700" />
+          <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN · FAN · PERFORMER" />
+          <RoleHubAccountMenu accentColor="#FFD700" showInlineSignOut />
         </div>
       </header>
 
@@ -1059,7 +1064,7 @@ export default function OverseerFlightDeck({
         </button>
         <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
         {/* Quick split presets for both monitors */}
-        {([1, 2, 3, 4, 8] as MonitorSplitMode[]).map((n) => (
+        {([1, 2, 3, 4, 5, 6, 7, 8] as MonitorSplitMode[]).map((n) => (
           <button
             key={n}
             type="button"
@@ -1609,7 +1614,7 @@ export default function OverseerFlightDeck({
             {rightCollapsed ? "▶" : "▷"}
           </button>
           <Link
-            href="/admin"
+            href="/admin/overseer"
             style={{
               ...dockBtnStyle(),
               display: "flex",
@@ -1617,7 +1622,7 @@ export default function OverseerFlightDeck({
               justifyContent: "center",
               textDecoration: "none",
             }}
-            title="Admin home"
+            title="Admin Overseer Deck"
           >
             ◀
           </Link>

@@ -55,10 +55,17 @@ interface AudienceCountrySlice {
 }
 
 const AUDIENCE_MILESTONES = [1, 5, 10, 25, 50, 100, 250, 500, 1000] as const;
+/** Optional configured idle clip only — never invent a stock “live” video (Rule 20). */
 const DEFAULT_OBSERVATORY_VIDEO_URL =
   process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
   process.env.NEXT_PUBLIC_OBSERVATORY_ROSE_VIDEO_URL?.trim() ||
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+  undefined;
+
+/** Real occupancy only — never pad empty rooms to look filled (Rule 20). */
+function honestOccupancyRatio(audienceCount: number | undefined): number {
+  const n = Math.max(0, audienceCount ?? 0);
+  return Math.min(1, n / 200);
+}
 
 function countryCodeToFlag(countryCode: string): string {
   const code = countryCode.trim().toUpperCase();
@@ -139,7 +146,7 @@ export default function MonitorSatelliteSystem({
 
   const shouldShowPulse = showAudiencePulse ?? showAudienceMonitor;
   const effectiveFallbackVideoUrl = fallbackVideoUrl || DEFAULT_OBSERVATORY_VIDEO_URL;
-  const effectiveLeftPipVideoUrl = leftPipVideoUrl || effectiveFallbackVideoUrl;
+  const effectiveLeftPipVideoUrl = leftPipVideoUrl || effectiveFallbackVideoUrl || undefined;
   /** User-owned media on Monitor A (not platform fallback alone). */
   const monitorAUserMedia = Boolean(introVideoUrl || motionPosterUrl);
   /** Custom left PIP URL counts as user media; default fallback is idle. */
@@ -509,7 +516,7 @@ export default function MonitorSatelliteSystem({
                   watcherCount={audienceCount ?? 0}
                   bpm={120}
                   accentColor={accentColor}
-                  occupancyRatio={Math.min(1, (audienceCount ?? 0) / 200 || 0.3)}
+                  occupancyRatio={honestOccupancyRatio(audienceCount)}
                   hideControls
                 />
               ) : (
@@ -549,7 +556,7 @@ export default function MonitorSatelliteSystem({
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>No audience country signals yet</span>
             )}
           </div>
-          <AudienceScene view="performer" venue={0} watcherCount={audienceCount ?? 0} bpm={120} accentColor={accentColor} occupancyRatio={isLive ? Math.min(1, (audienceCount ?? 0) / 200 || 0.3) : 0} hideControls />
+          <AudienceScene view="performer" venue={0} watcherCount={audienceCount ?? 0} bpm={120} accentColor={accentColor} occupancyRatio={isLive ? honestOccupancyRatio(audienceCount) : 0} hideControls />
           {shouldShowPulse && (
             <>
               {milestoneToast && (
@@ -660,7 +667,7 @@ export default function MonitorSatelliteSystem({
           <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,215,0,0.25)" }}>
             {showAutoPipLeft && slotPipLeft ? (
               <AutoDirectorPreviewCard assignment={slotPipLeft} compact />
-            ) : (
+            ) : effectiveLeftPipVideoUrl ? (
               <video
                 src={effectiveLeftPipVideoUrl}
                 autoPlay
@@ -670,6 +677,23 @@ export default function MonitorSatelliteSystem({
                 playsInline
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
+            ) : (
+              <div
+                data-pip-left-empty="1"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 10,
+                  color: "rgba(255,255,255,0.45)",
+                  letterSpacing: "0.08em",
+                  textAlign: "center",
+                  padding: 12,
+                }}
+              >
+                No audio/video source yet
+              </div>
             )}
           </div>
           <button

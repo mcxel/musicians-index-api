@@ -89,6 +89,7 @@ import { useVenueSpeechBubbles, audienceMessageToRoomChat } from '@/components/m
 import VenueInRoomMessagingPanel from '@/components/messaging/VenueInRoomMessagingPanel';
 import { RoomBubbleChatEngine } from '@/lib/chat/RoomBubbleChatEngine';
 import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
+import { isVenuePackageRenderable } from '@/lib/venues/CertifiedVenuePackage';
 
 const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
 import {
@@ -743,6 +744,20 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         : canonicalView === "SPHERICAL_360"
           ? "perspective(1100px) scale(1.02)"
           : undefined;
+    const hubVenueIndex =
+      typeof certifiedPackage?.venueIndex === "number"
+        ? certifiedPackage.venueIndex
+        : venueIndex;
+    const hubPackageRenderable =
+      certifiedPackage == null ? true : isVenuePackageRenderable(certifiedPackage);
+    const hubAmbientUrl =
+      certifiedPackage &&
+      hubPackageRenderable &&
+      certifiedPackage.renderMode === "DEGRADED_VIDEO" &&
+      certifiedPackage.ambientVideoUrl &&
+      (certifiedPackage.ambientVideoRole ?? "FALLBACK_PREVIEW") === "FALLBACK_PREVIEW"
+        ? certifiedPackage.ambientVideoUrl
+        : null;
 
     return (
       <div
@@ -755,6 +770,14 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         data-spatial-units={spatialMap?.units ?? "ft"}
         data-spatial-area-sqft={spatialMap?.floor.areaSqFt ?? undefined}
         data-spatial-geometry={spatialMap?.geometryStatus ?? "REGISTRY_ESTIMATE"}
+        data-certified-venue-id={boundVenueId}
+        data-venue-render-mode={certifiedPackage?.renderMode ?? undefined}
+        data-venue-class={certifiedPackage?.classification ?? undefined}
+        data-stage-surface-id={stageSurfaceId ?? undefined}
+        data-has-real-geometry={
+          certifiedPackage ? String(certifiedPackage.capabilities.HAS_REAL_GEOMETRY) : undefined
+        }
+        data-certified-ambient={hubAmbientUrl ?? undefined}
         style={{
           position: "absolute",
           inset: 0,
@@ -766,7 +789,53 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       >
         <style>{`@keyframes universalReactionFloat{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-90px) scale(1.4);}}`}</style>
 
-        <div style={{ position: "absolute", inset: 0 }}>
+        {!hubPackageRenderable && certifiedPackage ? (
+          <div
+            role="status"
+            data-venue-unavailable="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+              background: "rgba(5,5,16,0.92)",
+              color: "#FFD700",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textAlign: "center",
+            }}
+          >
+            Venue visual package unavailable for “{certifiedPackage.venueId}”.
+            No substitute venue loaded.
+          </div>
+        ) : null}
+
+        {hubAmbientUrl ? (
+          <video
+            data-certified-ambient-video="true"
+            src={hubAmbientUrl}
+            muted
+            loop
+            playsInline
+            autoPlay
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.42,
+              zIndex: 0,
+              pointerEvents: "none",
+            }}
+          />
+        ) : null}
+
+        <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
           {isLoungeSideRoom ? (
             <div
               data-lounge-group-view="true"
@@ -797,7 +866,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           ) : (
             <AudienceScene
               view={audienceView}
-              venue={venueIndex}
+              venue={hubVenueIndex}
               watcherCount={watchingCount}
               entities={instantEmptyStage ? [] : audienceEntities}
               occupancyRatio={instantEmptyStage ? realOccupancyRatio : occupancyForScene}

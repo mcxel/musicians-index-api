@@ -810,6 +810,7 @@ export function resolveLoungeMonitorViewport(slot: HubMonitorSlot): ResolvedHubM
 
 import type { WorldScenePlan } from "@/lib/world/WorldScenePlan";
 import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
+import type { CertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
 
 /** Map resolved viewport → UniversalVenueRenderer props (Monitor B only). */
 export function hubMonitorUvrProps(
@@ -821,6 +822,9 @@ export function hubMonitorUvrProps(
     zone?: CanonicalWorldZone | string | null;
     /** When set, World Director scene plan overrides venue defaults for Monitor B. */
     scenePlan?: WorldScenePlan | null;
+    /** Step 5A — CertifiedVenuePackage from Go Live category / scenePlan.eventType. */
+    certifiedPackage?: CertifiedVenuePackage | null;
+    venueId?: string | null;
   },
 ) {
   const vp = resolveHubMonitorViewport(slot, {
@@ -832,13 +836,24 @@ export function hubMonitorUvrProps(
   const lounge = isLoungeZone(vp.zone) || isLoungeRoomId(roomId);
   const performerLobby = isPerformerLobbyZone(vp.zone);
   const videoPanelZone = lounge || performerLobby;
+  const certifiedPackage = opts?.certifiedPackage ?? null;
+  const venueId =
+    certifiedPackage?.venueId ||
+    opts?.venueId ||
+    null;
+  const packageVenueIndex =
+    typeof certifiedPackage?.venueIndex === "number" &&
+    certifiedPackage.venueIndex >= 0 &&
+    certifiedPackage.venueIndex <= 5
+      ? (certifiedPackage.venueIndex as 0 | 1 | 2 | 3 | 4 | 5)
+      : null;
 
   if (opts?.scenePlan) {
     const fromPlan = worldScenePlanToRenderProps(opts.scenePlan);
     return {
       roomId,
       mode: vp.uvrMode,
-      venueIndex: fromPlan.venueIndex,
+      venueIndex: packageVenueIndex ?? fromPlan.venueIndex,
       hubVenueOnly: true,
       hubViewportRole: vp.role,
       canonicalZone: fromPlan.canonicalZone,
@@ -850,18 +865,22 @@ export function hubMonitorUvrProps(
       previewCapacity: fromPlan.previewCapacity,
       viewMode: fromPlan.viewMode,
       spatialMap: fromPlan.spatialMap,
+      venueId: venueId ?? undefined,
+      certifiedPackage,
     };
   }
 
   return {
     roomId,
     mode: vp.uvrMode,
-    venueIndex: 1 as const,
+    venueIndex: packageVenueIndex ?? (1 as const),
     hubVenueOnly: true,
     hubViewportRole: vp.role,
     canonicalZone: vp.zone,
     instantEmptyStage: opts?.instantEmptyStage ?? true,
     forceStadiumFill: videoPanelZone ? false : (opts?.forceStadiumFill ?? false),
     suppressAvatars: videoPanelZone || !zoneAllowsAvatars(vp.zone),
+    venueId: venueId ?? undefined,
+    certifiedPackage,
   };
 }

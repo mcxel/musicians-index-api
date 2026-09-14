@@ -10,6 +10,7 @@
  */
 
 import type { UserTier } from '@/lib/auth/UserStore';
+import { getSubscriptionProduct, type SubscriptionTierKey } from '@/lib/stripe/products';
 
 export type Feature =
   // Performer features
@@ -150,16 +151,31 @@ export const TIER_FEATURES: Record<UserTier, Feature[]> = {
 };
 
 /**
- * Tier pricing (locked) — for display and upgrade CTAs
+ * Display cents for upgrade CTAs — amounts from STRIPE_PRODUCTS only.
+ * Role-agnostic callers see Performer ladder (lowest entry $2.99 Pro).
+ * Prefer getRoleAwareTierPrice(role, tier) for Fan vs Performer surfaces.
  */
+function centsFromPerformerLadder(tier: SubscriptionTierKey): number {
+  return getSubscriptionProduct('performer', tier).price;
+}
+
 export const TIER_PRICING: Record<Exclude<UserTier, 'FREE'>, { monthly: number; displayName: string }> = {
-  PRO: { monthly: 0, displayName: 'Pro' },
-  RUBY: { monthly: 199, displayName: 'Ruby' },
-  SILVER: { monthly: 499, displayName: 'Silver' },
-  GOLD: { monthly: 999, displayName: 'Gold' },
-  PLATINUM: { monthly: 1999, displayName: 'Platinum' },
-  DIAMOND: { monthly: 4999, displayName: 'Diamond' },
+  PRO: { monthly: centsFromPerformerLadder('PRO'), displayName: 'Pro' },
+  RUBY: { monthly: centsFromPerformerLadder('RUBY'), displayName: 'Ruby' },
+  SILVER: { monthly: centsFromPerformerLadder('SILVER'), displayName: 'Silver' },
+  GOLD: { monthly: centsFromPerformerLadder('GOLD'), displayName: 'Gold' },
+  PLATINUM: { monthly: centsFromPerformerLadder('PLATINUM'), displayName: 'Platinum' },
+  DIAMOND: { monthly: centsFromPerformerLadder('DIAMOND'), displayName: 'Diamond' },
 };
+
+export function getRoleAwareTierPrice(
+  role: 'performer' | 'fan',
+  tier: Exclude<UserTier, 'FREE'>,
+): { monthly: number; displayName: string } {
+  const key = tier as SubscriptionTierKey;
+  const product = getSubscriptionProduct(role, key);
+  return { monthly: product.price, displayName: product.name };
+}
 
 /**
  * Check if a tier has a specific feature
@@ -204,35 +220,35 @@ export function getUpgradeMessage(currentTier: UserTier, requiredFeature: Featur
   const tierInfo = TIER_PRICING[requiredTier as Exclude<UserTier, 'FREE'>];
   if (!tierInfo) return null;
 
-  const priceDisplay = tierInfo.monthly === 0 ? 'Free' : `$${(tierInfo.monthly / 100).toFixed(2)}/month`;
+  const priceDisplay = `$${(tierInfo.monthly / 100).toFixed(2)}/mo`;
   return {
     tier: requiredTier,
     price: tierInfo.monthly,
-    message: `Unlock this feature with ${tierInfo.displayName}. Upgrade starting at ${priceDisplay}.`,
+    message: `Unlock this feature with ${tierInfo.displayName}. Upgrade from ${priceDisplay}.`,
   };
 }
 
 /**
- * Get entry-level upgrade messaging for performers and fans
+ * Entry-level upgrade messaging — always lowest paid tier (PRO) from canonical registry.
+ * Performer: Upgrade from $2.99/mo · Fan: Upgrade from $4.99/mo
  */
 export function getEntryLevelUpgradeMessage(role: 'performer' | 'fan'): { tier: UserTier; price: number; message: string } {
-  const tier = role === 'performer' ? 'RUBY' : 'SILVER';
-  const tierInfo = TIER_PRICING[tier as Exclude<UserTier, 'FREE'>];
-  const priceDisplay = `$${(tierInfo.monthly / 100).toFixed(2)}/month`;
+  const tier: UserTier = 'PRO';
+  const tierInfo = getRoleAwareTierPrice(role, 'PRO');
+  const priceDisplay = `$${(tierInfo.monthly / 100).toFixed(2)}/mo`;
 
   if (role === 'performer') {
     return {
       tier,
       price: tierInfo.monthly,
-      message: `Upgrade your stage. Plans starting at just ${priceDisplay}.`,
-    };
-  } else {
-    return {
-      tier,
-      price: tierInfo.monthly,
-      message: `Get closer to your favorite performers. Upgrades starting at just ${priceDisplay}.`,
+      message: `Upgrade from ${priceDisplay}`,
     };
   }
+  return {
+    tier,
+    price: tierInfo.monthly,
+    message: `Upgrade from ${priceDisplay}`,
+  };
 }
 
 /**

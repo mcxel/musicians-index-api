@@ -17,7 +17,12 @@ import { resolveRoleEntry, type RoleEntry } from "@/lib/live/RoleEntryMap";
 import { roomIdFromJoinRoute } from "@/lib/live/canonicalWorldViewport";
 import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyGate";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
-import { publishLiveRoom, unpublishLiveRoom, liveSessionToDiscoveryRecord } from "@/lib/discovery/DiscoveryPublisher";
+import {
+  pauseDiscoveryPoll,
+  publishLiveRoom,
+  unpublishLiveRoom,
+  liveSessionToDiscoveryRecord,
+} from "@/lib/discovery/DiscoveryPublisher";
 import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
 import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
 import { TelemetryTransportGovernor } from "@/lib/analytics/TelemetryTransportGovernor";
@@ -86,7 +91,9 @@ export async function executeInstantGoLive(opts?: {
 }): Promise<InstantGoLiveResult> {
   launchDockStore.setPhase("launching");
   // Free sockets before session/cam/publish work begins.
+  // Discovery GET /api/live/go polls (every 4s, often >5s each) starve POST on HTTP/1.1.
   TelemetryTransportGovernor.pause(25000);
+  pauseDiscoveryPoll(25000);
 
   const dock = launchDockStore.getState();
   const privacy = opts?.privacy ?? dock.privacy;
@@ -214,8 +221,9 @@ export async function executeInstantGoLive(opts?: {
         joinRoute: `/hub/${hubRole}?watch=${encodeURIComponent(resolvedRoomId)}&from=live-lobby-wall`,
       };
       try {
-        // Free HTTP/1.1 sockets — hub telemetry/session polls otherwise starve publish.
+        // Free HTTP/1.1 sockets — hub telemetry + discovery GET polls otherwise starve publish.
         TelemetryTransportGovernor.pause(20000);
+        pauseDiscoveryPoll(20000);
         const res = await fetch("/api/live/go", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -380,6 +388,8 @@ export async function publishInstantGoLiveSession(opts: {
   });
 
   try {
+    TelemetryTransportGovernor.pause(20000);
+    pauseDiscoveryPoll(20000);
     const registryPrivacy = mapLivePrivacyToRegistry(privacy);
     const res = await fetch("/api/live/go", {
       method: "POST",

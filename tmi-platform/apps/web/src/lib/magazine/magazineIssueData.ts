@@ -1,6 +1,6 @@
-import { editorialSubmissionEngine } from "../editorial-economy/EditorialSubmissionEngine";
-import { contributorAccountEngine } from "../editorial-economy/ContributorAccountEngine";
-import type { EditorialSubmission } from "../editorial-economy/types";
+import { contributorAccountEngine } from "@/lib/editorial-economy/ContributorAccountEngine";
+import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubmissionEngine";
+import type { EditorialSubmission } from "@/lib/editorial-economy/types";
 
 export interface ArticleBlock {
   type: "paragraph" | "heading" | "pullquote" | "image";

@@ -1,3 +1,5 @@
+import { resolvePersonaHubDestination } from "@/lib/auth/resolvePersonaHubDestination";
+
 /**
  * resolveAccountShellCapabilities
  *
@@ -11,6 +13,8 @@
 export interface AccountShellCapabilities {
   /** Show Fan↔Performer switch controls (both roles genuinely owned). */
   canSwitchFanPerformer: boolean;
+  /** Admin/staff oversight: FAN + PERFORMER + ADMIN triad via switch-role. */
+  canAdminPersonaTriad: boolean;
   /** Missing companion profile to offer, if any. */
   companionOfferTarget: "FAN" | "PERFORMER" | null;
   /** Normalized active mode label for display (never a second fabricated name). */
@@ -51,6 +55,7 @@ export function resolveAccountShellCapabilities(input: {
 
   return {
     canSwitchFanPerformer: hasFan && hasPerformer,
+    canAdminPersonaTriad: isAdmin,
     companionOfferTarget,
     activeModeLabel,
     isAdmin,
@@ -58,11 +63,8 @@ export function resolveAccountShellCapabilities(input: {
 }
 
 /** Canonical account hub destination resolver (ACCOUNT-ROUTE-01). */
-export function resolveAccountHubDestination(role: string): string {
-  const r = (role ?? "").toUpperCase();
-  if (r === "PERFORMER" || r === "ARTIST" || r === "BAND" || r === "PRODUCER") return "/hub/performer";
-  if (r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN") return "/admin";
-  return "/hub/fan";
+export function resolveAccountHubDestination(role: string, email?: string | null): string {
+  return resolvePersonaHubDestination(role, email);
 }
 
 /** Required dropdown destinations for HEADER certification (real routes only). */
@@ -73,7 +75,7 @@ export const UNIVERSAL_ACCOUNT_MENU_ITEMS = [
   { id: "view-profile", label: "View Profile", href: "self-public" },
   { id: "notifications", label: "Notifications", href: "/notifications" },
   { id: "settings-privacy", label: "Settings & Privacy", href: "/settings?section=privacy" },
-  { id: "subscription-billing", label: "Subscription & Billing", href: "/pricing?role=fan" },
+  { id: "subscription-billing", label: "Subscription & Billing", href: "/settings/billing" },
   { id: "help-support", label: "Help & Support", href: "/help" },
   { id: "logout", label: "Logout" },
 ] as const;

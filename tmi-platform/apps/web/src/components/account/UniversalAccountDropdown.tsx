@@ -14,8 +14,11 @@ import {
   resolveAccountShellCapabilities,
   resolveAccountHubDestination,
 } from "@/lib/account/resolveAccountShellCapabilities";
-import { clearPrivateClientAccountCache } from "@/lib/account/clearPrivateClientAccountCache";
 import { selfPublicPath } from "@/lib/identity/PublicProfileRuntime";
+import {
+  performPersonaSwitch,
+  type PersonaSwitchRole,
+} from "@/lib/auth/performPersonaSwitch";
 
 export interface UniversalAccountDropdownProps {
   identity: ActiveProfileIdentity;
@@ -23,6 +26,10 @@ export interface UniversalAccountDropdownProps {
   onClose: () => void;
   anchorRight?: number;
   anchorTop?: number;
+  /** True when role/identity discovery failed to load — distinct from the
+   *  user genuinely owning only one role. Never silently hide switch
+   *  options as though this were a permission fact. */
+  rolesUnavailable?: boolean;
 }
 
 interface CompanionOffer {
@@ -58,11 +65,13 @@ export default function UniversalAccountDropdown({
   onClose,
   anchorRight = 12,
   anchorTop = 56,
+  rolesUnavailable = false,
 }: UniversalAccountDropdownProps) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
   const [companionOffers, setCompanionOffers] = useState<Record<"FAN" | "PERFORMER", CompanionOffer> | null>(null);
 
@@ -108,7 +117,16 @@ export default function UniversalAccountDropdown({
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      // Trigger owns toggle — do not close-on-mousedown then re-open on click (role-trap feel).
+      if (
+        target instanceof Element &&
+        target.closest("[data-tmi-account-menu-trigger]")
+      ) {
+        return;
+      }
+      if (panelRef.current && !panelRef.current.contains(target)) {
         onClose();
       } else {
         resetIdleTimer();
@@ -164,39 +182,26 @@ export default function UniversalAccountDropdown({
     username: identity.publicHandle ?? null,
   });
 
-  const handleRoleHubClick = async (targetRole: "FAN" | "PERFORMER") => {
+  const handleRoleHubClick = async (targetRole: PersonaSwitchRole) => {
     const dest = resolveAccountHubDestination(targetRole);
 
-    // ACCOUNT-ROUTE-01: If already in target role, navigate directly without redundant API switch call
     if (caps.activeModeLabel.toUpperCase() === targetRole.toUpperCase()) {
       onClose();
-      localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
-      // router.refresh() called immediately after push() races the push's own
-      // in-flight RSC fetch and can abort the navigation entirely (confirmed
-      // via ERR_ABORTED on the target route's RSC request during physical
-      // testing) — push() already fetches fresh server data for the new route.
-      router.push(dest);
+      window.location.href = dest;
       return;
     }
 
     if (switchingRole) return;
     setSwitchingRole(targetRole);
+    setSwitchError(null);
     try {
-      const res = await fetch("/api/auth/switch-role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ role: targetRole }),
-      });
-      const data = (await res.json()) as { ok?: boolean; hubUrl?: string };
-      if (res.ok && data.ok) {
+      const result = await performPersonaSwitch(targetRole);
+      if (result.ok && result.hubUrl) {
         onClose();
-        localStorage.setItem("tmi_last_workspace", targetRole.toLowerCase());
-        const targetDest = data.hubUrl ?? dest;
-        router.push(targetDest);
+        window.location.href = result.hubUrl;
+      } else {
+        setSwitchError(result.error ?? "Unable to switch accounts right now. Please try again.");
       }
-    } catch {
-      /* keep open */
     } finally {
       setSwitchingRole(null);
     }
@@ -228,14 +233,8 @@ export default function UniversalAccountDropdown({
 
   const handleLogout = async () => {
     onClose();
-    clearPrivateClientAccountCache();
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch {
-      /* noop */
-    }
-    clearPrivateClientAccountCache();
-    window.location.href = "/auth";
+    const { canonicalLogout } = await import("@/lib/auth/canonicalLogout");
+    await canonicalLogout();
   };
 
   const offer = caps.companionOfferTarget ? companionOffers?.[caps.companionOfferTarget] : null;
@@ -287,7 +286,66 @@ export default function UniversalAccountDropdown({
         )}
       </div>
 
-      {caps.canSwitchFanPerformer && (
+      {rolesUnavailable && (
+        <div
+          data-testid="tmi-roles-unavailable"
+          style={{
+            margin: 10,
+            padding: "8px 10px",
+            background: "rgba(255,45,90,0.08)",
+            border: "1px solid rgba(255,45,90,0.3)",
+            borderRadius: 8,
+            fontSize: 9.5,
+            color: "#FF6B9A",
+            lineHeight: 1.4,
+          }}
+        >
+          Account roles could not be loaded — the options below may be incomplete. Try again, or use Log Out.
+        </div>
+      )}
+
+      {caps.canAdminPersonaTriad && (
+        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-admin-persona-triad">
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+            PERSONA SWITCH · SAME ACCOUNT
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {(
+              [
+                { role: "ADMIN" as const, label: "ADMINISTRATION", color: "#FFD700" },
+                { role: "FAN" as const, label: "FAN", color: "#00FFFF" },
+                { role: "PERFORMER" as const, label: "PERFORMER", color: "#FF2DAA" },
+              ] as const
+            ).map(({ role, label, color }) => {
+              const isActive = caps.activeModeLabel === role;
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  disabled={!!switchingRole}
+                  data-testid={`tmi-switch-to-${role.toLowerCase()}`}
+                  onClick={() => void handleRoleHubClick(role)}
+                  style={{
+                    ...rowStyle,
+                    justifyContent: "flex-start",
+                    padding: "12px 14px",
+                    minHeight: 44,
+                    fontSize: 12,
+                    color,
+                    border: `1px solid ${color}55`,
+                    background: isActive ? `${color}22` : "transparent",
+                  }}
+                >
+                  {switchingRole === role ? "…" : label}
+                  {isActive ? " · active" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {caps.canSwitchFanPerformer && !caps.canAdminPersonaTriad && (
         <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-role-switch-row">
           <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
             SWITCH PROFILE
@@ -324,24 +382,21 @@ export default function UniversalAccountDropdown({
         </div>
       )}
 
-      {caps.isAdmin && (
-        <div style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <Link
-            href="/admin/overseer"
-            onClick={onClose}
-            data-testid="tmi-menu-admin-hub"
-            style={{
-              ...rowStyle,
-              justifyContent: "center",
-              border: "1px solid rgba(255,215,0,0.35)",
-              background: "rgba(255,215,0,0.08)",
-              color: "#FFD700",
-              fontSize: 10,
-              fontWeight: 900,
-            }}
-          >
-            ADMIN HUB
-          </Link>
+      {switchError && (
+        <div
+          data-testid="tmi-switch-error"
+          style={{
+            margin: 10,
+            padding: "8px 10px",
+            background: "rgba(255,45,90,0.1)",
+            border: "1px solid rgba(255,45,90,0.35)",
+            borderRadius: 8,
+            fontSize: 9.5,
+            color: "#FF6B9A",
+            lineHeight: 1.4,
+          }}
+        >
+          {switchError}
         </div>
       )}
 
@@ -458,7 +513,7 @@ export default function UniversalAccountDropdown({
           Notifications
         </Link>
         <Link href="/settings?section=privacy" onClick={onClose} data-testid="tmi-menu-settings-privacy" style={rowStyle}>
-          Settings & Privacy
+          ACCOUNT · Settings & Privacy
         </Link>
         <Link href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"} onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
           Subscription & Billing
@@ -466,8 +521,8 @@ export default function UniversalAccountDropdown({
         <Link href="/help" onClick={onClose} data-testid="tmi-menu-help" style={rowStyle}>
           Help & Support
         </Link>
-        <button type="button" data-testid="tmi-menu-logout" onClick={() => void handleLogout()} style={{ ...rowStyle, color: "#FF3B5C" }}>
-          Logout
+        <button type="button" data-testid="tmi-menu-logout" onClick={() => void handleLogout()} style={{ ...rowStyle, color: "#FF3B5C", minHeight: 44 }}>
+          LOG OUT
         </button>
       </div>
     </div>

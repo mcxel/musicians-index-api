@@ -16,7 +16,6 @@ import {
   unmuteAudienceMember,
   assignNextSeat,
 } from "@/lib/live/audienceRuntimeEngine";
-import { isAnchorSlug } from "@/lib/live/AnchorRoomRegistry";
 import {
   findOccupancySlugForUser,
   forgetAttendeePlacement,
@@ -126,18 +125,23 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(datingAccessPayload(decision), { status: 403 });
           }
         }
-        let joinSlug = venueSlug;
+        // Orchestra lock: mapped network roomIds → Elastic slug; no dual overflow mint.
+        const { resolveOrchestraAuthority } = await import("@/lib/venues/VenueOverflowSystemMap");
+        const orch = resolveOrchestraAuthority(venueSlug);
+        const orchestraSlug = orch.elasticSlug ?? venueSlug;
+
+        let joinSlug = orchestraSlug;
         let meshKey: string | null = null;
         let isOverflow = false;
         let parentAnchorSlug: string | null = null;
         try {
-          const target = resolveJoinTarget(venueSlug);
+          const target = resolveJoinTarget(orchestraSlug);
           joinSlug = target.slug;
           meshKey = target.meshKey;
           isOverflow = target.isOverflow;
           parentAnchorSlug = target.parentAnchorSlug;
         } catch {
-          /* keep requested slug if orchestrator cannot resolve */
+          /* keep remapped slug if orchestrator cannot resolve */
         }
         const assignedSeatId = member.seatId ?? assignNextSeat(joinSlug, member.groupId ?? null);
         const occupancy = joinAudience(joinSlug, { ...member, seatId: assignedSeatId });
@@ -151,17 +155,18 @@ export async function POST(req: NextRequest) {
           parentAnchorSlug,
         });
 
-        // Dual overflow systems: Elastic handles AnchorRoomRegistry slugs.
-        // AnchorRoomNetwork still covers its own roomId scheme only.
-        try {
-          const { maybeSpawnOverflowRoom, isAnchorRoomId } = await import(
-            "@/lib/live/AnchorRoomNetwork"
-          );
-          if (!isAnchorSlug(venueSlug) && isAnchorRoomId(venueSlug)) {
-            maybeSpawnOverflowRoom(venueSlug);
+        // LEGACY network overflow only for NETWORK_ONLY roomIds (no Elastic alias).
+        if (orch.allowNetworkOverflowSpawn) {
+          try {
+            const { maybeSpawnOverflowRoom, isAnchorRoomId } = await import(
+              "@/lib/live/AnchorRoomNetwork"
+            );
+            if (isAnchorRoomId(venueSlug)) {
+              maybeSpawnOverflowRoom(venueSlug);
+            }
+          } catch {
+            /* non-fatal */
           }
-        } catch {
-          /* non-fatal */
         }
 
         const authedUserId = await resolveAuthedUserId(req);

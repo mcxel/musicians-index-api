@@ -13,6 +13,7 @@ import { hubMonitorUvrProps, isLoungeRoomId, resolveHubMonitorViewport } from "@
 import HubVenueHudDrawer from "@/components/live/HubVenueHudDrawer";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
+import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import {
   getStageSnapshot,
   markIntermissionAdOpportunity,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/live/StageLifecycleEngine";
 import { resolveCurtainAdCampaign } from "@/lib/presentation/CurtainRuntimeManager";
 import { countHumanAttendance } from "@/lib/venues/venuePresenceMetrics";
+import { resolveGoLiveCertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -61,6 +63,7 @@ function HubMonitorIdle({ label }: { label: string }) {
 export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
+  const inPlaceCategory = useGoLiveTransition((s) => s.inPlace?.category ?? null);
   const [watching, setWatching] = useState(0);
   const [intermission, setIntermission] = useState(
     () => getStageSnapshot().state === "INTERMISSION",
@@ -75,11 +78,20 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
     zone: scenePlan?.canonicalZone ?? (lounge ? "LOUNGE_SIDE_ROOM" : undefined),
   });
 
+  // Same mapping path as InstantGoLiveStage: category / scenePlan.eventType → package.
+  const categoryOrEvent = scenePlan?.eventType ?? inPlaceCategory ?? "live";
+  const certifiedPackage = resolveGoLiveCertifiedVenuePackage({
+    category: categoryOrEvent,
+    eventType: categoryOrEvent,
+  });
+
   const uvrProps = hubMonitorUvrProps("B", roomId, {
     instantEmptyStage: true,
     forceStadiumFill: false,
     zone: lounge ? "LOUNGE_SIDE_ROOM" : undefined,
     scenePlan,
+    certifiedPackage,
+    venueId: certifiedPackage.venueId || null,
   });
 
   useEffect(() => {
@@ -172,6 +184,12 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       data-spatial-area-sqft={scenePlan?.spatialMap.floor.areaSqFt}
       data-intermission={intermission ? "true" : "false"}
       data-audience-watching={watching}
+      data-certified-venue-id={certifiedPackage.venueId || undefined}
+      data-venue-render-mode={certifiedPackage.renderMode}
+      data-venue-class={certifiedPackage.classification}
+      data-certified-ambient={
+        certifiedPackage.ambientVideoUrl ? certifiedPackage.ambientVideoUrl : undefined
+      }
       style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#010308" }}
     >
       <div

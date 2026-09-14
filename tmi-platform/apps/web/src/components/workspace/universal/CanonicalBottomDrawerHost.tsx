@@ -8,12 +8,11 @@
  * so MediaStream / WebRTC state survives. Do not navigate for these tools.
  */
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
-import LiveLobbyWallHost from "@/components/live/LiveLobbyWallHost";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
@@ -26,14 +25,27 @@ import { isVenueToolsReadOnly, isVenueToolsEnabled, resolveVenueToolsPolicy } fr
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
+import { LiveLobbyWallContent } from "@/components/lobby/LiveLobbyDrawer";
 
 const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/PerformerBioMagazineDrawer"), {
   ssr: false,
   loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading…</div>,
 });
 
+const YoPhoStudio = dynamic(() => import("@/components/yopho/YoPhoStudio"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 24, color: "#00FFFF" }}>Loading YoPho Studio…</div>,
+});
+
+const Shop3DInspectionDrawer = dynamic(() => import("@/components/drawers/Shop3DInspectionDrawer"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 24, color: "#00FFFF" }}>Loading 3D Shop Stage…</div>,
+});
+
 const ROLODEX_TOOLS: { id: UniversalWorkspaceId; label: string }[] = [
+  { id: "lobby", label: "🏢 LOBBY" },
   { id: "avatar-quick", label: "👤 AVATAR" },
+  { id: "shop" as any, label: "🛍️ 3D SHOP" },
   { id: "memory-wall", label: "🧠 MEMORY" },
   { id: "playlist-studio", label: "🎵 PLAYLIST" },
   { id: "room-controls", label: "VENUE TOOLS" },
@@ -104,7 +116,7 @@ export default function CanonicalBottomDrawerHost({
     const base =
       role === "performer"
         ? ROLODEX_TOOLS.filter(
-            (t) => t.id !== "avatar-quick" && t.id !== "inventory" && t.id !== "lobby",
+            (t) => t.id !== "avatar-quick" && t.id !== "inventory",
           )
         : ROLODEX_TOOLS;
     if (venueToolsAllowed) return base;
@@ -116,6 +128,8 @@ export default function CanonicalBottomDrawerHost({
     return visibleTools.findIndex((t) => t.id === drawerWorkspace);
   }, [drawerWorkspace, visibleTools]);
 
+  const isLobbyWall = drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations";
+
   if (mobileMode === "CONTROL") {
     return <ExperienceControlDeck mode={activeControlMode} userId={userId} role={role} />;
   }
@@ -124,7 +138,6 @@ export default function CanonicalBottomDrawerHost({
 
   const uid = userId ?? "session";
   const name = displayName ?? "Member";
-  const isLobbyWall = drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations";
   const restoreMonitors = () => closeSurface("DRAWER");
 
   const openRolodexTool = (tool: (typeof visibleTools)[number]) => {
@@ -151,8 +164,8 @@ export default function CanonicalBottomDrawerHost({
     openRolodexTool(visibleTools[i]!);
   };
 
-  const contentMinHeight = isLobbyWall ? 480 : 380;
-  const contentMaxHeight = isLobbyWall ? "min(72vh, 700px)" : "min(60vh, 620px)";
+  const contentMinHeight = isLobbyWall ? 480 : drawerWorkspace === "yopho" || drawerWorkspace === "shop" || drawerWorkspace === "merch" ? 520 : 380;
+  const contentMaxHeight = isLobbyWall ? "min(72vh, 700px)" : drawerWorkspace === "yopho" || drawerWorkspace === "shop" || drawerWorkspace === "merch" ? "min(85vh, 880px)" : "min(60vh, 620px)";
 
   return (
     <div
@@ -290,14 +303,34 @@ export default function CanonicalBottomDrawerHost({
           flex: stageDeck ? 1 : undefined,
         }}
       >
-        {drawerWorkspace === "playlist-studio" ? (
-          <PlaylistCanister
-            entityId={uid}
-            entityName={name}
-            isOwner
-            role={role}
-            layout="full"
-          />
+        {isLobbyWall ? (
+          <LiveLobbyWallContent role={role} />
+        ) : drawerWorkspace === "playlist-studio" ? (
+          <div data-canonical-bottom-drawer-playlist-host="1" style={{ width: "100%" }}>
+            <PlaylistCanister
+              entityId={uid}
+              entityName={name}
+              isOwner
+              role={role}
+              layout="full"
+            />
+          </div>
+        ) : drawerWorkspace === "yopho" ? (
+          <div data-canonical-bottom-drawer-yopho-host="1" style={{ width: "100%" }}>
+            <YoPhoStudio
+              role={role}
+              userId={uid}
+              displayName={name}
+            />
+          </div>
+        ) : drawerWorkspace === "shop" || drawerWorkspace === "merch" ? (
+          <div data-canonical-bottom-drawer-shop-host="1" style={{ width: "100%" }}>
+            <Shop3DInspectionDrawer
+              role={role}
+              userId={uid}
+              displayName={name}
+            />
+          </div>
         ) : drawerWorkspace === "share-studio" ? (
           <ShareStudioContent context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }} />
         ) : drawerWorkspace === "settings" ? (
@@ -312,15 +345,6 @@ export default function CanonicalBottomDrawerHost({
             userId={uid}
             venueId={uid}
             accentColor="#00FF88"
-          />
-        ) : isLobbyWall ? (
-          <LiveLobbyWallHost
-            variant="embedded"
-            title="Live Lobby Wall"
-            defaultCategory="lives"
-            showFanLobbySearch={role === "fan"}
-            viewerUserId={uid}
-            viewerRole={role}
           />
         ) : (
           <UniversalWorkspaceStubContent

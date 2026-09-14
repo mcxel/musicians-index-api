@@ -44,6 +44,10 @@ const YoPhoFanPortraitWorkspace = dynamic(
   () => import("@/components/yopho/YoPhoFanPortraitWorkspace"),
   { ssr: false, loading: () => <HubLoading label="Loading portrait studio…" /> },
 );
+const YoPhoStudio = dynamic(() => import("@/components/yopho/YoPhoStudio"), {
+  ssr: false,
+  loading: () => <HubLoading label="Loading YoPho studio…" />,
+});
 const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
   ssr: false,
   loading: () => <HubLoading label="Loading card editor…" /> },
@@ -339,7 +343,9 @@ function CreateCardWorkspace({
       </div>
       {hubRole === "fan" ? (
         <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
-      ) : null}
+      ) : (
+        <YoPhoStudio role="performer" userId={userId} displayName={displayName} />
+      )}
       <div style={{ padding: "0 8px 16px" }}>
         <YoPhoTradingCard
           role={hubRole}

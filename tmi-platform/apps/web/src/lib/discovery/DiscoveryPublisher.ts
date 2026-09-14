@@ -264,18 +264,79 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let pollRefCount = 0;
 let pollIntervalMs = 4000;
 let pollFetchImpl: typeof fetch = fetch;
+/** When set, skip GET /api/live/go polls so publish POST can claim an HTTP/1.1 socket. */
+let pollPausedUntil = 0;
+let pollInFlight = false;
+let pollAbort: AbortController | null = null;
+
+/**
+ * Pause DiscoveryBus GET /api/live/go polling (hub GO LIVE publish path).
+ * TelemetryTransportGovernor.pause alone is not enough — this poll hits the same origin.
+ * Aborts any in-flight poll so sockets free immediately for POST /api/live/go.
+ */
+export function pauseDiscoveryPoll(ms = 25000): void {
+  pollPausedUntil = Math.max(pollPausedUntil, Date.now() + ms);
+  if (pollAbort) {
+    try {
+      pollAbort.abort();
+    } catch {
+      /* ignore */
+    }
+    pollAbort = null;
+  }
+  pollInFlight = false;
+}
+
+export function isDiscoveryPollPaused(): boolean {
+  return Date.now() < pollPausedUntil;
+}
+
+/** Poll ticks use lite GET — sessions/count only; anchors merge client-side in syncDiscoveryFromSessions. */
+export const DISCOVERY_POLL_URL = "/api/live/go?lite=1";
+/** Full inventory (anchors + genreDiscovery) — initial wall open / explicit discovery only. */
+export const DISCOVERY_FULL_URL = "/api/live/go?full=1";
 
 async function discoveryPollTick(): Promise<void> {
   if (pollRefCount <= 0 || typeof window === "undefined") return;
+  if (Date.now() < pollPausedUntil) return;
+  if (pollInFlight) return;
+  pollInFlight = true;
+  const ac = new AbortController();
+  pollAbort = ac;
   try {
-    const res = await pollFetchImpl("/api/live/go", { credentials: "include", cache: "no-store" });
+    const res = await pollFetchImpl(DISCOVERY_POLL_URL, {
+      credentials: "include",
+      cache: "no-store",
+      signal: ac.signal,
+    });
     if (!res.ok) return;
     const data = (await res.json()) as { sessions?: LiveSession[] };
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
     syncDiscoveryFromSessions(sessions);
   } catch {
-    /* keep last honest snapshot — no reset loop */
+    /* keep last honest snapshot — includes abort during GO LIVE pause */
+  } finally {
+    if (pollAbort === ac) pollAbort = null;
+    pollInFlight = false;
   }
+}
+
+/**
+ * One-shot full GET (anchors + genreDiscovery) for explicit discovery opens.
+ * Does not replace the lite poll interval.
+ */
+export async function fetchFullDiscoverySnapshot(
+  fetchImpl: typeof fetch = fetch,
+): Promise<LiveSession[]> {
+  const res = await fetchImpl(DISCOVERY_FULL_URL, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { sessions?: LiveSession[] };
+  const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+  syncDiscoveryFromSessions(sessions);
+  return sessions;
 }
 
 /**

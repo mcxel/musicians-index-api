@@ -27,14 +27,15 @@ import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { getVenueAsset, type VenueType, type VenueAsset } from "@/lib/venues/VenueAssetRegistry";
 import type { CertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
-import {
-  isVenuePackageRenderable,
-  resolveCertifiedVenuePackage,
-} from "@/lib/venues/CertifiedVenuePackage";
 
 interface RoomEnvironmentLayerProps {
   venueType: VenueType;
-  /** Step 4 Slice 2 — when set, drives visuals; UNAVAILABLE never substitutes another venue. */
+  /**
+   * Optional Step 4 Slice 2 bind evidence. When provided and renderMode is
+   * UNAVAILABLE, the ambient video layer is suppressed rather than presenting
+   * an unverified asset as certified (no silent venue substitution). Omitting
+   * this prop keeps prior behavior unchanged for callers that don't pass it.
+   */
   certifiedPackage?: CertifiedVenuePackage | null;
   /** mode controls which perspective video plays */
   mode?: "ambient" | "audience" | "performer";
@@ -85,34 +86,29 @@ export default function RoomEnvironmentLayer({
   className = "",
   style,
 }: RoomEnvironmentLayerProps) {
-  // Bind only the requested venue — never silent-substitute concert when unresolved.
-  const bound =
-    certifiedPackage ??
-    resolveCertifiedVenuePackage(venueType);
-  const unavailable = !isVenuePackageRenderable(bound);
-  const asset: VenueAsset | null = bound.asset ?? (unavailable ? null : getVenueAsset(venueType));
+  const asset = getVenueAsset(venueType) ?? getVenueAsset("concert");
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
 
-  // Prefer package-verified ambient URL; do not invent another venue's loop.
-  const videoUrl = (() => {
-    if (unavailable || !asset) return null;
-    if (bound.ambientVideoUrl) {
-      if (mode === "audience" && asset.audienceViewVideoUrl) return asset.audienceViewVideoUrl;
-      if (mode === "performer" && asset.performerViewVideoUrl) return asset.performerViewVideoUrl;
-      return bound.ambientVideoUrl;
-    }
-    return null;
-  })();
+  // Select correct video based on mode (optional fields — never crash on missing views)
+  const videoUrl =
+    mode === "audience" && asset?.audienceViewVideoUrl
+      ? asset.audienceViewVideoUrl
+      : mode === "performer" && asset?.performerViewVideoUrl
+      ? asset.performerViewVideoUrl
+      : asset?.ambientVideoUrl;
 
   // THE VIDEO DESCRIBES THE WORLD. THE VIDEO DOES NOT BECOME THE WORLD.
-  const videoRole = bound.ambientVideoRole ?? asset?.ambientVideoRole ?? "FALLBACK_PREVIEW";
+  // Suppress background video rendering when: (a) role is REFERENCE_ONLY — blueprint
+  // reference that must never be rendered; or (b) a canonical 3D world exists and
+  // owns the visual — the real geometry takes precedence over a 2D video layer.
+  const videoRole = asset?.ambientVideoRole ?? "FALLBACK_PREVIEW";
+  // Only FALLBACK_PREVIEW may render as the room background layer.
+  // AMBIENT_SURFACE and IN_WORLD_SCREEN belong on in-world surfaces, not here.
   const renderVideoLayer =
-    !unavailable &&
-    Boolean(videoUrl) &&
     videoRole === "FALLBACK_PREVIEW" &&
     !asset?.hasCanonical3DWorld &&
-    bound.renderMode !== "CERTIFIED_GEOMETRY";
+    (certifiedPackage ? certifiedPackage.renderMode !== "UNAVAILABLE" : true);
   const rig = RIG_CONFIG[asset?.geometry?.lightingRig ?? ""] ?? RIG_CONFIG["studio-grid"];
   const bannerUrl = bannerOverrideUrl ?? asset?.bannerUrl;
 
@@ -129,10 +125,6 @@ export default function RoomEnvironmentLayer({
   return (
     <div
       className={className}
-      data-venue-id={bound.venueId || venueType}
-      data-venue-render-mode={bound.renderMode}
-      data-venue-class={bound.classification}
-      data-certified-package="true"
       style={{
         position: "relative",
         width: "100%",
@@ -143,32 +135,8 @@ export default function RoomEnvironmentLayer({
         ...style,
       }}
     >
-      {unavailable && (
-        <div
-          role="status"
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 40,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            background: "rgba(5,5,16,0.92)",
-            color: "#FFD700",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: "0.04em",
-            textAlign: "center",
-          }}
-        >
-          Venue visual package unavailable for “{bound.venueId || venueType}”.
-          No substitute venue loaded.
-        </div>
-      )}
-
       {/* ── Layer 1: Ambient video loop ────────────────────────────────── */}
-      {renderVideoLayer && videoUrl && (
+      {renderVideoLayer && (
       <video
         ref={videoRef}
         src={videoUrl}
@@ -190,7 +158,6 @@ export default function RoomEnvironmentLayer({
       )}
 
       {/* ── Layer 2: Floor reflection / gradient atmosphere ────────────── */}
-      {!unavailable && asset && (
       <div
         style={{
           position: "absolute",
@@ -204,11 +171,9 @@ export default function RoomEnvironmentLayer({
           pointerEvents: "none",
         }}
       />
-      )}
 
       {/* ── Layer 3: LED wall panels ───────────────────────────────────── */}
-      {!unavailable &&
-        asset?.geometry.ledWalls.map((wall) => (
+      {asset.geometry.ledWalls.map((wall) => (
         <motion.div
           key={wall}
           style={{
@@ -232,7 +197,6 @@ export default function RoomEnvironmentLayer({
       ))}
 
       {/* ── Layer 4: Ceiling lighting rig — light beams ───────────────── */}
-      {!unavailable && asset && (
       <div
         style={{
           position: "absolute",
@@ -262,10 +226,9 @@ export default function RoomEnvironmentLayer({
           />
         ))}
       </div>
-      )}
 
       {/* ── Layer 5: Stage apron / elevated front lip ─────────────────── */}
-      {!unavailable && asset?.geometry.hasElevatedStage && (
+      {asset.geometry.hasElevatedStage && (
         <div
           style={{
             position: "absolute",
@@ -283,8 +246,7 @@ export default function RoomEnvironmentLayer({
 
       {/* ── Layer 6: Sponsor panel zones (optional) ───────────────────── */}
       {showSponsorZones &&
-        !unavailable &&
-        asset?.geometry.sponsorZones.map((zone) => (
+        asset.geometry.sponsorZones.map((zone) => (
           <div
             key={zone}
             style={{
@@ -309,7 +271,7 @@ export default function RoomEnvironmentLayer({
         ))}
 
       {/* ── Layer 7: Room banner (top marquee strip) ──────────────────── */}
-      {bannerUrl && asset && (
+      {bannerUrl && (
         <div
           style={{
             position: "absolute",

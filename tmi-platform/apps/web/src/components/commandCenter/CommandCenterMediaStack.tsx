@@ -5,6 +5,15 @@ import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import {
+  ensureBroadcastDestinationSeed,
+  getBroadcastDestinations,
+  subscribeBroadcastDestinations,
+  resolveAuthoritativeDestinationState,
+} from "@/lib/broadcast/BroadcastDestinationRegistry";
+import type { BroadcastDestinationPublic } from "@/lib/broadcast/BroadcastDestinationTypes";
+import { toggleExternalDestination } from "@/lib/broadcast/ExternalBroadcastDistributor";
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.
  * Dual geometry via CanonicalDualMonitorStack (shared with Observatory).
@@ -55,8 +64,8 @@ import FastPlaylistCastPicker from "@/components/playlists/FastPlaylistCastPicke
 import AvatarQuickChangeDrawer from "@/components/avatar/AvatarQuickChangeDrawer";
 import ExploreMatrixDiscoveryHost, { type ExploreColumnType } from "@/components/explore/ExploreMatrixDiscoveryHost";
 import MiniLiveLobbyWallRuntime from "@/components/lobby/MiniLiveLobbyWallRuntime";
-import LiveLobbyMosaicScrollRail from "@/components/live/LiveLobbyMosaicScrollRail";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
+import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 
 /** Bootstrap / error chrome over dual monitors during Instant GO LIVE. */
 function GoLiveBootstrapOverlay({
@@ -450,20 +459,23 @@ function MonitorMediaBody({
     setVideoFailed(false);
   }, [videoSrc]);
 
-  if ((hubLiveRoomId || goLiveBootActive) && hubLiveMonitor === "A") {
-    // Explicit playlist / video-shuffle cast wins Monitor A (QP retest path).
-    // Live camera remains default when no cast is active.
-    if (!(slot.kind === "playlist" && slot.playlistCast?.videoUrl?.trim())) {
-      return (
-        <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
-          {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
-          <HubMonitorCameraPlayer displayName={displayName} watchingCount={watchingCount ?? 0} />
-        </div>
-      );
-    }
+  const feed = resolveHubMonitorFeed({
+    slot,
+    monitorTarget: hubLiveMonitor ?? "A",
+    hubLiveRoomId: hubLiveRoomId ?? null,
+    goLiveBootActive: Boolean(goLiveBootActive),
+  });
+
+  if (feed.kind === "live_camera" && hubLiveMonitor === "A") {
+    return (
+      <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+        {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
+        <HubMonitorCameraPlayer displayName={displayName} watchingCount={watchingCount ?? 0} />
+      </div>
+    );
   }
 
-  if (hubLiveRoomId && hubLiveMonitor === "B") {
+  if (feed.kind === "live_venue" && hubLiveMonitor === "B" && hubLiveRoomId) {
     return (
       <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
         <HubMonitorVenuePlayer roomId={hubLiveRoomId} />
@@ -706,6 +718,7 @@ export default function CommandCenterMediaStack({
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [avatarQuickOpen, setAvatarQuickOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [controlBedCollapsed, setControlBedCollapsed] = useState(false);
   /**
    * RECORD honesty (P0): no certified session/cloud recording consumer is wired to
    * the hub top cluster. Live-fabric startRecording is metadata-only today;
@@ -739,6 +752,8 @@ export default function CommandCenterMediaStack({
   const [exploreInitialColumn, setExploreInitialColumn] = useState<ExploreColumnType>("SNIPS");
   const [miniLobbyWallOpen, setMiniLobbyWallOpen] = useState(false);
   const [activeSponsorOverlay, setActiveSponsorOverlay] = useState<ActiveSponsorOverlay | null>(null);
+  const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
+  const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -781,8 +796,41 @@ export default function CommandCenterMediaStack({
     return () => window.removeEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
   }, []);
 
-  // LOBBY WALL button: set state only — external listeners use tmi:toggle-mini-lobby-wall.
-  const toggleLobbyWallFromButton = () => setMiniLobbyWallOpen((v) => !v);
+  const [broadcastDests, setBroadcastDests] = useState<BroadcastDestinationPublic[]>(() =>
+    getBroadcastDestinations(),
+  );
+
+  useEffect(() => {
+    ensureBroadcastDestinationSeed(userId);
+    const unsub = subscribeBroadcastDestinations(setBroadcastDests);
+    return unsub;
+  }, [userId]);
+
+  // LOBBY WALL button: expands bottom drawer with LiveLobbyWallContent
+  const toggleLobbyWallFromButton = useCallback(() => {
+    const { drawerWorkspace, isDrawerExpanded, closeSurface } =
+      useWorkspacePresentationStore.getState();
+    if ((drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations") && isDrawerExpanded) {
+      closeSurface("DRAWER");
+    } else {
+      presentCanonicalWorkspace("lobby", "DRAWER");
+    }
+  }, []);
+
+  const handleDetachMonitorB = useCallback(async () => {
+    const monBVideo = document.querySelector('[data-monitor-chrome-id="mon-b"] video') as HTMLVideoElement | null;
+    if (monBVideo && document.pictureInPictureEnabled && !document.pictureInPictureElement) {
+      try {
+        await monBVideo.requestPictureInPicture();
+        return;
+      } catch {
+        /* fallback */
+      }
+    }
+    if (typeof window !== "undefined") {
+      window.open('/live-stage', 'TMI_MONITOR_B', 'width=840,height=520,menubar=no,toolbar=no,location=no,status=no');
+    }
+  }, []);
 
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) {
@@ -1125,281 +1173,186 @@ export default function CommandCenterMediaStack({
     width: "100%",
   };
 
+  const renderTagLight = (providerId: string, label: string, color: string) => {
+    const dest = broadcastDests.find((d) => d.provider === providerId || (providerId === "tiktok" && d.provider === "custom"));
+    const authState = dest ? resolveAuthoritativeDestinationState(dest, Boolean(publishedRoomId)) : "OFF";
+    const isLive = authState === "LIVE" || dest?.connectionStatus === "live";
+    const isReady = authState === "READY" || dest?.connectionStatus === "selected_off" || dest?.enabled;
+    const isError = authState === "ERROR" || dest?.connectionStatus === "error";
+
+    const indicatorColor = isLive
+      ? color
+      : isError
+      ? "#FF2255"
+      : isReady
+      ? "#FFB800"
+      : "rgba(255,255,255,0.22)";
+
+    const glyph = isLive ? "●" : isError ? "✕" : isReady ? "◐" : "○";
+
+    return (
+      <button
+        key={providerId}
+        type="button"
+        title={`${label}: ${isLive ? "LIVE BROADCAST ACTIVE" : isError ? "BROADCAST ERROR" : isReady ? "READY / PRIMED" : "OFF / UNLINKED"}`}
+        onClick={async () => {
+          if (dest) {
+            if (publishedRoomId) {
+              await toggleExternalDestination(dest.destinationId);
+            } else {
+              const { patchBroadcastDestination } = await import(
+                "@/lib/broadcast/BroadcastDestinationRegistry"
+              );
+              const nextEnabled = !dest.enabled;
+              patchBroadcastDestination(dest.destinationId, {
+                enabled: nextEnabled,
+                connectionStatus: nextEnabled ? "selected_off" : "off",
+                authoritativeState: nextEnabled ? "READY" : "OFF",
+              });
+            }
+          }
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          background: isLive ? `${color}25` : isReady ? "rgba(255,184,0,0.12)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${isLive ? color : isError ? "#FF2255" : isReady ? "#FFB80088" : "rgba(255,255,255,0.12)"}`,
+          borderRadius: 4,
+          padding: "3px 6px",
+          cursor: "pointer",
+          color: isLive ? "#fff" : isReady ? "#FFE082" : "rgba(255,255,255,0.6)",
+          fontSize: 8,
+          fontWeight: 900,
+          letterSpacing: "0.05em",
+          fontFamily: "inherit",
+          transition: "all 0.15s ease",
+          boxShadow: isLive ? `0 0 8px ${color}66` : "none",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 7,
+            color: indicatorColor,
+            fontWeight: 900,
+            display: "inline-block",
+            textShadow: isLive ? `0 0 6px ${indicatorColor}` : "none",
+          }}
+        >
+          {glyph}
+        </span>
+        <span>{label}</span>
+      </button>
+    );
+  };
+
   const toolbar = (
     <div
+      data-tmi-polished-control-bed="1"
       style={{
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
-        gap: 8,
-        padding: "8px 10px",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        background: "rgba(0,0,0,0.45)",
-        marginBottom: 8,
+        gap: 6,
+        padding: controlBedCollapsed ? "4px 12px" : "8px 12px",
+        background: "linear-gradient(180deg, #323947 0%, #1c2230 50%, #262e3d 100%)",
+        border: "1px solid rgba(190, 210, 235, 0.35)",
         borderRadius: 10,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 20px rgba(0,0,0,0.6)",
+        marginBottom: 8,
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
-      {/* Action Row: Converged Top Cluster (CAST · USER ID / ARTIST ID · SPONSORS · SHARE SCREEN · RECORD · SHARE · GO LIVE), EXPLORE, VENUE TOOLS */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12 }}>
-        {/* TOP CONTROL CLUSTER */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#AA2DFF" }}>
-            COMMAND CONTROLS
+      {/* Upper Chassis Title & Specular Strip */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: controlBedCollapsed ? "none" : "1px solid rgba(255,255,255,0.08)",
+          paddingBottom: controlBedCollapsed ? 0 : 4,
+          marginBottom: controlBedCollapsed ? 0 : 4,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.14em",
+              color: "#00FFFF",
+              textShadow: "0 0 8px rgba(0,255,255,0.4)",
+            }}
+          >
+            COMMAND BED
           </span>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
-            {/* 1. CAST */}
-            <div style={{ position: "relative" }}>
-              {utilityBtn(castPanelOpen || playlistCastOpen, "#AA2DFF", "CAST", () => setCastPanelOpen((v) => !v), {
-                testId: "tmi-top-cluster-cast",
-                title: "Cast playlist, screen, or living canvas",
-                icon: "📡",
-              })}
-              {castPanelOpen ? (
-                <div
-                  data-testid="tmi-cast-options-panel"
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    left: 0,
-                    zIndex: 40,
-                    width: 290,
-                    background: "#0d1117",
-                    border: "1px solid rgba(170,45,255,0.45)",
-                    borderRadius: 10,
-                    padding: 10,
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.65)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
-                    CASTING DESTINATIONS & SOURCES
-                  </span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    <button
-                      type="button"
-                      data-testid="tmi-cast-playlist-btn"
-                      onClick={() => {
-                        setPlaylistCastOpen((v) => !v);
-                        setCastPanelOpen(false);
-                      }}
-                      style={{
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: playlistCastOpen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.15)",
-                        background: playlistCastOpen ? "rgba(0,255,255,0.15)" : "transparent",
-                        color: "#00FFFF",
-                        fontSize: 9,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                      }}
-                    >
-                      🎵 PLAYLIST
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="tmi-cast-yopho-btn"
-                      onClick={() => {
-                        document.documentElement.setAttribute("data-yopho-btn-click", "1");
-                        useCompactQuickPanelStore.getState().openPanel("yopho", "bottom-left");
-                        if (onOpenYopho) {
-                          onOpenYopho();
-                        } else {
-                          presentCanonicalWorkspace("yopho", "DRAWER");
-                        }
-                        setCastPanelOpen(false);
-                      }}
-                      style={{
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: "1px solid rgba(255,45,170,0.35)",
-                        background: "transparent",
-                        color: "#FF2DAA",
-                        fontSize: 9,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                      }}
-                    >
-                      📱 YOPHO
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="tmi-cast-memory-btn"
-                      onClick={() => {
-                        useCompactQuickPanelStore.getState().togglePanel("memory-wall");
-                        setCastPanelOpen(false);
-                      }}
-                      style={{
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: "1px solid rgba(170,45,255,0.35)",
-                        background: "transparent",
-                        color: "#AA2DFF",
-                        fontSize: 9,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                      }}
-                    >
-                      🧠 MEMORY
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toggleFullscreen();
-                        setCastPanelOpen(false);
-                      }}
-                      style={{
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: isFullscreen ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.15)",
-                        background: isFullscreen ? "rgba(0,255,255,0.15)" : "transparent",
-                        color: "#00FFFF",
-                        fontSize: 9,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                      }}
-                    >
-                      ⛶ {isFullscreen ? "EXIT FULL" : "FULLSCREEN"}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCastPanelOpen(false)}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      background: "transparent",
-                      color: "rgba(255,255,255,0.55)",
-                      fontSize: 8,
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      marginTop: 4,
-                    }}
-                  >
-                    CLOSE
-                  </button>
-                </div>
-              ) : null}
-              {playlistCastOpen ? (
-                <FastPlaylistCastPicker
-                  onClose={() => setPlaylistCastOpen(false)}
-                  targetSlotId={topSlots[0]?.id ?? "mon-a"}
-                />
-              ) : null}
-            </div>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>
+            POLISHED CHROME MASTER CONSOLE
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 8, fontWeight: 800, color: publishedRoomId ? "#00FF88" : "rgba(255,255,255,0.4)" }}>
+            {publishedRoomId ? "● BROADCAST ACTIVE" : "○ READY"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setControlBedCollapsed((v) => !v)}
+            title={controlBedCollapsed ? "Expand Command & Cast Controls" : "Collapse Controls into Performance Mirror Mode"}
+            style={{
+              background: controlBedCollapsed ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.06)",
+              border: controlBedCollapsed ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
+              borderRadius: 4,
+              color: controlBedCollapsed ? "#00FFFF" : "rgba(255,255,255,0.7)",
+              fontSize: 8,
+              fontWeight: 900,
+              letterSpacing: "0.06em",
+              padding: "2px 8px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              textTransform: "uppercase",
+            }}
+          >
+            {controlBedCollapsed ? "▼ EXPAND BED" : "▲ HIDE (MIRROR)"}
+          </button>
+        </div>
+      </div>
 
-            {/* 2. USER ID / ARTIST ID */}
-            <div style={{ position: "relative" }}>
-              {utilityBtn(
-                identityOpen,
-                role === "performer" ? "#FFD700" : "#00FF88",
-                role === "performer" ? "ARTIST ID" : "USER ID",
-                () => setIdentityOpen((v) => !v),
-                {
-                  testId: "tmi-top-cluster-user-id",
-                  title: role === "performer" ? "Performer Artist ID & QR card" : "TMI User ID & QR card",
-                  icon: "🪪",
-                },
-              )}
-              {identityOpen ? (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    left: 0,
-                    zIndex: 30,
-                    width: 290,
-                    padding: 10,
-                    borderRadius: 12,
-                    background: "rgba(5,5,16,0.98)",
-                    border: role === "performer" ? "1px solid rgba(255,215,0,0.45)" : "1px solid rgba(0,255,136,0.45)",
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.75)",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ArtistIdShareStrip
-                    userId={userId ?? "local"}
-                    displayName={displayName ?? (role === "performer" ? "Performer" : "Fan")}
-                    role={role}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIdentityOpen(false)}
-                    style={{
-                      marginTop: 8,
-                      width: "100%",
-                      fontSize: 8,
-                      fontWeight: 900,
-                      padding: "6px 8px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      background: "transparent",
-                      color: "rgba(255,255,255,0.65)",
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    CLOSE
-                  </button>
-                </div>
-              ) : null}
-            </div>
-
-            {/* 3. SPONSORS */}
-            {utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSORS", () => setSponsorPanelOpen((v) => !v), {
-              testId: "tmi-top-cluster-sponsors",
-              title: "Cast sponsor presentation overlay or brand cabinet",
-              icon: "🏷️",
-            })}
-
-            {/* 4. SHARE SCREEN */}
-            {utilityBtn(shareActive, "#00FF88", shareActive ? "SHARING SCREEN" : "SHARE SCREEN", () => void cycleSharePress(), {
-              testId: "tmi-top-cluster-sharescreen",
-              title: "Cycle or toggle screen share to Monitor A",
-              icon: "🖥️",
-            })}
-
-            {/* 5. RECORD — honest unavailable (no certified recording authority wired) */}
-            <button
-              type="button"
-              data-testid="tmi-top-cluster-record"
-              data-record-state="unavailable"
-              data-record-reason={RECORD_UNAVAILABLE_REASON}
-              disabled
-              aria-disabled="true"
-              title={RECORD_UNAVAILABLE_REASON}
+      {/* Main Split Control Deck: Left Side [MASTER CONTROLS] | Divider | Right Side [MIX] */}
+      {!controlBedCollapsed ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {/* ── SECTION 1: MASTER CONTROLS (GO LIVE | RECORD | SHARE | AVATAR | SPONSOR | USER ID | SHARE SCREEN) ── */}
+          <div
+            data-tmi-master-controls-group="1"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
               style={{
                 fontSize: 8,
                 fontWeight: 900,
-                letterSpacing: "0.08em",
-                padding: "3px 9px",
-                borderRadius: 6,
-                cursor: "not-allowed",
-                border: "1px solid rgba(255,68,68,0.35)",
-                background: "transparent",
-                color: "rgba(255,68,68,0.45)",
-                fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                opacity: 0.55,
+                letterSpacing: "0.14em",
+                color: "#FF2DAA",
+                textTransform: "uppercase",
+                marginRight: 2,
               }}
             >
-              <span aria-hidden>⏺</span>
-              RECORD UNAVAILABLE
-            </button>
+              MASTER CONTROLS:
+            </span>
 
-            {/* 6. SHARE */}
-            {utilityBtn(false, "#AA2DFF", "SHARE", () => void onShareClick(), {
-              testId: "tmi-top-cluster-share",
-              title: "Share live room link or trigger native share sheet",
-              icon: "↗",
-            })}
-
-            {/* 7. GO LIVE */}
+            {/* GO LIVE */}
             {utilityBtn(Boolean(publishedRoomId), "#FF2DAA", publishedRoomId ? "● LIVE" : "GO LIVE", () => {
               void presentInstantGoLiveInPlace({
                 role: role === "performer" ? "PERFORMER" : "FAN",
@@ -1413,99 +1366,164 @@ export default function CommandCenterMediaStack({
               icon: "🔴",
             })}
 
-            {/* QUICK AVATAR */}
-            <div style={{ position: "relative", marginLeft: 4 }}>
+            {/* RECORD */}
+            {utilityBtn(false, "rgba(255,255,255,0.4)", "RECORD", () => {
+              window.alert(RECORD_UNAVAILABLE_REASON);
+            }, {
+              testId: "tmi-top-cluster-record",
+              title: RECORD_UNAVAILABLE_REASON,
+              icon: "⏺",
+            })}
+
+            {/* SHARE */}
+            {utilityBtn(false, "#00FFFF", "SHARE", () => void onShareClick(), {
+              testId: "tmi-top-cluster-share",
+              title: "Share live room link or copy URL",
+              icon: "🔗",
+            })}
+
+            {/* AVATAR (Fan or Performer quick look) */}
+            <div style={{ position: "relative" }}>
               {utilityBtn(avatarQuickOpen, "#00FFFF", "AVATAR", () => setAvatarQuickOpen((v) => !v), {
                 testId: "tmi-quick-avatar-btn",
                 title: "Quick avatar customizer & loadouts",
                 icon: "👤",
               })}
               {avatarQuickOpen ? (
-                <AvatarQuickChangeDrawer
-                  onClose={() => setAvatarQuickOpen(false)}
-                />
+                <AvatarQuickChangeDrawer onClose={() => setAvatarQuickOpen(false)} />
               ) : null}
             </div>
           </div>
-        </div>
 
-        {/* EXPLORE GROUP */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "#FFD700" }}>
-            EXPLORE
-          </span>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
-            {/* 1. SNIPS */}
-            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "SNIPS", "#FFD700", "SNIPS", () => {
-              setExploreInitialColumn("SNIPS");
-              setExploreMatrixOpen(true);
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "SNIPS" } }));
-              }
-            }, {
-              testId: "tmi-explore-snips-btn",
-              title: "Explore short reels & live clips",
-              icon: "🎬",
-            })}
+          {/* ── CENTER SPLIT DIVIDER LINE ── */}
+          <div
+            data-tmi-center-split-divider="1"
+            style={{
+              width: 2,
+              minHeight: 24,
+              alignSelf: "stretch",
+              background: "linear-gradient(180deg, rgba(0,255,255,0.2) 0%, #00FFFF 50%, rgba(0,255,255,0.2) 100%)",
+              boxShadow: "0 0 8px rgba(0,255,255,0.6)",
+              margin: "0 4px",
+              flexShrink: 0,
+            }}
+          />
 
-            {/* 2. VIDEO SHUFFLE */}
-            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "VIDEO_SHUFFLE", "#AA2DFF", "VIDEO SHUFFLE", () => {
-              setExploreInitialColumn("VIDEO_SHUFFLE");
-              setExploreMatrixOpen(true);
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "VIDEO_SHUFFLE" } }));
-              }
-            }, {
-              testId: "tmi-explore-videoshuffle-btn",
-              title: "Explore full music videos & performances",
-              icon: "🎥",
-            })}
-
-            {/* 3. PUBLIC PROFILES */}
-            {utilityBtn(exploreMatrixOpen && exploreInitialColumn === "PUBLIC_PROFILES", "#00FF88", "PUBLIC PROFILES", () => {
-              setExploreInitialColumn("PUBLIC_PROFILES");
-              setExploreMatrixOpen(true);
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("tmi:open-explore-matrix", { detail: { column: "PUBLIC_PROFILES" } }));
-              }
-            }, {
-              testId: "tmi-explore-profiles-btn",
-              title: "Explore creators & fan public profiles",
-              icon: "👥",
-            })}
-          </div>
-        </div>
-
-        {/* VENUE & LOBBIES */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: "auto" }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)" }}>
-            VENUE & LOBBIES
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {utilityBtn(miniLobbyWallOpen, "#FF2DAA", "LOBBY WALL", () => {
-              toggleLobbyWallFromButton();
-            }, {
-              testId: "tmi-lobby-wall-trigger",
-              title: "Open phone-sized Live Lobby Wall",
-              icon: "🏛️",
-            })}
-            <VenueToolsToggleButton
-              role={role === "performer" ? "performer" : "fan"}
-              accent={role === "performer" ? "#AA2DFF" : "#00FF88"}
-              corner="bottom-right"
-              roomId={hubLiveRoomId ?? undefined}
-              testId="tmi-venue-tools-media-stack"
-              policyContext={{
-                isLive: Boolean(publishedRoomId),
-                isGoLiveContext: Boolean(hubInPlaceRoomId),
+          {/* ── SECTION 2: CAST CONTROLS (SPONSOR [performer/venue only] | USER ID | SHARE SCREEN) ── */}
+          <div
+            data-tmi-cast-controls-group="1"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+                color: "#00FFFF",
+                textTransform: "uppercase",
+                marginRight: 2,
               }}
-            />
+            >
+              CAST:
+            </span>
+
+            {/* SPONSORS — Rule 26: sponsor casting is not in the Fan provisioning
+                matrix (no Fan sponsor/brand-cabinet capability). Performer/Venue only. */}
+            {role === "performer" &&
+              utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSOR", () => setSponsorPanelOpen((v) => !v), {
+                testId: "tmi-top-cluster-sponsors",
+                title: "Cast sponsor presentation overlay or brand cabinet",
+                icon: "🏷️",
+              })}
+
+            {/* USER ID (Expands large scannable QR identity overlay) */}
+            {utilityBtn(
+              identityOpen,
+              role === "performer" ? "#FFD700" : "#00FF88",
+              role === "performer" ? "USER ID" : "USER ID",
+              () => setIdentityOpen((v) => !v),
+              {
+                testId: "tmi-top-cluster-user-id",
+                title: role === "performer" ? "Present Performer ID & Scannable QR Code" : "Present TMI User ID & Scannable QR Code",
+                icon: "🪪",
+              },
+            )}
+
+            {/* SHARE SCREEN */}
+            {utilityBtn(shareActive, "#00FF88", shareActive ? "SHARING SCREEN" : "SHARE SCREEN", () => void cycleSharePress(), {
+              testId: "tmi-top-cluster-sharescreen",
+              title: "Cycle or toggle screen share to Monitor",
+              icon: "🖥️",
+            })}
+          </div>
+
+          {/* ── SEPARATION DIVIDER ── */}
+          <div
+            data-tmi-mix-split-divider="1"
+            style={{
+              width: 1,
+              minHeight: 20,
+              background: "rgba(255,255,255,0.15)",
+              margin: "0 2px",
+              flexShrink: 0,
+            }}
+          />
+
+          {/* ── SECTION 3: MIX (Far Side Audio Control) ── */}
+          <div
+            data-tmi-mix-controls-group="1"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginLeft: "auto",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+                color: "#FFD700",
+                textTransform: "uppercase",
+                marginRight: 2,
+              }}
+            >
+              MIX:
+            </span>
+            <CompactAudioMixer />
+            {/* TAG LIGHTS BED — external distribution is a Performer/Venue
+                capability (matches the canBroadcastExternalDestinations gate
+                already used for LiveDistributionBezel below); not in the Fan
+                provisioning matrix. */}
+            {canBroadcastExternalDestinations({ activeRole: role }) ? (
+              <div
+                data-tmi-tag-lights-bed="1"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "rgba(0,0,0,0.5)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  padding: "2px 6px",
+                }}
+              >
+                {renderTagLight("youtube", "YT", "#FF0000")}
+                {renderTagLight("instagram", "IG", "#E1306C")}
+                {renderTagLight("facebook", "FB", "#1877F2")}
+                {renderTagLight("tiktok", "TK", "#00F2FE")}
+                {renderTagLight("kick", "KK", "#53FC18")}
+              </div>
+            ) : null}
           </div>
         </div>
-      </div>
-
-      {/* 3-Bus Audio Mixer Strip */}
-      <CompactAudioMixer />
+      ) : null}
     </div>
   );
 
@@ -1563,7 +1581,10 @@ export default function CommandCenterMediaStack({
         </div>
       ) : null}
 
-      {/* Media-player live authority — Fan + Performer (Marcel product law) */}
+      {/* CENTER STAGE LAW (mobile): monitors own center stage.
+          LiveLobbyMosaicScrollRail must NEVER mount here (INLINE_MAIN_FLOW = FAIL).
+          Lobby discovery = intentional open only → MiniLiveLobbyWallRuntime (drawer/overlay).
+          Desktop command toolbar mounts BELOW monitors; mobile uses HubMobile* bars. */}
       <div
         data-media-player-live-bezel="1"
         style={{
@@ -1586,16 +1607,15 @@ export default function CommandCenterMediaStack({
         ) : null}
       </div>
 
-      <LiveLobbyMosaicScrollRail
-        role={role === "performer" ? "performer" : "fan"}
-        viewerUserId={userId}
-        accentColor={role === "performer" ? "#FFD700" : "#00FF88"}
-      />
-
-      {/* Top Command Strip & 3-Bus Mixer */}
-      {toolbar}
-
-      <div style={{ position: "relative", flex: naturalHeight ? undefined : 1, minHeight: 0 }}>
+      <div
+        data-canonical-monitor-workspace="1"
+        style={{
+          position: "relative",
+          flex: naturalHeight ? undefined : 1,
+          minHeight: compactHubLayout ? 180 : 0,
+          width: "100%",
+        }}
+      >
       <GoLiveBootstrapOverlay
         phase={bootPhase}
         errorCode={bootErrorCode}
@@ -1731,6 +1751,9 @@ export default function CommandCenterMediaStack({
       />
       </div>
 
+      {/* Desktop-only command strip — never between top chrome and monitors on mobile. */}
+      {!compactHubLayout ? toolbar : null}
+
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}
 
       {/* Overlays / Runtimes (Root-Level Mounting) */}
@@ -1746,8 +1769,110 @@ export default function CommandCenterMediaStack({
           role={role === "performer" ? "performer" : "fan"}
           isOpen={miniLobbyWallOpen}
           onClose={() => setMiniLobbyWallOpen(false)}
+          viewerUserId={userId}
         />
       )}
+
+      {/* Expanded User ID / Stage QR Overlay (Preserves monitor session beneath) */}
+      {identityOpen ? (
+        <div
+          data-tmi-user-id-stage-overlay="1"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(3, 5, 14, 0.88)",
+            backdropFilter: "blur(14px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => setIdentityOpen(false)}
+        >
+          <div
+            style={{
+              background: "linear-gradient(135deg, #101626 0%, #060913 100%)",
+              border: `2px solid ${role === "performer" ? "#FFD700" : "#00FFFF"}`,
+              boxShadow: `0 0 50px ${role === "performer" ? "rgba(255,215,0,0.35)" : "rgba(0,255,255,0.35)"}`,
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 420,
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              textAlign: "center",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIdentityOpen(false)}
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 900,
+              }}
+            >
+              ✕ CLOSE
+            </button>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: "0.18em",
+                color: role === "performer" ? "#FFD700" : "#00FFFF",
+                textTransform: "uppercase",
+              }}
+            >
+              {role === "performer" ? "PERFORMER IDENTITY · STAGE QR" : "USER IDENTITY · PROFILE QR"}
+            </div>
+            <div
+              style={{
+                width: 220,
+                height: 220,
+                background: "#fff",
+                borderRadius: 12,
+                padding: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+              }}
+            >
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}/p/${userId ? (userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`) : "member"}`
+                    : "https://themusiciansindex.com"
+                )}`}
+                alt="Stage ID QR"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", letterSpacing: "0.04em" }}>
+              {displayName || (role === "performer" ? "TMI HEADLINER" : "TMI MEMBER")}
+            </div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: "monospace" }}>
+              {typeof window !== "undefined" ? `${window.location.origin}/p/${userId ? (userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`) : "member"}` : "/p/member"}
+            </div>
+            <div style={{ fontSize: 9, color: "#00FF88", fontWeight: 800, letterSpacing: "0.1em" }}>
+              SCAN TO OPEN CANONICAL PROFILE & TIP WALLET
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

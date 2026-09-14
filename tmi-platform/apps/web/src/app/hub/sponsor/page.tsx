@@ -1,107 +1,61 @@
 "use client";
 
-import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+/**
+ * Sponsor Hub workspace — chrome via hub/sponsor/layout.tsx.
+ */
+
 import SponsorHubShell from "@/components/sponsor/SponsorHubShell";
 import LiveMediaWall from "@/components/media/LiveMediaWall";
-import Link from "next/link";
-import { HubBackNav } from "@/components/nav/HubBackNav";
-import RoomContainer from "@/components/room/RoomContainer";
-import WidgetDrawer from "@/components/room/WidgetDrawer";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import MediaMonitor from "@/components/video/MediaMonitor";
 
-const NAV_LINKS = [
-  { href: "/hub/sponsor",        label: "Dashboard"     },
-  { href: "/sponsor/campaigns",  label: "Campaigns"     },
-  { href: "/sponsor/placements", label: "Placements"    },
-  { href: "/sponsor/contests",   label: "Contests"      },
-  { href: "/sponsor/analytics",  label: "Analytics"     },
-  { href: "/sponsor/contracts",  label: "Contracts"     },
-  { href: "/sponsor/payments",   label: "Payments"      },
-  { href: "/giveaway",           label: "Giveaway"      },
-  { href: "/settings",           label: "Settings"      },
-  { href: "/home/1",             label: "Home"          },
-  { href: "/api/auth/logout",    label: "Exit / Logout" },
-];
-
 export default function SponsorHubPage() {
   return (
-    <RoomContainer roomId="sponsor-hub" title="Sponsor Hub" accentColor="#FFD700" bpm={90}>
-      <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
-        <NeonWaveUnderlay colorA="#FFD700" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.07} zIndex={0} />
-
-        {/* Nav bar */}
-        <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(255,215,0,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 16, overflowX: "auto", backdropFilter: "blur(12px)" }}>
-          <HubBackNav accentColor="#FFD700" homeHref="/home/1" fallbackRoute="/home/1" />
-          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.2em", color: "#FFD700", textTransform: "uppercase", flexShrink: 0 }}>Sponsor Hub</span>
-          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              style={{
-                fontSize: 11,
-                color: link.href === "/api/auth/logout" ? "#FF5555" : link.href === "/home/1" ? "#00FFFF" : "rgba(255,255,255,0.5)",
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-                fontWeight: link.href === "/home/1" || link.href === "/api/auth/logout" ? 800 : 400,
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-            <RoleHubAccountMenu accentColor="#FFD700" />
-          </div>
-        </div>
-
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <SponsorHubShell />
-          <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ position: "relative", minHeight: "100%" }}>
+      <NeonWaveUnderlay colorA="#FFD700" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.07} zIndex={0} />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <SponsorHubShell />
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 16px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
+          <div
+            style={{
+              borderRadius: 16,
+              overflow: "hidden",
+              border: "1px solid rgba(255,215,0,0.28)",
+              background: "#000",
+              minHeight: 200,
+              position: "relative",
+            }}
+          >
             <div
               style={{
-                borderRadius: 16,
-                overflow: "hidden",
-                border: "1px solid rgba(255,215,0,0.28)",
-                background: "#000",
-                minHeight: 200,
-                position: "relative",
+                padding: "8px 14px",
+                borderBottom: "1px solid rgba(255,215,0,0.2)",
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: "0.16em",
+                color: "#FFD700",
               }}
             >
-              <div
-                style={{
-                  padding: "8px 14px",
-                  borderBottom: "1px solid rgba(255,215,0,0.2)",
-                  fontSize: 9,
-                  fontWeight: 900,
-                  letterSpacing: "0.16em",
-                  color: "#FFD700",
-                }}
-              >
-                MEDIA · SPONSORSHIP PREVIEW
-              </div>
-              <div style={{ height: 180, position: "relative" }}>
-                <MediaMonitor mode="standby" isActive={false} />
-              </div>
+              MEDIA · SPONSORSHIP PREVIEW
             </div>
-            <DiscoveryRail type="performers" limit={6} accentColor="#FFD700" label="DISCOVER ARTISTS TO SPONSOR" />
-            <DiscoveryRail type="venues" limit={4} accentColor="#00FFFF" label="EVENT & VENUE OPPORTUNITIES" />
-            <LiveMediaWall
-              roomId="sponsor-battles"
-              title="SPONSORED LIVE BATTLES"
-              mode="billboard"
-              nodeCount={6}
-              accentColor="#FFD700"
-              enterHref="/battles/live"
-              compact={false}
-            />
+            <div style={{ height: 180, position: "relative" }}>
+              <MediaMonitor mode="standby" isActive={false} />
+            </div>
           </div>
+          <DiscoveryRail type="performers" limit={6} accentColor="#FFD700" label="DISCOVER ARTISTS TO SPONSOR" />
+          <DiscoveryRail type="venues" limit={4} accentColor="#00FFFF" label="EVENT & VENUE OPPORTUNITIES" />
+          <LiveMediaWall
+            roomId="sponsor-battles"
+            title="SPONSORED LIVE BATTLES"
+            mode="billboard"
+            nodeCount={6}
+            accentColor="#FFD700"
+            enterHref="/battles/live"
+            compact={false}
+          />
         </div>
-
-        <WidgetDrawer />
       </div>
-    </RoomContainer>
+    </div>
   );
 }

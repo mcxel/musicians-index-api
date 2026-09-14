@@ -1,7 +1,15 @@
 "use client";
 
 /**
- * LiveLobbyMosaicScrollRail — thumb-scroll horizontal mosaic of live WebRTC tiles.
+ * LiveLobbyMosaicScrollRail — LEGACY / REMOVE_PENDING for Hub main flow.
+ *
+ * CLASSIFICATION: INLINE_MAIN_FLOW when mounted in CommandCenterMediaStack = FAIL.
+ * Canonical mobile Lobby Wall path:
+ *   HubMobileQuickActionBar LOBBIES → CompactQuickPanelHost → MiniLiveLobbyWallRuntime (OVERLAY/DRAWER).
+ *
+ * Do NOT import this into CommandCenterMediaStack, CommandCenterShell, or any Hub center-stage slot.
+ * File retained only for potential non-Hub discovery surfaces pending ledger retirement.
+ *
  * Product law (Marcel 2026-09-01): Fan + Performer sessions on one rail;
  * tap → Universal Media Player watch (`/hub/{role}?watch=`), not siloed room routes.
  * Self-discovery: live broadcaster sees + scrolls to their own tile.

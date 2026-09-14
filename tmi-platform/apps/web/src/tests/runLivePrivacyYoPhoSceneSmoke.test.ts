@@ -7,6 +7,7 @@ import {
   evaluateLiveRoomJoinAccess,
   mapLivePrivacyToRegistry,
   normalizeLivePrivacyMode,
+  resolveAudiencePrivacyFromSession,
 } from "../lib/live/liveRoomPrivacyGate";
 import { getYoPhoImageCapacity } from "../lib/yopho/YoPhoImageCapacity";
 import { ensureTripleLayerStack, countStackLayers } from "../lib/yopho/YoPhoLayerStack";
@@ -20,6 +21,17 @@ async function main() {
   assert.equal(mapLivePrivacyToRegistry("invite"), "INVITE_ONLY");
   assert.equal(mapLivePrivacyToRegistry("public"), "PUBLIC");
   assert.equal(normalizeLivePrivacyMode("FRIENDS"), "friends");
+
+  assert.equal(
+    resolveAudiencePrivacyFromSession({ privacy: "INVITE_ONLY", audiencePrivacyMode: "friends" }),
+    "friends",
+  );
+  assert.equal(
+    resolveAudiencePrivacyFromSession({ privacy: "INVITE_ONLY" }),
+    "private",
+    "INVITE_ONLY without mode fails closed as private (no fake friends pass)",
+  );
+  assert.equal(resolveAudiencePrivacyFromSession({ privacy: "PUBLIC" }), "public");
 
   const privateDeny = await evaluateLiveRoomJoinAccess({
     viewerUserId: "fan-1",
@@ -71,7 +83,15 @@ async function main() {
   console.log("PASS live privacy + YoPho 2+1 + Scene Factory controller smoke");
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
+describe("Live privacy gate + YoPho 2+1 capacity smoke", () => {
+  it("privacy resolver fails closed, join gate honors privacy, YoPho layer stack upgrades, scene factory stays locked", async () => {
+    await expect(main()).resolves.toBeUndefined();
+  });
 });
+
+if (typeof describe === "undefined") {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}

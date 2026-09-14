@@ -4,7 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRealFoundingPacks, isRealPriceId } from '@/lib/stripe/products';
-import { listMembershipOffersLowestFirst } from '@/lib/commerce/CanonicalPricingRegistry';
+import {
+  listCanonicalPricingByFamily,
+  listMembershipOffersLowestFirst,
+  type CanonicalPricingEntry,
+} from '@/lib/commerce/CanonicalPricingRegistry';
 
 // Membership cards are built only via listMembershipOffersLowestFirst →
 // CanonicalPricingRegistry / products.ts (no parallel hard-coded $ ladder).
@@ -34,7 +38,7 @@ const FOUNDING_PACKS = [
     icon: '🎙️',
     price: '$15',
     color: '#FF2DAA',
-    badge: 'POPULAR',
+    badge: null as string | null,
     perks: [
       'Everything in Supporter Pack',
       'Extra vibe presets for your lobby',
@@ -68,7 +72,7 @@ const FOUNDING_PACKS = [
     icon: '💎',
     price: '$50',
     color: '#AA2DFF',
-    badge: 'ELITE',
+    badge: null as string | null,
     perks: [
       'Everything in Founding Member',
       'Diamond Founder badge — permanent',
@@ -82,54 +86,48 @@ const FOUNDING_PACKS = [
   },
 ] as const;
 
-// ── Advertiser entry-level products ──────────────────────────────────────────
+// Advertiser entry cards: price/name/priceId come from CanonicalPricingRegistry's
+// ONE_TIME_PLATFORM_AD ladder (never a hand-rolled $ table — that's what caused
+// the $10-$25/wk mismatch this replaced). Presentation-only fields (icon/color/
+// perks/cta copy) are looked up locally by catalogId below.
+const ADVERTISER_PRESENTATION: Record<string, { icon: string; color: string; perks: string[]; cta: string }> = {
+  "ad.platform.micro": {
+    icon: "🎯",
+    color: "#00FFFF",
+    perks: ["Home banner rotation", "Fan hub bottom slot", "No commitment"],
+    cta: "TRY A MICRO SPOT",
+  },
+  "ad.platform.day": {
+    icon: "📣",
+    color: "#00FFFF",
+    perks: ["Home banner + hub placements", "24-hour run", "Real impression reporting"],
+    cta: "RUN A DAY SPOT",
+  },
+  "ad.platform.week": {
+    icon: "📅",
+    color: "#FF2DAA",
+    perks: ["Home banner + magazine leaderboard", "7-day run", "Real impression reporting"],
+    cta: "RUN A WEEK SPOT",
+  },
+  "ad.platform.feature": {
+    icon: "⭐",
+    color: "#FFD700",
+    perks: ["Featured home banner placement", "Priority rotation", "Real impression reporting"],
+    cta: "FEATURE MY BRAND",
+  },
+  "ad.platform.premium": {
+    icon: "💠",
+    color: "#AA2DFF",
+    perks: ["Top-tier home banner placement", "Maximum rotation priority", "Real impression reporting"],
+    cta: "GO PREMIUM",
+  },
+};
 
-const ADVERTISER_ENTRY = [
-  {
-    key: 'ad-micro',
-    name: 'MICRO AD',
-    icon: '📣',
-    color: '#00FFFF',
-    price: '$10/wk',
-    amount: 1000,
-    perks: ['1 ad slot for 7 days', 'Reaches active listeners', 'Basic impression report'],
-    cta: 'RUN MICRO AD',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_micro_weekly&mode=payment&amount=1000&productName=TMI+Micro+Ad',
-  },
-  {
-    key: 'ad-local',
-    name: 'LOCAL SHOUTOUT',
-    icon: '📍',
-    color: '#00FF88',
-    price: '$15/wk',
-    amount: 1500,
-    perks: ['Shoutout on 3 active rooms', 'Fan chat mentions', 'Weekly reach summary'],
-    cta: 'GET SHOUTOUT',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_local_weekly&mode=payment&amount=1500&productName=TMI+Local+Shoutout',
-  },
-  {
-    key: 'ad-playlist',
-    name: 'PLAYLIST BOOST',
-    icon: '🎵',
-    color: '#FF2DAA',
-    price: '$20/wk',
-    amount: 2000,
-    perks: ['Song featured in 2 TMI playlists', 'Artist discovery boost', 'Play count report'],
-    cta: 'BOOST PLAYLIST',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_playlist_weekly&mode=payment&amount=2000&productName=TMI+Playlist+Boost',
-  },
-  {
-    key: 'ad-sidebar',
-    name: 'SIDEBAR AD',
-    icon: '🖼️',
-    color: '#FFD700',
-    price: '$25/wk',
-    amount: 2500,
-    perks: ['Sidebar placement across live rooms', 'Click-through tracking', 'Weekly impression report'],
-    cta: 'PLACE SIDEBAR AD',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_sidebar_weekly&mode=payment&amount=2500&productName=TMI+Sidebar+Ad',
-  },
-] as const;
+function formatAdPrice(priceCents: number, interval: CanonicalPricingEntry["interval"]): string {
+  const dollars = (priceCents / 100).toFixed(2).replace(/\.00$/, "");
+  if (interval && interval !== "one_time") return `$${dollars}/${interval}`;
+  return `$${dollars}`;
+}
 
 // ── Support economy ───────────────────────────────────────────────────────────
 
@@ -190,7 +188,7 @@ function getMembershipTierCards(accountType: 'fan' | 'performer') {
       icon: MEMBERSHIP_ICONS[offer.tier],
       color: MEMBERSHIP_COLORS[offer.tier],
       price: isFree ? '$0' : `$${(offer.priceCents / 100).toFixed(2)}/mo`,
-      badge: offer.tier === 'PRO' ? 'START HERE' : offer.tier === 'FAMILY' ? 'BEST VALUE' : offer.tier === 'BAND' ? 'GROUPS' : null,
+      badge: null as string | null,
       perks: offer.features,
       cta: isFree ? 'JOIN FREE' : offer.tier === 'PRO' ? 'GET PRO' : `UPGRADE TO ${offer.tier}`,
       ctaHref: isFree
@@ -211,6 +209,18 @@ export default function PricingPage() {
   const visibleTiers = showAll
     ? [...fanTiers, ...performerTiers]
     : [...fanTiers.slice(0, 2), ...performerTiers.slice(0, 2)];
+  // Advertiser cards: price/name/priceId sourced live from the canonical
+  // ONE_TIME_PLATFORM_AD ladder — never a hand-rolled $ table (Rule 20).
+  const advertiserEntries = listCanonicalPricingByFamily('ONE_TIME_PLATFORM_AD')
+    .filter((e) => ADVERTISER_PRESENTATION[e.catalogId])
+    .map((e) => ({
+      key: e.catalogId,
+      name: e.name,
+      price: formatAdPrice(e.priceCents, e.interval),
+      ctaHref: `/api/stripe/checkout?priceId=${encodeURIComponent(e.priceId)}&mode=payment&amount=${e.priceCents}&productName=${encodeURIComponent(e.name)}`,
+      ...ADVERTISER_PRESENTATION[e.catalogId],
+    }));
+
   // Founder packs stay hidden until registry SKUs have real Stripe Price IDs.
   const realFounding = getRealFoundingPacks();
   const purchasableFoundingPacks =
@@ -482,7 +492,7 @@ export default function PricingPage() {
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 16 }}>
-            {ADVERTISER_ENTRY.map((ad) => (
+            {advertiserEntries.map((ad) => (
               <div key={ad.key} style={{ background: `${ad.color}06`, border: `1px solid ${ad.color}25`, borderRadius: 12, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 24, marginBottom: 5 }}>{ad.icon}</div>

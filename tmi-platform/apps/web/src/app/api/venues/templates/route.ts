@@ -14,7 +14,7 @@ import {
 import { getAllTierBaseVenueSkins } from "@/lib/venues/TierBaseVenueSkin";
 import { listCatalogProducts } from "@/lib/venue/VenueSkinCommerce";
 import { getAudienceMigrationPolicy, getMigrationCommitRule } from "@/lib/live/ElasticRoomOrchestrator";
-import { OVERFLOW_SYSTEMS } from "@/lib/venues/VenueOverflowSystemMap";
+import { ORCHESTRA_AUTHORITY_LOCK, OVERFLOW_SYSTEMS } from "@/lib/venues/VenueOverflowSystemMap";
 import { GLOBAL_SHOW_AUTHORITY_LAWS } from "@/lib/venues/GlobalShowAuthority";
 import { VENUE_PORTAL_LAWS, DEFAULT_CAMPUS_PORTALS } from "@/lib/venues/VenuePortalContract";
 import {
@@ -38,6 +38,7 @@ export async function GET() {
     showAuthorityLaws: GLOBAL_SHOW_AUTHORITY_LAWS,
     portalLaws: VENUE_PORTAL_LAWS,
     portals: DEFAULT_CAMPUS_PORTALS,
+    orchestraAuthorityLock: ORCHESTRA_AUTHORITY_LOCK,
     overflowSystems: OVERFLOW_SYSTEMS,
     migrationPolicy: getAudienceMigrationPolicy(),
     commitBeforeMove: getMigrationCommitRule(),

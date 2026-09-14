@@ -16,6 +16,7 @@ import {
   resolveGoLiveCertifiedVenuePackage,
 } from "../lib/venues/CertifiedVenuePackage";
 import { SCENE_FACTORY_AUDIT } from "../lib/venues/VenueSceneFactory";
+import { hubMonitorUvrProps } from "../lib/live/canonicalWorldViewport";
 
 const WEB_SRC = path.resolve(__dirname, "..");
 const WEB_ROOT = path.resolve(__dirname, "../..");
@@ -113,6 +114,8 @@ export async function runVenueAssetBindingTest(): Promise<{
   const glr = readSrc("components", "live", "GoLiveRuntime.tsx");
   const aes = readSrc("components", "live", "ArenaEventShell.tsx");
   const rel = readSrc("components", "live", "RoomEnvironmentLayer.tsx");
+  const hubPlayer = readSrc("components", "live", "HubMonitorVenuePlayer.tsx");
+  const hubViewport = readSrc("lib", "live", "canonicalWorldViewport.ts");
   results["H_renderer_receives_package"] =
     uvr.includes("certifiedPackage") &&
     uvr.includes("data-certified-venue-id") &&
@@ -122,6 +125,32 @@ export async function runVenueAssetBindingTest(): Promise<{
     aes.includes("certifiedPackage") &&
     rel.includes("certifiedPackage") &&
     !/getVenueAsset\(\s*venueType\s*\)\s*\?\?\s*getVenueAsset\(\s*[\"']concert[\"']\s*\)/.test(rel);
+
+  // H2. Hub Monitor B binds CertifiedVenuePackage into hubVenueOnly UVR (Step 5A)
+  const livePkg = resolveGoLiveCertifiedVenuePackage({ category: "live", eventType: "live" });
+  const hubProps = hubMonitorUvrProps("B", "room-hub-test", {
+    certifiedPackage: livePkg,
+    venueId: livePkg.venueId,
+  });
+  results["H2_hub_monitor_binds_package"] =
+    hubPlayer.includes("resolveGoLiveCertifiedVenuePackage") &&
+    hubPlayer.includes("certifiedPackage") &&
+    hubPlayer.includes("data-certified-venue-id") &&
+    hubPlayer.includes("data-venue-render-mode") &&
+    hubViewport.includes("certifiedPackage") &&
+    hubViewport.includes("venueId") &&
+    /data-hub-uvr-embedded[\s\S]{0,1200}?data-certified-venue-id[\s\S]{0,400}?data-venue-render-mode/.test(uvr) &&
+    uvr.includes("data-certified-ambient") &&
+    uvr.includes("isVenuePackageRenderable") &&
+    uvr.includes("hubAmbientUrl") &&
+    uvr.includes("hubVenueIndex") &&
+    hubProps != null &&
+    hubProps.hubVenueOnly === true &&
+    hubProps.certifiedPackage?.venueId === "concert" &&
+    hubProps.certifiedPackage?.renderMode === "DEGRADED_VIDEO" &&
+    hubProps.venueId === "concert" &&
+    livePkg.ambientVideoVerified === true &&
+    Boolean(livePkg.ambientVideoUrl);
 
   // I. venue switch must not republish / second session / camera / webrtc (source contracts)
   const pkgMod = readSrc("lib", "venues", "CertifiedVenuePackage.ts");

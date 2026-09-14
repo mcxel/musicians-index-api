@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { performPersonaSwitch } from "@/lib/auth/performPersonaSwitch";
 import {
   ADMIN_CONCIERGE_DESTINATIONS,
   CONCIERGE_GROUP_ORDER,
@@ -267,11 +268,34 @@ export default function AdminConciergePanel({
                       };
 
                       if (dest.href) {
+                        const isPersonaSwitch =
+                          dest.id === "fan-page" ||
+                          dest.id === "performer-page" ||
+                          dest.id === "overseer";
+
+                        const handlePersonaClick = async (e: React.MouseEvent) => {
+                          if (!isPersonaSwitch) return;
+                          e.preventDefault();
+                          onClose();
+                          const targetRole =
+                            dest.id === "fan-page"
+                              ? "FAN"
+                              : dest.id === "performer-page"
+                                ? "PERFORMER"
+                                : "ADMIN";
+                          const res = await performPersonaSwitch(targetRole);
+                          if (res.ok && res.hubUrl) {
+                            window.location.href = res.hubUrl;
+                          } else if (dest.href) {
+                            window.location.href = dest.href;
+                          }
+                        };
+
                         return (
                           <Link
                             key={dest.id}
                             href={dest.href}
-                            onClick={() => onClose()}
+                            onClick={isPersonaSwitch ? handlePersonaClick : () => onClose()}
                             style={tileStyle}
                           >
                             {dest.label}

@@ -228,14 +228,33 @@ export function getVenueSceneInstance(id: string): VenueSceneInstance | undefine
 }
 
 /**
+ * Architecture lock — sole scene-instance factory for Elastic + World generators.
+ * Controller remains callable for orchestrator/admin; parallel SceneFactoryV2 is forbidden.
+ */
+export const SCENE_FACTORY_LOCK = {
+  locked: true as const,
+  lockedAt: "2026-09-12",
+  canonicalFactory: "VenueSceneFactory",
+  entryPoints: [
+    "ElasticRoomOrchestrator.createOverflow → requestVenueSceneInstance",
+    "controlRequestVenueScene → requestVenueSceneInstance",
+    "WorldGeneratorRegistry.runSceneGenerator → requestVenueSceneInstance",
+  ] as const,
+  parallelGeneratorForbidden: true,
+  geometryStatus: "MISSING until measured GLBs exist",
+  note: "Lock freezes authority, not the admin instantiate path. No second scene mill.",
+} as const;
+
+/**
  * Scene Factory Controller — unlocked for orchestrator/admin use.
  * Does not invent SceneFactoryV2. Non-instantiable templates return honest deny.
  */
 export const SCENE_FACTORY_CONTROLLER = {
   unlocked: true as const,
+  architectureLocked: true as const,
   entryPoint: "controlRequestVenueScene → requestVenueSceneInstance",
   parallelGeneratorForbidden: true,
-  note: "Unlocked — request instances only through existing VenueSceneFactory. Geometry remains MISSING until real GLBs exist.",
+  note: "Controller callable; architecture LOCKED to VenueSceneFactory only. Geometry remains MISSING until real GLBs exist.",
 } as const;
 
 export type SceneFactoryControlResult =
@@ -264,6 +283,7 @@ export function controlRequestVenueScene(req: VenueSceneFactoryRequest): SceneFa
 
 export function getSceneFactorySnapshot() {
   return {
+    lock: SCENE_FACTORY_LOCK,
     controller: SCENE_FACTORY_CONTROLLER,
     laws: {
       existingSceneFactory: VENUE_PLATFORM_LAWS.existingSceneFactory,

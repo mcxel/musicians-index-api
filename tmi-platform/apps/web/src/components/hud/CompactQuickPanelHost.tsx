@@ -110,6 +110,7 @@ export default function CompactQuickPanelHost({
         role={role === "performer" ? "performer" : "fan"}
         isOpen={true}
         onClose={closePanel}
+        viewerUserId={userId}
       />
     );
   }
