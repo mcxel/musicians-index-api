@@ -18,18 +18,8 @@ interface HomeChartsOptions {
   overrides?: HomepageRuntimeOverrides;
 }
 
-const FALLBACK_CHARTS: HomeChartRow[] = [
-  { id: 'fallback-1', rank: 1, title: 'Crown Season Vol. 3', artist: 'Jaylen Cross', genre: 'Hip-Hop', change: 'up', plays: '1.2M', slug: null, followers: 1200000 },
-  { id: 'fallback-2', rank: 2, title: 'Midnight Frequencies', artist: 'Amirah Wells', genre: 'R&B', change: 'up', plays: '980K', slug: null, followers: 980000 },
-  { id: 'fallback-3', rank: 3, title: 'Neon Cathedral', artist: 'DESTINED', genre: 'Neo-Soul', change: 'same', plays: '876K', slug: null, followers: 876000 },
-  { id: 'fallback-4', rank: 4, title: 'Velocity', artist: 'Traxx Monroe', genre: 'Trap', change: 'up', plays: '742K', slug: null, followers: 742000 },
-  { id: 'fallback-5', rank: 5, title: 'Golden Years', artist: 'Savannah J.', genre: 'Soul', change: 'down', plays: '690K', slug: null, followers: 690000 },
-  { id: 'fallback-6', rank: 6, title: 'Unwritten Maps', artist: 'Nova Reign', genre: 'Afrobeats', change: 'up', plays: '644K', slug: null, followers: 644000 },
-  { id: 'fallback-7', rank: 7, title: 'Mirror Language', artist: 'Diana Cross', genre: 'Pop', change: 'down', plays: '590K', slug: null, followers: 590000 },
-  { id: 'fallback-8', rank: 8, title: 'Deep Cuts', artist: 'The Cyphers', genre: 'Rap', change: 'same', plays: '541K', slug: null, followers: 541000 },
-  { id: 'fallback-9', rank: 9, title: 'Late Night Studio', artist: 'Khalil B.', genre: 'Lo-Fi', change: 'up', plays: '488K', slug: null, followers: 488000 },
-  { id: 'fallback-10', rank: 10, title: 'Frequency Wars', artist: 'Static & Bloom', genre: 'Electronic', change: 'new', plays: '412K', slug: null, followers: 412000 },
-];
+/** Rule 3/20: no hand-typed chart entries. Empty until real ranked performers exist. */
+const FALLBACK_CHARTS: HomeChartRow[] = [];
 
 function formatCount(value: number): string {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;

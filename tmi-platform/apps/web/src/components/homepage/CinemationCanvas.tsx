@@ -29,13 +29,18 @@ interface CardPos {
   zIndex: number;
 }
 
+/**
+ * Rule 20: no fabricated vote counts, active-room counts, fake events, or
+ * implied brand partnerships. These are honest navigational cards — real
+ * activity numbers belong on the pages they link to, not invented here.
+ */
 export const DEFAULT_CANVAS_CARDS: CanvasCard[] = [
-  { id: "cc1", title: "Crown Holder", subtitle: "Wavetek · This Week", stat: "14,200 votes", badge: "CROWN", badgeColor: "#FFD700", href: "/leaderboard", accentColor: "#FFD700", initialX: 20, initialY: 30, width: 200 },
-  { id: "cc2", title: "Battle Ring", subtitle: "8 active battles", stat: "LIVE NOW", badge: "HOT", badgeColor: "#FF2DAA", href: "/battles", accentColor: "#FF2DAA", initialX: 240, initialY: 20, width: 180 },
-  { id: "cc3", title: "Cypher Arena", subtitle: "16 open cyphers", stat: "Join free", badge: "OPEN", badgeColor: "#00FF88", href: "/cypher", accentColor: "#00FF88", initialX: 440, initialY: 50, width: 180 },
-  { id: "cc4", title: "Beat Drop", subtitle: "New this week: 24 beats", stat: "$29 basic", badge: "NEW", badgeColor: "#AA2DFF", href: "/beats/marketplace", accentColor: "#AA2DFF", initialX: 640, initialY: 25, width: 180 },
-  { id: "cc5", title: "Neon Vibe Show", subtitle: "Live event · Tonight 8PM", stat: "$85 VIP", badge: "TICKETS", badgeColor: "#00FFFF", href: "/tickets", accentColor: "#00FFFF", initialX: 140, initialY: 180, width: 200 },
-  { id: "cc6", title: "Sponsor Drop", subtitle: "Roland × TMI collab", stat: "Ads open", badge: "PARTNER", badgeColor: "#FFD700", href: "/sponsors", accentColor: "#FFD700", initialX: 360, initialY: 190, width: 200 },
+  { id: "cc1", title: "Leaderboard", subtitle: "See who's climbing the ranks", badge: "CROWN", badgeColor: "#FFD700", href: "/leaderboard", accentColor: "#FFD700", initialX: 20, initialY: 30, width: 200 },
+  { id: "cc2", title: "Battle Ring", subtitle: "Enter or watch a battle", href: "/battles", accentColor: "#FF2DAA", initialX: 240, initialY: 20, width: 180 },
+  { id: "cc3", title: "Cypher Arena", subtitle: "Join free", badge: "OPEN", badgeColor: "#00FF88", href: "/cypher", accentColor: "#00FF88", initialX: 440, initialY: 50, width: 180 },
+  { id: "cc4", title: "Beat Drop", subtitle: "Explore the beat marketplace", href: "/beats/marketplace", accentColor: "#AA2DFF", initialX: 640, initialY: 25, width: 180 },
+  { id: "cc5", title: "Live Events", subtitle: "See what's on the calendar", href: "/tickets", accentColor: "#00FFFF", initialX: 140, initialY: 180, width: 200 },
+  { id: "cc6", title: "Advertise Here", subtitle: "Sponsor this zone", badge: "PARTNER", badgeColor: "#FFD700", href: "/sponsors/advertise", accentColor: "#FFD700", initialX: 360, initialY: 190, width: 200 },
 ];
 
 export default function CinemationCanvas({ cards, height = 320, enableDrag = true }: CinemationCanvasProps) {

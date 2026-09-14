@@ -12,16 +12,12 @@ interface HomeSponsorsOptions {
   overrides?: HomepageRuntimeOverrides;
 }
 
-const FALLBACK_SPONSORS: HomeSponsorRow[] = [
-  { name: 'AMPLIFY RECORDS', tier: 'PLATINUM' },
-  { name: 'BEATLAB STUDIOS', tier: 'GOLD' },
-  { name: 'VELOCITY AUDIO', tier: 'GOLD' },
-  { name: 'NOVA MEDIA GROUP', tier: 'SILVER' },
-  { name: 'CROWN & CO.', tier: 'SILVER' },
-  { name: 'FREQUENCY LABS', tier: 'RUBY' },
-  { name: 'THE VAULT COLLECTIVE', tier: 'RUBY' },
-  { name: 'SONIC AXIS', tier: 'RUBY' },
-];
+/**
+ * Rule 20: no fictional/real-sounding sponsor names presented as live partners.
+ * Empty until a real sponsor (paid or platform-promo, per Rule 12) exists —
+ * consumers render an honest "Advertise Here" empty state.
+ */
+const FALLBACK_SPONSORS: HomeSponsorRow[] = [];
 
 export async function getHomeSponsors(options: HomeSponsorsOptions = {}): Promise<HomeDataEnvelope<HomeSponsorRow[]>> {
   const timestamp = new Date().toISOString();

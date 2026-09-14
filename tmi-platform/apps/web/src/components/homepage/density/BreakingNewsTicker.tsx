@@ -3,19 +3,23 @@
 import Link from "next/link";
 import type { DensityTickerItem } from "@/components/homepage/density/useHomeDensityData";
 
-const TICKER_ITEMS: DensityTickerItem[] = [
-  { id: "bn-1", label: "Breaking", text: "Battle finals locked: Wavetek vs FlowMaster tonight", href: "/battles" },
-  { id: "bn-2", label: "Live", text: "Cypher Arena filled to 92% in last 20 minutes", href: "/cypher" },
-  { id: "bn-3", label: "Drop", text: "New sponsor drop unlocked in Home 1-2 spread", href: "/home/1-2" },
-  { id: "bn-4", label: "Alert", text: "Top 10 leaderboard updated after surprise overtime", href: "/leaderboard" },
-];
-
 interface BreakingNewsTickerProps {
   items?: DensityTickerItem[];
 }
 
 export default function BreakingNewsTicker({ items }: BreakingNewsTickerProps) {
-  const tickerItems = items && items.length > 0 ? items : TICKER_ITEMS;
+  const tickerItems = items ?? [];
+
+  if (tickerItems.length === 0) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-rose-300/30 bg-black/55">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-rose-100">Breaking News</span>
+          <span className="text-[10px] uppercase tracking-[0.12em] text-zinc-400">No breaking news right now</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-xl border border-rose-300/30 bg-black/55">

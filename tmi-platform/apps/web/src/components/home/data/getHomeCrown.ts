@@ -11,12 +11,13 @@ export interface HomeCrownData {
   genres: string[];
 }
 
+/**
+ * Rule 20: no fabricated crown winners/vote counts. Empty until a real featured
+ * artist/contest exists — genres stays a static taxonomy list (not an activity
+ * claim), never padded with fake companion winners.
+ */
 const FALLBACK_CROWN_DATA: HomeCrownData = {
-  winners: [
-    { name: 'JAYLEN CROSS', genre: 'Hip-Hop', title: '"Crown Season" Vol. 3', votes: '24,881', week: 'Week 14' },
-    { name: 'AMIRAH WELLS', genre: 'R&B / Soul', title: '"Midnight Frequencies"', votes: '19,440', week: 'Week 13' },
-    { name: 'DESTINED', genre: 'Neo-Soul', title: '"Unwritten Maps"', votes: '17,220', week: 'Week 12' },
-  ],
+  winners: [],
   genres: ['Hip-Hop', 'R&B / Soul', 'Neo-Soul', 'Trap', 'Afrobeats', 'Gospel', 'Jazz Fusion', 'Lo-Fi'],
 };
 
@@ -34,35 +35,40 @@ export async function getHomeCrown(): Promise<HomeCrownData> {
       ? featured.stageName.toUpperCase()
       : typeof featured?.name === 'string'
         ? featured.name.toUpperCase()
-        : FALLBACK_CROWN_DATA.winners[0].name;
+        : null;
+
+    // Only build a winner entry when the featured-artist call returned a real name —
+    // never splice in a real name alongside fabricated genre/title/votes/week.
+    if (!featuredName) {
+      return FALLBACK_CROWN_DATA;
+    }
 
     const featuredGenre = Array.isArray(featured?.genres) && typeof featured.genres[0] === 'string'
       ? featured.genres[0]
       : typeof featured?.genre === 'string'
         ? featured.genre
-        : FALLBACK_CROWN_DATA.winners[0].genre;
+        : 'Music';
 
     const featuredTitle = typeof featured?.headline === 'string'
       ? featured.headline
       : typeof featured?.title === 'string'
         ? featured.title
-        : FALLBACK_CROWN_DATA.winners[0].title;
+        : '';
 
     const contestWeek = typeof contest?.name === 'string'
       ? contest.name
       : typeof contest?.weekLabel === 'string'
         ? contest.weekLabel
-        : FALLBACK_CROWN_DATA.winners[0].week;
+        : '';
 
     const winners = [
       {
         name: featuredName,
         genre: featuredGenre,
         title: featuredTitle,
-        votes: typeof contest?.votes === 'number' ? contest.votes.toLocaleString() : FALLBACK_CROWN_DATA.winners[0].votes,
+        votes: typeof contest?.votes === 'number' ? contest.votes.toLocaleString() : '',
         week: contestWeek,
       },
-      ...FALLBACK_CROWN_DATA.winners.slice(1),
     ];
 
     const genres = Array.from(new Set(winners.map((winner) => winner.genre).concat(FALLBACK_CROWN_DATA.genres))).slice(0, 8);

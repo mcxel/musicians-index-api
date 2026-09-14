@@ -7,23 +7,10 @@ export interface HomeEditorialArticle {
   authorName?: string;
 }
 
-const FALLBACK_ARTICLES: HomeEditorialArticle[] = [
-  { id: '1', title: 'The New Wave: How Gen Z Is Reshaping Hip-Hop', category: 'FEATURE', slug: '' },
-  { id: '2', title: 'Crown Season: Inside the Most Competitive Week Yet', category: 'EXCLUSIVE', slug: '' },
-  { id: '3', title: 'Rising Voices: 10 Artists You Need to Hear Now', category: 'SPOTLIGHT', slug: '' },
-  { id: '4', title: 'The Business of Beats: Monetizing in the Digital Age', category: 'INDUSTRY', slug: '' },
-];
+/** Rule 20: no fabricated headlines/engagement claims. Empty until real editorial content exists. */
+const FALLBACK_ARTICLES: HomeEditorialArticle[] = [];
 
-const FALLBACK_NEWS = [
-  '🏆 Crown Season enters Week 14 — voting closes Friday midnight',
-  '🎙️ Nova Reign drops surprise visual for "Frequencies" — 2M views overnight',
-  '🎮 Game Night: Name That Tune tournament kicks off at 9PM EST',
-  '📢 New: Live Cypher Rooms now open to all members',
-  '🎤 Interview: Amirah Wells talks touring, healing, and her next era',
-  '🔥 DJ Cyphers mix goes viral — 500K streams in 48 hours',
-  '💰 Brand partnerships up 40% this quarter on the Index',
-  '🌍 Platform now live in 24 countries worldwide',
-];
+const FALLBACK_NEWS: string[] = [];
 
 export interface HomeEditorialData {
   cover: HomeEditorialArticle[];

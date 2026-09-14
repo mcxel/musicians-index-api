@@ -29,18 +29,10 @@ interface HomeLiveOptions {
   overrides?: HomepageRuntimeOverrides;
 }
 
+/** Rule 20: no fake live rooms/shows. Empty until real data exists — consumers render an honest empty state. */
 const FALLBACK_LIVE_DATA: HomeLiveData = {
-  rooms: [
-    { id: '1', name: 'Midnight Cypher Session', host: 'Jaylen Cross', viewers: 842, genre: 'Hip-Hop', type: 'CYPHER' },
-    { id: '2', name: 'R&B Vibes After Dark', host: 'Amirah Wells', viewers: 1204, genre: 'R&B', type: 'LIVE' },
-    { id: '3', name: 'Trap Producers Arena', host: 'Traxx Monroe', viewers: 609, genre: 'Trap', type: 'ARENA' },
-    { id: '4', name: 'Neo-Soul Collective', host: 'DESTINED', viewers: 477, genre: 'Neo-Soul', type: 'SHOWCASE' },
-  ],
-  shows: [
-    { id: '1', title: 'Crown Season Finale', artist: 'Jaylen Cross', date: 'Apr 12', venue: 'TMI Live Arena', ticketsLeft: 43 },
-    { id: '2', title: 'Midnight Sessions Vol. 6', artist: 'Amirah Wells', date: 'Apr 19', venue: 'Studio Stage', ticketsLeft: 112 },
-    { id: '3', title: 'Underground Battle Night', artist: 'Various Artists', date: 'Apr 26', venue: 'Cypher Arena', ticketsLeft: 7 },
-  ],
+  rooms: [],
+  shows: [],
 };
 
 function formatDate(raw: string | undefined): string {
