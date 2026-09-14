@@ -5,6 +5,7 @@
  */
 
 import type { AdMonetizationKind } from "./CanonicalPricingRegistry";
+import { MAGAZINE_AD_MODULE_SLOTS } from "@/lib/magazine/MagazineIssueContract";
 
 export type AdInventoryClass = "ADSENSE" | "DIRECT_SPONSOR" | "HOUSE_PROMO" | "NO_FILL";
 
@@ -18,6 +19,7 @@ export type AdSurface =
   | "COMMAND_CENTER_BOTTOM"
   | "COMMAND_CENTER_MID"
   | "MAGAZINE_LEADERBOARD"
+  | "MAGAZINE_MODULE"
   | "HOME_BANNER";
 
 export interface AdPlacementSlot {
@@ -129,6 +131,100 @@ export const AD_PLACEMENT_REGISTRY: AdPlacementSlot[] = [
     minHeight: 90,
     protectedRegions: ["article-body", "magazine-nav"],
     description: "Magazine article leaderboard",
+  },
+  // Magazine composition modules (Rule 12 fallback chain via resolveMagazineAdModule →
+  // SponsorRegistry.getAdSlotForZone). zoneKey values come from MAGAZINE_AD_MODULE_SLOTS
+  // (MagazineIssueContract.ts) — never re-typed here, so the contract stays the one source.
+  {
+    slotId: "magazine-ad-slot-top-inset",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "ADSENSE",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.AD_SLOT_TOP_INSET,
+    width: 728,
+    height: 90,
+    minHeight: 90,
+    protectedRegions: ["article-body", "magazine-nav", "hero-image"],
+    description: "Magazine page top inset — above the fold, below masthead",
+  },
+  {
+    slotId: "magazine-sponsor-sidebar",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "DIRECT_SPONSOR",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.SPONSOR_SIDEBAR,
+    width: 300,
+    height: 250,
+    minHeight: 250,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Magazine sponsor sidebar — direct sponsor priority zone",
+  },
+  {
+    slotId: "magazine-ad-slot-mid-article",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "ADSENSE",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.AD_SLOT_MID_ARTICLE,
+    width: 336,
+    height: 280,
+    minHeight: 280,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Native ad card between editorial sections",
+  },
+  {
+    slotId: "magazine-partner-callout",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "DIRECT_SPONSOR",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.PARTNER_CALLOUT,
+    width: 300,
+    height: 120,
+    minHeight: 120,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Small paid-partnership callout inset",
+  },
+  {
+    slotId: "magazine-ad-slot-section-break",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "ADSENSE",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.AD_SLOT_SECTION_BREAK,
+    width: 728,
+    height: 90,
+    minHeight: 90,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Full-width break between major editorial sections",
+  },
+  {
+    slotId: "magazine-sponsor-feature-strip",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "DIRECT_SPONSOR",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.SPONSOR_FEATURE_STRIP,
+    width: 728,
+    height: 140,
+    minHeight: 140,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Branded sponsor feature strip — direct sponsor priority zone",
+  },
+  {
+    slotId: "magazine-ad-slot-lower-page",
+    surface: "MAGAZINE_MODULE",
+    inventoryClass: "ADSENSE",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: MAGAZINE_AD_MODULE_SLOTS.AD_SLOT_LOWER_PAGE,
+    width: 728,
+    height: 90,
+    minHeight: 90,
+    protectedRegions: ["article-body", "magazine-nav"],
+    description: "Lower-page ad slot before discovery/community modules",
   },
   {
     slotId: "home-banner",

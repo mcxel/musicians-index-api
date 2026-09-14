@@ -7,7 +7,7 @@ import { TIMING } from "@/lib/motion/timingRegistry";
 import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
-import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
+import CanonicalAdSlot from "@/components/ads/CanonicalAdSlot";
 import { ARCHETYPES, type MagazineArchetype, type ArchetypeConfig } from "@/lib/magazine/MagazineDesignEngine";
 import type { MagazinePageClass, RandomPageSubtype } from "@/lib/magazine/MagazineIssueContract";
 import { MAGAZINE_XP_POLICY } from "@/lib/magazine/MagazineIssueContract";
@@ -988,10 +988,9 @@ export default function MagazineShell({
           borderTop: `1px solid ${archetype.borderColor}40`,
           boxShadow: `0 -4px 16px rgba(0,0,0,0.2)`,
         }}>
-          <AdSenseSlot
-            slot={AD_SLOTS.magazineLeaderboard}
-            format="horizontal"
-            label="ADVERTISEMENT"
+          <CanonicalAdSlot
+            slotId="magazine-leaderboard"
+            venue="magazine"
             style={{ minHeight: 60, maxWidth: 900, margin: "0 auto", border: `1px dashed ${archetype.borderColor}55`, padding: 8, borderRadius: 6 }}
           />
         </div>
@@ -1010,10 +1009,9 @@ export default function MagazineShell({
             pointerEvents: "auto",
           }}
         >
-          <AdSenseSlot
-            slot={AD_SLOTS.magazineInline}
-            format="vertical"
-            label="ADVERTISEMENT"
+          <CanonicalAdSlot
+            slotId="magazine-sponsor-sidebar"
+            venue="magazine"
             style={{ minHeight: 280 }}
           />
         </div>
