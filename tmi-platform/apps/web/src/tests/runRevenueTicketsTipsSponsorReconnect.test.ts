@@ -6,7 +6,11 @@
 import { readFileSync } from "fs";
 import path from "path";
 
-const root = path.resolve(__dirname, "../..");
+// __dirname is src/tests — one level up is src/, matching every relative
+// path below (e.g. "app/api/tickets/create/route.ts" -> src/app/api/...).
+// Was "../.." (resolves to apps/web, missing the src/ segment) — every
+// lookup below 404'd even though the real files exist under src/.
+const root = path.resolve(__dirname, "..");
 
 function src(relPath: string): string {
   return readFileSync(path.join(root, relPath), "utf8");
