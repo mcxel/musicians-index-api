@@ -22,9 +22,10 @@ import {
   type AuthoritativeDestinationState,
   type MasterLiveBroadcastStatus,
 } from "@/lib/broadcast/BroadcastDestinationRegistry";
-import type {
-  BroadcastDestinationPublic,
-  BroadcastProvider,
+import {
+  CANONICAL_BEZEL_PROVIDERS,
+  type BroadcastDestinationPublic,
+  type BroadcastProvider,
 } from "@/lib/broadcast/BroadcastDestinationTypes";
 import {
   hydrateBroadcastDestinations,
@@ -58,6 +59,8 @@ export default function LiveDistributionBezel({
   const [customRtmpUrl, setCustomRtmpUrl] = useState("");
   const [customStreamKey, setCustomStreamKey] = useState("");
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
@@ -88,14 +91,16 @@ export default function LiveDistributionBezel({
     return resolveMasterLiveStatus(isLivePublished);
   }, [isLivePublished]);
 
-  // Primary destinations in canonical order: YT, IG, FB, KK, TW, CST
-  const primary = useMemo(
-    () =>
-      destinations.filter((d) =>
-        ["youtube", "instagram", "facebook", "kick", "twitch", "custom"].includes(d.provider),
-      ),
-    [destinations],
-  );
+  // Primary destinations, ordered from the canonical provider registry — never
+  // a hand-maintained provider list here. Adding a provider to
+  // CANONICAL_BEZEL_PROVIDERS is enough for it to appear, in order, with no
+  // change to this component.
+  const primary = useMemo(() => {
+    const byProvider = new Map(destinations.map((d) => [d.provider, d] as const));
+    return CANONICAL_BEZEL_PROVIDERS.map((p) => byProvider.get(p.provider)).filter(
+      (d): d is BroadcastDestinationPublic => Boolean(d),
+    );
+  }, [destinations]);
 
   const liveCount = destinations.filter((d) => d.connectionStatus === "live").length;
   const connectingCount = destinations.filter((d) => d.connectionStatus === "connecting").length;
@@ -105,6 +110,31 @@ export default function LiveDistributionBezel({
     const delta = direction === "left" ? -120 : 120;
     carouselRef.current.scrollBy({ left: delta, behavior: "smooth" });
   };
+
+  // Chevrons are navigation for the rail, not a broadcast control — they must
+  // honestly reflect whether there's anything further to reach in that
+  // direction rather than always looking active.
+  const updateScrollBounds = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    updateScrollBounds();
+  }, [updateScrollBounds, primary.length, phoneMode]);
+
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollBounds, { passive: true });
+    window.addEventListener("resize", updateScrollBounds);
+    return () => {
+      el.removeEventListener("scroll", updateScrollBounds);
+      window.removeEventListener("resize", updateScrollBounds);
+    };
+  }, [updateScrollBounds]);
 
   const onMasterLiveClick = () => {
     if (typeof window !== "undefined") {
@@ -373,11 +403,13 @@ export default function LiveDistributionBezel({
           </button>
         ) : null}
 
-        {/* 3. CAROUSEL LEFT ARROW ‹ */}
+        {/* 3. CAROUSEL LEFT ARROW ‹ — navigation only, dims when nothing further left */}
         <button
           type="button"
           data-testid="tmi-bezel-carousel-prev"
           aria-label="Previous broadcast destinations"
+          data-can-scroll={canScrollLeft}
+          disabled={!canScrollLeft}
           onClick={() => scrollCarousel("left")}
           style={{
             flexShrink: 0,
@@ -389,7 +421,8 @@ export default function LiveDistributionBezel({
             color: "rgba(255,255,255,0.7)",
             fontSize: 12,
             fontWeight: 900,
-            cursor: "pointer",
+            opacity: canScrollLeft ? 1 : 0.3,
+            cursor: canScrollLeft ? "pointer" : "not-allowed",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -443,11 +476,13 @@ export default function LiveDistributionBezel({
           })}
         </div>
 
-        {/* 5. CAROUSEL RIGHT ARROW › */}
+        {/* 5. CAROUSEL RIGHT ARROW › — navigation only, dims when nothing further right */}
         <button
           type="button"
           data-testid="tmi-bezel-carousel-next"
           aria-label="Next broadcast destinations"
+          data-can-scroll={canScrollRight}
+          disabled={!canScrollRight}
           onClick={() => scrollCarousel("right")}
           style={{
             flexShrink: 0,
@@ -459,7 +494,8 @@ export default function LiveDistributionBezel({
             color: "rgba(255,255,255,0.7)",
             fontSize: 12,
             fontWeight: 900,
-            cursor: "pointer",
+            opacity: canScrollRight ? 1 : 0.3,
+            cursor: canScrollRight ? "pointer" : "not-allowed",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
