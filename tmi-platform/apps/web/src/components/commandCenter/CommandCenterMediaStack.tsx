@@ -1063,34 +1063,38 @@ export default function CommandCenterMediaStack({
     }
   };
 
+  const utilityBtnStyle = (active: boolean, accent: string, disabled?: boolean): React.CSSProperties => ({
+    fontSize: 8,
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    padding: "3px 9px",
+    borderRadius: 6,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+    border: active ? `1px solid ${accent}` : `1px solid ${accent}66`,
+    background: active ? `${accent}22` : "transparent",
+    color: accent,
+    fontFamily: "inherit",
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    whiteSpace: "nowrap",
+  });
+
   const utilityBtn = (
     active: boolean,
     accent: string,
     label: string,
     onClick: () => void,
-    opts?: { testId?: string; title?: string; icon?: string },
+    opts?: { testId?: string; title?: string; icon?: string; disabled?: boolean },
   ) => (
     <button
       type="button"
       data-testid={opts?.testId}
-      onClick={onClick}
+      onClick={opts?.disabled ? undefined : onClick}
+      disabled={opts?.disabled}
       title={opts?.title ?? label}
-      style={{
-        fontSize: 8,
-        fontWeight: 900,
-        letterSpacing: "0.08em",
-        padding: "3px 9px",
-        borderRadius: 6,
-        cursor: "pointer",
-        border: active ? `1px solid ${accent}` : `1px solid ${accent}66`,
-        background: active ? `${accent}22` : "transparent",
-        color: accent,
-        fontFamily: "inherit",
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        whiteSpace: "nowrap",
-      }}
+      style={utilityBtnStyle(active, accent, opts?.disabled)}
     >
       {opts?.icon ? <span style={{ pointerEvents: "none" }}>{opts.icon}</span> : null}
       <span style={{ pointerEvents: "none" }}>{label}</span>
@@ -1366,14 +1370,22 @@ export default function CommandCenterMediaStack({
               icon: "🔴",
             })}
 
-            {/* RECORD */}
-            {utilityBtn(false, "rgba(255,255,255,0.4)", "RECORD", () => {
-              window.alert(RECORD_UNAVAILABLE_REASON);
-            }, {
-              testId: "tmi-top-cluster-record",
-              title: RECORD_UNAVAILABLE_REASON,
-              icon: "⏺",
-            })}
+            {/* RECORD — genuinely disabled, not just dimmed: no certified
+                recording consumer is wired, so this must never look
+                clickable-but-inert (Rule 20). data-record-state is a real,
+                literal state marker — not derived from a toggle, since
+                there is exactly one truthful state to project right now. */}
+            <button
+              type="button"
+              data-testid="tmi-top-cluster-record"
+              data-record-state="unavailable"
+              disabled
+              title={RECORD_UNAVAILABLE_REASON}
+              style={utilityBtnStyle(false, "rgba(255,255,255,0.4)", true)}
+            >
+              <span style={{ pointerEvents: "none" }}>⏺</span>
+              <span style={{ pointerEvents: "none" }}>RECORD UNAVAILABLE</span>
+            </button>
 
             {/* SHARE */}
             {utilityBtn(false, "#00FFFF", "SHARE", () => void onShareClick(), {
