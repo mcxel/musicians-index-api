@@ -6,14 +6,6 @@ import {
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
-import {
-  ensureBroadcastDestinationSeed,
-  getBroadcastDestinations,
-  subscribeBroadcastDestinations,
-  resolveAuthoritativeDestinationState,
-} from "@/lib/broadcast/BroadcastDestinationRegistry";
-import type { BroadcastDestinationPublic } from "@/lib/broadcast/BroadcastDestinationTypes";
-import { toggleExternalDestination } from "@/lib/broadcast/ExternalBroadcastDistributor";
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.
  * Dual geometry via CanonicalDualMonitorStack (shared with Observatory).
@@ -796,16 +788,6 @@ export default function CommandCenterMediaStack({
     return () => window.removeEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
   }, []);
 
-  const [broadcastDests, setBroadcastDests] = useState<BroadcastDestinationPublic[]>(() =>
-    getBroadcastDestinations(),
-  );
-
-  useEffect(() => {
-    ensureBroadcastDestinationSeed(userId);
-    const unsub = subscribeBroadcastDestinations(setBroadcastDests);
-    return unsub;
-  }, [userId]);
-
   // LOBBY WALL button: expands bottom drawer with LiveLobbyWallContent
   const toggleLobbyWallFromButton = useCallback(() => {
     const { drawerWorkspace, isDrawerExpanded, closeSurface } =
@@ -1177,79 +1159,6 @@ export default function CommandCenterMediaStack({
     width: "100%",
   };
 
-  const renderTagLight = (providerId: string, label: string, color: string) => {
-    const dest = broadcastDests.find((d) => d.provider === providerId || (providerId === "tiktok" && d.provider === "custom"));
-    const authState = dest ? resolveAuthoritativeDestinationState(dest, Boolean(publishedRoomId)) : "OFF";
-    const isLive = authState === "LIVE" || dest?.connectionStatus === "live";
-    const isReady = authState === "READY" || dest?.connectionStatus === "selected_off" || dest?.enabled;
-    const isError = authState === "ERROR" || dest?.connectionStatus === "error";
-
-    const indicatorColor = isLive
-      ? color
-      : isError
-      ? "#FF2255"
-      : isReady
-      ? "#FFB800"
-      : "rgba(255,255,255,0.22)";
-
-    const glyph = isLive ? "●" : isError ? "✕" : isReady ? "◐" : "○";
-
-    return (
-      <button
-        key={providerId}
-        type="button"
-        title={`${label}: ${isLive ? "LIVE BROADCAST ACTIVE" : isError ? "BROADCAST ERROR" : isReady ? "READY / PRIMED" : "OFF / UNLINKED"}`}
-        onClick={async () => {
-          if (dest) {
-            if (publishedRoomId) {
-              await toggleExternalDestination(dest.destinationId);
-            } else {
-              const { patchBroadcastDestination } = await import(
-                "@/lib/broadcast/BroadcastDestinationRegistry"
-              );
-              const nextEnabled = !dest.enabled;
-              patchBroadcastDestination(dest.destinationId, {
-                enabled: nextEnabled,
-                connectionStatus: nextEnabled ? "selected_off" : "off",
-                authoritativeState: nextEnabled ? "READY" : "OFF",
-              });
-            }
-          }
-        }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          background: isLive ? `${color}25` : isReady ? "rgba(255,184,0,0.12)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${isLive ? color : isError ? "#FF2255" : isReady ? "#FFB80088" : "rgba(255,255,255,0.12)"}`,
-          borderRadius: 4,
-          padding: "3px 6px",
-          cursor: "pointer",
-          color: isLive ? "#fff" : isReady ? "#FFE082" : "rgba(255,255,255,0.6)",
-          fontSize: 8,
-          fontWeight: 900,
-          letterSpacing: "0.05em",
-          fontFamily: "inherit",
-          transition: "all 0.15s ease",
-          boxShadow: isLive ? `0 0 8px ${color}66` : "none",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 7,
-            color: indicatorColor,
-            fontWeight: 900,
-            display: "inline-block",
-            textShadow: isLive ? `0 0 6px ${indicatorColor}` : "none",
-          }}
-        >
-          {glyph}
-        </span>
-        <span>{label}</span>
-      </button>
-    );
-  };
-
   const toolbar = (
     <div
       data-tmi-polished-control-bed="1"
@@ -1421,7 +1330,7 @@ export default function CommandCenterMediaStack({
             }}
           />
 
-          {/* ── SECTION 2: CAST CONTROLS (SPONSOR [performer/venue only] | USER ID | SHARE SCREEN) ── */}
+          {/* ── SECTION 2: CAST — actions to cast/present content (SPONSOR [performer/venue only] | USER ID | SHARE SCREEN | MEDIA CAST reserved). Never the external-platform status rail — that belongs to LiveDistributionBezel. ── */}
           <div
             data-tmi-cast-controls-group="1"
             style={{
@@ -1472,6 +1381,14 @@ export default function CommandCenterMediaStack({
               title: "Cycle or toggle screen share to Monitor",
               icon: "🖥️",
             })}
+
+            {/* MEDIA CAST — reserved slot. This is a real cast-a-thing action
+                (playlist/media session → selected monitor/workspace), not the
+                external-platform connection/status rail — that rail is owned
+                exclusively by LiveDistributionBezel above the monitors and
+                must never be duplicated here. Add a MEDIA CAST control only
+                once a real, certified cast-target authority is audited and
+                confirmed — never as a stub to fill this comment. */}
           </div>
 
           {/* ── SEPARATION DIVIDER ── */}
@@ -1509,30 +1426,6 @@ export default function CommandCenterMediaStack({
               MIX:
             </span>
             <CompactAudioMixer />
-            {/* TAG LIGHTS BED — external distribution is a Performer/Venue
-                capability (matches the canBroadcastExternalDestinations gate
-                already used for LiveDistributionBezel below); not in the Fan
-                provisioning matrix. */}
-            {canBroadcastExternalDestinations({ activeRole: role }) ? (
-              <div
-                data-tmi-tag-lights-bed="1"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  background: "rgba(0,0,0,0.5)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 6,
-                  padding: "2px 6px",
-                }}
-              >
-                {renderTagLight("youtube", "YT", "#FF0000")}
-                {renderTagLight("instagram", "IG", "#E1306C")}
-                {renderTagLight("facebook", "FB", "#1877F2")}
-                {renderTagLight("tiktok", "TK", "#00F2FE")}
-                {renderTagLight("kick", "KK", "#53FC18")}
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}
