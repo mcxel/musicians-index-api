@@ -27,6 +27,7 @@ export class TmiMagazineAudioEngine {
   private enabled: boolean;
   private sounds: TmiMagazineAudioMap;
   private elements: Partial<Record<TmiMagazineSoundKey, HTMLAudioElement>> = {};
+  private activeAudioContexts = new Set<AudioContext>();
   private pagesTurningStopTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(soundMap?: Partial<TmiMagazineAudioMap>) {
@@ -155,12 +156,41 @@ export class TmiMagazineAudioEngine {
       filter.connect(gain);
       gain.connect(ctx.destination);
 
+      this.activeAudioContexts.add(ctx);
       noise.start();
-      setTimeout(() => { ctx.close().catch(() => {}); }, 200);
+      setTimeout(() => {
+        this.activeAudioContexts.delete(ctx);
+        ctx.close().catch(() => {});
+      }, 200);
     } catch {
       // Safe fallback
     }
     return null;
+  }
+
+  /**
+   * Pause every preloaded element and clear pending timers — call this on
+   * unmount so a page-turn sound in flight doesn't keep playing as an
+   * orphaned <audio> after the reader closes (Rule 37).
+   */
+  dispose(): void {
+    if (this.pagesTurningStopTimer) {
+      clearTimeout(this.pagesTurningStopTimer);
+      this.pagesTurningStopTimer = null;
+    }
+    (Object.values(this.elements) as HTMLAudioElement[]).forEach((audio) => {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {
+        // safe fallback
+      }
+    });
+    this.elements = {};
+    for (const context of this.activeAudioContexts) {
+      context.close().catch(() => {});
+    }
+    this.activeAudioContexts.clear();
   }
 
   private readEnabledFromStorage(): boolean {
