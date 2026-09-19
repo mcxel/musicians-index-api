@@ -21,19 +21,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import Link from "next/link";
 import OverlayHost from "@/components/shell/OverlayHost";
 import Canister from "@/components/admin/overseer/Canister";
-import ChainCommandPanel from "@/components/admin/overseer/ChainCommandPanel";
-import SentinelWall from "@/components/admin/overseer/SentinelWall";
 import AccountLinker from "@/components/admin/overseer/AccountLinker";
 import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
 import AdminRevenuePanel from "@/components/admin/AdminRevenuePanel";
 import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
-import UnifiedInbox from "@/components/admin/overseer/UnifiedInbox";
 import BotSummonDeck from "@/components/admin/BotSummonDeck";
-import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
 import OverseerSectionSwitcher, { OVERSEER_SECTION_SELECT_EVENT } from "@/components/admin/overseer/OverseerSectionSwitcher";
-import OverseerQuickControlRow from "@/components/admin/overseer/OverseerQuickControlRow";
 import type { OverseerCenterViewId } from "@/components/admin/overseer/OverseerCommandViews";
 import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
@@ -350,17 +345,7 @@ export default function OverseerFlightDeck({
   const defaultWorkspace = useMemo<ShellWorkspaceDefinition>(
     () => ({
       title: "Marcel - Founder and CEO",
-      leftRail: [
-        { id: "chain-command", title: "CHAIN COMMAND", accent: "#AA2DFF", content: <ChainCommandPanel /> },
-        { id: "money-billing", title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
-        {
-          id: "bot-roster",
-          title: "BOT ROSTER & SUMMON",
-          accent: "#FF2DAA",
-          content: <BotSummonDeck />,
-        },
-        { id: "unified-inbox", title: "UNIFIED INBOX", accent: "#00FFFF", content: <UnifiedInbox /> },
-      ],
+      leftRail: [],
       center: [
         {
           id: "overseer-monitor-wall",
@@ -370,29 +355,8 @@ export default function OverseerFlightDeck({
           flex: 1,
         },
       ],
-      rightRail: [
-        { id: "sentinel-wall", title: "SECURITY SENTINEL WALL", accent: "#FF4444", content: <SentinelWall /> },
-        { id: "account-linker", title: "ACCOUNT LINKER", accent: "#AA2DFF", content: <AccountLinker /> },
-        { id: "stripe-observatory", title: "STRIPE WEBHOOK INTEGRITY", accent: "#00FFFF", content: <StripeObservatoryCard />, flex: 1 },
-      ],
-      bottom: [
-        {
-          id: "revenue-analytics",
-          title: "ARTIST REVENUE & BUYOUTS",
-          accent: "#FFD700",
-          content: (
-            <AdminRevenuePanel
-              selectedId="billing"
-              onSelect={(id) => {
-                window.location.href =
-                  id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
-              }}
-            />
-          ),
-          fullscreenKey: "revenue",
-        },
-        { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", accent: "#FF2DAA", content: <MagazineAnalytics /> },
-      ],
+      rightRail: [],
+      bottom: [],
       dockButtons: [
         { label: "Go Back", href: "/admin" },
         { label: "Revenue", href: "/admin/revenue" },
@@ -1264,12 +1228,6 @@ export default function OverseerFlightDeck({
           100% { box-shadow: 0 0 0 rgba(0,255,255,0); }
         }
       `}</style>
-
-      <OverseerQuickControlRow
-        activeIntelligenceView={centerView}
-        onIntelligenceView={selectIntelligenceView}
-        onOpsAction={handleOpsAction}
-      />
 
       {activeWorkspace.ribbon ? (
         <Canister
