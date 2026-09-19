@@ -20,6 +20,8 @@ export interface HubMobileCommunicationsDrawerProps {
   userId: string;
   displayName: string;
   roomId?: string | null;
+  isAuthorizedHost?: boolean;
+  isOfficialModerator?: boolean;
 }
 
 export default function HubMobileCommunicationsDrawer({
@@ -31,6 +33,8 @@ export default function HubMobileCommunicationsDrawer({
   userId,
   displayName,
   roomId,
+  isAuthorizedHost = false,
+  isOfficialModerator = false,
 }: HubMobileCommunicationsDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -133,6 +137,9 @@ export default function HubMobileCommunicationsDrawer({
             tab={tab}
             onTabChange={onTabChange}
             accentColor={accent}
+            roomClass="PERSONAL_OWNED"
+            isAuthorizedHost={isAuthorizedHost}
+            isOfficialModerator={isOfficialModerator}
           />
         </div>
       </div>

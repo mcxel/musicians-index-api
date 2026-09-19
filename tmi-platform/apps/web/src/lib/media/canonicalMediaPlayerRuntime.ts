@@ -88,6 +88,13 @@ export interface CanonicalMediaPlayerState {
   /** Derived from layout — consumers use this to reduce chrome at higher densities. */
   densityMode: MonitorDensityMode;
 
+  /**
+   * Per-frame stack of sources displaced by temporary takeovers
+   * (screen share, event overlay). Mirrors CanonicalUniversalPlayerFabric
+   * returnToPreviousSource for the Hub production media path.
+   */
+  previousSourceStack: Partial<Record<FrameId, MediaSource[]>>;
+
   // ── Actions ──
   /** Call once when the live room session is established. Never call again mid-session. */
   setRoomId: (roomId: string) => void;
@@ -123,6 +130,18 @@ export interface CanonicalMediaPlayerState {
 
   /** Override fit hint for a frame. */
   setFrameFit: (frameId: FrameId, fit: FrameFit) => void;
+
+  /**
+   * Capture current frame source before a temporary takeover (share / event /
+   * live overlay) so returnToPreviousSource can restore the exact prior source.
+   */
+  captureSourceForReturn: (frameId: FrameId) => void;
+
+  /**
+   * Restore the last captured source for a frame. Returns false when the stack
+   * is empty — caller may apply a role-aware fallback, never a blind default.
+   */
+  returnToPreviousSource: (frameId: FrameId) => boolean;
 
   reset: () => void;
 }
@@ -172,6 +191,7 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
     primaryAudioFrame: "b",
     screenShareAudioSourceId: null,
     densityMode: "COMFORTABLE",
+    previousSourceStack: {},
 
     // ── Room ──
 
@@ -289,6 +309,42 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
       }));
     },
 
+    captureSourceForReturn(frameId) {
+      const frame = get().frames[frameId];
+      if (!frame) return;
+      const stack = [...(get().previousSourceStack[frameId] ?? [])];
+      stack.push(frame.source);
+      set({
+        previousSourceStack: {
+          ...get().previousSourceStack,
+          [frameId]: stack,
+        },
+      });
+    },
+
+    returnToPreviousSource(frameId) {
+      const stack = [...(get().previousSourceStack[frameId] ?? [])];
+      if (stack.length === 0) return false;
+      const prior = stack.pop()!;
+      const frame = get().frames[frameId];
+      if (!frame) return false;
+      set({
+        previousSourceStack: {
+          ...get().previousSourceStack,
+          [frameId]: stack,
+        },
+        frames: {
+          ...get().frames,
+          [frameId]: {
+            ...frame,
+            source: prior,
+            fit: defaultFitForSource(prior),
+          },
+        },
+      });
+      return true;
+    },
+
     // ── Reset ──
 
     reset() {
@@ -300,6 +356,7 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
         primaryAudioFrame: "b",
         screenShareAudioSourceId: null,
         densityMode: "COMFORTABLE",
+        previousSourceStack: {},
       });
     },
   })

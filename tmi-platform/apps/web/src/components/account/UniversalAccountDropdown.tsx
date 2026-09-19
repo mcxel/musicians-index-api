@@ -24,6 +24,7 @@ export interface UniversalAccountDropdownProps {
   identity: ActiveProfileIdentity;
   open: boolean;
   onClose: () => void;
+  anchorLeft?: number;
   anchorRight?: number;
   anchorTop?: number;
   /** True when role/identity discovery failed to load — distinct from the
@@ -63,6 +64,7 @@ export default function UniversalAccountDropdown({
   identity,
   open,
   onClose,
+  anchorLeft,
   anchorRight = 12,
   anchorTop = 56,
   rolesUnavailable = false,
@@ -250,7 +252,9 @@ export default function UniversalAccountDropdown({
       style={{
         position: "fixed",
         top: anchorTop,
-        right: anchorRight,
+        ...(anchorLeft !== undefined
+          ? { left: anchorLeft, right: "auto" }
+          : { right: anchorRight }),
         width: "min(320px, calc(100vw - 16px))",
         maxHeight: "min(80vh, 560px)",
         overflowY: "auto",
