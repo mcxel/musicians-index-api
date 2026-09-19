@@ -5,11 +5,12 @@
  * (ACCOUNT_FALLBACK only; no FanProfile/PerformerProfile tables).
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildActiveProfileIdentityFromAccount,
 } from "../lib/account/resolveActiveProfileIdentity";
+import { resolvePersonaHubDestination } from "../lib/auth/resolvePersonaHubDestination";
 import {
   resolveAccountShellCapabilities,
   resolveAccountHubDestination,
@@ -252,6 +253,76 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("window.location.href = result.hubUrl;") &&
     !dropdownSrc.includes("router.refresh()");
 
+  // ACCOUNT-ROUTE-02: Universal Admin Persona Destination Law (/admin/overseer)
+  // Universal persona switching must NEVER route to personalized admin pages (/admin/marcel, /admin/justin, etc.)
+  // regardless of member email. ADMIN persona destination is unconditionally /admin/overseer.
+  const adminMarcel = resolvePersonaHubDestination("ADMIN", "berntmusic33@gmail.com");
+  const adminJustin = resolvePersonaHubDestination("ADMIN", "rjking42@icloud.com");
+  const adminJayPaul = resolvePersonaHubDestination("ADMIN", "jaypaul@themusiciansindex.com");
+  const adminUnknown = resolvePersonaHubDestination("ADMIN", "unknown@random.org");
+  const adminNull = resolvePersonaHubDestination("ADMIN", null);
+  const adminUndefined = resolvePersonaHubDestination("ADMIN", undefined);
+  const staffMarcel = resolvePersonaHubDestination("STAFF", "berntmusic33@gmail.com");
+  const superAdminMarcel = resolvePersonaHubDestination("SUPERADMIN", "berntmusic33@gmail.com");
+
+  const acctAdminMarcel = resolveAccountHubDestination("ADMIN", "berntmusic33@gmail.com");
+  const acctAdminJustin = resolveAccountHubDestination("ADMIN", "rjking42@icloud.com");
+  const acctAdminJayPaul = resolveAccountHubDestination("ADMIN", "jaypaul@themusiciansindex.com");
+  const acctAdminUnknown = resolveAccountHubDestination("ADMIN", "unknown@random.org");
+  const acctAdminNull = resolveAccountHubDestination("ADMIN", null);
+
+  results["ACCOUNT-ROUTE-02_universal_admin_persona_destination"] =
+    adminMarcel === "/admin/overseer" &&
+    adminJustin === "/admin/overseer" &&
+    adminJayPaul === "/admin/overseer" &&
+    adminUnknown === "/admin/overseer" &&
+    adminNull === "/admin/overseer" &&
+    adminUndefined === "/admin/overseer" &&
+    staffMarcel === "/admin/overseer" &&
+    superAdminMarcel === "/admin/overseer" &&
+    acctAdminMarcel === "/admin/overseer" &&
+    acctAdminJustin === "/admin/overseer" &&
+    acctAdminJayPaul === "/admin/overseer" &&
+    acctAdminUnknown === "/admin/overseer" &&
+    acctAdminNull === "/admin/overseer";
+
+  // ACCOUNT-ROUTE-03: Universal FAN & PERFORMER Hub Destinations
+  const fanMarcel = resolvePersonaHubDestination("FAN", "berntmusic33@gmail.com");
+  const fanNull = resolvePersonaHubDestination("FAN", null);
+  const performerMarcel = resolvePersonaHubDestination("PERFORMER", "berntmusic33@gmail.com");
+  const performerNull = resolvePersonaHubDestination("PERFORMER", null);
+
+  results["ACCOUNT-ROUTE-03_universal_fan_performer_destinations"] =
+    fanMarcel === "/hub/fan" &&
+    fanNull === "/hub/fan" &&
+    performerMarcel === "/hub/performer" &&
+    performerNull === "/hub/performer" &&
+    resolveAccountHubDestination("FAN", "berntmusic33@gmail.com") === "/hub/fan" &&
+    resolveAccountHubDestination("PERFORMER", "berntmusic33@gmail.com") === "/hub/performer";
+
+  // ACCOUNT-ROUTE-04: Specialized Admin routes remain independently reachable and not masked by redirects
+  const marcelPagePath = join(WEB_SRC, "app/admin/marcel/page.tsx");
+  const justinPagePath = join(WEB_SRC, "app/admin/justin/page.tsx");
+  const jayPaulPagePath = join(WEB_SRC, "app/admin/jay-paul/page.tsx");
+
+  const marcelPageExists = existsSync(marcelPagePath);
+  const justinPageExists = existsSync(justinPagePath);
+  const jayPaulPageExists = existsSync(jayPaulPagePath);
+
+  const marcelSrc = marcelPageExists ? readFileSync(marcelPagePath, "utf8") : "";
+  const justinSrc = justinPageExists ? readFileSync(justinPagePath, "utf8") : "";
+  const jayPaulSrc = jayPaulPageExists ? readFileSync(jayPaulPagePath, "utf8") : "";
+
+  results["ACCOUNT-ROUTE-04_specialized_admin_routes_independently_reachable"] =
+    marcelPageExists &&
+    justinPageExists &&
+    jayPaulPageExists &&
+    marcelSrc.includes("export default") &&
+    justinSrc.includes("export default") &&
+    jayPaulSrc.includes("export default") &&
+    !marcelSrc.includes("redirect('/admin/overseer')") &&
+    !marcelSrc.includes('redirect("/admin/overseer")');
+
   // ACCOUNT-MENU-01..08: Inactivity auto-close & immediate close behaviors
   results["ACCOUNT-MENU-01_idle_close_timeout_defined"] =
     dropdownSrc.includes("const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;");
@@ -271,7 +342,8 @@ export function runUniversalAccountHeaderShellTest(): {
     dropdownSrc.includes("onClose();") &&
     dropdownSrc.includes("window.location.href = dest;") &&
     dropdownSrc.includes("window.location.href = result.hubUrl;") &&
-    dropdownSrc.includes("router.push(dest);");
+    !dropdownSrc.includes("router.push(dest);") &&
+    !dropdownSrc.includes("router.refresh()");
   results["ACCOUNT-MENU-06_reopen_works_normally"] =
     dropdownSrc.includes("useEffect(() => {") &&
     dropdownSrc.includes("resetIdleTimer();");
@@ -327,4 +399,54 @@ export function runUniversalAccountHeaderShellTest(): {
 test("HEADER-01..HEADER-17 Universal Account Header Shell", () => {
   const { allPassed } = runUniversalAccountHeaderShellTest();
   expect(allPassed).toBe(true);
+});
+
+
+describe("Persona Destination Authority (Universal Admin Overseer Law)", () => {
+  it("ADMIN + Marcel email -> /admin/overseer", () => {
+    expect(resolvePersonaHubDestination("ADMIN", "berntmusic33@gmail.com")).toBe("/admin/overseer");
+    expect(resolveAccountHubDestination("ADMIN", "berntmusic33@gmail.com")).toBe("/admin/overseer");
+  });
+
+  it("ADMIN + Justin email -> /admin/overseer", () => {
+    expect(resolvePersonaHubDestination("ADMIN", "rjking42@icloud.com")).toBe("/admin/overseer");
+    expect(resolveAccountHubDestination("ADMIN", "rjking42@icloud.com")).toBe("/admin/overseer");
+  });
+
+  it("ADMIN + Jay Paul email -> /admin/overseer", () => {
+    expect(resolvePersonaHubDestination("ADMIN", "jaypaul@themusiciansindex.com")).toBe("/admin/overseer");
+    expect(resolveAccountHubDestination("ADMIN", "jaypaul@themusiciansindex.com")).toBe("/admin/overseer");
+  });
+
+  it("ADMIN + unknown email -> /admin/overseer", () => {
+    expect(resolvePersonaHubDestination("ADMIN", "unknown@random.org")).toBe("/admin/overseer");
+    expect(resolveAccountHubDestination("ADMIN", "unknown@random.org")).toBe("/admin/overseer");
+  });
+
+  it("ADMIN + null/undefined email -> /admin/overseer", () => {
+    expect(resolvePersonaHubDestination("ADMIN", null)).toBe("/admin/overseer");
+    expect(resolvePersonaHubDestination("ADMIN", undefined)).toBe("/admin/overseer");
+    expect(resolveAccountHubDestination("ADMIN", null)).toBe("/admin/overseer");
+  });
+
+  it("FAN -> /hub/fan", () => {
+    expect(resolvePersonaHubDestination("FAN", "berntmusic33@gmail.com")).toBe("/hub/fan");
+    expect(resolvePersonaHubDestination("FAN", null)).toBe("/hub/fan");
+    expect(resolveAccountHubDestination("FAN")).toBe("/hub/fan");
+  });
+
+  it("PERFORMER -> /hub/performer", () => {
+    expect(resolvePersonaHubDestination("PERFORMER", "berntmusic33@gmail.com")).toBe("/hub/performer");
+    expect(resolvePersonaHubDestination("PERFORMER", null)).toBe("/hub/performer");
+    expect(resolveAccountHubDestination("PERFORMER")).toBe("/hub/performer");
+  });
+
+  it("explicit specialized Admin routes remain independently reachable and not redirected", () => {
+    expect(existsSync(join(WEB_SRC, "app/admin/marcel/page.tsx"))).toBe(true);
+    expect(existsSync(join(WEB_SRC, "app/admin/justin/page.tsx"))).toBe(true);
+    expect(existsSync(join(WEB_SRC, "app/admin/jay-paul/page.tsx"))).toBe(true);
+    const marcelSrc = readFileSync(join(WEB_SRC, "app/admin/marcel/page.tsx"), "utf8");
+    expect(marcelSrc).toContain("export default");
+    expect(marcelSrc).not.toContain("redirect('/admin/overseer')");
+  });
 });

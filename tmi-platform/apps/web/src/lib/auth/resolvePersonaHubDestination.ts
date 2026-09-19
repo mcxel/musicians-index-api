@@ -30,11 +30,11 @@ function adminHubForEmail(email: string | null | undefined): string {
 /** Canonical hub destination after a persona / activeRole switch. */
 export function resolvePersonaHubDestination(
   persona: string,
-  email?: string | null,
+  _email?: string | null,
 ): string {
   const p = (persona ?? "").trim().toUpperCase();
   if (p === "ADMIN" || p === "STAFF" || p === "SUPERADMIN") {
-    return adminHubForEmail(email);
+    return "/admin/overseer";
   }
   if (p === "PERFORMER" || p === "ARTIST" || p === "BAND" || p === "PRODUCER") {
     return "/hub/performer";
