@@ -267,6 +267,16 @@ export const STRIPE_PRODUCTS = {
     interval:  "month" as const,
   },
 
+  // ── Advertising entry — public ad honor: starting as low as $0.99 a day ─────
+  // REAL purchasable PLATFORM_AD day entry (one day of inventory). Not CPM/CPC teaser.
+  AD_ENTRY_DAY_099: {
+    productId: "prod_ad_entry_day",
+    priceId:   process.env.STRIPE_PRICE_AD_ENTRY_DAY_099 ?? "price_ad_entry_day_099",
+    name:      "Platform Ad — Starting Entry ($0.99/day)",
+    price:     99, // $0.99
+    interval:  "one_time" as const,
+  },
+
   // ── Low-friction one-time ads ($2.99–$29.99) — PLATFORM_AD inventory ───────
   // Volume path for self-serve placements. Counts against member ad allowance.
   AD_MICRO_SPOT: {

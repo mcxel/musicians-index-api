@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import MediaMonitor from "@/components/video/MediaMonitor";
+import BusinessLivingMediaPortal from "@/components/commerce/BusinessLivingMediaPortal";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
@@ -66,66 +66,22 @@ export default function AdvertiserSponsorHub() {
           })}
         </div>
 
-        {/* CENTER — monitor first (mobile + desktop) */}
+        {/* CENTER — single 16:9 Living Media Player (business roles) */}
         <section style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 8,
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)" }}>
-              LIVE PLACEMENT FEED
-            </span>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: "0.1em",
-                padding: "4px 8px",
-                borderRadius: 6,
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.35)",
-              }}
-            >
-              ● STANDBY — No active ad running
-            </span>
-          </div>
-          <div
-            style={{
-              position: "relative",
-              borderRadius: 14,
-              overflow: "hidden",
-              border: `2px solid ${accentColor}44`,
-              background: "#000",
-              minHeight: 200,
-              aspectRatio: "16 / 9",
-              maxHeight: "min(52vh, 420px)",
-            }}
-          >
-            <MediaMonitor mode="standby" isActive={false} />
-            <div
-              style={{
-                position: "absolute",
-                left: 12,
-                bottom: 12,
-                right: 12,
-                background: "rgba(0,0,0,0.8)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 10,
-                padding: 10,
-                pointerEvents: "none",
-              }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>No ad placement active</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-                Launch a campaign to begin serving ads.
-              </div>
-            </div>
+          <BusinessLivingMediaPortal
+            role={mode === "ADVERTISER" ? "ADVERTISER" : "SPONSOR"}
+            accent={accentColor}
+            title={`LIVING MEDIA PLAYER · ${mode} · 16:9`}
+            browseHref="/magazine/advertise"
+            emptyHint="No ad placement active. Launch a campaign or select a Magazine placement to preview creative here."
+          />
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link href="/advertising" style={{ fontSize: 11, color: "#00FFFF", fontWeight: 800, textDecoration: "none" }}>
+              From {mode === "ADVERTISER" ? "$0.99/day" : "entry pricing"} →
+            </Link>
+            <Link href="/magazine/advertise" style={{ fontSize: 11, color: accentColor, fontWeight: 800, textDecoration: "none" }}>
+              Magazine ad marketplace →
+            </Link>
           </div>
         </section>
 

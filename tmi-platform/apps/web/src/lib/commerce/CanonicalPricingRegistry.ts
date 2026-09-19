@@ -179,6 +179,9 @@ export const CANONICAL_PRICING_REGISTRY: readonly CanonicalPricingEntry[] = [
   entry("membership.performer.diamond", "PERFORMER_DIAMOND_MONTHLY", "MEMBERSHIP", null, false, [], ["SubscriptionPlanEngine", "pricing-page"], "NOT_APPLICABLE"),
   entry("membership.performer.band", "PERFORMER_BAND_MONTHLY", "MEMBERSHIP", null, false, [], ["SubscriptionPlanEngine", "pricing-page"], "NOT_APPLICABLE"),
 
+  // Advertising entry $0.99/day (public ad honor — lowest valid first)
+  entry("ad.platform.entry_day_099", "AD_ENTRY_DAY_099", "ONE_TIME_PLATFORM_AD", "PLATFORM_AD", true, ["home-banner", "fan-cc-bottom"], ["AdPlacementRegistry", "AdvertisingEntryPresentation"], "NOT_APPLICABLE"),
+
   // Low-friction PLATFORM_AD ($2.99–$29.99)
   entry("ad.platform.micro", "AD_MICRO_SPOT", "ONE_TIME_PLATFORM_AD", "PLATFORM_AD", true, ["home-banner", "fan-cc-bottom"], ["AdPlacementRegistry", "SponsorRegistry.getAdSlotForZone"], "NOT_APPLICABLE"),
   entry("ad.platform.day", "AD_DAY_SPOT", "ONE_TIME_PLATFORM_AD", "PLATFORM_AD", true, ["home-banner", "fan-cc-bottom", "performer-cc-bottom"], ["AdPlacementRegistry"], "NOT_APPLICABLE"),

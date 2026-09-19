@@ -35,26 +35,32 @@ export type RoleMonitorEntitlement = {
   businessSinglePortal: boolean;
   /** Detach may still Voltron-compose up to this many logical feeds in ONE window. */
   maxVoltronFeedsInPortal: number;
+  livingOsControlBed: true;
+  maxInternalViewsPerMonitor: 8;
 };
 
 const DUAL: Pick<
   RoleMonitorEntitlement,
-  "monitorInstanceCount" | "writerInterviewDualPortal" | "businessSinglePortal" | "maxVoltronFeedsInPortal"
+  "monitorInstanceCount" | "writerInterviewDualPortal" | "businessSinglePortal" | "maxVoltronFeedsInPortal" | "livingOsControlBed" | "maxInternalViewsPerMonitor"
 > = {
   monitorInstanceCount: 2,
   writerInterviewDualPortal: false,
   businessSinglePortal: false,
   maxVoltronFeedsInPortal: 8,
+  livingOsControlBed: true,
+  maxInternalViewsPerMonitor: 8,
 };
 
 const SINGLE_BUSINESS: Pick<
   RoleMonitorEntitlement,
-  "monitorInstanceCount" | "writerInterviewDualPortal" | "businessSinglePortal" | "maxVoltronFeedsInPortal"
+  "monitorInstanceCount" | "writerInterviewDualPortal" | "businessSinglePortal" | "maxVoltronFeedsInPortal" | "livingOsControlBed" | "maxInternalViewsPerMonitor"
 > = {
   monitorInstanceCount: 1,
   writerInterviewDualPortal: false,
   businessSinglePortal: true,
   maxVoltronFeedsInPortal: 8,
+  livingOsControlBed: true,
+  maxInternalViewsPerMonitor: 8,
 };
 
 function normalizeRole(role: string): MediaWorkspaceRole {

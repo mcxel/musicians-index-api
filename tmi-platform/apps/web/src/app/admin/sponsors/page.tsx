@@ -19,9 +19,17 @@ export default function AdminSponsorsPage() {
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "0 0 12px" }}>
             No sponsor accounts loaded yet. Paid sponsors appear here when registered.
           </p>
-          <Link href="/sponsors/advertise" style={{ fontSize: 12, color: "#FFD700", fontWeight: 700, textDecoration: "none" }}>
-            Advertise / sponsor CTA →
-          </Link>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/advertising" style={{ fontSize: 12, color: "#00FFFF", fontWeight: 700, textDecoration: "none" }}>
+              Advertising entry ($0.99/day) →
+            </Link>
+            <Link href="/magazine/advertise" style={{ fontSize: 12, color: "#FFD700", fontWeight: 700, textDecoration: "none" }}>
+              Magazine ad marketplace →
+            </Link>
+            <Link href="/sponsors/advertise" style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700, textDecoration: "none" }}>
+              Sponsor CTA →
+            </Link>
+          </div>
         </div>
       </div>
     </main>
