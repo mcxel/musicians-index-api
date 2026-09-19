@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ActiveProfileIdentity } from "@/lib/account/resolveActiveProfileIdentity";
+import type { ActiveProfileIdentity } from "@/lib/account/ActiveProfileIdentity";
 import { resolveAccountShellCapabilities } from "@/lib/account/resolveAccountShellCapabilities";
 import UniversalAccountDropdown from "@/components/account/UniversalAccountDropdown";
 
@@ -48,7 +48,10 @@ export default function UniversalAccountIdentityControl({
   const [identity, setIdentity] = useState<ActiveProfileIdentity | null>(null);
   const [myRoles, setMyRoles] = useState<string[]>([]);
   const [identityError, setIdentityError] = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 56, right: 12 });
+  const [panelPos, setPanelPos] = useState<{ top: number; left?: number; right?: number }>({
+    top: 56,
+    right: 12,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -78,10 +81,6 @@ export default function UniversalAccountIdentityControl({
           setMyRoles((data.roles ?? []).map((r) => String(r).toUpperCase()));
         }
       } else {
-        // Role discovery failed (401/503) — this is an auth/infra failure,
-        // not proof the account owns only one role. Flag it so the dropdown
-        // shows a truthful state instead of silently rendering a single-role
-        // fallback identity as though that were the real permission set.
         setIdentityError(true);
       }
     } catch {
@@ -94,16 +93,35 @@ export default function UniversalAccountIdentityControl({
   }, [hydrate]);
 
   useEffect(() => {
+    if (open) void hydrate();
+  }, [hydrate, open]);
+
+  useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const vw = typeof window !== "undefined" ? window.innerWidth : 390;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 844;
+    const isMobile = vw <= 640;
+    const panelWidth = Math.min(320, vw - 16);
+
     const top = Math.min(
       Math.round(rect.bottom + 8),
-      Math.max(8, window.innerHeight - 120),
+      Math.max(8, vh - 120),
     );
-    setPanelPos({
-      top,
-      right: Math.max(8, Math.round(window.innerWidth - rect.right)),
-    });
+
+    if (isMobile) {
+      // Collision-aware mobile placement: clamp within safe margins [8px, vw - 8px]
+      const left = Math.max(8, Math.round((vw - panelWidth) / 2));
+      setPanelPos({ top, left });
+    } else {
+      // Desktop: place inward toward the side with sufficient clearance
+      const spaceRight = vw - rect.left;
+      if (spaceRight >= panelWidth + 8) {
+        setPanelPos({ top, left: Math.max(8, Math.round(rect.left)) });
+      } else {
+        setPanelPos({ top, right: Math.max(8, Math.round(vw - rect.right)) });
+      }
+    }
   }, [open]);
 
   const mergedIdentity = useMemo((): ActiveProfileIdentity | null => {
@@ -232,6 +250,7 @@ export default function UniversalAccountIdentityControl({
             open={open}
             onClose={() => setOpen(false)}
             anchorTop={panelPos.top}
+            anchorLeft={panelPos.left}
             anchorRight={panelPos.right}
             rolesUnavailable={identityError}
           />,

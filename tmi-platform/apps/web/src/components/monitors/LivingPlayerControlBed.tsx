@@ -22,6 +22,7 @@ export type LivingPlayerControlBedProps = {
   workspaceMode?: "WATCH" | "FOCUS" | "LAYOUT";
   onWorkspaceModeChange?: (mode: "WATCH" | "FOCUS" | "LAYOUT") => void;
   onCommand?: (command: LivingPlayerCommand) => void;
+  onOpenDesk?: () => void;
   accent?: string;
   compact?: boolean;
 };
@@ -36,6 +37,7 @@ export default function LivingPlayerControlBed({
   workspaceMode = "WATCH",
   onWorkspaceModeChange,
   onCommand,
+  onOpenDesk,
   accent = "#00FFFF",
   compact = true,
 }: LivingPlayerControlBedProps) {
@@ -74,17 +76,32 @@ export default function LivingPlayerControlBed({
         background: "linear-gradient(180deg, rgba(12,10,24,0.95), rgba(5,5,16,0.92))",
       }}
     >
-      <span
-        style={{
+      {onOpenDesk ? (
+        <button
+          type="button"
+          data-living-os-entry="1"
+          onClick={onOpenDesk}
+          style={{
+            ...btn(false),
+            color: accent,
+            marginRight: 4,
+          }}
+        >
+          LIVING OS
+        </button>
+      ) : (
+        <span
+          style={{
           fontSize: 8,
           fontWeight: 900,
           letterSpacing: "0.1em",
           color: accent,
           marginRight: 4,
         }}
-      >
-        LIVING OS
-      </span>
+        >
+          LIVING OS
+        </span>
+      )}
 
       {MODE_ORDER.map((mode) =>
         can(mode) ? (

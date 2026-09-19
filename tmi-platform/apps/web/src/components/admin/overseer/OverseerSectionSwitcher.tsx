@@ -15,6 +15,7 @@ export type OverseerSectionOption = {
 };
 
 const STORAGE_PREFIX = "tmi.overseer.sectionSlot.v1:";
+export const OVERSEER_SECTION_SELECT_EVENT = "tmi:overseer-section-select";
 
 type Props = {
   slotId: string;
@@ -65,6 +66,17 @@ export default function OverseerSectionSwitcher({
       /* ignore */
     }
   }, [catalog, index, slotId]);
+
+  useEffect(() => {
+    const selectSection = (event: Event) => {
+      const detail = (event as CustomEvent<{ slotId?: string; sectionId?: string }>).detail;
+      if (detail?.slotId !== slotId || !detail.sectionId) return;
+      const found = catalog.findIndex((section) => section.id === detail.sectionId);
+      if (found >= 0) setIndex(found);
+    };
+    window.addEventListener(OVERSEER_SECTION_SELECT_EVENT, selectSection);
+    return () => window.removeEventListener(OVERSEER_SECTION_SELECT_EVENT, selectSection);
+  }, [catalog, slotId]);
 
   const safeIndex = catalog.length === 0 ? 0 : ((index % catalog.length) + catalog.length) % catalog.length;
   const current = catalog[safeIndex];

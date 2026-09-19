@@ -32,24 +32,27 @@ import BotSummonDeck from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
-import OverseerSectionSwitcher from "@/components/admin/overseer/OverseerSectionSwitcher";
+import OverseerSectionSwitcher, { OVERSEER_SECTION_SELECT_EVENT } from "@/components/admin/overseer/OverseerSectionSwitcher";
 import OverseerQuickControlRow from "@/components/admin/overseer/OverseerQuickControlRow";
 import type { OverseerCenterViewId } from "@/components/admin/overseer/OverseerCommandViews";
 import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
-import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import OverseerCoverageRail from "@/components/admin/overseer/OverseerCoverageRail";
 import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
-import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 import { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
 import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
 import OverseerMonitorWall from "@/components/admin/overseer/OverseerMonitorWall";
+import RolodexDisplayPanel, { type RolodexFace } from "@/components/admin/overseer/RolodexDisplayPanel";
+import CanonicalPanelExpansionAuthority, { type ExpandedPanelContext } from "@/components/admin/overseer/CanonicalPanelExpansionAuthority";
+import UniversalCommandController from "@/components/admin/overseer/UniversalCommandController";
+import type { AttachedMonitorCount } from "@/lib/admin/AdminMonitorLayoutResolver";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
-import { scrollToControlDesk, scrollToIntelligenceDeck } from "@/lib/admin/overseerInspectBridge";
+import { scrollToControlDesk } from "@/lib/admin/overseerInspectBridge";
 import type { OverseerMonitorId } from "@/lib/admin/overseerMonitorState";
 import {
   desktopMonitorStageStyle,
+  computeAvailableCenterWidth,
   focusIntelligenceWorkspace,
   sideCardToDeskPanel,
   commandViewToDeskPanel,
@@ -100,6 +103,24 @@ const RAIL_COLLAPSED = 74;
 const OPS_STAGE_HEIGHT_FALLBACK = "auto";
 const BOT_SCROLL_STEP = 48;
 
+type SideDisplaySelector = {
+  id: string;
+  label: string;
+  accent: string;
+  targetPanelId: string;
+  sectionId: string;
+};
+
+const LEFT_SIDE_DISPLAY_SELECTORS: SideDisplaySelector[] = [
+  { id: "automation", label: "Automation", accent: "#FF2DAA", targetPanelId: "chain-command", sectionId: "bot-summon" },
+];
+
+const RIGHT_SIDE_DISPLAY_SELECTORS: SideDisplaySelector[] = [
+  { id: "security", label: "Security", accent: "#FF4444", targetPanelId: "sentinel-wall", sectionId: "sentinel" },
+  { id: "revenue", label: "Revenue", accent: "#FFD700", targetPanelId: "sentinel-wall", sectionId: "stripe" },
+  { id: "media", label: "Media", accent: "#00FFFF", targetPanelId: "sentinel-wall", sectionId: "media-matrix" },
+];
+
 function gemStyle(active = false): CSSProperties {
   return {
     position: "absolute",
@@ -129,7 +150,6 @@ export default function OverseerFlightDeck({
 }: OverseerFlightDeckProps) {
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
   const [clock, setClock] = useState("");
-  const [conciergeOpen, setConciergeOpen] = useState(false);
   const [activeCoveragePanel, setActiveCoveragePanel] = useState<import("@/lib/admin/ObservatoryDeskState").DeskPanelId | null>(null);
   const [botIntelOpen, setBotIntelOpen] = useState(false);
   const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
@@ -139,6 +159,7 @@ export default function OverseerFlightDeck({
   const [isMerging, setIsMerging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpsTab, setMobileOpsTab] = useState<"left" | "center" | "right">("center");
+  const [pendingScrollTarget, setPendingScrollTarget] = useState<string | null>(null);
   const {
     screenStream,
     shareActive,
@@ -223,8 +244,28 @@ export default function OverseerFlightDeck({
   };
 
   const focusSideRail = (panelId: string) => {
+    if (isMobile && mobileOpsTab !== "left") {
+      // Left-rail panels (Chain Command, Money & Billing, Bot Roster, Unified
+      // Inbox) only mount into the DOM when mobileOpsTab === "left"; default
+      // mobile state is "center", so getElementById used to silently no-op.
+      setMobileOpsTab("left");
+      setPendingScrollTarget(panelId);
+      return;
+    }
     document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
+
+  // Scrolls to a left-rail panel once the tab switch above has actually
+  // committed the panel into the DOM (runs post-render, unlike a raw rAF).
+  useEffect(() => {
+    if (!pendingScrollTarget) return;
+    if (isMobile && mobileOpsTab !== "left") return;
+    const targetId = pendingScrollTarget;
+    setPendingScrollTarget(null);
+    requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [pendingScrollTarget, isMobile, mobileOpsTab]);
 
   const openBotIntel = () => {
     setBotIntelOpen(true);
@@ -390,6 +431,71 @@ export default function OverseerFlightDeck({
 
   const centerColRef = useRef<HTMLDivElement>(null);
   const [centerColHeight, setCenterColHeight] = useState<number | null>(null);
+  const [attachedMonitorCount, setAttachedMonitorCount] = useState<AttachedMonitorCount>(4);
+  const [expandedPanelContext, setExpandedPanelContext] = useState<ExpandedPanelContext | null>(null);
+
+  const handleLaunchPresentation = useCallback(
+    (presentationId: string, target: "LEFT" | "RIGHT" | "EXPAND" | "MONITOR_B") => {
+      if (target === "EXPAND") {
+        if (presentationId === "revenue") {
+          setExpandedPanelContext({
+            slotId: "revenue-deck",
+            faces: [
+              {
+                id: "revenue-analytics",
+                title: "ARTIST REVENUE & BUYOUTS",
+                accent: "#FFD700",
+                content: (
+                  <AdminRevenuePanel
+                    selectedId="billing"
+                    onSelect={(id) => {
+                      window.location.href =
+                        id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
+                    }}
+                  />
+                ),
+              },
+              {
+                id: "stripe-observatory",
+                title: "STRIPE WEBHOOK INTEGRITY",
+                accent: "#00FFFF",
+                content: <StripeObservatoryCard />,
+              },
+              {
+                id: "magazine-analytics",
+                title: "MAGAZINE & INDEX ANALYTICS",
+                accent: "#FF2DAA",
+                content: <MagazineAnalytics />,
+              },
+            ],
+            currentFaceIndex: 0,
+          });
+        } else if (presentationId === "bots") {
+          setExpandedPanelContext({
+            slotId: "bot-roster",
+            faces: [
+              {
+                id: "bot-roster",
+                title: "BOT OPERATIONS ROSTER",
+                accent: "#00FFFF",
+                content: <BotSummonDeck />,
+              },
+            ],
+            currentFaceIndex: 0,
+          });
+        }
+      } else if (target === "RIGHT") {
+        drawerManager.toggleRail("right");
+        const el = document.querySelector('[data-rail-boundary="right"]');
+        el?.scrollIntoView({ behavior: "smooth" });
+      } else if (target === "LEFT") {
+        drawerManager.toggleRail("left");
+        const el = document.querySelector('[data-rail-boundary="left"]');
+        el?.scrollIntoView({ behavior: "smooth" });
+      }
+    },
+    [drawerManager],
+  );
   useEffect(() => {
     const el = centerColRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -467,6 +573,16 @@ export default function OverseerFlightDeck({
   }, []);
   const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
   const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+  const availableCenterWidth =
+    typeof window !== "undefined"
+      ? computeAvailableCenterWidth({
+          viewportWidth: window.innerWidth,
+          leftRailPx: leftWidth,
+          rightRailPx: rightWidth,
+          gapPx: 12,
+          paddingPx: 32,
+        })
+      : 960;
 
   const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
 
@@ -646,6 +762,86 @@ export default function OverseerFlightDeck({
         body
       );
 
+    if (enableSectionSwitcher) {
+      const faces: RolodexFace[] = [
+        {
+          id: panel.id || slotId,
+          title: panel.title,
+          accent: panel.accent ?? "#00FFFF",
+          content: (
+            <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", padding: 4 }}>
+              {openWorkspaceBtn}
+              {panelBody}
+            </div>
+          ),
+        },
+      ];
+
+      if (panel.id === "stripe-observatory") {
+        faces.push(
+          {
+            id: "revenue-sub",
+            title: "ARTIST REVENUE",
+            accent: "#FFD700",
+            content: (
+              <div style={{ padding: 6 }}>
+                <AdminRevenuePanel
+                  selectedId="billing"
+                  onSelect={(id) => {
+                    window.location.href =
+                      id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
+                  }}
+                />
+              </div>
+            ),
+          },
+          {
+            id: "magazine-sub",
+            title: "MAGAZINE ANALYTICS",
+            accent: "#FF2DAA",
+            content: (
+              <div style={{ padding: 6 }}>
+                <MagazineAnalytics />
+              </div>
+            ),
+          },
+        );
+      } else if (panel.id === "sentinel-wall") {
+        faces.push({
+          id: "account-linker-sub",
+          title: "ACCOUNT LINKER",
+          accent: "#AA2DFF",
+          content: (
+            <div style={{ padding: 6 }}>
+              <AccountLinker />
+            </div>
+          ),
+        });
+      }
+
+      return (
+        <RolodexDisplayPanel
+          key={slotId}
+          slotId={slotId}
+          faces={faces}
+          isFolded={attachedMonitorCount >= 6}
+          canExpand={true}
+          onExpand={(sId, activeFace) => {
+            setExpandedPanelContext({
+              slotId: sId,
+              faces,
+              currentFaceIndex: faces.findIndex((f) => f.id === activeFace.id),
+            });
+          }}
+          canisterStyle={{
+            marginBottom: 6,
+            minHeight: 140,
+            ...canisterStyle,
+          }}
+        />
+      );
+    }
+
     return (
       <Canister
         key={slotId}
@@ -692,6 +888,66 @@ export default function OverseerFlightDeck({
     const visible = panels.filter((panel) => !isFloatingPanel(panel));
     const isMonitorWall = rail === "center";
     const isSideRail = rail === "left" || rail === "right";
+    const selectors = rail === "left" ? LEFT_SIDE_DISPLAY_SELECTORS : RIGHT_SIDE_DISPLAY_SELECTORS;
+    const availableSelectors = selectors.filter((selector) =>
+      panels.some((panel) => panel.id === selector.targetPanelId),
+    );
+    const selectSideDisplay = (selector: SideDisplaySelector) => {
+      window.dispatchEvent(
+        new CustomEvent(OVERSEER_SECTION_SELECT_EVENT, {
+          detail: {
+            slotId: `surround:${selector.targetPanelId}`,
+            sectionId: selector.sectionId,
+          },
+        }),
+      );
+      document.getElementById(selector.targetPanelId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    };
+
+    const selectorRail = isSideRail && availableSelectors.length > 0 ? (
+      <div
+        data-overseer-side-display-selectors={rail}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          padding: "4px",
+          marginBottom: 6,
+          border: "1px solid rgba(0,255,255,0.24)",
+          borderRadius: 6,
+          background: "rgba(0,0,0,0.34)",
+        }}
+      >
+        {availableSelectors.map((selector) => (
+          <button
+            key={selector.id}
+            type="button"
+            data-side-display-selector={selector.id}
+            onClick={() => selectSideDisplay(selector)}
+            style={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              padding: "4px 6px",
+              border: `1px solid ${selector.accent}66`,
+              borderRadius: 4,
+              background: `${selector.accent}12`,
+              color: selector.accent,
+              fontSize: 7,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {selector.label}
+          </button>
+        ))}
+      </div>
+    ) : null;
 
     if (isMonitorWall) {
       return (
@@ -714,6 +970,8 @@ export default function OverseerFlightDeck({
             screenStream={screenStream}
             shareMonitorId={shareTargetMonitor}
             onStopScreenShare={stopScreenShare}
+            attachedCount={attachedMonitorCount}
+            onAttachedCountChange={setAttachedMonitorCount}
           />
         </div>
       );
@@ -741,6 +999,7 @@ export default function OverseerFlightDeck({
             paddingRight: 2,
           }}
         >
+          {selectorRail}
           {before.length > 0 ? (
             <div
               ref={leftRailScrollRef}
@@ -798,13 +1057,14 @@ export default function OverseerFlightDeck({
           minWidth: 0,
           flex: 1,
           minHeight: 0,
-          height: isSideRail ? "100%" : "auto",
-          maxHeight: isSideRail ? "100%" : "none",
-          overflowY: isSideRail && !leftCollapsed && !rightCollapsed ? "auto" : isSideRail ? "hidden" : "visible",
+          height: "auto",
+          maxHeight: "none",
+          overflowY: "visible",
           overflowX: "hidden",
           paddingRight: 2,
         }}
       >
+        {selectorRail}
         {visible.map((panel) =>
           renderPanelCanister(
             panel,
@@ -868,6 +1128,12 @@ export default function OverseerFlightDeck({
       <div style={{ ...gemStyle(), top: 2, right: 2 }} />
       <div style={{ ...gemStyle(), bottom: 2, left: 2 }} />
       <div style={{ ...gemStyle(), bottom: 2, right: 2 }} />
+
+      {/* CANONICAL IN-PLACE PANEL EXPANSION & INSPECTION AUTHORITY */}
+      <CanonicalPanelExpansionAuthority
+        expandedContext={expandedPanelContext}
+        onClose={() => setExpandedPanelContext(null)}
+      />
 
       {/* Sticky global account escape — not Concierge-owned */}
       <header
@@ -947,7 +1213,17 @@ export default function OverseerFlightDeck({
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            minWidth: 0,
+            width: isMobile ? "100%" : undefined,
+            flexWrap: isMobile ? "wrap" : "nowrap",
+            justifyContent: isMobile ? "flex-end" : undefined,
+          }}
+        >
           <span style={{ color: "#fff", fontSize: 11, fontWeight: 900, letterSpacing: "0.05em" }}>
             {clock || "—"}
           </span>
@@ -971,25 +1247,7 @@ export default function OverseerFlightDeck({
           >
             Bot Intel
           </button>
-          <button
-            type="button"
-            onClick={() => setConciergeOpen(true)}
-            style={{
-              borderRadius: 8,
-              border: "1.5px solid #D4AF37",
-              background: "linear-gradient(180deg, #5b217a 0%, #301042 100%)",
-              color: "#ffe3a3",
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              padding: "5px 12px",
-              cursor: "pointer",
-            }}
-          >
-            Admin
-          </button>
-          <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN · FAN · PERFORMER" />
+          <a href="/admin/asset-foundry" data-testid="tmi-admin-asset-foundry-entry" data-admin-creator="asset-foundry" style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #D4AF37", color: "#ffe3a3", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em", textDecoration: "none", textTransform: "uppercase" }}>Asset Foundry</a>
           <RoleHubAccountMenu accentColor="#FFD700" showInlineSignOut />
         </div>
       </header>
@@ -1287,9 +1545,12 @@ export default function OverseerFlightDeck({
               style={{
                 flexShrink: 0,
                 width: isMobile ? "100%" : leftWidth,
+                height: isMobile ? "auto" : stageCapCss,
+                maxHeight: isMobile ? "none" : stageCapCss,
                 maxWidth: "100%",
                 minWidth: 0,
-                overflow: "hidden",
+                overflowX: "hidden",
+                overflowY: isMobile ? "visible" : "auto",
                 transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
@@ -1371,14 +1632,16 @@ export default function OverseerFlightDeck({
               ref={centerColRef}
               data-monitor-stage-boundary
               style={{
-                flex: 1,
+                flex: attachedMonitorCount === 0 ? "0 0 auto" : 1,
                 width: isMobile ? "100%" : undefined,
                 maxWidth: "100%",
                 minWidth: 0,
                 display: "flex",
                 flexDirection: "column",
                 alignSelf: "flex-start",
-                ...(!isMobile ? desktopMonitorStageStyle(true) : {}),
+                ...(!isMobile && attachedMonitorCount > 0
+                  ? desktopMonitorStageStyle(true, availableCenterWidth)
+                  : { maxWidth: "100%", minWidth: 0 }),
               }}
             >
               {renderRail(activeWorkspace.center, "center")}
@@ -1391,9 +1654,12 @@ export default function OverseerFlightDeck({
               style={{
                 flexShrink: 0,
                 width: isMobile ? "100%" : rightWidth,
+                height: isMobile ? "auto" : stageCapCss,
+                maxHeight: isMobile ? "none" : stageCapCss,
                 maxWidth: "100%",
                 minWidth: 0,
-                overflow: "hidden",
+                overflowX: "hidden",
+                overflowY: isMobile ? "visible" : "auto",
                 transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 display: "flex",
                 flexDirection: "column",
@@ -1401,7 +1667,7 @@ export default function OverseerFlightDeck({
                 minHeight: 0,
               }}
             >
-              <div style={{ flex: 1, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div style={{ flex: 1, minHeight: 0, height: "auto", display: "flex", flexDirection: "column", minWidth: 0, gap: 6 }}>
                 {renderRail(activeWorkspace.rightRail, "right")}
               </div>
             </div>
@@ -1542,7 +1808,7 @@ export default function OverseerFlightDeck({
                   false,
                   false,
                   {
-                    minHeight: 480,
+                    minHeight: isMobile ? "auto" : 480,
                     flex: "0 0 auto",
                     height: "auto",
                     overflow: "visible",
@@ -1560,7 +1826,7 @@ export default function OverseerFlightDeck({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "8px 24px",
+          padding: isMobile ? "8px 10px" : "8px 24px",
           background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
           border: "3px solid #b8860b",
           borderRadius: 14,
@@ -1569,31 +1835,17 @@ export default function OverseerFlightDeck({
           bottom: 8,
           zIndex: 40,
           marginTop: 4,
+          boxSizing: "border-box",
+          maxWidth: "100%",
         }}
       >
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={() => setConciergeOpen(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 16px",
-              background: "linear-gradient(180deg, #5b217a 0%, #301042 100%)",
-              border: "2px solid #D4AF37",
-              borderRadius: 10,
-              color: "#ffe3a3",
-              fontWeight: 900,
-              fontSize: 11,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-            }}
-          >
-            Admin
-          </button>
+          <UniversalCommandController
+            currentPersona="ADMIN"
+            activeMonitorCount={attachedMonitorCount}
+            onSetMonitorCount={setAttachedMonitorCount}
+            onLaunchPresentation={handleLaunchPresentation}
+          />
           <button
             type="button"
             onClick={() => drawerManager.toggleRail("left")}
@@ -1708,17 +1960,6 @@ export default function OverseerFlightDeck({
           />
         </div>
       )}
-
-      <AdminConciergePanel
-        open={conciergeOpen}
-        onClose={() => setConciergeOpen(false)}
-        includeWorkspaces={false}
-        operatorLabel={operatorLabel}
-        fullControl={fullControl}
-        canAutoApplyFixes={canAutoApplyFixes}
-        onSuggestFix={handleSuggestFix}
-        submittingFix={submittingFix || localSubmittingFix}
-      />
 
       {botIntelOpen ? (
         <div

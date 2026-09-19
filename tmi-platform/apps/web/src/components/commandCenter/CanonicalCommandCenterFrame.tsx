@@ -66,7 +66,19 @@ export default function CanonicalCommandCenterFrame({
           minHeight: 0,
         }}
       >
-        {navigationRail}
+        {navigationRail ? (
+          <div
+            data-hub-navigation-lane
+            style={{
+              alignSelf: "flex-start",
+              height: "min(1260px, calc(100dvh + 420px))",
+              minHeight: 0,
+              flexShrink: 0,
+            }}
+          >
+            {navigationRail}
+          </div>
+        ) : null}
         <div
           data-canonical-media-column
           style={{

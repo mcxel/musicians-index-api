@@ -6,14 +6,12 @@
  * Mobile: use MobileQuickPanelBar / dock — do not mount this rail.
  */
 
+import { useEffect, useRef } from "react";
 import type { OperatingCenter } from "@/lib/drawers/operatingCenterRegistry";
-import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
 import type { CommandCenterPanelId } from "./commandCenterRegistry";
 
 export interface HubNavigationRailProps {
   role: "fan" | "performer";
-  userId: string;
-  displayName: string;
   centers: OperatingCenter[];
   activePanel: CommandCenterPanelId | null;
   onOpenPanel: (id: CommandCenterPanelId) => void;
@@ -21,12 +19,16 @@ export interface HubNavigationRailProps {
 
 export default function HubNavigationRail({
   role,
-  userId,
-  displayName,
   centers,
   activePanel,
   onOpenPanel,
 }: HubNavigationRailProps) {
+  const controlsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    controlsRef.current?.scrollTo({ top: 0 });
+  }, []);
+
   return (
     <aside
       data-hub-navigation-rail
@@ -40,15 +42,35 @@ export default function HubNavigationRail({
         alignItems: "stretch",
         gap: 4,
         padding: "8px 6px",
+        // Align with Monitor A rather than the header/control rows. The parent
+        // lane bounds this sticky travel to the dual-monitor workspace.
+        marginTop: 224,
+        position: "sticky",
+        top: 96,
+        maxHeight: "min(760px, calc(100dvh - 116px))",
+        alignSelf: "flex-start",
         borderRight: "1px solid rgba(0,229,255,0.12)",
         background: "rgba(5,5,16,0.72)",
         backdropFilter: "blur(10px)",
         minHeight: 0,
-        overflowY: "auto",
+        overflow: "hidden",
         overflowX: "hidden",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 0 }}>
+      <div
+        ref={controlsRef}
+        data-hub-navigation-controls
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          paddingRight: 2,
+        }}
+      >
         {centers.map((center) => {
           const active = activePanel === center.primaryModule;
           return (
@@ -64,16 +86,21 @@ export default function HubNavigationRail({
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 4,
-                padding: "8px 4px",
-                borderRadius: 10,
-                border: active ? `1px solid ${center.accent}` : "1px solid transparent",
-                background: active ? `${center.accent}18` : "transparent",
-                color: active ? center.accent : "rgba(255,255,255,0.55)",
+                gap: 5,
+                padding: "10px 4px",
+                borderRadius: 8,
+                border: active ? `1px solid ${center.accent}` : "1px solid rgba(190,210,235,0.22)",
+                background: active
+                  ? `linear-gradient(180deg, ${center.accent}44 0%, ${center.accent}18 55%, #0a0e16 100%)`
+                  : "linear-gradient(180deg, #3a4254 0%, #1a1f2c 55%, #0e1218 100%)",
+                color: active ? "#fff" : "rgba(255,255,255,0.7)",
                 cursor: "pointer",
                 fontFamily: "inherit",
                 transition: "background 0.15s, border-color 0.15s, color 0.15s",
-                minHeight: 56,
+                minHeight: 64,
+                boxShadow: active
+                  ? `0 0 12px ${center.accent}44, inset 0 1px 0 rgba(255,255,255,0.25)`
+                  : "inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.35)",
               }}
             >
               <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>{center.icon}</span>
@@ -92,9 +119,6 @@ export default function HubNavigationRail({
             </button>
           );
         })}
-      </div>
-      <div style={{ flexShrink: 0, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <CommandCenterIdentityCard userId={userId} displayName={displayName} role={role} />
       </div>
     </aside>
   );

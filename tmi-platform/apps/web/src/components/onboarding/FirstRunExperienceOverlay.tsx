@@ -24,7 +24,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
   { role: 'advertiser', label: 'Advertiser', icon: '📢', desc: 'Run ads, reach music fans' },
 ];
 
-const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home', '/onboarding'];
+const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home', '/onboarding', '/admin'];
 
 const NEXT_ACTIONS = [
   { icon: '🎭', label: 'Join a Live Room',     desc: 'Watch artists perform right now',        href: '/fan/theater'      },
@@ -75,7 +75,15 @@ export default function FirstRunExperienceOverlay() {
       // requires a server round-trip rather than reading document.cookie.
       try {
         const res = await fetch('/api/auth/session', { credentials: 'include' });
-        const data = await res.json().catch(() => null) as { authenticated?: boolean; user?: { role?: string } } | null;
+        const data = await res.json().catch(() => null) as {
+          authenticated?: boolean;
+          user?: { role?: string; onboardingState?: string };
+        } | null;
+        const onboardingState = data?.user?.onboardingState?.toLowerCase();
+        if (!cancelled && data?.authenticated && onboardingState === 'complete') {
+          dismissFirstRun();
+          return;
+        }
         const mapped = data?.authenticated && data.user?.role
           ? mapPlatformRoleToFirstRunRole(data.user.role)
           : null;

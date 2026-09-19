@@ -24,6 +24,7 @@ import {
 import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
+import CommandCenterEarningsToday from "./CommandCenterEarningsToday";
 import {
   PENDING_GO_LIVE_KEY,
   presentInstantGoLiveInPlace,
@@ -99,6 +100,9 @@ import { useWorkspacePresentationStore } from "@/lib/workspace/universal/Workspa
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 import TmiIdentitySurface from "./TmiIdentitySurface";
 import PerformerQrQuickStrip from "./PerformerQrQuickStrip";
+import LivingDeskShell, { type LivingDeskPlayerContext } from "./LivingDeskShell";
+import CommandCenterIdentityCard from "./CommandCenterIdentityCard";
+import VenueToolsPanel from "@/components/hud/panels/VenueToolsPanel";
 
 interface LiveApiSession {
   userId: string;
@@ -545,6 +549,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [mobileCommsOpen, setMobileCommsOpen] = useState(false);
   const [mobileCommsTab, setMobileCommsTab] = useState<HubCommunicationsTab>("messages");
+  const [livingDeskContext, setLivingDeskContext] = useState<LivingDeskPlayerContext | null>(null);
+  const [venueDockContext, setVenueDockContext] = useState<{
+    roomId?: string;
+    isLoungeHost: boolean;
+    readOnly: boolean;
+  } | null>(null);
   useEffect(() => {
     document.documentElement.setAttribute("data-shell-build", "ccs-2026-08-27-canonical-slice1");
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -580,6 +590,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const closeControl = useWorkspacePresentationStore((s) => s.closeControl);
   const cycleMonitorCount = useWorkspacePresentationStore((s) => s.cycleMonitorCount);
   const setPresentationMonitorCount = useWorkspacePresentationStore((s) => s.setMonitorCount);
+  const activeViewCount = useWorkspacePresentationStore((s) => s.activeViewCount);
+  const setActiveViewCount = useWorkspacePresentationStore((s) => s.setActiveViewCount);
   const mobilePresentation = useMemo(
     () => ({
       mode: mobileMode,
@@ -616,9 +628,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       setPresentationMonitorCount,
     ],
   );
-  /** Mobile Stage Deck: MONITORS ⇄ WORKSPACE — mutually exclusive presentation of one region. */
-  const stageDeckWork = isMobile && mobilePresentation.mode === "WORK";
-  const stageDeckShowMonitors = isMobile && !stageDeckWork && monitorLayoutMode !== "HIDDEN";
+  /** Drawer WORK layers BELOW monitors — never mutually exclusive with media fabric. */
+  const stageDeckWork = false;
+  const stageDeckShowMonitors = isMobile && monitorLayoutMode !== "HIDDEN";
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -640,13 +652,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const isWatchMode = mobilePresentation.mode === "WATCH";
   const isWorkMode = mobilePresentation.mode === "WORK";
   const isControlMode = mobilePresentation.mode === "CONTROL";
-  const effectiveMonitorCount = isWorkMode ? 0 : isControlMode ? 1 : monitorCount;
+  // WORK (drawer open) must NOT zero monitors — drawer sits below the fabric.
+  const effectiveMonitorCount = isControlMode ? 1 : monitorCount;
   const monitorLayoutForStack = isControlMode || monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
   const isIdentityStageOwner =
-    isMobile && isWatchMode && !stageDeckWork && effectiveMonitorCount === 0;
+    isMobile && isWatchMode && !isWorkMode && effectiveMonitorCount === 0;
   const shouldCollapseMonitorRegion =
-    isWorkMode ||
-    (isWatchMode && effectiveMonitorCount === 0 && !isIdentityStageOwner);
+    isWatchMode && effectiveMonitorCount === 0 && !isIdentityStageOwner;
   const monitorZeroGeometry: CSSProperties = {
     display: "none",
     height: 0,
@@ -681,7 +693,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     overflow: "hidden",
   };
 
-  const hideMonitorLayout = shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN" || isWorkMode;
+  const hideMonitorLayout = shouldCollapseMonitorRegion || monitorStagePhase === "HIDDEN";
   const monitorRegionStyle: CSSProperties = {
     minWidth: 0,
     minHeight: 0,
@@ -742,18 +754,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     scheduleMonitorPhase(() => setMonitorStagePhase("VISIBLE"));
   };
 
-  // Role-switcher CONTROL_FOCUS: collapse empty stage while picker is open (no workspace yet).
-  // Manual HIDE wins: do not restore Stage on close unless this control performed the collapse.
+  // CONTROL_FOCUS may collapse empty stage while picker is open.
+  // WORK (drawer) must NEVER hide monitors — drawer layers below the fabric.
   useEffect(() => {
     if (!isMobile) return;
     if (isWorkMode) {
-      if (monitorLayoutModeRef.current !== "HIDDEN") {
-        stageCollapseRestoreModeRef.current = monitorLayoutModeRef.current;
-        stageCollapsedByControlRef.current = true;
-      }
-      clearMonitorPhaseTimer();
-      if (monitorLayoutMode !== "HIDDEN") setMonitorLayoutMode("HIDDEN");
-      if (monitorStagePhase !== "HIDDEN") setMonitorStagePhase("HIDDEN");
+      // Drawer open: keep current monitor layout; do not force HIDDEN.
       return;
     }
 
@@ -1249,8 +1255,34 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.16em", color: theme.primary }}>
-            TMI · {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, lineHeight: 1.1 }}>
+            <span
+              style={{
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: 13,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 50%, #FFD700 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              TMI
+            </span>
+            <span
+              style={{
+                fontSize: 7,
+                fontWeight: 800,
+                letterSpacing: "0.14em",
+                color: "rgba(255,255,255,0.5)",
+                textTransform: "uppercase",
+              }}
+            >
+              THE MUSICIAN&apos;S INDEX MAGAZINE
+            </span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: theme.primary }}>
+            {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
           </span>
           {featured ? (
             <button
@@ -1307,6 +1339,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           ) : null}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {role === "performer" ? <CommandCenterEarningsToday /> : null}
           {isMobile && (
             <button
               type="button"
@@ -1356,8 +1389,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 📺 MON:
               </span>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
-                const isSupported = [1, 2, 3, 4, 8].includes(num);
-                const isSelected = monitorCount === num;
+                const isSupported = [1, 2, 3, 4, 5, 6, 7, 8].includes(num);
+                const isSelected = num === 1 ? monitorCount === 1 : monitorCount === 2 && activeViewCount === num;
                 return (
                   <button
                     key={num}
@@ -1368,9 +1401,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       if (num === 1) {
                         transitionMonitorLayout("PRIMARY_ONLY");
                         setPresentationMonitorCount(1);
+                        setActiveViewCount(1);
                       } else {
                         transitionMonitorLayout("DUAL");
                         setPresentationMonitorCount(2);
+                        setActiveViewCount(num as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8);
                       }
                     }}
                     title={
@@ -1465,6 +1500,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     userId={userId}
                     displayName={resolvedDisplayName}
                     onOpenYopho={openYophoInPlace}
+                    onOpenLivingOs={(context) => {
+                      setVenueDockContext(null);
+                      setLivingDeskContext(context);
+                    }}
+                    onOpenVenueTools={(context) => {
+                      setLivingDeskContext(null);
+                      setVenueDockContext(context);
+                    }}
                     seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
                   />
                 </GlobalErrorBoundary>
@@ -1607,8 +1650,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             navigationRail={
               <HubNavigationRail
                 role={role === "performer" ? "performer" : "fan"}
-                userId={userId}
-                displayName={resolvedDisplayName}
                 centers={centers}
                 activePanel={activePanel}
                 onOpenPanel={openPanel}
@@ -1631,6 +1672,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       userId={userId}
                       displayName={resolvedDisplayName}
                       onOpenYopho={openYophoInPlace}
+                      onOpenLivingOs={(context) => {
+                        setVenueDockContext(null);
+                        setLivingDeskContext(context);
+                      }}
+                      onOpenVenueTools={(context) => {
+                        setLivingDeskContext(null);
+                        setVenueDockContext(context);
+                      }}
                       seriesLabel={
                         role === "performer"
                           ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
@@ -1740,6 +1789,75 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 userId={userId}
                 displayName={resolvedDisplayName}
                 roomId={inPlaceRoomId ?? publishedRoomId ?? mediaRoomId}
+                roomClass="PERSONAL_OWNED"
+                isAuthorizedHost={
+                  role === "performer" &&
+                  Boolean(inPlaceRoomId ?? publishedRoomId)
+                }
+                companionDock={
+                  venueDockContext ? (
+                    <div
+                      data-companion-dock-venue-tools
+                      style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          padding: "8px 10px",
+                          borderBottom: `1px solid ${theme.primary}44`,
+                        }}
+                      >
+                        <span style={{ color: theme.primary, fontSize: 9, fontWeight: 900, letterSpacing: "0.12em" }}>
+                          VENUE TOOLS
+                        </span>
+                        <button
+                          type="button"
+                          data-companion-dock-close="venue-tools"
+                          aria-label="Close Venue Tools companion dock"
+                          onClick={() => setVenueDockContext(null)}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 5,
+                            border: "1px solid rgba(255,255,255,0.22)",
+                            background: "rgba(255,255,255,0.05)",
+                            color: "rgba(255,255,255,0.72)",
+                            cursor: "pointer",
+                            fontWeight: 900,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+                        <VenueToolsPanel
+                          role={role === "performer" ? "performer" : "fan"}
+                          userId={userId}
+                          roomId={venueDockContext.roomId}
+                          isLoungeHost={venueDockContext.isLoungeHost}
+                          readOnly={venueDockContext.readOnly}
+                          accentColor={theme.primary}
+                        />
+                      </div>
+                    </div>
+                  ) : livingDeskContext ? (
+                    <LivingDeskShell
+                      context={livingDeskContext}
+                      modules={[]}
+                      onClose={() => setLivingDeskContext(null)}
+                    />
+                  ) : undefined
+                }
+                identityHeader={
+                  <CommandCenterIdentityCard
+                    userId={userId}
+                    displayName={resolvedDisplayName}
+                    role={role === "performer" ? "performer" : "fan"}
+                  />
+                }
               />
             }
           />
@@ -1761,6 +1879,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           userId={userId}
           displayName={resolvedDisplayName}
           roomId={activeHubRoomId}
+          isAuthorizedHost={
+            hubShellRole === "performer" &&
+            Boolean(inPlaceRoomId ?? publishedRoomId)
+          }
         />
       ) : null}
       <SnipsOverlayHost />
