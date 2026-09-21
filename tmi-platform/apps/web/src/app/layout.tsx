@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { headers } from "next/headers";
 import FullAppShell from "@/components/layout/FullAppShell";
+import { CANONICAL_RELEASE_MANIFEST } from "@/lib/system/TmiReleaseMigrationAuthority";
 import { isAuthCriticalPath } from "@/lib/auth/isAuthCriticalPath";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
@@ -107,6 +108,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="tmi-release-id" content={CANONICAL_RELEASE_MANIFEST.releaseId} />
+        <meta name="tmi-ui-schema" content={String(CANONICAL_RELEASE_MANIFEST.uiSchemaVersion)} />
+        <meta name="tmi-cache-schema" content={String(CANONICAL_RELEASE_MANIFEST.cacheSchemaVersion)} />
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
       </head>
@@ -114,6 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="tmi-obsidian-cinematic overflow-x-hidden"
         data-build-sha={process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"}
         data-auth-critical={authCritical ? "1" : "0"}
+        data-tmi-release={CANONICAL_RELEASE_MANIFEST.releaseId}
         suppressHydrationWarning
       >
         <div

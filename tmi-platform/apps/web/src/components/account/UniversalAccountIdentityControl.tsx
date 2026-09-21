@@ -48,7 +48,7 @@ export default function UniversalAccountIdentityControl({
   const [identity, setIdentity] = useState<ActiveProfileIdentity | null>(null);
   const [myRoles, setMyRoles] = useState<string[]>([]);
   const [identityError, setIdentityError] = useState(false);
-  const [panelPos, setPanelPos] = useState<{ top: number; left?: number; right?: number }>({
+  const [panelPos, setPanelPos] = useState<{ top?: number; bottom?: number; left?: number; right?: number }>({
     top: 56,
     right: 12,
   });
@@ -101,25 +101,26 @@ export default function UniversalAccountIdentityControl({
     const rect = triggerRef.current.getBoundingClientRect();
     const vw = typeof window !== "undefined" ? window.innerWidth : 390;
     const vh = typeof window !== "undefined" ? window.innerHeight : 844;
-    const isMobile = vw <= 640;
+    const isMobile = window.innerWidth <= 640;
     const panelWidth = Math.min(320, vw - 16);
 
-    const top = Math.min(
-      Math.round(rect.bottom + 8),
-      Math.max(8, vh - 120),
-    );
+    const isBottomDock = rect.top > vh / 2;
+    const bottom = isBottomDock ? Math.max(12, Math.round(vh - rect.top + 8)) : undefined;
+    const top = isBottomDock
+      ? undefined
+      : Math.min(Math.round(rect.bottom + 8), Math.max(8, vh - 120));
 
     if (isMobile) {
       // Collision-aware mobile placement: clamp within safe margins [8px, vw - 8px]
       const left = Math.max(8, Math.round((vw - panelWidth) / 2));
-      setPanelPos({ top, left });
+      setPanelPos({ top, bottom, left });
     } else {
       // Desktop: place inward toward the side with sufficient clearance
       const spaceRight = vw - rect.left;
       if (spaceRight >= panelWidth + 8) {
-        setPanelPos({ top, left: Math.max(8, Math.round(rect.left)) });
+        setPanelPos({ top, bottom, left: Math.max(8, Math.round(rect.left)) });
       } else {
-        setPanelPos({ top, right: Math.max(8, Math.round(vw - rect.right)) });
+        setPanelPos({ top, bottom, right: Math.max(8, Math.round(vw - rect.right)) });
       }
     }
   }, [open]);
@@ -250,6 +251,7 @@ export default function UniversalAccountIdentityControl({
             open={open}
             onClose={() => setOpen(false)}
             anchorTop={panelPos.top}
+            anchorBottom={panelPos.bottom}
             anchorLeft={panelPos.left}
             anchorRight={panelPos.right}
             rolesUnavailable={identityError}

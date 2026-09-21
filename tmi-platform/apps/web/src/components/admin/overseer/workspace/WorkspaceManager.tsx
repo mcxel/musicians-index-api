@@ -73,38 +73,58 @@ export default function WorkspaceManager() {
     const raw = WORKSPACE_CONFIGS[activeRole];
     const filtered = filterWorkspaceByPermissions(raw, activeRole);
 
+    const PERMISSION_LABELS: Record<string, string> = {
+      "founder.override": "FOUNDER OVERRIDE",
+      "ai.executive": "ALL EXECUTIVE",
+      "revenue.manage": "REVENUE MANAGE",
+      "security.manage": "SECURITY MANAGE",
+      "automation.manage": "AUTOMATION MANAGE",
+      "media.manage": "MEDIA MANAGE",
+      "queue.manage": "QUEUE MANAGE",
+      "deployment.manage": "DEPLOYMENT MANAGE",
+      "music.manage": "MUSIC MANAGE",
+      "read.only": "READ ONLY",
+    };
+
     const roleBadges = (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-        {listPermissions(activeRole).map((permission) => (
-          <button
-            key={permission}
-            type="button"
-            onClick={() =>
-              livingOsCommandBus.dispatch({
-                type: "DRAWER_OPENED",
-                category: "navigation",
-                role: "admin",
-                payload: { requiredPermission: permission },
-              })
-            }
-            style={{
-              border: "1px solid rgba(0,255,255,0.3)",
-              borderRadius: 999,
-              padding: "2px 7px",
-              fontSize: 8,
-              fontWeight: 700,
-              color: "#8CF9FF",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              background: "rgba(0,255,255,0.07)",
-              whiteSpace: "nowrap",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {permission}
-          </button>
-        ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+        {listPermissions(activeRole).map((permission) => {
+          const label = PERMISSION_LABELS[permission] ?? permission.toUpperCase();
+          return (
+            <button
+              key={permission}
+              type="button"
+              data-permission={permission}
+              onClick={() =>
+                livingOsCommandBus.dispatch({
+                  type: "DRAWER_OPENED",
+                  category: "navigation",
+                  role: "admin",
+                  payload: { requiredPermission: permission },
+                })
+              }
+              title={`Activate ${label} authority`}
+              style={{
+                border: "1px solid rgba(0,255,255,0.45)",
+                borderRadius: 6,
+                padding: "3px 8px",
+                color: "#00FFFF",
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                background: "rgba(0,255,255,0.08)",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 0.15s ease",
+                minHeight: 26,
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     );
 

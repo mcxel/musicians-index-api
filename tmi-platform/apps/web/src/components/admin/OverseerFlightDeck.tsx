@@ -41,6 +41,7 @@ import OverseerMonitorWall from "@/components/admin/overseer/OverseerMonitorWall
 import RolodexDisplayPanel, { type RolodexFace } from "@/components/admin/overseer/RolodexDisplayPanel";
 import CanonicalPanelExpansionAuthority, { type ExpandedPanelContext } from "@/components/admin/overseer/CanonicalPanelExpansionAuthority";
 import UniversalCommandController from "@/components/admin/overseer/UniversalCommandController";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
 import type { AttachedMonitorCount } from "@/lib/admin/AdminMonitorLayoutResolver";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import { scrollToControlDesk } from "@/lib/admin/overseerInspectBridge";
@@ -557,6 +558,7 @@ export default function OverseerFlightDeck({
   const allPanels = useMemo(
     () => [
       ...activeWorkspace.leftRail,
+      ...activeWorkspace.center,
       ...activeWorkspace.rightRail,
       ...activeWorkspace.bottom,
     ],
@@ -570,8 +572,43 @@ export default function OverseerFlightDeck({
     return livingOsCommandBus.on("DRAWER_OPENED", (command) => {
       const requiredPermission = command.payload?.requiredPermission;
       if (typeof requiredPermission !== "string") return;
+
+      // Special full authorities
+      if (requiredPermission === "ai.executive") {
+        setBotIntelOpen(true);
+        return;
+      }
+      if (requiredPermission === "queue.manage") {
+        window.location.href = "/admin/visual-queue";
+        return;
+      }
+      if (requiredPermission === "deployment.manage") {
+        window.location.href = "/admin/runtime-check";
+        return;
+      }
+      if (requiredPermission === "music.manage") {
+        const match = allPanels.find((panel) => panel.requiredPermission === requiredPermission);
+        if (match?.id) {
+          document.getElementById(match.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          window.location.href = "/admin/submission-locker";
+        }
+        return;
+      }
+
       const match = allPanels.find((panel) => panel.requiredPermission === requiredPermission);
       if (!match) return;
+
+      if (isMobile) {
+        if (activeWorkspace.leftRail.some((p) => p.id === match.id)) {
+          setMobileOpsTab("left");
+        } else if (activeWorkspace.center.some((p) => p.id === match.id)) {
+          setMobileOpsTab("center");
+        } else if (activeWorkspace.rightRail.some((p) => p.id === match.id)) {
+          setMobileOpsTab("right");
+        }
+      }
+
       if (match.fullscreenKey) {
         setFullscreenPanel(match.fullscreenKey);
         return;
@@ -580,7 +617,7 @@ export default function OverseerFlightDeck({
         document.getElementById(match.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
-  }, [allPanels]);
+  }, [allPanels, isMobile, activeWorkspace]);
 
   const fullscreenMatch = allPanels.find((panel) => panel.fullscreenKey === fullscreenPanel);
 
@@ -1043,8 +1080,10 @@ export default function OverseerFlightDeck({
   };
 
   const dockBtnStyle = (active = false): CSSProperties => ({
-    width: 34,
-    height: 34,
+    width: isMobile ? 44 : 36,
+    height: isMobile ? 44 : 36,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: "50%",
     background: active
       ? "linear-gradient(180deg, #0a4a2a 0%, #063018 100%)"
@@ -1052,8 +1091,13 @@ export default function OverseerFlightDeck({
     border: active ? "2px solid #00FF88" : "2px solid #D4AF37",
     color: active ? "#00FF88" : "#ffe3a3",
     fontSize: 14,
+    fontWeight: 900,
     cursor: "pointer",
     boxShadow: active ? "0 0 12px rgba(0,255,136,0.45)" : "0 3px 8px rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    touchAction: "manipulation",
   });
 
   return (
@@ -1302,10 +1346,7 @@ export default function OverseerFlightDeck({
             {n}
           </button>
         ))}
-        <OverseerCoverageRail
-          activePanelId={activeCoveragePanel}
-          onActivePanelChange={(id) => setActiveCoveragePanel(id)}
-        />
+
         {/* SHARE SCREEN — cyclic getDisplayMedia controller (not playlist) */}
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 3 }}>
           <button
@@ -1516,6 +1557,12 @@ export default function OverseerFlightDeck({
                 minHeight: 0,
               }}
             >
+              <div style={{ padding: "6px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                <OverseerCoverageRail
+                  activePanelId={activeCoveragePanel}
+                  onActivePanelChange={(id) => setActiveCoveragePanel(id)}
+                />
+              </div>
               <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%", minWidth: 0 }}>
                 <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", height: "100%" }}>
                   {renderRail(activeWorkspace.leftRail, "left")}
@@ -1784,75 +1831,88 @@ export default function OverseerFlightDeck({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: isMobile ? "8px 10px" : "8px 24px",
+          gap: 8,
+          padding: isMobile ? "8px 10px max(12px, env(safe-area-inset-bottom, 12px))" : "8px 24px",
           background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
           border: "3px solid #b8860b",
           borderRadius: 14,
           boxShadow: "0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,215,0,0.15)",
           position: "sticky",
-          bottom: 8,
-          zIndex: 40,
+          bottom: 0,
+          zIndex: 150,
           marginTop: 4,
           boxSizing: "border-box",
           maxWidth: "100%",
+          pointerEvents: "auto",
+          flexWrap: isMobile ? "wrap" : "nowrap",
         }}
       >
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {/* [ ADMIN ] */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           <UniversalCommandController
             currentPersona="ADMIN"
             activeMonitorCount={attachedMonitorCount}
             onSetMonitorCount={setAttachedMonitorCount}
             onLaunchPresentation={handleLaunchPresentation}
           />
+        </div>
+
+        {/* [ navigation/control ] */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => drawerManager.toggleRail("left")}
             title="Toggle left rail"
-            style={dockBtnStyle()}
+            style={dockBtnStyle(!leftCollapsed)}
+            aria-label="Toggle left rail"
           >
-            {leftCollapsed ? "◀" : "◁"}
+            {leftCollapsed ? "◀" : "◀"}
           </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
             type="button"
             onClick={() => drawerManager.toggleRail("right")}
             title="Toggle right rail"
-            style={dockBtnStyle()}
+            style={dockBtnStyle(!rightCollapsed)}
+            aria-label="Toggle right rail"
           >
-            {rightCollapsed ? "▶" : "▷"}
+            {rightCollapsed ? "▶" : "▶"}
           </button>
           <Link
             href="/admin/overseer"
             style={{
               ...dockBtnStyle(),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
               textDecoration: "none",
             }}
             title="Admin Overseer Deck"
+            aria-label="Admin Overseer Deck"
           >
-            ◀
+            ⚡
           </Link>
+        </div>
+
+        {/* [ B ] (Canonical gold "B" persona / account control) */}
+        <div
+          data-testid="tmi-dock-canonical-account-b"
+          style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}
+        >
+          <UniversalAccountIdentityControl compact={isMobile} fallbackDisplayName="Berntout" />
+        </div>
+
+        {/* [ other authorized controls ] */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           <Link
             href="/"
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: "50%",
+              ...dockBtnStyle(),
+              width: isMobile ? 44 : 36,
+              height: isMobile ? 44 : 36,
               background: "linear-gradient(180deg, #c0392b 0%, #7f0c0d 100%)",
               border: "2px solid #D4AF37",
               color: "#fff",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
               textDecoration: "none",
-              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
             }}
             title="Exit"
+            aria-label="Exit"
           >
             ⏻
           </Link>

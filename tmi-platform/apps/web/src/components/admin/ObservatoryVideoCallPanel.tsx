@@ -59,6 +59,16 @@ export default function ObservatoryVideoCallPanel() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
   }, [remoteStream]);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 640px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(
@@ -247,7 +257,7 @@ export default function ObservatoryVideoCallPanel() {
         title="Observatory video chat"
         style={{
           position: "fixed",
-          bottom: 22,
+          bottom: isMobile ? "calc(74px + env(safe-area-inset-bottom, 14px))" : 22,
           right: 18,
           zIndex: 130,
           borderRadius: 999,
@@ -270,10 +280,10 @@ export default function ObservatoryVideoCallPanel() {
         <div
           style={{
             position: "fixed",
-            bottom: 70,
+            bottom: isMobile ? "calc(126px + env(safe-area-inset-bottom, 14px))" : 70,
             right: 18,
             zIndex: 135,
-            width: 340,
+            width: isMobile ? "min(340px, calc(100vw - 36px))" : 340,
             maxHeight: "72vh",
             overflow: "auto",
             background: "linear-gradient(160deg, rgba(6,7,13,0.98), rgba(10,6,20,0.99))",

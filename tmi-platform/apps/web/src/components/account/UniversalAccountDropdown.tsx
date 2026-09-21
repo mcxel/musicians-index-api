@@ -8,8 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { ActiveProfileIdentity } from "@/lib/account/resolveActiveProfileIdentity";
+import type { ActiveProfileIdentity } from "@/lib/account/ActiveProfileIdentity";
 import {
   resolveAccountShellCapabilities,
   resolveAccountHubDestination,
@@ -24,9 +23,10 @@ export interface UniversalAccountDropdownProps {
   identity: ActiveProfileIdentity;
   open: boolean;
   onClose: () => void;
-  anchorLeft?: number;
   anchorRight?: number;
+  anchorLeft?: number;
   anchorTop?: number;
+  anchorBottom?: number;
   /** True when role/identity discovery failed to load — distinct from the
    *  user genuinely owning only one role. Never silently hide switch
    *  options as though this were a permission fact. */
@@ -38,6 +38,7 @@ interface CompanionOffer {
   price: number;
   currency: string;
 }
+
 
 const rowStyle: CSSProperties = {
   display: "flex",
@@ -58,20 +59,17 @@ const rowStyle: CSSProperties = {
   gap: 8,
 };
 
-const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;
-
 export default function UniversalAccountDropdown({
   identity,
   open,
   onClose,
-  anchorLeft,
   anchorRight = 12,
+  anchorLeft,
   anchorTop = 56,
+  anchorBottom,
   rolesUnavailable = false,
 }: UniversalAccountDropdownProps) {
-  const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [switchingRole, setSwitchingRole] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
@@ -81,30 +79,6 @@ export default function UniversalAccountDropdown({
     ownedRoles: identity.ownedRoles,
     activeRole: identity.activeRole,
   });
-
-  const resetIdleTimer = useCallback(() => {
-    if (!open) return;
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => {
-      onClose();
-    }, ACCOUNT_MENU_IDLE_CLOSE_MS);
-  }, [open, onClose]);
-
-  // Cleanup idle timer on unmount
-  useEffect(() => {
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (open) {
-      resetIdleTimer();
-    } else if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-    }
-  }, [open, resetIdleTimer]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,39 +104,22 @@ export default function UniversalAccountDropdown({
       }
       if (panelRef.current && !panelRef.current.contains(target)) {
         onClose();
-      } else {
-        resetIdleTimer();
       }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
-      } else {
-        resetIdleTimer();
       }
     };
-    const onInteraction = () => resetIdleTimer();
 
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
 
-    const panel = panelRef.current;
-    if (panel) {
-      panel.addEventListener("mousemove", onInteraction);
-      panel.addEventListener("touchstart", onInteraction);
-      panel.addEventListener("focusin", onInteraction);
-    }
-
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
-      if (panel) {
-        panel.removeEventListener("mousemove", onInteraction);
-        panel.removeEventListener("touchstart", onInteraction);
-        panel.removeEventListener("focusin", onInteraction);
-      }
     };
-  }, [open, onClose, resetIdleTimer]);
+  }, [open, onClose]);
 
   // Close on route change
   useEffect(() => {
@@ -185,14 +142,6 @@ export default function UniversalAccountDropdown({
   });
 
   const handleRoleHubClick = async (targetRole: PersonaSwitchRole) => {
-    const dest = resolveAccountHubDestination(targetRole);
-
-    if (caps.activeModeLabel.toUpperCase() === targetRole.toUpperCase()) {
-      onClose();
-      window.location.href = dest;
-      return;
-    }
-
     if (switchingRole) return;
     setSwitchingRole(targetRole);
     setSwitchError(null);
@@ -224,7 +173,7 @@ export default function UniversalAccountDropdown({
         onClose();
         localStorage.setItem("tmi_last_workspace", targetProfile === "PERFORMER" ? "performer" : "fan");
         const dest = data.hubUrl ?? resolveAccountHubDestination(targetProfile);
-        router.push(dest);
+        window.location.href = dest;
       }
     } catch {
       /* keep open */
@@ -251,7 +200,7 @@ export default function UniversalAccountDropdown({
       role="menu"
       style={{
         position: "fixed",
-        top: anchorTop,
+        ...(anchorBottom !== undefined ? { bottom: anchorBottom, top: "auto" } : { top: anchorTop }),
         ...(anchorLeft !== undefined
           ? { left: anchorLeft, right: "auto" }
           : { right: anchorRight }),
@@ -262,12 +211,9 @@ export default function UniversalAccountDropdown({
         background: "rgba(8, 8, 20, 0.98)",
         border: "1px solid rgba(255,45,170,0.35)",
         borderRadius: 12,
-        boxShadow: "0 18px 48px rgba(0,0,0,0.55)",
+        boxShadow: "0 18px 48px rgba(0,0,0,0.75)",
         fontFamily: "inherit",
       }}
-      onClick={() => resetIdleTimer()}
-      onMouseEnter={() => resetIdleTimer()}
-      onFocus={() => resetIdleTimer()}
     >
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
@@ -340,8 +286,13 @@ export default function UniversalAccountDropdown({
                     background: isActive ? `${color}22` : "transparent",
                   }}
                 >
-                  {switchingRole === role ? "…" : label}
-                  {isActive ? " · active" : ""}
+                  {switchingRole === role
+                    ? "…"
+                    : isActive
+                      ? label + " · active"
+                      : role === "ADMIN"
+                        ? "RETURN TO ADMINISTRATION"
+                        : "SWITCH TO " + label}
                 </button>
               );
             })}
@@ -378,8 +329,11 @@ export default function UniversalAccountDropdown({
                       : "transparent",
                 }}
               >
-                {switchingRole === role ? "…" : role}
-                {caps.activeModeLabel === role ? " · active" : ""}
+                {switchingRole === role
+                  ? "…"
+                  : caps.activeModeLabel === role
+                    ? role + " · active"
+                    : "SWITCH TO " + role}
               </button>
             ))}
           </div>
@@ -510,6 +464,11 @@ export default function UniversalAccountDropdown({
         </Link>
       </div>
       <div style={{ padding: "6px 8px" }}>
+        {caps.activeModeLabel === "FAN" ? (
+          <Link href="/avatar/studio" onClick={onClose} data-testid="tmi-menu-digital-self" style={rowStyle}>
+            Digital Self · Avatar
+          </Link>
+        ) : null}
         <Link href={publicPath} onClick={onClose} data-testid="tmi-menu-view-profile" style={rowStyle}>
           View Profile
         </Link>
@@ -525,7 +484,7 @@ export default function UniversalAccountDropdown({
         <Link href="/help" onClick={onClose} data-testid="tmi-menu-help" style={rowStyle}>
           Help & Support
         </Link>
-        <button type="button" data-testid="tmi-menu-logout" onClick={() => void handleLogout()} style={{ ...rowStyle, color: "#FF3B5C", minHeight: 44 }}>
+        <button type="button" data-testid="tmi-menu-logout" onClick={() => void handleLogout()} style={{ ...rowStyle, color: "#FF3B5C", minHeight: 48, fontWeight: 900, border: "1px solid rgba(255,59,92,0.35)", marginTop: 6 }}>
           LOG OUT
         </button>
       </div>
