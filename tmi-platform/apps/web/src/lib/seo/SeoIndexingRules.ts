@@ -22,6 +22,7 @@ export const INDEXABLE_STATIC_ROUTES = [
   "/contact",
   "/disclosures",
   "/support",
+  "/feedback",
   "/billboards",
   "/events",
   "/events/today",

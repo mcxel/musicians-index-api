@@ -4,6 +4,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Advertising Disclosures | TMI",
   description: "How The Musician's Index uses advertising, the networks we work with, and your choices about ad personalization.",
+  alternates: {
+    canonical: "https://themusiciansindex.com/disclosures",
+  },
 };
 
 export default function DisclosuresPage() {

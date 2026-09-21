@@ -1,4 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy · The Musician's Index",
+  description: "Privacy policy, data collection, cookies and security terms for The Musician's Index.",
+  alternates: {
+    canonical: "https://themusiciansindex.com/privacy",
+  },
+};
 
 export default function PrivacyPage() {
   return (
@@ -46,7 +55,18 @@ export default function PrivacyPage() {
             body: "For privacy-related questions, contact BernoutGlobal LLC at berntmusic33@gmail.com or through our support portal.",
           },
         ].map((section) => (
-          <div key={section.title} style={{ marginBottom: 28 }}>
+          <div
+            key={section.title}
+            id={section.title === "Cookies & Sessions" ? "cookies" : undefined}
+            style={{
+              marginBottom: 28,
+              scrollMarginTop: 80,
+              padding: section.title === "Cookies & Sessions" ? "14px 18px" : undefined,
+              borderRadius: section.title === "Cookies & Sessions" ? 8 : undefined,
+              border: section.title === "Cookies & Sessions" ? "1px solid rgba(0,255,255,0.3)" : undefined,
+              background: section.title === "Cookies & Sessions" ? "rgba(0,255,255,0.04)" : undefined,
+            }}
+          >
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "#00FFFF", margin: "0 0 8px" }}>{section.title}</h2>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.7, margin: 0 }}>{section.body}</p>
           </div>

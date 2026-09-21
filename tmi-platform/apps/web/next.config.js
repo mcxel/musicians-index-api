@@ -148,8 +148,11 @@ const nextConfig = {
         destination: 'https://themusiciansindex.com/:path*',
         permanent: true,
       },
-      // ── Root → Home 1 ─────────────────────────────────────────────────────
-      { source: '/', destination: '/home/1', permanent: false },
+      // ── Root → Home 1 Canonical Public Entry ──────────────────────────────
+      { source: '/', destination: '/home/1', permanent: true },
+
+      // ── Cookie Policy Canonical Alias ────────────────────────────────────
+      { source: '/cookie-policy', destination: '/privacy#cookies', permanent: true },
 
       // ── Battles ───────────────────────────────────────────────────────────
       { source: '/battles/new', destination: '/battles/create', permanent: false },
