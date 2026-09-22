@@ -162,52 +162,73 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        gap: isMobile ? 10 : 18,
-        padding: isMobile ? "0 10px" : "0 16px",
+        justifyContent: "space-between",
+        gap: isMobile ? 6 : 18,
+        padding: isMobile ? "0 8px" : "0 16px",
         borderBottom: `1px solid ${theme.primary}18`,
         background: theme.bgGlass,
         backdropFilter: "blur(12px)",
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* Logo: TMI + "The Musician's Index" styled in sleek cursive script (Billie Jean aesthetic) */}
+      {/* Logo: colorful TMI + cursor script + Magazine sublabel */}
       <Link
         href="/"
         style={{
           display: "flex",
-          alignItems: "baseline",
-          gap: 7,
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: 0,
           textDecoration: "none",
           flexShrink: 0,
+          lineHeight: 1.05,
         }}
       >
-        <span
-          style={{
-            fontFamily: "'Orbitron', 'Inter', sans-serif",
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: "0.04em",
-            color: theme.primary,
-            textShadow: `0 0 12px ${theme.primary}88`,
-          }}
-        >
-          TMI
+        <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+          <span
+            style={{
+              fontFamily: "'Orbitron', 'Inter', sans-serif",
+              fontSize: 18,
+              fontWeight: 900,
+              letterSpacing: "0.04em",
+              background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 45%, #FFD700 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 10px rgba(0,255,255,0.45))",
+            }}
+          >
+            TMI
+          </span>
+          <span
+            style={{
+              fontFamily: "'Brush Script MT', 'Dancing Script', 'Pacifico', 'Caveat', cursive, sans-serif",
+              fontSize: 17,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 50%, #FFD700 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 12px rgba(255,45,170,0.35))",
+              display: isMobile ? "none" : "inline-block",
+              whiteSpace: "nowrap",
+            }}
+          >
+            The Musician&apos;s Index
+          </span>
         </span>
         <span
           style={{
-            fontFamily: "'Brush Script MT', 'Dancing Script', 'Pacifico', 'Caveat', cursive, sans-serif",
-            fontSize: 17,
-            fontWeight: 700,
-            letterSpacing: "0.02em",
-            background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 50%, #FFD700 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            textShadow: "0 0 16px rgba(0,255,255,0.4)",
-            display: isMobile ? "none" : "inline-block",
-            whiteSpace: "nowrap",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 7,
+            fontWeight: 800,
+            letterSpacing: "0.16em",
+            color: "rgba(255,255,255,0.55)",
+            textTransform: "uppercase",
+            marginTop: 2,
+            marginLeft: 1,
           }}
         >
-          The Musician&apos;s Index
+          THE MUSICIAN&apos;S INDEX MAGAZINE
         </span>
       </Link>
 
@@ -234,6 +255,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       )}
 
       {/* Search */}
+      {!isMobile && (
       <form
         onSubmit={submitSearch}
         style={{
@@ -265,6 +287,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           }}
         />
       </form>
+      )}
 
       {/* Token balance */}
       <div style={{ flexShrink: 0 }}>
@@ -370,7 +393,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           marginLeft: 4,
         }}
       >
-        <UniversalSignOutButton accentColor="#FF5555" compact />
+        {!isMobile && <UniversalSignOutButton accentColor="#FF5555" compact />}
         <AccountCommandMenu
           userId={userId}
           displayName={displayName}
