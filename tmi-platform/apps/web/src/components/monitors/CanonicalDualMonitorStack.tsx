@@ -23,7 +23,7 @@ import { resolveLivingPlayerCapabilities, type LivingViewCount } from "@/lib/mon
  * Shared by Observatory (gold) + Fan/Performer Command Center (chrome).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   useCanonicalMediaPlayerRuntime,
@@ -718,6 +718,76 @@ export default function CanonicalDualMonitorStack({
     });
   }
 
+  // ── Viewport-height budget (P0 fix 2026-09-19) ──────────────────────────
+  // Two 16:9 monitors stack VERTICALLY (locked geometry, see header comment).
+  // Historically this stack sized purely from container WIDTH (width:100% +
+  // aspectRatio derives height), with no awareness of how much vertical space
+  // was actually left below the fold — so on shorter viewports Monitor B could
+  // render past the bottom of the screen while the DOM still looked "correct".
+  // This block measures the real available height below the stack's own top
+  // (which already accounts for the toggle row / toolbar / living-status line
+  // rendered above it in this same component) and, only when the natural
+  // width would make both monitors taller than that budget, caps the stack's
+  // width so both monitors shrink together and stay fully visible. When there
+  // is enough room, this never engages — width stays 100% exactly as before.
+  const stackWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [heightBudgetMaxWidth, setHeightBudgetMaxWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const el = stackWrapperRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0) return;
+
+      // Chrome under the stack this component does not own (bottom drawer
+      // affordance, monitor controls / command bed strip). Conservative
+      // constant since those live in sibling components (CommandCenterMediaStack)
+      // that this fix intentionally does not touch.
+      const BOTTOM_CHROME_RESERVE_PX = 96;
+      const GAP_PX = variant === "chrome" ? 6 : 8;
+
+      const visibleCount = panes.reduce((n, _pane, i) => {
+        const isParked = i === 0 ? frameAPark : frameBPark;
+        const isHiddenByRuntime2 = runtimeLayoutSingle && i === 1;
+        return isParked || isHiddenByRuntime2 ? n : n + 1;
+      }, 0) || 1;
+
+      const availableHeight = window.innerHeight - rect.top - BOTTOM_CHROME_RESERVE_PX;
+      if (availableHeight <= 0) {
+        setHeightBudgetMaxWidth(null);
+        return;
+      }
+
+      const totalGap = (visibleCount - 1) * GAP_PX;
+      const maxWidthFromHeight = ((availableHeight - totalGap) * 16) / (9 * visibleCount);
+
+      if (maxWidthFromHeight > 0 && maxWidthFromHeight < rect.width) {
+        setHeightBudgetMaxWidth(Math.floor(maxWidthFromHeight));
+      } else {
+        setHeightBudgetMaxWidth(null);
+      }
+    };
+
+    recompute();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recompute) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", recompute);
+    window.addEventListener("orientationchange", recompute);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", recompute);
+      window.removeEventListener("orientationchange", recompute);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, variant]);
+
+  const heightBudgetStackStyle: CSSProperties = heightBudgetMaxWidth
+    ? { width: `${heightBudgetMaxWidth}px`, maxWidth: "100%", margin: "0 auto" }
+    : { width: "100%" };
+
   return (
     <div
       data-canonical-dual-monitor-stack
@@ -907,7 +977,7 @@ export default function CanonicalDualMonitorStack({
       ) : null}
       {variant === "chrome" ? (
         /* Chrome: each monitor lives in its own bezel so the two 8-cell groups look physically separate */
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+        <div ref={stackWrapperRef} style={{ display: "flex", flexDirection: "column", gap: 6, ...heightBudgetStackStyle }}>
           {seriesLabel ? (
             <div style={{ ...bezel.label, textAlign: "left", padding: "0 2px 4px" }}>{seriesLabel}</div>
           ) : null}
@@ -995,7 +1065,7 @@ export default function CanonicalDualMonitorStack({
         /* Gold: unified single bezel for the whole Overseer unit */
         <div style={bezel.outer}>
           {seriesLabel ? <div style={bezel.label}>{seriesLabel}</div> : null}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+          <div ref={stackWrapperRef} style={{ display: "flex", flexDirection: "column", gap: 8, ...heightBudgetStackStyle }}>
             {panes.map((pane, index) => {
               const split = splits[index as 0 | 1];
               const monLabel = pane.label ?? `MONITOR ${index + 1}`;

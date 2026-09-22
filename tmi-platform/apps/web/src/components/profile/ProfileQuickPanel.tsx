@@ -3,17 +3,23 @@
 /**
  * ProfileQuickPanel
  * ─────────────────────────────────────────────────────────────────────────────
- * Slide-up glassmorphic bottom-sheet that appears when the user taps their
- * profile icon on the fan dashboard header. Replaces the old full-page
- * navigation to /profile/fan/[id].
+ * Slide-up glassmorphic bottom-sheet — the canonical lightweight Hub launcher
+ * for profile identity + quick actions. Wired 2026-09-19 as the entry point
+ * into the EXISTING canonical profile editor chain
+ * (app/p/[username]/page.tsx → PerformerPublicPage/FanPublicPage →
+ * ProfileCustomizer → AiProfileDesignerModal) — this panel never edits a
+ * profile itself, it only launches that real chain via "Edit Public Profile".
  *
  * Contains: avatar + name + tier, key stats, and action buttons that either
- * open inline canisters (Avatar, Inventory, Memory Wall) or navigate to
- * specific routes (Settings, Notifications, Messages, full Profile, Logout).
+ * open inline canisters (Fan: Avatar, Inventory, Memory Wall) or navigate to
+ * specific routes (Settings, Notifications, Messages, Edit Public Profile,
+ * Logout). Performer role omits Avatar/Inventory per Rule 26's Identity
+ * Policy (performers never own/customize an avatar) and shows
+ * performer-appropriate actions (Dashboard, Booking) instead.
  *
  * Rule 14: every button resolves to a real destination.
  * Rule 20: no fake data — stats come from gamification engine.
- * Rule 26: Fan-only (avatar + inventory visible here per identity policy).
+ * Rule 26: role-gated — Avatar + Inventory are Fan-only per identity policy.
  */
 
 import { useCallback, useEffect, useRef } from "react";
@@ -22,15 +28,31 @@ import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { useTmiSession } from "@/hooks/SessionContext";
 
 interface ProfileQuickPanelProps {
+  /** Current user's id (Fan or Performer) — same identity used everywhere else in the Hub. */
   fanId: string;
   open: boolean;
   onClose: () => void;
-  /** Called when user taps "Avatar" — parent opens avatar canister */
+  /** Session role — gates Avatar/Inventory (Fan-only, Rule 26) vs Performer actions. */
+  role?: "fan" | "performer";
+  /** Called when user taps "Avatar" — parent opens avatar canister (Fan only) */
   onOpenAvatar?: () => void;
-  /** Called when user taps "Inventory" — parent opens inventory canister */
+  /** Called when user taps "Inventory" — parent opens inventory canister (Fan only) */
   onOpenInventory?: () => void;
   /** Called when user taps "Memory Wall" — parent opens memory wall canister */
   onOpenMemoryWall?: () => void;
+}
+
+/**
+ * Canonical self-view profile path — same `/p/{usr_id}` construction already
+ * used by the Hub's "USER ID" QR touchpoint in CommandCenterMediaStack.tsx.
+ * Reused verbatim here so both touchpoints resolve to the exact same route
+ * (app/p/[username]/page.tsx resolves by id-prefix, so viewing your own id
+ * always lands you in owner/self-view mode with the real CUSTOMIZE PAGE
+ * control from ProfileCustomizer).
+ */
+function resolveCanonicalPublicProfilePath(userId: string): string {
+  if (!userId) return "/p/member";
+  return `/p/${userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`}`;
 }
 
 const C = {
@@ -60,6 +82,7 @@ export default function ProfileQuickPanel({
   fanId,
   open,
   onClose,
+  role = "fan",
   onOpenAvatar,
   onOpenInventory,
   onOpenMemoryWall,
@@ -106,13 +129,9 @@ export default function ProfileQuickPanel({
 
   const handleLogout = useCallback(async () => {
     onClose();
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch {
-      // ignore
-    }
-    router.push("/");
-  }, [onClose, router]);
+    const { canonicalLogout } = await import("@/lib/auth/canonicalLogout");
+    await canonicalLogout();
+  }, [onClose]);
 
   if (!open) return null;
 
@@ -122,23 +141,43 @@ export default function ProfileQuickPanel({
 
   const actions = [
     {
-      icon: "👤",
-      label: "My Profile",
-      sub: "Public profile",
-      onClick: () => go(`/profile/fan/${fanId}`),
+      icon: "✏️",
+      label: "Edit Public Profile",
+      sub: role === "performer" ? "EPK, media, bio, layout" : "Customize your page",
+      // Canonical editor chain: /p/[username] → PerformerPublicPage/FanPublicPage
+      // (self-view, isOwner=true) → CUSTOMIZE PAGE → ProfileCustomizer/AiProfileDesignerModal.
+      // No parallel editor — this only launches the existing real chain.
+      onClick: () => go(resolveCanonicalPublicProfilePath(fanId)),
     },
-    {
-      icon: "🎨",
-      label: "Avatar",
-      sub: "Customize your look",
-      onClick: () => { onClose(); onOpenAvatar?.(); },
-    },
-    {
-      icon: "🎒",
-      label: "Inventory",
-      sub: "Items & collectibles",
-      onClick: () => { onClose(); onOpenInventory?.(); },
-    },
+    ...(role === "fan"
+      ? [
+          {
+            icon: "🎨",
+            label: "Avatar",
+            sub: "Customize your look",
+            onClick: () => { onClose(); onOpenAvatar?.(); },
+          },
+          {
+            icon: "🎒",
+            label: "Inventory",
+            sub: "Items & collectibles",
+            onClick: () => { onClose(); onOpenInventory?.(); },
+          },
+        ]
+      : [
+          {
+            icon: "🎛",
+            label: "Dashboard",
+            sub: "Media, beats, submissions",
+            onClick: () => go("/performer/dashboard"),
+          },
+          {
+            icon: "📅",
+            label: "Booking",
+            sub: "Requests & offers",
+            onClick: () => go("/bookings"),
+          },
+        ]),
     {
       icon: "📸",
       label: "Memory Wall",

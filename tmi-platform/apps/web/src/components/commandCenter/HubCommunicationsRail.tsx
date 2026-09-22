@@ -14,6 +14,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import RoomChatPanel from "@/components/messaging/RoomChatPanel";
 import CommunityFeedPanel from "@/components/messaging/CommunityFeedPanel";
+import BroadcastAnnouncementTicker from "@/components/broadcast/BroadcastAnnouncementTicker";
 import {
   resolveRoomModerationControls,
   type RoomModerationRoomClass,
@@ -347,6 +348,16 @@ export default function HubCommunicationsRail({
           {identityHeader}
         </div>
       ) : null}
+      <div
+        data-hub-broadcast-announcement-ticker="1"
+        style={{
+          flexShrink: 0,
+          padding: "8px 8px 6px",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <BroadcastAnnouncementTicker />
+      </div>
       <div
         style={{
           display: "flex",

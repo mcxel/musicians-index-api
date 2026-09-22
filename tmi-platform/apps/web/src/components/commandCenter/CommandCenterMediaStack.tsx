@@ -61,6 +61,7 @@ import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalL
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
+import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
 
 function lobbyRoomToUniversal(room: LobbyRoom): UniversalRoom {
   return {
@@ -886,6 +887,9 @@ export default function CommandCenterMediaStack({
   const [castPanelOpen, setCastPanelOpen] = useState(false);
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
+  /** Canonical Hub profile launcher (Item 3, 2026-09-19) — opens ProfileQuickPanel,
+   * a second, clearly-labeled trigger next to the existing QR "USER ID" touchpoint. */
+  const [profileQuickPanelOpen, setProfileQuickPanelOpen] = useState(false);
   const [controlBedCollapsed, setControlBedCollapsed] = useState(false);
   /**
    * RECORD honesty (P0): no certified session/cloud recording consumer is wired to
@@ -1004,6 +1008,17 @@ export default function CommandCenterMediaStack({
       window.removeEventListener("tmi:detach-lobby-wall", onDetachLobbyWall);
     };
   }, []);
+
+  // Enforce single-presentation Lobby Wall: if the canonical DRAWER lobby
+  // workspace opens via ANY trigger (top nav, quick panel, quick tools —
+  // not just the button in this file), close the detached-float mosaic so
+  // the two never render simultaneously over the media stack. Real fix for
+  // the confirmed regression in CURSOR_HUB_BOUND_RUNTIME_DIAGNOSIS_2026_09_16.md.
+  useEffect(() => {
+    if (drawerWorkspace === "lobby" && isDrawerExpanded && detachedLobbyWallOpen) {
+      setDetachedLobbyWallOpen(false);
+    }
+  }, [drawerWorkspace, isDrawerExpanded, detachedLobbyWallOpen]);
 
   // LOBBY WALL Command Control → compact dimensional mosaic panel (does NOT replace monitors).
   const toggleLobbyWallFromButton = useCallback(() => {
@@ -1572,6 +1587,18 @@ export default function CommandCenterMediaStack({
             )}
 
             {utilityBtn(
+              profileQuickPanelOpen,
+              "#FF2DAA",
+              "EDIT PROFILE",
+              () => setProfileQuickPanelOpen(true),
+              {
+                testId: "tmi-top-cluster-edit-profile",
+                title: "Open profile quick panel — identity, quick actions, edit public profile",
+                icon: "✏️",
+              },
+            )}
+
+            {utilityBtn(
               detachedLobbyWallOpen,
               "#00FFFF",
               "LOBBY WALL",
@@ -1966,6 +1993,20 @@ export default function CommandCenterMediaStack({
         />
       )}
 
+      {/* Canonical Hub profile launcher (Item 3, 2026-09-19) — identity +
+          quick actions + "Edit Public Profile" into the EXISTING editor chain
+          (app/p/[username] → PerformerPublicPage/FanPublicPage →
+          ProfileCustomizer). Does not replace or duplicate that chain. */}
+      <ProfileQuickPanel
+        fanId={userId ?? ""}
+        open={profileQuickPanelOpen}
+        onClose={() => setProfileQuickPanelOpen(false)}
+        role={role === "performer" ? "performer" : "fan"}
+        onOpenAvatar={() => presentCanonicalWorkspace("avatar-quick", "DRAWER")}
+        onOpenInventory={() => presentCanonicalWorkspace("inventory", "DRAWER")}
+        onOpenMemoryWall={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+      />
+
       {detachedLobbyWallOpen &&
         typeof document !== "undefined" &&
         createPortal(
@@ -2058,7 +2099,7 @@ export default function CommandCenterMediaStack({
               }}
             >
               <LiveLobbyWallHost
-                variant="page"
+                variant="embedded"
                 title="Live Lobby Wall"
                 typeLabel="LIVE"
                 accentColor="#00FFFF"
