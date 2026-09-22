@@ -10,6 +10,8 @@ import {
   normalizeTags,
   pushToAutomatedPatchQueue,
   shouldRouteToAutomatedPatchQueue,
+  persistReportToStorage,
+  loadPersistedReports,
 } from '@/lib/feedback/FeedbackStore';
 import prisma from '@/lib/prisma';
 import { participationEconomyEngine } from '@/lib/economy/ParticipationEconomyEngine';
@@ -72,6 +74,7 @@ export async function POST(req: NextRequest) {
 
     const authed = await resolveAuthedContext(req);
     if (authed) {
+      report.userId = authed.userId;
       if (authed.role === 'performer' || authed.role === 'artist') {
         participationEconomyEngine.earn(authed.userId, 'performer', 'audience_engagement', {
           category,
@@ -87,8 +90,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Persist to database (prisma.feedItem) with test fallback
+    await persistReportToStorage(report);
+
     return NextResponse.json({
       success: true,
+      id: report.id,
       count: bucket.count,
       category,
       severity,
@@ -101,6 +108,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  await loadPersistedReports();
   const summary = getFeedbackSummary();
   return NextResponse.json(summary);
 }
