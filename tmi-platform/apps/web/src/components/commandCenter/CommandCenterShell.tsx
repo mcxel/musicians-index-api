@@ -10,6 +10,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -74,6 +75,11 @@ import CommandCenterTopNav from "./CommandCenterTopNav";
 import CanonicalCommandCenterFrame from "./CanonicalCommandCenterFrame";
 import HubCommunicationsRail, { type HubCommunicationsTab } from "./HubCommunicationsRail";
 import HubMobileQuickActionBar from "./HubMobileQuickActionBar";
+import HubMobileGpsNavDrawer from "./HubMobileGpsNavDrawer";
+import {
+  isGpsDrawerVisible,
+  useMobileGpsMonitorLayoutStore,
+} from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import HubMobileCommunicationsDrawer from "./HubMobileCommunicationsDrawer";
 import HubMobileMonitorControlBar from "./HubMobileMonitorControlBar";
 import PerformerExperienceQuickStrip from "./PerformerExperienceQuickStrip";
@@ -546,6 +552,13 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
+  const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
+  const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
+  const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
+  useLayoutEffect(() => {
+    if (!isMobile || !gpsDrawerVisible) return;
+    document.querySelector("[data-testid='hub-gps-menu-anchor']")?.scrollIntoView({ block: "nearest" });
+  }, [isMobile, gpsDrawerVisible]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [mobileCommsOpen, setMobileCommsOpen] = useState(false);
   const [mobileCommsTab, setMobileCommsTab] = useState<HubCommunicationsTab>("messages");
@@ -1243,7 +1256,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       {/* Status bar */}
       <div
         style={{
-          height: 44,
+          height: isMobile ? 52 : 44,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -1281,9 +1294,36 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               THE MUSICIAN&apos;S INDEX MAGAZINE
             </span>
           </div>
-          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: theme.primary }}>
-            {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
-          </span>
+          {isMobile ? (
+            <button
+              type="button"
+              data-testid="hub-header-gps"
+              aria-label="Open GPS navigation"
+              aria-pressed={gpsDrawerVisible}
+              onClick={() => toggleGpsDrawer()}
+              style={{
+                minWidth: 72,
+                minHeight: 44,
+                padding: "0 16px",
+                borderRadius: 8,
+                border: gpsDrawerVisible ? "1px solid #E7C6FF" : "1px solid #AA2DFF",
+                background: gpsDrawerVisible ? "rgba(170,45,255,0.45)" : "rgba(170,45,255,0.22)",
+                color: "#F6E9FF",
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: 13,
+                fontWeight: 900,
+                letterSpacing: "0.16em",
+                cursor: "pointer",
+                boxShadow: "0 0 12px rgba(170,45,255,0.35)",
+              }}
+            >
+              GPS
+            </button>
+          ) : (
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: theme.primary }}>
+              {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
+            </span>
+          )}
           {featured ? (
             <button
               type="button"
@@ -1537,6 +1577,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
           </div>
 
+          {gpsDrawerVisible ? (
+            <div data-testid="hub-gps-menu-anchor">
+              <HubMobileGpsNavDrawer
+                role={hubShellRole}
+                centers={centers}
+                activePanel={activePanel}
+                onOpenPanel={openPanel}
+                displayName={resolvedDisplayName}
+                layout={gpsLayout}
+              />
+            </div>
+          ) : null}
           <HubMobileMonitorControlBar
             role={hubShellRole}
             hasLiveFeed={hasLiveFeed}

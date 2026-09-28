@@ -891,6 +891,7 @@ export default function CommandCenterMediaStack({
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [controlBedCollapsed, setControlBedCollapsed] = useState(false);
+  const [directQuickPanel, setDirectQuickPanel] = useState<null | "promote" | "objects">(null);
   /**
    * RECORD honesty (P0): no certified session/cloud recording consumer is wired to
    * the hub top cluster. Live-fabric startRecording is metadata-only today;
@@ -932,6 +933,8 @@ export default function CommandCenterMediaStack({
   const castControlsRef = useRef<HTMLDivElement | null>(null);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
+  const focusedViewport = useWorkspacePresentationStore((s) => s.focusedViewport);
+  const setFocusedViewport = useWorkspacePresentationStore((s) => s.setFocusedViewport);
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1330,7 +1333,7 @@ export default function CommandCenterMediaStack({
     accent: string,
     label: string,
     onClick: () => void,
-    opts?: { testId?: string; title?: string; icon?: string; disabled?: boolean },
+    opts?: { testId?: string; title?: string; icon?: string; disabled?: boolean; minHeight?: number },
   ) => (
     <button
       type="button"
@@ -1338,7 +1341,10 @@ export default function CommandCenterMediaStack({
       onClick={opts?.disabled ? undefined : onClick}
       disabled={opts?.disabled}
       title={opts?.title ?? label}
-      style={utilityBtnStyle(active, accent, opts?.disabled)}
+      style={{
+        ...utilityBtnStyle(active, accent, opts?.disabled),
+        ...(opts?.minHeight ? { minHeight: opts.minHeight, minWidth: 44 } : null),
+      }}
     >
       {opts?.icon ? <span style={{ pointerEvents: "none" }}>{opts.icon}</span> : null}
       <span style={{ pointerEvents: "none" }}>{label}</span>
@@ -1420,6 +1426,57 @@ export default function CommandCenterMediaStack({
     marginBottom: 2,
     width: "100%",
   };
+
+  const touch = { minHeight: 44 } as const;
+  const mobileDirectControls = (
+    <div
+      data-tmi-direct-controls="1"
+      style={{ position: "relative", flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, marginBottom: 8, maxWidth: "100%" }}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {utilityBtn(Boolean(publishedRoomId), "#FF2DAA", publishedRoomId ? "● LIVE" : "GO LIVE", () => {
+          void presentInstantGoLiveInPlace({
+            role: role === "performer" ? "PERFORMER" : "FAN",
+            preferredExperience: "live",
+            roomId: hubLiveRoomId ?? undefined,
+            publishSession: true,
+          });
+        }, { testId: "tmi-direct-golive", title: "Go Live", minHeight: touch.minHeight })}
+        {utilityBtn(focusedViewport === "A", "#00FFFF", "M1", () => setFocusedViewport("A"), { testId: "tmi-direct-m1", title: "Send the next presentation to Monitor A", minHeight: touch.minHeight })}
+        {utilityBtn(focusedViewport === "B", "#00FFFF", "M2", () => setFocusedViewport("B"), { testId: "tmi-direct-m2", title: "Send the next presentation to Monitor B", minHeight: touch.minHeight })}
+        <button type="button" data-testid="tmi-direct-record" data-record-state="unavailable" disabled title={RECORD_UNAVAILABLE_REASON} style={{ ...utilityBtnStyle(false, "rgba(255,255,255,0.4)", true), minHeight: 44, minWidth: 44 }}>
+          RECORD
+        </button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+        {utilityBtn(identityOpen, role === "performer" ? "#FFD700" : "#00FF88", "ID", () => { if (userId && displayName) setIdentityOpen((v) => !v); }, { testId: "tmi-direct-id", title: "Present User ID", minHeight: touch.minHeight })}
+        {utilityBtn(shareActive, "#00FF88", shareActive ? "SHARING" : "SCREEN", () => void cycleSharePress(), { testId: "tmi-direct-screen", title: "Share screen", minHeight: touch.minHeight })}
+        {utilityBtn(directQuickPanel === "promote", "#FFD700", "PROMOTE", () => setDirectQuickPanel((v) => v === "promote" ? null : "promote"), { testId: "tmi-direct-promote", title: "Open promotion tools", minHeight: touch.minHeight })}
+        {utilityBtn(directQuickPanel === "objects", "#AA2DFF", "OBJECTS", () => setDirectQuickPanel((v) => v === "objects" ? null : "objects"), { testId: "tmi-direct-objects", title: "Open shareable objects", minHeight: touch.minHeight })}
+        <CompactAudioMixer />
+      </div>
+      {directQuickPanel ? (
+        <div
+          data-testid={directQuickPanel === "promote" ? "tmi-promote-quick-panel" : "tmi-objects-quick-panel"}
+          style={{ position: "absolute", left: 0, right: 0, top: "100%", zIndex: 30, maxHeight: 180, overflow: "auto", display: "flex", flexWrap: "wrap", gap: 6, padding: 8, borderRadius: 8, border: "1px solid rgba(0,229,255,0.35)", background: "rgba(6,8,16,0.96)" }}
+        >
+          {directQuickPanel === "promote" ? (
+            <>
+              {utilityBtn(false, "#00FFFF", "SHARE LINK", () => void onShareClick(), { testId: "tmi-promote-share-link", title: "Share link", minHeight: 44 })}
+              {role === "performer" ? utilityBtn(sponsorPanelOpen, "#FFD700", "SPONSOR", () => setSponsorPanelOpen((v) => !v), { testId: "tmi-promote-sponsor", title: "Sponsor overlay", minHeight: 44 }) : null}
+            </>
+          ) : (
+            <>
+              {utilityBtn(false, "#00FFFF", "PHOTOS", () => { setExploreInitialColumn("SNIPS"); setExploreMatrixOpen(true); setDirectQuickPanel(null); }, { testId: "tmi-objects-photos", minHeight: 44 })}
+              {utilityBtn(false, "#FF2DAA", "VIDEOS", () => { setExploreInitialColumn("VIDEO_SHUFFLE"); setExploreMatrixOpen(true); setDirectQuickPanel(null); }, { testId: "tmi-objects-videos", minHeight: 44 })}
+              {utilityBtn(false, "#FFD700", "YOPHO", () => { presentCanonicalWorkspace("yopho", "DRAWER"); setDirectQuickPanel(null); }, { testId: "tmi-objects-yopho", minHeight: 44 })}
+              {utilityBtn(false, "#AA2DFF", "PLAYLIST", () => { presentCanonicalWorkspace("playlist-studio", "DRAWER"); setDirectQuickPanel(null); }, { testId: "tmi-objects-playlist", minHeight: 44 })}
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 
   const toolbar = (
     <div
@@ -1721,6 +1778,7 @@ export default function CommandCenterMediaStack({
     <div
       ref={containerRef}
       data-command-center-media-stack="1"
+      data-compact-hub={compactHubLayout ? "1" : "0"}
       data-tmi-dev-runtime-instance-id={isDevDiagnostics ? continuitySnapshot.runtimeInstanceId : undefined}
       data-tmi-dev-venue-instance-id={isDevDiagnostics ? continuitySnapshot.venueInstanceId : undefined}
       data-tmi-dev-room-session-id={isDevDiagnostics ? continuitySnapshot.roomSessionId : undefined}
@@ -1777,7 +1835,7 @@ export default function CommandCenterMediaStack({
           3) BEZEL — channel 1–8 + per-monitor FEED
           4) MONITOR PICTURE
           LiveLobbyMosaicScrollRail must NEVER mount here (INLINE_MAIN_FLOW = FAIL). */}
-      {toolbar}
+      {compactHubLayout ? mobileDirectControls : toolbar}
 
       <div
         data-media-player-tag-lights="1"
