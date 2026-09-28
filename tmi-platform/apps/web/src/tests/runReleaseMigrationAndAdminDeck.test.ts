@@ -3,8 +3,10 @@ import path from "path";
 import {
   CANONICAL_RELEASE_MANIFEST,
   compareReleases,
+  decideReleaseConvergence,
   isReleaseSupported,
   parseReleaseNumber,
+  releaseUpdateReturnPath,
   type TmiReleaseManifest,
 } from "@/lib/system/TmiReleaseMigrationAuthority";
 
@@ -97,6 +99,54 @@ describe("TMI Automatic Release Migration Authority (Game-Style Update Law)", ()
     expect(layoutSrc).toContain('meta name="tmi-release-id"');
     expect(layoutSrc).toContain("data-tmi-release=");
     expect(layoutSrc).toContain("CANONICAL_RELEASE_MANIFEST.releaseId");
+    expect(layoutSrc).toContain("VERCEL_GIT_COMMIT_SHA");
+    expect(layoutSrc).toContain("<DeploymentAutoUpdate />");
+  });
+
+  test("MIGRATE-09: production identity mismatch opens the customer update notice", () => {
+    expect(decideReleaseConvergence({
+      clientReleaseId: "abc111",
+      currentReleaseId: "abc111",
+      protectedSession: false,
+    }).action).toBe("current");
+
+    const available = decideReleaseConvergence({
+      clientReleaseId: "old-release",
+      currentReleaseId: "new-release",
+      protectedSession: false,
+    });
+    expect(available).toEqual({ action: "available", policy: "NORMAL", protectedSession: false });
+
+    const rolledBack = decideReleaseConvergence({
+      clientReleaseId: "zzz-newer-looking",
+      currentReleaseId: "aaa-active-production",
+      protectedSession: false,
+    });
+    expect(rolledBack.action).toBe("available");
+
+    const required = decideReleaseConvergence({
+      clientReleaseId: "old-release",
+      currentReleaseId: "security-release",
+      policy: "REQUIRED",
+      protectedSession: true,
+    });
+    expect(required).toEqual({ action: "required", protectedSession: true });
+
+    expect(decideReleaseConvergence({
+      clientReleaseId: "dev",
+      currentReleaseId: "real-production",
+      protectedSession: false,
+    }).action).toBe("current");
+
+    expect(releaseUpdateReturnPath("https://themusiciansindex.com/hub/performer?tab=live#monitors")).toBe(
+      "/hub/performer?tab=live#monitors",
+    );
+
+    const noticeSrc = readSrc("components/system/DeploymentAutoUpdate.tsx");
+    expect(noticeSrc).toContain("TMI UPDATE AVAILABLE");
+    expect(noticeSrc).toContain("UPDATE NOW");
+    expect(noticeSrc).toContain("executeReleaseMigration");
+    expect(noticeSrc).not.toContain("canonicalLogout");
   });
 });
 

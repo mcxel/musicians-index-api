@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { isSafeToPerformMigration } from "@/lib/system/TmiReleaseMigrationAuthority";
 
 const SW_RELOAD_KEY = 'tmi-sw-reload-pending';
 const SW_VERSION_KEY = 'tmi-sw-version';
@@ -86,6 +87,7 @@ export function PWARegistration() {
 
     const requestActivation = (registration: ServiceWorkerRegistration, reason: string) => {
       if (!registration.waiting) return;
+      if (!isSafeToPerformMigration()) return;
       sessionStorage.setItem(SW_RELOAD_KEY, '1');
       setStatusMessage('Updating TMI for a safer reload...');
       sendSwTelemetry('sw.update.activate_requested', { reason });

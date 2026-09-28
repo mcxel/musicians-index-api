@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { headers } from "next/headers";
 import FullAppShell from "@/components/layout/FullAppShell";
+import DeploymentAutoUpdate from "@/components/system/DeploymentAutoUpdate";
 import { CANONICAL_RELEASE_MANIFEST } from "@/lib/system/TmiReleaseMigrationAuthority";
 import { isAuthCriticalPath } from "@/lib/auth/isAuthCriticalPath";
 import "./globals.css";
@@ -116,7 +117,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body
         className="tmi-obsidian-cinematic overflow-x-hidden"
-        data-build-sha={process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"}
+        data-build-sha={process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"}
         data-auth-critical={authCritical ? "1" : "0"}
         data-tmi-release={CANONICAL_RELEASE_MANIFEST.releaseId}
         suppressHydrationWarning
@@ -151,7 +152,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               if (!pubId) return;
               try {
                 (window as any).apstag?.init({ pubID: pubId, adServer: "googletag" });
-              } catch {}
+              } catch { /* ad script optional */ }
             }}
           />
         )}
@@ -191,6 +192,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           performers, and fans.
         </h1>
         {authCritical ? children : <FullAppShell>{children}</FullAppShell>}
+        <DeploymentAutoUpdate />
       </body>
     </html>
   );

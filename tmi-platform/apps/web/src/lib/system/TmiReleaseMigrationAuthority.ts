@@ -51,6 +51,11 @@ export interface TmiReleaseManifest {
   publishedAt: string;
   /** Notes / release scope */
   notes?: string;
+  /**
+   * How a running client should treat a production identity mismatch.
+   * NORMAL and RECOMMENDED can be deferred. REQUIRED cannot be dismissed.
+   */
+  updatePolicy?: "NORMAL" | "RECOMMENDED" | "REQUIRED";
 }
 
 /**
@@ -65,7 +70,58 @@ export const CANONICAL_RELEASE_MANIFEST: TmiReleaseManifest = {
   requiresReauthentication: process.env.NEXT_PUBLIC_TMI_REQUIRE_REAUTH !== "false",
   publishedAt: "2026-09-20T18:00:00.000Z",
   notes: "TMI Major Mobile UI Overhaul & Physical Release Convergence",
+  updatePolicy:
+    process.env.TMI_UPDATE_POLICY === "REQUIRED" || process.env.TMI_UPDATE_POLICY === "RECOMMENDED"
+      ? process.env.TMI_UPDATE_POLICY
+      : "NORMAL",
 };
+
+export type ReleaseUpdatePolicy = "NORMAL" | "RECOMMENDED" | "REQUIRED";
+
+export type ReleaseConvergenceDecision =
+  | { action: "current" }
+  | { action: "available"; policy: ReleaseUpdatePolicy; protectedSession: boolean }
+  | { action: "required"; protectedSession: boolean };
+
+/** Local and unidentified builds must not invent an update notice. */
+export function isIdentifiableRelease(releaseId: string | null | undefined): boolean {
+  if (!releaseId) return false;
+  const value = releaseId.trim();
+  return value.length > 0 && value !== "unknown" && value !== "dev";
+}
+
+/**
+ * Production authority wins. A rollback to an older source still counts as
+ * the current release. Numeric "larger version wins" is not used here.
+ */
+export function decideReleaseConvergence(input: {
+  clientReleaseId: string | null | undefined;
+  currentReleaseId: string | null | undefined;
+  policy?: ReleaseUpdatePolicy;
+  protectedSession: boolean;
+}): ReleaseConvergenceDecision {
+  if (!isIdentifiableRelease(input.clientReleaseId) || !isIdentifiableRelease(input.currentReleaseId)) {
+    return { action: "current" };
+  }
+  if (input.clientReleaseId!.trim() === input.currentReleaseId!.trim()) {
+    return { action: "current" };
+  }
+  const policy = input.policy ?? "NORMAL";
+  if (policy === "REQUIRED") {
+    return { action: "required", protectedSession: input.protectedSession };
+  }
+  return { action: "available", policy, protectedSession: input.protectedSession };
+}
+
+/** Reload stays on the page the customer was using. */
+export function releaseUpdateReturnPath(href: string): string {
+  try {
+    const url = new URL(href, "https://themusiciansindex.com");
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/";
+  }
+}
 
 /** Parse release tag number (e.g. 'R42' -> 42, 'R37' -> 37, 'v6' -> 6) */
 export function parseReleaseNumber(tag: string | null | undefined): number {
@@ -126,6 +182,11 @@ export function isSafeToPerformMigration(): boolean {
   // 3. Check for active ticket scanning
   const isScanner = document.querySelector('[data-ticket-scanner-active="true"]') !== null;
   if (isScanner) return false;
+
+  if (document.querySelector("[data-screen-share-surface]") !== null) return false;
+  if (document.querySelector('[data-tmi-recording-active="true"]') !== null) return false;
+  if (document.querySelector('[data-tmi-upload-active="true"]') !== null) return false;
+  if (document.querySelector('[data-tmi-unsaved-draft="true"]') !== null) return false;
 
   // 4. Check for active text composition with content
   const activeEl = document.activeElement;
@@ -224,14 +285,14 @@ export async function executeReleaseMigration(
     console.warn("[TmiReleaseMigrationAuthority] Obsolete client detected but update DEFERRED: critical operation active.");
     try {
       window.localStorage.setItem("tmi_update_pending", serverManifest.releaseId);
-    } catch {}
+    } catch { /* storage unavailable */ }
     return { status: "deferred", reason: "critical_operation_active" };
   }
 
   // Set transition token to prevent reload loops
   try {
     sessionStorage.setItem(reloadGuardKey, "1");
-  } catch {}
+  } catch { /* storage unavailable */ }
 
   console.info(`[TmiReleaseMigrationAuthority] Obsolete release (${clientRelease} < ${serverManifest.minimumSupportedClientRelease}). Converging to ${serverManifest.releaseId}...`);
 
@@ -245,7 +306,7 @@ export async function executeReleaseMigration(
     window.localStorage.setItem("tmi_ui_schema_version", String(serverManifest.uiSchemaVersion));
     window.localStorage.setItem("tmi_cache_schema_version", String(serverManifest.cacheSchemaVersion));
     window.localStorage.removeItem("tmi_update_pending");
-  } catch {}
+  } catch { /* storage unavailable */ }
 
   // 3. Handle reauthentication vs safe refresh
   if (serverManifest.requiresReauthentication) {
