@@ -53,6 +53,7 @@ import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPl
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
 import CompactAudioMixer from "@/components/audio/CompactAudioMixer";
+import { useRetainMixSlot, useRetainMonitorWorkspace } from "@/components/audio/useAudibleExperiencePresence";
 import FastPlaylistCastPicker from "@/components/playlists/FastPlaylistCastPicker";
 import ExploreMatrixDiscoveryHost, { type ExploreColumnType } from "@/components/explore/ExploreMatrixDiscoveryHost";
 import LiveLobbyWallHost from "@/components/live/LiveLobbyWallHost";
@@ -872,6 +873,9 @@ export default function CommandCenterMediaStack({
       /* ignore */
     }
   }
+
+  useRetainMixSlot();
+  useRetainMonitorWorkspace();
 
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);

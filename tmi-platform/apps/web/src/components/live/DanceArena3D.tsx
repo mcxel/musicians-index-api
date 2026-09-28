@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRetainAudibleExperience } from "@/components/audio/useAudibleExperiencePresence";
 import { motion } from "framer-motion";
 import type { SeatingMeshState, MeshSeat } from "@/lib/seats/SeatingMeshEngine";
 
@@ -38,6 +39,7 @@ export default function DanceArena3D({
   currentTrackTitle,
   currentTrackArtist,
 }: DanceArena3DProps) {
+  useRetainAudibleExperience();
   const beatDuration = (60 / bpm) * 2;
 
   const occupiedSeats = useMemo(

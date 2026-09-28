@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { useRetainAudibleExperience } from "@/components/audio/useAudibleExperiencePresence";
 import Link from "next/link";
 import LivingPlayerControlBed from "@/components/monitors/LivingPlayerControlBed";
 import {
@@ -29,6 +30,7 @@ export default function BusinessLivingMediaPortal({
   emptyHint = "No active creative bound. Select a placement to preview image or video here.",
   browseHref = "/magazine/advertise",
 }: BusinessLivingMediaPortalProps) {
+  useRetainAudibleExperience();
   const [viewCount, setViewCount] = useState<LivingViewCount>(1);
   const destinationId = `business-living-media-${role.toLowerCase()}`;
   const capabilities = resolveLivingPlayerCapabilities(role);

@@ -31,6 +31,7 @@ import LaunchDock from "@/components/dock/LaunchDock";
 import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
 import BeatPurchaseInterestPrompt from "@/components/beats/BeatPurchaseInterestPrompt";
 import AdConsentBanner from "@/components/ads/AdConsentBanner";
+import UniversalMixAnchor from "@/components/audio/UniversalMixAnchor";
 
 export default function FullAppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -58,6 +59,7 @@ export default function FullAppShell({ children }: { children: React.ReactNode }
               <LiveFeedbackPanel />
               <MonitorRuntime />
               <PersistentMiniPlayer />
+              <UniversalMixAnchor />
               <LaunchDock />
               <GlobalLiveDiscoveryOverlay />
               <BeatPurchaseInterestPrompt />

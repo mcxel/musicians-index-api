@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import CompactAudioMixer from "@/components/audio/CompactAudioMixer";
+import { useMixPresence, useRetainMixSlot } from "@/components/audio/useAudibleExperiencePresence";
 import Link from "next/link";
 import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
@@ -42,6 +44,8 @@ export default function CanonicalRoleShellChrome({
 }: CanonicalRoleShellChromeProps) {
   const [isMobile, setIsMobile] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const mixPresence = useMixPresence();
+  useRetainMixSlot();
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 900px)");
@@ -140,7 +144,12 @@ export default function CanonicalRoleShellChrome({
           </nav>
         ) : null}
 
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexShrink: 0, minWidth: 0 }}>
+          {mixPresence.audible ? (
+            <span data-tmi-mix-slot="role-shell" style={{ display: "inline-flex", maxWidth: "100%" }}>
+              <CompactAudioMixer showMonitorMasters={mixPresence.monitors} />
+            </span>
+          ) : null}
           {isMobile && (navLinks.length > 0 || trailingControls) ? (
             <button
               type="button"
