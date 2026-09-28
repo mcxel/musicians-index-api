@@ -21,6 +21,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { useRetainAudibleExperience } from "@/components/audio/useAudibleExperiencePresence";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
@@ -263,6 +264,7 @@ export default function ArenaEventShell({
   const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
   const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
   /** Internal LOOK UP when parent does not drive focus (public shells). */
+  useRetainAudibleExperience();
   const [internalLookUp, setInternalLookUp] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;

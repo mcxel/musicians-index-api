@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRetainAudibleExperience } from '@/components/audio/useAudibleExperiencePresence';
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveStreamShell from './LiveStreamShell';
 import { mediaMesh } from '@/lib/media/MediaOrchestrator';
@@ -47,6 +48,7 @@ export default function LiveMediaWall({
   enterHref,
   compact    = false,
 }: LiveMediaWallProps) {
+  useRetainAudibleExperience();
   const nodes            = buildNodes(roomId, nodeCount);
   const [spotIdx, setSpotIdx] = useState(0);
   const [mobileIdx, setMobileIdx] = useState(0);
