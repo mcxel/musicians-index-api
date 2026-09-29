@@ -149,10 +149,8 @@ function IndependentLobbyTile({
 }
 
 export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accentColor?: string }) {
-  const [viewerCounts, setViewerCounts] = useState<number[]>(
-    () => LOBBY_SLOTS.map(s => s.viewers ?? 0)
-  );
-  const [justJoined, setJustJoined] = useState<number | null>(null);
+  const viewerCounts = LOBBY_SLOTS.map((slot) => slot.viewers ?? 0);
+  const justJoined = null;
   const [pending, setPending] = useState<UniversalRoom | null>(null);
 
   const handleJoin = useCallback((slot: LobbySlot) => {
@@ -168,27 +166,6 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
       venueIndex: 0,
       shape: 'hex',
     });
-  }, []);
-
-  // Viewer count simulation — ticks every 3.2s
-  useEffect(() => {
-    const id = setInterval(() => {
-      setViewerCounts(prev => prev.map(v => {
-        if (v === 0) return v;
-        return Math.max(5, v + Math.floor((Math.random() - 0.4) * 18));
-      }));
-    }, 3200);
-    return () => clearInterval(id);
-  }, []);
-
-  // "Just joined" flash — random slot every 9s
-  useEffect(() => {
-    const id = setInterval(() => {
-      const idx = Math.floor(Math.random() * LOBBY_SLOTS.length);
-      setJustJoined(idx);
-      setTimeout(() => setJustJoined(null), 2200);
-    }, 9000);
-    return () => clearInterval(id);
   }, []);
 
   return (

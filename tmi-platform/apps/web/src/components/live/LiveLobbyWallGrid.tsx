@@ -84,25 +84,8 @@ type TileGeometry = {
   aspectRatio: string;
 };
 
-const stickyTileGeometry = new Map<string, TileGeometry>();
-
-function resolveStickyTileGeometry(room: LobbyRoom): TileGeometry {
-  const existing = stickyTileGeometry.get(room.id);
-  if (existing) return existing;
-
-  const wide = room.type === 'concert' || room.type === 'game' || room.type === 'lounge';
-  const tall = room.type === 'battle' || room.type === 'live' || room.type === 'cypher';
-
-  let geom: TileGeometry;
-  if (wide) {
-    geom = { gridColumn: 'span 2', gridRow: 'span 1', aspectRatio: '21 / 9' };
-  } else if (tall) {
-    geom = { gridColumn: 'span 1', gridRow: 'span 2', aspectRatio: '3 / 4' };
-  } else {
-    geom = { gridColumn: 'span 1', gridRow: 'span 1', aspectRatio: '1 / 1' };
-  }
-  stickyTileGeometry.set(room.id, geom);
-  return geom;
+function resolveStickyTileGeometry(_room: LobbyRoom): TileGeometry {
+  return { gridColumn: "span 1", gridRow: "span 1", aspectRatio: "16 / 9" };
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -721,12 +704,8 @@ export default function LiveLobbyWallGrid({
             data-collision-certified="false"
             style={{
               display: 'grid',
-              gridTemplateColumns: quick
-                ? 'repeat(2, minmax(0, 1fr))'
-                : embedded
-                  ? 'repeat(2, minmax(0, 1fr))'
-                  : 'repeat(auto-fill, minmax(140px, 1fr))',
-              gridAutoRows: quick ? '110px' : embedded ? '120px' : '140px',
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gridAutoRows: "auto",
               gap: quick ? 8 : embedded ? 10 : 12,
               gridAutoFlow: 'dense',
               transform: enableMobileRoam
@@ -737,7 +716,7 @@ export default function LiveLobbyWallGrid({
             }}
           >
             <AnimatePresence>
-              {liveRooms.map((room) => {
+              {liveRooms.map((room, index) => {
                 const preview = buildLobbyPreviewTile({
                   roomId: room.id,
                   kind: toWallKind(room.type),
@@ -747,7 +726,10 @@ export default function LiveLobbyWallGrid({
                   isGauntlet: room.type === 'gauntlet',
                 });
                 void focusTick;
-                const geometry = resolveStickyTileGeometry(room);
+                const baseGeometry = resolveStickyTileGeometry(room);
+                const geometry = index === 0
+                  ? { ...baseGeometry, gridColumn: "span 2" }
+                  : baseGeometry;
                 return (
                   <LobbyCell
                     key={room.id}

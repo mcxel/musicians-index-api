@@ -14,11 +14,11 @@ export type MobileMonitorLayoutState =
 
 interface MobileGpsMonitorLayoutStore {
   layout: MobileMonitorLayoutState;
-  /** Open GPS below the independent monitor stack. */
+  /** Open GPS in the secondary monitor slot. Monitor B stays mounted. */
   openGpsDrawer: () => void;
   /** Close GPS entirely → dual monitors, no drawer. */
   closeGpsDrawer: () => void;
-  /** Toggle from closed ↔ drawer below the monitor stack. */
+  /** Toggle closed ↔ GPS in the secondary monitor slot. */
   toggleGpsDrawer: () => void;
   /** Restore Monitor 2; drawer drops below into scroll bed. */
   restoreMonitor2: () => void;
@@ -27,12 +27,12 @@ interface MobileGpsMonitorLayoutStore {
 
 export const useMobileGpsMonitorLayoutStore = create<MobileGpsMonitorLayoutStore>((set, get) => ({
   layout: "DUAL_MONITORS_CLOSED",
-  openGpsDrawer: () => set({ layout: "DUAL_MONITORS_DRAWER_BELOW" }),
+  openGpsDrawer: () => set({ layout: "DRAWER_REPLACES_MONITOR_2" }),
   closeGpsDrawer: () => set({ layout: "DUAL_MONITORS_CLOSED" }),
   toggleGpsDrawer: () => {
     const { layout } = get();
     if (layout === "DUAL_MONITORS_CLOSED") {
-      set({ layout: "DUAL_MONITORS_DRAWER_BELOW" });
+      set({ layout: "DRAWER_REPLACES_MONITOR_2" });
     } else {
       set({ layout: "DUAL_MONITORS_CLOSED" });
     }

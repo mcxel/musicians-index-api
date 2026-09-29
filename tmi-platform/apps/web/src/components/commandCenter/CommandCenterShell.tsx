@@ -10,7 +10,6 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -76,6 +75,7 @@ import CanonicalCommandCenterFrame from "./CanonicalCommandCenterFrame";
 import HubCommunicationsRail, { type HubCommunicationsTab } from "./HubCommunicationsRail";
 import HubMobileQuickActionBar from "./HubMobileQuickActionBar";
 import HubMobileGpsNavDrawer from "./HubMobileGpsNavDrawer";
+import FriendsWidget from "@/components/widgets/FriendsWidget";
 import {
   isGpsDrawerVisible,
   useMobileGpsMonitorLayoutStore,
@@ -552,13 +552,10 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
   const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
   const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
-  useLayoutEffect(() => {
-    if (!isMobile || !gpsDrawerVisible) return;
-    document.querySelector("[data-testid='hub-gps-menu-anchor']")?.scrollIntoView({ block: "nearest" });
-  }, [isMobile, gpsDrawerVisible]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [mobileCommsOpen, setMobileCommsOpen] = useState(false);
   const [mobileCommsTab, setMobileCommsTab] = useState<HubCommunicationsTab>("messages");
@@ -1302,19 +1299,18 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               aria-pressed={gpsDrawerVisible}
               onClick={() => toggleGpsDrawer()}
               style={{
-                minWidth: 72,
-                minHeight: 44,
-                padding: "0 16px",
-                borderRadius: 8,
+                minWidth: 52,
+                minHeight: 32,
+                padding: "0 10px",
+                borderRadius: 6,
                 border: gpsDrawerVisible ? "1px solid #E7C6FF" : "1px solid #AA2DFF",
                 background: gpsDrawerVisible ? "rgba(170,45,255,0.45)" : "rgba(170,45,255,0.22)",
                 color: "#F6E9FF",
                 fontFamily: "'Orbitron', sans-serif",
-                fontSize: 13,
-                fontWeight: 900,
-                letterSpacing: "0.16em",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
                 cursor: "pointer",
-                boxShadow: "0 0 12px rgba(170,45,255,0.35)",
               }}
             >
               GPS
@@ -1549,6 +1545,34 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       setVenueDockContext(context);
                     }}
                     seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
+                    parkSecondaryMonitor={Boolean(activePanel) || Boolean(drawerWorkspace && isDrawerExpanded) || friendsOpen}
+                    workspaceSlot={
+                      Boolean(activePanel) || Boolean(drawerWorkspace && isDrawerExpanded) || friendsOpen ? (
+                        <>
+                          <CanonicalBottomDrawerHost
+                            stageDeck
+                            userId={userId}
+                            displayName={resolvedDisplayName}
+                            role={role === "performer" ? "performer" : "fan"}
+                          />
+                          {activePanel ? (
+                            <GlobalErrorBoundary context="Command Center Drawer">
+                              <CommandCenterDrawer
+                                role={role}
+                                activePanel={activePanel}
+                                appearanceOpen={appearanceOpen}
+                                userId={userId}
+                                displayName={resolvedDisplayName}
+                                onClose={closeDrawer}
+                                onSelectPanel={openPanel}
+                                initialPlaylistId={deepLinkPlaylistId}
+                              />
+                            </GlobalErrorBoundary>
+                          ) : null}
+                          {friendsOpen ? <FriendsWidget /> : null}
+                        </>
+                      ) : null
+                    }
                   />
                 </GlobalErrorBoundary>
               </div>
@@ -1573,22 +1597,27 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                   />
                 </div>
               ) : null}
+              {gpsDrawerVisible ? (
+                <HubMobileGpsNavDrawer
+                  role={hubShellRole}
+                  centers={centers}
+                  activePanel={activePanel}
+                  onOpenPanel={openPanel}
+                  onCloseActivePanel={closeDrawer}
+                  onOpenFriends={() => {
+                    closeDrawer();
+                    useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+                    setFriendsOpen(true);
+                  }}
+                  onCloseFriends={() => setFriendsOpen(false)}
+                  displayName={resolvedDisplayName}
+                  layout={gpsLayout}
+                />
+              ) : null}
             </div>
 
           </div>
 
-          {gpsDrawerVisible ? (
-            <div data-testid="hub-gps-menu-anchor">
-              <HubMobileGpsNavDrawer
-                role={hubShellRole}
-                centers={centers}
-                activePanel={activePanel}
-                onOpenPanel={openPanel}
-                displayName={resolvedDisplayName}
-                layout={gpsLayout}
-              />
-            </div>
-          ) : null}
           <HubMobileMonitorControlBar
             role={hubShellRole}
             hasLiveFeed={hasLiveFeed}
@@ -1634,11 +1663,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             role={role === "performer" ? "performer" : "fan"}
             accentColor={theme.primary}
           />
-          <CanonicalBottomDrawerHost
-            userId={userId}
-            displayName={resolvedDisplayName}
-            role={role === "performer" ? "performer" : "fan"}
-          />
 
           {/* Monetization lives in scroll depth only — never overlays stage controls. */}
           <div style={{ padding: "0 12px 16px" }}>
@@ -1666,20 +1690,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               />
             )}
           </div>
-          {activePanel ? (
-            <GlobalErrorBoundary context="Command Center Drawer">
-              <CommandCenterDrawer
-                role={role}
-                activePanel={activePanel}
-                appearanceOpen={appearanceOpen}
-                userId={userId}
-                displayName={resolvedDisplayName}
-                onClose={closeDrawer}
-                onSelectPanel={openPanel}
-                initialPlaylistId={deepLinkPlaylistId}
-              />
-            </GlobalErrorBoundary>
-          ) : null}
         </div>
       ) : (
         /* ── DESKTOP: canonical single-column shell (no legacy side rails) ── */

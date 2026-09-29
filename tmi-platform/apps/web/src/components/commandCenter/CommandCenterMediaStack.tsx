@@ -330,6 +330,9 @@ interface CommandCenterMediaStackProps {
   onOpenLivingOs?: (context: { playerId: string; role: "fan" | "performer" }) => void;
   /** Canonical Venue Tools doorway re-presented by the shared Companion Dock. */
   onOpenVenueTools?: (context: { roomId?: string; isLoungeHost: boolean; readOnly: boolean }) => void;
+  /** Phone: visually yield Monitor B and show this workspace. Monitor B stays mounted. */
+  parkSecondaryMonitor?: boolean;
+  workspaceSlot?: ReactNode;
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -855,6 +858,8 @@ export default function CommandCenterMediaStack({
   onOpenYopho,
   onOpenLivingOs,
   onOpenVenueTools,
+  parkSecondaryMonitor = false,
+  workspaceSlot = null,
 }: CommandCenterMediaStackProps) {
   // Assign every render — cert must not depend on effect timing / StrictMode cleanup races.
   if (typeof window !== "undefined") {
@@ -1343,7 +1348,7 @@ export default function CommandCenterMediaStack({
       title={opts?.title ?? label}
       style={{
         ...utilityBtnStyle(active, accent, opts?.disabled),
-        ...(opts?.minHeight ? { minHeight: opts.minHeight, minWidth: 44 } : null),
+        ...(opts?.minHeight ? { minHeight: opts.minHeight, padding: "2px 8px", fontSize: 8, letterSpacing: "0.04em" } : null),
       }}
     >
       {opts?.icon ? <span style={{ pointerEvents: "none" }}>{opts.icon}</span> : null}
@@ -1427,7 +1432,7 @@ export default function CommandCenterMediaStack({
     width: "100%",
   };
 
-  const touch = { minHeight: 44 } as const;
+  const touch = { minHeight: 32 } as const;
   const mobileDirectControls = (
     <div
       data-tmi-direct-controls="1"
@@ -1444,7 +1449,7 @@ export default function CommandCenterMediaStack({
         }, { testId: "tmi-direct-golive", title: "Go Live", minHeight: touch.minHeight })}
         {utilityBtn(focusedViewport === "A", "#00FFFF", "M1", () => setFocusedViewport("A"), { testId: "tmi-direct-m1", title: "Send the next presentation to Monitor A", minHeight: touch.minHeight })}
         {utilityBtn(focusedViewport === "B", "#00FFFF", "M2", () => setFocusedViewport("B"), { testId: "tmi-direct-m2", title: "Send the next presentation to Monitor B", minHeight: touch.minHeight })}
-        <button type="button" data-testid="tmi-direct-record" data-record-state="unavailable" disabled title={RECORD_UNAVAILABLE_REASON} style={{ ...utilityBtnStyle(false, "rgba(255,255,255,0.4)", true), minHeight: 44, minWidth: 44 }}>
+        <button type="button" data-testid="tmi-direct-record" data-record-state="unavailable" disabled title={RECORD_UNAVAILABLE_REASON} style={{ ...utilityBtnStyle(false, "rgba(255,255,255,0.4)", true), minHeight: 32, padding: "2px 8px", fontSize: 8 }}>
           RECORD
         </button>
       </div>
@@ -1964,34 +1969,62 @@ export default function CommandCenterMediaStack({
             ? [{
             id: bottomSlots[0]!.id,
             label:
-              surfaceLayout.bottomSurface === "participant_grid"
-                ? "PARTICIPANTS"
-                : "MONITOR B",
-            children:
-              surfaceLayout.bottomSurface === "participant_grid" ? (
-                <ParticipantSurfaceGrid
-                  layout={surfaceLayout.participantLayout}
-                  tiles={participantTiles}
-                  overflowLabel={surfaceLayout.overflow.fallbackLabel}
-                />
-              ) : screenStream && shareSlotTargetsCell(shareSlot, 1, -1) ? (
-                <MonitorScreenShareVideo
-                  stream={screenStream}
-                  onStop={stopScreenShare}
-                  label="MON B"
-                  audioOwned={false}
-                />
-              ) : (
-                <MonitorChrome
-                  slot={bottomSlots[0]!}
-                  onSwap={handleSwap}
-                  overlayTarget={DEFAULT_MONITOR_B}
-                  hubLiveRoomId={hubLiveRoomId}
-                  hubLiveMonitor="B"
-                  goLiveBootActive={goLiveBootActive}
-                  routedRoomId={monitorRoomOverrides.b ?? null}
-                />
-              ),
+              parkSecondaryMonitor && workspaceSlot
+                ? "DRAWER"
+                : surfaceLayout.bottomSurface === "participant_grid"
+                  ? "PARTICIPANTS"
+                  : "MONITOR B",
+            children: (() => {
+              const face =
+                surfaceLayout.bottomSurface === "participant_grid" ? (
+                  <ParticipantSurfaceGrid
+                    layout={surfaceLayout.participantLayout}
+                    tiles={participantTiles}
+                    overflowLabel={surfaceLayout.overflow.fallbackLabel}
+                  />
+                ) : screenStream && shareSlotTargetsCell(shareSlot, 1, -1) ? (
+                  <MonitorScreenShareVideo
+                    stream={screenStream}
+                    onStop={stopScreenShare}
+                    label="MON B"
+                    audioOwned={false}
+                  />
+                ) : (
+                  <MonitorChrome
+                    slot={bottomSlots[0]!}
+                    onSwap={handleSwap}
+                    overlayTarget={DEFAULT_MONITOR_B}
+                    hubLiveRoomId={hubLiveRoomId}
+                    hubLiveMonitor="B"
+                    goLiveBootActive={goLiveBootActive}
+                    routedRoomId={monitorRoomOverrides.b ?? null}
+                  />
+                );
+              const parked = Boolean(parkSecondaryMonitor && workspaceSlot);
+              return (
+                <>
+                  <div
+                    data-monitor-b-preserved="1"
+                    aria-hidden={parked}
+                    style={
+                      parked
+                        ? { position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }
+                        : { width: "100%", height: "100%", minHeight: 0 }
+                    }
+                  >
+                    {face}
+                  </div>
+                  {parked ? (
+                    <div
+                      data-testid="hub-drawer-slot"
+                      style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", minHeight: 0, overflowX: "hidden", overflowY: "auto" }}
+                    >
+                      {workspaceSlot}
+                    </div>
+                  ) : null}
+                </>
+              );
+            })(),
             cells:
               surfaceLayout.bottomSurface === "participant_grid"
                 ? participantTiles.slice(0, 8).map((tile) => (
@@ -2016,6 +2049,11 @@ export default function CommandCenterMediaStack({
             : []),
         ]}
       />
+      {parkSecondaryMonitor && workspaceSlot && monitorLayoutMode !== "dual" ? (
+        <div data-testid="hub-drawer-slot" style={{ width: "100%", maxHeight: "46vh", overflowX: "hidden", overflowY: "auto" }}>
+          {workspaceSlot}
+        </div>
+      ) : null}
       </div>
 
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}

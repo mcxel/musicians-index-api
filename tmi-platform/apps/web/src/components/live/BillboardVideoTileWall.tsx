@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface VideoTile {
   id: string;
@@ -46,16 +46,8 @@ interface Props {
   autoScroll?: boolean;
 }
 
-export default function BillboardVideoTileWall({ tiles = DEMO_TILES, columns = 4, showViewers = true, autoScroll = false }: Props) {
+export default function BillboardVideoTileWall({ tiles = DEMO_TILES, columns = 4, showViewers = true }: Props) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-
-  // Pulse viewer counts every 8s to simulate live
-  useEffect(() => {
-    if (!autoScroll) return;
-    const id = setInterval(() => setTick((t) => t + 1), 8000);
-    return () => clearInterval(id);
-  }, [autoScroll]);
 
   return (
     <div style={{
@@ -67,7 +59,7 @@ export default function BillboardVideoTileWall({ tiles = DEMO_TILES, columns = 4
       {tiles.map((tile, i) => {
         const color   = tile.thumbnailColor ?? tileColor(i);
         const isHot   = highlighted === tile.id;
-        const viewers = showViewers ? tile.viewers + (autoScroll ? (tick * (i % 5) * 3) : 0) : 0;
+        const viewers = showViewers ? tile.viewers : 0;
 
         return (
           <a

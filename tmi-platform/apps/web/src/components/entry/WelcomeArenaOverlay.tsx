@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { SEED_FEEDS } from "@/lib/broadcast/BroadcastRotationEngine";
+import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 
 const SEEN_KEY = "tmi_seen_entry";
 
@@ -38,15 +38,13 @@ export default function WelcomeArenaOverlay() {
     if (!seen) setVisible(true);
   }, [pathname]);
 
-  const liveFeeds   = SEED_FEEDS.filter(f => f.status === "live");
-  const liveRooms   = liveFeeds.length;
-  const totalWatch  = liveFeeds.reduce((s, f) => s + (f.viewerCount ?? 0), 0);
-  const performers  = SEED_FEEDS.filter(f =>
-    f.kind === "battle" || f.kind === "live-camera" || f.kind === "cypher" || f.kind === "concert"
-  ).length;
+  const discovery = useDiscoveryBus(null);
+  const liveRooms = discovery.filter((record) => record.isLive).length;
+  const totalWatch = discovery.reduce((sum, record) => sum + Math.max(0, record.humanViewerCount), 0);
+  const performers = new Set(discovery.filter((record) => record.isLive).map((record) => record.hostUserId)).size;
 
   const displayRooms    = useCountUp(liveRooms, visible);
-  const displayWatching = useCountUp(totalWatch > 0 ? totalWatch : 47, visible, 1400);
+  const displayWatching = useCountUp(totalWatch, visible, 1400);
   const displayPerf     = useCountUp(performers, visible, 800);
 
   function dismiss() {

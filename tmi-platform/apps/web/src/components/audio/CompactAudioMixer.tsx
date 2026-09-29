@@ -254,8 +254,8 @@ export default function CompactAudioMixer({
           fontSize: 9,
           fontWeight: 900,
           letterSpacing: "0.1em",
-          minHeight: 44,
-          padding: "7px 12px",
+          minHeight: 32,
+          padding: "4px 8px",
           borderRadius: 6,
           border: open ? "1px solid #FFD700" : "1px solid rgba(255,215,0,0.45)",
           background: open

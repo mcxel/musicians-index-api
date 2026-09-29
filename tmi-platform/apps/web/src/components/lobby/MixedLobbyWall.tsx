@@ -58,19 +58,6 @@ interface SubmissionActivity {
   createdAt: number;
 }
 
-const ACTIVE_FANS: WallTile[] = [
-  { id: "fan-active-1", name: "Nova Fan", role: "fan", genre: "Hip-Hop", isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-58.jpg", accentColor: "#00FFFF", source: "active-fan" },
-  { id: "fan-active-2", name: "Crown Fam", role: "fan", genre: "Trap", isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-66.jpg", accentColor: "#00FFFF", source: "active-fan" },
-  { id: "fan-active-3", name: "Wave Rider", role: "fan", genre: "EDM", isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-74.jpg", accentColor: "#00FFFF", source: "active-fan" },
-];
-
-const FEATURED_AVATARS: WallTile[] = [
-  { id: "featured-1", name: "Astra Nova", role: "performer", genre: "R&B",    isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-22.jpg", accentColor: "#FF2DAA", source: "featured" },
-  { id: "featured-2", name: "Prism Vex",  role: "artist",   genre: "EDM",    isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-31.jpg", accentColor: "#AA2DFF", source: "featured" },
-  { id: "featured-3", name: "Host Ray",   role: "host",     genre: "Live",   isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-42.jpg", accentColor: "#FFD700", source: "featured" },
-  { id: "featured-4", name: "Zion Freq",  role: "performer", genre: "Gospel", isLive: false, viewerCount: 0, avatarUrl: "/tmi-curated/mag-53.jpg", accentColor: "#FF2DAA", source: "featured" },
-];
-
 const ROLE_COLOR: Record<TileRole, string> = {
   fan: "#00FFFF",
   performer: "#FF2DAA",
@@ -305,10 +292,8 @@ export default function MixedLobbyWall({ compact = false }: Props) {
 
     livePerformers.forEach(pushUnique);
     liveFans.forEach(pushUnique);
-    ACTIVE_FANS.forEach(pushUnique);
-    FEATURED_AVATARS.forEach(pushUnique);
 
-    return compact ? merged.slice(0, 6) : merged;
+    return compact ? merged.slice(0, 4) : merged;
   }, [compact, liveEntries, pendingTile]);
 
   const selfRole = normalizeRole(sessionUser?.role);

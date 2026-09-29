@@ -1,88 +1,63 @@
 "use client";
 
 /**
- * HubMobileGpsNavDrawer — GPS (ex-OPS) navigation suite for mobile.
- * Occupies Monitor 2 visual slot OR drops below dual monitors (layout store).
+ * HubMobileGpsNavDrawer — compact thumb rail over the monitor workspace.
+ * GPS opens this rail. A tap opens one canonical drawer. It does not leave the hub.
  */
 
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { OperatingCenter } from "@/lib/drawers/operatingCenterRegistry";
 import type { CommandCenterPanelId } from "./commandCenterRegistry";
 import {
   useMobileGpsMonitorLayoutStore,
   type MobileMonitorLayoutState,
 } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
-import {
-  getMobileQuickPanelCapabilities,
-  type MobileCommandCenterRole,
-} from "@/lib/commandCenter/mobileCommandCenterCapabilities";
-import { runQuickToolAction } from "@/lib/commandCenter/quickToolsActions";
+import type { MobileCommandCenterRole } from "@/lib/commandCenter/mobileCommandCenterCapabilities";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
-import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
-import { useRouter } from "next/navigation";
-import RoleGate from "@/components/auth/RoleGate";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 
 export interface HubMobileGpsNavDrawerProps {
   role: MobileCommandCenterRole;
   centers: OperatingCenter[];
   activePanel: CommandCenterPanelId | null;
   onOpenPanel: (id: CommandCenterPanelId) => void;
+  onCloseActivePanel?: () => void;
   onOpenYourPage?: () => void;
   onOpenPerformerPage?: () => void;
   onOpenArticleEditor?: () => void;
   onOpenMagazine?: () => void;
   onOpenSettings?: () => void;
+  onOpenFriends?: () => void;
+  onCloseFriends?: () => void;
   displayName?: string;
   layout: MobileMonitorLayoutState;
 }
 
-const RAIL: Array<{ id: string; label: string; workspace?: UniversalWorkspaceId; href?: string }> = [
-  { id: "live-rooms", label: "LIVE ROOMS", href: "/live/rooms" },
-  { id: "lobby", label: "LOBBY", workspace: "lobby" },
-  { id: "messages", label: "MESSAGES", workspace: "messaging" },
-  { id: "friends", label: "FRIENDS", href: "/friends" },
-  { id: "inventory", label: "INVENTORY", workspace: "inventory" },
-  { id: "memory-wall", label: "MEMORY WALL", workspace: "memory-wall" },
-  { id: "playlists", label: "PLAYLISTS", workspace: "playlist-studio" },
-  { id: "store", label: "STORE", workspace: "store" },
+const DISCOVERY: Array<{ id: string; icon: string; label: string; subtitle: string; workspace: UniversalWorkspaceId }> = [
+  { id: "live-rooms", icon: "🎥", label: "LIVE ROOMS", subtitle: "Direct view", workspace: "live-destinations" },
+  { id: "lobby", icon: "🧱", label: "LOBBY", subtitle: "Live wall", workspace: "lobby" },
+  { id: "messages", icon: "💬", label: "MESSAGES", subtitle: "Inbox", workspace: "messaging" },
+  { id: "memory-wall", icon: "🧠", label: "MEMORY", subtitle: "Memory wall", workspace: "memory-wall" },
+  { id: "playlists", icon: "🎵", label: "PLAYLISTS", subtitle: "Studio", workspace: "playlist-studio" },
+  { id: "store", icon: "🛍", label: "STORE", subtitle: "Shop", workspace: "store" },
 ];
 
 const ROW: CSSProperties = {
   display: "flex",
+  flexDirection: "row",
   alignItems: "center",
-  width: "100%",
-  minHeight: 48,
-  padding: "10px 12px",
-  borderRadius: 10,
-  border: "1px solid rgba(0,229,255,0.28)",
-  background: "rgba(8,10,18,0.92)",
-  color: "rgba(255,255,255,0.9)",
-  cursor: "pointer",
-  fontFamily: "inherit",
-  fontSize: 11,
-  fontWeight: 900,
-  letterSpacing: "0.08em",
-  textAlign: "left",
-};
-
-const TILE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
   gap: 6,
-  minHeight: 64,
-  minWidth: 72,
-  padding: "10px 8px",
-  borderRadius: 10,
-  border: "1px solid rgba(0,229,255,0.28)",
-  background: "linear-gradient(180deg, rgba(20,28,44,0.95) 0%, rgba(8,10,18,0.98) 100%)",
-  color: "rgba(255,255,255,0.88)",
+  width: "100%",
+  minHeight: 44,
+  padding: "4px 6px",
+  borderRadius: 8,
+  border: "1px solid rgba(170,45,255,0.28)",
+  background: "transparent",
+  color: "rgba(255,255,255,0.92)",
   cursor: "pointer",
   fontFamily: "inherit",
-  flex: "1 1 30%",
-  maxWidth: "48%",
+  textAlign: "left",
 };
 
 export default function HubMobileGpsNavDrawer({
@@ -90,166 +65,173 @@ export default function HubMobileGpsNavDrawer({
   centers,
   activePanel,
   onOpenPanel,
+  onCloseActivePanel,
   onOpenYourPage,
   onOpenPerformerPage,
   onOpenArticleEditor,
   onOpenMagazine,
   onOpenSettings,
+  onOpenFriends,
+  onCloseFriends,
   displayName,
   layout,
 }: HubMobileGpsNavDrawerProps) {
-  const restoreMonitor2 = useMobileGpsMonitorLayoutStore((s) => s.restoreMonitor2);
   const closeGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.closeGpsDrawer);
-  const accent = role === "performer" ? "#FFD700" : "#00FF88";
-  const router = useRouter();
-  const { activePanel: qpPanel, togglePanel, openPanel, closePanel } = useCompactQuickPanelStore();
-  const { primary } = getMobileQuickPanelCapabilities(role);
+  const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
+  const closeSurface = useWorkspacePresentationStore((s) => s.closeSurface);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const [scrollMax, setScrollMax] = useState(1);
+  const [scrollTop, setScrollTop] = useState(0);
+  const discovery = DISCOVERY;
 
-  const showMonitorBack = layout === "DRAWER_REPLACES_MONITOR_2";
-  const drawerRef = useRef<HTMLElement>(null);
-
-  useLayoutEffect(() => {
-    const node = drawerRef.current;
+  const measureRail = () => {
+    const node = scrollerRef.current;
     if (!node) return;
-    let frame = 0;
-    let raf = 0;
-    const reveal = () => {
-      let parent = node.parentElement;
-      while (parent) {
-        const style = getComputedStyle(parent);
-        if (parent.scrollHeight > parent.clientHeight + 1 && /(auto|scroll|overlay)/.test(style.overflowY)) {
-          const delta = node.getBoundingClientRect().top - parent.getBoundingClientRect().top;
-          if (delta > 8) parent.scrollTop += delta;
-        }
-        parent = parent.parentElement;
-      }
-      const top = node.getBoundingClientRect().top;
-      if (top > 24) window.scrollBy(0, top - 8);
-      node.dataset.gpsRevealTop = String(Math.round(node.getBoundingClientRect().top));
-      frame += 1;
-      if (frame < 24 && node.getBoundingClientRect().top > 80) raf = requestAnimationFrame(reveal);
+    setScrollMax(Math.max(1, node.scrollHeight - node.clientHeight));
+    setScrollTop(node.scrollTop);
+  };
+
+  useEffect(() => {
+    measureRail();
+    const node = scrollerRef.current;
+    if (!node) return;
+    node.addEventListener("scroll", measureRail, { passive: true });
+    window.addEventListener("resize", measureRail);
+    return () => {
+      node.removeEventListener("scroll", measureRail);
+      window.removeEventListener("resize", measureRail);
     };
-    reveal();
-    return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [centers.length]);
+
+  useEffect(() => {
+    const onPointer = (event: PointerEvent) => {
+      const root = asideRef.current;
+      const target = event.target as Node | null;
+      if (!root || !target || root.contains(target)) return;
+      if (target instanceof Element && target.closest("[data-testid='hub-header-gps']")) return;
+      closeGpsDrawer();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    return () => document.removeEventListener("pointerdown", onPointer);
+  }, [closeGpsDrawer]);
+
+  const openWorkspace = (workspace: UniversalWorkspaceId) => {
+    onCloseFriends?.();
+    if (drawerWorkspace === workspace) {
+      closeSurface("DRAWER");
+      return;
+    }
+    onCloseActivePanel?.();
+    presentCanonicalWorkspace(workspace, "DRAWER");
+  };
+
+  const openCenter = (center: OperatingCenter) => {
+    onCloseFriends?.();
+    if (activePanel === center.primaryModule) {
+      onCloseActivePanel?.();
+      return;
+    }
+    closeSurface("DRAWER");
+    onOpenPanel(center.primaryModule);
+  };
 
   return (
-    <section
-      ref={drawerRef}
+    <aside
+      ref={asideRef}
       data-hub-mobile-gps-drawer="1"
       data-gps-layout={layout}
       data-testid="hub-mobile-gps-drawer"
-      aria-label="GPS navigation"
+      aria-label={displayName ? `${displayName} GPS` : "GPS navigation"}
       style={{
-        flexShrink: 0,
-        width: "100%",
-        maxWidth: "100%",
-        overflowX: "hidden",
-        minHeight: layout === "DRAWER_REPLACES_MONITOR_2" ? 200 : 160,
-        maxHeight: layout === "DRAWER_REPLACES_MONITOR_2" ? "70vh" : "62vh",
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
-        borderTop: `1px solid ${accent}55`,
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(6,8,16,0.96)",
-        backdropFilter: "blur(16px)",
-        padding: "8px 10px 12px",
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+        position: "absolute",
+        left: 8,
+        bottom: 8,
+        zIndex: 40,
+        width: "clamp(118px, 34vw, 142px)",
+        height: "62%",
+        maxHeight: "70%",
+        overflow: "hidden",
+        borderRadius: 12,
+        border: "1px solid rgba(170,45,255,0.4)",
+        background: "rgba(10,13,24,0.9)",
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+        padding: 6,
+        display: "flex",
+        flexDirection: "row",
+        gap: 2,
+        pointerEvents: "auto",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          marginBottom: 10,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: "0.14em",
-              color: accent,
-            }}
-          >
-            MAIN MENU
-          </span>
-          <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em" }}>
-            SAME DESTINATIONS AS THE DESKTOP RAIL
-          </span>
+      <style>{`
+        [data-testid="hub-gps-rail"]::-webkit-scrollbar { width: 0; }
+        [data-testid="hub-gps-slider"] { writing-mode: vertical-lr; direction: rtl; }
+      `}</style>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0, minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4, padding: "2px 2px 4px" }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", color: "#C084FC", lineHeight: 1.2 }}>LIVE ROOMS</div>
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", lineHeight: 1.2 }}>Tap for direct view</div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {showMonitorBack ? (
+        <button
+          type="button"
+          data-testid="hub-gps-close"
+          onClick={() => closeGpsDrawer()}
+          aria-label="Close GPS"
+          style={{ border: "none", background: "transparent", color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 900, cursor: "pointer", minWidth: 28, minHeight: 28 }}
+        >
+          ×
+        </button>
+      </div>
+      <div
+        ref={scrollerRef}
+        data-testid="hub-gps-rail"
+        style={{ display: "flex", flexDirection: "column", gap: 4, overflowY: "auto", minHeight: 0, flex: 1, scrollbarWidth: "none", overscrollBehavior: "contain", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}
+      >
+        {onOpenFriends ? (
+          <button
+            type="button"
+            data-testid="hub-gps-rail-friends"
+            aria-label="Friends"
+            onClick={() => {
+              onCloseActivePanel?.();
+              closeSurface("DRAWER");
+              onOpenFriends();
+            }}
+            style={ROW}
+          >
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>👥</span>
+            <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.04em" }}>FRIENDS</span>
+              <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>People</span>
+            </span>
+          </button>
+        ) : null}
+        {discovery.map((item) => {
+          const active = drawerWorkspace === item.workspace;
+          return (
             <button
+              key={item.id}
               type="button"
-              data-testid="hub-gps-monitor-back"
-              onClick={() => restoreMonitor2()}
+              data-testid={`hub-gps-rail-${item.id}`}
+              aria-label={item.label}
+              aria-pressed={active}
+              onClick={() => openWorkspace(item.workspace)}
               style={{
-                minHeight: 44,
-                minWidth: 44,
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid rgba(0,229,255,0.55)",
-                background: "rgba(0,229,255,0.12)",
-                color: "#00E5FF",
-                fontWeight: 900,
-                fontSize: 9,
-                letterSpacing: "0.06em",
-                cursor: "pointer",
-                fontFamily: "inherit",
+                ...ROW,
+                borderColor: active ? "#00FFFF" : ROW.border as string,
+                background: active ? "rgba(0,255,255,0.16)" : ROW.background,
               }}
             >
-              ⧉ MONITOR BACK
+              <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>{item.icon}</span>
+              <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.04em" }}>{item.label}</span>
+                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{item.subtitle}</span>
+              </span>
             </button>
-          ) : null}
-          <button
-            type="button"
-            data-testid="hub-gps-close"
-            onClick={() => closeGpsDrawer()}
-            aria-label="Close GPS"
-            style={{
-              minHeight: 44,
-              minWidth: 44,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.8)",
-              fontWeight: 900,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-
-      <div data-testid="hub-gps-rail" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-        {RAIL.filter((item) => item.id !== "inventory" || role !== "performer").map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            data-testid={`hub-gps-rail-${item.id}`}
-            style={ROW}
-            onClick={() => {
-              if (item.workspace) presentCanonicalWorkspace(item.workspace, "DRAWER");
-              else if (item.href) router.push(item.href);
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-        {onOpenSettings ? (
-          <button type="button" data-testid="hub-gps-rail-settings" onClick={onOpenSettings} style={ROW}>SETTINGS</button>
-        ) : null}
-        {onOpenYourPage ? (
-          <button type="button" data-testid="hub-gps-your-page" onClick={onOpenYourPage} style={ROW}>YOUR PAGE</button>
-        ) : null}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          );
+        })}
         {centers.map((center) => {
           const active = activePanel === center.primaryModule;
           return (
@@ -257,84 +239,79 @@ export default function HubMobileGpsNavDrawer({
               key={center.id}
               type="button"
               data-testid={`hub-gps-nav-${center.id}`}
-              onClick={() => onOpenPanel(center.primaryModule)}
+              aria-label={center.label}
+              aria-pressed={active}
+              onClick={() => openCenter(center)}
               style={{
-                ...TILE,
-                border: active ? `1px solid ${center.accent}` : TILE.border,
-                background: active
-                  ? `linear-gradient(180deg, ${center.accent}44 0%, ${center.accent}18 55%, #0a0e16 100%)`
-                  : TILE.background,
+                ...ROW,
+                borderColor: active ? center.accent : (ROW.border as string),
+                background: active ? `${center.accent}22` : ROW.background,
               }}
             >
-              <span style={{ fontSize: 22, lineHeight: 1 }} aria-hidden>
-                {center.icon}
-              </span>
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.08em", textAlign: "center" }}>
-                {center.label}
+              <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>{center.icon}</span>
+              <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.02em" }}>{center.label}</span>
+                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.45)" }}>{center.info}</span>
               </span>
             </button>
           );
         })}
+        {onOpenYourPage ? (
+          <button type="button" data-testid="hub-gps-your-page" aria-label="Your Page" onClick={onOpenYourPage} style={ROW}>
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>🏠</span>
+            <span style={{ fontSize: 9, fontWeight: 800 }}>YOUR PAGE</span>
+          </button>
+        ) : null}
         {role === "performer" && onOpenPerformerPage ? (
-          <button type="button" data-testid="hub-gps-performer-page" onClick={onOpenPerformerPage} style={TILE}>PERFORMER PAGE</button>
+          <button type="button" data-testid="hub-gps-performer-page" aria-label="Performer Page" onClick={onOpenPerformerPage} style={ROW}>
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>🎤</span>
+            <span style={{ fontSize: 9, fontWeight: 800 }}>PERFORMER</span>
+          </button>
         ) : null}
         {role === "performer" && onOpenArticleEditor ? (
-          <button type="button" data-testid="hub-gps-article-editor" onClick={onOpenArticleEditor} style={TILE}>ARTICLE EDITOR</button>
+          <button type="button" data-testid="hub-gps-article-editor" aria-label="Article Editor" onClick={onOpenArticleEditor} style={ROW}>
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>✍️</span>
+            <span style={{ fontSize: 9, fontWeight: 800 }}>ARTICLE</span>
+          </button>
         ) : null}
         {onOpenMagazine ? (
-          <button type="button" data-testid="hub-gps-magazine" onClick={onOpenMagazine} style={TILE}>MAGAZINE</button>
+          <button type="button" data-testid="hub-gps-magazine" aria-label="Magazine" onClick={onOpenMagazine} style={ROW}>
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>📰</span>
+            <span style={{ fontSize: 9, fontWeight: 800 }}>MAGAZINE</span>
+          </button>
         ) : null}
-        {primary.map((item) => {
-          const btn = (
-            <button
-              key={item.id}
-              type="button"
-              data-testid={`hub-gps-tool-${item.id}`}
-              onClick={() =>
-                runQuickToolAction(item.id, {
-                  role,
-                  router,
-                  activePanel: qpPanel,
-                  togglePanel,
-                  openPanel,
-                  closePanel,
-                })
-              }
-              style={TILE}
-            >
-              <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>
-                {item.label.split(" ")[0]}
-              </span>
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textAlign: "center" }}>
-                {item.label.replace(/^[^\s]+\s/, "") || item.label}
-              </span>
-            </button>
-          );
-          if (item.id === "avatar" || item.id === "inventory") {
-            return (
-              <RoleGate key={item.id} allow={["FAN", "ADMIN", "STAFF"]}>
-                {btn}
-              </RoleGate>
-            );
-          }
-          return btn;
-        })}
+        {onOpenSettings ? (
+          <button type="button" data-testid="hub-gps-rail-settings" aria-label="Settings" onClick={onOpenSettings} style={ROW}>
+            <span style={{ fontSize: 16, width: 20, textAlign: "center" }} aria-hidden>⚙️</span>
+            <span style={{ fontSize: 9, fontWeight: 800 }}>SETTINGS</span>
+          </button>
+        ) : null}
       </div>
-      <div
-        data-testid="hub-gps-member-card"
-        style={{
-          marginTop: 10,
-          padding: "10px 12px",
-          borderRadius: 10,
-          border: "1px solid rgba(255,215,0,0.35)",
-          background: "rgba(8,10,18,0.92)",
-          color: "rgba(255,255,255,0.9)",
-          fontSize: 12,
-          fontWeight: 800,
+      </div>
+      <input
+        data-testid="hub-gps-slider"
+        type="range"
+        min={0}
+        max={scrollMax}
+        value={Math.min(scrollTop, scrollMax)}
+        aria-label="Scroll GPS commands"
+        aria-valuemin={0}
+        aria-valuemax={scrollMax}
+        aria-valuenow={Math.round(scrollTop)}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          const node = scrollerRef.current;
+          if (node) node.scrollTop = next;
+          setScrollTop(next);
         }}
-      >
-        {displayName?.trim() || "Signed in"}
-      </div>
-    </section>
+        style={{
+          width: 18,
+          flex: "0 0 18px",
+          alignSelf: "stretch",
+          accentColor: "#AA2DFF",
+          cursor: "pointer",
+        }}
+      />
+    </aside>
   );
 }

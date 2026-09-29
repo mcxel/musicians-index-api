@@ -1,86 +1,103 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type FriendsTab = "online" | "all" | "requests";
 
-const SEED_FRIENDS = [
-  { id: "1", name: "Nova Fan",   status: "online", role: "FAN",      icon: "👤", accent: "#00FF88" },
-  { id: "2", name: "CityBeat",   status: "online", role: "ARTIST",   icon: "🎵", accent: "#AA2DFF" },
-  { id: "3", name: "Jay Flow",   status: "online", role: "ARTIST",   icon: "🎤", accent: "#FFD700" },
-  { id: "4", name: "Aria K",     status: "offline",role: "FAN",      icon: "⭐", accent: "#00FFFF" },
-  { id: "5", name: "SoundPush",  status: "offline",role: "PROMOTER", icon: "📢", accent: "#FF6B00" },
-];
+type ApiFriend = {
+  id: string;
+  name: string;
+  role?: string;
+  online?: boolean;
+};
 
-const SEED_REQUESTS = [
-  { id: "r1", name: "Vinyl King", role: "ARTIST", icon: "🎹", accent: "#818cf8" },
-];
+function readFriends(body: unknown): ApiFriend[] {
+  const rows = Array.isArray(body)
+    ? body
+    : body && typeof body === "object" && Array.isArray((body as { friends?: unknown }).friends)
+      ? (body as { friends: unknown[] }).friends
+      : [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const record = row as Record<string, unknown>;
+    const id = String(record.id ?? "");
+    const name = String(record.displayName ?? record.name ?? record.username ?? "").trim();
+    if (!id || !name) return [];
+    if (record.relationshipStatus !== "accepted") return [];
+    return [{
+      id,
+      name,
+      role: typeof record.role === "string" ? record.role : undefined,
+      online: record.online === true,
+    }];
+  });
+}
 
 export default function FriendsWidget() {
-  const [tab, setTab] = useState<FriendsTab>("online");
+  const [tab, setTab] = useState<FriendsTab>("all");
+  const [friends, setFriends] = useState<ApiFriend[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const online  = SEED_FRIENDS.filter(f => f.status === "online");
-  const all     = SEED_FRIENDS;
-  const list    = tab === "online" ? online : tab === "all" ? all : [];
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/friends", { cache: "no-store", credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return [];
+        return readFriends(await res.json());
+      })
+      .then((rows) => {
+        if (!cancelled) setFriends(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setFriends([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const online = friends.filter((friend) => friend.online);
+  const list = tab === "online" ? online : friends;
 
   return (
-    <div style={{ color: "#fff" }}>
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
-        {(["online", "all", "requests"] as FriendsTab[]).map(t => (
+    <div style={{ color: "#fff", padding: 8 }} data-testid="friends-truth-drawer">
+      <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+        {(["all", "online"] as FriendsTab[]).map((t) => (
           <button
             key={t}
+            type="button"
             onClick={() => setTab(t)}
             style={{
-              flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 9, fontWeight: 800,
-              cursor: "pointer", letterSpacing: "0.1em",
+              flex: 1, padding: "6px 0", borderRadius: 8, fontSize: 9, fontWeight: 800,
+              cursor: "pointer", letterSpacing: "0.08em",
               background: tab === t ? "rgba(0,255,255,0.12)" : "rgba(255,255,255,0.04)",
               border: `1px solid ${tab === t ? "rgba(0,255,255,0.4)" : "rgba(255,255,255,0.08)"}`,
               color: tab === t ? "#00FFFF" : "rgba(255,255,255,0.4)",
             }}
           >
-            {t === "online" ? `🟢 ONLINE (${online.length})` : t === "all" ? `ALL (${all.length})` : `REQUESTS (${SEED_REQUESTS.length})`}
+            {t === "online" ? `ONLINE (${online.length})` : `ALL (${friends.length})`}
           </button>
         ))}
       </div>
-
-      {/* List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {tab === "requests" ? (
-          SEED_REQUESTS.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>No pending requests.</div>
-          ) : (
-            SEED_REQUESTS.map(r => (
-              <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${r.accent}22`, border: `2px solid ${r.accent}66`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{r.icon}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{r.name}</div>
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>{r.role}</div>
-                </div>
-                <button style={{ padding: "5px 10px", borderRadius: 7, background: "#00FF8820", border: "1px solid #00FF8844", color: "#00FF88", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>✓</button>
-                <button style={{ padding: "5px 10px", borderRadius: 7, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>✕</button>
-              </div>
-            ))
-          )
-        ) : (
-          list.map(f => (
-            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${f.accent}22`, border: `2px solid ${f.accent}66`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{f.icon}</div>
-                {f.status === "online" && <span style={{ position: "absolute", bottom: 0, right: 0, width: 9, height: 9, borderRadius: "50%", background: "#00FF88", border: "2px solid #06041a" }} />}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>{f.name}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>{f.role}</div>
-              </div>
-              <div style={{ display: "flex", gap: 5 }}>
-                <button title="Message" style={{ padding: "5px 8px", borderRadius: 7, background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF", fontSize: 12, cursor: "pointer" }}>💬</button>
-                <button title="Join live" style={{ padding: "5px 8px", borderRadius: 7, background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.2)", color: "#00FF88", fontSize: 12, cursor: "pointer" }}>▶</button>
-              </div>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "24px 0", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Loading friends…</div>
+      ) : list.length === 0 ? (
+        <div data-testid="friends-empty" style={{ textAlign: "center", padding: "24px 8px", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+          No friends yet.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {list.map((friend) => (
+            <div key={friend.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>{friend.name}</span>
+              {friend.online ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00FF88" }} /> : null}
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -21,49 +21,63 @@ type PendingInvite = {
   direction: "incoming" | "outgoing";
 };
 
-const SEED_FRIENDS: Friend[] = [
-  { id: "f1", username: "Wavetek",     avatar: "🎸", role: "Artist",   status: "live",    since: "Apr 2026" },
-  { id: "f2", username: "ZuriBloom",   avatar: "🎵", role: "Artist",   status: "online",  since: "Mar 2026" },
-  { id: "f3", username: "NxghtOwl",    avatar: "🦉", role: "Producer", status: "offline", since: "Feb 2026" },
-  { id: "f4", username: "Coralline_V", avatar: "🌊", role: "Fan",      status: "online",  since: "Apr 2026" },
-];
-
-const SEED_INVITES: PendingInvite[] = [
-  { id: "i1", from: "MakoMixer",  avatar: "🎛️", message: "Hey, want to connect on TMI?", time: "2h ago",  direction: "incoming" },
-  { id: "i2", from: "PhaseTwo_",  avatar: "⚡",  message: "Let's connect!",               time: "5h ago",  direction: "incoming" },
-  { id: "i3", from: "DrumLogic",  avatar: "🥁",  message: "",                             time: "1d ago",  direction: "outgoing" },
-];
-
 const STATUS_COLOR = { online: "#00FF88", offline: "rgba(255,255,255,0.2)", live: "#FF2DAA" } as const;
 const STATUS_LABEL = { online: "Online",  offline: "Offline",               live: "Live Now" } as const;
 
 function normalizeFriends(data: unknown): Friend[] {
-  if (!Array.isArray(data) || data.length === 0) return [];
-  return (data as Record<string, unknown>[]).map((f, i) => ({
-    id:       String(f.id       ?? `f-${i}`),
-    username: String(f.username ?? f.name ?? "Unknown"),
-    avatar:   String(f.avatar   ?? f.icon ?? "👤"),
-    role:     String(f.role     ?? "Fan"),
-    status:   (["online","offline","live"].includes(String(f.status)) ? f.status : "offline") as Friend["status"],
-    since:    String(f.createdAt ?? f.since ?? ""),
-  }));
+  const rows = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray((data as { friends?: unknown }).friends)
+      ? (data as { friends: unknown[] }).friends
+      : [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const f = row as Record<string, unknown>;
+    const id = String(f.id ?? "").trim();
+    const username = String(f.username ?? f.name ?? "").trim();
+    if (!id || !username) return [];
+    if (f.relationshipStatus !== "accepted") return [];
+    const rawStatus = String(f.status ?? "");
+    const status: Friend["status"] = rawStatus === "online" || rawStatus === "live" || rawStatus === "offline"
+      ? rawStatus
+      : "offline";
+    return [{
+      id,
+      username,
+      avatar: String(f.avatar ?? f.icon ?? "👤"),
+      role: String(f.role ?? "Fan"),
+      status,
+      since: String(f.createdAt ?? f.since ?? ""),
+    }];
+  });
 }
 
 function normalizeInvites(data: unknown): PendingInvite[] {
-  if (!Array.isArray(data) || data.length === 0) return [];
-  return (data as Record<string, unknown>[]).map((inv, i) => ({
-    id:        String(inv.id          ?? `inv-${i}`),
-    from:      String(inv.senderName  ?? inv.from ?? "Unknown"),
-    avatar:    String(inv.avatar      ?? inv.icon ?? "👤"),
-    message:   String(inv.message     ?? ""),
-    time:      String(inv.createdAt   ?? inv.time ?? ""),
-    direction: (inv.direction === "outgoing" ? "outgoing" : "incoming") as PendingInvite["direction"],
-  }));
+  const rows = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray((data as { invites?: unknown }).invites)
+      ? (data as { invites: unknown[] }).invites
+      : [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const inv = row as Record<string, unknown>;
+    const id = String(inv.id ?? "").trim();
+    const from = String(inv.senderName ?? inv.from ?? "").trim();
+    if (!id || !from) return [];
+    return [{
+      id,
+      from,
+      avatar: String(inv.avatar ?? inv.icon ?? "👤"),
+      message: String(inv.message ?? ""),
+      time: String(inv.createdAt ?? inv.time ?? ""),
+      direction: (inv.direction === "outgoing" ? "outgoing" : "incoming") as PendingInvite["direction"],
+    }];
+  });
 }
 
 export default function FanFeedPage() {
-  const [friends,   setFriends]   = useState<Friend[]>(SEED_FRIENDS);
-  const [invites,   setInvites]   = useState<PendingInvite[]>(SEED_INVITES);
+  const [friends,   setFriends]   = useState<Friend[]>([]);
+  const [invites,   setInvites]   = useState<PendingInvite[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ok" | "error">("loading");
   const [searchVal, setSearchVal] = useState("");
   const [sendTo,    setSendTo]    = useState("");
@@ -82,13 +96,15 @@ export default function FanFeedPage() {
       if (!active) return;
 
       if (friendsResult.status === "fulfilled") {
-        const normalized = normalizeFriends(friendsResult.value);
-        if (normalized.length > 0) setFriends(normalized);
+        setFriends(normalizeFriends(friendsResult.value?.friends ?? friendsResult.value));
+      } else {
+        setFriends([]);
       }
 
       if (invitesResult.status === "fulfilled") {
-        const normalized = normalizeInvites(invitesResult.value);
-        if (normalized.length > 0) setInvites(normalized);
+        setInvites(normalizeInvites(invitesResult.value?.invites ?? invitesResult.value));
+      } else {
+        setInvites([]);
       }
 
       setLoadState("ok");
@@ -106,7 +122,7 @@ export default function FanFeedPage() {
     // Optimistic update
     setFriends(f => [
       ...f,
-      { id: `f${Date.now()}`, username: invite.from, avatar: invite.avatar, role: "Fan", status: "online", since: "Now" },
+      { id: `f${Date.now()}`, username: invite.from, avatar: invite.avatar, role: "Fan", status: "offline", since: "" },
     ]);
     setInvites(i => i.filter(x => x.id !== id));
 
@@ -325,7 +341,7 @@ export default function FanFeedPage() {
               <input
                 value={sendTo}
                 onChange={e => setSendTo(e.target.value)}
-                placeholder="e.g. Wavetek or fan@email.com"
+                placeholder="Search a real member"
                 style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
               />
             </div>

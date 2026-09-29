@@ -1,13 +1,41 @@
 import { Injectable } from '@nestjs/common';
-
-// TODO: Add Friend, FriendRequest models to Prisma schema
-// TODO: Implement full friends logic once schema models are added
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FriendsService {
-  async getFriends(_userId: string) {
-    // TODO: return this.prisma.friend.findMany({ where: { userId: _userId } })
-    return [];
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getFriends(userId: string) {
+    if (!userId) return { friends: [] };
+    try {
+      const rows = await this.prisma.friendship.findMany({
+        where: {
+          status: 'accepted',
+          OR: [{ requesterId: userId }, { addresseeId: userId }],
+        },
+        include: {
+          requester: { select: { id: true, displayName: true, name: true, role: true, accountStatus: true } },
+          addressee: { select: { id: true, displayName: true, name: true, role: true, accountStatus: true } },
+        },
+      });
+      const friends = rows.flatMap((row) => {
+        const other = row.requesterId === userId ? row.addressee : row.requester;
+        if (!other?.id || other.id === userId) return [];
+        if (other.accountStatus === 'banned') return [];
+        const name = (other.displayName || other.name || '').trim();
+        if (!name) return [];
+        return [{
+          id: other.id,
+          name,
+          role: String(other.role),
+          relationshipStatus: 'accepted' as const,
+          online: false,
+        }];
+      });
+      return { friends };
+    } catch {
+      return { friends: [] };
+    }
   }
 
   async getFriendRequests(_userId: string) {
@@ -35,8 +63,22 @@ export class FriendsService {
     return { success: false, message: 'TODO: Friends not yet implemented' };
   }
 
-  async isFriend(_userId: string, _targetId: string): Promise<boolean> {
-    // TODO: check friendship
-    return false;
+  async isFriend(userId: string, targetId: string): Promise<boolean> {
+    if (!userId || !targetId || userId === targetId) return false;
+    try {
+      const row = await this.prisma.friendship.findFirst({
+        where: {
+          status: 'accepted',
+          OR: [
+            { requesterId: userId, addresseeId: targetId },
+            { requesterId: targetId, addresseeId: userId },
+          ],
+        },
+        select: { id: true },
+      });
+      return Boolean(row);
+    } catch {
+      return false;
+    }
   }
 }
