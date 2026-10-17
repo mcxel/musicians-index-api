@@ -9,14 +9,12 @@ import { registerRoute } from "@/lib/routing/RouteClosureRegistry";
 import { registerReturnPath } from "@/lib/routing/ReturnPathResolver";
 import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
-import RoomInteractionLayout from "@/components/live/RoomInteractionLayout";
 import LiveRoomWebRTCLayer from "@/components/live/LiveRoomWebRTCLayer";
 import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
 import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
-import BotRoomActivator from "@/components/bots/BotRoomActivator";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import UnifiedAudienceShell from "@/components/live/UnifiedAudienceShell";
@@ -53,7 +51,11 @@ import { isLoungeExperience, isPerformerLobbyExperience } from "@/lib/venue-hud/
 import { isDatingExperience } from "@/lib/trustSafety/DatingExperiencePolicy";
 import { evaluateDatingJoinForUserId } from "@/lib/trustSafety/datingExperienceGuard";
 import { ensureHydrated } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
-import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
+import { getActiveSessions, getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
+import prisma from "@/lib/prisma";
+import { resolveCanonicalRoomDoorState } from "@/lib/live/roomDoorState";
+import { getLiveRoom } from "@/lib/live/LiveRoomEngine";
+import { ensureAnchorRoomsSeeded, isAnchorRoomId } from "@/lib/live/AnchorRoomNetwork";
 import type { VenueEnvironmentKind } from "@/lib/venues/EventVenueEnvironment";
 import {
   evaluateLiveRoomJoinAccess,
@@ -113,11 +115,12 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const modeParam = typeof sp['mode'] === 'string' ? sp['mode'] : Array.isArray(sp['mode']) ? sp['mode'][0] : '';
   const autoParam = typeof sp['auto'] === 'string' ? sp['auto'] : Array.isArray(sp['auto']) ? sp['auto'][0] : '';
   const categoryParam = typeof sp['category'] === 'string' ? sp['category'] : Array.isArray(sp['category']) ? sp['category'][0] : 'live';
-  const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : 'public';
+  const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : '';
   const venueEnvParam = typeof sp['venueEnv'] === 'string' ? sp['venueEnv'] : Array.isArray(sp['venueEnv']) ? sp['venueEnv'][0] : '';
   const venueSkinParam = typeof sp['venueSkin'] === 'string' ? sp['venueSkin'] : Array.isArray(sp['venueSkin']) ? sp['venueSkin'][0] : '';
   const isInstantPerformer =
     modeParam === 'performer' && (autoParam === 'true' || autoParam === '1' || fromValue === 'launch-dock');
+  const isWatchOnly = modeParam === "watch";
   const zoneParam = typeof sp['zone'] === 'string' ? sp['zone'] : Array.isArray(sp['zone']) ? sp['zone'][0] : '';
   const canonicalZone = parseCanonicalWorldZone(zoneParam);
   const _lobbyModeParam = typeof sp['lobbyMode'] === 'string' ? sp['lobbyMode'] : Array.isArray(sp['lobbyMode']) ? sp['lobbyMode'][0] : '';
@@ -135,6 +138,59 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
       modeParam === "lounge" ||
       experienceClass === "LOUNGE_SIDE_ROOM");
   const videoPanelRoom = loungeSideRoom || performerLobby;
+
+  await ensureHydrated();
+  getActiveSessions();
+  const activeRoomSession = getSessionByRoomId(id);
+  const permanentAnchor = isAnchorRoomId(id);
+  if (permanentAnchor) ensureAnchorRoomsSeeded();
+  const runtimeRoom = getLiveRoom(id);
+  let persistedRoomStatus: string | null = null;
+  let persistedRoomName: string | null = null;
+  let persistedRoomSessionActive = false;
+  try {
+    const persistedRoom = await prisma.room.findUnique({
+      where: { id },
+      select: {
+        status: true,
+        name: true,
+        sessions: { where: { status: "ACTIVE" }, select: { id: true }, take: 1 },
+      },
+    });
+    persistedRoomStatus = persistedRoom?.status ?? null;
+    persistedRoomName = persistedRoom?.name ?? null;
+    persistedRoomSessionActive = Boolean(persistedRoom?.sessions.length);
+  } catch {
+    // Fail closed below unless an in-memory live session or permanent anchor proves the door.
+  }
+  let roomDoorState = resolveCanonicalRoomDoorState({
+    persistedRoomStatus,
+    persistedRoomSessionActive,
+    activeLiveSessionStage: activeRoomSession?.stageState,
+    runtimeRoomStatus: runtimeRoom?.status,
+    permanentAnchor,
+  });
+  if (roomDoorState === "CLOSED" && !persistedRoomStatus && isInstantPerformer) {
+    const hostAuth = await getTmiAuth();
+    if (hostAuth && ["PERFORMER", "ARTIST", "ADMIN", "STAFF"].includes(hostAuth.user.role.toUpperCase())) {
+      roomDoorState = "OPEN";
+    }
+  }
+
+  if (roomDoorState === "CLOSED") {
+    return (
+      <main data-testid="closed-room-page" data-room-state="CLOSED" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#050510", color: "#fff", padding: 28, textAlign: "center" }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "#FFD700" }}>ROOM CLOSED</div>
+          <h1 style={{ fontSize: 24, margin: "12px 0 8px" }}>This room is not open yet</h1>
+          <p style={{ maxWidth: 460, color: "rgba(255,255,255,0.62)", fontSize: 13, lineHeight: 1.6 }}>
+            The room page exists, but its canonical room/session authority has not opened it. No live activity or audience is being shown.
+          </p>
+          <Link href="/live/lobby-wall" style={{ display: "inline-block", marginTop: 12, color: "#00FFFF", fontWeight: 800 }}>Return to Lobbies</Link>
+        </div>
+      </main>
+    );
+  }
   const returnHref = performerSlug && performerSid
     ? `/performers/${encodeURIComponent(performerSlug)}/dashboard?returnedFrom=${encodeURIComponent(id)}&sid=${encodeURIComponent(performerSid)}`
     : fanSlug
@@ -269,6 +325,21 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
       />
     );
   }
+
+  if (roomDoorState === "OPEN" && !isInstantPerformer) {
+    return (
+      <main data-testid="open-room-page" data-room-state="OPEN" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#050510", color: "#fff", padding: 28, textAlign: "center" }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "#00FFFF" }}>ROOM OPEN · NOT LIVE</div>
+          <h1 style={{ fontSize: 24, margin: "12px 0 8px" }}>{persistedRoomName ?? runtimeRoom?.title ?? `Room ${id}`}</h1>
+          <p style={{ maxWidth: 460, color: "rgba(255,255,255,0.62)", fontSize: 13, lineHeight: 1.6 }}>
+            This existing room is open, but no live broadcast session is active. Live video, audience counts, and activity will appear only when the canonical session starts.
+          </p>
+          <Link href="/live/lobby-wall" style={{ display: "inline-block", marginTop: 12, color: "#00FFFF", fontWeight: 800 }}>Return to Lobbies</Link>
+        </div>
+      </main>
+    );
+  }
   // ──────────────────────────────────────────────────────────────────────────
 
   if (sessionId) {
@@ -330,25 +401,31 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
         <h1 style={{ fontSize: "clamp(1.8rem, 5vw, 2.8rem)", margin: "10px 0 6px" }}>Room {id}</h1>
-        <p style={{ color: "rgba(255,255,255,0.65)", marginTop: 0 }}>
-          Runtime spine active: join, interact, tip, and return.
+        <p data-room-state={roomDoorState} style={{ color: "rgba(255,255,255,0.65)", marginTop: 0 }}>
+          {roomDoorState === "LIVE" ? "Live room · Connected to the active session." : "Room open · Waiting for its live session to start."}
         </p>
 
-        <LiveRoomWebRTCLayer roomId={id} />
+        {roomDoorState === "LIVE" ? (
+          <LiveRoomWebRTCLayer
+            roomId={id}
+            roomUrl={audienceLiveSession?.previewUrl ?? undefined}
+            viewerOnly={isWatchOnly}
+          />
+        ) : null}
 
-        {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" roomId={id} />}
+        {performerSlug && roomDoorState === "LIVE" ? <LiveSessionHeartbeat enabled intervalMs={15_000} stageState="live" roomId={id} /> : null}
 
         {/* Battle Mode (Phase 4 convergence, 2026-06-20) — unified via ArenaEventShell.
             The ArenaEventShell wraps UniversalVenueRenderer with event-type-aware
             venue mapping, consolidating all event types (battle, cypher, challenge,
             concert, live-show, monday-stage) into one canonical runtime.
         */}
-        {isBattleMode && opponentA && opponentB ? (
+        {isWatchOnly ? null : isBattleMode && opponentA && opponentB && roomDoorState === "LIVE" ? (
           <ArenaEventShell
             roomId={id}
             eventType="battle"
             mode={performerSlug ? "performer" : "audience"}
-            liveState="live"
+            liveState={roomDoorState === "LIVE" ? "live" : "soon"}
             leftParticipant={{
               id: opponentAId ?? `side-a-${battleId}`,
               displayName: opponentA,
@@ -367,7 +444,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             roomId={id}
             eventType={millArenaEventType}
             mode={performerSlug ? "performer" : "audience"}
-            liveState="live"
+            liveState={roomDoorState === "LIVE" ? "live" : "soon"}
             venueEnvironment={audienceVenueEnvironment}
             venueSkinId={audienceVenueSkinId}
           />
@@ -390,10 +467,10 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           />
         )}
 
-        <LiveRoomMonitorShareSection roomId={id} isPerformerSession={Boolean(performerSlug)} />
+        {roomDoorState === "LIVE" && !isWatchOnly ? <LiveRoomMonitorShareSection roomId={id} isPerformerSession={Boolean(performerSlug)} /> : null}
 
         {/* Battle Vote Panel (rendered below venue when in battle mode) */}
-        {isBattleMode && opponentA && opponentB && (
+        {isBattleMode && opponentA && opponentB && roomDoorState === "LIVE" && (
           <div style={{ marginTop: 12 }}>
             <PerformanceVotePanel
               battleId={battleId!}
@@ -416,9 +493,6 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             <TmiAudiencePerspectiveShell roomId={id} fanId={fanSlug ?? sessionId ?? undefined} />
           </div>
         )}
-
-        {!videoPanelRoom ? <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} /> : null}
-        <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 
         {/* Unified Audience Shell — Messages/Playlist/Memory Wall/Avatar/
             Inventory/Rooms as docked overlays, never a route change */}

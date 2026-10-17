@@ -43,6 +43,8 @@ function fallbackCastOverlay(r: LiveDiscoveryRecord, type: LobbyRoom["type"]): s
     LIVE_DISCOVERY_CATEGORY_LABELS[r.category]
   ).trim();
   const kind = eventKindNoun(type);
+  if (r.roomState === "OPEN") return `OPEN · ${genre} ${kind}`;
+  if (r.roomState === "CLOSED") return `CLOSED · ${genre} ${kind}`;
   if (type === "cypher" || type === "mini-cypher") {
     return r.recruiting
       ? `LOOKING FOR PERFORMERS · ${genre} Cypher`

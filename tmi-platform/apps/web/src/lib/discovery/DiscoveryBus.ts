@@ -29,6 +29,11 @@ function emit(): void {
   }
 }
 
+function isRoomDoorDiscoverable(record: LiveDiscoveryRecord): boolean {
+  const state = record.roomState ?? (record.isLive ? "LIVE" : "CLOSED");
+  return state !== "CLOSED";
+}
+
 export const DiscoveryBus = {
   getAll(): LiveDiscoveryRecord[] {
     return snapshot();
@@ -43,6 +48,10 @@ export const DiscoveryBus = {
   },
 
   upsert(record: LiveDiscoveryRecord): void {
+    if (!isRoomDoorDiscoverable(record)) {
+      if (store.delete(record.id)) emit();
+      return;
+    }
     store.set(record.id, { ...record, updatedAt: Date.now() });
     emit();
   },
@@ -51,7 +60,7 @@ export const DiscoveryBus = {
   replaceAll(records: readonly LiveDiscoveryRecord[]): void {
     store.clear();
     for (const r of records) {
-      if (!r?.id || !r.isLive) continue;
+      if (!r?.id || !isRoomDoorDiscoverable(r)) continue;
       store.set(r.id, r);
     }
     emit();

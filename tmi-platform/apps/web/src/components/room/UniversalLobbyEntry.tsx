@@ -81,6 +81,8 @@ export interface UniversalRoom {
   participationRoomKind?: string;
   /** false → skip /api/live/audience fan seat claim (queued performers, lounges, host) */
   claimFanSeat?: boolean;
+  /** Watch the existing live session without mounting venue or avatar entry. */
+  watchOnly?: boolean;
 }
 
 // ── Step enum ─────────────────────────────────────────────────────────────────
@@ -147,7 +149,7 @@ interface LobbyEntryFlowProps {
 
 export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlowProps) {
   // instant=true → seat claim + venue preload; no LEGACY fixed SeatArrivalTransition overlay
-  const [step, setStep] = useState<Step>(instant ? "seat" : "preview");
+  const [step, setStep] = useState<Step>(instant ? (room.watchOnly ? "enter" : "seat") : "preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
   const [seatId, setSeatId] = useState<string | null>(null);
   const [occupancyRatio, setOccupancyRatio] = useState(0);
@@ -267,6 +269,11 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
 
   useEffect(() => {
     if (step !== "seat") return;
+    if (room.watchOnly) {
+      setSeatReady(true);
+      setStep("enter");
+      return;
+    }
     let cancelled = false;
     (async () => {
           if (!shouldClaimFanSeat) {
@@ -318,7 +325,7 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
       }
     })();
     return () => { cancelled = true; };
-  }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim, shouldClaimFanSeat, room.participationEntryMode]);
+  }, [step, advance, room.id, instant, seatSession.seatId, seatSession.claim, shouldClaimFanSeat, room.participationEntryMode, room.watchOnly]);
 
   /** Settle complete → reveal seated audience, then enter room (no global fixed overlay). */
   const onHyperspaceComplete = useCallback(() => {
@@ -341,7 +348,7 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   }, []);
 
   // Venue shell under hyperspace — never a black empty room during travel
-  const isVenueMode = step === "seat" || step === "audience" || step === "enter";
+  const isVenueMode = !room.watchOnly && (step === "seat" || step === "audience" || step === "enter");
   const showSeatedAudience = instant
     ? step === "seat" || step === "audience" || step === "enter"
     : step === "audience";
@@ -376,6 +383,8 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   // ── Step indicator ──────────────────────────────────────────────────────────
   const STEPS: Step[] = ["preview", "access", "seat", "audience", "enter"];
   const stepIdx = STEPS.indexOf(step);
+
+  if (room.watchOnly) return null;
 
   return (
     <div style={overlay} onClick={e => { if (!isVenueMode && e.target === e.currentTarget) onClose(); }}>

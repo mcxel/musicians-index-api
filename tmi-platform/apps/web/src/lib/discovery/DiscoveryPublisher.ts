@@ -8,12 +8,15 @@
  */
 
 import type { LiveSession } from "@/lib/broadcast/globalLiveSessionStore";
+import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
+import { getLiveRoom } from "@/lib/live/LiveRoomEngine";
 import { DiscoveryBus } from "./DiscoveryBus";
 import {
   mapStreamCategoryToDiscovery,
   type LiveDiscoveryCategory,
   type LiveDiscoveryJoinGate,
   type LiveDiscoveryRecord,
+  type LiveDiscoveryRoomState,
   type LiveDiscoveryVisibility,
 } from "./LiveDiscoveryRecord";
 import {
@@ -49,6 +52,8 @@ export interface PublishLiveRoomInput {
   categoryLocked?: boolean;
   recruiting?: boolean;
   castOverlay?: string;
+  /** Set only by the existing room/session owner or permanent-room registry. */
+  roomState?: LiveDiscoveryRoomState;
 }
 
 function normalizeVisibility(
@@ -66,12 +71,14 @@ function buildCategories(
   humanViewerCount: number,
   visibility: LiveDiscoveryVisibility,
   startedAt: number,
+  roomState: LiveDiscoveryRoomState,
 ): LiveDiscoveryCategory[] {
-  const cats = new Set<LiveDiscoveryCategory>(["live_now", "worldwide", primary]);
+  const cats = new Set<LiveDiscoveryCategory>(["worldwide", primary]);
+  if (roomState === "LIVE") cats.add("live_now");
   if (visibility === "friends") cats.add("friends");
   if (visibility === "invite" || visibility === "private") cats.add("private_invited");
   const ageMs = Date.now() - startedAt;
-  if (humanViewerCount === 0 && ageMs < 15 * 60 * 1000) cats.add("new_empty");
+  if (roomState === "LIVE" && humanViewerCount === 0 && ageMs < 15 * 60 * 1000) cats.add("new_empty");
   return Array.from(cats);
 }
 
@@ -95,6 +102,8 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
   if (input.listed === false) return null;
 
   const visibility = normalizeVisibility(input.visibility);
+  const roomState = input.roomState ?? (input.isAnchor ? "OPEN" : "CLOSED");
+  const isLive = roomState === "LIVE";
   const primary = mapStreamCategoryToDiscovery(input.category);
   const humanViewerCount = Math.max(0, Math.round(input.humanViewerCount ?? 0));
   const startedAt = input.startedAt ?? Date.now();
@@ -102,7 +111,7 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     input.joinRoute?.trim() ||
     `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
 
-  const categories = buildCategories(primary, humanViewerCount, visibility, startedAt);
+  const categories = buildCategories(primary, humanViewerCount, visibility, startedAt, roomState);
   const experienceKey = (input.experienceId ?? "live").trim() || "live";
   /** Idempotent bus key — roomId + experience identity prevents duplicate cards on reconnect. */
   const busId = `${roomId}::${experienceKey}`;
@@ -124,8 +133,10 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     accentColor: input.accentColor ?? "#00FFFF",
     joinRoute,
     joinGate: resolveJoinGate(visibility, input.entryPriceUsd, input.joinGate),
-    isLive: true,
+    roomState,
+    isLive,
     isNewEmpty:
+      isLive &&
       !input.isAnchor &&
       humanViewerCount === 0 &&
       Date.now() - startedAt < 15 * 60 * 1000,
@@ -146,8 +157,22 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
 
 /** Publish a single real room onto the bus. Returns null if unlistable. */
 export function publishLiveRoom(input: PublishLiveRoomInput): LiveDiscoveryRecord | null {
-  const record = toLiveDiscoveryRecord(input);
+  const session = getSessionByRoomId(input.roomId);
+  const runtimeRoom = getLiveRoom(input.roomId);
+  const roomState: LiveDiscoveryRoomState = session
+    ? session.stageState === "live" || session.stageState === "intermission" ? "LIVE" : session.stageState === "pre-show" ? "OPEN" : "CLOSED"
+    : input.isAnchor
+      ? "OPEN"
+      : input.roomState ?? (runtimeRoom && ["live", "open", "scheduled", "paused"].includes(runtimeRoom.status)
+          ? "OPEN"
+          : "CLOSED");
+  const record = toLiveDiscoveryRecord({ ...input, roomState });
   if (!record) return null;
+  if (record.roomState === "CLOSED") {
+    DiscoveryBus.remove(record.id);
+    DiscoveryBus.remove(input.roomId);
+    return record;
+  }
   DiscoveryBus.upsert(record);
   return record;
 }
@@ -185,14 +210,15 @@ export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscover
     posterUrl: session.thumbnailUrl ?? session.avatarUrl,
     previewUrl: session.previewUrl,
     accentColor: session.accentColor,
-    joinRoute:
-      session.category === "fan-lobby"
-        ? `/hub/fan?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`
-        : `/hub/performer?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`,
+    joinRoute: `/live/rooms/${encodeURIComponent(session.roomId)}?mode=watch&from=live-lobby-wall`,
     joinGate: paid ? "paid" : "none",
     entryPriceUsd: session.entryPriceUsd,
     startedAt: session.startedAt,
     listed: true,
+    roomState: session.stageState === "live" || session.stageState === "intermission" ? "LIVE" : session.stageState === "pre-show" ? "OPEN" : "CLOSED",
+    statusLine: session.stageState === "live" || session.stageState === "intermission"
+      ? `LIVE · ${session.title}`
+      : session.stageState === "pre-show" ? `OPEN · ${session.title}` : undefined,
   });
 }
 
@@ -212,6 +238,13 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
     if (existing) {
       byId.set(anchor.id, {
         ...anchor,
+        roomState: existing.roomState === "LIVE" ? "LIVE" : anchor.roomState,
+        isLive: existing.roomState === "LIVE" || anchor.roomState === "LIVE",
+        categories: existing.roomState === "LIVE"
+          ? [...new Set<LiveDiscoveryCategory>([...anchor.categories, ...existing.categories, "live_now"])]
+          : anchor.categories,
+        castOverlay: existing.roomState === "LIVE" ? existing.castOverlay ?? existing.statusLine ?? `LIVE · ${anchor.title}` : anchor.castOverlay,
+        statusLine: existing.roomState === "LIVE" ? existing.statusLine ?? `LIVE · ${anchor.title}` : anchor.statusLine,
         humanViewerCount: Math.max(anchor.humanViewerCount, existing.humanViewerCount),
         hostName: existing.hostName && existing.hostName !== "Host" ? existing.hostName : anchor.hostName,
         previewUrl: existing.previewUrl ?? anchor.previewUrl,
@@ -220,28 +253,6 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
       });
     } else {
       byId.set(anchor.id, anchor);
-    }
-  }
-
-  // Preserve very recent client upserts during registry hydrate lag (POST→GET race).
-  // Prevents Lobby Wall flicker / connection-reset loops wiping LIVE_SESSION tiles.
-  const GRACE_MS = 12_000;
-  const now = Date.now();
-  for (const existing of DiscoveryBus.getAll()) {
-    if (byId.has(existing.id)) {
-      const polled = byId.get(existing.id)!;
-      // Prefer higher honest human count when poll lags join sync
-      if (existing.humanViewerCount > polled.humanViewerCount) {
-        byId.set(existing.id, {
-          ...polled,
-          humanViewerCount: existing.humanViewerCount,
-          updatedAt: Math.max(polled.updatedAt, existing.updatedAt),
-        });
-      }
-      continue;
-    }
-    if (now - existing.updatedAt < GRACE_MS) {
-      byId.set(existing.id, existing);
     }
   }
 

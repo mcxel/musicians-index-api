@@ -16,6 +16,8 @@ interface VideoRoomProps {
   roomUrl: string;
   token?: string;
   userName?: string;
+  viewerOnly?: boolean;
+  autoJoin?: boolean;
   onLeave?: () => void;
   allowConnection?: boolean;
   onParticipantsChange?: (participantIds: string[]) => void;
@@ -47,10 +49,12 @@ function RoomContent({
   onLeave,
   onParticipantsChange,
   mixerRoomId,
+  viewerOnly = false,
 }: {
   onLeave?: () => void;
   onParticipantsChange?: (ids: string[]) => void;
   mixerRoomId: string;
+  viewerOnly?: boolean;
 }) {
   const participantIds = useParticipantIds();
   const localParticipant = useLocalParticipant();
@@ -175,7 +179,7 @@ function RoomContent({
     setSpotlightId(prev => prev === id ? null : id);
   }
 
-  const localId = localParticipant?.session_id ?? null;
+  const localId = viewerOnly ? null : localParticipant?.session_id ?? null;
   const remoteIds = participantIds.filter(id => id !== localId);
   const allIds = localId ? [localId, ...remoteIds] : [...remoteIds];
   const featuredId = spotlightId ?? activeSpeakerId ?? (allIds[0] ?? null);
@@ -267,21 +271,21 @@ function RoomContent({
       )}
 
       {/* ── ENERGY BAR ───────────────────────────────────────────────── */}
-      <div style={{ height: 5, background: 'rgba(255,255,255,0.04)', flexShrink: 0, zIndex: 10, position: 'relative' }}>
+      {!viewerOnly && <div style={{ height: 5, background: 'rgba(255,255,255,0.04)', flexShrink: 0, zIndex: 10, position: 'relative' }}>
         <div style={{ height: '100%', width: `${energyLevel}%`, background: `linear-gradient(90deg,#AA2DFF,${energyColor})`, transition: 'width 0.4s ease,background 0.6s ease', boxShadow: energyLevel > 55 ? `0 0 8px ${energyColor}88` : 'none' }} />
         <div aria-hidden style={{ position: 'absolute', right: 8, top: -15, fontSize: 8, fontWeight: 900, letterSpacing: '0.15em', color: energyColor, opacity: 0.65, transition: 'color 0.6s ease', userSelect: 'none' }}>
           ENERGY {energyLevel}
         </div>
-      </div>
+      </div>}
 
       {/* ── CONTROLS ─────────────────────────────────────────────────── */}
       <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0, zIndex: 10 }}>
-        <button onClick={toggleMic} title={isMuted ? 'Unmute' : 'Mute'} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isMuted ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.08)', color: isMuted ? '#FF5050' : '#fff', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!viewerOnly && <button onClick={toggleMic} title={isMuted ? 'Unmute' : 'Mute'} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isMuted ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.08)', color: isMuted ? '#FF5050' : '#fff', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isMuted ? '🔇' : '🎙️'}
-        </button>
-        <button onClick={toggleCam} title={isCamOff ? 'Camera on' : 'Camera off'} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isCamOff ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.08)', color: isCamOff ? '#FF5050' : '#fff', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        </button>}
+        {!viewerOnly && <button onClick={toggleCam} title={isCamOff ? 'Camera on' : 'Camera off'} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isCamOff ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.08)', color: isCamOff ? '#FF5050' : '#fff', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isCamOff ? '📵' : '📷'}
-        </button>
+        </button>}
         <button onClick={onLeave} style={{ padding: '0 28px', height: 50, borderRadius: 25, border: 'none', cursor: 'pointer', background: 'rgba(255,50,50,0.2)', color: '#FF5050', fontWeight: 900, fontSize: 13, letterSpacing: '0.05em' }}>
           Leave
         </button>
@@ -323,26 +327,53 @@ function RoomContent({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConnection = true, onParticipantsChange }: VideoRoomProps) {
+export default function VideoRoom({ roomUrl, token, userName, viewerOnly = false, autoJoin = false, onLeave, allowConnection = true, onParticipantsChange }: VideoRoomProps) {
   const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const [joined, setJoined] = useState(false);
+  const callRef = useRef<DailyCall | null>(null);
   const mixerRoomId = roomIdFromUrl(roomUrl);
 
   const joinCall = useCallback(async () => {
-    const call = DailyIframe.createCallObject({ url: roomUrl, token });
-    await call.join({ userName });
-    setCallObject(call);
-    setJoined(true);
-  }, [roomUrl, token, userName]);
+    if (callRef.current) return;
+    const call = DailyIframe.createCallObject({
+      url: roomUrl,
+      token,
+      ...(viewerOnly ? { videoSource: false, audioSource: false } : {}),
+    });
+    callRef.current = call;
+    try {
+      await call.join({
+        userName,
+        ...(viewerOnly ? { startVideoOff: true, startAudioOff: true } : {}),
+      });
+      setCallObject(call);
+      setJoined(true);
+    } catch {
+      callRef.current = null;
+      call.destroy();
+    }
+  }, [roomUrl, token, userName, viewerOnly]);
+
+  useEffect(() => {
+    if (autoJoin) void joinCall();
+  }, [autoJoin, joinCall]);
+
+  useEffect(() => () => {
+    const call = callRef.current;
+    callRef.current = null;
+    if (call) void call.leave().catch(() => {}).finally(() => call.destroy());
+  }, []);
 
   const leaveCall = useCallback(async () => {
     leaveLiveRoomMixer();
-    await callObject?.leave();
-    callObject?.destroy();
+    const call = callRef.current;
+    callRef.current = null;
+    await call?.leave();
+    call?.destroy();
     setCallObject(null);
     setJoined(false);
     onLeave?.();
-  }, [callObject, onLeave]);
+  }, [onLeave]);
 
   if (!allowConnection) {
     return (
@@ -357,14 +388,14 @@ export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConn
       <div style={{ minHeight: '100vh', background: '#060410', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 48, marginBottom: 16 }}>🎥</p>
-          <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>Ready to join?</h2>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>Your camera and mic will activate when you join.</p>
-          <button
+          <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{autoJoin ? 'Connecting to live session…' : 'Ready to join?'}</h2>
+          {!autoJoin && <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>Your camera and mic will activate when you join.</p>}
+          {!autoJoin && <button
             onClick={joinCall}
             style={{ padding: '14px 40px', borderRadius: 28, background: 'linear-gradient(135deg,#00FFFF22,#AA2DFF22)', border: '1px solid rgba(0,255,255,0.4)', color: '#00FFFF', fontWeight: 900, fontSize: 14, cursor: 'pointer', letterSpacing: '0.05em' }}
           >
             Join Live Arena
-          </button>
+          </button>}
         </div>
       </div>
     );
@@ -372,7 +403,7 @@ export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConn
 
   return (
     <DailyProvider callObject={callObject!}>
-      <RoomContent onLeave={leaveCall} onParticipantsChange={onParticipantsChange} mixerRoomId={mixerRoomId} />
+      <RoomContent onLeave={leaveCall} onParticipantsChange={onParticipantsChange} mixerRoomId={mixerRoomId} viewerOnly={viewerOnly} />
     </DailyProvider>
   );
 }

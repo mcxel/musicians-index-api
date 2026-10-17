@@ -191,12 +191,13 @@ export function mapStreamHealthToObservatory(
 function resolveJoinKind(opts: {
   joinGate?: string | null;
   isLive: boolean;
+  isOpen?: boolean;
 }): LiveSurfaceJoinKind {
   const gate = String(opts.joinGate ?? "none").toLowerCase();
   if (gate === "ticket" || gate === "invite" || gate === "age" || gate === "paid") {
     return "gated";
   }
-  return opts.isLive ? "lobby_entry" : "watch";
+  return opts.isLive || opts.isOpen ? "lobby_entry" : "watch";
 }
 
 function defaultJoinHref(roomId: string, category?: StreamCategory | string | null): string {
@@ -315,7 +316,8 @@ export function projectDiscoveryRecordToSurfaceCard(
   const roomId = (record.roomId ?? "").trim();
   if (!roomId) return null;
 
-  const state: LiveSurfaceState = record.isLive ? "live" : "ended";
+  const roomState = record.roomState ?? (record.isLive ? "LIVE" : "CLOSED");
+  const state: LiveSurfaceState = roomState === "LIVE" ? "live" : roomState === "OPEN" ? "starting" : "ended";
   const country =
     record.countryCode && record.countryCode !== "ZZ"
       ? record.countryCode.toUpperCase()
@@ -340,7 +342,7 @@ export function projectDiscoveryRecordToSurfaceCard(
     previewMediaUrl: record.previewUrl ?? record.posterUrl ?? null,
     joinAction: {
       href,
-      kind: resolveJoinKind({ joinGate: record.joinGate, isLive: record.isLive }),
+      kind: resolveJoinKind({ joinGate: record.joinGate, isLive: record.isLive, isOpen: roomState === "OPEN" }),
     },
     accentColor: record.accentColor,
     startedAt: record.startedAt,

@@ -100,8 +100,11 @@ check("all rooms have audienceCount >= 0", () =>
 check("all rooms have heatLevel in [0, 100]", () =>
   roomIds.every(id => { const h = getRoomPopulation(id).heatLevel; return h >= 0 && h <= 100; }));
 
-check("monthly-idol baseline > venue-room baseline", () =>
-  getRoomPopulation("monthly-idol").audienceCount > getRoomPopulation("venue-room").audienceCount);
+check("room population starts empty until real participants arrive", () =>
+  roomIds.every(id => {
+    const room = getRoomPopulation(id);
+    return room.audienceCount === 0 && room.performerCount === 0 && room.hostCount === 0 && room.sponsorCount === 0;
+  }));
 
 // ─── Section 3: Intent summaries ─────────────────────────────────────────────
 

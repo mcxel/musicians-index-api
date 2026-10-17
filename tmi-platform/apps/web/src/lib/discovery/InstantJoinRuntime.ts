@@ -125,6 +125,7 @@ export function resolveInstantJoin(
   record: LiveDiscoveryRecord,
   opts?: { role?: string | null; isRoomOwner?: boolean; selectedStyle?: string | null },
 ): InstantJoinDecision {
+  const watchOnly = record.isLive && (record.roomState ?? "LIVE") === "LIVE";
   const role = normalizeRole(opts?.role);
   const roomKind = resolveRoomKindFromDiscovery(record);
   const ownership = resolveOwnershipModel(record);
@@ -138,15 +139,21 @@ export function resolveInstantJoin(
   });
 
   const room = discoveryRecordToUniversalRoom(record, {
-    entryMode: resolution.entryMode,
+    entryMode: watchOnly ? "SPECTATOR" : resolution.entryMode,
     roomKind: resolution.roomKind,
-    claimFanSeat: resolution.claimFanSeat,
+    claimFanSeat: !watchOnly && resolution.claimFanSeat,
   });
+  room.watchOnly = watchOnly;
+  if (watchOnly) room.claimFanSeat = false;
 
   // Playlist / mixed-genre listening → LOUNGE_SIDE_ROOM (video panels, no avatars).
   // Competition QUEUE path keeps competition joinRoute (do not force fan avatar lobby).
-  let href = record.joinRoute;
-  if (resolution.entryMode === "QUEUE") {
+  let href = watchOnly
+    ? `/live/rooms/${encodeURIComponent(record.roomId)}?mode=watch&from=live-lobby-wall`
+    : record.joinRoute;
+  if (watchOnly) {
+    room.roomRoute = href;
+  } else if (resolution.entryMode === "QUEUE") {
     href = record.joinRoute;
     room.roomRoute = href;
   } else if (isPlaylistLoungeDiscovery(record) || resolution.entryMode === "LOUNGE_PANEL") {

@@ -5,17 +5,20 @@ import VideoRoom from "@/components/video/VideoRoom";
 
 interface LiveRoomWebRTCLayerProps {
   roomId: string;
+  roomUrl?: string;
+  viewerOnly?: boolean;
 }
 
-export default function LiveRoomWebRTCLayer({ roomId }: LiveRoomWebRTCLayerProps) {
+export default function LiveRoomWebRTCLayer({ roomId, roomUrl: sessionRoomUrl, viewerOnly = false }: LiveRoomWebRTCLayerProps) {
   const [messages, setMessages] = useState<string[]>([]);
 
   const roomUrl = useMemo(() => {
+    if (sessionRoomUrl?.trim()) return sessionRoomUrl.trim();
     const domain =
       process.env.NEXT_PUBLIC_DAILY_DOMAIN?.replace(/^https?:\/\//, "") ||
       "themusiciansindex.daily.co";
     return `https://${domain}/${encodeURIComponent(roomId)}`;
-  }, [roomId]);
+  }, [roomId, sessionRoomUrl]);
 
   return (
     <section
@@ -29,9 +32,9 @@ export default function LiveRoomWebRTCLayer({ roomId }: LiveRoomWebRTCLayerProps
       }}
       aria-label="Live WebRTC Room Layer"
     >
-      <VideoRoom roomUrl={roomUrl} userName="Guest User" />
+      <VideoRoom roomUrl={roomUrl} userName="Guest User" viewerOnly={viewerOnly} autoJoin={viewerOnly} />
 
-      <div
+      {!viewerOnly && <div
         style={{
           borderTop: "1px solid rgba(255,255,255,0.08)",
           padding: 12,
@@ -84,7 +87,7 @@ export default function LiveRoomWebRTCLayer({ roomId }: LiveRoomWebRTCLayerProps
             }
           }}
         />
-      </div>
+      </div>}
     </section>
   );
 }

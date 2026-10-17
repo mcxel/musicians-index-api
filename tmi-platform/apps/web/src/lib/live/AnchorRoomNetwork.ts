@@ -20,6 +20,7 @@ import {
   publishLiveRoom,
   type PublishLiveRoomInput,
 } from "@/lib/discovery/DiscoveryPublisher";
+import { getSessionByRoomId } from "@/lib/broadcast/globalLiveSessionStore";
 import type { LiveDiscoveryCategory, LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import type { LiveRoomRecord } from "@/lib/broadcast/BroadcastQueueRegistry";
 import {
@@ -513,7 +514,7 @@ export function buildAnchorCastOverlay(
         : `${style} Cypher`;
     return {
       recruiting,
-      overlay: recruiting ? `LOOKING FOR PERFORMERS · ${line}` : `LIVE · ${line}`,
+      overlay: recruiting ? `LOOKING FOR PERFORMERS · ${line}` : `OPEN · ${line}`,
     };
   }
 
@@ -521,7 +522,7 @@ export function buildAnchorCastOverlay(
     if (!recruiting) {
       return {
         recruiting: false,
-        overlay: `LIVE · ${styleVsCallout(state.featuredCategory ?? slots[0])}`,
+        overlay: `OPEN · ${styleVsCallout(state.featuredCategory ?? slots[0])}`,
       };
     }
     const triples = slots.length > 0 ? formatVsTripleCallout(slots) : styleVsCallout(state.featuredCategory);
@@ -531,7 +532,7 @@ export function buildAnchorCastOverlay(
   if (def.family === "playlist_lounge") {
     return {
       recruiting: false,
-      overlay: state.nowPlayingLabel ? `LIVE · ${state.nowPlayingLabel}` : "ALWAYS OPEN · Playlist Lounge",
+      overlay: state.nowPlayingLabel ? `OPEN · PLAYING · ${state.nowPlayingLabel}` : "ALWAYS OPEN · Playlist Lounge",
     };
   }
   if (def.family === "conversation_lounge") {
@@ -543,19 +544,19 @@ export function buildAnchorCastOverlay(
   if (def.family === "dance") {
     return {
       recruiting,
-      overlay: recruiting ? "LOOKING FOR PERFORMERS · World Dance" : "LIVE · World Dance",
+      overlay: recruiting ? "LOOKING FOR PERFORMERS · World Dance" : "OPEN · World Dance",
     };
   }
   if (def.family === "variety") {
     return {
       recruiting,
-      overlay: recruiting ? "LOOKING FOR PERFORMERS · Deal or Feud" : "LIVE · Deal or Feud",
+      overlay: recruiting ? "LOOKING FOR PERFORMERS · Deal or Feud" : "OPEN · Deal or Feud",
     };
   }
 
   return {
     recruiting,
-    overlay: recruiting ? `LOOKING FOR PERFORMERS · ${def.title}` : `LIVE · ${def.title}`,
+    overlay: recruiting ? `LOOKING FOR PERFORMERS · ${def.title}` : `OPEN · ${def.title}`,
   };
 }
 
@@ -695,8 +696,9 @@ export function ensureAnchorRoomsSeeded(): LiveRoom[] {
 }
 
 export function toLiveRoomRecord(def: AnchorRoomDef): LiveRoomRecord {
-  const room = getLiveRoom(def.roomId);
+  const session = getSessionByRoomId(def.roomId);
   const cap = getCapacityForFamily(def.family);
+  const hasRealLiveSession = session?.stageState === "live" || session?.stageState === "intermission";
   return {
     roomId: def.roomId,
     roomType:
@@ -710,7 +712,7 @@ export function toLiveRoomRecord(def: AnchorRoomDef): LiveRoomRecord {
               ? "event"
               : "venue",
     title: def.title,
-    status: room?.status === "live" || room?.status === "open" ? "live" : room?.status ?? "open",
+    status: hasRealLiveSession ? "live" : "open",
     genre: getOrInitRuntime(def).featuredCategory ?? undefined,
     isAnchor: true,
     anchorFamily: def.family,

@@ -9,6 +9,8 @@ export type LiveDiscoveryVisibility =
   | "invite"
   | "private";
 
+export type LiveDiscoveryRoomState = "CLOSED" | "OPEN" | "LIVE";
+
 /** Rail / channel categories shown in the overlay (human labels map 1:1). */
 export type LiveDiscoveryCategory =
   | "live_now"
@@ -60,6 +62,8 @@ export interface LiveDiscoveryRecord {
   accentColor: string;
   joinRoute: string;
   joinGate: LiveDiscoveryJoinGate;
+  /** Existing Room/RoomSession lifecycle projected to every Lobby surface. */
+  roomState?: LiveDiscoveryRoomState;
   isLive: boolean;
   /** Room started recently with zero humans — New & Empty rail. */
   isNewEmpty: boolean;

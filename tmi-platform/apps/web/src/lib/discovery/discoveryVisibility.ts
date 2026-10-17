@@ -58,7 +58,10 @@ export function filterDiscoverableRecords(
   records: readonly LiveDiscoveryRecord[],
   ctx: DiscoveryViewerContext = {},
 ): LiveDiscoveryRecord[] {
-  return records.filter((r) => r.isLive && isAuthorizedForVisibility(r, ctx));
+  return records.filter((r) => {
+    const state = r.roomState ?? (r.isLive ? "LIVE" : "CLOSED");
+    return state !== "CLOSED" && isAuthorizedForVisibility(r, ctx);
+  });
 }
 
 export function recordMatchesCategory(
