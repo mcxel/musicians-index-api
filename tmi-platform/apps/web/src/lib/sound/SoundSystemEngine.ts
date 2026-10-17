@@ -15,6 +15,11 @@ export type SoundCategory =
   | 'warning'
   | 'broadcast_start';
 
+export interface MicrophoneLevelMonitor {
+  readLevel(): number;
+  disconnect(): void;
+}
+
 class SoundSystemEngineClass {
   private ctx: AudioContext | null = null;
 
@@ -155,6 +160,40 @@ class SoundSystemEngineClass {
       osc.stop(now + duration + theme.decayRate);
     } catch (e) {
       console.warn('Audio synthesis failed:', e);
+    }
+  }
+
+  /** Analyser-only mic tap on the existing sound context; never routes mic audio to speakers. */
+  public monitorMicrophone(stream: MediaStream): MicrophoneLevelMonitor | null {
+    const ctx = this.getAudioContext();
+    if (!ctx) return null;
+
+    try {
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.35;
+      source.connect(analyser);
+      const samples = new Float32Array(analyser.fftSize);
+      let disconnected = false;
+
+      return {
+        readLevel: () => {
+          if (disconnected) return 0;
+          analyser.getFloatTimeDomainData(samples);
+          let sumSquares = 0;
+          for (const sample of samples) sumSquares += sample * sample;
+          return Math.sqrt(sumSquares / samples.length);
+        },
+        disconnect: () => {
+          if (disconnected) return;
+          disconnected = true;
+          try { source.disconnect(); } catch {}
+          try { analyser.disconnect(); } catch {}
+        },
+      };
+    } catch {
+      return null;
     }
   }
 

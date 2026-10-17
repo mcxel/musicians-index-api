@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { headers } from "next/headers";
+import AudioProvider from "@/components/AudioProvider";
 import FullAppShell from "@/components/layout/FullAppShell";
 import { CANONICAL_RELEASE_MANIFEST } from "@/lib/system/TmiReleaseMigrationAuthority";
 import { isAuthCriticalPath } from "@/lib/auth/isAuthCriticalPath";
@@ -190,7 +191,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           The Musician&apos;s Index Magazine — Live music platform for artists,
           performers, and fans.
         </h1>
-        {authCritical ? children : <FullAppShell>{children}</FullAppShell>}
+        <AudioProvider>
+          {authCritical ? children : <FullAppShell>{children}</FullAppShell>}
+        </AudioProvider>
       </body>
     </html>
   );
