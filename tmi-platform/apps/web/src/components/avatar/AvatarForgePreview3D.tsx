@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { AvatarCameraFocus } from "@/components/3d/AvatarLobbyCanvas";
+import type { PhonemeGroup } from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
 import {
   cosmeticIdsToAttachments,
   forgeSelectionToCosmeticIds,
@@ -34,6 +35,8 @@ export type AvatarForgePreview3DProps = {
   portraitUrl?: string;
   hero?: boolean;
   cameraFocus?: AvatarCameraFocus;
+  talking?: boolean;
+  phoneme?: PhonemeGroup | null;
 };
 
 const HAIR_TINT: Record<string, string> = {
@@ -65,6 +68,8 @@ export default function AvatarForgePreview3D({
   portraitUrl,
   hero = false,
   cameraFocus = "body",
+  talking = false,
+  phoneme = null,
 }: AvatarForgePreview3DProps) {
   const ids = forgeSelectionToCosmeticIds({
     outfit,
@@ -104,6 +109,8 @@ export default function AvatarForgePreview3D({
       size={hero ? 420 : 280}
       fill={hero}
       cameraFocus={cameraFocus}
+      talking={talking}
+      phoneme={phoneme}
       enableOrbit
       glbSlotId={viewport.glbUrl ? viewport.slotId : undefined}
       glbUrl={viewport.glbUrl ?? undefined}
