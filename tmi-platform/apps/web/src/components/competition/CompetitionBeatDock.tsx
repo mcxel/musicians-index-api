@@ -28,6 +28,7 @@ function styleLabel(style: CompetitionBeatStyle): string {
   return map[style] ?? style;
 }
 import CompetitionBeatBroadcastTag from "@/components/competition/CompetitionBeatBroadcastTag";
+import CompetitionBeatAudioPlayer from "@/components/competition/CompetitionBeatAudioPlayer";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -183,6 +184,9 @@ export default function CompetitionBeatDock({
             : undefined
         }
       />
+      {state?.style === "attached" && (
+        <CompetitionBeatAudioPlayer attached={state?.attached ?? null} />
+      )}
       <AnimatePresence mode="wait">
         {collapsed ? (
           <motion.button

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { serverTimestamp } from "@/lib/engines/runtime/UniversalClockRuntime";
 
 export const runtime = "edge";
 
 export function GET(): NextResponse {
-  return NextResponse.json(serverTimestamp(), {
+  return NextResponse.json({ t: Date.now() }, {
     headers: { "Cache-Control": "no-store, no-cache" },
   });
 }

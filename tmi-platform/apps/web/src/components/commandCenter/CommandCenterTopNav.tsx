@@ -15,6 +15,8 @@ import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 import UniversalSignOutButton from "@/components/navigation/UniversalSignOutButton";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
+import { gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
@@ -24,11 +26,13 @@ interface CommandCenterTopNavProps {
 
 /** Shell-owned destinations only — no legacy Home/Discover/Live Now/Lobby board. */
 const NAV_LINKS = [
+  { label: "HOME", href: "/" },
+  { label: "DISCOVER", href: "/explore" },
+  { label: "LIVE NOW", href: "/rooms" },
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
-  { label: "ARENA / GAMES", href: "/arena" },
-  { label: "ABOUT US", href: "/about" },
-  { label: "HELP", href: "/help" },
+  { label: "ARENA", href: "/arena" },
+  { label: "PUBLICS", href: "/profiles" },
 ];
 
 export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
@@ -80,6 +84,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   useEffect(() => {
     let cancelled = false;
     async function pollMessages() {
+      if (gpsDestinationState("messages") !== "LIVE") return;
       try {
         const msgRes = await fetch("/api/messages", { cache: "no-store" });
         if (cancelled || !msgRes.ok) return;
@@ -147,6 +152,10 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   };
 
   const openMessages = () => {
+    if (gpsDestinationState("messages") !== "LIVE") {
+      useMobileGpsMonitorLayoutStore.getState().showReleaseNote("messages");
+      return;
+    }
     openCanonicalWorkspaceQuick("messaging", "DRAWER");
   };
 
@@ -162,52 +171,94 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        gap: isMobile ? 10 : 18,
-        padding: isMobile ? "0 10px" : "0 16px",
+        justifyContent: "space-between",
+        gap: isMobile ? 6 : 18,
+        padding: isMobile ? "0 8px" : "0 16px",
+        minWidth: 0,
         borderBottom: `1px solid ${theme.primary}18`,
         background: theme.bgGlass,
         backdropFilter: "blur(12px)",
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* Logo: TMI + "The Musician's Index" styled in sleek cursive script (Billie Jean aesthetic) */}
+      {/* Same lockup on every width. Phone scales it; it does not swap in plain text. */}
       <Link
         href="/"
+        data-tmi-magazine-brand={isMobile ? "compact" : "full"}
+        aria-label="The Musician's Index Magazine"
         style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 7,
+          display: "block",
           textDecoration: "none",
           flexShrink: 0,
+          width: isMobile ? 168 : undefined,
+          height: isMobile ? 40 : undefined,
+          overflow: isMobile ? "hidden" : undefined,
+          position: "relative",
         }}
       >
         <span
           style={{
-            fontFamily: "'Orbitron', 'Inter', sans-serif",
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: "0.04em",
-            color: theme.primary,
-            textShadow: `0 0 12px ${theme.primary}88`,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 0,
+            lineHeight: 1.05,
+            transform: isMobile ? "scale(0.64)" : undefined,
+            transformOrigin: "left center",
+            width: isMobile ? 262 : undefined,
+            position: isMobile ? "absolute" : undefined,
+            left: isMobile ? 0 : undefined,
+            top: isMobile ? "50%" : undefined,
+            marginTop: isMobile ? -16 : undefined,
           }}
         >
-          TMI
+        <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+          <span
+            style={{
+              fontFamily: "'Orbitron', 'Inter', sans-serif",
+              fontSize: 18,
+              fontWeight: 900,
+              letterSpacing: "0.04em",
+              background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 45%, #FFD700 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 10px rgba(0,255,255,0.45))",
+              flexShrink: 0,
+            }}
+          >
+            TMI
+          </span>
+          <span
+            style={{
+              fontFamily: "'Brush Script MT', 'Dancing Script', 'Pacifico', 'Caveat', cursive, sans-serif",
+              fontSize: 17,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 50%, #FFD700 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 12px rgba(255,45,170,0.35))",
+              whiteSpace: "nowrap",
+            }}
+          >
+            The Musician&apos;s Index
+          </span>
         </span>
         <span
           style={{
-            fontFamily: "'Brush Script MT', 'Dancing Script', 'Pacifico', 'Caveat', cursive, sans-serif",
-            fontSize: 17,
-            fontWeight: 700,
-            letterSpacing: "0.02em",
-            background: "linear-gradient(90deg, #00FFFF 0%, #FF2DAA 50%, #FFD700 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            textShadow: "0 0 16px rgba(0,255,255,0.4)",
-            display: isMobile ? "none" : "inline-block",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 7,
+            fontWeight: 800,
+            letterSpacing: "0.16em",
+            color: "rgba(255,255,255,0.55)",
+            textTransform: "uppercase",
+            marginTop: 2,
+            marginLeft: 1,
             whiteSpace: "nowrap",
           }}
         >
-          The Musician&apos;s Index
+          THE MUSICIAN&apos;S INDEX MAGAZINE
+        </span>
         </span>
       </Link>
 
@@ -234,6 +285,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
       )}
 
       {/* Search */}
+      {!isMobile && (
       <form
         onSubmit={submitSearch}
         style={{
@@ -265,6 +317,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           }}
         />
       </form>
+      )}
 
       {/* Token balance */}
       <div style={{ flexShrink: 0 }}>
@@ -370,7 +423,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           marginLeft: 4,
         }}
       >
-        <UniversalSignOutButton accentColor="#FF5555" compact />
+        {!isMobile && <UniversalSignOutButton accentColor="#FF5555" compact />}
         <AccountCommandMenu
           userId={userId}
           displayName={displayName}

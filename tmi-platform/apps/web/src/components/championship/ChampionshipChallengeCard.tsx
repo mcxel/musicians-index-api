@@ -15,6 +15,8 @@ import {
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import TitleLineageTimeline from "./TitleLineageTimeline";
+import ChampionshipAssetGlyph from "./ChampionshipAssetGlyph";
+import ChampionshipBeltPlate from "./ChampionshipBeltPlate";
 
 export interface ChampionshipChallengeCardProps {
   title: ChampionshipTitle;
@@ -54,6 +56,7 @@ export default function ChampionshipChallengeCard({
     warning.daysRemaining != null && warning.daysRemaining >= 0
       ? warning.daysRemaining
       : null;
+  const isBelt = title.assetType === "BELT";
 
   const onChallenge = () => {
     if (!challengerId || !eligibility?.eligible) return;
@@ -98,40 +101,61 @@ export default function ChampionshipChallengeCard({
         gap: 8,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 900, color: "#FFD700" }}>
-            {title.assetType === "CROWN"
-              ? "👑"
-              : title.assetType === "BELT"
-                ? "🥋"
-                : "🏆"}{" "}
-            {title.label}
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-            {title.geographicTier} · {title.category} · {title.status}
-          </div>
+      {isBelt ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <ChampionshipBeltPlate title={title} />
+          {daysUntilDefense != null && title.status === "ACTIVE" ? (
+            <span
+              style={{
+                alignSelf: "center",
+                fontSize: 9,
+                fontWeight: 800,
+                color: "#FF6B35",
+                whiteSpace: "nowrap",
+              }}
+            >
+              DEFENSE {daysUntilDefense}d
+            </span>
+          ) : null}
         </div>
-        {daysUntilDefense != null && title.status === "ACTIVE" ? (
-          <span style={{ fontSize: 9, fontWeight: 800, color: "#FF6B35", whiteSpace: "nowrap" }}>
-            DEFENSE {daysUntilDefense}d
-          </span>
-        ) : null}
-      </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <ChampionshipAssetGlyph
+                assetType={title.assetType}
+                size={30}
+                dimmed={title.status === "VACANT" || title.status === "RETIRED"}
+              />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#FFD700" }}>{title.label}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                  {title.geographicTier} · {title.category} · {title.status}
+                </div>
+              </div>
+            </div>
+            {daysUntilDefense != null && title.status === "ACTIVE" ? (
+              <span style={{ fontSize: 9, fontWeight: 800, color: "#FF6B35", whiteSpace: "nowrap" }}>
+                DEFENSE {daysUntilDefense}d
+              </span>
+            ) : null}
+          </div>
 
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
-        {holder
-          ? `Holder: ${holder.name}`
-          : title.status === "VACANT"
-            ? "Vacant — no verified holder"
-            : "No holder on record"}
-      </div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
-        Defenses: {title.successfulDefenses}
-        {daysUntilDefense != null && title.status === "ACTIVE"
-          ? ` · ${daysUntilDefense} day${daysUntilDefense === 1 ? "" : "s"} until defense window`
-          : ""}
-      </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>
+            {holder
+              ? `Holder: ${holder.name}`
+              : title.status === "VACANT"
+                ? "Vacant — no verified holder"
+                : "No holder on record"}
+          </div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+            Defenses: {title.successfulDefenses}
+            {daysUntilDefense != null && title.status === "ACTIVE"
+              ? ` · ${daysUntilDefense} day${daysUntilDefense === 1 ? "" : "s"} until defense window`
+              : ""}
+          </div>
+        </>
+      )}
 
       {canChallenge ? (
         <button

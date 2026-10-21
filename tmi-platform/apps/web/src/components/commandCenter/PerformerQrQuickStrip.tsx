@@ -83,7 +83,7 @@ export default function PerformerQrQuickStrip({
     });
   }, [useOwnIdentity, activePerformer, userId, role, displayName, avatarUrl]);
 
-  const scanUrl = `${getShareBaseUrl()}${currentIdentity.profileUrl}`;
+  const scanUrl = `${getShareBaseUrl()}${currentIdentity.cardUrl}`;
   const codeLabel = useOwnIdentity
     ? role === "performer"
       ? "TMI ARTIST ID"

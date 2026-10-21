@@ -58,6 +58,7 @@ function getPrismaClient(): PrismaClient {
 let schemaHealed = false;
 
 export async function ensureUserDatabaseSchema(): Promise<void> {
+  if (process.env.TMI_FORBID_SCHEMA_HEAL === "1") return;
   if (schemaHealed) return;
   try {
     const client = getPrismaClient();

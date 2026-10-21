@@ -79,9 +79,12 @@ export interface AvatarAppearance {
   skinTone:     SkinTone;
   bodyBuild:    BodyBuild;
   bodyHeight:   BodyHeight;
+  baseId?:      string;
   hairStyleId?: string;
   outfitId?:    string;
   accessoryIds?: string[];
+  outfitTint?:  string;
+  hairTint?:    string;
   glowColor?:   string;
   portraitUrl?: string;
   sourceImageRef?: string;
@@ -429,9 +432,19 @@ export function fromAudienceAvatar(
     joinedAt: number;
     lastReactionAt?: number;
     supporterBadge?: string;
+    skinTone?: string;
+    hairStyle?: string;
+    baseId?: string;
+    equippedCosmeticIds?: string[];
+    outfitTint?: string;
+    hairTint?: string;
   },
   roomId: string,
 ): AvatarEntity {
+  const skinToneVal = avatar.skinTone
+    ? (avatar.skinTone.startsWith("#") ? _skinToneFromHex(avatar.skinTone) : (avatar.skinTone as SkinTone))
+    : 'medium';
+
   return {
     id:          avatar.userId,
     kind:        avatar.isBot ? 'bot' : 'fan',
@@ -448,9 +461,14 @@ export function fromAudienceAvatar(
     avatarClass: 'biped',
     equippedProps: [],
     appearance: {
-      skinTone:   'medium',
+      skinTone:   skinToneVal,
       bodyBuild:  'average',
       bodyHeight: 'medium',
+      baseId:      avatar.baseId,
+      hairStyleId: avatar.hairStyle,
+      accessoryIds: avatar.equippedCosmeticIds,
+      outfitTint:  avatar.outfitTint,
+      hairTint:    avatar.hairTint,
       portraitUrl: avatar.avatarImageUrl ?? undefined,
     },
     joinedAt:     avatar.joinedAt,

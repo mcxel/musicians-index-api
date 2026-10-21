@@ -270,7 +270,7 @@ export default function MiniLiveLobbyWallRuntime({
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FF4444", display: "inline-block" }} />
                   <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.15em", color: "#FF2DAA" }}>
-                    LIVE LOBBY WALL · MOSAIC
+                    LIVE LOBBY DISCOVERY
                   </span>
                   <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
                     ({role})

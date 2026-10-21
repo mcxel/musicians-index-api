@@ -68,6 +68,7 @@ export type UniversalWorkspaceId =
   | "sponsors"
   | "notifications"
   | "achievement-center"
+  | "championship-history"
   | "live-destinations"
   | "room-controls"
   | "submissions"

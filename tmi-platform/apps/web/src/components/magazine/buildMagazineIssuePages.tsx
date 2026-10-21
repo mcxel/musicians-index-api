@@ -1,7 +1,8 @@
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import Link from "next/link";
 import type { MagazinePage } from "@/components/magazine/MagazineShell";
-import { MAGAZINE_ISSUE_1, getArticleBySlug, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import { MAGAZINE_ISSUE_1, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 import { magazineReaderArticleUrl, magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 import MagazineEditorialSpreadEngine from "@/components/magazine/MagazineEditorialSpreadEngine";

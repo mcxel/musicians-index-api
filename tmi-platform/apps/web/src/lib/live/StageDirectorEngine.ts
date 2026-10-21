@@ -48,6 +48,17 @@ export type CameraAngle =
   | 'close-up'
   | 'behind-stage';
 
+export type LiveBannerMode = "STATIC" | "ANIMATED" | "SCROLL_UP";
+
+export interface LiveBannerHold {
+  mode: LiveBannerMode;
+  stayUp: boolean;
+  durationMs: number | null;
+  ownerId: string;
+  roomId: string;
+  sessionId: string;
+}
+
 export type StageDirectorState = {
   lightingPresetId: string;
   activeEffect: StageEffect;
@@ -55,6 +66,7 @@ export type StageDirectorState = {
   cameraAngle: CameraAngle;
   bannerText: string | null;
   bannerColor: string;
+  bannerHold: LiveBannerHold | null;
   autoRotate: boolean;
 };
 
@@ -149,6 +161,7 @@ const DEFAULT_STATE: StageDirectorState = {
   cameraAngle: 'front',
   bannerText: null,
   bannerColor: '#00E5FF',
+  bannerHold: null,
   autoRotate: true,
 };
 
@@ -210,13 +223,47 @@ export function setCameraAngle(angle: CameraAngle): void {
 }
 
 export function showBannerText(text: string, color = '#00E5FF'): void {
-  _state = { ..._state, bannerText: text, bannerColor: color };
+  _state = { ..._state, bannerText: text, bannerColor: color, bannerHold: null };
+  _emit();
+}
+
+export function presentPublicLiveText(text: string, hold: LiveBannerHold): void {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  _state = {
+    ..._state,
+    bannerText: trimmed,
+    bannerColor: '#00E5FF',
+    bannerHold: hold,
+  };
   _emit();
 }
 
 export function clearBannerText(): void {
-  _state = { ..._state, bannerText: null };
+  _state = { ..._state, bannerText: null, bannerHold: null };
   _emit();
+}
+
+export function resolveLiveBannerFrame(state: StageDirectorState, now: number): {
+  text: string | null;
+  animation: "static" | "animated" | "scroll-up" | "legacy-glow";
+  expiresAt: number | null;
+} {
+  if (!state.bannerText) return { text: null, animation: "static", expiresAt: null };
+  if (!state.bannerHold) {
+    return { text: state.bannerText, animation: "legacy-glow", expiresAt: now + 8000 };
+  }
+  const animation =
+    state.bannerHold.mode === "SCROLL_UP"
+      ? "scroll-up"
+      : state.bannerHold.mode === "ANIMATED"
+        ? "animated"
+        : "static";
+  return {
+    text: state.bannerText,
+    animation,
+    expiresAt: state.bannerHold.stayUp ? null : now + (state.bannerHold.durationMs ?? 8000),
+  };
 }
 
 export function setAutoRotate(enabled: boolean): void {

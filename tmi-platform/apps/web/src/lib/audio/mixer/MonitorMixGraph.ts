@@ -11,6 +11,11 @@
  */
 
 import {
+  canonicalMonitorFromMixMonitor,
+  mixMonitorFromCanonical,
+  type Phase1PresentedMonitorId,
+} from "@/lib/monitors/canonicalMonitorIdentity";
+import {
   ChannelMixerDirector,
   type MixBus,
   type MixerOperatorAuth,
@@ -18,7 +23,14 @@ import {
 
 export const MAX_AUDIBLE_SOURCES_PER_MONITOR = 16 as const;
 
+/** Runtime mixer slots stay the two presented monitors. Canonical ids adapt at this boundary. */
 export type MixMonitorId = "MONITOR_1" | "MONITOR_2";
+
+export function canonicalMonitorForMix(id: MixMonitorId): Phase1PresentedMonitorId {
+  return canonicalMonitorFromMixMonitor(id);
+}
+
+export { mixMonitorFromCanonical };
 
 export type MixGroup = "MONITOR" | "ROOM" | "PARTY" | "SCREEN_SHARE" | "VOICES";
 
@@ -87,9 +99,8 @@ function clamp(gain: number): number {
 }
 
 function monitorForFrame(frameId: string): MixMonitorId {
-  return frameId === "a" || frameId === "c" || frameId === "e" || frameId === "g"
-    ? "MONITOR_1"
-    : "MONITOR_2";
+  const canonical = frameId === "a" || frameId === "c" || frameId === "e" || frameId === "g" ? "M1" : "M2";
+  return mixMonitorFromCanonical(canonical) ?? "MONITOR_1";
 }
 
 export function discoverMixStrips(input: MixGraphInput): MixStrip[] {

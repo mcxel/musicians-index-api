@@ -70,10 +70,11 @@ export function runUniversalAccountHeaderShellTest(): {
   const menuIds = UNIVERSAL_ACCOUNT_MENU_ITEMS.map((i) => i.id);
   results["HEADER-04_menu_has_required_items"] =
     menuIds.includes("active-profile") &&
-    menuIds.includes("view-profile") &&
+    menuIds.includes("profile") &&
+    menuIds.includes("cart") &&
+    menuIds.includes("billing") &&
+    menuIds.includes("settings") &&
     menuIds.includes("notifications") &&
-    menuIds.includes("settings-privacy") &&
-    menuIds.includes("subscription-billing") &&
     menuIds.includes("help-support") &&
     menuIds.includes("logout");
 
@@ -116,12 +117,12 @@ export function runUniversalAccountHeaderShellTest(): {
     );
 
   // HEADER-09: settings & privacy reachable
-  results["HEADER-09_settings_privacy_link"] =
+  results["HEADER-09_settings_link"] =
     UNIVERSAL_ACCOUNT_MENU_ITEMS.some(
       (i) =>
-        i.id === "settings-privacy" &&
+        i.id === "settings" &&
         "href" in i &&
-        i.href === "/settings?section=privacy",
+        i.href === "/settings",
     );
 
   // HEADER-10: logout clears private client cache (function exists + removes keys)
@@ -179,9 +180,9 @@ export function runUniversalAccountHeaderShellTest(): {
   results["HEADER-14_billing_link"] =
     UNIVERSAL_ACCOUNT_MENU_ITEMS.some(
       (i) =>
-        i.id === "subscription-billing" &&
+        i.id === "billing" &&
         "href" in i &&
-        i.href === "/settings/billing",
+        i.href === "/billing",
     );
 
   // HEADER-15: help & support link
@@ -191,8 +192,8 @@ export function runUniversalAccountHeaderShellTest(): {
     );
 
   // HEADER-16: view profile present; dropdown uses selfPublicPath
-  results["HEADER-16_view_profile"] =
-    menuIds.includes("view-profile") && dropdownSrc.includes("selfPublicPath");
+  results["HEADER-16_profile"] =
+    menuIds.includes("profile") && dropdownSrc.includes("accountProfileTarget");
 
   // HEADER-17: ACCOUNT_FALLBACK must not claim separate Fan/Performer names
   const asFan = buildActiveProfileIdentityFromAccount({

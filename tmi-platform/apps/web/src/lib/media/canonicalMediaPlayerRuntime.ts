@@ -33,6 +33,7 @@ export type LayoutMode =
   | "SPLIT_2"   // A | B side by side (or stacked on mobile)
   | "SPLIT_3"   // A (large left) + B/C (stacked right)
   | "SPLIT_4"   // 2×2 grid
+  | "GRID_5"    // 3×2 grid with five visible sources
   | "GRID_6"    // 3×2 grid — density mode DENSE
   | "GRID_8";   // 4×2 grid — density mode ULTRA_DENSE
 
@@ -50,6 +51,8 @@ export type FrameFit = "cover" | "contain";
 export interface FrameState {
   id: FrameId;
   source: MediaSource;
+  /** Borrowed live call stream presented by this frame; capture remains externally owned. */
+  peerCallStream: MediaStream | null;
   /** When true the frame is parked (CSS-collapsed) — DOM stays mounted so
    *  WebRTC tracks are not destroyed.  Use for quick-panel yield. */
   parked: boolean;
@@ -103,6 +106,9 @@ export interface CanonicalMediaPlayerState {
 
   assignSource: (frameId: FrameId, source: MediaSource) => void;
 
+  /** Present an existing peer-call stream without acquiring or cloning tracks. */
+  setPeerCallStream: (frameId: FrameId, stream: MediaStream | null) => void;
+
   /** Swap sources between two frames without any WebRTC restart. */
   swapFrames: (a: FrameId, b: FrameId) => void;
 
@@ -151,7 +157,7 @@ export interface CanonicalMediaPlayerState {
 function densityForLayout(layout: LayoutMode): MonitorDensityMode {
   if (layout === "SINGLE" || layout === "SPLIT_2") return "COMFORTABLE";
   if (layout === "SPLIT_3" || layout === "SPLIT_4") return "COMPACT";
-  if (layout === "GRID_6") return "DENSE";
+  if (layout === "GRID_5" || layout === "GRID_6") return "DENSE";
   return "ULTRA_DENSE";
 }
 
@@ -167,7 +173,7 @@ const makeFrame = (
   id: FrameId,
   source: MediaSource,
   label: string,
-): FrameState => ({ id, source, parked: false, label, fit: defaultFitForSource(source), focused: false });
+): FrameState => ({ id, source, peerCallStream: null, parked: false, label, fit: defaultFitForSource(source), focused: false });
 
 const DEFAULT_FRAMES: Record<FrameId, FrameState> = {
   a: makeFrame("a", "SELF_CAMERA",   "CAM A"),
@@ -225,6 +231,15 @@ export const useCanonicalMediaPlayerRuntime = create<CanonicalMediaPlayerState>(
             source,
             fit: defaultFitForSource(source),
           },
+        },
+      }));
+    },
+
+    setPeerCallStream(frameId, stream) {
+      set((s) => ({
+        frames: {
+          ...s.frames,
+          [frameId]: { ...s.frames[frameId], peerCallStream: stream },
         },
       }));
     },
@@ -392,6 +407,7 @@ export function isFrameActiveInLayout(frameId: FrameId, layout: LayoutMode): boo
     case "SPLIT_2":  return frameId === "a" || frameId === "b";
     case "SPLIT_3":  return frameId === "a" || frameId === "b" || frameId === "c";
     case "SPLIT_4":  return frameId === "a" || frameId === "b" || frameId === "c" || frameId === "d";
+    case "GRID_5":   return frameId === "a" || frameId === "b" || frameId === "c" || frameId === "d" || frameId === "e";
     case "GRID_6":   return frameId === "a" || frameId === "b" || frameId === "c" || frameId === "d" || frameId === "e" || frameId === "f";
     case "GRID_8":   return true;
     default:         return false;

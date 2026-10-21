@@ -41,7 +41,27 @@ export default function HubMobileMonitorControlBar({
 }: HubMobileMonitorControlBarProps) {
   const accent = role === "performer" ? "#FFD700" : "#00FF88";
 
-  const openShare = () => presentCanonicalWorkspace("share-studio", "DRAWER");
+  const openShare = () => {
+    if (typeof window !== "undefined") {
+      const shareUrl = window.location.href;
+      const shareData = {
+        title: "The Musician's Index (TMI)",
+        text: "Experience music, live entertainment and discovery on The Musician's Index.",
+        url: shareUrl,
+      };
+      if (navigator.share) {
+        navigator.share(shareData).catch(() => {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          window.dispatchEvent(new CustomEvent("tmi:toast", { detail: { message: "Link copied to clipboard!" } }));
+        }).catch(() => {
+          presentCanonicalWorkspace("share-studio", "DRAWER");
+        });
+      } else {
+        presentCanonicalWorkspace("share-studio", "DRAWER");
+      }
+    }
+  };
 
   return (
     <div
@@ -86,7 +106,11 @@ export default function HubMobileMonitorControlBar({
           type="button"
           data-testid="hub-monitor-media"
           style={btn(false, accent)}
-          onClick={() => presentCanonicalWorkspace("playlist-studio", "DRAWER")}
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = "/media-locker";
+            }
+          }}
         >
           MEDIA
         </button>

@@ -56,6 +56,8 @@ const FORMAT_ROLE_TEMPLATES: Record<BattleFormatType, BattleRoleSlot[]> = {
   "mini-dozens": ["rap"],
   "open-performer-challenge": ["vocal", "rap", "producer", "dj"],
   "musical-gauntlet": ["vocal", "rap", "guitar", "producer"],
+  "cultural-challenge": ["vocal", "rap", "producer", "dj"],
+  "dj-world-dance-party": ["dj"],
 };
 
 export class BattleTeamAssemblyEngine {

@@ -32,6 +32,8 @@ import { useAudio } from "@/components/AudioProvider";
 import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
 import SpatialAlbumReleaseViewport from "@/components/media/SpatialAlbumReleaseViewport";
 import AdRail from "@/components/monetization/AdRail";
+import MediaUrlImporter from "@/components/media/MediaUrlImporter";
+import Link from "next/link";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
@@ -128,6 +130,7 @@ export function PlaylistCanister({
   const [userLibrarySongs, setUserLibrarySongs] = useState<UserLibrarySong[]>([]);
   const [addingSongId, setAddingSongId] = useState("");
   const [addingSong, setAddingSong] = useState(false);
+  const [linkImportOpen, setLinkImportOpen] = useState(false);
   const [playlistActionMsg, setPlaylistActionMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -854,8 +857,8 @@ export function PlaylistCanister({
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 4, lineHeight: 1.4 }}>
               {userLibrarySongs.length === 0
                 ? role === "performer"
-                  ? "Upload songs in Media Locker, then add them to this playlist here."
-                  : "Upload songs to your library first, then add them to this playlist here."
+                  ? "Use UPLOAD FILE or PASTE LINK above, then add from your library here."
+                  : "Use 1 · UPLOAD FILE or 2 · PASTE LINK above, then 3 · ADD FROM YOUR LIBRARY."
                 : "All your uploaded songs are already in this playlist."}
             </div>
           )
@@ -1253,9 +1256,77 @@ export function PlaylistCanister({
               </div>
             )}
             {isOwner && selectedId ? (
+              <div data-mm06-add-actions="1" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
+                  ADD MUSIC — THREE CLEAR WAYS
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  <Link
+                    href="/media/upload"
+                    data-testid="playlist-mm06-upload"
+                    style={{
+                      padding: "8px 12px",
+                      minHeight: 36,
+                      borderRadius: 8,
+                      border: "1px solid #00FFFF88",
+                      background: "rgba(0,255,255,0.12)",
+                      color: "#00FFFF",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.06em",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    1 · UPLOAD FILE
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="playlist-mm06-paste-link"
+                    onClick={() => setLinkImportOpen((v) => !v)}
+                    style={{
+                      padding: "8px 12px",
+                      minHeight: 36,
+                      borderRadius: 8,
+                      border: "1px solid #FFD70088",
+                      background: linkImportOpen ? "rgba(255,215,0,0.2)" : "rgba(255,215,0,0.1)",
+                      color: "#FFD700",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.06em",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {linkImportOpen ? "CLOSE LINK PANEL" : "2 · PASTE LINK"}
+                  </button>
+                </div>
+                {linkImportOpen ? (
+                  <div data-testid="playlist-mm06-link-panel" style={{ padding: 8, borderRadius: 8, border: "1px solid rgba(255,215,0,0.35)", background: "rgba(255,215,0,0.06)" }}>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", marginBottom: 6, lineHeight: 1.4 }}>
+                      Paste a YouTube, SoundCloud, Spotify, or other supported music URL. Uses canonical MediaUrlImporter.
+                    </div>
+                    <MediaUrlImporter
+                      compact
+                      defaultPlaylistId={selectedId}
+                      onImported={(track) => {
+                        setPlaylistActionMsg(`Linked "${track.title}"${track.addedToPlaylist ? " into this playlist" : " to your library"}.`);
+                        setLinkImportOpen(false);
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(170,45,255,0.85)" }}>
+                  3 · ADD FROM YOUR LIBRARY (below)
+                </div>
+              </div>
+            ) : null}
+            {isOwner && selectedId ? (
               addableLibrarySongs.length > 0 ? (
                 <div style={{ display: "flex", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <select
+                    data-mm06-library-select="1"
                     value={addingSongId}
                     onChange={(e) => setAddingSongId(e.target.value)}
                     style={{
@@ -1288,8 +1359,8 @@ export function PlaylistCanister({
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.45 }}>
                   {userLibrarySongs.length === 0
                     ? role === "performer"
-                      ? "Upload songs in Media Locker, then add them to this playlist here."
-                      : "Upload songs to your library first, then add them to this playlist here."
+                      ? "Use UPLOAD FILE or PASTE LINK above, then add from your library here."
+                      : "Use 1 · UPLOAD FILE or 2 · PASTE LINK above, then 3 · ADD FROM YOUR LIBRARY."
                     : "Every song in your library is already in this playlist."}
                 </div>
               )

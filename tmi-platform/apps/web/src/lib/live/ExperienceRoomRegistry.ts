@@ -541,6 +541,23 @@ export function arenaEventTypeForExperience(experienceClass: ExperienceClass): M
   return EXPERIENCE_ROOM_REGISTRY[experienceClass].arenaEventType;
 }
 
+/** Resolve live-room category query values through the existing arena event vocabulary. */
+export function arenaEventTypeForCategory(category?: string | null): MillArenaEventType | null {
+  const value = (category ?? "").trim().toLowerCase().replace(/_/g, "-");
+  if (value === "battle" || value === "battles") return "battle";
+  if (value === "cypher" || value === "cipher" || value === "cyphers") return "cypher";
+  if (value === "challenge" || value === "challenges") return "challenge";
+  if (value === "song-challenge") return "song-challenge";
+  if (value === "dance-party" || value === "world-dance-party") return "world-dance-party";
+  if (value === "lounge" || value === "lounges") return "lounge";
+  if (value === "listening" || value === "slow-jams" || value === "slow-jam") return "lounge";
+  if (value === "concert" || value === "release-party" || value === "world-concert") return "concert";
+  if (value === "monday-stage" || value === "monday-night-stage") return "monday-stage";
+  if (value === "deal-or-feud" || value === "deal-or-feud-1000") return "deal-or-feud";
+  if (value === "live-show" || value === "live") return "live-show";
+  return null;
+}
+
 export function resolveHubMonitorCopy(
   experienceClass: ExperienceClass,
   slot: HubMonitorSlot,

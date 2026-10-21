@@ -1,13 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getDailyHappyDaysPrompt } from "@/lib/happydays/HappyDaysPromptRegistry";
 import type {
-  HappyDaysPrompt,
   HappyDaysDestination,
   HappyDaysAttribution,
+  PublicPresentationChoice,
 } from "@/lib/happydays/HappyDaysContracts";
 import { logHappyDaysEvent, HAPPY_DAYS_EVENT } from "@/lib/happydays/HappyDaysObservatoryEvents";
+import { publicationDateKeyFromInstant } from "@/lib/happydays/HappyDaysPromptRegistry";
+import {
+  advanceSocialMoment,
+  applyPublicationDate,
+  blurSocialMoment,
+  clearSocialMomentDraft,
+  createSocialMomentPresentation,
+  focusSocialMoment,
+  rotationPinned,
+  setReducedMotion,
+  writeSocialMomentDraft,
+  type SocialMomentPresentation,
+} from "@/lib/happydays/socialMomentPresentation";
 
 export interface HappyDaysPromptCardProps {
   userId?: string;
@@ -21,83 +33,81 @@ export default function HappyDaysPromptCard({
   userId = "anon-user",
   displayName = "TMI Member",
   userRole = "fan",
-  onSubmitted,
   onDismiss,
 }: HappyDaysPromptCardProps) {
-  const [prompt, setPrompt] = useState<HappyDaysPrompt>(getDailyHappyDaysPrompt());
-  const [response, setResponse] = useState("");
+  const [moment, setMoment] = useState<SocialMomentPresentation>(() => createSocialMomentPresentation(Date.now()));
   const [destination, setDestination] = useState<HappyDaysDestination>("magazine");
   const [attribution, setAttribution] = useState<HappyDaysAttribution>("public_name");
+  const [presentationChoice, setPresentationChoice] = useState<PublicPresentationChoice>("NAME_ONLY");
   const [attachSong, setAttachSong] = useState(false);
   const [songTitle, setSongTitle] = useState("");
   const [songArtist, setSongArtist] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
+  const response = moment.drafts[moment.channel]?.text ?? "";
+  const pinned = rotationPinned(moment);
+  const accent = moment.channel === "HAPPY_DAYS" ? "#FFD700" : "#00FFFF";
 
   useEffect(() => {
-    setPrompt(getDailyHappyDaysPrompt());
-    logHappyDaysEvent(HAPPY_DAYS_EVENT.PROMPT_SHOWN, { promptId: prompt.id, role: userRole });
-  }, [userRole]);
+    logHappyDaysEvent(HAPPY_DAYS_EVENT.PROMPT_SHOWN, { promptId: moment.promptId, role: userRole });
+  }, [moment.promptId, userRole]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const applyMotion = () => setMoment((current) => setReducedMotion(current, media.matches));
+    applyMotion();
+    media.addEventListener("change", applyMotion);
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setMoment((current) =>
+        advanceSocialMoment(applyPublicationDate(current, publicationDateKeyFromInstant(new Date(now))), now),
+      );
+    }, 1000);
+    return () => {
+      media.removeEventListener("change", applyMotion);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   if (isDismissed) return null;
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    logHappyDaysEvent(HAPPY_DAYS_EVENT.PROMPT_DISMISSED, { promptId: prompt.id, role: userRole });
+    logHappyDaysEvent(HAPPY_DAYS_EVENT.PROMPT_DISMISSED, { promptId: moment.promptId, role: userRole });
     onDismiss?.();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!response.trim() || isSubmitting) return;
+    if (!response.trim()) return;
+    setSubmissionNotice(
+      destination === "magazine"
+        ? "Submit to TMI Magazine is not connected yet. This draft stays on today's question."
+        : "Saving this reflection is not connected yet. This draft stays on today's question.",
+    );
+  };
 
-    setIsSubmitting(true);
-    try {
-      const res = await fetch("/api/happydays", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          promptId: prompt.id,
-          response: response.trim(),
-          destination,
-          attributionPreference: attribution,
-          displayName,
-          userId,
-          userRole,
-          attachedTrack:
-            attachSong && songTitle.trim()
-              ? {
-                  title: songTitle.trim(),
-                  artist: songArtist.trim() || displayName,
-                }
-              : undefined,
-        }),
-      });
-
-      if (res.ok) {
-        setIsSubmitted(true);
-        onSubmitted?.();
-      } else {
-        setSubmitError("Reflections can't be submitted yet. Please try again later.");
-      }
-    } catch {
-      setSubmitError("Reflections can't be submitted yet. Please try again later.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleClear = () => {
+    setMoment((current) => clearSocialMomentDraft(current, Date.now()));
+    setSubmissionNotice(null);
   };
 
   return (
     <div
+      data-testid="social-moment-card"
+      data-social-channel={moment.channel}
+      data-prompt-id={moment.promptId}
+      data-publication-date={moment.publicationDateKey}
+      data-rotation-pinned={pinned ? "yes" : "no"}
+      data-motion={moment.motion}
+      data-has-member={userId && userId !== "anon-user" ? "yes" : "no"}
       style={{
         background: "linear-gradient(135deg, rgba(20,12,36,0.96), rgba(8,6,20,0.98))",
-        border: "1px solid rgba(255,215,0,0.45)",
+        border: `1px solid ${accent}73`,
         borderRadius: 14,
         padding: "16px 20px",
         color: "#fff",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(255,215,0,0.15)",
+        boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${accent}26`,
         position: "relative",
         fontFamily: "system-ui, sans-serif",
       }}
@@ -123,42 +133,43 @@ export default function HappyDaysPromptCard({
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 18 }}>☀️</span>
+        <span style={{ fontSize: 18 }}>{moment.channel === "HAPPY_DAYS" ? "☀️" : "💬"}</span>
         <span
           style={{
             fontSize: 10,
             fontWeight: 900,
             letterSpacing: "0.15em",
-            color: "#FFD700",
+            color: accent,
             textTransform: "uppercase",
           }}
         >
-          HAPPY DAYS · COMMUNITY MOMENT
+          {moment.channel === "HAPPY_DAYS" ? "HAPPY DAYS" : "COMMUNITY GOSSIP"}
         </span>
       </div>
 
-      {isSubmitted ? (
-        <div style={{ textAlign: "center", padding: "20px 0" }}>
-          <div style={{ fontSize: 24, marginBottom: 6 }}>✨</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#FFD700" }}>
-            Thank you for sharing your reflection!
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 4 }}>
-            {destination === "magazine"
-              ? "Your entry has been submitted for consideration in the next TMI Magazine Happy Days spread."
-              : "Your reflection has been safely saved."}
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1.35 }}>
-            {prompt.promptText}
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <style>{`@keyframes tmiSocialMomentSlide{from{opacity:.4;transform:translateX(10px)}to{opacity:1;transform:none}}`}</style>
+          <div
+            key={`${moment.channel}:${moment.promptId}`}
+            data-testid="social-moment-prompt"
+            style={{
+              fontSize: 15,
+              fontWeight: 800,
+              color: "#fff",
+              lineHeight: 1.35,
+              animation: moment.motion === "slide" ? "tmiSocialMomentSlide 280ms ease" : "none",
+            }}
+          >
+            {moment.promptText}
           </div>
 
           <textarea
+            data-testid="social-moment-draft"
             value={response}
-            onChange={(e) => setResponse(e.target.value)}
-            placeholder={prompt.placeholderText || "Share a positive reflection..."}
+            onFocus={() => setMoment((current) => focusSocialMoment(current))}
+            onBlur={() => setMoment((current) => blurSocialMoment(current, Date.now()))}
+            onChange={(e) => setMoment((current) => writeSocialMomentDraft(current, e.target.value))}
+            placeholder={moment.channel === "HAPPY_DAYS" ? "Share a positive reflection..." : "Tell the scene what you know..."}
             rows={3}
             style={{
               width: "100%",
@@ -289,6 +300,33 @@ export default function HappyDaysPromptCard({
                 <option value="anonymous_community">Anonymous Community Member</option>
               </select>
             </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: 4 }}>
+                Public presentation
+              </div>
+              <select
+                data-testid="social-moment-presentation"
+                value={presentationChoice}
+                onChange={(e) => setPresentationChoice(e.target.value as PublicPresentationChoice)}
+                style={{
+                  width: "100%",
+                  borderRadius: 6,
+                  background: "#0a0614",
+                  border: `1px solid ${accent}55`,
+                  color: accent,
+                  padding: "5px 8px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                <option value="PHOTO_AND_NAME">Photo + Name</option>
+                <option value="NAME_ONLY">Name Only</option>
+                <option value="QUOTE_ONLY">Quote Only</option>
+              </select>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
+                Not saved. Quote Only still keeps an internal member record once submission is connected.
+              </div>
+            </div>
           </div>
 
           {/* Non-Clinical Disclaimer */}
@@ -315,10 +353,28 @@ export default function HappyDaysPromptCard({
               Skip
             </button>
             <button
-              type="submit"
-              disabled={isSubmitting || !response.trim()}
+              type="button"
+              data-testid="social-moment-clear"
+              onClick={handleClear}
               style={{
-                background: "linear-gradient(135deg, #FFD700, #FFA500)",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "rgba(255,255,255,0.65)",
+                borderRadius: 6,
+                padding: "7px 14px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="submit"
+              data-testid="social-moment-share"
+              disabled={!response.trim()}
+              style={{
+                background: `linear-gradient(135deg, ${accent}, #FF2DAA)`,
                 border: "none",
                 color: "#050310",
                 borderRadius: 6,
@@ -326,20 +382,19 @@ export default function HappyDaysPromptCard({
                 fontSize: 11,
                 fontWeight: 900,
                 letterSpacing: "0.08em",
-                cursor: response.trim() && !isSubmitting ? "pointer" : "not-allowed",
-                opacity: response.trim() && !isSubmitting ? 1 : 0.5,
+                cursor: response.trim() ? "pointer" : "not-allowed",
+                opacity: response.trim() ? 1 : 0.5,
               }}
             >
-              {isSubmitting ? "SUBMITTING..." : "SHARE REFLECTION"}
+              SHARE REFLECTION
             </button>
           </div>
-          {submitError && (
-            <div role="alert" style={{ marginTop: 8, fontSize: 11, color: "#FF6B6B" }}>
-              {submitError}
+          {submissionNotice && (
+            <div data-testid="social-moment-submission-state" role="status" style={{ marginTop: 8, fontSize: 11, color: "#FFB454" }}>
+              {submissionNotice}
             </div>
           )}
         </form>
-      )}
     </div>
   );
 }

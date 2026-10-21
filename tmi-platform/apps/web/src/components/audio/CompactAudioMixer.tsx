@@ -18,6 +18,7 @@ import {
 } from "@/components/monitors/MonitorBezelFeedPicker";
 import { useViewportMode } from "@/hooks/useViewportMode";
 import { useAdaptiveVoltronStore } from "@/lib/monitors/AdaptiveVoltronPresentationDirector";
+import { canonicalMonitorFromMixMonitor } from "@/lib/monitors/canonicalMonitorIdentity";
 import { ChannelMixerDirector } from "@/lib/audio/mixer/ChannelMixerDirector";
 import {
   monitorMixController,
@@ -371,7 +372,7 @@ export default function CompactAudioMixer({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(["MONITOR_1", "MONITOR_2"] as const).map((monitorId) => {
                 const master = monitorMixController.monitorState(monitorId);
-                const label = monitorId === "MONITOR_1" ? "M1 MASTER" : "M2 MASTER";
+                const label = `${canonicalMonitorFromMixMonitor(monitorId)} MASTER`;
                 return (
                   <div key={monitorId} data-testid={`tmi-mix-master-${monitorId}`} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <button

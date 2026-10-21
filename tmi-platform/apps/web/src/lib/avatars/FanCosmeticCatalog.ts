@@ -146,7 +146,38 @@ export interface CosmeticEntitlement {
   owned: true;
 }
 
-export interface FanCosmeticDef {
+export type MaterialFamily =
+  | "cloth"
+  | "leather"
+  | "metal"
+  | "plastic"
+  | "glass"
+  | "neon"
+  | "hair"
+  | "skin"
+  | "wood"
+  | "rubber"
+  | "stone"
+  | "ceramic"
+  | "chrome"
+  | "gold"
+  | "silver"
+  | "satin"
+  | "velvet"
+  | "iridescent"
+  | "matte";
+
+export interface MaterialPhysicsSpec {
+  materialFamily?: MaterialFamily;
+  roughness?: number; // 0 (mirror/gloss) to 1 (pure matte)
+  metalness?: number; // 0 (dielectric) to 1 (metallic)
+  emissiveIntensity?: number; // 0 to 2 (neon glow)
+  clearcoat?: number; // 0 to 1 (lacquer/gloss finish)
+  transmission?: number; // 0 to 1 (glass/visor opacity)
+  envMapIntensity?: number; // environment reflection response
+}
+
+export interface FanCosmeticDef extends MaterialPhysicsSpec {
   id: string;
   label: string;
   icon: string;
@@ -308,6 +339,28 @@ function colorwaySku(
   tintKey: "bodyTint" | "accentOnly" = "bodyTint",
 ): FanCosmeticDef {
   const inheritedBodyTint = base.bodyTint;
+  const isGold = cw.slug.includes("gold");
+  const isNeon = cw.slug.includes("neon") || cw.slug.includes("cyan") || cw.slug.includes("fuchsia");
+  const isLeather = cw.slug.includes("leather");
+  const isMirror = cw.slug.includes("mirror");
+  const isDenim = cw.slug.includes("denim");
+
+  const matFamily: MaterialFamily = isGold
+    ? "gold"
+    : isNeon
+      ? "neon"
+      : isLeather
+        ? "leather"
+        : isMirror
+          ? "chrome"
+          : isDenim
+            ? "cloth"
+            : (base.materialFamily ?? "cloth");
+
+  const roughness = isMirror ? 0.05 : isGold ? 0.2 : isLeather ? 0.45 : isNeon ? 0.4 : (base.roughness ?? 0.7);
+  const metalness = isMirror ? 0.95 : isGold ? 0.9 : (base.metalness ?? 0.05);
+  const emissiveIntensity = isNeon ? 0.6 : (base.emissiveIntensity ?? 0);
+
   return {
     id: `${base.idBase}_${cw.slug}`,
     label: `${base.labelBase} · ${cw.label}`,
@@ -325,6 +378,11 @@ function colorwaySku(
     layerScale: base.layerScale,
     animKind: base.animKind,
     ambientDelta: base.ambientDelta,
+    materialFamily: matFamily,
+    roughness,
+    metalness,
+    emissiveIntensity,
+    clearcoat: isLeather || isMirror ? 0.8 : undefined,
     stripeProductId: null,
     usdCents: null,
     colorwayOf: base.idBase,
@@ -419,23 +477,58 @@ export function persistFanSkinT(t: number): void {
   }
 }
 
-const HAIR_STYLES: Array<{ id: string; label: string; icon: string; cost: number; rarity: FanCosmeticRarity; tint: string }> = [
-  { id: "hair_fade_short", label: "Short Fade", icon: "💇", cost: 0, rarity: "free", tint: "#111111" },
-  { id: "hair_afro", label: "Afro", icon: "🌀", cost: 120, rarity: "common", tint: "#1a0a00" },
-  { id: "hair_locs", label: "Locs", icon: "🪢", cost: 150, rarity: "common", tint: "#2a1500" },
-  { id: "hair_braids", label: "Braids", icon: "🎀", cost: 150, rarity: "common", tint: "#111111" },
-  { id: "hair_curls", label: "Curls", icon: "💫", cost: 100, rarity: "common", tint: "#3d2000" },
-  { id: "hair_buzz", label: "Buzz", icon: "✂️", cost: 0, rarity: "free", tint: "#0a0a0a" },
-  { id: "hair_ponytail", label: "Ponytail", icon: "🏇", cost: 80, rarity: "common", tint: "#6B3A2A" },
-  { id: "hair_mohawk", label: "Mohawk", icon: "🦅", cost: 200, rarity: "rare", tint: "#111111" },
-  { id: "hair_undercut", label: "Undercut", icon: "🔪", cost: 100, rarity: "common", tint: "#111111" },
-  { id: "hair_waves", label: "Waves", icon: "🌊", cost: 130, rarity: "common", tint: "#1a0a00" },
-  { id: "hair_blonde_bob", label: "Blonde Bob", icon: "👱", cost: 180, rarity: "rare", tint: "#D4A843" },
-  { id: "hair_neon_spikes", label: "Neon Spikes", icon: "⚡", cost: 250, rarity: "epic", tint: "#00FFFF" },
-  { id: "hair_fuchsia_bangs", label: "Fuchsia Bangs", icon: "💗", cost: 250, rarity: "epic", tint: "#FF2DAA" },
-  { id: "hair_silver", label: "Silver Flow", icon: "🩶", cost: 220, rarity: "rare", tint: "#B0B0C0" },
-  { id: "hair_dreads_long", label: "Long Dreads", icon: "🎸", cost: 160, rarity: "common", tint: "#2a1500" },
-  { id: "hair_topknot", label: "Top Knot", icon: "🥋", cost: 90, rarity: "common", tint: "#111111" },
+const HAIR_STYLES: Array<{
+  id: string;
+  label: string;
+  icon: string;
+  cost: number;
+  rarity: FanCosmeticRarity;
+  tint: string;
+  materialFamily?: MaterialFamily;
+  roughness?: number;
+  metalness?: number;
+  gloss?: number;
+  emissiveIntensity?: number;
+}> = [
+  // ── Free Universal Starter Hair Catalog (Free Identity Law) ──
+  { id: "hair_fade_short", label: "Short Fade", icon: "💇", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_taper_high", label: "High Taper Fade", icon: "✂️", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_fade_low", label: "Low Skin Fade", icon: "💇", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_buzz", label: "Buzz Cut", icon: "✂️", cost: 0, rarity: "free", tint: "#0a0a0a", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_bald", label: "Shaved / Clean Bald", icon: "🧑‍🦲", cost: 0, rarity: "free", tint: "transparent", materialFamily: "skin", roughness: 0.6, metalness: 0.05 },
+  { id: "hair_afro", label: "Afro Classic", icon: "🌀", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_afro_mini", label: "Mini Afro", icon: "🌀", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_flattop", label: "Flat Top", icon: "📐", cost: 0, rarity: "free", tint: "#0a0a0a", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_crop_textured", label: "Textured Crop", icon: "✂️", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_locs", label: "Locs Classic", icon: "🪢", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_locs_short", label: "Short Locs", icon: "🪢", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_braids", label: "Box Braids", icon: "🎀", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_cornrows", label: "Cornrows", icon: "🌾", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_twists", label: "Two-Strand Twists", icon: "🪢", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_curls", label: "Defined Curls", icon: "💫", cost: 0, rarity: "free", tint: "#3d2000", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_coily_crown", label: "Coily Crown", icon: "👑", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.85, metalness: 0.02 },
+  { id: "hair_straight_classic", label: "Classic Straight", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#1a1a1a", materialFamily: "hair", roughness: 0.65, metalness: 0.05 },
+  { id: "hair_waves", label: "Deep Waves", icon: "🌊", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.7, metalness: 0.08 },
+  { id: "hair_slick_back", label: "Slick Back", icon: "💈", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.5, metalness: 0.1 },
+  { id: "hair_side_part", label: "Side Part Classic", icon: "✂️", cost: 0, rarity: "free", tint: "#4a2800", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+  { id: "hair_ponytail", label: "High Ponytail", icon: "🏇", cost: 0, rarity: "free", tint: "#6B3A2A", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+  { id: "hair_bun_top", label: "Top Bun", icon: "🥯", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_bob_classic", label: "Classic Bob", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.65, metalness: 0.05 },
+  { id: "hair_pixie", label: "Pixie Cut", icon: "✨", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_mohawk", label: "Mohawk", icon: "🦅", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_undercut", label: "Undercut", icon: "🔪", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_topknot", label: "Top Knot", icon: "🥋", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_long_layers", label: "Long Layered", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#3d2000", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+
+  // ── Paid Expression / Specialty Dyes & Cuts (Monetization Layer) ──
+  { id: "hair_blonde_bob", label: "Blonde Bob", icon: "👱", cost: 180, rarity: "rare", tint: "#D4A843", materialFamily: "hair", roughness: 0.65, metalness: 0.08 },
+  { id: "hair_neon_spikes", label: "Neon Spikes", icon: "⚡", cost: 250, rarity: "epic", tint: "#00FFFF", materialFamily: "neon", roughness: 0.35, metalness: 0.2, gloss: 0.9, emissiveIntensity: 0.75 },
+  { id: "hair_fuchsia_bangs", label: "Fuchsia Bangs", icon: "💗", cost: 250, rarity: "epic", tint: "#FF2DAA", materialFamily: "hair", roughness: 0.6, metalness: 0.15 },
+  { id: "hair_silver", label: "Silver Flow", icon: "🩶", cost: 220, rarity: "rare", tint: "#B0B0C0", materialFamily: "silver", roughness: 0.45, metalness: 0.4 },
+  { id: "hair_dreads_long", label: "Long Dreads with Beads", icon: "🎸", cost: 160, rarity: "common", tint: "#2a1500", materialFamily: "hair", roughness: 0.75, metalness: 0.1 },
+  { id: "hair_gold_chrome", label: "Gold Chrome Fade", icon: "👑", cost: 350, rarity: "legendary", tint: "#FFD700", materialFamily: "gold", roughness: 0.25, metalness: 0.9 },
+  { id: "hair_acid_green_crop", label: "Acid Green Crop", icon: "🧪", cost: 240, rarity: "epic", tint: "#B8FF00", materialFamily: "neon", roughness: 0.4, metalness: 0.2, emissiveIntensity: 0.7 },
+  { id: "hair_sunset_ombre", label: "Sunset Ombre Waves", icon: "🌅", cost: 380, rarity: "legendary", tint: "#FF6B9D", materialFamily: "iridescent", roughness: 0.5, metalness: 0.3 },
 ];
 
 const CORE_PROPS: FanCosmeticDef[] = [
@@ -1127,6 +1220,10 @@ function buildHairCatalog(): FanCosmeticDef[] {
     certifiedGlb: false as const,
     description: `Hairstyle · ${h.label} — AvatarRig hair tint`,
     hairTint: h.tint,
+    materialFamily: h.materialFamily ?? "hair",
+    roughness: h.roughness ?? 0.8,
+    metalness: h.metalness ?? 0.05,
+    emissiveIntensity: h.emissiveIntensity ?? (h.materialFamily === "neon" ? 0.75 : undefined),
     layerScale: 1.05,
     stripeProductId: null,
   }));

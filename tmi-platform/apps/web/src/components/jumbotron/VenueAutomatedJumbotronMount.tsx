@@ -97,6 +97,13 @@ interface VenueAutomatedJumbotronMountProps {
    */
   mirrorFeedToPlayerId?: string;
   className?: string;
+  /** From VenuePresentationFabric — indoor/outdoor → physical Jumbotron env. */
+  physicalEnvironmentHint?:
+    | "INDOOR_ARENA"
+    | "OUTDOOR_STADIUM"
+    | "PROSCENIUM_THEATER"
+    | "CLUB_SMALL_ROOM"
+    | "WORLD_DANCE_PARTY";
 }
 
 export function VenueAutomatedJumbotronMount({
@@ -107,6 +114,7 @@ export function VenueAutomatedJumbotronMount({
   cameraDirector,
   mirrorFeedToPlayerId,
   className = "",
+  physicalEnvironmentHint,
 }: VenueAutomatedJumbotronMountProps) {
   const experienceType = mapArenaEventToJumbotronExperience(eventType);
 
@@ -129,7 +137,8 @@ export function VenueAutomatedJumbotronMount({
       participantCount: 0, // honest empty until real presence wired
       crowdActivityScore: 0,
       venueEnvironment:
-        experienceType === "WORLD_DANCE_PARTY"
+        physicalEnvironmentHint ??
+        (experienceType === "WORLD_DANCE_PARTY"
           ? "WORLD_DANCE_PARTY"
           : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
             ? "PROSCENIUM_THEATER"
@@ -139,9 +148,9 @@ export function VenueAutomatedJumbotronMount({
                   experienceType === "FAN_LOBBY" ||
                   experienceType === "PERFORMER_LOBBY"
                 ? "CLUB_SMALL_ROOM"
-                : "INDOOR_ARENA",
+                : "INDOOR_ARENA"),
     });
-  }, [roomId, experienceType, venueId]);
+  }, [roomId, experienceType, venueId, physicalEnvironmentHint]);
 
   const [focused, setFocused] = useState(false);
   const [cam] = useState(() => cameraDirector ?? new AvatarCameraDirector());

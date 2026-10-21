@@ -3,22 +3,17 @@
 /**
  * LiveLobbyDrawer.tsx — Canonical Multi-Row Live Lobby Wall & Focused Room Preview
  *
- * Architecture (Reference Rebuild — 2026-09-13):
- * 1. Mounted strictly inside CanonicalBottomDrawerHost beneath the mini media player.
- * 2. Multi-Row, Multi-Column Discovery Canvas:
- *    - Desktop: 4 columns (from Lobbies pc veiw.mp4 frame analysis).
- *    - Mobile: 2 columns (from Lobbies phone veiw.mp4 frame analysis).
- * 3. Spatial Window Depth (Tier 2 Spatial Content Panel):
- *    - Cards behave as "Windows into active rooms" with perspective, metallic bezels,
- *      depth elevation (translateZ), and subtle 3D tilt.
- * 4. In-Place Focused Preview Child Panel:
- *    - Card click opens in-place preview with WATCH STAGE and JOIN ROOM (LobbyEntryFlow).
- * 5. Readable HUD Plane:
- *    - Category pills and search input remain locked to a flat, legible 2D HUD layer.
+ * Architecture (Reference Rebuild — 2026-09-15):
+ * 1. Mounted in CanonicalBottomDrawerHost beneath the mini media player.
+ * 2. Floor = permanent 24/7 bot/anchor rooms (isAnchor). Never fabricate filler tiles.
+ * 3. Ephemeral human rooms animate in when Discovery publishes LIVE; animate out on leave.
+ * 4. Wall height grows/retracts with real panel count (layout animation).
+ * 5. WATCH STAGE vs JOIN ROOM remain distinct on focused preview.
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
@@ -26,10 +21,24 @@ import {
   type LobbyWallCoreCategoryId,
 } from "@/lib/lobby/liveLobbyWallLaw";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
-import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 import { resolveInstantJoin, type InstantJoinDecision } from "@/lib/discovery/InstantJoinRuntime";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
+
+function isPermanentAutomatedRoom(record: LiveDiscoveryRecord): boolean {
+  return record.isAnchor === true;
+}
+
+function sortLobbyWallRecords(records: LiveDiscoveryRecord[]): LiveDiscoveryRecord[] {
+  return [...records].sort((a, b) => {
+    const aAnchor = isPermanentAutomatedRoom(a) ? 1 : 0;
+    const bAnchor = isPermanentAutomatedRoom(b) ? 1 : 0;
+    if (aAnchor !== bAnchor) return bAnchor - aAnchor; // 24/7 anchors first (stable floor)
+    if (a.isLive !== b.isLive) return Number(b.isLive) - Number(a.isLive);
+    return (b.humanViewerCount ?? 0) - (a.humanViewerCount ?? 0) || a.title.localeCompare(b.title);
+  });
+}
 
 export interface LiveLobbyWallContentProps {
   role?: "fan" | "performer";
@@ -40,6 +49,7 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
   const busRecords = useDiscoveryBus();
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const { setActivePerformer } = useActivePerformer();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -70,44 +80,58 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
   const [activeCategoryId, setActiveCategoryId] =
     useState<LobbyWallCoreCategoryId>(defaultCategory);
 
-  // Synthesize rich catalog fallback from PERFORMER_REGISTRY if busRecords is cold
-  const allRecords = useMemo<LiveDiscoveryRecord[]>(() => {
-    if (busRecords.length > 0) return busRecords;
-    return PERFORMER_REGISTRY.map((p, idx) => ({
-      roomId: `live-room-${p.id}`,
-      title: `${p.name} Live Session`,
-      hostUserId: p.id,
-      hostName: p.name,
-      category: idx % 3 === 0 ? "battles" : idx % 3 === 1 ? "cyphers" : "lives",
-      categories: [p.category.toLowerCase(), "music"],
-      humanViewerCount: 14 + (idx * 7) % 89,
-      isLive: true,
-      joinRoute: p.profileRoute,
-      posterUrl: p.profileImageUrl,
-      accentColor: idx % 2 === 0 ? "#00FFFF" : "#FF2DAA",
-      certified: true,
-      experienceId: `exp-${p.id}`,
-    })) as unknown as LiveDiscoveryRecord[];
-  }, [busRecords]);
+  // DiscoveryBus only — anchors (24/7) + real published live rooms. No fabricated tiles.
+  const allRecords = useMemo<LiveDiscoveryRecord[]>(() => busRecords, [busRecords]);
 
-  // Apply category filtering + search
   const filteredRecords = useMemo(() => {
-    let records = filterDiscoveryByWallCategory(allRecords, activeCategoryId);
-    if (records.length === 0 && allRecords.length > 0) {
-      records = allRecords;
-    }
     const q = searchQuery.trim().toLowerCase();
+    // Full-workspace Search: when typing, search ALL discovery categories (not only active tab).
+    let records = q
+      ? allRecords
+      : filterDiscoveryByWallCategory(allRecords, activeCategoryId);
+    const anchors = allRecords.filter(isPermanentAutomatedRoom);
+    const byId = new Map<string, LiveDiscoveryRecord>();
+    for (const r of [...anchors, ...records]) byId.set(r.roomId, r);
+    records = sortLobbyWallRecords([...byId.values()]);
     if (!q) return records;
     return records.filter(
       (r) =>
+        isPermanentAutomatedRoom(r) ||
         r.title.toLowerCase().includes(q) ||
         (r.hostName ?? "").toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q),
+        r.category.toLowerCase().includes(q) ||
+        (r.anchorFamily ?? "").toLowerCase().includes(q) ||
+        (r.statusLine ?? "").toLowerCase().includes(q) ||
+        (r.experienceId ?? "").toLowerCase().includes(q),
     );
   }, [allRecords, activeCategoryId, searchQuery]);
 
+  const ephemeralLiveCount = useMemo(
+    () => filteredRecords.filter((r) => !isPermanentAutomatedRoom(r)).length,
+    [filteredRecords],
+  );
+  const automatedFloorCount = useMemo(
+    () => filteredRecords.filter(isPermanentAutomatedRoom).length,
+    [filteredRecords],
+  );
+
+  // When a live room leaves discovery, drop focused preview (panel retracts).
+  useEffect(() => {
+    if (!selectedRecord) return;
+    const stillPresent = filteredRecords.some((r) => r.roomId === selectedRecord.roomId);
+    if (!stillPresent) setSelectedRecord(null);
+  }, [filteredRecords, selectedRecord]);
+
   const handleCardClick = (record: LiveDiscoveryRecord) => {
     setSelectedRecord(record);
+    // Contextual Artist Shop: Fan selecting Performer A's room binds Shop → A
+    if (role === "fan" && record.hostUserId) {
+      setActivePerformer({
+        id: record.hostUserId,
+        slug: record.hostUserId,
+        name: record.hostName,
+      });
+    }
   };
 
   const handleInstantJoin = (record: LiveDiscoveryRecord) => {
@@ -125,6 +149,9 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
     <div
       data-testid="live-lobby-wall-mosaic"
       data-spatial-tier="tier-2"
+      data-lobby-wall-mode="expandable-24-7-floor"
+      data-lobby-panel-total={filteredRecords.length}
+      data-lobby-ephemeral-live={ephemeralLiveCount}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -205,9 +232,40 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
               border: "1px solid rgba(0, 229, 255, 0.25)",
               borderRadius: 6,
             }}
+            data-lobby-panel-count={filteredRecords.length}
+            data-lobby-automated-count={automatedFloorCount}
+            data-lobby-ephemeral-count={ephemeralLiveCount}
           >
-            {filteredRecords.length} ROOMS ACTIVE
+            {automatedFloorCount}×24/7
+            {ephemeralLiveCount > 0 ? ` · +${ephemeralLiveCount} LIVE` : " · WAITING FOR LIVE"}
           </span>
+          {!isMobileViewport ? (
+            <button
+              type="button"
+              data-testid="lobby-wall-detach-btn"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("tmi:detach-lobby-wall"));
+                }
+              }}
+              title="Detach lobby wall as floating panel (same multi-tile authority)"
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                color: "#FFD700",
+                textTransform: "uppercase",
+                whiteSpace: "nowrap",
+                padding: "4px 8px",
+                background: "rgba(255, 215, 0, 0.08)",
+                border: "1px solid rgba(255, 215, 0, 0.35)",
+                borderRadius: 6,
+                cursor: "pointer",
+              }}
+            >
+              DETACH
+            </button>
+          ) : null}
         </div>
 
         {/* Category horizontal pill carousel */}
@@ -257,9 +315,11 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
         </div>
       </div>
 
-      {/* ── Spatial Mosaic Container (Windows into Active Places) ────── */}
-      <div
+      {/* ── Spatial Mosaic: 24/7 floor + expanding live panels ───────── */}
+      <motion.div
         data-spatial-mosaic-container
+        data-lobby-wall-expandable="1"
+        layout
         style={{
           flex: 1,
           overflowY: "auto",
@@ -278,194 +338,205 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
               fontFamily: "'Inter', sans-serif",
             }}
           >
-            No active broadcast rooms found matching this category.
+            24/7 automated rooms are seeding. Live human rooms appear here as people go live worldwide.
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobileViewport
-                ? "repeat(2, minmax(0, 1fr))"
-                : "repeat(4, minmax(0, 1fr))",
-              gap: isMobileViewport ? 10 : 14,
-            }}
-          >
-            {filteredRecords.map((record) => {
-              const isSelected = selectedRecord?.roomId === record.roomId;
-              const accent = record.accentColor ?? "#00FFFF";
-              const viewerCount = record.humanViewerCount ?? 0;
+          <LayoutGroup id="lobby-wall-mosaic">
+            <motion.div
+              layout
+              data-lobby-mosaic-grid="1"
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobileViewport
+                  ? "repeat(2, minmax(0, 1fr))"
+                  : "repeat(4, minmax(0, 1fr))",
+                gap: isMobileViewport ? 10 : 14,
+              }}
+              transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                {filteredRecords.map((record) => {
+                  const isSelected = selectedRecord?.roomId === record.roomId;
+                  const accent = record.accentColor ?? "#00FFFF";
+                  const viewerCount = record.humanViewerCount ?? 0;
+                  const automated = isPermanentAutomatedRoom(record);
 
-              return (
-                <div
-                  key={record.roomId}
-                  data-room-tile={record.roomId}
-                  onClick={() => handleCardClick(record)}
-                  style={{
-                    position: "relative",
-                    background: "linear-gradient(150deg, rgba(16, 24, 52, 0.95) 0%, rgba(6, 10, 24, 0.98) 100%)",
-                    border: `1px solid ${isSelected ? "#00FFFF" : "rgba(0, 229, 255, 0.28)"}`,
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    transformStyle: "preserve-3d",
-                    transform: isSelected ? "translateZ(28px)" : "translateZ(0px)",
-                    boxShadow: isSelected
-                      ? `0 16px 40px rgba(0,0,0,0.8), 0 0 20px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.2)`
-                      : "0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
-                    transition: "transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.transform = "translateY(-4px) translateZ(14px) rotateX(2deg)";
-                      e.currentTarget.style.borderColor = accent;
-                      e.currentTarget.style.boxShadow = `0 14px 32px rgba(0,0,0,0.7), 0 0 16px ${accent}33`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.transform = "translateZ(0px)";
-                      e.currentTarget.style.borderColor = "rgba(0, 229, 255, 0.28)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)";
-                    }
-                  }}
-                >
-                  {/* Thumbnail / Window Stage */}
-                  <div
-                    style={{
-                      height: isMobileViewport ? 100 : 124,
-                      position: "relative",
-                      background: "#050814",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {record.posterUrl ? (
-                      <img
-                        src={record.posterUrl}
-                        alt={record.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          filter: "brightness(0.9) contrast(1.05)",
-                        }}
-                      />
-                    ) : (
+                  return (
+                    <motion.div
+                      key={record.roomId}
+                      layout
+                      data-room-tile={record.roomId}
+                      data-room-kind={automated ? "automated-24-7" : "ephemeral-live"}
+                      initial={{ opacity: 0, scale: 0.88, y: 18 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.82, y: -12, transition: { duration: 0.28 } }}
+                      transition={{
+                        layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+                        opacity: { duration: 0.28 },
+                        scale: { duration: 0.32 },
+                      }}
+                      onClick={() => handleCardClick(record)}
+                      style={{
+                        position: "relative",
+                        background: "linear-gradient(150deg, rgba(16, 24, 52, 0.95) 0%, rgba(6, 10, 24, 0.98) 100%)",
+                        border: `1px solid ${isSelected ? "#00FFFF" : automated ? "rgba(255,215,0,0.35)" : "rgba(0, 229, 255, 0.28)"}`,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        cursor: "pointer",
+                        transformStyle: "preserve-3d",
+                        boxShadow: isSelected
+                          ? `0 16px 40px rgba(0,0,0,0.8), 0 0 20px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.2)`
+                          : "0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                      whileHover={{ y: -4, transition: { duration: 0.18 } }}
+                    >
                       <div
                         style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "radial-gradient(circle at 50% 40%, rgba(0,229,255,0.15), #050814 70%)",
-                          color: "rgba(255,255,255,0.3)",
-                          fontSize: 24,
+                          height: isMobileViewport ? 100 : 124,
+                          position: "relative",
+                          background: "#050814",
+                          overflow: "hidden",
                         }}
                       >
-                        📺
+                        {record.posterUrl ? (
+                          <img
+                            src={record.posterUrl}
+                            alt={record.title}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              filter: "brightness(0.9) contrast(1.05)",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: automated
+                                ? "radial-gradient(circle at 50% 40%, rgba(255,215,0,0.18), #050814 70%)"
+                                : "radial-gradient(circle at 50% 40%, rgba(0,229,255,0.15), #050814 70%)",
+                              color: "rgba(255,255,255,0.3)",
+                              fontSize: 24,
+                            }}
+                          >
+                            {automated ? "🤖" : "📺"}
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 6,
+                            left: 6,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "rgba(0,0,0,0.75)",
+                            backdropFilter: "blur(4px)",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            border: automated
+                              ? "1px solid rgba(255,215,0,0.55)"
+                              : "1px solid rgba(255,68,68,0.4)",
+                          }}
+                        >
+                          {!automated ? (
+                            <span
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: "50%",
+                                background: "#FF3333",
+                                boxShadow: "0 0 8px #FF3333",
+                                display: "inline-block",
+                              }}
+                            />
+                          ) : null}
+                          <span
+                            style={{
+                              fontSize: 7,
+                              fontWeight: 900,
+                              color: "#fff",
+                              letterSpacing: "0.06em",
+                            }}
+                          >
+                            {automated ? "24/7 · TMI HOST" : "LIVE"}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: 6,
+                            right: 6,
+                            background: "rgba(0,0,0,0.75)",
+                            backdropFilter: "blur(4px)",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            fontSize: 8,
+                            fontWeight: 800,
+                            color: automated ? "#FFD700" : "#00FFFF",
+                          }}
+                        >
+                          {automated
+                            ? "ALWAYS OPEN"
+                            : `👥 ${viewerCount}`}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Live Badge */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        left: 6,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        background: "rgba(0,0,0,0.75)",
-                        backdropFilter: "blur(4px)",
-                        padding: "2px 6px",
-                        borderRadius: 4,
-                        border: "1px solid rgba(255,68,68,0.4)",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          background: "#FF3333",
-                          boxShadow: "0 0 8px #FF3333",
-                          display: "inline-block",
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: 7,
-                          fontWeight: 900,
-                          color: "#fff",
-                          letterSpacing: "0.06em",
-                        }}
-                      >
-                        LIVE
-                      </span>
-                    </div>
-
-                    {/* Viewer Count Badge */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 6,
-                        right: 6,
-                        background: "rgba(0,0,0,0.75)",
-                        backdropFilter: "blur(4px)",
-                        padding: "2px 6px",
-                        borderRadius: 4,
-                        fontSize: 8,
-                        fontWeight: 800,
-                        color: "#00FFFF",
-                      }}
-                    >
-                      👥 {viewerCount}
-                    </div>
-                  </div>
-
-                  {/* Metadata Header */}
-                  <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 900,
-                        color: "#fff",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        fontFamily: "'Orbitron', sans-serif",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {record.title}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        fontSize: 8,
-                        color: "rgba(255,255,255,0.6)",
-                      }}
-                    >
-                      <span>{record.hostName ?? "Performer"}</span>
-                      <span
-                        style={{
-                          color: accent,
-                          fontWeight: 800,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {record.category}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                      <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 900,
+                            color: "#fff",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontFamily: "'Orbitron', sans-serif",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {record.title}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: 8,
+                            color: "rgba(255,255,255,0.6)",
+                          }}
+                        >
+                          <span>
+                            {automated
+                              ? "System Host"
+                              : (record.hostName ?? "Performer")}
+                          </span>
+                          <span
+                            style={{
+                              color: accent,
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {record.category}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+          </LayoutGroup>
         )}
 
         {/* ── In-Place Focused Room Preview Child Panel ────────────── */}
@@ -534,13 +605,15 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
                   Host: <strong style={{ color: "#FFD700" }}>{selectedRecord.hostName ?? "Performer"}</strong> · {selectedRecord.category.toUpperCase()}
                 </div>
                 <div style={{ fontSize: 8, color: "#00FF88", fontWeight: 800 }}>
-                  ● LIVE NOW · {selectedRecord.humanViewerCount ?? 0} watching
+                  {selectedRecord.isAnchor
+                    ? "● 24/7 AUTOMATED · ALWAYS OPEN"
+                    : `● LIVE NOW · ${selectedRecord.humanViewerCount ?? 0} watching`}
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
               <button
                 type="button"
                 data-testid="lobby-watch-stage-btn"
@@ -584,6 +657,36 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
                 ⚡ JOIN ROOM
               </button>
 
+              {(["a", "b", "c", "d", "e", "f", "g", "h"] as const).map((fid, idx) => (
+                <button
+                  key={fid}
+                  type="button"
+                  data-testid={`lobby-drawer-send-${fid}`}
+                  onClick={() => {
+                    if (typeof window === "undefined") return;
+                    window.dispatchEvent(
+                      new CustomEvent("tmi:lobby-send-to-monitor", {
+                        detail: { roomId: selectedRecord.roomId, frameId: fid },
+                      }),
+                    );
+                  }}
+                  style={{
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,215,0,0.4)",
+                    background: "rgba(255,215,0,0.1)",
+                    color: "#FFD700",
+                    fontSize: 8,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    fontFamily: "'Orbitron', sans-serif",
+                  }}
+                  title={`Send to Monitor ${idx + 1}`}
+                >
+                  →{idx + 1}
+                </button>
+              ))}
+
               <button
                 type="button"
                 onClick={() => setSelectedRecord(null)}
@@ -604,7 +707,7 @@ export function LiveLobbyWallContent({ role = "fan" }: LiveLobbyWallContentProps
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -8,15 +8,24 @@
  * 4. Fan + Performer equality: Fans and performers appear together in the community pool.
  */
 
+export type SocialMomentChannel = "HAPPY_DAYS" | "COMMUNITY_GOSSIP";
+
+/** Public credit the member chooses. This is not internal anonymity and is not persisted. */
+export type PublicPresentationChoice = "PHOTO_AND_NAME" | "NAME_ONLY" | "QUOTE_ONLY";
+
 export type HappyDaysCategory =
   | "daily_reflection"
   | "music_smile"
   | "community_gratitude"
   | "pride_achievement"
-  | "future_looking";
+  | "future_looking"
+  | "scene_chatter";
 
 export interface HappyDaysPrompt {
   id: string;
+  channel: SocialMomentChannel;
+  /** Same words as promptText. Stable identity field for the publication-day selector. */
+  text: string;
   promptText: string;
   category: HappyDaysCategory;
   suggestedTag?: string;

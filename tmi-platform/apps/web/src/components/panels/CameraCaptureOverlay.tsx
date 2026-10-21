@@ -33,6 +33,7 @@ export default function CameraCaptureOverlay({ isOpen, onClose }: CameraCaptureO
       .then((data) => { if (data?.user?.id) setUserId(data.user.id); })
       .catch(() => {});
   }, [isOpen, userId]);
+
   const [mode, setMode] = useState<Mode>('choice');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
@@ -59,13 +60,28 @@ export default function CameraCaptureOverlay({ isOpen, onClose }: CameraCaptureO
     onClose();
   }, [reset, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    const onPopState = () => {
+      handleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [isOpen, handleClose]);
+
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       setStream(mediaStream);
       setMode('camera');
       setError('');
-      // Attach on next tick once the <video> element is mounted (mode change re-render).
       setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = mediaStream;
       }, 0);
@@ -120,7 +136,6 @@ export default function CameraCaptureOverlay({ isOpen, onClose }: CameraCaptureO
           imageData: imageSrc,
           captureType: 'group_photo',
           roomLabel: caption || undefined,
-          // Phase 7.3 — Memory Wall scrapbook destination (not playlist/tips/achievements)
           saveDestination: 'MEMORY_WALL',
         }),
       });
@@ -140,86 +155,124 @@ export default function CameraCaptureOverlay({ isOpen, onClose }: CameraCaptureO
 
   return (
     <div
+      data-testid="camera-modal-backdrop"
+      onClick={handleClose}
       style={{
         position: 'fixed',
-        left: 140,
-        bottom: 110,
-        zIndex: 9500,
-        width: 320,
-        background: 'rgba(10, 10, 26, 0.95)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 45, 170, 0.35)',
-        borderRadius: 16,
-        padding: 18,
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 45, 170, 0.2)',
-        fontFamily: "'Inter', sans-serif",
-        color: '#fff',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(5, 5, 16, 0.75)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
       }}
     >
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <div
+        data-testid="camera-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: 360,
+          background: 'rgba(10, 10, 26, 0.98)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 45, 170, 0.45)',
+          borderRadius: 16,
+          padding: 18,
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 45, 170, 0.25)',
+          fontFamily: "'Inter', sans-serif",
+          color: '#fff',
+        }}
+      >
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.12em', color: '#fff', margin: 0 }}>
-          📷 CAMERA
-        </h3>
-        <button
-          onClick={handleClose}
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 12 }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {mode === 'choice' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button onClick={startCamera} style={choiceButtonStyle}>📸 Take Photo</button>
-          <button onClick={() => fileInputRef.current?.click()} style={{ ...choiceButtonStyle, background: 'rgba(255,45,170,0.15)', border: '1px solid #FF2DAA' }}>
-            🖼 Upload From Device
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.12em', color: '#fff', margin: 0 }}>
+            📸 CAMERA
+          </h3>
+          <button
+            type="button"
+            data-testid="camera-modal-close-btn"
+            aria-label="Close Camera"
+            onClick={handleClose}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: '#fff',
+              borderRadius: 8,
+              width: 44,
+              height: 44,
+              minWidth: 44,
+              minHeight: 44,
+              cursor: 'pointer',
+              fontSize: 18,
+              fontWeight: 900,
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            ✕
           </button>
-          <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
-          {error && <p style={{ fontSize: 11, color: '#fbbf24', margin: 0 }}>{error}</p>}
         </div>
-      )}
 
-      {mode === 'camera' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: '2px solid #FF2DAA' }}>
-            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={snapPhoto} style={choiceButtonStyle}>📸 Snap</button>
-            <button onClick={() => { stopCamera(); setMode('choice'); }} style={{ ...choiceButtonStyle, background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {mode === 'preview' && imageSrc && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: '2px solid #FF2DAA' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageSrc} alt="Capture preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          <input
-            type="text"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Add a caption (optional)"
-            style={{ width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
-          />
-          {saveState === 'error' && <p style={{ fontSize: 11, color: '#FF6B6B', margin: 0 }}>Failed to save — try again.</p>}
-          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-            <button onClick={() => { setImageSrc(null); setMode('choice'); }} style={{ ...choiceButtonStyle, flex: 1, background: 'rgba(255,255,255,0.05)' }}>Retake</button>
+        {mode === 'choice' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button type="button" onClick={startCamera} style={choiceButtonStyle}>📸 Take Photo</button>
             <button
-              onClick={handleSave}
-              disabled={saveState === 'saving' || saveState === 'saved' || !userId}
-              style={{ ...choiceButtonStyle, flex: 1, opacity: saveState === 'saving' || !userId ? 0.6 : 1 }}
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ ...choiceButtonStyle, background: 'rgba(255,45,170,0.15)', border: '1px solid #FF2DAA' }}
             >
-              {!userId ? 'Loading…' : saveState === 'saving' ? '⌛ Saving…' : saveState === 'saved' ? '✅ Saved!' : '🖼 Save to Memory Wall'}
+              🖼 Upload From Device
             </button>
+            <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+            {error && <p style={{ fontSize: 11, color: '#fbbf24', margin: 0 }}>{error}</p>}
           </div>
-        </div>
-      )}
+        )}
+
+        {mode === 'camera' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: '2px solid #FF2DAA' }}>
+              <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+              <button type="button" onClick={snapPhoto} style={{ ...choiceButtonStyle, flex: 1 }}>📸 Snap</button>
+              <button type="button" onClick={() => { stopCamera(); setMode('choice'); }} style={{ ...choiceButtonStyle, flex: 1, background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {mode === 'preview' && imageSrc && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: '2px solid #FF2DAA' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageSrc} alt="Capture preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <input
+              type="text"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Add a caption (optional)"
+              style={{ width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+            />
+            {saveState === 'error' && <p style={{ fontSize: 11, color: '#FF6B6B', margin: 0 }}>Failed to save — try again.</p>}
+            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+              <button type="button" onClick={() => { setImageSrc(null); setMode('choice'); }} style={{ ...choiceButtonStyle, flex: 1, background: 'rgba(255,255,255,0.05)' }}>Retake</button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saveState === 'saving' || saveState === 'saved' || !userId}
+                style={{ ...choiceButtonStyle, flex: 1, opacity: saveState === 'saving' || !userId ? 0.6 : 1 }}
+              >
+                {!userId ? 'Loading…' : saveState === 'saving' ? '⌛ Saving…' : saveState === 'saved' ? '✅ Saved!' : '🖼 Save to Memory Wall'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

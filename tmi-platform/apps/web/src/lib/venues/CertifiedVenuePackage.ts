@@ -12,7 +12,7 @@
  */
 
 import type { GlbAssetRef } from "@/lib/venues/VenueAssetContract";
-import { VENUE_CONTRACT_REGISTRY } from "@/lib/venues/VenueAssetContract";
+import { runContractPreflight, VENUE_CONTRACT_REGISTRY } from "@/lib/venues/VenueAssetContract";
 import {
   getVenueAsset,
   getAllVenueTypes,
@@ -301,7 +301,9 @@ export function resolveCertifiedVenuePackage(
 
   if (hasRealGeometry) {
     classification = "A_REAL_MESH";
-    renderMode = "CERTIFIED_GEOMETRY";
+    const certified = contract?.certificationStatus === "CERTIFIED" && runContractPreflight(contract).length === 0;
+    renderMode = certified ? "CERTIFIED_GEOMETRY" : "DEGRADED_VIDEO";
+    if (!certified) evidence.push("geometry_available_but_venue_certification_incomplete");
   } else if (visualGlb.status === "DEV_FIXTURE_DO_NOT_CERTIFY") {
     classification = "E_LEGACY";
     renderMode = ambientVerified ? "DEGRADED_VIDEO" : "UNAVAILABLE";
@@ -373,6 +375,20 @@ export function resolveGoLiveCertifiedVenuePackage(input: {
     String(input.category ?? input.eventType ?? ""),
     "no_golive_venue_mapping",
   );
+}
+
+export function resolveRoomCertifiedVenuePackage(input: {
+  roomId: string;
+  scenePlan?: { roomId: string; eventType: string } | null;
+  inPlace?: { roomId?: string | null; category?: string | null } | null;
+}): CertifiedVenuePackage {
+  if (input.scenePlan?.roomId === input.roomId) {
+    return resolveGoLiveCertifiedVenuePackage({ eventType: input.scenePlan.eventType });
+  }
+  if (input.inPlace?.roomId === input.roomId && input.inPlace.category) {
+    return resolveGoLiveCertifiedVenuePackage({ category: input.inPlace.category });
+  }
+  return resolveGoLiveCertifiedVenuePackage({ venueId: input.roomId });
 }
 
 /** True when package may drive RoomEnvironmentLayer / UVR visuals. */

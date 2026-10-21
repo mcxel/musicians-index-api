@@ -13,6 +13,10 @@
  * - Single source of truth shared between /rooms discovery preview and exact live rooms.
  */
 
+import { resolveCertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+import { slugToVenueType, type VenueType } from "@/lib/venues/VenueAssetRegistry";
+import type { CertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+
 export type VenueStyle = 'THEATER' | 'ARENA' | 'CLUB' | 'LOUNGE' | 'VIP' | 'STANDING';
 
 export type SeatingFamily =
@@ -143,6 +147,60 @@ export interface CanonicalVenueRecipe {
     curvedRake: boolean;
   };
   getSockets(): VenueOccupancySocket[];
+}
+
+export interface CanonicalRoomVenueInput {
+  roomId: string;
+  sessionId?: string | null;
+  experienceType?: string | null;
+  venueType?: string | null;
+}
+
+export interface CanonicalRoomVenueResolution {
+  roomId: string;
+  sessionId: string;
+  venueType: VenueType;
+  recipe: CanonicalVenueRecipe;
+  worldId: string;
+  cameraPreset: CanonicalVenueRecipe["cameraPresets"]["audiencePerspective"];
+  assetSlot: {
+    certifiedPackage: CertifiedVenuePackage;
+    certifiedGeometryEligible: boolean;
+  };
+  activeGeometry: "PROCEDURAL";
+  certifiedPackageEligible: boolean;
+}
+
+/** Resolve an exact room/session to the shared recipe and its spatial camera. */
+export function resolveCanonicalRoomVenue(
+  input: CanonicalRoomVenueInput,
+): CanonicalRoomVenueResolution {
+  const roomId = input.roomId.trim();
+  const sessionId = input.sessionId?.trim() || `session:${roomId}`;
+  const venueKey = input.venueType?.trim();
+  const experienceType = input.experienceType?.trim();
+  const genericExperienceTypes = new Set(["general", "concert", "live", "venue", "broadcast"]);
+  const recipeKey =
+    venueKey ||
+    (experienceType && !genericExperienceTypes.has(experienceType.toLowerCase())
+      ? experienceType
+      : roomId);
+  const venueType = slugToVenueType(venueKey || recipeKey);
+  const recipe = getCanonicalVenueRecipe(recipeKey);
+  const certifiedPackage = resolveCertifiedVenuePackage(venueType);
+  const certifiedGeometryEligible = certifiedPackage.renderMode === "CERTIFIED_GEOMETRY";
+
+  return {
+    roomId,
+    sessionId,
+    venueType,
+    recipe,
+    worldId: `${roomId}::${sessionId}::${recipe.id}`,
+    cameraPreset: recipe.cameraPresets.audiencePerspective,
+    assetSlot: { certifiedPackage, certifiedGeometryEligible },
+    activeGeometry: "PROCEDURAL",
+    certifiedPackageEligible: certifiedGeometryEligible,
+  };
 }
 
 /**

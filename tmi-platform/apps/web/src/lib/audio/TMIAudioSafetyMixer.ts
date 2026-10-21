@@ -68,9 +68,13 @@ export const SPEAKING_THRESHOLD = 0.035;   // RMS threshold to count as speaking
 export const SPEAKING_HOLD_MS   = 600;     // keep "speaking" flag for 600ms after silence
 
 /* ─── Auto-duck amounts ──────────────────────────────────────────────────── */
-const DUCK_LEVEL      = 0.2;   // everyone else drops to 20% when someone is speaking
-const DUCK_SPEED_MS   = 120;   // how fast to duck (CSS-like transition)
-const RECOVER_SPEED_MS= 300;   // how fast to recover after speaker stops
+// Exported (2026-09-24) so other canonical audio authorities — e.g.
+// EventAudioDuckingCoordinator's competition win-fanfare sequencing — reuse
+// these real values instead of redeclaring matching literals that could
+// silently drift out of sync with this mixer.
+export const DUCK_LEVEL      = 0.2;   // everyone else drops to 20% when someone is speaking
+export const DUCK_SPEED_MS   = 120;   // how fast to duck (CSS-like transition)
+export const RECOVER_SPEED_MS= 300;   // how fast to recover after speaker stops
 
 /* ─── TMIAudioSafetyMixer ─────────────────────────────────────────────────── */
 export class TMIAudioSafetyMixer {
@@ -85,6 +89,20 @@ export class TMIAudioSafetyMixer {
   private analyserRAF: number | null = null;
   private listeners = new Map<keyof MixerEventMap, Set<MixerListener<any>>>();
   private gainTargets = new Map<string, number>();   // userId → target gain
+  /**
+   * Real gain stage for the "MUSIC / BACKING" channel (ChannelMixerDirector's
+   * canonical `music` virtual channel — added 2026-09-24, Step 2B.1 closure
+   * repair). Exists and is connected to masterGain from construction, same as
+   * every other gain node here, so ChannelMixerDirector's music-channel gain
+   * calls (e.g. competition winner-ducking) reach a real GainNode instead of
+   * a no-op. No source is attached by default — attachMusicSource() must be
+   * called with a real beat/backing-track element before this stage carries
+   * any audio, matching the existing crowd/ambience "DEFAULT_ONLY until a
+   * real source is marked" convention already used elsewhere in this file's
+   * consumers (LiveRoomMixerBind.ts).
+   */
+  private musicGainNode: GainNode;
+  private musicSource: MediaElementAudioSourceNode | null = null;
 
   constructor() {
     this.ctx = new AudioContext();
@@ -102,6 +120,10 @@ export class TMIAudioSafetyMixer {
     this.destination = this.ctx.destination;
     this.masterGain.connect(this.limiterNode);
     this.limiterNode.connect(this.destination);
+
+    this.musicGainNode = this.ctx.createGain();
+    this.musicGainNode.gain.value = 1.0;
+    this.musicGainNode.connect(this.masterGain);
 
     this.startAnalysisLoop();
   }
@@ -233,6 +255,40 @@ export class TMIAudioSafetyMixer {
   /** Live roster of track userIds for mixer sync */
   getTrackIds(): string[] {
     return Array.from(this.tracks.keys());
+  }
+
+  /**
+   * Real gain control for the canonical "music" channel (competition beat /
+   * backing track). Ramped the same way as applyGain so a winner-ducking
+   * sequence sounds like a smooth duck, not a hard cut. Safe to call before
+   * a source is attached — moves a real, connected, currently-silent node.
+   */
+  setMusicGain(gain: number, rampMs = 80): void {
+    const target = Math.max(0, Math.min(1, gain));
+    const t = this.ctx.currentTime + rampMs / 1000;
+    this.musicGainNode.gain.linearRampToValueAtTime(target, t);
+  }
+
+  getMusicGain(): number {
+    return this.musicGainNode.gain.value;
+  }
+
+  /**
+   * Attaches a real HTMLMediaElement (the competition beat / backing track
+   * player) to the music gain stage. Called from
+   * LiveRoomMixerBind.attachMusicElement(), which CompetitionBeatAudioPlayer
+   * mounts for the authorized event-stream beat URL (Step 2B.1 closure
+   * repair, 2026-09-24).
+   */
+  attachMusicSource(el: HTMLMediaElement): MediaElementAudioSourceNode | null {
+    try {
+      this.musicSource?.disconnect();
+      this.musicSource = this.ctx.createMediaElementSource(el);
+      this.musicSource.connect(this.musicGainNode);
+      return this.musicSource;
+    } catch {
+      return null;
+    }
   }
 
   /* ─── Analysis loop ── */
@@ -391,6 +447,10 @@ export class TMIAudioSafetyMixer {
   destroy(): void {
     if (this.analyserRAF) cancelAnimationFrame(this.analyserRAF);
     for (const [userId] of this.tracks) this.removeTrack(userId);
+    try {
+      this.musicSource?.disconnect();
+    } catch {}
+    this.musicGainNode.disconnect();
     this.masterGain.disconnect();
     this.limiterNode.disconnect();
     this.ctx.close().catch(() => {});
@@ -398,63 +458,7 @@ export class TMIAudioSafetyMixer {
   }
 }
 
-/* ─── React hook ──────────────────────────────────────────────────────────── */
-import { useEffect, useRef, useState } from "react";
-
-export function useAudioSafetyMixer() {
-  const mixerRef = useRef<TMIAudioSafetyMixer | null>(null);
-  const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
-  const [mode, setModeState] = useState<MixMode>("band_mix");
-  const [volumeMap, setVolumeMap] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mixer = new TMIAudioSafetyMixer();
-    mixerRef.current = mixer;
-
-    mixer.on("speaker:change", setActiveSpeaker);
-    mixer.on("mode:change",    setModeState);
-    mixer.on("volume:update",  setVolumeMap);
-
-    return () => mixer.destroy();
-  }, []);
-
-  const addTrack = (userId: string, stream: MediaStream, role: AudioRole) =>
-    mixerRef.current?.addTrack(userId, stream, role);
-
-  const removeTrack = (userId: string) =>
-    mixerRef.current?.removeTrack(userId);
-
-  const setMode = (mode: MixMode) =>
-    mixerRef.current?.setMode(mode);
-
-  const setSolo = (userId: string | null) =>
-    mixerRef.current?.setSoloFocus(userId);
-
-  const setMute = (userId: string, muted: boolean) =>
-    mixerRef.current?.setMute(userId, muted);
-
-  const setMasterVolume = (v: number) =>
-    mixerRef.current?.setMasterVolume(v);
-
-  const setChannelGain = (userId: string, gain: number) =>
-    mixerRef.current?.setChannelGain(userId, gain);
-
-  const getTrackIds = () => mixerRef.current?.getTrackIds() ?? [];
-
-  return {
-    activeSpeaker,
-    mode,
-    volumeMap,
-    addTrack,
-    removeTrack,
-    setMode,
-    setSolo,
-    setMute,
-    setMasterVolume,
-    setChannelGain,
-    getTrackIds,
-    /** Canonical AudioOwner instance for ChannelMixerDirector.bindAudioOwner */
-    getAudioOwner: () => mixerRef.current,
-  };
-}
+/* React client adapter: apps/web/src/hooks/useAudioSafetyMixer.ts
+ * Do not re-export that hook from this module — it would contaminate the
+ * server API import graph (match → lifecycle → ducking → this file).
+ */

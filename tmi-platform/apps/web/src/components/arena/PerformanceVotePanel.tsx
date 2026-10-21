@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { getGuestId } from '@/lib/identity/getGuestId';
 import { awardArtistXp } from '@/lib/progression/ArtistXpEngine';
 import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboardLobbyWallEngine';
+import { battleMatchLifecycleEngine } from '@/lib/competition/BattleMatchLifecycleEngine';
 
 export interface PerformanceVotePanelProps {
   battleId: string;
@@ -112,6 +113,16 @@ export default function PerformanceVotePanel({
         // (BattleChallengeRequestEngine.acceptRequest's battleId) — a no-op if
         // this vote panel is used outside that flow (no matching card).
         battleBillboardLobbyWallEngine.markCompleted(battleId);
+        // Rule 38: declare must advance canonical match lifecycle (Winner-Stays / challenger-call).
+        const lifecycleWinnerId = winnerId ?? closed.winner;
+        if (!battleMatchLifecycleEngine.getMatch(battleId)) {
+          battleMatchLifecycleEngine.createMatch(battleId, "solo-vs-solo", "Live Vote Battle");
+        }
+        battleMatchLifecycleEngine.markCompleted(
+          battleId,
+          lifecycleWinnerId,
+          closed.winner === 'artist-a' ? artistALabel : artistBLabel,
+        );
       }
     }
   };

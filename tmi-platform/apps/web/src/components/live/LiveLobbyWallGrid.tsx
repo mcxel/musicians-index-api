@@ -2,9 +2,16 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import AdRailSlot from '@/components/ads/AdRailSlot';
-import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import type { UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import LobbyPreviewWindow from '@/components/lobby/LobbyPreviewWindow';
+
+const LobbyEntryFlow = dynamic(
+  () =>
+    import('@/components/room/UniversalLobbyEntry').then((m) => m.LobbyEntryFlow),
+  { ssr: false },
+);
 import {
   buildLobbyPreviewTile,
   setLobbyAudioFocus,
@@ -90,17 +97,8 @@ function resolveStickyTileGeometry(room: LobbyRoom): TileGeometry {
   const existing = stickyTileGeometry.get(room.id);
   if (existing) return existing;
 
-  const wide = room.type === 'concert' || room.type === 'game' || room.type === 'lounge';
-  const tall = room.type === 'battle' || room.type === 'live' || room.type === 'cypher';
-
   let geom: TileGeometry;
-  if (wide) {
-    geom = { gridColumn: 'span 2', gridRow: 'span 1', aspectRatio: '21 / 9' };
-  } else if (tall) {
-    geom = { gridColumn: 'span 1', gridRow: 'span 2', aspectRatio: '3 / 4' };
-  } else {
-    geom = { gridColumn: 'span 1', gridRow: 'span 1', aspectRatio: '1 / 1' };
-  }
+  geom = { gridColumn: 'span 1', gridRow: 'span 1', aspectRatio: '16 / 9' };
   stickyTileGeometry.set(room.id, geom);
   return geom;
 }
@@ -132,6 +130,8 @@ export type LobbyRoom = {
   isBoosted?: boolean;
   boostExpiresAt?: number;
   boostKind?: 'lobby_wall' | 'wdp_submission';
+  /** Automated broadcast event id. Same authority as /rooms. Absent for other tiles. */
+  canonicalEventId?: string;
 };
 
 type LiveLobbyWallGridProps = {
@@ -249,6 +249,7 @@ function LobbyCell({
     <motion.div
       ref={cellRef}
       data-lobby-room-id={room.id}
+      data-automated-event-id={room.canonicalEventId}
       layout
       layoutId={`mosaic-tile-${room.id}`}
       initial={{ opacity: 0, scale: 0.94 }}
@@ -726,7 +727,7 @@ export default function LiveLobbyWallGrid({
                 : embedded
                   ? 'repeat(2, minmax(0, 1fr))'
                   : 'repeat(auto-fill, minmax(140px, 1fr))',
-              gridAutoRows: quick ? '110px' : embedded ? '120px' : '140px',
+              gridAutoRows: 'auto',
               gap: quick ? 8 : embedded ? 10 : 12,
               gridAutoFlow: 'dense',
               transform: enableMobileRoam

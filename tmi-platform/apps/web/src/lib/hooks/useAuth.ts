@@ -22,6 +22,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  activeRole?: string | null;
   tier: string;
   onboardingState?: string;
 }
@@ -40,6 +41,14 @@ let cachedState: { user: AuthUser | null; role: string | null; tier: string | nu
 let fetchPromise: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
+export function resolveSessionActiveRole(input: {
+  activeRole?: string | null;
+  role?: string | null;
+}): string | null {
+  const role = input.activeRole?.trim() || input.role?.trim();
+  return role ? role.toUpperCase() : null;
+}
+
 function notify() {
   listeners.forEach((fn) => fn());
 }
@@ -53,11 +62,14 @@ async function fetchSession(): Promise<void> {
       role?: string;
       tier?: string;
     };
-    const rawRole = data.role ?? data.user?.role ?? null;
+    const rawRole = resolveSessionActiveRole({
+      activeRole: data.user?.activeRole,
+      role: data.role ?? data.user?.role,
+    });
     const rawTier = data.tier ?? data.user?.tier ?? null;
     cachedState = {
       user: data.authenticated && data.user ? data.user : null,
-      role: rawRole ? String(rawRole).toUpperCase() : null,
+      role: rawRole,
       tier: rawTier ? String(rawTier).toUpperCase() : null,
       authenticated: data.authenticated === true,
     };
@@ -110,7 +122,12 @@ export async function getAuthState(): Promise<{ authenticated: boolean; user: Au
   try {
     const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
     const data = await res.json() as { authenticated: boolean; user?: AuthUser; role?: string; tier?: string };
-    return { authenticated: data.authenticated === true, user: data.user ?? null, role: data.role ?? null, tier: data.tier ?? null };
+    return {
+      authenticated: data.authenticated === true,
+      user: data.user ?? null,
+      role: resolveSessionActiveRole({ activeRole: data.user?.activeRole, role: data.role ?? data.user?.role }),
+      tier: data.tier ?? null,
+    };
   } catch {
     return { authenticated: false, user: null, role: null, tier: null };
   }

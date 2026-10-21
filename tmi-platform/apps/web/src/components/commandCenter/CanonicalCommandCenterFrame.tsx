@@ -71,7 +71,11 @@ export default function CanonicalCommandCenterFrame({
             data-hub-navigation-lane
             style={{
               alignSelf: "flex-start",
-              height: "min(1260px, calc(100dvh + 420px))",
+              position: "sticky",
+              top: 96,
+              height: "calc(100dvh - 96px)",
+              maxHeight: "calc(100dvh - 96px)",
+              overflow: "hidden",
               minHeight: 0,
               flexShrink: 0,
             }}

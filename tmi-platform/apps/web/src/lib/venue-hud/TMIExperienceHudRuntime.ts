@@ -52,6 +52,18 @@ export type HudPresentationState =
   | "ENDED"
   | "ERROR";
 
+export function resolveHudVisibility(
+  state: HudPresentationState,
+  keepOn: boolean,
+  event: "activity" | "idle" | "recall" | "toggle",
+): HudPresentationState {
+  if (event === "recall") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : state;
+  if (event === "toggle") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : "CLEAN_STAGE";
+  if (keepOn || state === "PRE_LIVE") return state === "CLEAN_STAGE" && keepOn ? "LIVE_VISIBLE" : state;
+  if (event === "activity") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : state;
+  return state === "LIVE_VISIBLE" ? "CLEAN_STAGE" : state;
+}
+
 export type BroadcastState =
   | "IDLE"
   | "PREPARING"

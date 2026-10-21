@@ -26,6 +26,12 @@ export type StoreItem = {
   creatorSplit?: number; // 0–1 fraction going to creator
   mode: 'payment' | 'subscription';
   launchOnly?: boolean;
+  /**
+   * Rule 26 — buyer's account role must be one of these to purchase (checked
+   * server-side in /api/store/checkout, mirrored by RoleGate in the UI).
+   * Undefined = any signed-in role may buy (e.g. Fan-facing tips/fan clubs).
+   */
+  restrictedToRoles?: string[];
 };
 
 // ─── Creator / Performer Store ─────────────────────────────────────────────
@@ -44,15 +50,22 @@ export type StoreItem = {
 // entries are explicitly marked legacy/do-not-use for exactly this reason.
 const PERFORMER_PRO = getSubscriptionProduct('performer', 'PRO');
 
+// Rule 26 — every item below is a Performer/Band-only resource (boosts,
+// beat licensing, performer subscription). Tagged restrictedToRoles so
+// /api/store/checkout can reject a Fan buyer server-side, not just hide the
+// UI — a Fan account was previously able to complete a real Stripe charge
+// for these with zero role check on either side.
+const CREATOR_ONLY_ROLES = ['PERFORMER', 'BAND', 'ARTIST', 'ADMIN', 'STAFF'];
+
 export const CREATOR_ITEMS: StoreItem[] = [
-  { id: 'beat-license',      name: 'Beat License',             description: 'Full license to use this beat commercially',         price: STRIPE_PRODUCTS.BEAT_LICENSE.price,     priceId: STRIPE_PRODUCTS.BEAT_LICENSE.priceId,     icon: '🎹', category: 'beats',         creatorSplit: 0.75, mode: 'payment', badge: 'HOT' },
-  { id: 'artist-boost',      name: 'Artist Discovery Boost',   description: 'Get featured in discovery for 7 days',               price: STRIPE_PRODUCTS.ARTIST_BOOST.price,     priceId: STRIPE_PRODUCTS.ARTIST_BOOST.priceId,     icon: '🚀', category: 'boosts',        creatorSplit: 0,    mode: 'payment', badge: 'LAUNCH' },
-  { id: 'artist-spotlight',  name: 'Homepage Spotlight',       description: 'Featured on the TMI homepage for 24 hours',          price: STRIPE_PRODUCTS.ARTIST_SPOTLIGHT.price, priceId: STRIPE_PRODUCTS.ARTIST_SPOTLIGHT.priceId, icon: '⭐', category: 'boosts',        creatorSplit: 0,    mode: 'payment' },
-  { id: 'nft-mint',          name: 'NFT Mint',                 description: 'Mint your track or art as an NFT on TMI',            price: STRIPE_PRODUCTS.NFT_MINT_FEE.price,     priceId: STRIPE_PRODUCTS.NFT_MINT_FEE.priceId,     icon: '💎', category: 'nft',           creatorSplit: 0.90, mode: 'payment', badge: 'NEW' },
+  { id: 'beat-license',      name: 'Beat License',             description: 'Full license to use this beat commercially',         price: STRIPE_PRODUCTS.BEAT_LICENSE.price,     priceId: STRIPE_PRODUCTS.BEAT_LICENSE.priceId,     icon: '🎹', category: 'beats',         creatorSplit: 0.75, mode: 'payment', badge: 'HOT', restrictedToRoles: CREATOR_ONLY_ROLES },
+  { id: 'artist-boost',      name: 'Artist Discovery Boost',   description: 'Get featured in discovery for 7 days',               price: STRIPE_PRODUCTS.ARTIST_BOOST.price,     priceId: STRIPE_PRODUCTS.ARTIST_BOOST.priceId,     icon: '🚀', category: 'boosts',        creatorSplit: 0,    mode: 'payment', badge: 'LAUNCH', restrictedToRoles: CREATOR_ONLY_ROLES },
+  { id: 'artist-spotlight',  name: 'Homepage Spotlight',       description: 'Featured on the TMI homepage for 24 hours',          price: STRIPE_PRODUCTS.ARTIST_SPOTLIGHT.price, priceId: STRIPE_PRODUCTS.ARTIST_SPOTLIGHT.priceId, icon: '⭐', category: 'boosts',        creatorSplit: 0,    mode: 'payment', restrictedToRoles: CREATOR_ONLY_ROLES },
+  { id: 'nft-mint',          name: 'NFT Mint',                 description: 'Mint your track or art as an NFT on TMI',            price: STRIPE_PRODUCTS.NFT_MINT_FEE.price,     priceId: STRIPE_PRODUCTS.NFT_MINT_FEE.priceId,     icon: '💎', category: 'nft',           creatorSplit: 0.90, mode: 'payment', badge: 'NEW', restrictedToRoles: CREATOR_ONLY_ROLES },
   // Sourced live from the Lane A canonical subscription registry — never a
   // second hardcoded performer-subscription price (was a fake $14.99/mo that
   // conflicted with the certified $2.99/mo Performer Pro).
-  { id: 'artist-pro',        name: PERFORMER_PRO.name,         description: PERFORMER_PRO.features.slice(0, 3).join(' · '),      price: PERFORMER_PRO.price, priceId: PERFORMER_PRO.priceId, icon: '🎤', category: 'subscription', creatorSplit: 0, mode: 'subscription', badge: 'HOT' },
+  { id: 'artist-pro',        name: PERFORMER_PRO.name,         description: PERFORMER_PRO.features.slice(0, 3).join(' · '),      price: PERFORMER_PRO.price, priceId: PERFORMER_PRO.priceId, icon: '🎤', category: 'subscription', creatorSplit: 0, mode: 'subscription', badge: 'HOT', restrictedToRoles: CREATOR_ONLY_ROLES },
 ];
 
 // ─── Fan Identity / Experience Store ──────────────────────────────────────

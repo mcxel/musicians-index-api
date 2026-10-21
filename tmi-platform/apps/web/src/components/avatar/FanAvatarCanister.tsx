@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
 import {
   bindAvatarToSeat,
   startAvatarSeatBindingEngine,
@@ -27,6 +28,7 @@ import {
   type AvatarExpressionId,
   type FoundryMorphCapability,
 } from "@/components/3d/AvatarLobbyCanvas";
+
 
 export type CanisterExpression = AvatarExpressionId;
 
@@ -116,6 +118,7 @@ export default function FanAvatarCanister({
   );
   const [expression, setExpression] = useState<CanisterExpression>("neutral");
   const [morphCap, setMorphCap] = useState<FoundryMorphCapability | null>(null);
+  const [showStudio, setShowStudio] = useState(false);
 
   const viewport = useMemo(() => resolveAvatarViewportBinding(glbSlotId), [glbSlotId]);
   const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
@@ -144,6 +147,34 @@ export default function FanAvatarCanister({
       onSeatBound?.(bound);
     }
   }, [userId, roomId, seatId, onSeatBound]);
+
+  if (isFanRole && showStudio) {
+    return (
+      <div data-testid="fan-avatar-studio" style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+        <button
+          type="button"
+          data-testid="fan-avatar-studio-back"
+          onClick={() => setShowStudio(false)}
+          style={{
+            minHeight: 44,
+            marginBottom: 8,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid rgba(0,255,255,0.45)",
+            background: "rgba(0,255,255,0.08)",
+            color: "#00FFFF",
+            fontWeight: 900,
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+          }}
+        >
+          BACK TO AVATAR
+        </button>
+        <AvatarCreationCenter accentColor={tierColor} />
+      </div>
+    );
+  }
 
   if (!isFanRole) {
     return (
@@ -293,12 +324,23 @@ export default function FanAvatarCanister({
             {binding.seatId ? `Seat ${binding.seatId}` : "Unseated"}
           </span>
         </div>
-        <Link
-          href="/avatar/studio"
-          className="text-[8px] font-black uppercase px-3 py-1.5 rounded-lg text-black bg-gradient-to-r from-cyan-400 to-emerald-400"
-        >
-          Decorate / Customize →
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="fan-avatar-open-studio"
+            onClick={() => setShowStudio(true)}
+            className="text-[8px] font-black uppercase px-3 py-1.5 rounded-lg text-black bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 active:scale-95 transition shadow-sm cursor-pointer"
+          >
+            CUSTOMIZE IN STUDIO →
+          </button>
+          <Link
+            href="/avatar/studio"
+            title="Open Fullscreen Studio"
+            className="text-[8px] font-black uppercase p-1.5 rounded-lg text-white/50 hover:text-cyan-400 hover:bg-white/5 border border-white/10 transition"
+          >
+            ↗
+          </Link>
+        </div>
       </div>
     </div>
   );

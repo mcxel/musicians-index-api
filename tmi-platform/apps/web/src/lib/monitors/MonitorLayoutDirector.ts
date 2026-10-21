@@ -1,15 +1,19 @@
 /**
- * MonitorLayoutDirector — Deterministic Count-Aware Monitor Layout Engine.
+ * MonitorLayoutDirector — square, separated monitor windows.
  *
- * Laws:
- *   1. 1 Monitor    → 1 × 1
- *   2 Monitors   → 2 × 1
- *   3 Monitors   → 3 × 1 desktop / 2 + 1 adaptive phone
- *   4 Monitors   → 2 × 2 grid
- *   5–6 Monitors → 3 × 2 desktop / 2-column adaptive phone
- *   7–8 Monitors → 4 × 2 desktop / 2 × 4 adaptive stack on phone
+ * Each addressable window stays 1:1. The grid does not stretch a cell
+ * into a wide rectangle to fill a 16:9 frame.
  *
- * Guarantees: Zero horizontal overflow, zero monitor clipping, zero frame overlap.
+ * Desktop:
+ *   1 → 1×1
+ *   2 → 2×1
+ *   3 → 3×1
+ *   4 → 4×1 squares (one row; each cell stays 1:1)
+ *   5–6 → 3×2
+ *   7–8 → 4×2
+ *
+ * Phone uses fewer columns so eight windows reflow to 2×4
+ * instead of four microscopic squares across.
  */
 
 export interface MonitorLayoutPreset {
@@ -22,49 +26,38 @@ export interface MonitorLayoutPreset {
   isMobileStack: boolean;
 }
 
+function squarePreset(columns: number, rows: number, gap: number, isMobileStack: boolean): MonitorLayoutPreset {
+  return {
+    columns,
+    rows,
+    gap,
+    aspectRatio: "1/1",
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    gridTemplateRows: `repeat(${rows}, auto)`,
+    isMobileStack,
+  };
+}
+
 export function resolveMonitorLayoutPreset(
   count: number,
   isPhone: boolean = false,
   isTablet: boolean = false
 ): MonitorLayoutPreset {
-  const c = Math.max(1, Math.min(16, count));
+  const c = Math.max(1, Math.min(8, count));
+  void isTablet;
 
   if (isPhone) {
-    if (c === 1) {
-      return { columns: 1, rows: 1, gap: 4, aspectRatio: "16/9", gridTemplateColumns: "1fr", gridTemplateRows: "1fr", isMobileStack: true };
-    }
-    if (c === 2) {
-      return { columns: 1, rows: 2, gap: 4, aspectRatio: "16/18", gridTemplateColumns: "1fr", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: true };
-    }
-    if (c === 3) {
-      return { columns: 1, rows: 3, gap: 4, aspectRatio: "16/27", gridTemplateColumns: "1fr", gridTemplateRows: "repeat(3, 1fr)", isMobileStack: true };
-    }
-    if (c === 4) {
-      return { columns: 2, rows: 2, gap: 4, aspectRatio: "16/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: true };
-    }
-    if (c <= 6) {
-      return { columns: 2, rows: 3, gap: 4, aspectRatio: "16/13.5", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(3, 1fr)", isMobileStack: true };
-    }
-    // 7-8 monitors on phone
-    return { columns: 2, rows: 4, gap: 4, aspectRatio: "16/18", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(4, 1fr)", isMobileStack: true };
+    if (c === 1) return squarePreset(1, 1, 4, true);
+    if (c === 2) return squarePreset(2, 1, 4, true);
+    if (c <= 4) return squarePreset(2, 2, 4, true);
+    if (c <= 6) return squarePreset(2, 3, 4, true);
+    return squarePreset(2, 4, 4, true);
   }
 
-  // Tablet presets
-  if (isTablet) {
-    if (c === 1) return { columns: 1, rows: 1, gap: 6, aspectRatio: "16/9", gridTemplateColumns: "1fr", gridTemplateRows: "1fr", isMobileStack: false };
-    if (c === 2) return { columns: 2, rows: 1, gap: 6, aspectRatio: "32/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "1fr", isMobileStack: false };
-    if (c === 3) return { columns: 2, rows: 2, gap: 6, aspectRatio: "16/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-    if (c === 4) return { columns: 2, rows: 2, gap: 6, aspectRatio: "16/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-    if (c <= 6) return { columns: 3, rows: 2, gap: 6, aspectRatio: "24/9", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-    return { columns: 4, rows: 2, gap: 6, aspectRatio: "32/9", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-  }
-
-  // Desktop presets
-  if (c === 1) return { columns: 1, rows: 1, gap: 8, aspectRatio: "16/9", gridTemplateColumns: "1fr", gridTemplateRows: "1fr", isMobileStack: false };
-  if (c === 2) return { columns: 2, rows: 1, gap: 8, aspectRatio: "32/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "1fr", isMobileStack: false };
-  if (c === 3) return { columns: 3, rows: 1, gap: 8, aspectRatio: "48/9", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "1fr", isMobileStack: false };
-  if (c === 4) return { columns: 2, rows: 2, gap: 8, aspectRatio: "16/9", gridTemplateColumns: "repeat(2, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-  if (c <= 6) return { columns: 3, rows: 2, gap: 8, aspectRatio: "24/9", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-  if (c <= 8) return { columns: 4, rows: 2, gap: 8, aspectRatio: "32/9", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 1fr)", isMobileStack: false };
-  return { columns: 4, rows: 4, gap: 6, aspectRatio: "16/9", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(4, 1fr)", isMobileStack: false };
+  if (c === 1) return squarePreset(1, 1, 6, false);
+  if (c === 2) return squarePreset(2, 1, 6, false);
+  if (c === 3) return squarePreset(3, 1, 6, false);
+  if (c === 4) return squarePreset(4, 1, 6, false);
+  if (c <= 6) return squarePreset(3, 2, 6, false);
+  return squarePreset(4, 2, 6, false);
 }

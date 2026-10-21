@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import { senderBubbleStyles, senderColorFor } from "@/lib/messaging/senderColor";
 import { peerThreadParticipant } from "@/lib/messaging/threadPeerParticipant";
 import AgePolicyGateModal, {
@@ -308,7 +309,7 @@ function PlaylistShareBubble({ msg }: { msg: ThreadMessage }) {
       <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#AA2DFF", marginBottom: 4 }}>
         PLAYLIST SHARE
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 6 }}>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 6, userSelect: "text", WebkitUserSelect: "text" }}>
         {msg.body}
       </div>
       <a
@@ -342,7 +343,7 @@ function VideoInviteBubble({
       <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#00FFFF", marginBottom: 4 }}>
         📹 VIDEO CHAT INVITE
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 8 }}>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 8, userSelect: "text", WebkitUserSelect: "text" }}>
         {msg.body}
       </div>
       {msg.callId ? (
@@ -405,7 +406,7 @@ function SharedMediaGrid({ messages }: { messages: ThreadMessage[] }) {
             <span style={{ fontSize: 10, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color }}>
               {msg.senderName}
             </span>
-            <span style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", userSelect: "text", WebkitUserSelect: "text" }}>
               {msg.body || "Shared"}
             </span>
             <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{fmt(msg.createdAt)}</span>
@@ -458,7 +459,7 @@ function MessageBubble({
                 style={{ maxWidth: "100%", borderRadius: 8, marginBottom: 6, display: "block" }}
               />
             ) : null}
-            <div style={{ fontSize: 13, lineHeight: 1.45, color: bubble.color, wordBreak: "break-word" }}>
+            <div style={{ fontSize: 13, lineHeight: 1.45, color: bubble.color, wordBreak: "break-word", userSelect: "text", WebkitUserSelect: "text" }}>
               {looksLikeUrl(msg.body) && msg.type !== "image" ? (
                 <a href={msg.body.trim()} target="_blank" rel="noreferrer" style={{ color: color, textDecoration: "underline" }}>
                   {msg.body}
@@ -603,6 +604,27 @@ export default function MessagingCanister({
   }
 
 
+  /**
+   * Only these codes are actually age/policy/eligibility gates that warrant the
+   * full-screen AgePolicyGateModal. Every other error code (RECIPIENT_NOT_FOUND,
+   * SELF_MESSAGE, RATE_LIMITED handled elsewhere, MISSING_FIELDS, SEND_FAILED, etc.)
+   * must stay an inline `error` banner — gateModeFromCode() always returns a mode
+   * even for codes it doesn't recognize, so it can't be used to decide *whether*
+   * to gate, only *how* to render the gate once you've already decided to.
+   */
+  function isGateWorthyCode(code?: string): boolean {
+    return (
+      code === "AGE_VERIFICATION_REQUIRED" ||
+      code === "POLICY_ACCEPTANCE_REQUIRED" ||
+      code === "AGE_POLICY_RESTRICTED" ||
+      code === "BLOCKED" ||
+      code === "ACCOUNT_RESTRICTED" ||
+      code === "RECIPIENT_MESSAGES_DISABLED" ||
+      code === "RECIPIENT_AGE_UNVERIFIED" ||
+      code === "RATE_LIMITED"
+    );
+  }
+
   function openGate(code?: string, msg?: string, intent?: { recipientId: string; recipientName?: string; body?: string }) {
     if (intent) {
       saveMessagingPendingIntent({
@@ -702,7 +724,7 @@ export default function MessagingCanister({
           });
         } else {
           setError(result.error ?? "Could not start conversation. Please try again.");
-          if (result.code) openGate(result.code, result.error);
+          if (isGateWorthyCode(result.code)) openGate(result.code, result.error);
         }
       } else {
         const to = newTo.trim();
@@ -727,7 +749,7 @@ export default function MessagingCanister({
           openGate(result.code, result.error, { recipientId: to, recipientName: to, body: payload.body });
         } else {
           setError(result.error ?? "Could not start conversation. Recipient not found.");
-          if (result.code) openGate(result.code, result.error);
+          if (isGateWorthyCode(result.code)) openGate(result.code, result.error);
         }
       }
     } catch {
@@ -778,8 +800,8 @@ export default function MessagingCanister({
 
       const inviteBody =
         callData.call.status === "offline" || callData.calleeOnline === false
-          ? `📹 Video chat invite — ${peer.displayName} appears offline. Open Observatory video when available.`
-          : `📹 Video chat invite — join Observatory video chat now.`;
+          ? `📹 Video chat invite — ${peer.displayName} appears offline. Accept from this thread when they are available.`
+          : `📹 Video chat invite — tap Join when ready.`;
 
       if (activeThreadId) {
         await sendToThread(activeThreadId, inviteBody, {
@@ -795,10 +817,14 @@ export default function MessagingCanister({
         if (tidResult.threadId) setActiveThreadId(tidResult.threadId);
       }
 
+      window.dispatchEvent(
+        new CustomEvent("tmi:peer-call-outgoing", { detail: { callId: callData.call.callId } }),
+      );
+
       setCallNote(
         callData.calleeOnline === false
           ? "Invite sent. Callee offline — honest waiting state."
-          : "Invite sent. Use OBS VIDEO panel to connect when they accept.",
+          : "Invite sent. Video panel opens when they accept.",
       );
     } catch {
       setError("Could not send video invite.");
@@ -816,7 +842,7 @@ export default function MessagingCanister({
       body: JSON.stringify({ action: "update", callId, status: "accepted" }),
     });
     if (res.ok) {
-      setCallNote("Accepted — open OBS VIDEO (bottom-right) to see the call.");
+      setCallNote("Accepted — connecting video…");
       window.dispatchEvent(new CustomEvent("tmi:observatory-call-accept", { detail: { callId } }));
     } else {
       setCallNote("Could not join — call may have ended.");
@@ -1180,4 +1206,18 @@ export default function MessagingCanister({
       />
     </div>
   );
+}
+
+/** Customer shells use this. The raw canister stays for frozen live-room mounts. */
+export function GatedMessagingCanister(props: MessagingCanisterProps) {
+  if (gpsDestinationState("messages") !== "LIVE") {
+    const item = gpsDestinationById("messages");
+    return (
+      <div data-testid="gated-messages-soon" style={{ padding: 16, fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.12em", color: "#fff" }}>COMING SOON</div>
+        <p style={{ margin: "8px 0 0" }}>{item?.building ?? "We're building member messaging."}</p>
+      </div>
+    );
+  }
+  return <MessagingCanister {...props} />;
 }

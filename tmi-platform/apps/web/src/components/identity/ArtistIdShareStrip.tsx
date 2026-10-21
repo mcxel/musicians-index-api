@@ -11,7 +11,8 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { formatPublicMemberId, canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
+import { QRCodeSVG } from "qrcode.react";
+import { canonicalIdentityCardPath, canonicalPublicPath, formatPublicMemberId } from "@/lib/identity/PublicProfileRuntime";
 
 export interface ArtistIdShareStripProps {
   userId: string;
@@ -28,15 +29,6 @@ const USR_PREFIX_REGEX = /^usr_[a-zA-Z0-9_-]+/i;
 function isRawInternalId(id: string): boolean {
   if (!id) return false;
   return UUID_REGEX.test(id) || USR_PREFIX_REGEX.test(id);
-}
-
-function slugFromName(name: string, fallback: string): string {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return slug || fallback;
 }
 
 export default function ArtistIdShareStrip({
@@ -74,14 +66,9 @@ export default function ArtistIdShareStrip({
 
   // Compute public canonical slug (STRICT: never leak internal UUID)
   const publicSlug = useMemo(() => {
-    if (resolvedSlug && !isRawInternalId(resolvedSlug)) {
-      return resolvedSlug;
-    }
-    if (displayName && displayName.trim().length > 1) {
-      return slugFromName(displayName, formatPublicMemberId(role, userId));
-    }
-    return formatPublicMemberId(role, userId);
-  }, [resolvedSlug, displayName, role, userId]);
+    if (resolvedSlug && !isRawInternalId(resolvedSlug)) return resolvedSlug;
+    return null;
+  }, [resolvedSlug]);
 
   // Public display identifier
   const publicDisplayId = useMemo(() => {
@@ -91,14 +78,14 @@ export default function ArtistIdShareStrip({
     return formatPublicMemberId(role, userId);
   }, [resolvedSlug, role, userId]);
 
-  const publicPath = canonicalPublicPath(publicSlug);
+  const publicPath = publicSlug ? canonicalPublicPath(publicSlug) : null;
+  const cardPath = publicSlug ? canonicalIdentityCardPath(publicSlug) : null;
 
   const shareUrl = useMemo(() => {
-    if (typeof window === "undefined") return publicPath;
-    return `${window.location.origin}${publicPath}`;
-  }, [publicPath]);
-
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=${expanded ? 280 : 120}x${expanded ? 280 : 120}&data=${encodeURIComponent(shareUrl)}`;
+    if (!cardPath) return "";
+    if (typeof window === "undefined") return cardPath;
+    return `${window.location.origin}${cardPath}`;
+  }, [cardPath]);
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
@@ -210,15 +197,18 @@ export default function ArtistIdShareStrip({
             boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        {shareUrl ? (
+          <QRCodeSVG
             data-testid="tmi-identity-qr-img"
-            src={qrSrc}
-            alt={`${isPerformer ? "Artist" : "Fan"} Identity QR`}
-            width={expanded ? 240 : 110}
-            height={expanded ? 240 : 110}
-            style={{ display: "block" }}
+            value={shareUrl}
+            size={expanded ? 240 : 110}
+            bgColor="#ffffff"
+            fgColor="#050510"
+            level="M"
           />
+        ) : (
+          <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.7)", padding: 12 }}>Public address is not ready</span>
+        )}
         </button>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
           Tap QR to {expanded ? "shrink" : "enlarge"}
@@ -227,29 +217,31 @@ export default function ArtistIdShareStrip({
 
       {/* 4. ACTIONS: View Profile · Copy ID · Share */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-        <a
-          data-testid="tmi-identity-view-profile"
-          href={publicPath}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "6px 8px",
-            borderRadius: 6,
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#00FFFF",
-            fontSize: 9,
-            fontWeight: 900,
-            textDecoration: "none",
-            letterSpacing: "0.06em",
-            textAlign: "center",
-          }}
-        >
-          View Profile
-        </a>
+        {publicPath ? (
+          <a
+            data-testid="tmi-identity-view-profile"
+            href={publicPath}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 8px",
+              borderRadius: 6,
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#00FFFF",
+              fontSize: 9,
+              fontWeight: 900,
+              textDecoration: "none",
+              letterSpacing: "0.06em",
+              textAlign: "center",
+            }}
+          >
+            View Profile
+          </a>
+        ) : (
+          <span data-testid="tmi-identity-view-profile" style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>View Profile</span>
+        )}
 
         <button
           type="button"

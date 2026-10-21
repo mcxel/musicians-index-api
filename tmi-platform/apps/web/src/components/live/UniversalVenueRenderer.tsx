@@ -35,8 +35,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { resolveCanonicalRoomVenue } from '@/lib/venues/CanonicalVenueRecipe';
 import { getGuestId } from '@/lib/identity/getGuestId';
+import { beginSharedFlight, singleFlightJson } from '@/lib/live/singleFlightPoll';
 import { useStageWebRTC } from '@/hooks/useStageWebRTC';
+import VenueStageProgramSurface from "@/components/venue/VenueStageProgramSurface";
+import type { VenuePresentationFabricPlan } from "@/lib/venue/VenuePresentationFabric";
+import type { VenuePresentationExecutionSnapshot } from "@/lib/venue/VenuePresentationExecution";
+import type { ChromaRuntimeSnapshot } from "@/lib/venue/ChromaSegmentationRuntime";
+import {
+  buildVenuePresentationExecution,
+} from "@/lib/venue/VenuePresentationExecution";
 import { useLiveSessionHeartbeat } from '@/hooks/useLiveSessionHeartbeat';
 import { recordFanJoin, recordFanMessage } from '@/lib/fans/SuperFanMomentumEngine';
 import {
@@ -50,6 +59,7 @@ import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
+import StageBannerOverlay from '@/components/live/StageBannerOverlay';
 import VenueToolsShellHint from '@/components/hud/VenueToolsShellHint';
 import AudienceScene, {
   type VenueIndex,
@@ -59,6 +69,8 @@ import AudienceScene, {
 } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import TMIInteractiveLoungeHud from "@/components/venue-hud/TMIInteractiveLoungeHud";
+import FanAvatarLobbyVenueHud from "@/components/venue-hud/FanAvatarLobbyVenueHud";
+import { useFanAvatarLobbyStore } from "@/lib/avatars/FanAvatarLobbyStore";
 import VenueToolsPanelHost from "@/components/hud/VenueToolsPanelHost";
 import LoungeVideoPresenceFloor from "@/components/live/LoungeVideoPresenceFloor";
 import PerformerVideoPresenceFloor from "@/components/live/PerformerVideoPresenceFloor";
@@ -89,9 +101,15 @@ import { useVenueSpeechBubbles, audienceMessageToRoomChat } from '@/components/m
 import VenueInRoomMessagingPanel from '@/components/messaging/VenueInRoomMessagingPanel';
 import { RoomBubbleChatEngine } from '@/lib/chat/RoomBubbleChatEngine';
 import { resolveBaseVenueSkin } from '@/lib/venues/TierBaseVenueSkin';
+import { resolveLiveVenueSkinBinding } from '@/lib/venue/liveVenueSkinPolicy';
+import { normalizeEventVenueKind } from '@/lib/venues/EventVenueEnvironment';
 import { isVenuePackageRenderable } from '@/lib/venues/CertifiedVenuePackage';
 
 const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
+const CanonicalRoomVenueCanvas = dynamic(
+  () => import('@/components/3d/AvatarLobbyCanvas'),
+  { ssr: false },
+);
 import {
   startCountdown,
   openCurtain,
@@ -242,6 +260,14 @@ interface Props {
   venueId?: string;
   /** Step 4 Slice 2 — certified package from VenueAssetRegistry bind layer. */
   certifiedPackage?: import("@/lib/venues/CertifiedVenuePackage").CertifiedVenuePackage | null;
+  /** Mount the shared procedural recipe world in the durable room renderer. */
+  canonicalSpatialWorld?: boolean;
+  /** Accepted VenuePresentationFabric plan — drive stage surface, not DOM-only. */
+  presentationFabric?: VenuePresentationFabricPlan | null;
+  presentationExecution?: VenuePresentationExecutionSnapshot | null;
+  /** Chroma segmentation runtime — same WebRTC session; never remounts peers. */
+  chromaRuntime?: ChromaRuntimeSnapshot | null;
+  stageParticipants?: Array<{ id: string; displayName?: string | null; imageUrl?: string | null }>;
 }
 
 function publicName(name: string): string {
@@ -280,7 +306,7 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null, eventType = null, jumbotronLookUpActive = false, venueId, certifiedPackage = null }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false, hubVenueOnly = false, hubViewportRole, canonicalZone, suppressAvatars = false, isPreview = false, forcedOccupancyRatio = null, previewCapacity, viewMode = "FREE_ROAM_3D", spatialMap = null, eventType = null, jumbotronLookUpActive = false, venueId, certifiedPackage = null, canonicalSpatialWorld = false, presentationFabric = null, presentationExecution = null, chromaRuntime = null, stageParticipants = [] }: Props) {
   const boundVenueId = certifiedPackage?.venueId ?? venueId ?? `venue-${roomId}`;
   const stageSurfaceId = certifiedPackage?.stageMount?.surfaceId ?? null;
   const canonicalView = canonicalizeWorldViewMode(viewMode);  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -307,8 +333,14 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       eventType: eventType ?? null,
       venueId: boundVenueId,
       lookUpActive: jumbotronLookUpActive === true,
+      physicalEnvironmentHint:
+        presentationFabric?.jumbotron.physicalEnvironmentHint ?? null,
     }),
-    [roomId, eventType, boundVenueId, jumbotronLookUpActive],
+    [roomId, eventType, boundVenueId, jumbotronLookUpActive, presentationFabric],
+  );
+  const canonicalRoomVenue = useMemo(
+    () => resolveCanonicalRoomVenue({ roomId, experienceType: eventType }),
+    [roomId, eventType],
   );
   const canonicalHudFamilyIsLounge = loungeHudMountsForRoom(roomId);
   const isPerformerLobby = isPerformerLobbyExperience(roomId, canonicalZone);
@@ -318,6 +350,12 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       isLoungeExperience(roomId, canonicalZone) ||
       canonicalHudFamilyIsLounge);
   const isVideoPanelRoom = isLoungeSideRoom || isPerformerLobby;
+  const isFanAvatarLobby =
+    canonicalZone === CANONICAL_WORLD_ZONE.FAN_AVATAR_LOBBY ||
+    roomId.startsWith("fan-lobby-") ||
+    roomId === "anchor-global-fan-lobby" ||
+    roomId === "anchor-chill-fan-lobby";
+  const watchedExperience = useFanAvatarLobbyStore((s) => s.watchedExperience);
   const requestLocalMedia =
     !hubVenueOnly &&
     (isVideoPanelRoom
@@ -329,6 +367,39 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
     audio: requestLocalMedia,
     hd: false,
   });
+
+  const resolvedPresentationExecution = useMemo(() => {
+    if (!presentationFabric) return presentationExecution ?? null;
+    return buildVenuePresentationExecution({
+      plan: presentationFabric,
+      sessionId: `session:${roomId}`,
+      participants: stageParticipants,
+      hasMediaTrack: Boolean(stream?.getVideoTracks?.()?.length),
+      webrtcError: Boolean(error),
+      hostOffline: false,
+      liveSessionTier: liveSession?.performerTier ?? null,
+      authSessionTier: null,
+      chromaRuntimeReady: Boolean(chromaRuntime?.runtimeReady),
+      jumbotronProgramBound: Boolean(
+        presentationExecution?.jumbotron.bound ??
+          (certifiedPackage?.capabilities?.HAS_JUMBOTRON && certifiedPackage?.jumbotronMount),
+      ),
+      cameraIndex: presentationExecution?.camera.currentIndex ?? 0,
+      viewMode: canonicalView,
+    });
+  }, [
+    presentationFabric,
+    presentationExecution,
+    chromaRuntime,
+    roomId,
+    stageParticipants,
+    stream,
+    error,
+    liveSession,
+    mode,
+    certifiedPackage,
+    canonicalView,
+  ]);
 
   useLiveSessionHeartbeat({ enabled: mode === 'performer', viewerCount: snapshot?.present ?? 0 });
 
@@ -372,6 +443,23 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           ? realOccupancyRatio
           : 0.08;
   const tierSkin = resolveBaseVenueSkin(liveSession?.performerTier ?? 'FREE');
+  const liveSkinBinding = useMemo(() => {
+    const eventKind = normalizeEventVenueKind(eventType);
+    const organized =
+      eventKind != null &&
+      eventKind !== "lounge" &&
+      eventKind !== "fan-lobby" &&
+      eventKind !== "performer-lobby";
+    return resolveLiveVenueSkinBinding({
+      kind: organized ? "ORGANIZED_EVENT" : "REGULAR_ROOM",
+      roomId: canonicalRoomVenue.roomId,
+      environmentId: canonicalRoomVenue.recipe.id,
+      roomOrEventEquippedSkinId: null,
+      equippedSkinOwnedByAuthority: false,
+      authorityTier: "FREE",
+      rotatingPerformerSkinId: null,
+    });
+  }, [eventType, canonicalRoomVenue.roomId, canonicalRoomVenue.recipe.id]);
   const watchingCount = isPreview
     ? Math.round(
         (forcedOccupancyRatio ?? 0) *
@@ -492,33 +580,75 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   }, []);
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`/api/live/audience?venue=${encodeURIComponent(roomId)}&messages=1`, {
-      credentials: 'include',
-      cache: 'no-store',
+    const data = await singleFlightJson(`audience:${roomId}:messages`, async () => {
+      try {
+        const response = await fetch(`/api/live/audience?venue=${encodeURIComponent(roomId)}&messages=1`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!response.ok) return null;
+        return await response.json() as Snapshot;
+      } catch {
+        return null;
+      }
     });
-    if (!response.ok) return;
-    setSnapshot(await response.json() as Snapshot);
+    if (data) setSnapshot(data);
   }, [roomId]);
 
   useEffect(() => {
-    void refresh();
-    const poll = window.setInterval(() => void refresh(), 2500);
-    return () => window.clearInterval(poll);
-  }, [refresh]);
+    let cancelled = false;
+    const poll = async () => {
+      const data = await singleFlightJson(`audience:${roomId}:messages`, async () => {
+        try {
+          const response = await fetch(`/api/live/audience?venue=${encodeURIComponent(roomId)}&messages=1`, {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (!response.ok) return null;
+          return await response.json() as Snapshot;
+        } catch {
+          return null;
+        }
+      });
+      if (data && !cancelled) setSnapshot(data);
+    };
+    void poll();
+    const pollTimer = window.setInterval(() => void poll(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollTimer);
+    };
+  }, [roomId]);
 
   useEffect(() => {
     type SessionEntry = { roomId: string; userId: string; displayName: string; title: string; viewerCount: number; tipTotal: number; stageState: string; accentColor: string };
-    async function fetchSession() {
+    let cancelled = false;
+    const release = beginSharedFlight("live-go");
+    const pollSession = async () => {
+      if (cancelled) return;
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json() as { sessions: SessionEntry[] };
+        const data = await singleFlightJson(`live-go`, async (signal) => {
+          try {
+            const res = await fetch("/api/live/go", { cache: "no-store", signal });
+            if (!res.ok) return null;
+            return await res.json() as { sessions: SessionEntry[] };
+          } catch {
+            return null;
+          }
+        });
+        if (!data || cancelled) return;
         setLiveSession(data.sessions.find((s) => s.roomId === roomId) ?? null);
-      } catch { /* non-fatal */ }
-    }
-    void fetchSession();
-    const interval = setInterval(fetchSession, 5_000);
-    return () => clearInterval(interval);
+      } catch {
+        /* abort or a missed poll — the next open slot retries */
+      }
+    };
+    void pollSession();
+    const interval = setInterval(() => void pollSession(), 5_000);
+    return () => {
+      cancelled = true;
+      release();
+      clearInterval(interval);
+    };
   }, [roomId]);
 
   // Trust Loop: surfaces host drops / WebRTC errors as recovery UX
@@ -896,6 +1026,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         {!isLoungeSideRoom ? (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             <StageCurtain durationMs={3200} />
+            <StageBannerOverlay />
           </div>
         ) : null}
 
@@ -1065,6 +1196,42 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
       {/* ── Stage + 3D ambient crowd ─────────────────────────────────────── */}
       <div style={{ position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 12 }}>
+        {canonicalSpatialWorld ? (
+          <div
+            data-canonical-room-world={canonicalRoomVenue.worldId}
+            data-canonical-room-id={canonicalRoomVenue.roomId}
+            data-canonical-session-id={canonicalRoomVenue.sessionId}
+            data-canonical-recipe-id={canonicalRoomVenue.recipe.id}
+            data-certified-asset-eligible={String(canonicalRoomVenue.assetSlot.certifiedGeometryEligible)}
+            data-skin-policy={liveSkinBinding.policy}
+            data-skin-id={liveSkinBinding.skinId}
+            data-skin-source={liveSkinBinding.source}
+            data-environment-id={liveSkinBinding.environmentId}
+            data-program-source-id="STAGE_MEDIA_STREAM"
+            data-jumbotron-audio="MUTED"
+            style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+          >
+            <CanonicalRoomVenueCanvas
+              key={canonicalRoomVenue.worldId}
+              activeCount={0}
+              recipe={canonicalRoomVenue.recipe}
+              worldId={canonicalRoomVenue.worldId}
+              cameraPreset={canonicalRoomVenue.cameraPreset}
+              presentationSkinId={liveSkinBinding.source === "equipped" ? liveSkinBinding.skinId : null}
+              stagePresentation={
+                resolvedPresentationExecution && !isVideoPanelRoom
+                  ? {
+                      execution: resolvedPresentationExecution,
+                      mediaStream: stream,
+                      videoRef,
+                      participants: stageParticipants,
+                      chromaRuntime,
+                    }
+                  : null
+              }
+            />
+          </div>
+        ) : null}
         {isLoungeSideRoom ? (
           <TMIInteractiveLoungeHud
             loungeId={roomId}
@@ -1077,7 +1244,29 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             occupancyPresent={snapshot?.present ?? 0}
             occupancyCapacity={snapshot?.capacity}
           />
+        ) : isFanAvatarLobby ? (
+          <FanAvatarLobbyVenueHud
+            roomId={roomId}
+            userId={userId}
+            displayName={displayName}
+          />
         ) : null}
+        {resolvedPresentationExecution && !isVideoPanelRoom && !canonicalSpatialWorld ? (
+          <div
+            data-venue-hd-panel-destination="1"
+            style={{ position: "relative", borderRadius: 10, overflow: "hidden", marginBottom: 8 }}
+          >
+            <LiveRecoveryOverlay status={recoveryStatus} />
+            <VenueStageProgramSurface
+              execution={resolvedPresentationExecution}
+              mediaStream={stream}
+              videoRef={videoRef}
+              participants={stageParticipants}
+              chromaRuntime={chromaRuntime}
+            />
+          </div>
+        ) : null}
+        {!canonicalSpatialWorld && !(resolvedPresentationExecution && !isVideoPanelRoom) ? (
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000' }}>
           <LiveRecoveryOverlay status={recoveryStatus} />
           {isPreview ? (
@@ -1102,7 +1291,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             </div>
           ) : null}
           {isVideoPanelRoom && captureEnabled ? (
-            <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
+            <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', aspectRatio: resolvedPresentationExecution?.framingCss.aspectRatio ?? '16 / 9', objectFit: resolvedPresentationExecution?.framingCss.objectFit ?? 'cover', objectPosition: resolvedPresentationExecution?.framingCss.objectPosition ?? 'center' }} />
           ) : isPerformerLobby ? (
             <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12, letterSpacing: '0.08em', background: 'radial-gradient(ellipse at 50% 40%, rgba(255,45,170,0.18), rgba(5,5,16,0.94) 70%)' }}>
               PERFORMER LOBBY · CAM OFF · tap CAM ON for your panel
@@ -1112,10 +1301,16 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
               LOUNGE CONVERSATION · CAM OFF · tap CAM ON for self feed
             </div>
           ) : mode === 'performer' && !hubVenueOnly ? (
-            <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
+            <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', aspectRatio: resolvedPresentationExecution?.framingCss.aspectRatio ?? '16 / 9', objectFit: resolvedPresentationExecution?.framingCss.objectFit ?? 'cover', objectPosition: resolvedPresentationExecution?.framingCss.objectPosition ?? 'center' }} />
           ) : mode === 'performer' && hubVenueOnly ? (
             <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.45)', fontSize: 11, letterSpacing: '0.08em', background: 'radial-gradient(ellipse at 50% 40%, rgba(255,45,170,0.12), rgba(5,5,16,0.94) 70%)' }}>
               🎭 VENUE VIEW · CAMERA ON MONITOR A
+            </div>
+          ) : isFanAvatarLobby && watchedExperience ? (
+            <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 50%, rgba(0,255,255,0.15) 0%, #04040c 75%)', border: '1px solid rgba(0,255,255,0.3)' }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#00FFFF', letterSpacing: '0.1em' }}>📺 LOBBY MONITOR FABRIC · NOW STREAMING</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#FFD700', marginTop: 6 }}>{watchedExperience.title}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>ROOM: {watchedExperience.roomId.toUpperCase()}</div>
             </div>
           ) : (
             <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 13, letterSpacing: '0.08em', background: 'radial-gradient(ellipse at 50% 40%, rgba(255,45,170,0.2), rgba(5,5,16,0.94) 70%)' }}>
@@ -1124,6 +1319,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           )}
           {!isVideoPanelRoom ? <StageCurtain durationMs={3200} /> : null}
         </div>
+        ) : null}
 
         {/* Video-panel floors — no AudienceScene / avatars */}
         {isPerformerLobby ? (
@@ -1170,6 +1366,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             occupancyRatio={occupancyForScene}
             onReaction={sendReaction}
             hideControls
+            presentationOpacity={canonicalSpatialWorld ? 0.58 : 1}
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
             bobbleheadSeating={bobbleheadSeating}
             jumbotron={jumbotronScene}

@@ -15,6 +15,8 @@ import {
   type DrawerAnimationId,
 } from "@/lib/drawers/DrawerAnimationProfile";
 import { useTheme } from "@/lib/design/ThemeEngine";
+import DrawerGuideDirector from "@/components/drawers/DrawerGuideDirector";
+import type { UniversalDrawerModuleId } from "@/lib/drawers/UniversalDrawerRegistry";
 
 export interface UniversalDrawerBaseProps {
   open: boolean;
@@ -33,6 +35,10 @@ export interface UniversalDrawerBaseProps {
   ariaLabel?: string;
   style?: CSSProperties;
   overlayHeight?: string;
+  /** Gate 13 — Drawer Guide coaching */
+  guideDrawerId?: UniversalDrawerModuleId;
+  guideUserId?: string;
+  guidePersona?: string;
 }
 
 export default function UniversalDrawerBase({
@@ -49,6 +55,9 @@ export default function UniversalDrawerBase({
   ariaLabel,
   style,
   overlayHeight = DRAWER_OPEN_HEIGHT,
+  guideDrawerId,
+  guideUserId,
+  guidePersona = "fan",
 }: UniversalDrawerBaseProps) {
   const theme = useTheme();
   const profile = getDrawerAnimationProfile(animationId, theme);
@@ -137,6 +146,15 @@ export default function UniversalDrawerBase({
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{subtitle}</span>
             ) : null}
             {headerExtra}
+      {guideDrawerId ? (
+        <DrawerGuideDirector
+          drawerId={guideDrawerId}
+          open={open}
+          userId={guideUserId}
+          persona={guidePersona}
+          accentColor={accent}
+        />
+      ) : null}
             <div style={{ flex: 1 }} />
             <button
               type="button"

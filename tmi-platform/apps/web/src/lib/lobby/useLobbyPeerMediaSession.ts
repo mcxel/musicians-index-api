@@ -26,6 +26,7 @@ import {
   leaveLiveRoomMixer,
   syncDailyCallRemoteAudio,
 } from "@/lib/audio/mixer/LiveRoomMixerBind";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 
 export interface UseLobbyPeerMediaSessionOpts {
   roomId: string;
@@ -183,7 +184,18 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
         }
 
         const DailyIframe = (await import("@daily-co/daily-js")).default;
-        // Destroy any stale singleton so lobby rooms don't collide with arena calls.
+        // Daily only supports one call instance per tab — a genuinely different
+        // room (e.g. leaving a Hub Daily publish session) requires leaving the
+        // old one first. Reuse already-captured hardware tracks when present
+        // (same pattern as hubDailyPublisherSession.ts's ensureHubDailyPublisher)
+        // so this doesn't force a second getUserMedia/permission prompt on top
+        // of a camera the user already granted for the Hub Monitor.
+        const hubPreviewStream = useLivePrivacyState.getState().previewStream;
+        const reusableVideoTrack =
+          hubPreviewStream?.getVideoTracks().find((t) => t.readyState === "live") ?? null;
+        const reusableAudioTrack =
+          hubPreviewStream?.getAudioTracks().find((t) => t.readyState === "live") ?? null;
+
         const existing = DailyIframe.getCallInstance?.();
         if (existing) {
           try {
@@ -199,8 +211,8 @@ export function useLobbyPeerMediaSession(opts: UseLobbyPeerMediaSessionOpts): Lo
         }
 
         call = DailyIframe.createCallObject({
-          videoSource: cameraEnabled,
-          audioSource: micEnabled,
+          videoSource: (cameraEnabled && reusableVideoTrack) || cameraEnabled,
+          audioSource: (micEnabled && reusableAudioTrack) || micEnabled,
         });
         callRef.current = call;
 

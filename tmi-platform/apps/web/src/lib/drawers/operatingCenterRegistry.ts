@@ -250,6 +250,17 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     actionId: "ACTION_OPEN_STATISTICS_CENTER",
   },
   {
+    id: "shop_center",
+    label: "SHOP",
+    info: "Avatar · Lobby skins · YoPho · Fan inventory",
+    icon: "🛒",
+    accent: "#FFD700",
+    primaryModule: "store",
+    modules: ["store", "marketplace", "tmi_store", "inventory"],
+    roles: ["fan"],
+    actionId: "ACTION_OPEN_SHOP",
+  },
+  {
     id: "marketplace_center",
     label: "MARKETPLACE",
     info: "Albums · Merch · Beats · TMI Store",

@@ -37,11 +37,15 @@ function AdSenseTile({ client, slot, format }: { client: string; slot: string; f
 
   useEffect(() => {
     if (initialized.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const ins = container.querySelector('ins.adsbygoogle');
+    if (!ins || ins.getAttribute('data-adsbygoogle-status') === 'done') return;
     initialized.current = true;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
-      // Keep page stable if AdSense script is blocked.
+      // Keep page stable if AdSense script is blocked or already populated
     }
   }, []);
 

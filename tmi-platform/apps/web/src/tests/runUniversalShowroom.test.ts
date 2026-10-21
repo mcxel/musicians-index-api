@@ -40,6 +40,14 @@ function makeMockRecord(overrides: Partial<LiveDiscoveryRecord> = {}): LiveDisco
     startedAt: Date.now() - 60000,
     updatedAt: Date.now(),
     recruiting: false,
+    isBotOnly: overrides.isBotOnly ?? false,
+    isTest: overrides.isTest ?? false,
+    isRehearsal: overrides.isRehearsal ?? false,
+    isLocalPreview: overrides.isLocalPreview ?? false,
+    isAdminOnly: overrides.isAdminOnly ?? false,
+    transportHealth: overrides.transportHealth ?? "HEALTHY",
+    requiresPaidEntry: overrides.requiresPaidEntry ?? false,
+    trustProvenance: overrides.trustProvenance ?? "DiscoveryPublisher",
     ...overrides,
   };
 }

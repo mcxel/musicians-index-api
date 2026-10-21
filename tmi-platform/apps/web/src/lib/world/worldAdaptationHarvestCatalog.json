@@ -1,0 +1,3469 @@
+{
+  "generatedFrom": "visual-harvest/TMI_VISUAL_REFERENCE_MASTER_REGISTRY.json",
+  "noRescan": true,
+  "law": "STATIC IMAGE != TRUE 360 WORLD",
+  "harvestTotalNeedsWorldAdaptation": 228,
+  "extractedCount": 228,
+  "candidates": [
+    {
+      "candidateId": "wad-0000",
+      "referenceId": "ref-000004",
+      "sourceAsset": "Dasboard and venues/tmi fan blue print.png",
+      "sourceFolder": "Dasboard and venues",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0001",
+      "referenceId": "ref-000007",
+      "sourceAsset": "Dasboard and venues/BernoutGlobal - UI Evolution Progress_files/bk.png",
+      "sourceFolder": "Dasboard and venues",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0002",
+      "referenceId": "ref-000079",
+      "sourceAsset": "game show and venue skins/download (23).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0003",
+      "referenceId": "ref-000080",
+      "sourceAsset": "game show and venue skins/download (24).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0004",
+      "referenceId": "ref-000081",
+      "sourceAsset": "game show and venue skins/download (25).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0005",
+      "referenceId": "ref-000082",
+      "sourceAsset": "game show and venue skins/download (26).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0006",
+      "referenceId": "ref-000083",
+      "sourceAsset": "game show and venue skins/download (27).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0007",
+      "referenceId": "ref-000084",
+      "sourceAsset": "game show and venue skins/download (28).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0008",
+      "referenceId": "ref-000085",
+      "sourceAsset": "game show and venue skins/download (29).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0009",
+      "referenceId": "ref-000086",
+      "sourceAsset": "game show and venue skins/download (30).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0010",
+      "referenceId": "ref-000087",
+      "sourceAsset": "game show and venue skins/download (31).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0011",
+      "referenceId": "ref-000088",
+      "sourceAsset": "game show and venue skins/download (32).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0012",
+      "referenceId": "ref-000089",
+      "sourceAsset": "game show and venue skins/download (33).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0013",
+      "referenceId": "ref-000090",
+      "sourceAsset": "game show and venue skins/download (34).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0014",
+      "referenceId": "ref-000091",
+      "sourceAsset": "game show and venue skins/download (35).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0015",
+      "referenceId": "ref-000092",
+      "sourceAsset": "game show and venue skins/download (36).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0016",
+      "referenceId": "ref-000093",
+      "sourceAsset": "game show and venue skins/download (37).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0017",
+      "referenceId": "ref-000095",
+      "sourceAsset": "game show and venue skins/images (1).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0018",
+      "referenceId": "ref-000096",
+      "sourceAsset": "game show and venue skins/images (10).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0019",
+      "referenceId": "ref-000097",
+      "sourceAsset": "game show and venue skins/images (11).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0020",
+      "referenceId": "ref-000098",
+      "sourceAsset": "game show and venue skins/images (12).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0021",
+      "referenceId": "ref-000099",
+      "sourceAsset": "game show and venue skins/images (13).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0022",
+      "referenceId": "ref-000100",
+      "sourceAsset": "game show and venue skins/images (14).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0023",
+      "referenceId": "ref-000101",
+      "sourceAsset": "game show and venue skins/images (15).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0024",
+      "referenceId": "ref-000102",
+      "sourceAsset": "game show and venue skins/images (16).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0025",
+      "referenceId": "ref-000103",
+      "sourceAsset": "game show and venue skins/images (17).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0026",
+      "referenceId": "ref-000104",
+      "sourceAsset": "game show and venue skins/images (18).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0027",
+      "referenceId": "ref-000105",
+      "sourceAsset": "game show and venue skins/images (19).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0028",
+      "referenceId": "ref-000106",
+      "sourceAsset": "game show and venue skins/images (2).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0029",
+      "referenceId": "ref-000107",
+      "sourceAsset": "game show and venue skins/images (20).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0030",
+      "referenceId": "ref-000108",
+      "sourceAsset": "game show and venue skins/images (21).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0031",
+      "referenceId": "ref-000109",
+      "sourceAsset": "game show and venue skins/images (22).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0032",
+      "referenceId": "ref-000110",
+      "sourceAsset": "game show and venue skins/images (23).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0033",
+      "referenceId": "ref-000111",
+      "sourceAsset": "game show and venue skins/images (24).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0034",
+      "referenceId": "ref-000112",
+      "sourceAsset": "game show and venue skins/images (25).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0035",
+      "referenceId": "ref-000113",
+      "sourceAsset": "game show and venue skins/images (26).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0036",
+      "referenceId": "ref-000114",
+      "sourceAsset": "game show and venue skins/images (27).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0037",
+      "referenceId": "ref-000115",
+      "sourceAsset": "game show and venue skins/images (28).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0038",
+      "referenceId": "ref-000116",
+      "sourceAsset": "game show and venue skins/images (29).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0039",
+      "referenceId": "ref-000117",
+      "sourceAsset": "game show and venue skins/images (3).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0040",
+      "referenceId": "ref-000118",
+      "sourceAsset": "game show and venue skins/images (30).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0041",
+      "referenceId": "ref-000119",
+      "sourceAsset": "game show and venue skins/images (31).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0042",
+      "referenceId": "ref-000120",
+      "sourceAsset": "game show and venue skins/images (32).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0043",
+      "referenceId": "ref-000121",
+      "sourceAsset": "game show and venue skins/images (33).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0044",
+      "referenceId": "ref-000122",
+      "sourceAsset": "game show and venue skins/images (34).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0045",
+      "referenceId": "ref-000123",
+      "sourceAsset": "game show and venue skins/images (35).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0046",
+      "referenceId": "ref-000124",
+      "sourceAsset": "game show and venue skins/images (36).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0047",
+      "referenceId": "ref-000125",
+      "sourceAsset": "game show and venue skins/images (37).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0048",
+      "referenceId": "ref-000126",
+      "sourceAsset": "game show and venue skins/images (38).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0049",
+      "referenceId": "ref-000127",
+      "sourceAsset": "game show and venue skins/images (39).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0050",
+      "referenceId": "ref-000128",
+      "sourceAsset": "game show and venue skins/images (4).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0051",
+      "referenceId": "ref-000129",
+      "sourceAsset": "game show and venue skins/images (40).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0052",
+      "referenceId": "ref-000130",
+      "sourceAsset": "game show and venue skins/images (41).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0053",
+      "referenceId": "ref-000131",
+      "sourceAsset": "game show and venue skins/images (42).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0054",
+      "referenceId": "ref-000132",
+      "sourceAsset": "game show and venue skins/images (43).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0055",
+      "referenceId": "ref-000133",
+      "sourceAsset": "game show and venue skins/images (44).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0056",
+      "referenceId": "ref-000134",
+      "sourceAsset": "game show and venue skins/images (45).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0057",
+      "referenceId": "ref-000135",
+      "sourceAsset": "game show and venue skins/images (46).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0058",
+      "referenceId": "ref-000136",
+      "sourceAsset": "game show and venue skins/images (47).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0059",
+      "referenceId": "ref-000137",
+      "sourceAsset": "game show and venue skins/images (48).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0060",
+      "referenceId": "ref-000138",
+      "sourceAsset": "game show and venue skins/images (49).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0061",
+      "referenceId": "ref-000139",
+      "sourceAsset": "game show and venue skins/images (5).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0062",
+      "referenceId": "ref-000140",
+      "sourceAsset": "game show and venue skins/images (50).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0063",
+      "referenceId": "ref-000141",
+      "sourceAsset": "game show and venue skins/images (51).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0064",
+      "referenceId": "ref-000142",
+      "sourceAsset": "game show and venue skins/images (6).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0065",
+      "referenceId": "ref-000143",
+      "sourceAsset": "game show and venue skins/images (7).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0066",
+      "referenceId": "ref-000144",
+      "sourceAsset": "game show and venue skins/images (8).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0067",
+      "referenceId": "ref-000145",
+      "sourceAsset": "game show and venue skins/images (9).jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0068",
+      "referenceId": "ref-000146",
+      "sourceAsset": "game show and venue skins/images.jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0069",
+      "referenceId": "ref-000147",
+      "sourceAsset": "game show and venue skins/RoxyOpenHouse.jpg",
+      "sourceFolder": "game show and venue skins",
+      "sourceFamily": "VENUE_SKIN",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0070",
+      "referenceId": "ref-000162",
+      "sourceAsset": "Host , Julius , and extra/Tiana monday night stage host.jpg",
+      "sourceFolder": "Host , Julius , and extra",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "STAGE",
+        "HOST"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0071",
+      "referenceId": "ref-000185",
+      "sourceAsset": "Lobbies/Lobbies 1 -1.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0072",
+      "referenceId": "ref-000186",
+      "sourceAsset": "Lobbies/Lobbies 1.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0073",
+      "referenceId": "ref-000187",
+      "sourceAsset": "Lobbies/Lobbies 10.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0074",
+      "referenceId": "ref-000188",
+      "sourceAsset": "Lobbies/Lobbies 11.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0075",
+      "referenceId": "ref-000189",
+      "sourceAsset": "Lobbies/Lobbies 2.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0076",
+      "referenceId": "ref-000190",
+      "sourceAsset": "Lobbies/Lobbies 3.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0077",
+      "referenceId": "ref-000191",
+      "sourceAsset": "Lobbies/Lobbies 4.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0078",
+      "referenceId": "ref-000192",
+      "sourceAsset": "Lobbies/Lobbies 5.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0079",
+      "referenceId": "ref-000193",
+      "sourceAsset": "Lobbies/Lobbies 6.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0080",
+      "referenceId": "ref-000194",
+      "sourceAsset": "Lobbies/Lobbies 7.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0081",
+      "referenceId": "ref-000195",
+      "sourceAsset": "Lobbies/Lobbies 8.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0082",
+      "referenceId": "ref-000196",
+      "sourceAsset": "Lobbies/Lobbies 9.jpg",
+      "sourceFolder": "Lobbies",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0083",
+      "referenceId": "ref-000259",
+      "sourceAsset": "Profiles/Lobbies blueprint.png",
+      "sourceFolder": "Profiles",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0084",
+      "referenceId": "ref-000319",
+      "sourceAsset": "Banners/Banner Lobbies.png",
+      "sourceFolder": "Banners",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0085",
+      "referenceId": "ref-000320",
+      "sourceAsset": "Banners/Banner Lounges.png",
+      "sourceFolder": "Banners",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0086",
+      "referenceId": "ref-000513",
+      "sourceAsset": "Homapge and battle challange and cyphers/Banner Lobbies.png",
+      "sourceFolder": "Homapge and battle challange and cyphers",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0087",
+      "referenceId": "ref-000514",
+      "sourceAsset": "Homapge and battle challange and cyphers/Banner Lounges.png",
+      "sourceFolder": "Homapge and battle challange and cyphers",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0088",
+      "referenceId": "ref-000541",
+      "sourceAsset": "Tmi PDF 3/Fan hub lobbies blueprint.png",
+      "sourceFolder": "Tmi PDF 3",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "GENERIC_VISUAL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0089",
+      "referenceId": "ref-000683",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (23).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0090",
+      "referenceId": "ref-000684",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (24).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0091",
+      "referenceId": "ref-000685",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (25).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0092",
+      "referenceId": "ref-000686",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (26).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0093",
+      "referenceId": "ref-000687",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (27).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0094",
+      "referenceId": "ref-000688",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (28).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0095",
+      "referenceId": "ref-000689",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (29).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0096",
+      "referenceId": "ref-000690",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (30).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0097",
+      "referenceId": "ref-000691",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (31).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0098",
+      "referenceId": "ref-000692",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (32).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0099",
+      "referenceId": "ref-000693",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (33).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0100",
+      "referenceId": "ref-000694",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (34).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0101",
+      "referenceId": "ref-000695",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (35).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0102",
+      "referenceId": "ref-000696",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (36).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0103",
+      "referenceId": "ref-000697",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/download (37).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0104",
+      "referenceId": "ref-000698",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/Host 1.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0105",
+      "referenceId": "ref-000699",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/Host 2.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0106",
+      "referenceId": "ref-000700",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/Host 3.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0107",
+      "referenceId": "ref-000701",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/Host 4.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0108",
+      "referenceId": "ref-000702",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (23).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0109",
+      "referenceId": "ref-000703",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (24).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0110",
+      "referenceId": "ref-000704",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (25).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0111",
+      "referenceId": "ref-000705",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (26).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0112",
+      "referenceId": "ref-000706",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (27).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0113",
+      "referenceId": "ref-000707",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (28).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0114",
+      "referenceId": "ref-000708",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (29).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0115",
+      "referenceId": "ref-000709",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (30).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0116",
+      "referenceId": "ref-000710",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (31).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0117",
+      "referenceId": "ref-000711",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (32).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0118",
+      "referenceId": "ref-000712",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (33).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0119",
+      "referenceId": "ref-000713",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (34).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0120",
+      "referenceId": "ref-000714",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/images (35).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0121",
+      "referenceId": "ref-000715",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/game show and venue skins/Julius.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0122",
+      "referenceId": "ref-000726",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/Host , Julius , and extra/Tiana monday night stage host.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "STAGE",
+        "HOST"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0123",
+      "referenceId": "ref-000868",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (23).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0124",
+      "referenceId": "ref-000869",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (24).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0125",
+      "referenceId": "ref-000870",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (25).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0126",
+      "referenceId": "ref-000871",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (26).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0127",
+      "referenceId": "ref-000872",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (27).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0128",
+      "referenceId": "ref-000873",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (28).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0129",
+      "referenceId": "ref-000874",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (29).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0130",
+      "referenceId": "ref-000875",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (30).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0131",
+      "referenceId": "ref-000876",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (31).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0132",
+      "referenceId": "ref-000877",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (32).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0133",
+      "referenceId": "ref-000878",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (33).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0134",
+      "referenceId": "ref-000879",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (34).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0135",
+      "referenceId": "ref-000880",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (35).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0136",
+      "referenceId": "ref-000881",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (36).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0137",
+      "referenceId": "ref-000882",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/download (37).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0138",
+      "referenceId": "ref-000883",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/Host 1.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0139",
+      "referenceId": "ref-000884",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/Host 2.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0140",
+      "referenceId": "ref-000885",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/Host 3.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0141",
+      "referenceId": "ref-000886",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/Host 4.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0142",
+      "referenceId": "ref-000887",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (23).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0143",
+      "referenceId": "ref-000888",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (24).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0144",
+      "referenceId": "ref-000889",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (25).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0145",
+      "referenceId": "ref-000890",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (26).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0146",
+      "referenceId": "ref-000891",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (27).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0147",
+      "referenceId": "ref-000892",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (28).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0148",
+      "referenceId": "ref-000893",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (29).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0149",
+      "referenceId": "ref-000894",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (30).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0150",
+      "referenceId": "ref-000895",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (31).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0151",
+      "referenceId": "ref-000896",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (32).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0152",
+      "referenceId": "ref-000897",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (33).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0153",
+      "referenceId": "ref-000898",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (34).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0154",
+      "referenceId": "ref-000899",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/images (35).webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0155",
+      "referenceId": "ref-000900",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/game show and venue skins/Julius.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0156",
+      "referenceId": "ref-000911",
+      "sourceAsset": "Tmi PDF's/_converted_webp_all/_converted_webp/Host , Julius , and extra/Tiana monday night stage host.webp",
+      "sourceFolder": "Tmi PDF's",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "STAGE",
+        "HOST"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0157",
+      "referenceId": "ref-001054",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (23).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0158",
+      "referenceId": "ref-001055",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (24).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0159",
+      "referenceId": "ref-001056",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (25).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0160",
+      "referenceId": "ref-001057",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (26).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0161",
+      "referenceId": "ref-001058",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (27).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0162",
+      "referenceId": "ref-001059",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (28).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0163",
+      "referenceId": "ref-001060",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (29).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0164",
+      "referenceId": "ref-001061",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (30).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0165",
+      "referenceId": "ref-001062",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (31).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0166",
+      "referenceId": "ref-001063",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (32).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0167",
+      "referenceId": "ref-001064",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (33).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0168",
+      "referenceId": "ref-001065",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (34).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0169",
+      "referenceId": "ref-001066",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (35).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0170",
+      "referenceId": "ref-001067",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (36).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0171",
+      "referenceId": "ref-001068",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/download (37).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0172",
+      "referenceId": "ref-001069",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/Host 1.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0173",
+      "referenceId": "ref-001070",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/Host 2.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0174",
+      "referenceId": "ref-001071",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/Host 3.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0175",
+      "referenceId": "ref-001072",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/Host 4.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0176",
+      "referenceId": "ref-001073",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (23).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0177",
+      "referenceId": "ref-001074",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (24).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0178",
+      "referenceId": "ref-001075",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (25).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0179",
+      "referenceId": "ref-001076",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (26).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0180",
+      "referenceId": "ref-001077",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (27).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0181",
+      "referenceId": "ref-001078",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (28).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0182",
+      "referenceId": "ref-001079",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (29).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0183",
+      "referenceId": "ref-001080",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (30).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0184",
+      "referenceId": "ref-001081",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (31).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0185",
+      "referenceId": "ref-001082",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (32).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0186",
+      "referenceId": "ref-001083",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (33).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0187",
+      "referenceId": "ref-001084",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (34).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0188",
+      "referenceId": "ref-001085",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/images (35).webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0189",
+      "referenceId": "ref-001086",
+      "sourceAsset": "_converted_webp visual Blueprint/game show and venue skins/Julius.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "HOST",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0190",
+      "referenceId": "ref-001097",
+      "sourceAsset": "_converted_webp visual Blueprint/Host , Julius , and extra/Tiana monday night stage host.webp",
+      "sourceFolder": "_converted_webp visual Blueprint",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": true,
+      "components": [
+        "STAGE",
+        "HOST"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0191",
+      "referenceId": "ref-001233",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/01-fan-a-studio-equipped.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0192",
+      "referenceId": "ref-001234",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/02-fan-a-arena-spawned.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0193",
+      "referenceId": "ref-001235",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/03-fan-a-arena-walk-turn.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0194",
+      "referenceId": "ref-001238",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/06-fan-a-stand.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0195",
+      "referenceId": "ref-001240",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/08-fan-b-joined-arena.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0196",
+      "referenceId": "ref-001241",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/09-performer-viewing-real-audience.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "AUDITORIUMS",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0197",
+      "referenceId": "ref-001242",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/10-fan-b-sees-fan-a-left.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0198",
+      "referenceId": "ref-001244",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/12-jumbotron-focused-runtime.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "JUMBOTRON",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0199",
+      "referenceId": "ref-001245",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/13-return-to-stage-framing.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0200",
+      "referenceId": "ref-001246",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/14-battle-pip-presentation.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0201",
+      "referenceId": "ref-001247",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/15-cypher-collaborative-panel.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0202",
+      "referenceId": "ref-001248",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/16-mobile-390x844-arena-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0203",
+      "referenceId": "ref-001249",
+      "sourceAsset": ".cursor/artifacts/avatar-arena-runtime-p0/17-mobile-390x844-jumbotron-focus.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "JUMBOTRON",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0204",
+      "referenceId": "ref-001253",
+      "sourceAsset": ".cursor/artifacts/avatar-preview-parity-phase2/04-desktop-fan-lobby.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "LOBBY_ARCH"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0205",
+      "referenceId": "ref-001255",
+      "sourceAsset": ".cursor/artifacts/avatar-preview-parity-phase2/06-desktop-lounge-lighting.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "LIGHTING_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "LIGHTING"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0206",
+      "referenceId": "ref-001287",
+      "sourceAsset": ".cursor/artifacts/hub-physical-convergence/04_mini_live_lobby_wall.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "WALL",
+        "LOBBY_ARCH"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0207",
+      "referenceId": "ref-001298",
+      "sourceAsset": ".cursor/artifacts/independent-room-network-cert/physical_lobby_wall_desktop.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "WALL",
+        "LOBBY_ARCH"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0208",
+      "referenceId": "ref-001299",
+      "sourceAsset": ".cursor/artifacts/independent-room-network-cert/physical_lobby_wall_mobile_390x844.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "LOUNGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "WALL",
+        "LOBBY_ARCH"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0209",
+      "referenceId": "ref-001301",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/10-battle-stage-before-lookup.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0210",
+      "referenceId": "ref-001303",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/12-battle-return-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0211",
+      "referenceId": "ref-001304",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/20-cypher-stage-before-lookup.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0212",
+      "referenceId": "ref-001306",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/22-cypher-return-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0213",
+      "referenceId": "ref-001307",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/30-wdp-stage-before-lookup.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0214",
+      "referenceId": "ref-001309",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/32-wdp-return-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0215",
+      "referenceId": "ref-001310",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/40-auditorium-stage-before-lookup.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0216",
+      "referenceId": "ref-001311",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/41-auditorium-lookup-wall-led.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "AUDITORIUMS",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "JUMBOTRON",
+        "WALL",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0217",
+      "referenceId": "ref-001312",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/42-auditorium-return-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0218",
+      "referenceId": "ref-001320",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/70-production-cypher-stage.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "STAGE",
+      "sourceClass": "STAGE_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "STAGE",
+        "JUMBOTRON"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0219",
+      "referenceId": "ref-001324",
+      "sourceAsset": ".cursor/artifacts/jumbotron-p0/cert-auditorium.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "AUDITORIUMS",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "JUMBOTRON",
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0220",
+      "referenceId": "ref-001362",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/gate4_pay.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0221",
+      "referenceId": "ref-001363",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/pay.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0222",
+      "referenceId": "ref-001364",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/pay2.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0223",
+      "referenceId": "ref-001365",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/pay3.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0224",
+      "referenceId": "ref-001366",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/pay4.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0225",
+      "referenceId": "ref-001367",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/post-cert.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0226",
+      "referenceId": "ref-001368",
+      "sourceAsset": ".cursor/artifacts/revenue-sub-staging-cert/pricing.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    },
+    {
+      "candidateId": "wad-0227",
+      "referenceId": "ref-001370",
+      "sourceAsset": ".cursor/artifacts/step4-3d-authority/diag-venue-a.png",
+      "sourceFolder": ".cursor\\artifacts",
+      "sourceFamily": "VENUE",
+      "sourceClass": "WORLD_GEOMETRY_REFERENCE",
+      "kind": "IMAGE",
+      "flatImageGuideOnly": true,
+      "matched": false,
+      "components": [
+        "VENUE_SHELL"
+      ],
+      "worldSphereReadyClaimed": false
+    }
+  ]
+}

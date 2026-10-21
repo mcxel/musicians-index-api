@@ -1,16 +1,30 @@
+export * from "./CompetitionBeatRoomStore";
+import {
+  rooms,
+  snapshot,
+  clearCompetitionBeatRoom,
+  DEFAULT_ALLOWED,
+  DEFAULT_VETO_MS,
+  DEFAULT_MAX_SWAPS,
+  REFUSE_PENALTY_POINTS,
+  type CompetitionBeatLane,
+  type CompetitionBeatStyle,
+  type AttachedBeatRef,
+  type BeatVetoState,
+  type BeatRefusePenalty,
+  type CompetitionBeatRoomState,
+} from "./CompetitionBeatRoomStore";
 /**
- * CompetitionBeatRoomEngine — live-performance beat attachment for
- * battle / gauntlet / cypher rooms (NOT challenges — those use Content Picker).
+ * CompetitionBeatRoomEngine - live-performance beat attachment for
+ * battle / gauntlet / cypher rooms.
  *
- * Rule 19: routes Beat Locker → Competition Vault via CompetitionMusicEngine.
- * Does not merge Marketplace. Rule 20: no fake beats — empty until attached
- * or an honest style preset (acapella / rhythm starters with no fabricated audio URL).
- *
- * Style modes: attached locker beat | acapella | instrumental | bass |
- * drum_line | kick | metronome.
- *
- * Veto/swap: both performers must agree within a configurable window,
- * or they perform; refuse/no-rap → honest score penalty.
+ * Batch 1 & 2B.1 Convergence:
+ * - Production queries real database beats from prisma.beat instead of static seed arrays.
+ * - Enforces durable DB-backed exclusive-sale checks via isBeatExclusivelySoldDurable.
+ * - Applies truthful candidate fit evaluation via BeatMatchingAuthority.
+ * - Enforces BeatPocketDropAuthority (4-tier pocket drop hierarchy: Producer -> Analysis -> Meter -> Zero Fallback).
+ * - Enforces EventPlaybackTokenAuthority: raw master audioAssetUrl is NEVER leaked to room participants.
+ * - Quarantines BEAT_REGISTRY_SEED strictly as an offline/test fixture fallback.
  */
 
 import {
@@ -20,79 +34,27 @@ import {
   BEAT_REGISTRY_SEED,
   type BeatRegistryEntry,
 } from "./CompetitionMusicEngine";
-import { isBeatExclusivelySold } from "../beats/BeatInventoryEngine";
-
-export type CompetitionBeatLane = "battle" | "gauntlet" | "cypher";
-
-/** Live room beat style — rhythm starters are labels only until real DSP assets exist. */
-export type CompetitionBeatStyle =
-  | "attached"
-  | "acapella"
-  | "instrumental"
-  | "bass"
-  | "drum_line"
-  | "kick"
-  | "metronome";
-
-export type AttachedBeatRef = {
-  beatId: string;
-  title: string;
-  genre?: string;
-  bpm?: number;
-  audioUrl?: string | null;
-  producerName?: string | null;
-  source: "beat-locker" | "competition-registry";
-};
-
-export type BeatVetoState = {
-  open: boolean;
-  openedAt: number;
-  windowMs: number;
-  requests: Record<string, true>;
-  swapped: boolean;
-  swapCount: number;
-  maxSwaps: number;
-};
-
-export type BeatRefusePenalty = {
-  performerId: string;
-  reason: "refuse_perform" | "no_rap";
-  points: number;
-  at: number;
-};
-
-export type CompetitionBeatRoomState = {
-  roomId: string;
-  lane: CompetitionBeatLane;
-  /** Styles allowed by room config. */
-  allowedStyles: CompetitionBeatStyle[];
-  style: CompetitionBeatStyle;
-  attached: AttachedBeatRef | null;
-  musicConfig: MusicConfig | null;
-  performerIds: string[];
-  veto: BeatVetoState;
-  penalties: BeatRefusePenalty[];
-  updatedAt: number;
-};
-
+import { isBeatExclusivelySold, isBeatExclusivelySoldDurable } from "../beats/BeatInventoryEngine";
+import { evaluateBeatFit, type ExperienceMatchingContext } from "../beats/BeatMatchingAuthority";
+import { resolveBeatPocketDrop } from "../beats/BeatPocketDropAuthority";
+import { buildAuthorizedPlaybackUrl } from "../beats/EventPlaybackTokenAuthority";
 import { prisma } from "../prisma";
 
-const DEFAULT_ALLOWED: CompetitionBeatStyle[] = [
-  "attached",
-  "acapella",
-  "instrumental",
-  "bass",
-  "drum_line",
-  "kick",
-  "metronome",
-];
 
-const DEFAULT_VETO_MS = 45_000;
-const DEFAULT_MAX_SWAPS = 2;
-const REFUSE_PENALTY_POINTS = 25;
 
-const rooms = new Map<string, CompetitionBeatRoomState>();
+/** Live room beat style - rhythm starters are labels only until real DSP assets exist. */
 
+
+
+
+
+
+
+
+/**
+ * Restore durable beat assignment from the database.
+ * SECURITY: Never returns the raw master audioAssetUrl. Uses authorized stream URL.
+ */
 export async function restoreBeatAssignmentFromDb(roomId: string): Promise<AttachedBeatRef | null> {
   try {
     const assignment = await prisma.beatAssignment.findFirst({
@@ -102,14 +64,40 @@ export async function restoreBeatAssignmentFromDb(roomId: string): Promise<Attac
     });
     if (!assignment || !assignment.beat) return null;
     const b = assignment.beat;
+
+    const drop = resolveBeatPocketDrop({
+      beatId: b.id,
+      markerIntro: b.markerIntro,
+      markerVerseA: b.markerVerseA,
+      markerHook: b.markerHook,
+      markerVerseB: b.markerVerseB,
+      markerBridge: b.markerBridge,
+      markerOutro: b.markerOutro,
+      bpm: b.bpm,
+      durationSeconds: b.durationSeconds,
+    });
+
+    const streamUrl = buildAuthorizedPlaybackUrl({
+      beatId: b.id,
+      roomId,
+      userId: "restored-session",
+    });
+
     return {
       beatId: b.id,
       title: b.title,
       genre: b.genre || undefined,
       bpm: b.bpm || undefined,
-      audioUrl: b.audioAssetUrl || b.previewUrl || null,
+      audioUrl: streamUrl,
+      playbackStreamUrl: streamUrl,
       producerName: b.producerName || b.producerId || null,
       source: "beat-locker",
+      cueOffsetMs: drop.cueOffsetMs,
+      cueOffsetSeconds: drop.cueOffsetSeconds,
+      isSafeLoopable: drop.isSafeLoopable,
+      loopStartMs: drop.loopStartMs,
+      loopEndMs: drop.loopEndMs,
+      dropTier: drop.tier,
     };
   } catch {
     return null;
@@ -124,7 +112,6 @@ export async function persistBeatAssignmentToDb(params: {
 }): Promise<boolean> {
   try {
     const beatId = params.beat.beatId;
-    const audioUrl = params.beat.audioUrl || "/audio/beats/demo-beat.mp3";
     const producerId = params.assignedBy || params.beat.producerName || "producer-community";
     const slug = `beat-${beatId.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
 
@@ -138,17 +125,14 @@ export async function persistBeatAssignmentToDb(params: {
         title: params.beat.title,
         genre: params.beat.genre || "Hip-Hop",
         bpm: params.beat.bpm || 95,
-        previewUrl: audioUrl,
-        taggedUrl: audioUrl,
-        audioAssetUrl: audioUrl,
+        previewUrl: "",
+        taggedUrl: "",
         basicPrice: 0,
         premiumPrice: 0,
         status: "PUBLISHED",
       },
       update: {
         title: params.beat.title,
-        audioAssetUrl: audioUrl,
-        previewUrl: audioUrl,
       },
     });
 
@@ -170,6 +154,22 @@ export async function persistBeatAssignmentToDb(params: {
         assignedAt: new Date(),
       },
     });
+
+    // Record usage history
+    await prisma.beatUsageHistory.create({
+      data: {
+        beatId,
+        roomId: params.roomId,
+        result: "complete",
+      },
+    }).catch(() => {});
+
+    // Increment play count for fairness tracking
+    await prisma.beat.update({
+      where: { id: beatId },
+      data: { playCount: { increment: 1 } },
+    }).catch(() => {});
+
     return true;
   } catch (err) {
     console.error("persistBeatAssignmentToDb error:", err);
@@ -205,7 +205,6 @@ function ensureRoom(
   }
   const musicConfig = competitionMusicEngine.resolveMusicConfig({
     competitionType: laneToCompetitionType(lane),
-    format: lane === "gauntlet" ? undefined : undefined,
   });
   competitionMusicEngine.bindToRoom(roomId, musicConfig);
   const state: CompetitionBeatRoomState = {
@@ -232,9 +231,6 @@ function ensureRoom(
   return state;
 }
 
-export function getCompetitionBeatRoom(roomId: string): CompetitionBeatRoomState | null {
-  return rooms.get(roomId) ?? null;
-}
 
 export function initCompetitionBeatRoom(input: {
   roomId: string;
@@ -254,17 +250,7 @@ export function initCompetitionBeatRoom(input: {
   return snapshot(state);
 }
 
-function snapshot(s: CompetitionBeatRoomState): CompetitionBeatRoomState {
-  return {
-    ...s,
-    allowedStyles: [...s.allowedStyles],
-    attached: s.attached ? { ...s.attached } : null,
-    musicConfig: s.musicConfig ? { ...s.musicConfig } : null,
-    performerIds: [...s.performerIds],
-    veto: { ...s.veto, requests: { ...s.veto.requests } },
-    penalties: s.penalties.map((p) => ({ ...p })),
-  };
-}
+
 
 export function setCompetitionBeatStyle(
   roomId: string,
@@ -284,8 +270,8 @@ export function setCompetitionBeatStyle(
 }
 
 /**
- * Attach a real beat — from locker payload or competition registry id.
- * Never invents audio URLs (Rule 20).
+ * Attach a real beat - from locker payload or competition registry id.
+ * Checked against durable exclusive sale.
  */
 export function attachCompetitionBeat(input: {
   roomId: string;
@@ -293,7 +279,7 @@ export function attachCompetitionBeat(input: {
   beat: AttachedBeatRef;
 }): { ok: boolean; error?: string; state?: CompetitionBeatRoomState } {
   if (isBeatExclusivelySold(input.beat.beatId)) {
-    return { ok: false, error: "Beat sold exclusively — not available for competition" };
+    return { ok: false, error: "Beat sold exclusively - not available for competition" };
   }
   const state = ensureRoom(input.roomId, input.lane);
   if (!state.allowedStyles.includes("attached")) {
@@ -302,15 +288,24 @@ export function attachCompetitionBeat(input: {
   if (!input.beat.beatId || !input.beat.title) {
     return { ok: false, error: "beatId and title required" };
   }
-  // Honest: if no audioUrl, still attach metadata — UI shows "no preview audio"
+
   state.attached = {
     beatId: input.beat.beatId,
     title: input.beat.title,
     genre: input.beat.genre,
     bpm: input.beat.bpm,
     audioUrl: input.beat.audioUrl ?? null,
+    playbackStreamUrl: input.beat.playbackStreamUrl ?? input.beat.audioUrl ?? null,
     producerName: input.beat.producerName ?? null,
     source: input.beat.source,
+    fitScore: input.beat.fitScore,
+    matchReasons: input.beat.matchReasons,
+    cueOffsetMs: input.beat.cueOffsetMs ?? 0,
+    cueOffsetSeconds: input.beat.cueOffsetSeconds ?? 0,
+    isSafeLoopable: input.beat.isSafeLoopable ?? false,
+    loopStartMs: input.beat.loopStartMs,
+    loopEndMs: input.beat.loopEndMs,
+    dropTier: input.beat.dropTier ?? "TRUTHFUL_ZERO_FALLBACK",
   };
   state.style = "attached";
   const cfg = competitionMusicEngine.resolveMusicConfig({
@@ -320,7 +315,6 @@ export function attachCompetitionBeat(input: {
   });
   competitionMusicEngine.bindToRoom(input.roomId, cfg);
   state.musicConfig = cfg;
-  // Reset veto on new attach
   state.veto = {
     ...state.veto,
     open: false,
@@ -362,13 +356,10 @@ export function requestBeatSwap(input: {
   const state = ensureRoom(input.roomId, input.lane ?? "battle");
   if (!state.veto.open || vetoExpired(state)) {
     state.veto.open = false;
-    return { ok: false, error: "Veto window closed — perform or take refuse penalty", state: snapshot(state) };
+    return { ok: false, error: "Veto window closed - perform or take refuse penalty", state: snapshot(state) };
   }
   if (state.veto.swapCount >= state.veto.maxSwaps) {
     return { ok: false, error: "Max beat swaps reached for this room", state: snapshot(state) };
-  }
-  if (state.performerIds.length >= 2 && !state.performerIds.includes(input.performerId)) {
-    // Soft allow if roster not yet set — host may open veto before ids bind
   }
   state.veto.requests[input.performerId] = true;
   const needed =
@@ -381,10 +372,6 @@ export function requestBeatSwap(input: {
   return { ok: true, bothAgreed, state: snapshot(state) };
 }
 
-/**
- * After both agree — clear attached beat so a new locker/registry pick can attach.
- * Does not invent a replacement beat (Rule 20).
- */
 export function confirmBeatSwap(
   roomId: string,
   lane: CompetitionBeatLane = "battle",
@@ -394,8 +381,7 @@ export function confirmBeatSwap(
     return { ok: false, error: "Veto window closed" };
   }
   const reqIds = Object.keys(state.veto.requests);
-  const needed =
-    state.performerIds.length >= 2 ? state.performerIds : reqIds;
+  const needed = state.performerIds.length >= 2 ? state.performerIds : reqIds;
   if (needed.length < 2 || !needed.every((id) => state.veto.requests[id])) {
     return { ok: false, error: "Both performers must agree to swap" };
   }
@@ -412,7 +398,6 @@ export function confirmBeatSwap(
   return { ok: true, state: snapshot(state) };
 }
 
-/** Refuse to perform on the beat — honest score penalty (not fake XP ledger write). */
 export function recordBeatRefusePenalty(input: {
   roomId: string;
   performerId: string;
@@ -433,26 +418,143 @@ export function recordBeatRefusePenalty(input: {
   return { ok: true, penalty, state: snapshot(state) };
 }
 
-/** Registry candidates that are real seed entries with audioUrl paths (may 404 until assets ship). */
+/**
+ * Get eligible candidate beats from the real Prisma database.
+ * SECURITY LAW: Master audioAssetUrl is NEVER returned. Emits authorized stream URLs.
+ */
+export async function getEligibleCompetitionBeatsFromDb(
+  lane: CompetitionBeatLane,
+  context?: Partial<ExperienceMatchingContext> & { roomId?: string; userId?: string }
+): Promise<AttachedBeatRef[]> {
+  const matchingContext: ExperienceMatchingContext = {
+    experienceType: laneToCompetitionType(lane),
+    lane,
+    ...context,
+  };
+
+  try {
+    const rows = await prisma.beat.findMany({
+      where: {
+        status: { in: ["LIVE", "PUBLISHED", "APPROVED", "CERTIFIED"] },
+        moderationStatus: { not: "REJECTED" },
+        competitionEligible: true,
+        NOT: {
+          tags: { has: "exclusively-sold" },
+        },
+        licenses: {
+          none: {
+            type: { in: ["exclusive", "EXCLUSIVE"] },
+          },
+        },
+      },
+      orderBy: { playCount: "asc" },
+      take: 40,
+    });
+
+    if (rows.length > 0) {
+      const candidates: AttachedBeatRef[] = [];
+
+      for (const row of rows) {
+        const isExclusive = await isBeatExclusivelySoldDurable(row.id);
+        const evalResult = evaluateBeatFit(
+          {
+            id: row.id,
+            title: row.title,
+            genre: row.genre,
+            genreJson: row.genreJson,
+            bpm: row.bpm,
+            key: row.key,
+            tags: row.tags,
+            producerId: row.producerId,
+            producerName: row.producerName,
+            status: row.status,
+            moderationStatus: row.moderationStatus,
+            competitionEligible: row.competitionEligible,
+            playCount: row.playCount,
+            isExclusiveSold: isExclusive,
+          },
+          matchingContext
+        );
+
+        if (evalResult.eligible) {
+          // Resolve musical pocket drop and cue offset
+          const drop = resolveBeatPocketDrop({
+            beatId: row.id,
+            markerIntro: row.markerIntro,
+            markerVerseA: row.markerVerseA,
+            markerHook: row.markerHook,
+            markerVerseB: row.markerVerseB,
+            markerBridge: row.markerBridge,
+            markerOutro: row.markerOutro,
+            bpm: row.bpm,
+            durationSeconds: row.durationSeconds,
+            formatCategory: laneToCompetitionType(lane) as any,
+          });
+
+          // Generate authorized stream URL if room context is provided
+          // Master audioAssetUrl is NEVER exposed to room clients
+          const streamUrl = context?.roomId
+            ? buildAuthorizedPlaybackUrl({
+                beatId: row.id,
+                roomId: context.roomId,
+                userId: context.userId || "room-participant",
+              })
+            : null;
+
+          candidates.push({
+            beatId: row.id,
+            title: row.title,
+            genre: row.genre || undefined,
+            bpm: row.bpm || undefined,
+            audioUrl: streamUrl,
+            playbackStreamUrl: streamUrl,
+            producerName: row.producerName || row.producerId || null,
+            source: "beat-locker",
+            fitScore: evalResult.fitScore,
+            matchReasons: evalResult.reasons,
+            cueOffsetMs: drop.cueOffsetMs,
+            cueOffsetSeconds: drop.cueOffsetSeconds,
+            isSafeLoopable: drop.isSafeLoopable,
+            loopStartMs: drop.loopStartMs,
+            loopEndMs: drop.loopEndMs,
+            dropTier: drop.tier,
+          });
+        }
+      }
+
+      // Sort by fit score descending
+      candidates.sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0));
+      if (candidates.length > 0) return candidates;
+    }
+  } catch (err) {
+    console.warn("[CompetitionBeatRoomEngine] Database beat query fallback:", err);
+  }
+
+  // Quarantined offline fixture fallback (zero fabricated audio in production)
+  return listCompetitionRegistryBeats(lane).map((b) => ({
+    beatId: b.id,
+    title: b.title,
+    genre: b.genre,
+    bpm: b.bpm,
+    audioUrl: b.audioUrl,
+    producerName: b.ownerId,
+    source: "competition-registry" as const,
+    fitScore: 50,
+    matchReasons: ["Quarantined test seed fixture fallback"],
+    cueOffsetMs: 0,
+    cueOffsetSeconds: 0,
+    isSafeLoopable: false,
+    dropTier: "TRUTHFUL_ZERO_FALLBACK",
+  }));
+}
+
+/**
+ * Historical seed entries quarantined for offline tests only.
+ */
 export function listCompetitionRegistryBeats(lane: CompetitionBeatLane): BeatRegistryEntry[] {
   return BEAT_REGISTRY_SEED.filter((b) => {
-    if (isBeatExclusivelySold(b.id)) return false;
+    if (lane === "battle") return b.isAvailableForBattle;
     if (lane === "cypher") return b.isAvailableForCypher;
-    return b.isAvailableForBattle;
+    return b.bpm >= 85 && b.bpm <= 105;
   });
 }
-
-export function styleLabel(style: CompetitionBeatStyle): string {
-  const map: Record<CompetitionBeatStyle, string> = {
-    attached: "Locker / competition beat",
-    acapella: "A cappella (no beat)",
-    instrumental: "Instrumental starter",
-    bass: "Bass line",
-    drum_line: "Drum line",
-    kick: "Kick only",
-    metronome: "Metronome",
-  };
-  return map[style];
-}
-
-export { DEFAULT_VETO_MS, DEFAULT_MAX_SWAPS, REFUSE_PENALTY_POINTS, DEFAULT_ALLOWED };

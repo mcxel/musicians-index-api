@@ -22,6 +22,7 @@ import { BookingCanister } from "@/components/canisters/BookingCanister";
 import NotificationCanister from "@/components/canisters/NotificationCanister";
 import QueueCanister from "@/components/canisters/QueueCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import SubmissionsCanister from "@/components/canisters/SubmissionsCanister";
 import ScoresCanister from "@/components/canisters/ScoresCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
@@ -759,9 +760,17 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "messaging" ? (
+        gpsDestinationState("messages") !== "LIVE" ? (
+          <div data-testid="drawer-messages-soon" style={{ padding: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.12em", color: "#fff" }}>COMING SOON</div>
+            <p style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+              {gpsDestinationById("messages")?.building}
+            </p>
+          </div>
+        ) : (
         <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.45 }}>
-            Community messaging is always on — start a thread anytime. Threads load from your real inbox.
+            Threads load from your real inbox.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <Link href="/friends" style={toolLink(theme.secondary)}>
@@ -773,6 +782,7 @@ export default function CommandCenterDrawer({
           </div>
           <MessagingCanister height={360} />
         </div>
+        )
       ) : null}
 
       {activePanel === "submissions" ? (

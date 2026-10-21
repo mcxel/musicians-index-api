@@ -27,6 +27,8 @@ export type GoLiveBootstrapErrorCode =
   | "HUD_MOUNT_FAILED"
   | "UNKNOWN";
 
+export type GoLiveMilestone = "T0" | "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "T8";
+
 export interface GoLiveBootstrapState {
   phase: GoLiveBootstrapPhase;
   roomId: string | null;
@@ -37,8 +39,10 @@ export interface GoLiveBootstrapState {
   venueReady: boolean;
   hudReady: boolean;
   startedAt: number | null;
+  milestones: Partial<Record<GoLiveMilestone, number>>;
+  markMilestone: (stage: GoLiveMilestone, at?: number) => void;
   setPhase: (phase: GoLiveBootstrapPhase) => void;
-  begin: (roomId: string) => void;
+  begin: (roomId: string, pressedAt?: number) => void;
   markSelfPreview: (ready: boolean) => void;
   markVenueReady: (ready: boolean) => void;
   markHudReady: (ready: boolean) => void;
@@ -58,20 +62,33 @@ const INITIAL = {
   venueReady: false,
   hudReady: false,
   startedAt: null as number | null,
+  milestones: {} as Partial<Record<GoLiveMilestone, number>>,
 };
 
 export const useGoLiveBootstrapStore = create<GoLiveBootstrapState>((set, get) => ({
   ...INITIAL,
 
+  markMilestone: (stage, at = Date.now()) =>
+    set((current) => current.milestones[stage] == null
+      ? { milestones: { ...current.milestones, [stage]: at } }
+      : current),
+
   setPhase: (phase) => set({ phase }),
 
-  begin: (roomId) =>
-    set({
-      ...INITIAL,
-      phase: "REQUESTING_MEDIA",
-      roomId,
-      liveSessionId: roomId,
-      startedAt: Date.now(),
+  begin: (roomId, pressedAt) =>
+    set(() => {
+      const acknowledgedAt = Date.now();
+      return {
+        ...INITIAL,
+        phase: "REQUESTING_MEDIA",
+        roomId,
+        liveSessionId: roomId,
+        startedAt: acknowledgedAt,
+        milestones: {
+          ...(pressedAt != null && pressedAt <= acknowledgedAt ? { T0: pressedAt } : {}),
+          T1: acknowledgedAt,
+        },
+      };
     }),
 
   markSelfPreview: (ready) => {

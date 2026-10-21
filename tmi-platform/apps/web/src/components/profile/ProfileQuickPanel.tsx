@@ -89,7 +89,7 @@ export default function ProfileQuickPanel({
 }: ProfileQuickPanelProps) {
   const router = useRouter();
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
-  const { userName } = useTmiSession();
+  const { userName, tier } = useTmiSession();
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Dismiss on Escape key
@@ -136,8 +136,8 @@ export default function ProfileQuickPanel({
   if (!open) return null;
 
   const displayName = userName || fanId || "Fan";
-  const tier = "FREE"; // TODO: wire real tier from session when available
   const initial = displayName.charAt(0).toUpperCase();
+  const shownTier = tier?.trim() ? tier.trim().toUpperCase() : null;
 
   const actions = [
     {
@@ -280,18 +280,20 @@ export default function ProfileQuickPanel({
             <div style={{ fontSize: 15, fontWeight: 900, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {displayName}
             </div>
-            <div style={{
-              display: "inline-block",
-              marginTop: 3,
-              fontSize: 9, fontWeight: 900,
-              letterSpacing: "0.1em",
-              color: tierColor(tier),
-              border: `1px solid ${tierColor(tier)}`,
-              borderRadius: 4,
-              padding: "2px 7px",
-            }}>
-              {tier}
-            </div>
+            {shownTier ? (
+              <div style={{
+                display: "inline-block",
+                marginTop: 3,
+                fontSize: 9, fontWeight: 900,
+                letterSpacing: "0.1em",
+                color: tierColor(shownTier),
+                border: `1px solid ${tierColor(shownTier)}`,
+                borderRadius: 4,
+                padding: "2px 7px",
+              }}>
+                {shownTier}
+              </div>
+            ) : null}
           </div>
 
           {/* Close button */}
@@ -368,7 +370,7 @@ export default function ProfileQuickPanel({
         </div>
 
         {/* ── Upgrade CTA (if FREE tier) ── */}
-        {tier === "FREE" && (
+        {shownTier === "FREE" && (
           <div style={{ padding: "0 14px 8px" }}>
             <button
               onClick={() => go("/upgrade")}

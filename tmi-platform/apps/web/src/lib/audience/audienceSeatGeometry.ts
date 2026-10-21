@@ -6,7 +6,7 @@
 export const AUDIENCE_SCENE_W = 900;
 export const AUDIENCE_SCENE_H = 480;
 export const FAN_TOTAL_SEATS = 84;
-export const PERF_TOTAL_SEATS = 114;
+export const PERF_TOTAL_SEATS = 104;
 
 export const FAN_ROWS = [
   { y: 310, seats: 15, sw: 48, sz: 9.5, lit: 0.15 },

@@ -26,6 +26,16 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
 
 const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home', '/onboarding', '/admin'];
 
+// Below RoleWelcomeBriefing (9450) and hub GPS recall/drawer (9350/9360).
+// 9999 painted this checklist over the welcome "Not now" control.
+const FIRST_RUN_Z = 9340;
+
+// The hub GPS drawer sets data-gps-rail-open="1" on <html> while it is open.
+// While the drawer is open its destination launchers must win taps over this
+// checklist card on compact screens; the card is non-destructive, so yielding
+// is safe and reversible (it restores as soon as the drawer closes).
+const GPS_RAIL_OPEN_SELECTOR = '[data-gps-rail-open="1"]';
+
 const NEXT_ACTIONS = [
   { icon: '🎭', label: 'Join a Live Room',     desc: 'Watch artists perform right now',        href: '/fan/theater'      },
   { icon: '📰', label: 'Visit the Magazine',   desc: 'News, battles, and editorials',          href: '/home/1'           },
@@ -42,8 +52,28 @@ export default function FirstRunExperienceOverlay() {
   const [steps, setSteps] = useState<FirstRunStep[]>([]);
   const [totalSteps, setTotalSteps] = useState(0);
   const [phase, setPhase] = useState<'role-select' | 'checklist'>('role-select');
+  const [compactViewport, setCompactViewport] = useState(false);
+  const [gpsRailOpen, setGpsRailOpen] = useState(false);
 
   const isAuthPath = AUTH_PATHS.some(p => pathname === p || pathname?.startsWith(p + '/'));
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 480px), (max-height: 520px)');
+    const apply = () => setCompactViewport(media.matches);
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
+
+  // Track the hub GPS drawer's open state so this checklist yields taps to it.
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyGps = () => setGpsRailOpen(root.matches(GPS_RAIL_OPEN_SELECTOR));
+    applyGps();
+    const observer = new MutationObserver(applyGps);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-gps-rail-open'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (isAuthPath) return;
@@ -137,10 +167,18 @@ export default function FirstRunExperienceOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
+            position: 'fixed', inset: 0, zIndex: FIRST_RUN_Z,
             background: 'rgba(5,5,16,0.92)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 24,
+            display: 'flex',
+            alignItems: compactViewport ? 'flex-start' : 'center',
+            justifyContent: 'center',
+            paddingTop: compactViewport ? 'max(200px, calc(env(safe-area-inset-top) + 188px))' : 24,
+            paddingRight: compactViewport ? 'max(16px, env(safe-area-inset-right))' : 24,
+            paddingBottom: compactViewport ? 'max(16px, env(safe-area-inset-bottom))' : 24,
+            paddingLeft: compactViewport ? 'max(16px, env(safe-area-inset-left))' : 24,
+            // The dimmer is not a control. On compact screens it must not
+            // take taps meant for the welcome dismiss, GPS, or account trigger.
+            pointerEvents: compactViewport ? 'none' : 'auto',
           }}
         >
           <motion.div
@@ -151,20 +189,43 @@ export default function FirstRunExperienceOverlay() {
               background: '#0d0d22',
               border: '1px solid rgba(170,45,255,0.35)',
               borderRadius: 16,
-              padding: 32,
               maxWidth: 520,
               width: '100%',
               position: 'relative',
-              maxHeight: '85vh',
-              overflowY: 'auto',
+              maxHeight: compactViewport ? 'calc(100dvh - 216px - env(safe-area-inset-bottom))' : '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              // While the hub GPS drawer is open, its destination launchers
+              // must receive taps. This checklist is non-destructive and
+              // restores itself when the drawer closes, so it yields pointer
+              // events on compact screens rather than covering the launchers.
+              pointerEvents: compactViewport && gpsRailOpen ? 'none' : 'auto',
             }}
           >
             <button
+              type="button"
               onClick={handleDismiss}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 20 }}
+              aria-label="Close"
+              style={{
+                alignSelf: 'flex-end',
+                flex: '0 0 auto',
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                minHeight: 44,
+                margin: '8px 8px 0 0',
+                background: 'none',
+                border: 'none',
+                color: '#666',
+                cursor: 'pointer',
+                fontSize: 20,
+                zIndex: 2,
+              }}
             >
               ×
             </button>
+            <div style={{ overflowY: 'auto', minHeight: 0, flex: '1 1 auto', padding: '0 32px 32px' }}>
 
             {phase === 'role-select' && (
               <>
@@ -285,13 +346,14 @@ export default function FirstRunExperienceOverlay() {
                 {steps.length > 0 && (
                   <button
                     onClick={handleDismiss}
-                    style={{ marginTop: 16, width: '100%', padding: '10px', background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}
+                    style={{ marginTop: 16, width: '100%', minHeight: 44, padding: '10px', background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}
                   >
                     I&apos;ll explore on my own
                   </button>
                 )}
               </>
             )}
+            </div>
           </motion.div>
         </motion.div>
       )}

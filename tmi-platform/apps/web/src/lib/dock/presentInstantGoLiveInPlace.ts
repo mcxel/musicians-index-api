@@ -118,6 +118,7 @@ export async function triggerCanonicalGoLive(opts?: {
   monitor?: MonitorTarget;
   roomId?: string;
   publishSession?: boolean;
+  pressedAt?: number;
 }): Promise<InstantGoLiveResult> {
   const role = (opts?.role ?? "PERFORMER").toUpperCase();
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
@@ -208,13 +209,51 @@ function bindMonitorSession(opts: {
 }
 
 /** Wire Canonical Media Bus (constitution #8) — frame layout only; does not rewrite WebRTC. */
-function bindCanonicalMediaBus(roomId: string) {
+function bindCanonicalMediaBus(roomId: string, face: "camera" | "venue" = "camera") {
   const media = useCanonicalMediaPlayerRuntime.getState();
   media.setRoomId(roomId);
-  media.assignSource("a", "SELF_CAMERA");
-  media.assignSource("b", "VENUE_VIEW");
+  if (face === "venue") {
+    // Single-monitor hub paints frame A. After a real publish, that face is the venue.
+    media.assignSource("a", "VENUE_VIEW");
+    media.assignSource("b", "SELF_CAMERA");
+    media.setPrimaryAudio("b");
+  } else {
+    media.assignSource("a", "SELF_CAMERA");
+    media.assignSource("b", "VENUE_VIEW");
+    media.setPrimaryAudio("a");
+  }
   media.setLayout("SPLIT_2");
-  media.setPrimaryAudio("a");
+}
+
+/**
+ * Rebind an already-published room onto the hub after a reload.
+ * Does not mint a session. Caller must already know User.isLive + liveRoomId.
+ */
+export function resumePublishedHubSession(roomId: string, role: "fan" | "performer" = "fan") {
+  const id = roomId.trim();
+  if (!id) return;
+  const boot = useGoLiveBootstrapStore.getState();
+  boot.setSession(id);
+  useLivePrivacyState.getState().markLivePublished(id);
+  bindMonitorSession({
+    roomId: id,
+    category: "live",
+    privacy: "public",
+    href: `/hub/${role}`,
+    monitor: DEFAULT_MONITOR_A,
+    venueEnvironment: "indoor",
+  });
+  bindCanonicalMediaBus(id, "venue");
+  useWorldScenePlanStore.getState().buildAndStore({
+    roomId: id,
+    category: "live",
+    eventType: "live-show",
+    environment: "indoor",
+    source: "session-resume",
+  });
+  boot.markVenueReady(true);
+  boot.markHudReady(true);
+  boot.ready();
 }
 
 /**
@@ -230,6 +269,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   roomId?: string;
   /** Host identity for production presentation shell (never fabricated). */
   displayName?: string | null;
+  pressedAt?: number;
   /**
    * Default true for one-tap GO LIVE (publish-first for fan discovery).
    * Pass false only for silent stage-prepare without listing.
@@ -240,35 +280,43 @@ export async function presentInstantGoLiveInPlace(opts?: {
   const publishSession = opts?.publishSession !== false;
   const privacy = opts?.privacy ?? "public";
   const boot = useGoLiveBootstrapStore.getState();
+  boot.setPhase("REQUESTING_MEDIA");
 
   // Free same-origin sockets before session probe + publish (discovery GET hits /api/live/go).
   TelemetryTransportGovernor.pause(25000);
   pauseDiscoveryPoll(25000);
 
-  // Real session truth — never assume authenticated:true
+  // Real session truth — never assume authenticated:true.
+  // An explicit publish already carries the role from the control that was
+  // pressed. Waiting here for /api/auth/session consumes the last HTTP/1.1
+  // socket and the publish POST never leaves the browser. POST /api/live/go
+  // remains the hard auth gate.
   let sessionAuthenticated = false;
   let sessionRole = (opts?.role ?? "PERFORMER").toUpperCase();
   let sessionDisplayName = opts?.displayName?.trim() || "";
-  try {
-    const sess = await fetch("/api/auth/session", {
-      credentials: "include",
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (sess.ok) {
-      const data = (await sess.json()) as {
-        authenticated?: boolean;
-        user?: { id?: string; role?: string; name?: string; displayName?: string };
-      };
-      sessionAuthenticated = Boolean(data.authenticated && data.user?.id);
-      if (data.user?.role) sessionRole = data.user.role.toUpperCase();
-      if (!sessionDisplayName) {
-        sessionDisplayName =
-          data.user?.displayName?.trim() || data.user?.name?.trim() || "";
+  const skipSessionProbe = publishSession && Boolean(opts?.role);
+  if (!skipSessionProbe) {
+    try {
+      const sess = await fetch("/api/auth/session", {
+        credentials: "include",
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (sess.ok) {
+        const data = (await sess.json()) as {
+          authenticated?: boolean;
+          user?: { id?: string; role?: string; name?: string; displayName?: string };
+        };
+        sessionAuthenticated = Boolean(data.authenticated && data.user?.id);
+        if (data.user?.role) sessionRole = data.user.role.toUpperCase();
+        if (!sessionDisplayName) {
+          sessionDisplayName =
+            data.user?.displayName?.trim() || data.user?.name?.trim() || "";
+        }
       }
+    } catch {
+      sessionAuthenticated = false;
     }
-  } catch {
-    sessionAuthenticated = false;
   }
 
   const role = (opts?.role ?? sessionRole).toUpperCase();
@@ -340,7 +388,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     `room-hub-${Date.now()}`;
 
   // Bootstrap: IDLE → REQUESTING_MEDIA (self preview ASAP when track exists)
-  boot.begin(roomId);
+  boot.begin(roomId, opts?.pressedAt);
 
   const mediaDirector = useMediaTransitionDirector.getState();
   const fabricCanary = shouldAttachRegularGoLiveFabricCanary(
@@ -359,6 +407,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   }
 
   // T+0 — getUserMedia immediately (parallel with session mint/publish)
+  boot.markMilestone("T2");
   const camPromise = requestHubCameraPreview().then((cam) => {
     if (cam.ok) {
       useGoLiveBootstrapStore.getState().markSelfPreview(true);
@@ -378,6 +427,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
       privacy: existing.privacy,
       monitor,
     });
+    bindCanonicalMediaBus(roomId, "venue");
     boot.setPhase("VENUE_LOADING");
     mediaDirector.markMediaTransitionReady();
     mediaDirector.requestStarburst();
@@ -421,13 +471,14 @@ export async function presentInstantGoLiveInPlace(opts?: {
     };
   }
 
-  boot.setPhase("SESSION_CREATED");
+  boot.setPhase("REQUESTING_MEDIA");
   boot.setSession(roomId);
 
   const result = await executeInstantGoLive({
     role,
     privacy: opts?.privacy,
     preferredExperience: opts?.preferredExperience ?? "live",
+    displayName: sessionDisplayName || undefined,
     deferMedia: true,
     publishSession,
     roomId,
@@ -503,6 +554,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     }
   }
 
+  boot.setPhase("SESSION_CREATED");
   boot.setPhase("VENUE_RESOLVING");
   const category = paramFromHref(result.href, "category", "live");
   const roomUrl = paramFromHref(result.href, "roomUrl", "") || null;
@@ -518,7 +570,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
     venueEnvironment: "indoor",
   });
 
-  bindCanonicalMediaBus(result.roomId);
+  bindCanonicalMediaBus(result.roomId, "venue");
   boot.setSession(result.roomId);
   boot.setPhase("VENUE_LOADING");
   mediaDirector.markMediaTransitionReady();
@@ -536,6 +588,7 @@ export async function presentInstantGoLiveInPlace(opts?: {
   boot.setPhase("HUD_MOUNTING");
 
   if (publishSession && result.published) {
+    boot.markMilestone("T4");
     useLivePrivacyState.getState().markLivePublished(result.roomId);
   }
 

@@ -40,6 +40,10 @@ export type AvatarLook = {
   lastPreviewAction: AvatarPreviewAction;
   certificationSnapshot: AvatarCertificationSnapshot;
   savedAt: string;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 export type LegacySavedLookV0 = {

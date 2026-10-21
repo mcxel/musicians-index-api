@@ -11,14 +11,10 @@ import type { LivingPlayerCommand, LivingPlayerStationFamily } from "@/lib/monit
 import { resolveLivingPlayerCapabilities, type LivingViewCount } from "@/lib/monitors/livingPlayerControlContract";
 
 /**
- * Canonical dual-monitor geometry from Profiles/tmi_platform_prototype_complete.html
- *
- * Locked: TWO identical 16:9 monitors stacked VERTICALLY inside one bezel.
- * Same width, same height, true aspect-ratio — never side-by-side, never flex 50/50 of parent height.
- *
- * Per-monitor split controls (prototype splitCtrl): □=1  ⬓=2  ⊞=4  ⊟⊟=8
- * Each physical monitor independently switches between 1/2/4/8 sub-panes.
- * 2 monitors × 8 panes max = 16 total mini-monitors.
+ * Canonical dual-monitor stack.
+ * Two independent monitors. Each addressable window is its own square.
+ * The bezel is a thin surround. It does not force the windows into a 16:9 interior.
+ * Operational words stay on LivingPlayerControlBed, not on the glass.
  *
  * Shared by Observatory (gold) + Fan/Performer Command Center (chrome).
  */
@@ -30,7 +26,10 @@ import {
   type FrameId,
   type LayoutMode as RuntimeLayoutMode,
 } from "@/lib/media/canonicalMediaPlayerRuntime";
+import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { useAdaptiveVoltronStore } from "@/lib/monitors/AdaptiveVoltronPresentationDirector";
+import { describeMonitor2Occupancy, useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
+import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import MonitorBezelFeedPicker from "@/components/monitors/MonitorBezelFeedPicker";
 
 // Ambient standby loop for panes/cells with no assigned source — same
@@ -42,56 +41,16 @@ const ROSE_FALLBACK_URL =
   "";
 
 function StandbyFill() {
-  if (!ROSE_FALLBACK_URL) {
-    return (
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 5,
-          background: "#030318",
-        }}
-      >
-        <span style={{ fontSize: 16, opacity: 0.2 }}>📡</span>
-        <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: "0.14em", color: "rgba(255,255,255,0.2)" }}>
-          NO MEDIA
-        </span>
-      </div>
-    );
-  }
   return (
-    <div style={{ position: "absolute", inset: 0 }}>
-      <video
-        src={ROSE_FALLBACK_URL}
-        autoPlay
-        loop
-        muted
-        playsInline
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-      />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.15), transparent 35%, rgba(0,0,0,0.5) 100%)" }} />
-      <div
-        style={{
-          position: "absolute",
-          top: 6,
-          left: 6,
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "2px 6px",
-          borderRadius: 999,
-          background: "rgba(0,0,0,0.62)",
-          border: "1px solid rgba(255,215,0,0.35)",
-        }}
-      >
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#FFD700", boxShadow: "0 0 6px #FFD700" }} />
-        <span style={{ color: "#fff", fontSize: 7, fontWeight: 900, letterSpacing: "0.1em" }}>STANDBY</span>
-      </div>
-    </div>
+    <div
+      data-admin-empty-source="1"
+      data-monitor-face="empty"
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "#030308",
+      }}
+    />
   );
 }
 
@@ -147,104 +106,19 @@ export interface CanonicalDualMonitorStackProps {
   livingOsRole?: string;
   /** Opens the shared contextual Living OS desk for the originating monitor. */
   onOpenLivingOs?: (context: { playerId: string; role: string }) => void;
-}
-
-// ─── Split control bar ────────────────────────────────────────────────────────
-
-function MonitorSplitBar({
-  label,
-  split,
-  onSplitChange,
-  accent,
-  availableModes,
-  feedFrameId,
-  showFeedPicker,
-}: {
-  label: string;
-  split: MonitorSplitMode;
-  onSplitChange: (s: MonitorSplitMode) => void;
-  accent: string;
-  availableModes?: MonitorSplitMode[];
-  feedFrameId?: FrameId;
-  showFeedPicker?: boolean;
-}) {
-  const MODES: MonitorSplitMode[] = availableModes ?? [1, 2, 3, 4, 5, 6, 7, 8];
-  return (
-    <div
-      data-monitor-bezel-controls="1"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        marginBottom: 6,
-        padding: "4px 2px",
-        flexWrap: "wrap",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 9,
-          color: "#C8C8E0",
-          fontWeight: 800,
-          letterSpacing: "0.5px",
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </span>
-      {showFeedPicker && feedFrameId ? (
-        <MonitorBezelFeedPicker frameId={feedFrameId} monitorLabel={label} accent={accent} />
-      ) : null}
-      <div
-        data-monitor-channel-selector="1"
-        style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}
-        title="Monitor channel / split — 1–8"
-      >
-        {MODES.map((n) => (
-          <button
-            key={n}
-            type="button"
-            data-channel={n}
-            aria-pressed={split === n}
-            onClick={() => onSplitChange(n)}
-            title={`${n === 1 ? "Single" : n === 2 ? "2-pane" : n === 3 ? "3-pane" : n === 4 ? "Quad 2×2" : n === 8 ? "Octo 4×2" : "Grid 4×4"}`}
-            style={{
-              padding: "5px 9px",
-              fontSize: 11,
-              fontWeight: 900,
-              border: `1px solid ${split === n ? accent : "rgba(255,255,255,0.22)"}`,
-              borderRadius: 5,
-              background:
-                split === n
-                  ? `linear-gradient(180deg, ${accent}ee 0%, ${accent}88 100%)`
-                  : "linear-gradient(180deg, #4a5568 0%, #1a1f2c 55%, #0e1218 100%)",
-              color: split === n ? "#fff" : "#A8B0C8",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              lineHeight: 1,
-              transition: "background 0.15s, border-color 0.15s, color 0.15s",
-              minWidth: 28,
-              boxShadow:
-                split === n
-                  ? `0 0 12px ${accent}66, inset 0 1px 0 rgba(255,255,255,0.35)`
-                  : "inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.4)",
-            }}
-          >
-            {SPLIT_LABELS[n]}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  /** 0 = under the first media player, 1 = under the second. */
+  underMonitorIndex?: 0 | 1 | null;
+  underMonitorSlot?: ReactNode;
+  /** Visually yield Monitor 2 to the drawer. The monitor stays mounted. */
+  yieldSecondaryMonitor?: boolean;
+  /** Restore Monitor 2 by dismissing the drawer currently occupying its slot. */
+  onRestoreMonitor2?: () => void;
 }
 
 // ─── Monitor cell grid ────────────────────────────────────────────────────────
 
 import useViewportMode from "@/hooks/useViewportMode";
+import { canonicalMonitorFromBezelIndex } from "@/lib/monitors/canonicalMonitorIdentity";
 import { resolveMonitorLayoutPreset } from "@/lib/monitors/MonitorLayoutDirector";
 
 function MonitorCellGrid({
@@ -252,53 +126,75 @@ function MonitorCellGrid({
   children,
   cells,
   animKey,
+  monitorIndex = 0,
+  targetIndex = 0,
+  onSelectTarget,
+  accent = "#00FFFF",
 }: {
   split: MonitorSplitMode;
   children: ReactNode;
   cells?: ReactNode[];
   animKey?: number;
+  monitorIndex?: number;
+  targetIndex?: number;
+  onSelectTarget?: (index: number) => void;
+  accent?: string;
 }) {
   const { isPhone, isTablet } = useViewportMode();
-  if (split === 1) return <>{children}</>;
-
   const preset = resolveMonitorLayoutPreset(split, isPhone, isTablet);
+
+  // Continuous mounting: cell 0 stays mounted across all split transitions (1..8..1)
   const filled: ReactNode[] = [];
   for (let i = 0; i < split; i++) {
-    filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
+    if (i === 0) {
+      filled.push(cells?.[0] ?? children);
+    } else {
+      filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
+    }
   }
 
   return (
     <div
-      key={animKey}
+      data-adaptive-cell-grid={split}
+      data-anim-sequence={animKey}
       style={{
-        position: "absolute",
-        inset: 0,
         display: "grid",
         gridTemplateColumns: preset.gridTemplateColumns,
         gridTemplateRows: preset.gridTemplateRows,
         gap: preset.gap,
-        background: "#0a0a1a",
-        animation: "monitor-cell-in 0.38s cubic-bezier(0.22,1,0.36,1)",
+        background: "transparent",
         width: "100%",
-        height: "100%",
         boxSizing: "border-box",
-        overflow: "hidden",
       }}
     >
-      {filled.map((cell, i) => (
-        <div
-          key={i}
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            background: "#030318",
-            border: "1px solid #1A1A3A",
-            animation: `monitor-cell-pop 0.32s cubic-bezier(0.22,1,0.36,1) ${i * 28}ms both`,
-          }}
-        >
-          {cell}
-        </div>
-      ))}
+      {filled.map((cell, i) => {
+        const isTarget = targetIndex === i;
+        return (
+          <div
+            key={i}
+            data-monitor-cell-wrapper={`${monitorIndex}-${i}`}
+            data-square-monitor="1"
+            data-target-active={isTarget ? "true" : "false"}
+            onClick={() => onSelectTarget?.(i)}
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              background: "#030308",
+              aspectRatio: "1 / 1",
+              width: "100%",
+              minWidth: 0,
+              borderRadius: 2,
+              border: isTarget ? `1px solid ${accent}` : "1px solid #1A1A3A",
+              boxShadow: isTarget ? `0 0 8px ${accent}66` : "none",
+              cursor: split > 1 ? "pointer" : "default",
+            }}
+          >
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+              {cell}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -310,12 +206,12 @@ const BEZEL: Record<
   gold: {
     outer: {
       background: "#B8860B",
-      padding: 10,
-      borderRadius: 10,
-      borderTop: "3px solid #FFD700",
-      borderLeft: "2px solid #DAA520",
-      borderRight: "2px solid #8B6914",
-      borderBottom: "3px solid #6B5000",
+      padding: 3,
+      borderRadius: 6,
+      borderTop: "1px solid #FFD700",
+      borderLeft: "1px solid #DAA520",
+      borderRight: "1px solid #8B6914",
+      borderBottom: "1px solid #6B5000",
     },
     label: {
       fontSize: 9,
@@ -330,12 +226,12 @@ const BEZEL: Record<
   chrome: {
     outer: {
       background: "#7A7A7A",
-      padding: 10,
-      borderRadius: 10,
-      borderTop: "3px solid #D0D0D0",
-      borderLeft: "2px solid #A0A0A0",
-      borderRight: "2px solid #505050",
-      borderBottom: "3px solid #3A3A3A",
+      padding: 3,
+      borderRadius: 6,
+      borderTop: "1px solid #D0D0D0",
+      borderLeft: "1px solid #A0A0A0",
+      borderRight: "1px solid #505050",
+      borderBottom: "1px solid #3A3A3A",
     },
     label: {
       fontSize: 9,
@@ -349,7 +245,7 @@ const BEZEL: Record<
   },
 };
 
-/** Single 16:9 glass — width 100%, aspect-ratio locks height. */
+/** One square glass. Width follows the parent. Height follows the square. */
 export function CanonicalMonitorFrame({
   label,
   children,
@@ -383,14 +279,15 @@ export function CanonicalMonitorFrame({
         </div>
       ) : null}
       <div
-        data-monitor-frame="16x9"
+        data-monitor-frame="1/1"
+        data-square-monitor="1"
         style={{
           background: "#020210",
           border: "1px solid #1A1A3A",
-          borderRadius: 4,
+          borderRadius: 2,
           overflow: "hidden",
           position: "relative",
-          aspectRatio: "16 / 9",
+          aspectRatio: "1 / 1",
           width: "100%",
           flex: "0 0 auto",
           minHeight: 0,
@@ -590,16 +487,31 @@ export default function CanonicalDualMonitorStack({
   showFeedPicker,
   livingOsRole = "FAN",
   onOpenLivingOs,
+  underMonitorIndex = null,
+  underMonitorSlot = null,
+  yieldSecondaryMonitor = false,
+  onRestoreMonitor2,
 }: CanonicalDualMonitorStackProps) {
+  const drawerFrameHeight = useMobileGpsMonitorLayoutStore((s) => s.drawerFrameHeight);
+  const drawerFullscreen = useMobileGpsMonitorLayoutStore((s) => s.drawerFullscreen);
   const livingCaps = resolveLivingPlayerCapabilities(livingOsRole);
   const [stationIndex, setStationIndex] = useState(0);
   const [activeStation, setActiveStation] = useState<LivingPlayerStationFamily | undefined>(
     livingCaps.stations[0],
   );
   const [roomIndex, setRoomIndex] = useState(0);
+  const [targetPanels, setTargetPanels] = useState<[number, number]>([0, 0]);
+
+  const handleSelectPanel = (monIdx: 0 | 1, pIdx: number) => {
+    setTargetPanels((prev) => (monIdx === 0 ? [pIdx, prev[1]] : [prev[0], pIdx]));
+  };
   const [livingStatus, setLivingStatus] = useState<string>("");
 
-  const handleLivingCommand = (command: LivingPlayerCommand, destinationId: string) => {
+  const handleLivingCommand = (command: LivingPlayerCommand, destinationId: string, targetIndex?: number) => {
+    const monIndex = destinationId.includes("b") || destinationId.endsWith("-1") ? 1 : 0;
+    const targetP = typeof targetIndex === "number" ? targetIndex : targetPanels[monIndex];
+    const targetDesc = `Panel ${targetP + 1}`;
+
     if (command === "STATION") {
       const result = resolveStationCommand(livingCaps.stations, stationIndex);
       setStationIndex(result.nextIndex);
@@ -621,23 +533,77 @@ export default function CanonicalDualMonitorStack({
       return;
     }
     if (command === "SOURCE") {
-      const frameId = destinationId.includes("b") || destinationId.endsWith("-1") ? "b" : "a";
+      const frameId = monIndex === 1 ? "b" : "a";
       const current = frames[frameId as "a" | "b"]?.source ?? "SELF_CAMERA";
       const result = resolveSourceCommand(current, frameId as "a" | "b");
       if (enableMediaRuntime) assignSource(frameId as "a" | "b", result.nextSource);
-      setLivingStatus(result.detail);
+      setLivingStatus(`${result.detail} (P${targetP + 1})`);
       return;
     }
     if (command === "MIX") {
-      const view = (typeof splits[0] === "number" ? splits[0] : 1) as import("@/lib/monitors/livingPlayerControlContract").LivingViewCount;
+      const view = (typeof splits[monIndex] === "number" ? splits[monIndex] : 1) as import("@/lib/monitors/livingPlayerControlContract").LivingViewCount;
       const result = resolveMixCommand(view);
       if (enableMediaRuntime && result.layout) setLayout(result.layout);
-      setLivingStatus(result.detail);
+      setLivingStatus(`${result.detail} (P${targetP + 1})`);
       return;
     }
     if (command === "FULL") {
-      if (enableMediaRuntime) setFullscreen("a");
-      setLivingStatus("FULL → frame a");
+      if (typeof document !== "undefined") {
+        const targetEl = document.querySelector(`[data-monitor-cell-wrapper="${monIndex}-${targetP}"]`) as HTMLElement;
+        if (targetEl) {
+          if (document.fullscreenElement === targetEl) {
+            void document.exitFullscreen().catch(() => undefined);
+          } else {
+            void targetEl.requestFullscreen().catch(() => undefined);
+          }
+          setLivingStatus(`FULL → Panel ${targetP + 1}`);
+          return;
+        }
+      }
+      if (enableMediaRuntime) setFullscreen(monIndex === 0 ? "a" : "b");
+      setLivingStatus(`FULL → Monitor ${monIndex === 0 ? "A" : "B"} Panel ${targetP + 1}`);
+      return;
+    }
+    if (command === "PIN") {
+      setLivingStatus(`PIN → Panel ${targetP + 1} locked`);
+      return;
+    }
+    if (command === "INFO") {
+      setLivingStatus(`INFO → Panel ${targetP + 1} metrics active`);
+      return;
+    }
+    if (command === "SWITCH" || (command as string) === "SWAP") {
+      swapFrames("a", "b");
+      setLivingStatus("SWAP → Monitors A ⇄ B swapped");
+      return;
+    }
+    if (command === "INSPECT") {
+      setLivingStatus(`INSPECT → ${targetDesc} telemetry active`);
+      return;
+    }
+    if (command === "DETACH") {
+      setLivingStatus(`DETACH → ${targetDesc} detached`);
+      return;
+    }
+    if (command === "RESET") {
+      const frameId = monIndex === 1 ? "b" : "a";
+      const current = frames[frameId as "a" | "b"]?.source ?? null;
+      const occupancy = describeMonitor2Occupancy({
+        sourceB: useWorkspacePresentationStore.getState().sourceB,
+        frameBSource: monIndex === 1 ? current : null,
+        panels: useAdaptiveVoltronStore.getState().panels,
+      });
+      if (monIndex === 1 && (occupancy.protectedSession || current === "VENUE_VIEW" || current === "VIDEO_PLAYBACK" || current === "MONITOR_FEED")) {
+        if (occupancy.protectedSession) {
+          setLivingStatus("CLEAR blocked — Monitor 2 session stays mounted");
+          return;
+        }
+        if (enableMediaRuntime) assignSource("b", "AUDIENCE_VIEW");
+        setLivingStatus("CLEAR → Monitor 2 media released");
+        return;
+      }
+      setLivingStatus(`CLEAR → ${targetDesc} cleared`);
+      return;
     }
   };
 
@@ -656,15 +622,62 @@ export default function CanonicalDualMonitorStack({
     returnFromFocus,
   } = useAdaptiveVoltronStore();
 
+  const m2ExplicitlyActivated = useMobileGpsMonitorLayoutStore((s) => s.m2ExplicitlyActivated);
+  const setM2ExplicitlyActivated = useMobileGpsMonitorLayoutStore((s) => s.setM2ExplicitlyActivated);
+
+  const requestMonitor2 = (activated: boolean) => {
+    if (activated) {
+      setM2ExplicitlyActivated(true);
+      setMonitorMode("DUAL");
+      if (yieldSecondaryMonitor && underMonitorSlot) onRestoreMonitor2?.();
+      return;
+    }
+    const occupancy = describeMonitor2Occupancy({
+      sourceB: useWorkspacePresentationStore.getState().sourceB,
+      frameBSource: useCanonicalMediaPlayerRuntime.getState().frames.b.source,
+      panels: useAdaptiveVoltronStore.getState().panels,
+    });
+    const store = useWorkspacePresentationStore.getState();
+    const hasDrawer = Boolean(store.drawerWorkspace) || store.drawerWorkspaceStack.length > 0;
+    const dismissDrawer = () => {
+      if (!hasDrawer) return;
+      onRestoreMonitor2?.();
+      useWorkspacePresentationStore.setState({
+        drawerWorkspace: null,
+        drawerWorkspaceStack: [],
+        isDrawerExpanded: false,
+        activeWorkspace: null,
+      });
+    };
+    if (occupancy.protectedSession) {
+      dismissDrawer();
+      return;
+    }
+    if (occupancy.active && !hasDrawer) return;
+    setM2ExplicitlyActivated(false);
+    setMonitorMode("SINGLE");
+    dismissDrawer();
+  };
+
   // ── Canonical media player runtime (opt-in) ──────────────────────────────
   const { assignSource, swapFrames, setLayout, setFullscreen, reset, frames, layout, fullscreenFrame } =
     useCanonicalMediaPlayerRuntime();
 
   useEffect(() => {
     if (!enableMediaRuntime) return;
-    assignSource("a", "SELF_CAMERA");
-    assignSource("b", "AUDIENCE_VIEW");
+    const media = useCanonicalMediaPlayerRuntime.getState();
+    const publishedId = useLivePrivacyState.getState().publishedRoomId;
+    const venueAlreadyBound =
+      Boolean(publishedId) &&
+      media.roomId === publishedId &&
+      media.frames.a?.source === "VENUE_VIEW";
+    if (!venueAlreadyBound) {
+      assignSource("a", "SELF_CAMERA");
+      assignSource("b", "AUDIENCE_VIEW");
+    }
     return () => {
+      // Published live must survive HUD chrome remount. Ending live is explicit.
+      if (useLivePrivacyState.getState().isLivePublished) return;
       reset();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -707,6 +720,11 @@ export default function CanonicalDualMonitorStack({
       next[index] = next[index] + 1;
       return next;
     });
+    setTargetPanels((prev) => [
+      index === 0 && prev[0] >= mode ? mode - 1 : prev[0],
+      index === 1 && prev[1] >= mode ? mode - 1 : prev[1],
+    ]);
+
   };
 
   const panes = monitors.slice(0, 2);
@@ -740,7 +758,11 @@ export default function CanonicalDualMonitorStack({
 
     const recompute = () => {
       const rect = el.getBoundingClientRect();
-      if (rect.width <= 0) return;
+      // Measure the parent. This element's own width is what the budget writes,
+      // so comparing against rect.width clears the cap on the next observation
+      // and applies it again — a width loop while the stack top is on screen.
+      const naturalWidth = el.parentElement?.clientWidth ?? rect.width;
+      if (naturalWidth <= 0) return;
 
       // Chrome under the stack this component does not own (bottom drawer
       // affordance, monitor controls / command bed strip). Conservative
@@ -751,29 +773,32 @@ export default function CanonicalDualMonitorStack({
 
       const visibleCount = panes.reduce((n, _pane, i) => {
         const isParked = i === 0 ? frameAPark : frameBPark;
-        const isHiddenByRuntime2 = runtimeLayoutSingle && i === 1;
+        const activeMon = (typeof document !== "undefined" ? document.documentElement.getAttribute("data-focused-monitor") : null) || "A";
+        const yieldIdx = activeMon === "B" ? 0 : 1;
+        const isHiddenByRuntime2 = (runtimeLayoutSingle && i === 1) || (yieldSecondaryMonitor && i === yieldIdx);
         return isParked || isHiddenByRuntime2 ? n : n + 1;
       }, 0) || 1;
 
       const availableHeight = window.innerHeight - rect.top - BOTTOM_CHROME_RESERVE_PX;
       if (availableHeight <= 0) {
-        setHeightBudgetMaxWidth(null);
+        setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
         return;
       }
 
       const totalGap = (visibleCount - 1) * GAP_PX;
       const maxWidthFromHeight = ((availableHeight - totalGap) * 16) / (9 * visibleCount);
 
-      if (maxWidthFromHeight > 0 && maxWidthFromHeight < rect.width) {
-        setHeightBudgetMaxWidth(Math.floor(maxWidthFromHeight));
+      if (maxWidthFromHeight > 0 && maxWidthFromHeight < naturalWidth - 1) {
+        const next = Math.floor(maxWidthFromHeight);
+        setHeightBudgetMaxWidth((prev) => (prev === next ? prev : next));
       } else {
-        setHeightBudgetMaxWidth(null);
+        setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
       }
     };
 
     recompute();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recompute) : null;
-    ro?.observe(el);
+    ro?.observe(el.parentElement ?? el);
     window.addEventListener("resize", recompute);
     window.addEventListener("orientationchange", recompute);
     return () => {
@@ -782,7 +807,7 @@ export default function CanonicalDualMonitorStack({
       window.removeEventListener("orientationchange", recompute);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, variant]);
+  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, yieldSecondaryMonitor, variant]);
 
   const heightBudgetStackStyle: CSSProperties = heightBudgetMaxWidth
     ? { width: `${heightBudgetMaxWidth}px`, maxWidth: "100%", margin: "0 auto" }
@@ -929,7 +954,7 @@ export default function CanonicalDualMonitorStack({
             type="button"
             data-monitor-mode-single
             aria-pressed={monitorMode === "SINGLE"}
-            onClick={() => setMonitorMode("SINGLE")}
+            onClick={() => requestMonitor2(false)}
             style={{
               padding: "3px 8px",
               fontSize: 9,
@@ -947,7 +972,7 @@ export default function CanonicalDualMonitorStack({
             type="button"
             data-monitor-mode-dual
             aria-pressed={monitorMode === "DUAL"}
-            onClick={() => setMonitorMode("DUAL")}
+            onClick={() => requestMonitor2(true)}
             style={{
               padding: "3px 8px",
               fontSize: 9,
@@ -969,6 +994,48 @@ export default function CanonicalDualMonitorStack({
         )}
       </div>
 
+      {isPhone ? (
+        <div data-testid="hub-m2-activation" data-m2-row="clear-of-rail" style={{ display: "flex", width: "100%", justifyContent: "flex-end", gap: 6, marginBottom: 6 }}>
+          <button
+            type="button"
+            data-testid="hub-monitor-2-activate"
+            aria-pressed={m2ExplicitlyActivated}
+            onClick={() => requestMonitor2(true)}
+            style={{
+              minHeight: 36,
+              padding: "0 12px",
+              borderRadius: 6,
+              border: `1px solid ${m2ExplicitlyActivated ? accent : "#1E1E45"}`,
+              background: m2ExplicitlyActivated ? `${accent}33` : "#0D0D24",
+              color: m2ExplicitlyActivated ? accent : "#7878AA",
+              fontSize: 11,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            M2
+          </button>
+          <button
+            type="button"
+            data-testid="hub-monitor-2-deactivate"
+            onClick={() => requestMonitor2(false)}
+            style={{
+              minHeight: 36,
+              padding: "0 12px",
+              borderRadius: 6,
+              border: "1px solid #1E1E45",
+              background: "#0D0D24",
+              color: "#7878AA",
+              fontSize: 11,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            CLOSE M2
+          </button>
+        </div>
+      ) : null}
+
       {toolbar}
       {livingStatus ? (
         <div data-living-os-binding-status="1" style={{ marginBottom: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "rgba(0,255,255,0.75)", fontFamily: "inherit" }}>
@@ -983,14 +1050,22 @@ export default function CanonicalDualMonitorStack({
           ) : null}
           {panes.map((pane, index) => {
             const split = splits[index as 0 | 1];
+            const bezelMonitorId = canonicalMonitorFromBezelIndex(index === 0 ? 0 : 1);
             const monLabel = pane.label ?? `MONITOR ${index + 1}`;
             // Park state from canonical runtime (CSS-only, DOM stays mounted)
             const isParked = (index === 0 ? frameAPark : frameBPark);
-            const isHiddenByRuntime = runtimeLayoutSingle && index === 1;
+            const activeMon = (typeof document !== "undefined" ? document.documentElement.getAttribute("data-focused-monitor") : null) || "A";
+            const targetFoldIndex = activeMon === "B" ? 0 : 1;
+            const yieldedToDrawer = yieldSecondaryMonitor && index === targetFoldIndex;
+            const isHiddenByRuntime = (runtimeLayoutSingle && index === 1) || yieldedToDrawer;
+            const preset = resolveMonitorLayoutPreset(split, isPhone, viewport.isTablet);
             return (
+              <div key={pane.id} style={{ display: "contents" }}>
               <div
-                key={pane.id}
                 onClick={() => { if (typeof document !== "undefined") document.documentElement.setAttribute("data-focused-monitor", index === 0 ? "A" : "B"); }}
+                data-canonical-monitor={index === 0 ? "a" : "b"}
+                data-canonical-monitor-id={bezelMonitorId}
+                data-adaptive-bezel={split > 1 ? "split" : "single"}
                 style={{
                   ...bezel.outer,
                   transition: "max-height 220ms ease, opacity 220ms ease",
@@ -1001,45 +1076,41 @@ export default function CanonicalDualMonitorStack({
                 }}
               >
                 {showSplitControls && !isHiddenByRuntime && (
-                <>
-                <div data-living-os-mounted="1" style={{ marginBottom: 4 }}>
-                  <LivingPlayerControlBed
-                    destinationId={pane.id}
-                    capabilities={livingCaps}
-                    viewCount={(typeof splits[index as 0 | 1] === "number" ? splits[index as 0 | 1] : 1) as LivingViewCount}
-                    onViewCountChange={(n) => setSplit(index as 0 | 1, n)}
-                    onCommand={(cmd) => handleLivingCommand(cmd, pane.id)}
-                    onOpenDesk={() => onOpenLivingOs?.({ playerId: pane.id, role: livingCaps.role })}
-                    accent={accent}
-                  />
-                </div>
-                <MonitorSplitBar
-                    label={monLabel}
-                    split={split}
-                    onSplitChange={(s) => setSplit(index as 0 | 1, s)}
-                    accent={accent}
-                    availableModes={effectiveModes}
-                    feedFrameId={index === 0 ? "a" : "b"}
-                    showFeedPicker={feedPickerEnabled}
-                  />
-                </>
+                  <div data-living-os-mounted="1" style={{ marginBottom: 4 }}>
+                    <LivingPlayerControlBed
+                      destinationId={pane.id}
+                      capabilities={livingCaps}
+                      viewCount={(typeof splits[index as 0 | 1] === "number" ? splits[index as 0 | 1] : 1) as LivingViewCount}
+                      onViewCountChange={(n) => setSplit(index as 0 | 1, n)}
+                      onCommand={(cmd, tgt) => handleLivingCommand(cmd, pane.id, tgt)}
+                      onOpenDesk={() => onOpenLivingOs?.({ playerId: pane.id, role: livingCaps.role })}
+                      accent={accent}
+                      monLabel={monLabel}
+                      feedPicker={feedPickerEnabled ? (
+                        <MonitorBezelFeedPicker
+                          frameId={index === 0 ? "a" : "b"}
+                          monitorLabel={monLabel}
+                          accent={accent}
+                        />
+                      ) : undefined}
+                      targetPanelIndex={targetPanels[index as 0 | 1]}
+                      onSelectTargetPanel={(pIdx) => setTargetPanels(prev => index === 0 ? [pIdx, prev[1]] : [prev[0], pIdx])}
+                      availableModes={effectiveModes as unknown as LivingViewCount[]}
+                    />
+                  </div>
                 )}
                 <div
-                  data-monitor-frame="16x9"
+                  data-monitor-frame="squares"
+                  data-monitor-columns={preset.columns}
+                  data-monitor-rows={preset.rows}
                   style={{
-                    background: "#020210",
-                    border: "1px solid #1A1A3A",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    position: "relative",
-                    aspectRatio: "16 / 9",
+                    background: "transparent",
                     width: "100%",
-                    flex: "0 0 auto",
-                    minHeight: 0,
+                    minWidth: 0,
                   }}
                 >
-                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                    {index === 0 && monitorMode === "SINGLE" ? (
+                  <div>
+                    {index === 0 && monitorMode === "SINGLE" && split === 1 ? (
                       <VoltronSingleMonitorOverlay
                         primaryContent={pane.children}
                         secondaryContent={panes[1]?.children}
@@ -1051,30 +1122,81 @@ export default function CanonicalDualMonitorStack({
                         accent={accent}
                       />
                     ) : (
-                      <MonitorCellGrid split={split} cells={pane.cells} animKey={animKeys[index as 0 | 1]}>
+                      <MonitorCellGrid
+                        split={split}
+                        cells={pane.cells}
+                        animKey={animKeys[index as 0 | 1]}
+                        monitorIndex={index}
+                        targetIndex={targetPanels[index as 0 | 1]}
+                        onSelectTarget={(pIdx) => handleSelectPanel(index as 0 | 1, pIdx)}
+                        accent={accent}
+                      >
                         {pane.children}
                       </MonitorCellGrid>
                     )}
                   </div>
                 </div>
               </div>
+              {underMonitorSlot && underMonitorIndex === index ? (
+                <div
+                  data-testid="hub-drawer-slot"
+                  data-drawer-frame="shared"
+                  data-drawer-placement={yieldSecondaryMonitor ? "monitor-2-slot" : "below-monitor-2"}
+                  data-drawer-under={yieldSecondaryMonitor ? "monitor-2-slot" : "below-monitor-2"}
+                  data-drawer-fullscreen={drawerFullscreen ? "1" : "0"}
+                  style={drawerFullscreen ? {
+                    position: "fixed",
+                    left: 8,
+                    right: 8,
+                    top: 64,
+                    bottom: 12,
+                    zIndex: 60,
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                  } : {
+                    width: "100%",
+                    height: drawerFrameHeight,
+                    minHeight: drawerFrameHeight,
+                    maxHeight: drawerFrameHeight,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  {underMonitorSlot}
+                </div>
+              ) : null}
+              </div>
             );
           })}
         </div>
       ) : (
         /* Gold: unified single bezel for the whole Overseer unit */
-        <div style={bezel.outer}>
+        <div
+          data-adaptive-bezel={(splits[0] > 1 || splits[1] > 1) ? "split" : "single"}
+          style={{
+            ...bezel.outer,
+          }}
+        >
           {seriesLabel ? <div style={bezel.label}>{seriesLabel}</div> : null}
           <div ref={stackWrapperRef} style={{ display: "flex", flexDirection: "column", gap: 8, ...heightBudgetStackStyle }}>
             {panes.map((pane, index) => {
               const split = splits[index as 0 | 1];
+              const bezelMonitorId = canonicalMonitorFromBezelIndex(index === 0 ? 0 : 1);
               const monLabel = pane.label ?? `MONITOR ${index + 1}`;
               const isParked = (index === 0 ? frameAPark : frameBPark);
-              const isHiddenByRuntime = runtimeLayoutSingle && index === 1;
+              const activeMon = (typeof document !== "undefined" ? document.documentElement.getAttribute("data-focused-monitor") : null) || "A";
+              const targetFoldIndex = activeMon === "B" ? 0 : 1;
+              const yieldedToDrawer = yieldSecondaryMonitor && index === targetFoldIndex;
+              const isHiddenByRuntime = (runtimeLayoutSingle && index === 1) || yieldedToDrawer;
+              const preset = resolveMonitorLayoutPreset(split, isPhone, viewport.isTablet);
               return (
                 <div
                   key={pane.id}
                   data-canonical-monitor
+                  data-canonical-monitor-id={bezelMonitorId}
                   style={{
                     width: "100%",
                     transition: "max-height 220ms ease, opacity 220ms ease",
@@ -1085,45 +1207,41 @@ export default function CanonicalDualMonitorStack({
                   }}
                 >
                   {showSplitControls && !isHiddenByRuntime && (
-                <>
-                <div data-living-os-mounted="1" style={{ marginBottom: 4 }}>
-                  <LivingPlayerControlBed
-                    destinationId={pane.id}
-                    capabilities={livingCaps}
-                    viewCount={(typeof splits[index as 0 | 1] === "number" ? splits[index as 0 | 1] : 1) as LivingViewCount}
-                    onViewCountChange={(n) => setSplit(index as 0 | 1, n)}
-                    onCommand={(cmd) => handleLivingCommand(cmd, pane.id)}
-                    onOpenDesk={() => onOpenLivingOs?.({ playerId: pane.id, role: livingCaps.role })}
-                    accent={accent}
-                  />
-                </div>
-                <MonitorSplitBar
-                      label={monLabel}
-                      split={split}
-                      onSplitChange={(s) => setSplit(index as 0 | 1, s)}
-                      accent={accent}
-                      availableModes={effectiveModes}
-                      feedFrameId={index === 0 ? "a" : "b"}
-                      showFeedPicker={feedPickerEnabled}
-                    />
-                </>
+                    <div data-living-os-mounted="1" style={{ marginBottom: 4 }}>
+                      <LivingPlayerControlBed
+                        destinationId={pane.id}
+                        capabilities={livingCaps}
+                        viewCount={(typeof splits[index as 0 | 1] === "number" ? splits[index as 0 | 1] : 1) as LivingViewCount}
+                        onViewCountChange={(n) => setSplit(index as 0 | 1, n)}
+                        onCommand={(cmd, tgt) => handleLivingCommand(cmd, pane.id, tgt)}
+                        onOpenDesk={() => onOpenLivingOs?.({ playerId: pane.id, role: livingCaps.role })}
+                        accent={accent}
+                        monLabel={monLabel}
+                        feedPicker={feedPickerEnabled ? (
+                          <MonitorBezelFeedPicker
+                            frameId={index === 0 ? "a" : "b"}
+                            monitorLabel={monLabel}
+                            accent={accent}
+                          />
+                        ) : undefined}
+                        targetPanelIndex={targetPanels[index as 0 | 1]}
+                        onSelectTargetPanel={(pIdx) => setTargetPanels(prev => index === 0 ? [pIdx, prev[1]] : [prev[0], pIdx])}
+                        availableModes={effectiveModes as unknown as LivingViewCount[]}
+                      />
+                    </div>
                   )}
                   <div
-                    data-monitor-frame="16x9"
+                    data-monitor-frame="squares"
+                    data-monitor-columns={preset.columns}
+                    data-monitor-rows={preset.rows}
                     style={{
-                      background: "#020210",
-                      border: "1px solid #1A1A3A",
-                      borderRadius: 4,
-                      overflow: "hidden",
-                      position: "relative",
-                      aspectRatio: "16 / 9",
+                      background: "transparent",
                       width: "100%",
-                      flex: "0 0 auto",
-                      minHeight: 0,
+                      minWidth: 0,
                     }}
                   >
-                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                      {index === 0 && monitorMode === "SINGLE" ? (
+                    <div>
+                      {index === 0 && monitorMode === "SINGLE" && split === 1 ? (
                         <VoltronSingleMonitorOverlay
                           primaryContent={pane.children}
                           secondaryContent={panes[1]?.children}
@@ -1135,7 +1253,15 @@ export default function CanonicalDualMonitorStack({
                           accent={accent}
                         />
                       ) : (
-                        <MonitorCellGrid split={split} cells={pane.cells} animKey={animKeys[index as 0 | 1]}>
+                        <MonitorCellGrid
+                          split={split}
+                          cells={pane.cells}
+                          animKey={animKeys[index as 0 | 1]}
+                          monitorIndex={index}
+                          targetIndex={targetPanels[index as 0 | 1]}
+                          onSelectTarget={(pIdx) => setTargetPanels(prev => index === 0 ? [pIdx, prev[1]] : [prev[0], pIdx])}
+                          accent={accent}
+                        >
                           {pane.children}
                         </MonitorCellGrid>
                       )}

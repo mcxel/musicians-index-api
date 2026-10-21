@@ -14,6 +14,7 @@ import {
   CREATOR_PRODUCT_TYPE_LABELS,
   formatCreatorProductPrice,
   listCreatorProducts,
+  listPublishedMarketplaceProducts,
   type CreatorProduct,
 } from "@/lib/commerce/CreatorProductRegistry";
 import {
@@ -30,10 +31,13 @@ import {
 
 export interface MarketplaceDrawerPanelProps {
   accentColor?: string;
+  /** global = TMI market across shops. performer = the active performer's products. */
+  scope?: "global" | "performer";
 }
 
 export default function MarketplaceDrawerPanel({
   accentColor = "#FF6B35",
+  scope = "performer",
 }: MarketplaceDrawerPanelProps) {
   const { activePerformer, activePerformerId } = useActivePerformer();
   const performerId = activePerformerId;
@@ -48,6 +52,12 @@ export default function MarketplaceDrawerPanel({
   const [listenUrl, setListenUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (scope === "global") {
+      setProducts(listPublishedMarketplaceProducts());
+      setBuyUrl(null);
+      setListenUrl(null);
+      return;
+    }
     if (!performerId) {
       setProducts([]);
       setBuyUrl(null);
@@ -57,7 +67,29 @@ export default function MarketplaceDrawerPanel({
     setProducts(listCreatorProducts(performerId));
     setBuyUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(performerId)));
     setListenUrl(resolvePrimaryListenProfileUrl(performerId));
-  }, [performerId]);
+  }, [performerId, scope]);
+
+  if (scope === "global") {
+    return (
+      <div data-testid="marketplace-drawer" data-marketplace-scope="global" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <Header accent={accentColor} />
+        {products.length === 0 ? (
+          <Empty
+            accent={accentColor}
+            title="MARKETPLACE IS EMPTY"
+            body="No published products are in the TMI market yet."
+          />
+        ) : (
+          products.map((p) => (
+            <div key={p.id} data-product-id={p.id} data-product-owner-id={p.ownerPerformerId} style={{ fontSize: 12, color: "#fff" }}>
+              {p.title}
+              {formatCreatorProductPrice(p) ? ` · ${formatCreatorProductPrice(p)}` : ""}
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   if (!performerId) {
     return (

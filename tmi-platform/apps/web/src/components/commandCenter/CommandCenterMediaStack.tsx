@@ -13,16 +13,16 @@ import { useWorkspacePresentationStore } from "@/lib/workspace/universal/Workspa
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import { resolveMinMonitorCount } from "@/lib/monitors/RoleMediaWorkspaceAuthority";
-import IdleMonitorFallbackRuntime from "@/components/admin/overseer/IdleMonitorFallbackRuntime";
 import InPlaceGoLiveMonitorLayer from "@/components/live/InPlaceGoLiveMonitorLayer";
 import HubMonitorCameraPlayer from "@/components/live/HubMonitorCameraPlayer";
 import HubMonitorRemoteFeedPlayer from "@/components/live/HubMonitorRemoteFeedPlayer";
 import HubMonitorVenuePlayer from "@/components/live/HubMonitorVenuePlayer";
 import LiveDistributionBezel from "@/components/broadcast/LiveDistributionBezel";
 import PerformanceRailControls from "@/components/commandCenter/PerformanceRailControls";
+import HubPromotePanel from "@/components/promo/HubPromotePanel";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { DEFAULT_MONITOR_A, DEFAULT_MONITOR_B } from "@/lib/personal-media";
@@ -45,6 +45,8 @@ import {
   HOUSE_SPONSORS,
   type HouseSponsor,
 } from "@/lib/commerce/HouseSponsorCanon";
+import { monitorAnchorZoneToCss, type MonitorAnchorZoneId } from "@/lib/presentation/MonitorAnchorZones";
+import type { PromoPlacementPreset, PromoVisualSize, PromoVisualTarget } from "@/lib/promo/promotePresentationController";
 import {
   useGoLiveBootstrapStore,
   type GoLiveBootstrapPhase,
@@ -63,6 +65,10 @@ import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
 import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
+import TmiIdentitySurface from "@/components/commandCenter/TmiIdentitySurface";
+import ServerConnectionStatus from "@/components/shell/ServerConnectionStatus";
+import { isGpsDrawerVisible, useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
+import { hubGpsButtonStyle } from "@/components/commandCenter/HubMobileGpsNavDrawer";
 
 function lobbyRoomToUniversal(room: LobbyRoom): UniversalRoom {
   return {
@@ -189,23 +195,37 @@ export { HOUSE_SPONSORS };
 interface ActiveSponsorOverlay {
   sponsor: HouseSponsor;
   pushedAt: number;
+  anchor: MonitorAnchorZoneId;
+  size: PromoVisualSize;
+  target: PromoVisualTarget;
+  hidden: boolean;
 }
 
 /** Broadcast ad bumper — large lower-third with spin + scale entrance (Downy-style). */
 function SponsorOverlayBanner({ overlay }: { overlay: ActiveSponsorOverlay }) {
+  const reduce = useReducedMotion();
+  if (overlay.hidden) return null;
+  const zone = monitorAnchorZoneToCss(overlay.anchor);
+  const sized =
+    overlay.size === "FILL"
+      ? { ...zone, width: "88%", height: "32%" }
+      : overlay.size === "FIT"
+        ? { ...zone, width: "46%", height: "20%" }
+        : zone;
   return (
     <AnimatePresence>
       <motion.div
-        key={`${overlay.sponsor.id}-${overlay.pushedAt}`}
-        initial={{ opacity: 0, scale: 0.35, rotate: -220, y: 48 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
-        exit={{ opacity: 0, scale: 0.6, rotate: 40, y: 24 }}
-        transition={{ type: "spring", stiffness: 220, damping: 16, mass: 0.9 }}
+        key={overlay.sponsor.id}
+        data-testid="hub-promote-overlay"
+        data-promote-anchor={overlay.anchor}
+        data-promote-size={overlay.size}
+        data-promote-target={overlay.target}
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduce ? undefined : { opacity: 0, y: 8 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.16 }}
         style={{
-          position: "absolute",
-          left: 12,
-          right: 12,
-          bottom: 14,
+          ...sized,
           zIndex: 8,
           display: "flex",
           alignItems: "center",
@@ -220,8 +240,8 @@ function SponsorOverlayBanner({ overlay }: { overlay: ActiveSponsorOverlay }) {
         }}
       >
         <motion.div
-          animate={{ rotate: [0, 8, -6, 0], scale: [1, 1.06, 1] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          animate={reduce ? undefined : { rotate: [0, 8, -6, 0], scale: [1, 1.06, 1] }}
+          transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
           style={{
             width: 52,
             height: 52,
@@ -331,6 +351,15 @@ interface CommandCenterMediaStackProps {
   onOpenLivingOs?: (context: { playerId: string; role: "fan" | "performer" }) => void;
   /** Canonical Venue Tools doorway re-presented by the shared Companion Dock. */
   onOpenVenueTools?: (context: { roomId?: string; isLoungeHost: boolean; readOnly: boolean }) => void;
+  /** Show the existing role-aware GPS navigator entry in the Hub Command Bed. */
+  enableGpsControls?: boolean;
+  /** 0 sits the workspace under the first player. 1 sits it under the second. */
+  underMonitorIndex?: 0 | 1 | null;
+  underMonitorSlot?: ReactNode;
+  /** Visually yield Monitor 2 to the drawer. The monitor stays mounted. */
+  yieldSecondaryMonitor?: boolean;
+  /** Restore Monitor 2 by dismissing the drawer currently occupying its slot. */
+  onRestoreMonitor2?: () => void;
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -376,9 +405,6 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
           }}
         />
       ) : null}
-      <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "#AA2DFF" }}>
-        CAST · PLAYLIST
-      </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minHeight: 0 }}>
         <div
           style={{
@@ -417,11 +443,9 @@ function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
           {cast.artist ? (
             <div style={{ fontSize: 11, color: "#00FFFF", fontWeight: 700, marginTop: 2 }}>{cast.artist}</div>
           ) : null}
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 6, letterSpacing: "0.06em" }}>
-            {cast.isPlaying ? "▶ PLAYING ON WORKSPACE MONITOR" : "📺 CAST TO WORKSPACE MONITOR"}
-          </div>
           {cast.audioUrl ? (
             <audio
+              data-canonical-promo-audio="1"
               key={cast.audioUrl}
               src={cast.audioUrl}
               controls
@@ -474,15 +498,53 @@ function MonitorMediaBody({
 }) {
   const videoSrc = slot.videoUrl?.trim() || "";
   const [videoFailed, setVideoFailed] = useState(false);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const frameId = hubLiveMonitor === "B" ? "b" : hubLiveMonitor === "A" ? "a" : null;
   const runtimeSource = useCanonicalMediaPlayerRuntime((s) =>
     frameId ? (s.frames[frameId]?.source ?? null) : null,
   );
+  const peerCallStream = useCanonicalMediaPlayerRuntime((s) =>
+    frameId ? (s.frames[frameId]?.peerCallStream ?? null) : null,
+  );
+  const primaryAudioFrame = useCanonicalMediaPlayerRuntime((s) => s.primaryAudioFrame);
+  const attachPeerCallVideo = useCallback((video: HTMLVideoElement | null) => {
+    if (video && video.srcObject !== peerCallStream) video.srcObject = peerCallStream;
+  }, [peerCallStream]);
   const effectiveRoomId = routedRoomId?.trim() || hubLiveRoomId || null;
+  const hostVenueRoom =
+    frameId === "a" && isLivePublished && publishedRoomId
+      ? publishedRoomId
+      : null;
 
   useEffect(() => {
     setVideoFailed(false);
   }, [videoSrc]);
+
+  if (frameId === "b" && peerCallStream) {
+    return (
+      <div data-testid="canonical-peer-call-monitor" data-monitor-frame="b" style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden", background: "#010308" }}>
+        <video
+          autoPlay
+          playsInline
+          muted={primaryAudioFrame !== "b"}
+          data-testid="canonical-peer-call-video"
+          ref={attachPeerCallVideo}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+    );
+  }
+
+  // Published host: monitor A is the venue even if the bus still says camera.
+  if (hostVenueRoom && (!effectiveRoomId || effectiveRoomId === hostVenueRoom)) {
+    return (
+      <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+        {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
+        <HubMonitorVenuePlayer roomId={hostVenueRoom} />
+      </div>
+    );
+  }
 
   // Per-monitor FEED assignment wins — A and B stay independently routable.
   if (frameId && runtimeSource === "SELF_CAMERA") {
@@ -564,7 +626,7 @@ function MonitorMediaBody({
     }
     if (videoSrc && !videoFailed) {
       return (
-        <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+        <div style={{ position: "relative", flex: 1, width: "100%", height: "100%", minHeight: 0, overflow: "hidden", background: "#010308" }}>
           {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
           <video
             key={videoSrc}
@@ -574,54 +636,40 @@ function MonitorMediaBody({
             playsInline
             src={videoSrc}
             onError={() => setVideoFailed(true)}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
       );
     }
     return (
       <div
+        data-monitor-face="empty"
         style={{
           position: "relative",
           flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#030318",
-          color: "rgba(255,255,255,0.45)",
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: "0.1em",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          background: "#010308",
         }}
-      >
-        NO MEDIA LOADED
-      </div>
+      />
     );
   }
 
   if (frameId && runtimeSource === "SCREEN_SHARE") {
     return (
       <div
+        data-monitor-face="empty"
+        data-screen-share-awaiting-capture="1"
         style={{
           position: "relative",
           flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 6,
-          background: "#030318",
-          color: "rgba(0,255,136,0.7)",
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: "0.1em",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          background: "#010308",
         }}
-      >
-        <span>🖥️ SCREEN SHARE ASSIGNED</span>
-        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>
-          Use CAST · SHARE SCREEN to start capture
-        </span>
-      </div>
+      />
     );
   }
 
@@ -658,6 +706,7 @@ function MonitorMediaBody({
         height: "100%",
         minHeight: 0,
         overflow: "hidden",
+        background: "#010308",
       }}
     >
       {sponsorOverlay ? <SponsorOverlayBanner overlay={sponsorOverlay} /> : null}
@@ -672,17 +721,25 @@ function MonitorMediaBody({
           playsInline
           src={videoSrc}
           onError={() => setVideoFailed(true)}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
         />
       ) : slot.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={slot.imageUrl}
           alt={slot.label}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
         />
       ) : (
-        <IdleMonitorFallbackRuntime monitorId={slot.id} seedIndex={slot.id.length} cellIndex={cellIndex} />
+        <div
+          data-no-source-assigned
+          data-monitor-face="empty"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#010208",
+          }}
+        />
       )}
     </div>
   );
@@ -690,7 +747,6 @@ function MonitorMediaBody({
 
 function MonitorChrome({
   slot,
-  onSwap,
   sponsorOverlay,
   overlayTarget,
   hubLiveRoomId,
@@ -711,18 +767,6 @@ function MonitorChrome({
   displayName?: string | null;
   routedRoomId?: string | null;
 }) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  const handleFullscreen = () => {
-    const el = rootRef.current;
-    if (!el) return;
-    if (document.fullscreenElement === el) {
-      void document.exitFullscreen().catch(() => undefined);
-      return;
-    }
-    void el.requestFullscreen().catch(() => undefined);
-  };
-
   const mediaBody = (
     <MonitorMediaBody
       slot={slot}
@@ -736,100 +780,32 @@ function MonitorChrome({
     />
   );
 
+  const picture = overlayTarget ? (
+    <InPlaceGoLiveMonitorLayer
+      target={overlayTarget}
+      showTransition={hubLiveMonitor === "B"}
+    >
+      {mediaBody}
+    </InPlaceGoLiveMonitorLayer>
+  ) : (
+    mediaBody
+  );
+
   return (
     <div
-      ref={rootRef}
       data-monitor-chrome-id={slot.id}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        background: "#010308",
-        position: "relative",
-      }}
-    >
-      <div
+      data-cell-index={cellIndex}
         style={{
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "4px 8px",
-          background: "rgba(0,0,0,0.75)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          zIndex: 2,
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          background: "#010308",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <span
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.14em",
-            color: "#FFD700",
-            textTransform: "uppercase",
-          }}
-        >
-          {slot.label}
-        </span>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {onSwap ? (
-            <button
-              type="button"
-              onClick={onSwap}
-              title="Swap top and bottom monitors"
-              style={{
-                background: "rgba(255,215,0,0.15)",
-                border: "1px solid rgba(255,215,0,0.4)",
-                borderRadius: 4,
-                color: "#FFD700",
-                fontSize: 8,
-                fontWeight: 800,
-                padding: "2px 6px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <span>⇼</span>
-              <span>SWAP</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleFullscreen}
-            title="Expand this same monitor — same player instance"
-              style={{
-                background: "rgba(0,255,255,0.15)",
-                border: "1px solid rgba(0,255,255,0.4)",
-                borderRadius: 4,
-                color: "#00FFFF",
-                fontSize: 8,
-                fontWeight: 800,
-                padding: "2px 6px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <span>⛶</span>
-              <span>FULLSCREEN</span>
-          </button>
-        </div>
+        {picture}
       </div>
-      {overlayTarget ? (
-        <InPlaceGoLiveMonitorLayer
-          target={overlayTarget}
-          showTransition={hubLiveMonitor === "B"}
-        >
-          {mediaBody}
-        </InPlaceGoLiveMonitorLayer>
-      ) : (
-        mediaBody
-      )}
-    </div>
   );
 }
 
@@ -845,7 +821,7 @@ export default function CommandCenterMediaStack({
   slots,
   footer,
   bezelVariant = "chrome",
-  seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL 16:9 MONITORS",
+  seriesLabel = "COMMAND CENTER · CHROME SERIES · DUAL MONITORS",
   naturalHeight = false,
   monitorLayoutMode = "dual",
   mediaWorkspaceRole,
@@ -856,6 +832,11 @@ export default function CommandCenterMediaStack({
   onOpenYopho,
   onOpenLivingOs,
   onOpenVenueTools,
+  enableGpsControls = false,
+  underMonitorIndex = null,
+  underMonitorSlot = null,
+  yieldSecondaryMonitor = false,
+  onRestoreMonitor2,
 }: CommandCenterMediaStackProps) {
   // Assign every render — cert must not depend on effect timing / StrictMode cleanup races.
   if (typeof window !== "undefined") {
@@ -880,6 +861,12 @@ export default function CommandCenterMediaStack({
   const isDevDiagnostics = process.env.NODE_ENV !== "production";
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const previewStream = useLivePrivacyState((s) => s.previewStream);
+  const previewVideoTrack = previewStream?.getVideoTracks().find((track) => track.readyState === "live");
+  const captureSettings = previewVideoTrack?.getSettings();
+  const captureLabel = captureSettings?.width && captureSettings.height
+    ? `${captureSettings.width}x${captureSettings.height}${captureSettings.frameRate ? ` / ${Math.round(captureSettings.frameRate)} fps` : ""}`
+    : "—";
   const hubLiveRoomId = hubInPlaceRoomId ?? publishedRoomId;
   const bootPhase = useGoLiveBootstrapStore((s) => s.phase);
   const bootErrorCode = useGoLiveBootstrapStore((s) => s.errorCode);
@@ -887,7 +874,7 @@ export default function CommandCenterMediaStack({
   const goLiveBootActive =
     bootPhase !== "IDLE" && bootPhase !== "READY" && bootPhase !== "ERROR";
   const [swapOrder, setSwapOrder] = useState(false);
-  const [sponsorPanelOpen, setSponsorPanelOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const [castPanelOpen, setCastPanelOpen] = useState(false);
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -936,6 +923,9 @@ export default function CommandCenterMediaStack({
   const castControlsRef = useRef<HTMLDivElement | null>(null);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
+  const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
+  const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
+  const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1002,8 +992,8 @@ export default function CommandCenterMediaStack({
       }
     };
     const onDetachLobbyWall = () => {
-      setDetachedLobbyWallOpen(true);
-      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+      setDetachedLobbyWallOpen(false);
+      presentCanonicalWorkspace("lobby", "DRAWER");
     };
     window.addEventListener("tmi:toggle-mini-lobby-wall", onToggleLobbyWall);
     window.addEventListener("tmi:detach-lobby-wall", onDetachLobbyWall);
@@ -1026,14 +1016,18 @@ export default function CommandCenterMediaStack({
 
   // LOBBY WALL Command Control → compact dimensional mosaic panel (does NOT replace monitors).
   const toggleLobbyWallFromButton = useCallback(() => {
-    setDetachedLobbyWallOpen((open) => {
-      if (open) {
-        setLobbyPanelFocusRoom(null);
-        return false;
-      }
-      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
-      return true;
-    });
+    const { drawerWorkspace, isDrawerExpanded, closeSurface } =
+      useWorkspacePresentationStore.getState();
+    if (
+      (drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations") &&
+      isDrawerExpanded
+    ) {
+      closeSurface("DRAWER");
+      return;
+    }
+    setDetachedLobbyWallOpen(false);
+    setLobbyPanelFocusRoom(null);
+    presentCanonicalWorkspace("lobby", "DRAWER");
   }, []);
 
   const sendLobbyRoomToMonitor = useCallback((roomId: string, frameId: FrameId) => {
@@ -1168,10 +1162,37 @@ export default function CommandCenterMediaStack({
   }, [cycleSharePress]);
 
   // ── Sponsor logic ─────────────────────────────────────────────────────────
-  const pushSponsorLive = (sponsor: HouseSponsor) => {
-    setActiveSponsorOverlay({ sponsor, pushedAt: Date.now() });
-    setSponsorPanelOpen(false);
+  const pushSponsorLive = (sponsor: HouseSponsor, placement: PromoPlacementPreset) => {
+    setActiveSponsorOverlay((prev) => ({
+      sponsor,
+      pushedAt: prev?.sponsor.id === sponsor.id ? prev.pushedAt : Date.now(),
+      anchor: placement.anchor,
+      size: placement.size,
+      target: placement.target,
+      hidden: false,
+    }));
   };
+
+  const placeSponsor = (placement: PromoPlacementPreset) => {
+    setActiveSponsorOverlay((prev) => (prev ? { ...prev, ...placement, hidden: false } : prev));
+  };
+
+  const hideSponsor = () => {
+    setActiveSponsorOverlay((prev) => (prev ? { ...prev, hidden: true } : prev));
+  };
+
+  const clearSponsor = () => setActiveSponsorOverlay(null);
+
+  const overlayOn = (target: PromoVisualTarget) =>
+    activeSponsorOverlay && !activeSponsorOverlay.hidden && activeSponsorOverlay.target === target
+      ? activeSponsorOverlay
+      : null;
+
+  useEffect(() => {
+    const onToggle = () => setPromoteOpen((open) => !open);
+    window.addEventListener("tmi:hub-promote-toggle", onToggle);
+    return () => window.removeEventListener("tmi:hub-promote-toggle", onToggle);
+  }, []);
 
   // Dual monitors: up to 8 cells each from the slot pool (independent per-side splits in stack).
   const orderedSlots = useMemo(() => {
@@ -1345,7 +1366,7 @@ export default function CommandCenterMediaStack({
     accent: string,
     label: string,
     onClick: () => void,
-    opts?: { testId?: string; title?: string; icon?: string; disabled?: boolean },
+    opts?: { testId?: string; title?: string; icon?: string; disabled?: boolean; style?: CSSProperties },
   ) => (
     <button
       type="button"
@@ -1353,7 +1374,7 @@ export default function CommandCenterMediaStack({
       onClick={opts?.disabled ? undefined : onClick}
       disabled={opts?.disabled}
       title={opts?.title ?? label}
-      style={utilityBtnStyle(active, accent, opts?.disabled)}
+      style={{ ...utilityBtnStyle(active, accent, opts?.disabled), ...opts?.style }}
     >
       {opts?.icon ? <span style={{ pointerEvents: "none" }}>{opts.icon}</span> : null}
       <span style={{ pointerEvents: "none" }}>{label}</span>
@@ -1445,6 +1466,8 @@ export default function CommandCenterMediaStack({
         flexDirection: "column",
         gap: 6,
         padding: controlBedCollapsed ? "4px 12px" : "8px 12px",
+        maxWidth: "100%",
+        boxSizing: "border-box",
         background: "linear-gradient(180deg, #323947 0%, #1c2230 50%, #262e3d 100%)",
         border: "1px solid rgba(190, 210, 235, 0.35)",
         borderRadius: 10,
@@ -1478,7 +1501,7 @@ export default function CommandCenterMediaStack({
             COMMAND BED
           </span>
           <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>
-            COMMAND · CAST · POWER MIX
+            COMMAND · CAST · GPS · POWER MIX
           </span>
           {hubLiveRoomId && role === "performer" ? (
             <VenueToolsToggleButton
@@ -1491,13 +1514,38 @@ export default function CommandCenterMediaStack({
           ) : null}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {!enableGpsControls ? (
+            /* Compact GPS stays on the Command Bed header, above the monitor frames. */
+            <button
+              type="button"
+              data-testid="hub-mobile-action-gps"
+              aria-label="Open GPS navigation"
+              aria-pressed={gpsDrawerVisible}
+              onClick={toggleGpsDrawer}
+              style={{
+                ...hubGpsButtonStyle,
+                flex: "0 0 44px",
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                minHeight: 44,
+                padding: 0,
+                fontSize: 9,
+                letterSpacing: "0.04em",
+                justifyContent: "center",
+                textAlign: "center",
+              }}
+            >
+              GPS
+            </button>
+          ) : null}
           <span style={{ fontSize: 8, fontWeight: 800, color: publishedRoomId ? "#00FF88" : "rgba(255,255,255,0.4)" }}>
             {publishedRoomId ? "● BROADCAST ACTIVE" : "○ READY"}
           </span>
           <button
             type="button"
             onClick={() => setControlBedCollapsed((v) => !v)}
-            title={controlBedCollapsed ? "Expand Command & Cast Controls" : "Collapse Controls into Performance Mirror Mode"}
+            title={controlBedCollapsed ? "Expand Command, Cast & GPS Controls" : "Collapse Controls into Performance Mirror Mode"}
             style={{
               background: controlBedCollapsed ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.06)",
               border: controlBedCollapsed ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
@@ -1517,7 +1565,7 @@ export default function CommandCenterMediaStack({
         </div>
       </div>
 
-      {/* Main Split Control Deck: COMMAND | CAST | MIX / POWER MIX — never on bezel */}
+      {/* Main Split Control Deck: COMMAND | CAST | GPS | MIX / POWER MIX — never on bezel */}
       {!controlBedCollapsed ? (
         <div
           style={{
@@ -1555,8 +1603,10 @@ export default function CommandCenterMediaStack({
 
             {utilityBtn(Boolean(publishedRoomId), "#FF2DAA", publishedRoomId ? "● LIVE" : "GO LIVE", () => {
               void presentInstantGoLiveInPlace({
+                pressedAt: Date.now(),
                 role: role === "performer" ? "PERFORMER" : "FAN",
                 preferredExperience: "live",
+                displayName,
                 roomId: hubLiveRoomId ?? undefined,
                 publishSession: true,
               });
@@ -1582,7 +1632,7 @@ export default function CommandCenterMediaStack({
               identityOpen,
               role === "performer" ? "#FFD700" : "#00FF88",
               "USER ID",
-              () => setIdentityOpen((v) => !v),
+              () => { if (userId && displayName) setIdentityOpen((v) => !v); },
               {
                 testId: "tmi-top-cluster-user-id",
                 title: role === "performer" ? "Present Performer ID & Scannable QR Code" : "Present TMI User ID & Scannable QR Code",
@@ -1690,12 +1740,11 @@ export default function CommandCenterMediaStack({
               icon: "🖥️",
             })}
 
-            {role === "performer" &&
-              utilityBtn(sponsorPanelOpen || Boolean(activeSponsorOverlay), "#FFD700", "SPONSOR", () => setSponsorPanelOpen((v) => !v), {
-                testId: "tmi-top-cluster-sponsors",
-                title: "Sponsor overlay — Cast presentation / brand cabinet",
-                icon: "🏷️",
-              })}
+            {utilityBtn(promoteOpen || Boolean(activeSponsorOverlay && !activeSponsorOverlay.hidden), "#FFD700", "PROMOTE", () => setPromoteOpen((open) => !open), {
+              testId: "tmi-top-cluster-promote",
+              title: "Open Promote — browse, add, then tap to show. Does not cover the screen by itself.",
+              icon: "📣",
+            })}
 
             {utilityBtn(false, "#00FFFF", "SHARE LINK", () => void onShareClick(), {
               testId: "tmi-top-cluster-share",
@@ -1703,6 +1752,45 @@ export default function CommandCenterMediaStack({
               icon: "🔗",
             })}
           </div>
+
+          {enableGpsControls ? (
+            <>
+              <div
+                data-tmi-gps-split-divider="1"
+                aria-hidden="true"
+                style={{
+                  width: 1,
+                  minHeight: 24,
+                  background: "rgba(255,255,255,0.15)",
+                  margin: "0 2px",
+                  flexShrink: 0,
+                }}
+              />
+              <div
+                data-tmi-gps-controls-group="1"
+                style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
+              >
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                    color: "#00E5FF",
+                    textTransform: "uppercase",
+                    marginRight: 2,
+                  }}
+                >
+                  GPS CONTROLS:
+                </span>
+                {utilityBtn(gpsDrawerVisible, "rgba(255,255,255,0.9)", "GPS", toggleGpsDrawer, {
+                  testId: "tmi-command-gps",
+                  title: gpsDrawerVisible ? "Close the role-aware GPS navigator" : "Open the role-aware GPS navigator",
+                  icon: "📍",
+                  style: { ...hubGpsButtonStyle, width: "auto", minHeight: 36, justifyContent: "center" },
+                })}
+              </div>
+            </>
+          ) : null}
 
           <div
             data-tmi-mix-split-divider="1"
@@ -1723,6 +1811,9 @@ export default function CommandCenterMediaStack({
               alignItems: "center",
               gap: 6,
               marginLeft: "auto",
+              flexWrap: "wrap",
+              maxWidth: "100%",
+              minWidth: 0,
             }}
           >
             <span
@@ -1738,6 +1829,10 @@ export default function CommandCenterMediaStack({
               MIX:
             </span>
             <CompactAudioMixer />
+            <span data-tmi-capture-quality title="Local camera capture only; transmitted and received quality are not measured" style={{ color: "#aab0c3", fontSize: 9, whiteSpace: "nowrap" }}>
+              CAPTURE {captureLabel}
+            </span>
+            <ServerConnectionStatus />
           </div>
         </div>
       ) : null}
@@ -1762,11 +1857,27 @@ export default function CommandCenterMediaStack({
         minHeight: naturalHeight ? 0 : 0,
         flexShrink: naturalHeight ? 0 : undefined,
         overflow: naturalHeight ? "visible" : "auto",
+        position: "relative",
         background: "#010308",
         padding: 8,
         ...(isFullscreen ? { background: "#050510", padding: 16 } : {}),
       }}
     >
+      {promoteOpen ? (
+        <div style={{ position: "absolute", right: 8, top: 8, zIndex: 40, maxWidth: "calc(100% - 16px)" }}>
+          <HubPromotePanel
+            sessionId={`hub-promote-${userId ?? "session"}`}
+            creatorId={userId ?? "session"}
+            role={role === "performer" ? "performer" : "fan"}
+            onClose={() => setPromoteOpen(false)}
+            onPresentHouse={pushSponsorLive}
+            onPlaceSponsor={placeSponsor}
+            onHideSponsor={hideSponsor}
+            onClearSponsor={clearSponsor}
+            visual={activeSponsorOverlay}
+          />
+        </div>
+      ) : null}
       {isDevDiagnostics ? (
         <div
           data-tmi-dev-continuity-overlay="1"
@@ -1855,11 +1966,13 @@ export default function CommandCenterMediaStack({
           void presentInstantGoLiveInPlace({
             role: role === "performer" ? "PERFORMER" : "FAN",
             preferredExperience: "live",
+            displayName,
             roomId: hubLiveRoomId ?? undefined,
             publishSession: true,
           });
         }}
       />
+      <div aria-hidden={identityOpen} style={{ display: "contents", visibility: identityOpen ? "hidden" : "visible", pointerEvents: identityOpen ? "none" : undefined }}>
       <CanonicalDualMonitorStack
         variant={bezelVariant}
         seriesLabel={seriesLabel}
@@ -1873,6 +1986,10 @@ export default function CommandCenterMediaStack({
               : 2
         }
         enableMediaRuntime
+        underMonitorIndex={underMonitorIndex}
+        underMonitorSlot={underMonitorSlot}
+        yieldSecondaryMonitor={yieldSecondaryMonitor}
+        onRestoreMonitor2={onRestoreMonitor2}
         onOpenLivingOs={({ playerId }) => onOpenLivingOs?.({ playerId, role })}
         monitors={[
           {
@@ -1900,7 +2017,7 @@ export default function CommandCenterMediaStack({
                   slot={topSlots[0]!}
                   onSwap={handleSwap}
                   overlayTarget={DEFAULT_MONITOR_A}
-                  sponsorOverlay={activeSponsorOverlay}
+                  sponsorOverlay={overlayOn("M1")}
                   hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="A"
                   goLiveBootActive={goLiveBootActive}
@@ -1923,8 +2040,15 @@ export default function CommandCenterMediaStack({
                 <MonitorChrome
                   key={slot.id}
                   slot={slot}
-                  sponsorOverlay={activeSponsorOverlay}
                   cellIndex={ci}
+                  onSwap={ci === 0 ? handleSwap : undefined}
+                  overlayTarget={ci === 0 ? DEFAULT_MONITOR_A : undefined}
+                  sponsorOverlay={ci === 0 ? overlayOn("M1") : undefined}
+                  hubLiveRoomId={ci === 0 ? hubLiveRoomId : undefined}
+                  hubLiveMonitor={ci === 0 ? "A" : undefined}
+                  goLiveBootActive={ci === 0 ? goLiveBootActive : undefined}
+                  displayName={ci === 0 ? displayName : undefined}
+                  routedRoomId={ci === 0 ? (monitorRoomOverrides.a ?? null) : undefined}
                 />
               ),
             ),
@@ -1957,6 +2081,7 @@ export default function CommandCenterMediaStack({
                   overlayTarget={DEFAULT_MONITOR_B}
                   hubLiveRoomId={hubLiveRoomId}
                   hubLiveMonitor="B"
+                  sponsorOverlay={overlayOn("M2")}
                   goLiveBootActive={goLiveBootActive}
                   routedRoomId={monitorRoomOverrides.b ?? null}
                 />
@@ -1978,13 +2103,36 @@ export default function CommandCenterMediaStack({
                         audioOwned={false}
                       />
                     ) : (
-                      <MonitorChrome key={slot.id} slot={slot} cellIndex={ci} />
+                      <MonitorChrome
+                        key={slot.id}
+                        slot={slot}
+                        cellIndex={ci}
+                        onSwap={ci === 0 ? handleSwap : undefined}
+                        overlayTarget={ci === 0 ? DEFAULT_MONITOR_B : undefined}
+                        hubLiveRoomId={ci === 0 ? hubLiveRoomId : undefined}
+                        hubLiveMonitor={ci === 0 ? "B" : undefined}
+                        sponsorOverlay={ci === 0 ? overlayOn("M2") : undefined}
+                        goLiveBootActive={ci === 0 ? goLiveBootActive : undefined}
+                        routedRoomId={ci === 0 ? (monitorRoomOverrides.b ?? null) : undefined}
+                      />
                     ),
                   ),
           }]
             : []),
         ]}
       />
+      </div>
+      {identityOpen && userId && displayName && (
+        <div
+          data-tmi-user-id-stage-overlay="1"
+          style={{ position: "absolute", inset: 0, zIndex: 21, background: "#050914", display: "flex", alignItems: "center", justifyContent: "center", padding: 12, boxSizing: "border-box" }}
+        >
+          <div style={{ width: "min(100%, 540px)", height: "100%", maxHeight: 540, position: "relative" }}>
+            <TmiIdentitySurface userId={userId} displayName={displayName} role={role === "performer" ? "performer" : "fan"} showcase />
+            <button type="button" onClick={() => setIdentityOpen(false)} aria-label="Return to monitors" style={{ position: "absolute", top: 12, right: 12, zIndex: 1, background: "#12192b", border: "1px solid #00E5FF", color: "#fff", padding: "8px 10px", borderRadius: 6, cursor: "pointer" }}>CLOSE</button>
+          </div>
+        </div>
+      )}
       </div>
 
       {footer ? <div style={{ flexShrink: 0, marginTop: 8 }}>{footer}</div> : null}
@@ -2236,106 +2384,6 @@ export default function CommandCenterMediaStack({
         />
       ) : null}
 
-      {/* Expanded User ID / Stage QR Overlay (Preserves monitor session beneath) */}
-      {identityOpen ? (
-        <div
-          data-tmi-user-id-stage-overlay="1"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 10000,
-            background: "rgba(3, 5, 14, 0.88)",
-            backdropFilter: "blur(14px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-          onClick={() => setIdentityOpen(false)}
-        >
-          <div
-            style={{
-              background: "linear-gradient(135deg, #101626 0%, #060913 100%)",
-              border: `2px solid ${role === "performer" ? "#FFD700" : "#00FFFF"}`,
-              boxShadow: `0 0 50px ${role === "performer" ? "rgba(255,215,0,0.35)" : "rgba(0,255,255,0.35)"}`,
-              borderRadius: 16,
-              padding: 28,
-              maxWidth: 420,
-              width: "100%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 16,
-              textAlign: "center",
-              position: "relative",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setIdentityOpen(false)}
-              style={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                color: "#fff",
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 900,
-              }}
-            >
-              ✕ CLOSE
-            </button>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: "0.18em",
-                color: role === "performer" ? "#FFD700" : "#00FFFF",
-                textTransform: "uppercase",
-              }}
-            >
-              {role === "performer" ? "PERFORMER IDENTITY · STAGE QR" : "USER IDENTITY · PROFILE QR"}
-            </div>
-            <div
-              style={{
-                width: 220,
-                height: 220,
-                background: "#fff",
-                borderRadius: 12,
-                padding: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
-              }}
-            >
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/p/${userId ? (userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`) : "member"}`
-                    : "https://themusiciansindex.com"
-                )}`}
-                alt="Stage ID QR"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", letterSpacing: "0.04em" }}>
-              {displayName || (role === "performer" ? "TMI HEADLINER" : "TMI MEMBER")}
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: "monospace" }}>
-              {typeof window !== "undefined" ? `${window.location.origin}/p/${userId ? (userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`) : "member"}` : "/p/member"}
-            </div>
-            <div style={{ fontSize: 9, color: "#00FF88", fontWeight: 800, letterSpacing: "0.1em" }}>
-              SCAN TO OPEN CANONICAL PROFILE & TIP WALLET
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -9,8 +9,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { singleFlightJson } from "@/lib/live/singleFlightPoll";
 import { hubMonitorUvrProps, isLoungeRoomId, resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import HubVenueHudDrawer from "@/components/live/HubVenueHudDrawer";
+import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
@@ -20,8 +22,7 @@ import {
   subscribeStage,
 } from "@/lib/live/StageLifecycleEngine";
 import { resolveCurtainAdCampaign } from "@/lib/presentation/CurtainRuntimeManager";
-import { countHumanAttendance } from "@/lib/venues/venuePresenceMetrics";
-import { resolveGoLiveCertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+import { resolveRoomCertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -62,8 +63,10 @@ function HubMonitorIdle({ label }: { label: string }) {
 
 export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
+  const hostHud = Boolean(isLivePublished && publishedRoomId && publishedRoomId === roomId);
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
-  const inPlaceCategory = useGoLiveTransition((s) => s.inPlace?.category ?? null);
+  const inPlace = useGoLiveTransition((s) => s.inPlace);
   const [watching, setWatching] = useState(0);
   const [intermission, setIntermission] = useState(
     () => getStageSnapshot().state === "INTERMISSION",
@@ -78,11 +81,10 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
     zone: scenePlan?.canonicalZone ?? (lounge ? "LOUNGE_SIDE_ROOM" : undefined),
   });
 
-  // Same mapping path as InstantGoLiveStage: category / scenePlan.eventType → package.
-  const categoryOrEvent = scenePlan?.eventType ?? inPlaceCategory ?? "live";
-  const certifiedPackage = resolveGoLiveCertifiedVenuePackage({
-    category: categoryOrEvent,
-    eventType: categoryOrEvent,
+  const certifiedPackage = resolveRoomCertifiedVenuePackage({
+    roomId,
+    scenePlan,
+    inPlace,
   });
 
   const uvrProps = hubMonitorUvrProps("B", roomId, {
@@ -128,18 +130,28 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       return;
     }
     let cancelled = false;
+    let inFlight = false;
+    let abort: AbortController | null = null;
     const poll = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      abort = new AbortController();
       try {
-        const res = await fetch(
-          `/api/live/audience?venue=${encodeURIComponent(roomId)}`,
-          { credentials: "include", cache: "no-store" },
-        );
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          activeMembers?: Array<{ role?: string; displayName?: string; active?: boolean }>;
-        };
-        const members = Array.isArray(data.activeMembers) ? data.activeMembers : [];
-        const humans = countHumanAttendance(members);
+        const data = await singleFlightJson(`audience:${roomId}:count`, async () => {
+          try {
+            const res = await fetch(
+              `/api/live/audience?venue=${encodeURIComponent(roomId)}`,
+              { credentials: "include", cache: "no-store" },
+            );
+            if (!res.ok) return null;
+            return (await res.json()) as { venueSlug?: string; humanPresent?: number };
+          } catch {
+            return null;
+          }
+        });
+        if (!data) return;
+        if (data.venueSlug !== roomId || !Number.isSafeInteger(data.humanPresent) || (data.humanPresent ?? -1) < 0) return;
+        const humans = data.humanPresent!;
         if (!cancelled) {
           setWatching(humans);
           window.dispatchEvent(
@@ -149,13 +161,16 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
           );
         }
       } catch {
-        /* honest empty */
+        /* honest empty, including abort when the monitor unmounts */
+      } finally {
+        inFlight = false;
       }
     };
     void poll();
     const id = window.setInterval(() => void poll(), 2500);
     return () => {
       cancelled = true;
+      abort?.abort();
       window.clearInterval(id);
     };
   }, [roomId]);
@@ -175,6 +190,7 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
   return (
     <div
       data-hub-monitor-venue-player="true"
+      data-live-room-id={roomId}
       data-canonical-viewport={BOH.role}
       data-canonical-zone={BOH.zone}
       data-audience-scene-view={BOH.audienceSceneView}
@@ -270,6 +286,17 @@ export default function HubMonitorVenuePlayer({ roomId }: { roomId: string }) {
       </div>
 
       <HubVenueHudDrawer roomId={roomId} watching={watching} isLivePublished={isLivePublished} />
+      {hostHud ? (
+        <TMIInteractiveVenueHud
+          roomId={roomId}
+          roomTitle="Live"
+          experienceType="LIVE"
+          role="fan"
+          isRoomOwner
+          participationState="ACTIVE"
+          liveSessionId={roomId}
+        />
+      ) : null}
 
       <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
         {safeUvrProps ? <UniversalVenueRenderer {...safeUvrProps} /> : null}

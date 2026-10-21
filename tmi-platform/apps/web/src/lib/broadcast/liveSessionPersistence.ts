@@ -52,18 +52,19 @@ function normalizeSession(raw: LiveSession): LiveSession {
     venueSkinId: typeof raw.venueSkinId === "string" && raw.venueSkinId.trim()
       ? raw.venueSkinId.trim()
       : null,
+    hostRole: raw.hostRole === "FAN" ? "FAN" : raw.hostRole === "PERFORMER" ? "PERFORMER" : undefined,
   };
 }
 
 function sessionFromUserRow(u: {
   id: string;
-  displayName: string | null;
+  displayName?: string | null;
   name: string | null;
   image: string | null;
-  tier: string | null;
+  tier?: string | null;
   liveRoomId: string | null;
-  liveGenre: string | null;
-  liveStartedAt: Date | null;
+  liveGenre?: string | null;
+  liveStartedAt?: Date | null;
 }): LiveSession {
   const displayName = u.displayName ?? u.name ?? "Performer";
   const startedAt = u.liveStartedAt?.getTime() ?? Date.now();
@@ -98,23 +99,28 @@ function sessionFromUserRow(u: {
 }
 
 export async function persistLiveSession(session: LiveSession): Promise<void> {
+  const started = Date.now();
+  const trace = (step: string, extra?: Record<string, string | number | null>) => {
+    if (process.env.NODE_ENV === "production") return;
+    console.info("[live-go-trace]", JSON.stringify({ step, ms: Date.now() - started, ...extra }));
+  };
   const normalized = normalizeSession(session);
+  trace("USER_LIVE_UPDATE_START");
   const updated = await prisma.user.updateMany({
-    where: { OR: [{ id: normalized.userId }, { userRef: normalized.userId }] },
+    where: { id: normalized.userId },
     data: {
       isLive: true,
       liveRoomId: normalized.roomId,
-      liveGenre: normalized.category,
-      liveStartedAt: new Date(normalized.startedAt),
     },
   });
-  // Fail loud if the host id does not map to a User row — otherwise Worker B
-  // hydrates empty (isLive never set) while Worker A still serves memory count.
+  trace("USER_LIVE_UPDATE_END", { rows: updated.count });
   if (updated.count === 0) {
     throw new Error(
       `[liveSessionPersistence] persistLiveSession: no User row for userId=${normalized.userId}`,
     );
   }
+  trace("FEED_LOOKUP_START");
+  try {
   const existing = await prisma.feedItem.findFirst({
     where: { userId: normalized.userId, type: LIVE_FEED_TYPE },
     orderBy: { createdAt: "desc" },
@@ -143,7 +149,13 @@ export async function persistLiveSession(session: LiveSession): Promise<void> {
       },
     });
   }
+  trace("FEED_WRITE_END");
+  } catch (err) {
+    const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "none";
+    trace("FEED_WRITE_ERROR", { code });
+  }
   try {
+    trace("ROOM_LOOKUP_START");
     let room = await prisma.room.findFirst({ where: { id: normalized.roomId } });
     if (!room) {
       room = await prisma.room.create({
@@ -169,34 +181,38 @@ export async function persistLiveSession(session: LiveSession): Promise<void> {
         data: { roomId: room.id, status: "ACTIVE", startedAt: new Date(normalized.startedAt) },
       });
     }
-  } catch {
+  } catch (err) {
+    const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "none";
+    trace("ROOM_WRITE_ERROR", { code });
     /* Room id may not match cuid — User/FeedItem still durable */
   }
+  trace("PERSIST_FUNCTION_END");
 }
 
 export async function patchPersistedLiveSession(
   userId: string,
   patch: Partial<LiveSession>,
-): Promise<void> {
+): Promise<boolean> {
   const existing = await prisma.feedItem.findFirst({
     where: { userId, type: LIVE_FEED_TYPE },
     orderBy: { createdAt: "desc" },
   });
-  if (!existing || !isLiveSessionShape(existing.data)) return;
+  if (!existing || !isLiveSessionShape(existing.data)) return false;
   const existingSession: LiveSession = existing.data;
   const next = normalizeSession({ ...existingSession, ...patch, userId });
   await prisma.feedItem.update({
     where: { id: existing.id },
     data: { data: next as object, entityId: next.roomId, expiresAt: FAR_FUTURE },
   });
+  return true;
 }
 
 export async function removePersistedLiveSession(userId: string): Promise<void> {
   await prisma.user.updateMany({
-    where: { OR: [{ id: userId }, { userRef: userId }] },
-    data: { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
+    where: { id: userId },
+    data: { isLive: false, liveRoomId: null },
   });
-  await prisma.feedItem.deleteMany({ where: { userId, type: LIVE_FEED_TYPE } });
+  await prisma.feedItem.deleteMany({ where: { userId, type: LIVE_FEED_TYPE } }).catch(() => undefined);
   try {
     const rooms = await prisma.room.findMany({
       where: { ownerId: userId, status: "LIVE" },
@@ -217,15 +233,16 @@ export async function removePersistedLiveSession(userId: string): Promise<void> 
 export async function loadPersistedLiveSessions(staleMs = DEFAULT_STALE_MS): Promise<LiveSession[]> {
   const now = Date.now();
   const crashThreshold = new Date(now - 6 * 60 * 60 * 1000);
-  await prisma.user.updateMany({
-    where: { isLive: true, liveStartedAt: { lt: crashThreshold } },
-    data: { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
-  }).catch(() => {});
+  if (!(process.env.NODE_ENV === "development" && process.env.TMI_SKIP_LIVE_STALE_CLEANUP === "1")) {
+    await prisma.user.updateMany({
+      where: { isLive: true, liveStartedAt: { lt: crashThreshold } },
+      data: { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
+    }).catch(() => {});
+  }
   const liveUsers = await prisma.user.findMany({
     where: { isLive: true },
     select: {
-      id: true, displayName: true, name: true, image: true, tier: true,
-      liveRoomId: true, liveGenre: true, liveStartedAt: true,
+      id: true, name: true, image: true, liveRoomId: true,
     },
   });
   if (liveUsers.length === 0) return [];
@@ -245,8 +262,19 @@ export async function loadPersistedLiveSessions(staleMs = DEFAULT_STALE_MS): Pro
     // GET must never delete durable rows — concurrent /home/3 polls were racing
     // create and zeroing LIVE NOW while the host worker still reported n+1.
     // Rescue stale feed pings via user-row freshness while isLive remains true.
+    // A fresh ping must keep the feed's privacy. Resetting to PUBLIC here put
+    // a private room back on the public lite list.
     if (now - session.lastPingAt > staleMs) {
-      result.push(sessionFromUserRow(u));
+      const rescued = sessionFromUserRow(u);
+      if (fromFeed) {
+        rescued.privacy = fromFeed.privacy;
+        rescued.audiencePrivacyMode = fromFeed.audiencePrivacyMode ?? null;
+        rescued.roomId = fromFeed.roomId || rescued.roomId;
+        rescued.category = fromFeed.category;
+        rescued.title = fromFeed.title || rescued.title;
+        if (fromFeed.hostRole) rescued.hostRole = fromFeed.hostRole;
+      }
+      result.push(rescued);
       continue;
     }
     result.push(session);

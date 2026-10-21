@@ -13,6 +13,7 @@ export type LobbyWallKind =
   | "fan-avatar"
   | "dance"
   | "concert"
+  | "release"
   | "gauntlet"
   | "game"
   | "live";
@@ -56,7 +57,8 @@ export function resolveLobbyDestination(input: DestinationInput): ResolvedDestin
     cypher: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=cypher`,
     challenge: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=challenge`,
     dance: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=dance`,
-    concert: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=concert`,
+    concert: `/rooms/concert/${encodeURIComponent(input.roomId)}`,
+    release: `/rooms/release/${encodeURIComponent(input.roomId)}`,
     lounge: `/live/rooms/${encodeURIComponent(input.roomId)}?mode=lounge&zone=LOUNGE_SIDE_ROOM&from=live-lobby`,
     "performer-lobby": performerLobbyEntryHref(input.roomId, { from: "performer-lobby-wall" }),
     "fan-avatar": fanAvatarLobbyEntryHref(input.roomId, { from: "lobby-wall" }),

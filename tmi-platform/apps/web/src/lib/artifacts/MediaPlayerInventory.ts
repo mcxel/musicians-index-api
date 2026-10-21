@@ -32,9 +32,18 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 let memoryCache: MediaPlayerClientState | null = null;
+const ssrStorage = new Map<string, string>();
 
 function storageGet<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+  if (typeof window === "undefined") {
+    const raw = ssrStorage.get(key);
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
+    }
+  }
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
@@ -45,7 +54,14 @@ function storageGet<T>(key: string, fallback: T): T {
 }
 
 function storageSet(key: string, value: unknown): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    try {
+      ssrStorage.set(key, JSON.stringify(value));
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
@@ -115,6 +131,7 @@ function setOwnedChassisIds(userId: string, ids: MediaPlayerChassisId[]): void {
   if (memoryCache) {
     setCache({ ...memoryCache, ownedChassisIds: unique });
   }
+  notify();
 }
 
 export function getEquippedChassisId(userId: string): MediaPlayerChassisId {
@@ -129,6 +146,7 @@ export function setEquippedChassisId(userId: string, chassisId: MediaPlayerChass
   if (memoryCache) {
     setCache({ ...memoryCache, equippedChassisId: chassisId });
   }
+  notify();
   return true;
 }
 

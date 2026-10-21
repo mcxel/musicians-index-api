@@ -10,7 +10,7 @@
  *   audio:{sound_id}           — AudioDirector sound events (tmi:*)
  *   character:speak            — CharacterRuntime speak events
  *   character:state_change     — host entity state transitions
- *   venue:curtain_open / close — TMICurtainSystem
+ *   venue:curtain_open / close — VenueToolsDirector / CurtainDirector (Rule 29)
  *   venue:countdown            — show countdown
  *   venue:performer_enters
  *   theme:change               — ThemeRuntime base theme switch
@@ -283,6 +283,11 @@ class RuntimeEventBusEngine {
    */
   setServerBridge(fn: ServerBridgeFn | null): void {
     this._serverBridge = fn;
+  }
+
+  /** True only after a caller registers a bridge. Default is none. */
+  isServerBridgeAttached(): boolean {
+    return this._serverBridge !== null;
   }
 
   // ── Private ───────────────────────────────────────────────────────────────

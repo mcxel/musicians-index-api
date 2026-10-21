@@ -1,18 +1,29 @@
 "use client";
 
 /**
- * CanonicalBottomDrawerHost — Stage Deck WORK surface (mobile) / Media Console dock.
+ * CanonicalBottomDrawerHost — drawer BELOW primary dual-monitor fabric.
  *
- * On mobile Command Center, this mounts into the same Stage Deck region as the
- * monitors (mutually exclusive presentation). Monitors stay mounted-but-hidden
- * so MediaStream / WebRTC state survives. Do not navigate for these tools.
+ * Class A (flat): Achievements, Shop, Memory, YoPho, Lobby, Stats, … open under monitors.
+ * Class B (Playlist): Mini Player expands into full Playlist workspace (mediaConsoleMode expanded).
+ *
+ * Monitors NEVER unmount for drawer open/switch/close.
+ * MediaStream / WebRTC / feeds / audio / Cast / Power Mix must survive.
  */
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
+import {
+  DRAWER_SHELL_VARIANTS,
+  DRAWER_TRANSITION,
+  EXPAND_FOCUS_TRANSITION,
+  REDUCED_MOTION_TRANSITION,
+  resolveDrawerContentVariants,
+} from "@/lib/workspace/universal/drawerMotionGrammar";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import SettingsWorkspaceContent from "./SettingsWorkspaceContent";
 import ShareStudioContent from "./ShareStudioContent";
@@ -26,41 +37,78 @@ import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
 import { LiveLobbyWallContent } from "@/components/lobby/LiveLobbyDrawer";
-
+import CastWorkspaceContent from "./CastWorkspaceContent";
+import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
+import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 const PerformerBioMagazineDrawer = dynamic(() => import("@/components/drawers/PerformerBioMagazineDrawer"), {
   ssr: false,
   loading: () => <div style={{ padding: 24, color: "rgba(255,255,255,0.35)" }}>Loading…</div>,
 });
 
+const YoPhoConnectedDrawer = dynamic(() => import("@/components/yopho/living/YoPhoConnectedDrawer"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 16, color: "#00FFFF" }}>Loading YoPho drawer…</div>,
+});
+const YoPhoLivingStudio = dynamic(() => import("@/components/yopho/living/YoPhoLivingStudio"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 16, color: "#FF2DAA" }}>Loading Living Studio…</div>,
+});
 const YoPhoStudio = dynamic(() => import("@/components/yopho/YoPhoStudio"), {
   ssr: false,
   loading: () => <div style={{ padding: 24, color: "#00FFFF" }}>Loading YoPho Studio…</div>,
 });
 
-const Shop3DInspectionDrawer = dynamic(() => import("@/components/drawers/Shop3DInspectionDrawer"), {
-  ssr: false,
-  loading: () => <div style={{ padding: 24, color: "#00FFFF" }}>Loading 3D Shop Stage…</div>,
-});
-
-const ROLODEX_TOOLS: { id: UniversalWorkspaceId; label: string }[] = [
-  { id: "lobby", label: "🏢 LOBBY" },
-  { id: "avatar-quick", label: "👤 AVATAR" },
-  { id: "shop" as any, label: "🛍️ 3D SHOP" },
-  { id: "memory-wall", label: "🧠 MEMORY" },
-  { id: "playlist-studio", label: "🎵 PLAYLIST" },
-  { id: "room-controls", label: "VENUE TOOLS" },
-  { id: "inventory", label: "🎒 INVENTORY" },
-  { id: "yopho", label: "📷 YOPHO" },
-  { id: "prize-vault", label: "🏆 REWARDS" },
-  { id: "achievement-center", label: "🌟 ACHIEVEMENTS" },
-  { id: "championship-center", label: "⚔️ CHAMPIONSHIP" },
-  { id: "store", label: "🛒 STORE" },
-  { id: "live-destinations", label: "📹 LIVE" },
-  { id: "settings", label: "⚙️ SETTINGS" },
+const ROLODEX_TOOLS: { id: UniversalWorkspaceId; label: string; icon: string }[] = [
+  { id: "lobby", label: "LOBBY", icon: "🏢" },
+  { id: "avatar-quick", label: "AVATAR", icon: "👤" },
+  { id: "store", label: "SHOP", icon: "🛒" },
+  { id: "memory-wall", label: "MEMORY", icon: "🧠" },
+  { id: "playlist-studio", label: "PLAYLIST", icon: "🎵" },
+  { id: "room-controls", label: "VENUE", icon: "🎛️" },
+  { id: "inventory", label: "INVENTORY", icon: "🎒" },
+  { id: "yopho", label: "YOPHO", icon: "📷" },
+  { id: "prize-vault", label: "REWARDS", icon: "🏆" },
+  { id: "achievement-center", label: "ACHIEVEMENTS", icon: "🌟" },
+  { id: "championship-center", label: "CHAMPIONSHIP", icon: "⚔️" },
+  { id: "analytics", label: "STATS", icon: "📊" },
+  { id: "sponsors", label: "SPONSORS", icon: "⭐" },
+  { id: "messaging", label: "MESSAGES", icon: "💬" },
+  { id: "live-destinations", label: "CAST", icon: "📡" },
+  { id: "settings", label: "SETTINGS", icon: "⚙️" },
 ];
 
+function hardwareLauncherStyle(active: boolean, accent = "#00FFFF"): React.CSSProperties {
+  return {
+    flexShrink: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    minWidth: 72,
+    minHeight: 56,
+    padding: "8px 10px",
+    borderRadius: 8,
+    border: active ? `1px solid ${accent}` : "1px solid rgba(190,210,235,0.28)",
+    background: active
+      ? `linear-gradient(180deg, ${accent}44 0%, ${accent}18 55%, #0a0e16 100%)`
+      : "linear-gradient(180deg, #3a4254 0%, #1a1f2c 55%, #0e1218 100%)",
+    color: active ? "#fff" : "rgba(255,255,255,0.82)",
+    fontSize: 8,
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    whiteSpace: "nowrap",
+    boxShadow: active
+      ? `0 0 14px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.28)`
+      : "inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.45)",
+    textTransform: "uppercase",
+  };
+}
+
 function chromeBtn(label: string, onClick: () => void, opts?: { accent?: string; title?: string }) {
-  const accent = opts?.accent ?? "#fff";
+  const accent = opts?.accent ?? "#00FFFF";
   return (
     <button
       type="button"
@@ -68,16 +116,18 @@ function chromeBtn(label: string, onClick: () => void, opts?: { accent?: string;
       title={opts?.title}
       style={{
         flexShrink: 0,
-        background: "rgba(255,255,255,0.06)",
-        border: `1px solid ${accent}55`,
+        background: "linear-gradient(180deg, #3a4254 0%, #1a1f2c 100%)",
+        border: `1px solid ${accent}88`,
         borderRadius: 6,
         color: accent,
         fontSize: 9,
-        fontWeight: 800,
-        padding: "4px 8px",
+        fontWeight: 900,
+        padding: "6px 10px",
         cursor: "pointer",
         fontFamily: "inherit",
         whiteSpace: "nowrap",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 4px rgba(0,0,0,0.4)",
+        letterSpacing: "0.06em",
       }}
     >
       {label}
@@ -89,15 +139,14 @@ export default function CanonicalBottomDrawerHost({
   userId,
   displayName,
   role,
-  /** Mobile Stage Deck: own the monitor region at full useful height. */
-  stageDeck = false,
 }: {
   userId?: string;
   displayName?: string;
   role: "fan" | "performer";
+  /** @deprecated Ignored — drawer never steals monitor stage. */
   stageDeck?: boolean;
 }) {
-  const { drawerWorkspace, isDrawerExpanded, mediaConsoleMode, closeSurface, toggleDrawerExpand } =
+  const { drawerWorkspace, isDrawerExpanded, mediaConsoleMode, closeSurface, toggleDrawerExpand, drawerMotionKind } =
     useWorkspacePresentationStore();
   const mobileMode = useWorkspacePresentationStore((s) => s.mobileMode);
   const activeControlMode = useWorkspacePresentationStore((s) => s.activeControlMode);
@@ -105,6 +154,12 @@ export default function CanonicalBottomDrawerHost({
   const setVenueContext = useCompactQuickPanelStore((s) => s.setVenueContext);
   const hubRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
+  const prefersReducedMotion = useReducedMotion();
+  const drawerFrameHeight = useMobileGpsMonitorLayoutStore((s) => s.drawerFrameHeight);
+  const setDrawerFrameHeight = useMobileGpsMonitorLayoutStore((s) => s.setDrawerFrameHeight);
+  const drawerFullscreen = useMobileGpsMonitorLayoutStore((s) => s.drawerFullscreen);
+  const setDrawerFullscreen = useMobileGpsMonitorLayoutStore((s) => s.setDrawerFullscreen);
+  const resizeRef = useRef<{ y: number; height: number } | null>(null);
   const venueToolsPolicy = resolveVenueToolsPolicy({
     role,
     isLive: isLivePublished,
@@ -115,9 +170,7 @@ export default function CanonicalBottomDrawerHost({
   const visibleTools = useMemo(() => {
     const base =
       role === "performer"
-        ? ROLODEX_TOOLS.filter(
-            (t) => t.id !== "avatar-quick" && t.id !== "inventory",
-          )
+        ? ROLODEX_TOOLS.filter((t) => t.id !== "avatar-quick" && t.id !== "inventory")
         : ROLODEX_TOOLS;
     if (venueToolsAllowed) return base;
     return base.filter((t) => t.id !== "room-controls");
@@ -128,17 +181,27 @@ export default function CanonicalBottomDrawerHost({
     return visibleTools.findIndex((t) => t.id === drawerWorkspace);
   }, [drawerWorkspace, visibleTools]);
 
-  const isLobbyWall = drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations";
+  const isLobbyWall = drawerWorkspace === "lobby";
+  const isCastWorkspace = drawerWorkspace === "live-destinations";
+  const isContextualShop = drawerWorkspace === "shop" || drawerWorkspace === "merch";
+  const isOwnerCommerce = drawerWorkspace === "store" && role === "performer";
+  const contentOpen = Boolean(drawerWorkspace && isDrawerExpanded);
 
   if (mobileMode === "CONTROL") {
     return <ExperienceControlDeck mode={activeControlMode} userId={userId} role={role} />;
   }
 
-  if (!drawerWorkspace || !isDrawerExpanded) return null;
-
   const uid = userId ?? "session";
   const name = displayName ?? "Member";
-  const restoreMonitors = () => closeSurface("DRAWER");
+  const closeDrawer = () => closeSurface("DRAWER");
+  const shellTransition = prefersReducedMotion ? REDUCED_MOTION_TRANSITION : DRAWER_TRANSITION;
+  const contentVariants = resolveDrawerContentVariants(
+    drawerMotionKind === "CHILD_PUSH"
+      ? "CHILD_PUSH"
+      : drawerMotionKind === "RETURN_RESTORE" || drawerMotionKind === "CHILD_POP"
+        ? "RETURN_RESTORE"
+        : "PANEL_SCALE_FADE",
+  );
 
   const openRolodexTool = (tool: (typeof visibleTools)[number]) => {
     if (tool.id === "room-controls") {
@@ -164,93 +227,52 @@ export default function CanonicalBottomDrawerHost({
     openRolodexTool(visibleTools[i]!);
   };
 
-  const contentMinHeight = isLobbyWall ? 480 : drawerWorkspace === "yopho" || drawerWorkspace === "shop" || drawerWorkspace === "merch" ? 520 : 380;
-  const contentMaxHeight = isLobbyWall ? "min(72vh, 700px)" : drawerWorkspace === "yopho" || drawerWorkspace === "shop" || drawerWorkspace === "merch" ? "min(85vh, 880px)" : "min(60vh, 620px)";
+  const onResizeDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    resizeRef.current = { y: event.clientY, height: drawerFrameHeight };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onResizeMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeRef.current || drawerFullscreen) return;
+    setDrawerFrameHeight(resizeRef.current.height + (event.clientY - resizeRef.current.y));
+  };
+  const onResizeUp = () => {
+    resizeRef.current = null;
+  };
 
   return (
     <div
       data-canonical-bottom-drawer
       data-media-console-drawer
-      data-stage-deck={stageDeck ? "work" : "dock"}
-      data-active-drawer={drawerWorkspace}
+      data-stage-deck="dock"
+      data-drawer-below-monitors="1"
+      data-active-drawer={drawerWorkspace ?? "none"}
       data-media-console-mode={mediaConsoleMode}
       style={{
         width: "100%",
-        flex: stageDeck ? 1 : undefined,
-        flexShrink: stageDeck ? 1 : 0,
-        minHeight: stageDeck ? 0 : undefined,
-        maxHeight: stageDeck ? "none" : undefined,
-        height: stageDeck ? "100%" : undefined,
+        flexShrink: 0,
         marginTop: 0,
-        background: "rgba(6, 9, 24, 0.98)",
-        border: "1px solid rgba(0, 229, 255, 0.3)",
-        borderTop: stageDeck ? "1px solid rgba(0,229,255,0.35)" : "none",
-        borderRadius: stageDeck ? 12 : 0,
-        boxShadow: stageDeck
-          ? "0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0,229,255,0.2)"
-          : "0 -10px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(0,229,255,0.2)",
+        background: "linear-gradient(180deg, #1c2230 0%, #0a0e16 100%)",
+        border: "1px solid rgba(190, 210, 235, 0.28)",
+        borderRadius: 10,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 -8px 28px rgba(0,0,0,0.55)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
+        height: "100%",
+        flex: 1,
+        minHeight: 0,
       }}
     >
-      {/* Stage Deck chrome: ‹ BACK | NAME | ◀ PREV | NEXT ▶ | 📺 MONITORS | × */}
+      {/* Persistent launcher row — always visible; never replaces monitors */}
       <div
+        data-drawer-launcher-row="1"
         style={{
           display: "flex",
-          alignItems: "center",
           gap: 6,
+          overflowX: "auto",
           padding: "8px 10px",
-          background: "rgba(10, 16, 38, 0.95)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          overflowX: "auto",
-          scrollbarWidth: "none" as const,
-        }}
-      >
-        {chromeBtn("‹ BACK", restoreMonitors, {
-          accent: "#00FFFF",
-          title: "Return Stage Deck to monitors",
-        })}
-        <span
-          style={{
-            fontFamily: "'Orbitron', sans-serif",
-            fontSize: 10,
-            fontWeight: 900,
-            color: "#FFD700",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            flexShrink: 0,
-            maxWidth: 120,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {drawerWorkspace.replace(/-/g, " ")}
-        </span>
-        <div style={{ flex: 1 }} />
-        {chromeBtn("◀ PREV", goPrev, { title: "Previous workspace" })}
-        {chromeBtn("NEXT ▶", goNext, { title: "Next workspace" })}
-        {chromeBtn("📺 MONITORS", restoreMonitors, {
-          accent: "#00E5FF",
-          title: "Restore monitors — media session preserved",
-        })}
-        {!stageDeck &&
-          chromeBtn(isDrawerExpanded ? "MINIMIZE" : "EXPAND", toggleDrawerExpand, {
-            title: "Toggle dock height",
-          })}
-        {chromeBtn("×", restoreMonitors, { accent: "#FF2DAA", title: "Close workspace" })}
-      </div>
-
-      {/* Lateral Rolodex — switch WORKSPACE(A)→WORKSPACE(B) without legacy panel labels */}
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          overflowX: "auto",
-          padding: "6px 12px",
-          background: "rgba(4, 6, 16, 0.9)",
-          borderBottom: "1px solid rgba(0,229,255,0.15)",
+          background: "linear-gradient(180deg, #2a3140 0%, #12161f 100%)",
+          borderBottom: contentOpen ? "1px solid rgba(0,229,255,0.2)" : "none",
           scrollbarWidth: "none" as const,
           flexShrink: 0,
         }}
@@ -259,102 +281,197 @@ export default function CanonicalBottomDrawerHost({
           const isVenueRolodex = tool.id === "room-controls";
           const isActive = isVenueRolodex
             ? activeQuickPanel === "venue"
-            : drawerWorkspace === tool.id;
+            : contentOpen && drawerWorkspace === tool.id;
+          const accent =
+            tool.id === "store"
+              ? "#FFD700"
+              : tool.id === "achievement-center"
+                ? "#FFD700"
+                : tool.id === "playlist-studio"
+                  ? "#AA2DFF"
+                  : "#00FFFF";
           return (
             <button
               key={tool.id}
               type="button"
+              data-testid={`tmi-drawer-launch-${tool.id}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (isVenueRolodex) {
-                  openRolodexTool(tool);
-                  return;
-                }
-                presentCanonicalWorkspace(tool.id, "DRAWER");
+                openRolodexTool(tool);
               }}
-              style={{
-                flexShrink: 0,
-                background: isActive ? "rgba(0,229,255,0.22)" : "rgba(255,255,255,0.04)",
-                border: isActive ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 6,
-                padding: "4px 9px",
-                color: isActive ? "#00FFFF" : "rgba(255,255,255,0.7)",
-                fontSize: 9,
-                fontWeight: isActive ? 900 : 700,
-                letterSpacing: "0.05em",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                whiteSpace: "nowrap",
-              }}
+              style={hardwareLauncherStyle(isActive, accent)}
             >
-              {tool.label}
+              <span style={{ fontSize: 16, lineHeight: 1 }} aria-hidden>
+                {tool.icon}
+              </span>
+              <span>{tool.label}</span>
             </button>
           );
         })}
       </div>
 
+      <AnimatePresence initial={false}>
+        {contentOpen ? (
+          <motion.div
+            key="drawer-panel"
+            data-drawer-content-panel="1"
+            data-drawer-motion={drawerMotionKind ?? "DRAWER_IN"}
+            variants={DRAWER_SHELL_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={shellTransition}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 10px",
+                background: "rgba(10, 16, 38, 0.95)",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                overflowX: "auto",
+                scrollbarWidth: "none" as const,
+              }}
+            >
+              {chromeBtn("‹ CLOSE", closeDrawer, {
+                accent: "#00FFFF",
+                title: "Close drawer — monitors stay live",
+              })}
+              <span
+                style={{
+                  fontFamily: "'Orbitron', sans-serif",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: "#FFD700",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  flexShrink: 0,
+                  maxWidth: 140,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {(drawerWorkspace ?? "").replace(/-/g, " ")}
+              </span>
+              <div style={{ flex: 1 }} />
+              {chromeBtn("◀ PREV", goPrev, { title: "Previous workspace" })}
+              {chromeBtn("NEXT ▶", goNext, { title: "Next workspace" })}
+              {chromeBtn(drawerFullscreen ? "WINDOW" : "FULL", () => setDrawerFullscreen(!drawerFullscreen), {
+                title: drawerFullscreen ? "Return drawer to the shared slot" : "Open this drawer full screen",
+              })}
+              {chromeBtn(isDrawerExpanded ? "MINIMIZE" : "EXPAND", toggleDrawerExpand, {
+                title: "Toggle drawer height",
+              })}
+              {chromeBtn("×", closeDrawer, { accent: "#FF2DAA", title: "Close workspace" })}
+            </div>
+
+            <motion.div
+              data-lobby-drawer-scroll={isLobbyWall ? "1" : undefined}
+              data-cast-drawer={isCastWorkspace ? "1" : undefined}
+              layout={!prefersReducedMotion}
+              transition={prefersReducedMotion ? REDUCED_MOTION_TRANSITION : EXPAND_FOCUS_TRANSITION}
+              style={{
+                padding: 14,
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+              }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={drawerWorkspace}
+                  variants={contentVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={shellTransition}
+                  style={{ width: "100%" }}
+                >
+                  {isLobbyWall ? (
+                    <LiveLobbyWallContent role={role} />
+                  ) : isCastWorkspace ? (
+                    <CastWorkspaceContent role={role} userId={uid} />
+                  ) : drawerWorkspace === "playlist-studio" ? (
+                    <div data-canonical-bottom-drawer-playlist-host="1" style={{ width: "100%" }}>
+                      <PlaylistCanister
+                        entityId={uid}
+                        entityName={name}
+                        isOwner
+                        role={role}
+                        layout="full"
+                      />
+                    </div>
+                  ) : drawerWorkspace === "yopho" ? (
+                    <div data-canonical-bottom-drawer-yopho-host="1" style={{ width: "100%", display: "grid", gap: 10 }}>
+                      <YoPhoConnectedDrawer ownerId={uid} />
+                      <YoPhoLivingStudio ownerId={uid} />
+                    </div>
+                  ) : isOwnerCommerce ? (
+                    <div data-testid="performer-shop-management" style={{ width: "100%" }}>
+                      <CreatorCommerceCenterDrawer
+                        performerId={uid}
+                        displayName={name}
+                        onOpenYoPho={() => presentCanonicalWorkspace("yopho", "DRAWER")}
+                        onOpenShop={() => presentCanonicalWorkspace("shop", "DRAWER")}
+                      />
+                    </div>
+                  ) : isContextualShop ? (
+                    <div data-canonical-bottom-drawer-shop-host="1" data-active-performer-shop="1" style={{ width: "100%" }}>
+                      <ShopDrawerPanel
+                        role={role}
+                        inventoryMode="contextual"
+                        accentColor="#AA2DFF"
+                      />
+                    </div>
+                  ) : drawerWorkspace === "share-studio" ? (
+                    <ShareStudioContent
+                      context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }}
+                    />
+                  ) : drawerWorkspace === "settings" ? (
+                    <SettingsWorkspaceContent userId={uid} displayName={name} />
+                  ) : drawerWorkspace === "avatar-quick" && role === "fan" ? (
+                    <FanAvatarCanister userId={uid} displayName={name} role="FAN" />
+                  ) : drawerWorkspace === "bio-magazine" && role === "performer" ? (
+                    <PerformerBioMagazineDrawer userId={uid} displayName={name} />
+                  ) : drawerWorkspace === "room-controls" ? (
+                    <VenueControlPanel role={role} userId={uid} venueId={uid} accentColor="#00FF88" />
+                  ) : (
+                    <UniversalWorkspaceStubContent
+                      workspaceId={drawerWorkspace!}
+                      role={role}
+                      userId={uid}
+                      displayName={name}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <div
+        data-testid="hub-drawer-resize"
+        onPointerDown={onResizeDown}
+        onPointerMove={onResizeMove}
+        onPointerUp={onResizeUp}
         style={{
-          padding: stageDeck ? 12 : 16,
-          minHeight: stageDeck ? 0 : contentMinHeight,
-          maxHeight: stageDeck ? "none" : contentMaxHeight,
-          overflowY: "auto",
-          flex: stageDeck ? 1 : undefined,
+          height: 14,
+          flexShrink: 0,
+          cursor: drawerFullscreen ? "default" : "ns-resize",
+          background: "linear-gradient(180deg, transparent, rgba(0,255,255,0.35))",
         }}
-      >
-        {isLobbyWall ? (
-          <LiveLobbyWallContent role={role} />
-        ) : drawerWorkspace === "playlist-studio" ? (
-          <div data-canonical-bottom-drawer-playlist-host="1" style={{ width: "100%" }}>
-            <PlaylistCanister
-              entityId={uid}
-              entityName={name}
-              isOwner
-              role={role}
-              layout="full"
-            />
-          </div>
-        ) : drawerWorkspace === "yopho" ? (
-          <div data-canonical-bottom-drawer-yopho-host="1" style={{ width: "100%" }}>
-            <YoPhoStudio
-              role={role}
-              userId={uid}
-              displayName={name}
-            />
-          </div>
-        ) : drawerWorkspace === "shop" || drawerWorkspace === "merch" ? (
-          <div data-canonical-bottom-drawer-shop-host="1" style={{ width: "100%" }}>
-            <Shop3DInspectionDrawer
-              role={role}
-              userId={uid}
-              displayName={name}
-            />
-          </div>
-        ) : drawerWorkspace === "share-studio" ? (
-          <ShareStudioContent context={{ sharePath: typeof window !== "undefined" ? window.location.pathname : "/" }} />
-        ) : drawerWorkspace === "settings" ? (
-          <SettingsWorkspaceContent userId={uid} displayName={name} />
-        ) : drawerWorkspace === "avatar-quick" && role === "fan" ? (
-          <FanAvatarCanister userId={uid} displayName={name} role="FAN" />
-        ) : drawerWorkspace === "bio-magazine" && role === "performer" ? (
-          <PerformerBioMagazineDrawer userId={uid} displayName={name} />
-        ) : drawerWorkspace === "room-controls" ? (
-          <VenueControlPanel
-            role={role}
-            userId={uid}
-            venueId={uid}
-            accentColor="#00FF88"
-          />
-        ) : (
-          <UniversalWorkspaceStubContent
-            workspaceId={drawerWorkspace}
-            role={role}
-            userId={uid}
-            displayName={name}
-          />
-        )}
-      </div>
+      />
     </div>
   );
 }

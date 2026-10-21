@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ThemeEngine } from "@/lib/design/ThemeEngine";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
 
@@ -24,16 +23,12 @@ export default function SettingsWorkspaceContent({
   userId?: string;
   displayName?: string;
 }) {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"profile" | "role" | "appearance" | "privacy" | "session">("profile");
   const [activeTheme, setActiveTheme] = useState(() => ThemeEngine.getActiveId());
 
   const handleSignOut = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } finally {
-      router.push("/login");
-    }
+    const { canonicalLogout } = await import("@/lib/auth/canonicalLogout");
+    await canonicalLogout("/auth");
   };
 
   return (
@@ -162,7 +157,7 @@ export default function SettingsWorkspaceContent({
             SIGN OUT
           </button>
           <Link
-            href="/account-recovery"
+            href="/account/deactivate"
             style={{
               display: "inline-block",
               padding: "8px 16px",
@@ -174,7 +169,7 @@ export default function SettingsWorkspaceContent({
               textDecoration: "none",
             }}
           >
-            DEACTIVATE / DELETE ACCOUNT
+            CLOSE ACCOUNT
           </Link>
         </div>
       )}

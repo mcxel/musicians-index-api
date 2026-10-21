@@ -1,4 +1,15 @@
 /**
+ * LEGACY (2026-09-14) — superseded by /api/rooms/[roomId]/messages, backed by the
+ * canonical Conversation/Message Prisma models (see lib/messaging/roomConversation.ts).
+ * RoomChatPanel.tsx no longer imports this file.
+ *
+ * Why: this class is a module-level singleton that runs entirely client-side inside
+ * "use client" RoomChatPanel — its `rooms` Map lives in one browser tab's JS heap, so
+ * it never actually shared messages between two different users' browsers, and never
+ * survived a reload. It looked like a real live room chat but wasn't one. Kept here
+ * per Rule 21 (mark LEGACY, don't delete until the replacement is verified) rather
+ * than removed outright — do not wire any new consumer to this file.
+ *
  * RoomChatEngine
  * Live public chat for battle rooms, cypher rooms, concert rooms.
  *

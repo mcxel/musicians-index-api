@@ -23,10 +23,15 @@ import { playSound } from "@/lib/sound/playSound";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
 import { getGuestId } from "@/lib/identity/getGuestId";
-import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/hooks/useAuth";
+
+// Venue backdrop — lazy so home/shell graphs do not eager-load the full venue stack
+const RoomEnvironmentLayer = dynamic(
+  () => import("@/components/live/RoomEnvironmentLayer"),
+  { ssr: false },
+);
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
 type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
@@ -171,7 +176,8 @@ export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlo
   // engine already reuses a given seatId, it just was never given one before.
   const seatSession = useSeatSession(room.id, getGuestId());
 
-  // Derive venue type for RoomEnvironmentLayer backdrop
+  // Derive venue type for the transition backdrop; the durable room world
+  // resolves the exact room again inside UniversalVenueRenderer.
   const venueType = slugToVenueType(room.id);
 
   // Register the Universal Presence System's watch session the moment the

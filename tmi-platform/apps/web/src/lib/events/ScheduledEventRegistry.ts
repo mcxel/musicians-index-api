@@ -1,3 +1,4 @@
+export * from './EventTaxonomyRegistry';
 /**
  * Minimal scheduled-event glue — canonical timezone windows for flagship shows
  * + Live Online Concerts / World Releases catalog (one registry, many surfaces).
@@ -151,9 +152,12 @@ export const TMI_LIVE_ONLINE_VENUE_SLUG = "tmi-live-online";
  */
 export type ShowsReleaseKind =
   | "MINI_CONCERT"
+  | "WORLD_CONCERT"
   | "LIVE_ONLINE_CONCERT"
   | "MINI_RELEASE"
-  | "WORLD_RELEASE";
+  | "WORLD_RELEASE"
+  | "MINI_PREMIERE"
+  | "WORLD_PREMIERE";
 
 export type ShowsReleasePublishStatus = "DRAFT" | "PUBLISHED" | "CANCELED";
 
@@ -195,6 +199,10 @@ export interface ShowsReleaseRecord {
   scheduledStartIso: string;
   scheduledEndIso: string | null;
   venueTheme: string | null;
+  mediaId?: string | null;
+  mediaType?: "song" | "video" | null;
+  mediaTitle?: string | null;
+  mediaUrl?: string | null;
   /** Performer *requests* free vs ticketed — Ticket Engine issues inventory. */
   ticketRequested: boolean;
   /** Requested face value USD when ticketRequested (platform may issue TicketType). */
@@ -242,23 +250,34 @@ const STARTING_SOON_MS = 60 * 60 * 1000;
 const DEFAULT_LIVE_MS = 3 * 60 * 60 * 1000;
 
 export function isMiniShowsKind(kind: ShowsReleaseKind): boolean {
-  return kind === "MINI_CONCERT" || kind === "MINI_RELEASE";
+  return kind === "MINI_CONCERT" || kind === "MINI_RELEASE" || kind === "MINI_PREMIERE";
 }
 
 export function isReleaseShowsKind(kind: ShowsReleaseKind): boolean {
-  return kind === "MINI_RELEASE" || kind === "WORLD_RELEASE";
+  return (
+    kind === "MINI_RELEASE" ||
+    kind === "WORLD_RELEASE" ||
+    kind === "MINI_PREMIERE" ||
+    kind === "WORLD_PREMIERE"
+  );
 }
 
 export function publicTypeLabelForKind(kind: ShowsReleaseKind): string {
   switch (kind) {
     case "MINI_CONCERT":
       return "Mini Concert";
+    case "WORLD_CONCERT":
+      return "World Concert";
     case "LIVE_ONLINE_CONCERT":
       return "Live Online Concert";
     case "MINI_RELEASE":
       return "Mini Release";
     case "WORLD_RELEASE":
       return "World Release";
+    case "MINI_PREMIERE":
+      return "Mini Premiere";
+    case "WORLD_PREMIERE":
+      return "World Premiere";
     default:
       return "Show";
   }
@@ -382,11 +401,23 @@ export function toShowsReleasePublicCard(
   else if (ticketed) primaryCta = "GET_TICKET";
   else if (phase === "CLOSED") primaryCta = "GET_ACCESS";
 
-  const joinHref = isReleaseShowsKind(record.kind)
-    ? `/rooms/release/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=${authorityForKind(record.kind) === "world" ? "world" : "mini"}`
-    : phase === "LIVE" || phase === "PRESHOW" || (phase === "POSTSHOW" && record.replayAllowed)
-      ? `/live/rooms/${encodeURIComponent(record.roomId)}?from=shows-releases&eventId=${encodeURIComponent(record.eventId)}`
-      : `/concerts/${encodeURIComponent(record.eventId)}`;
+  let joinHref: string;
+  const mediaParam = record.mediaId ? `&mediaId=${encodeURIComponent(record.mediaId)}` : "";
+  if (record.kind === "WORLD_PREMIERE") {
+    joinHref = `/rooms/world-premiere?roomId=${encodeURIComponent(record.roomId)}&eventId=${encodeURIComponent(record.eventId)}`;
+  } else if (record.kind === "MINI_PREMIERE") {
+    joinHref = `/rooms/release/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=mini&kind=MINI_PREMIERE${mediaParam}`;
+  } else if (isReleaseShowsKind(record.kind)) {
+    joinHref = `/rooms/release/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=${authorityForKind(record.kind) === "world" ? "world" : "mini"}${mediaParam}`;
+  } else if (record.kind === "MINI_CONCERT") {
+    joinHref = `/rooms/concert/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=mini`;
+  } else if (record.kind === "WORLD_CONCERT" || record.kind === "LIVE_ONLINE_CONCERT") {
+    joinHref = `/rooms/concert/${encodeURIComponent(record.roomId)}?eventId=${encodeURIComponent(record.eventId)}&scope=world`;
+  } else if (phase === "LIVE" || phase === "PRESHOW" || (phase === "POSTSHOW" && record.replayAllowed)) {
+    joinHref = `/live/rooms/${encodeURIComponent(record.roomId)}?from=shows-releases&eventId=${encodeURIComponent(record.eventId)}`;
+  } else {
+    joinHref = `/concerts/${encodeURIComponent(record.eventId)}`;
+  }
 
   const ticketCheckoutHref = ticketed
     ? `/concerts/${encodeURIComponent(record.eventId)}?checkout=1`
@@ -430,7 +461,9 @@ export function parseShowsReleaseRecord(raw: unknown): ShowsReleaseRecord | null
     kind !== "MINI_CONCERT" &&
     kind !== "LIVE_ONLINE_CONCERT" &&
     kind !== "MINI_RELEASE" &&
-    kind !== "WORLD_RELEASE"
+    kind !== "WORLD_RELEASE" &&
+    kind !== "MINI_PREMIERE" &&
+    kind !== "WORLD_PREMIERE"
   ) {
     return null;
   }
@@ -457,6 +490,10 @@ export function parseShowsReleaseRecord(raw: unknown): ShowsReleaseRecord | null
     scheduledStartIso,
     scheduledEndIso: typeof o.scheduledEndIso === "string" ? o.scheduledEndIso : null,
     venueTheme: typeof o.venueTheme === "string" ? o.venueTheme : null,
+    mediaId: typeof o.mediaId === "string" ? o.mediaId : null,
+    mediaType: o.mediaType === "song" || o.mediaType === "video" ? o.mediaType : null,
+    mediaTitle: typeof o.mediaTitle === "string" ? o.mediaTitle : null,
+    mediaUrl: typeof o.mediaUrl === "string" ? o.mediaUrl : null,
     ticketRequested: o.ticketRequested === true,
     requestedPriceUsd:
       typeof o.requestedPriceUsd === "number" && o.requestedPriceUsd >= 0

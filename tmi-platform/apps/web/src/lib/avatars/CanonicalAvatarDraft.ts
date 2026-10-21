@@ -74,6 +74,10 @@ export function hydrateCanonicalAvatarDraft(): CanonicalAvatarDraftState {
     equippedCosmeticIds: look?.equippedCosmeticIds ?? [],
     previewAction: "IDLE",
     environmentId: "STUDIO_EDITOR",
+    hairColorHex: look?.hairColorHex,
+    eyeColorHex: look?.eyeColorHex,
+    outfitTintHex: look?.outfitTintHex,
+    activePropId: look?.activePropId,
   };
   hydrated = true;
   emit();
@@ -156,6 +160,92 @@ export function commitCanonicalDraftToFanWorld(opts?: {
     bodyMass: opts?.bodyMass,
   });
   return { ok: true, look };
+}
+
+const AVATAR_CONFIG_MESH = "/models/avatars/bobblehead_v0.glb";
+
+export type AvatarConfigWriteResult = {
+  ok: boolean;
+  status: number;
+  error?: string;
+};
+
+/** Map the canonical draft onto the existing AvatarConfig POST contract. */
+export function canonicalDraftToAvatarConfigPayload(current = getCanonicalAvatarDraft()) {
+  return {
+    meshUrl: AVATAR_CONFIG_MESH,
+    bobbleheadConfig: {
+      baseId: current.baseId,
+      skinT: current.skinT,
+      displayName: current.displayName,
+      equippedCosmeticIds: current.equippedCosmeticIds,
+    },
+    isComplete: true,
+  };
+}
+
+export async function persistCanonicalDraftToAvatarConfig(): Promise<AvatarConfigWriteResult> {
+  if (typeof window === "undefined") return { ok: false, status: 0, error: "server-only" };
+  try {
+    const res = await fetch("/api/avatar/config", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(canonicalDraftToAvatarConfigPayload()),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, status: res.status, error: text.slice(0, 180) };
+    }
+    return { ok: true, status: res.status };
+  } catch (err) {
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : "network" };
+  }
+}
+
+/**
+ * When this browser has no avatar cache, fill the draft from AvatarConfig.
+ * A present session/local look stays the immediate authority.
+ */
+export async function hydrateAvatarDraftFromServerIfLocalMissing(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  let hasSkin = false;
+  let hasLook = false;
+  try {
+    hasSkin = window.sessionStorage.getItem("tmi_fan_skin_tone_t") != null;
+    hasLook = window.localStorage.getItem("tmi_avatar_snapshot") != null;
+  } catch {
+    return false;
+  }
+  if (hasSkin || hasLook) return false;
+  try {
+    const res = await fetch("/api/avatar/config", { credentials: "include" });
+    if (!res.ok) return false;
+    const body = (await res.json()) as {
+      config?: { bobbleheadConfig?: Record<string, unknown> | null } | null;
+    };
+    const cfg = body.config?.bobbleheadConfig;
+    if (!cfg || typeof cfg.skinT !== "number" || !Number.isFinite(cfg.skinT)) return false;
+    hydrateCanonicalAvatarDraft();
+    const patch: {
+      baseId?: string;
+      skinT: number;
+      displayName?: string;
+      equippedCosmeticIds?: string[];
+    } = {
+      skinT: Math.min(1, Math.max(0, cfg.skinT)),
+    };
+    if (typeof cfg.baseId === "string") patch.baseId = cfg.baseId;
+    if (typeof cfg.displayName === "string") patch.displayName = cfg.displayName;
+    if (Array.isArray(cfg.equippedCosmeticIds)) {
+      patch.equippedCosmeticIds = cfg.equippedCosmeticIds.filter((id): id is string => typeof id === "string");
+    }
+    patchCanonicalAvatarDraft(patch);
+    persistCanonicalDraftIdentity(getCanonicalAvatarDraft());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function subscribeCanonicalAvatarDraft(

@@ -305,6 +305,10 @@ export type CanonicalAvatarDraftState = {
   environmentId: AvatarPreviewEnvironmentId;
   fidelity: AvatarPreviewFidelity;
   panelTargetId: AvatarPresentationPanelTargetId | null;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 export type JumbotronPresentationPreview = {
@@ -412,14 +416,21 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
     extraAccessoryIds: draft.equippedCosmeticIds,
     skinT: draft.skinT,
   });
+  const rigBaseWithTints = {
+    ...rigBase,
+    ...(draft.hairColorHex ? { hairColor: draft.hairColorHex } : {}),
+    ...(draft.eyeColorHex ? { eyeColorHex: draft.eyeColorHex } : {}),
+    ...(draft.outfitTintHex ? { outfitTint: draft.outfitTintHex } : {}),
+    ...(draft.activePropId ? { activePropId: draft.activePropId } : {}),
+  };
   const rigProps = bound
     ? {
-        ...rigBase,
+        ...rigBaseWithTints,
         glbSlotId: viewport.slotId,
         glbUrl: viewport.glbUrl,
         certifiedOnly: true as const,
       }
-    : rigBase;
+    : rigBaseWithTints;
   return {
     draft,
     viewport,
@@ -552,6 +563,10 @@ export function createAvatarLookFromDraft(
     lastPreviewAction: draft.previewAction,
     certificationSnapshot: certificationSnapshotFromPreview(draft.equippedCosmeticIds),
     savedAt: new Date().toISOString(),
+    hairColorHex: draft.hairColorHex,
+    eyeColorHex: draft.eyeColorHex,
+    outfitTintHex: draft.outfitTintHex,
+    activePropId: draft.activePropId,
   };
 }
 
@@ -568,6 +583,10 @@ export function applyAvatarLookToDraft(
     displayName: look.displayName,
     equippedCosmeticIds: [...look.equippedCosmeticIds],
     previewAction: look.lastPreviewAction,
+    hairColorHex: look.hairColorHex,
+    eyeColorHex: look.eyeColorHex,
+    outfitTintHex: look.outfitTintHex,
+    activePropId: look.activePropId,
   });
 }
 

@@ -181,12 +181,18 @@ export function getAudienceSnapshot(venueSlug: string) {
   const occ = getVenueOccupancy(venueSlug);
   recountPresent(occ);
   const moderation = getVenueModerationPolicy(venueSlug);
+  const humanPresent = occ.present;
+  const automatedPresent = occ.members.filter((m) => m.active && m.role === "bot").length;
+  const capacity = Math.max(1, occ.capacity);
   return {
     venueSlug: occ.venueSlug,
-    present: occ.present,
+    present: humanPresent,
+    humanPresent,
+    automatedPresent,
     capacity: occ.capacity,
     peakPresent: occ.peakPresent,
-    occupancyPct: Math.round((occ.present / occ.capacity) * 100),
+    occupancyPct: Math.round((humanPresent / capacity) * 100),
+    // Humans first; bots disclosed via role — never presented as human occupancy.
     activeMembers: occ.members.filter((m) => m.active).slice(0, 100),
     moderation,
   };
@@ -397,12 +403,6 @@ const BOT_NAMES = [
 ];
 const BOT_EMOJIS = ['🎧', '🔥', '🎶', '✨', '🎤', '💫', '🪩', '👑', '🎵', '⭐'];
 
-export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy {
-  const occ = getVenueOccupancy(venueSlug);
-  const existing = new Set(occ.members.map((m) => m.userId));
-  let seeded = 0;
-  for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
-    const botId = `bot-${venueSlug}-${i + 1}`;
 /**
  * LEGACY / AUTOMATED TMI PARTICIPANT seed — decorative sit-ins for venue fill.
  * Classification: AUTOMATED_TMI_PARTICIPANT (not human).
@@ -410,6 +410,12 @@ export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy 
  * Must NEVER impersonate humans in Home panels or tip/vote/reaction human tallies.
  * Fan personal rooms must not call this (enforced at go-live route).
  */
+export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const existing = new Set(occ.members.map((m) => m.userId));
+  let seeded = 0;
+  for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
+    const botId = `bot-${venueSlug}-${i + 1}`;
     if (existing.has(botId)) continue;
     joinAudience(venueSlug, {
       userId: botId,

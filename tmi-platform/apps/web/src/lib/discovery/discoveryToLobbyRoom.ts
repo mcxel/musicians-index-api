@@ -86,5 +86,6 @@ export function discoveryToLobbyRoom(r: LiveDiscoveryRecord): LobbyRoom {
     previewUrl: r.previewUrl,
     overlayLine: r.castOverlay?.trim() || fallbackCastOverlay(r, type),
     calloutSlots: r.calloutSlots?.length ? [...r.calloutSlots] : undefined,
+    canonicalEventId: (r.experienceId ?? "").startsWith("ev-") ? r.experienceId : undefined,
   };
 }

@@ -38,6 +38,7 @@ import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
 import YoPhoStudio from "@/components/yopho/YoPhoStudio";
+import YoPhoQuickCardPanel from "@/components/yopho/living/YoPhoQuickCardPanel";
 import VenueControlPanel from "@/components/hud/panels/VenueControlPanel";
 
 const AvatarViewer = dynamic(
@@ -665,9 +666,13 @@ export default function CanonicalQuickPanelContent({
   }
 
   if (workspaceId === "yopho") {
-    // Rule 26 + YoPho 2+1: Fan portrait stack vs Performer living studio — never cross-mount.
+    // Level 1 Quick Card + existing role workspaces (same canonical living project store).
+    const focus = (typeof document !== "undefined" &&
+      (document.documentElement.getAttribute("data-focused-monitor") as "A" | "B" | null)) || "A";
     const inner = (
-      <div style={{ padding: 4, maxHeight: 320, overflow: "auto" }} data-yopho-quick-panel-role={role}>
+      <div style={{ padding: 4, maxHeight: 360, overflow: "auto" }} data-yopho-quick-panel-role={role}>
+        <YoPhoQuickCardPanel monitorFocus={focus === "B" ? "B" : "A"} />
+        <div style={{ height: 8 }} />
         {role === "fan" ? (
           <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
         ) : (

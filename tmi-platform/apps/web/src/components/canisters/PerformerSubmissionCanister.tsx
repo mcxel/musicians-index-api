@@ -18,9 +18,7 @@ import {
   type BeatCompetitionTarget,
   type BeatLockerRecord,
 } from "@/lib/beats/BeatLockerClient";
-import {
-  buildBeatDropInventory,
-} from "@/lib/beats/BeatInventoryEngine";
+import { buildBeatDropInventory } from "@/lib/beats/BeatInventoryEngine";
 import { DEFAULT_LICENSE_PRICES } from "@/lib/beats/BeatStoreCommerceEngine";
 
 interface PerformerSubmissionCanisterProps {

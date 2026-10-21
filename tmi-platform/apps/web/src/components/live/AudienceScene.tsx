@@ -334,6 +334,7 @@ interface AudienceSceneProps {
   watcherCount?: number;
   onReaction?: (emoji: string) => void;
   hideControls?: boolean;
+  presentationOpacity?: number;
   bpm?: number;
   accentColor?: string;
   screenLabel?: string;
@@ -366,6 +367,7 @@ interface AudienceSceneProps {
     eventType?: string | null;
     venueId?: string;
     lookUpActive?: boolean;
+    physicalEnvironmentHint?: string | null;
   } | null;
 }
 
@@ -392,6 +394,7 @@ export default function AudienceScene({
   watcherCount,
   onReaction,
   hideControls = false,
+  presentationOpacity = 1,
   bpm = 120,
   accentColor,
   screenLabel,
@@ -427,7 +430,7 @@ export default function AudienceScene({
       view === "performer"
         ? pins.slice(Math.max(0, pins.length - occupiedUpToOverlay))
         : pins.slice(0, occupiedUpToOverlay);
-    if (occupied.length === 0 && bobbleheadSeating.localFanSeatIndex == null) return [];
+    if (occupied.length === 0 && bobbleheadSeating.localFanSeatIndex == null && (!entities || entities.length === 0)) return [];
 
     const freeBases = listFreeBobbleheadBases();
     const byVisibility = [...occupied].sort((a, b) => b.visibility - a.visibility);
@@ -443,8 +446,27 @@ export default function AudienceScene({
       label: string;
       isTest: boolean;
       isLocal: boolean;
+      entity?: AvatarEntity;
     };
     const out: Overlay[] = [];
+
+    // Real entities mode (Real Audience Law: 1 real entity = 1 avatar)
+    if (entities && entities.length > 0) {
+      entities.slice(0, maxRig).forEach((entity, idx) => {
+        const pin = pins[idx % pins.length]!;
+        const isLoc = localIdx === idx || (localPin && pin.seatIndex === localPin.seatIndex) || entity.displayName === bobbleheadSeating.localFanLabel;
+        out.push({
+          key: `entity-seat-${entity.id}-${pin.seatIndex}`,
+          pin,
+          baseId: entity.appearance.baseId ?? (freeBases[idx % Math.max(1, freeBases.length)]?.id ?? "bh-urban-cap-male"),
+          label: isLoc ? (bobbleheadSeating.localFanLabel ?? "YOU") : entity.displayName,
+          isTest: false,
+          isLocal: Boolean(isLoc),
+          entity,
+        });
+      });
+      return out;
+    }
 
     if (localPin) {
       out.push({
@@ -501,7 +523,7 @@ export default function AudienceScene({
     }
 
     return out.slice(0, maxRig + (localPin ? 1 : 0));
-  }, [bobbleheadSeating, view, occupiedUpToOverlay]);
+  }, [bobbleheadSeating, view, occupiedUpToOverlay, entities]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -813,7 +835,7 @@ export default function AudienceScene({
         ref={canvasRef}
         width={AUDIENCE_SCENE_W}
         height={AUDIENCE_SCENE_H}
-        style={{ display: "block", width: "100%", borderRadius: 8 }}
+        style={{ display: "block", width: "100%", borderRadius: 8, opacity: Math.max(0, Math.min(1, presentationOpacity)) }}
       />
       {jumbotron?.roomId ? (
         <AudienceSceneJumbotronLayer
@@ -822,6 +844,7 @@ export default function AudienceScene({
           eventType={jumbotron.eventType}
           venueId={jumbotron.venueId}
           lookUpActive={jumbotron.lookUpActive === true}
+          physicalEnvironmentHint={jumbotron.physicalEnvironmentHint ?? null}
         />
       ) : null}
       {bobbleOverlays.length > 0 && (
@@ -838,6 +861,7 @@ export default function AudienceScene({
               label={o.label}
               isTest={o.isTest}
               isLocal={o.isLocal}
+              entity={o.entity}
             />
           ))}
         </div>
@@ -868,22 +892,38 @@ function AudienceSeatAvatarRig({
   label,
   isTest,
   isLocal,
+  entity,
 }: {
   pin: AudienceSeatPin;
   baseId: string;
   label: string;
   isTest: boolean;
   isLocal: boolean;
+  entity?: AvatarEntity;
 }) {
-  const character = useMemo(() => resolveBobbleheadRuntimeCharacter(baseId), [baseId]);
+  const character = useMemo(() => {
+    const base = resolveBobbleheadRuntimeCharacter(entity?.appearance.baseId ?? baseId);
+    if (!entity) return base;
+    const skinHex = SKIN_HEX[entity.appearance.skinTone] ?? base.palette.skinHex;
+    return {
+      ...base,
+      palette: {
+        ...base.palette,
+        skinHex,
+        hairHex: entity.appearance.hairTint ?? base.palette.hairHex,
+        outfitTint: entity.appearance.outfitTint ?? base.palette.outfitTint,
+      },
+    };
+  }, [baseId, entity]);
+
   const rig = useMemo(() => {
-    const extras = isLocal ? readPersistedFanEquippedLook()?.equippedCosmeticIds : undefined;
+    const extras = entity?.appearance.accessoryIds ?? (isLocal ? readPersistedFanEquippedLook()?.equippedCosmeticIds : undefined);
     return bobbleheadRuntimeToRigProps(character, {
       isSeated: true,
       isPlaying: false,
       extraAccessoryIds: extras,
     });
-  }, [character, isLocal]);
+  }, [character, isLocal, entity]);
   const size = Math.max(36, Math.min(72, pin.sz * 3.2));
   const leftPct = (pin.x / AUDIENCE_SCENE_W) * 100;
   const topPct = (pin.y / AUDIENCE_SCENE_H) * 100;

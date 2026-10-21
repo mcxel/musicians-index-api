@@ -4,12 +4,13 @@
  * WorkspacePresentationRuntime — 4-zone + Media Console + Mobile Stage Deck.
  *
  * HQ modules resolve here (LEFT_QUICK / RIGHT_QUICK / BOTTOM_DEEP / DISCOVERY_WALL).
- * On mobile Command Center, DRAWER workspaces occupy the Stage Deck region
- * (MONITORS ⇄ WORKSPACE) via CommandCenterShell + CanonicalBottomDrawerHost —
- * not a second stacked drawer under live monitors.
+ * DRAWER opens BELOW the primary dual-monitor fabric — NEVER replaces monitors.
+ * WORK = drawer expanded under monitors (feeds/WebRTC/audio preserved).
+ * Only explicit user detach/HIDDEN frees monitor geometry for the drawer.
  * UniversalWorkspaceWindow FLOATING is FLOATING_EXCEPTION only — never default for HQ.
  */
 
+import { canonicalMonitorFromMediaViewport, type Phase1PresentedMonitorId } from "@/lib/monitors/canonicalMonitorIdentity";
 import { create } from "zustand";
 import type { UniversalWorkspaceId } from "./types";
 
@@ -40,7 +41,12 @@ export type MobilePresentationTransition =
   | "CLOSING_WORK"
   | "OPENING_CONTROL"
   | "CLOSING_CONTROL";
+/** Runtime viewports stay A/B. They adapt to presented monitors M1/M2. */
 export type MediaViewportId = "A" | "B";
+
+export function canonicalMonitorForViewport(viewport: MediaViewportId): Phase1PresentedMonitorId {
+  return canonicalMonitorFromMediaViewport(viewport);
+}
 export const WORKSPACE_PRESENTATION_INSTANCE_ID = "workspace-presentation-runtime-v1";
 
 export interface WorkspacePresentationConfig {
@@ -77,18 +83,19 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
     deepSurface: "DRAWER",
     preserveState: true,
     mobileShellMode: "WORK",
-    mediaConsoleMode: "expanded",
+    mediaConsoleMode: "mini",
   },
 
-  "memory-wall": { preferredSurface: "DRAWER", deepSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  submissions: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "share-studio": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "memory-wall": { preferredSurface: "DRAWER", deepSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  submissions: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "share-studio": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
 
-  // Live Lobby Wall — GPS discovery owns the reclaimed stage (WORK), not one leftover monitor.
-  lobby: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "live-destinations": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  // Live Lobby Wall — flat Class-A drawer BELOW monitors (never replaces media fabric).
+  lobby: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "live-destinations": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
 
   // BOTTOM_DEEP / DrawerDock — Media Console
+  // Class-B: Playlist uniquely expands Mini Player into full Playlist workspace.
   "playlist-studio": {
     preferredSurface: "DRAWER",
     deepSurface: "DRAWER",
@@ -97,30 +104,33 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
     mediaConsoleMode: "expanded",
   },
   messaging: { preferredSurface: "DRAWER", defaultWidth: 340, preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
-  yopho: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  store: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  shop: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  merch: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  analytics: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  booking: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  yopho: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  store: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  shop: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  merch: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  analytics: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  booking: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   settings: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   sponsors: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
-  "beat-lab": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "media-locker": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "beat-lab": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "media-locker": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   notifications: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
-  "achievement-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "achievement-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  // DRAWER, not RIGHT_PANEL — matches the only proven click-to-open pattern
+  // in this runtime (FloatingLobbyWallTrigger / YoPhoQuickCardPanel).
+  "championship-history": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   "room-controls": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   scores: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
-  marketplace: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "prize-vault": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "championship-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  rewards: { preferredSurface: "DRAWER", defaultWidth: 300, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "bio-magazine": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  marketplace: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "prize-vault": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "championship-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  rewards: { preferredSurface: "DRAWER", defaultWidth: 300, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "bio-magazine": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
 
   // Compact quick-HUD variants — open side panels, with deepSurface pointing to full workspace
-  "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "inventory-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
-  "memory-quick": { preferredSurface: "RIGHT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "inventory-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  "memory-quick": { preferredSurface: "RIGHT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "mini" },
 };
 
 /** HQ modules that must never open as UniversalWorkspaceWindow FLOATING. */
@@ -177,6 +187,21 @@ interface PresentationState {
   rightPanelWorkspace: UniversalWorkspaceId | null;
   /** Single active BOTTOM_DEEP drawer in Media Console DrawerDock */
   drawerWorkspace: UniversalWorkspaceId | null;
+  /**
+   * Prior drawer workspaces for CHILD_PUSH / CHILD_POP / RETURN_RESTORE.
+   * Closing pops to the previous workspace when the stack is non-empty
+   * instead of collapsing the entire drawer shell.
+   */
+  drawerWorkspaceStack: UniversalWorkspaceId[];
+  /** Last close motion hint for AnimatePresence consumers. */
+  drawerMotionKind:
+    | "DRAWER_IN"
+    | "DRAWER_OUT"
+    | "PANEL_SCALE_FADE"
+    | "CHILD_PUSH"
+    | "CHILD_POP"
+    | "RETURN_RESTORE"
+    | null;
   isDrawerExpanded: boolean;
   mediaConsoleMode: MediaConsoleMode;
   mobileMode: MobilePresentationMode;
@@ -194,6 +219,8 @@ interface PresentationState {
   openInSurface: (id: UniversalWorkspaceId, surface?: WorkspaceSurface) => void;
   openDeepStudio: (id: UniversalWorkspaceId) => void;
   closeSurface: (surface: WorkspaceSurface) => void;
+  /** Explicit CHILD_POP — restore previous drawer without full shell dismiss. */
+  returnToPreviousDrawer: () => boolean;
   toggleDrawerExpand: () => void;
   cycleMonitorCount: () => void;
   setMonitorCount: (count: 0 | 1 | 2) => void;
@@ -210,6 +237,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   leftPanelWorkspace: null,
   rightPanelWorkspace: null,
   drawerWorkspace: null,
+  drawerWorkspaceStack: [],
+  drawerMotionKind: null,
   isDrawerExpanded: false,
   mediaConsoleMode: "mini",
   mobileMode: "WATCH",
@@ -227,6 +256,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   openWorkspace: (id) => {
     const config = WORKSPACE_PRESENTATION_MAP[id] ?? {};
     const nextMonitorCount = get().monitorCount === 0 ? get().previousMonitorCount : get().monitorCount;
+    const prev = get().drawerWorkspace;
+    const alreadyOpen = Boolean(prev) && get().isDrawerExpanded;
     tracePresentation("OPEN_WORKSPACE_REQUEST", {
       workspaceId: id,
       fromMode: get().mobileMode,
@@ -234,13 +265,16 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
     });
     set({
       drawerWorkspace: id,
+      drawerWorkspaceStack: alreadyOpen ? get().drawerWorkspaceStack : [],
+      drawerMotionKind: alreadyOpen && prev !== id ? "PANEL_SCALE_FADE" : "DRAWER_IN",
       isDrawerExpanded: true,
-      mediaConsoleMode: config.mediaConsoleMode ?? "expanded",
+      mediaConsoleMode: config.mediaConsoleMode ?? "mini",
       mobileMode: "WORK",
       activeWorkspace: id,
       activeControlMode: null,
+      // Preserve monitor fabric — drawer layers below; never zero monitors for WORK.
       previousMonitorCount: nextMonitorCount,
-      monitorCount: 0,
+      monitorCount: nextMonitorCount || get().previousMonitorCount || 2,
       transition: "OPENING_WORK",
     });
   },
@@ -250,6 +284,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
     tracePresentation("RESET_TO_WATCH", { reason: "workspace-close" });
     set({
       drawerWorkspace: null,
+      drawerWorkspaceStack: [],
+      drawerMotionKind: "DRAWER_OUT",
       isDrawerExpanded: false,
       mediaConsoleMode: "mini",
       mobileMode: "WATCH",
@@ -324,6 +360,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
       tracePresentation("RESET_TO_WATCH", { reason: "discovery-open", workspaceId: id });
       set({
         drawerWorkspace: null,
+        drawerWorkspaceStack: [],
+        drawerMotionKind: "DRAWER_OUT",
         isDrawerExpanded: false,
         mediaConsoleMode: "mini",
         mobileMode: "WATCH",
@@ -339,7 +377,9 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
       tracePresentation("OPEN_FLOATING_SURFACE", { workspaceId: id });
       return;
     }
-    // BOTTOM_DEEP / DRAWER — one activeDrawer; swaps previous
+    // BOTTOM_DEEP / DRAWER — sibling swap replaces; deep nest pushes via openDeepStudio
+    const prevDrawer = get().drawerWorkspace;
+    const alreadyOpen = Boolean(prevDrawer) && get().isDrawerExpanded;
     tracePresentation("OPEN_DRAWER_SURFACE_APPLY", {
       workspaceId: id,
       nextMode: config.mobileShellMode ?? get().mobileMode,
@@ -349,16 +389,26 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
           : config.mobileShellMode === "CONTROL"
             ? "OPENING_CONTROL"
             : "IDLE",
+      siblingSwap: alreadyOpen && prevDrawer !== id,
     });
     set({
       drawerWorkspace: id,
+      // Sibling tool swaps keep the stack (do not push) so CLOSE dismisses the shell
+      drawerWorkspaceStack: alreadyOpen ? get().drawerWorkspaceStack : [],
+      drawerMotionKind: alreadyOpen && prevDrawer !== id ? "PANEL_SCALE_FADE" : "DRAWER_IN",
       isDrawerExpanded: true,
       mediaConsoleMode: config.mediaConsoleMode ?? "mini",
       mobileMode: config.mobileShellMode ?? get().mobileMode,
       activeWorkspace: config.mobileShellMode ? id : get().activeWorkspace,
       activeControlMode: config.mobileShellMode === "CONTROL" ? config.mobileControlMode ?? null : get().activeControlMode,
       previousMonitorCount: get().monitorCount === 0 ? get().previousMonitorCount : get().monitorCount,
-      monitorCount: config.mobileShellMode === "WORK" ? 0 : config.mobileShellMode === "CONTROL" ? 1 : get().monitorCount,
+      // WORK preserves dual-monitor count; CONTROL may focus one; never collapse for drawer.
+      monitorCount:
+        config.mobileShellMode === "CONTROL"
+          ? 1
+          : get().monitorCount === 0
+            ? get().previousMonitorCount || 2
+            : get().monitorCount,
       transition:
         config.mobileShellMode === "WORK"
           ? "OPENING_WORK"
@@ -371,6 +421,11 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   openDeepStudio: (id) => {
     const config = WORKSPACE_PRESENTATION_MAP[id];
     const deep = config?.deepSurface ?? "DRAWER";
+    const prevDrawer = get().drawerWorkspace;
+    const nextStack =
+      prevDrawer && prevDrawer !== id
+        ? [...get().drawerWorkspaceStack, prevDrawer]
+        : get().drawerWorkspaceStack;
     tracePresentation("OPEN_DEEP_STUDIO", {
       workspaceId: id,
       deepSurface: deep,
@@ -379,13 +434,20 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
     if (deep === "DRAWER") {
       set({
         drawerWorkspace: id,
+        drawerWorkspaceStack: nextStack,
+        drawerMotionKind: prevDrawer && prevDrawer !== id ? "CHILD_PUSH" : "DRAWER_IN",
         isDrawerExpanded: true,
         mediaConsoleMode: config?.mediaConsoleMode ?? "mini",
         mobileMode: config?.mobileShellMode ?? get().mobileMode,
         activeWorkspace: config?.mobileShellMode ? id : get().activeWorkspace,
         activeControlMode: config?.mobileShellMode === "CONTROL" ? config.mobileControlMode ?? null : get().activeControlMode,
         previousMonitorCount: get().monitorCount === 0 ? get().previousMonitorCount : get().monitorCount,
-        monitorCount: config?.mobileShellMode === "WORK" ? 0 : config?.mobileShellMode === "CONTROL" ? 1 : get().monitorCount,
+        monitorCount:
+          config?.mobileShellMode === "CONTROL"
+            ? 1
+            : get().monitorCount === 0
+              ? get().previousMonitorCount || 2
+              : get().monitorCount,
         transition:
           config?.mobileShellMode === "WORK"
             ? "OPENING_WORK"
@@ -403,6 +465,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
     if (surface === "LEFT_PANEL") set({ leftPanelWorkspace: null });
     if (surface === "RIGHT_PANEL") set({ rightPanelWorkspace: null });
     if (surface === "DRAWER") {
+      // RETURN_RESTORE: pop child first when stack has a prior workspace
+      if (get().returnToPreviousDrawer()) return;
       const state = get();
       const restoreCount = state.previousMonitorCount || 2;
       const reason =
@@ -414,6 +478,8 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
       tracePresentation("RESET_TO_WATCH", { reason, restoreCount });
       set({
         drawerWorkspace: null,
+        drawerWorkspaceStack: [],
+        drawerMotionKind: "DRAWER_OUT",
         isDrawerExpanded: false,
         mediaConsoleMode: "mini",
         mobileMode: state.mobileMode === "CONTROL" ? "WATCH" : state.mobileMode === "WORK" ? "WATCH" : state.mobileMode,
@@ -423,6 +489,29 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
         transition: state.mobileMode === "CONTROL" ? "CLOSING_CONTROL" : state.mobileMode === "WORK" ? "CLOSING_WORK" : "IDLE",
       });
     }
+  },
+
+  returnToPreviousDrawer: () => {
+    const stack = [...get().drawerWorkspaceStack];
+    if (stack.length === 0) return false;
+    const previous = stack.pop()!;
+    const config = WORKSPACE_PRESENTATION_MAP[previous] ?? {};
+    tracePresentation("RETURN_RESTORE_DRAWER", {
+      from: get().drawerWorkspace,
+      to: previous,
+      remainingStack: stack.length,
+    });
+    set({
+      drawerWorkspace: previous,
+      drawerWorkspaceStack: stack,
+      drawerMotionKind: "RETURN_RESTORE",
+      isDrawerExpanded: true,
+      mediaConsoleMode: config.mediaConsoleMode ?? get().mediaConsoleMode,
+      activeWorkspace: previous,
+      // Monitors / media / communications stay — only workspace id changes
+      transition: "IDLE",
+    });
+    return true;
   },
 
   toggleDrawerExpand: () => set((s) => ({ isDrawerExpanded: !s.isDrawerExpanded })),

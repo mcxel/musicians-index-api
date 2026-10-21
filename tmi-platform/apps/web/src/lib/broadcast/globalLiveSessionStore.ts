@@ -88,6 +88,8 @@ export interface LiveSession {
   venueEnvironment?: "indoor" | "outdoor" | null;
   /** Optional venue skin id paired with venueEnvironment (existing venueSkinEngine ids). */
   venueSkinId?: string | null;
+  /** Canonical account role for regular Go Live classification. */
+  hostRole?: "FAN" | "PERFORMER";
 }
 
 export interface LivePingPayload {
@@ -109,7 +111,7 @@ function mirrorToLiveRegistry(session: LiveSession): void {
     userId: session.userId,
     displayName: session.displayName,
     genre: session.category,
-    role: "performer",
+    role: session.hostRole === "FAN" ? "fan" : "performer",
     avatarUrl: session.avatarUrl ?? undefined,
     viewerCount: session.viewerCount,
     roomId: session.roomId,
@@ -181,6 +183,7 @@ export interface GoLivePayload {
   performerTier?: LiveSession["performerTier"];
   venueEnvironment?: LiveSession["venueEnvironment"];
   venueSkinId?: LiveSession["venueSkinId"];
+  hostRole?: LiveSession["hostRole"];
 }
 
 export function registerLiveSession(payload: GoLivePayload): LiveSession {
@@ -214,6 +217,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     lastAudienceEntryAt: null,
     venueEnvironment: payload.venueEnvironment ?? null,
     venueSkinId: payload.venueSkinId ?? null,
+    hostRole: payload.hostRole,
   };
 
   sessions.set(payload.userId, session);
@@ -223,7 +227,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     userId:      payload.userId,
     displayName: payload.displayName,
     genre:       payload.category,
-    role:        "performer",
+    role:        payload.hostRole === "FAN" ? "fan" : "performer",
     avatarUrl:   payload.avatarUrl,
     viewerCount: 0,
     roomId:      payload.roomId,
@@ -393,6 +397,24 @@ export function getSessionByRoomId(roomId: string): LiveSession | null {
   return Array.from(sessions.values()).find((s) => s.roomId === roomId) ?? null;
 }
 
+export function updateLiveSessionPrivacy(
+  userId: string,
+  visibility: "public" | "private",
+): LiveSession | null {
+  const session = sessions.get(userId);
+  if (!session) return null;
+
+  session.audiencePrivacyMode = visibility;
+  session.privacy = visibility === "private"
+    ? "INVITE_ONLY"
+    : session.entryPriceUsd && session.entryPriceUsd > 0
+      ? "PAID_ENTRY"
+      : "PUBLIC";
+  session.lastPingAt = Date.now();
+  broadcast();
+  return session;
+}
+
 export function getActiveSessions(): LiveSession[] {
   const staleMs = 120_000; // evict sessions that haven't pinged in 2 min
   const now = Date.now();
@@ -425,7 +447,10 @@ export function getSessionCount(): number {
  * rows cannot inflate N. Seeds / anchors / /rooms/* routes never enter this path.
  */
 export function isPubliclyCountedLiveSession(session: LiveSession): boolean {
-  return session.privacy !== "INVITE_ONLY";
+  return session.privacy !== "INVITE_ONLY" &&
+    session.audiencePrivacyMode !== "private" &&
+    session.audiencePrivacyMode !== "invite" &&
+    session.audiencePrivacyMode !== "friends";
 }
 
 export function listPublicActiveRooms(source?: LiveSession[]): LiveSession[] {

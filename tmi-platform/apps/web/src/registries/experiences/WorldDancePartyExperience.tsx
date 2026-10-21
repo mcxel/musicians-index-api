@@ -16,6 +16,7 @@ import WorldDancePartyNowPlayingOverlay from "@/components/dance/WorldDanceParty
 import DancePartyPresentationShell from "@/components/live/DancePartyPresentationShell";
 import { resolveFlagshipVenueAtmosphere } from "@/lib/events/FlagshipVenueAtmosphere";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
+import { resolveWdpCanonicalPlayback } from "@/lib/dance/wdpCanonicalPlayback";
 import {
   clearDancePartyProgram,
   composeDancePartyProgram,
@@ -35,6 +36,7 @@ type NowPlayingApi = {
     overlayArtist?: string;
     overlayTitle?: string;
     entryId?: string | null;
+    audioUrl?: string | null;
     active?: boolean;
     phase?: string;
   };
@@ -79,11 +81,14 @@ export default function WorldDancePartyExperience({
         const np = data.nowPlaying;
         setLifecyclePhase(mapShowtimePhaseToLifecycle(np?.phase));
         if (np?.active && np.overlayTitle?.trim() && np.entryId?.trim()) {
+          const playback = resolveWdpCanonicalPlayback(np.audioUrl);
           setNowPlaying({
             trackId: np.entryId.trim(),
             title: np.overlayTitle.trim(),
             artistName: np.overlayArtist?.trim() || "Unknown artist",
             bpm: null,
+            audioUrl: playback.audioUrl,
+            playback: playback.status,
           });
         } else {
           setNowPlaying(null);

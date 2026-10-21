@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import {
-  roomChatEngine,
-  type RoomChatMessage,
-  type RoomChatRole,
-} from "@/lib/messaging/RoomChatEngine";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "@/styles/tmiTypography.css";
+
+export type RoomChatRole = "viewer" | "fan" | "artist" | "host" | "mod" | "bot";
+
+export interface RoomChatMessage {
+  messageId: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: RoomChatRole;
+  body: string;
+  type: string;
+  valueUsdCents?: number;
+  createdAt: number;
+}
 
 interface RoomChatPanelProps {
   roomId: string;
@@ -48,48 +57,89 @@ export default function RoomChatPanel({
 }: RoomChatPanelProps) {
   const [messages, setMessages] = useState<RoomChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Ensure room is initialised
-  useEffect(() => {
-    roomChatEngine.initRoom(roomId);
-    // Emit join message
-    roomChatEngine.emitPresenceEvent(roomId, userId, userName, "join");
-    refresh();
-
-    const interval = setInterval(refresh, 1500);
-    return () => {
-      clearInterval(interval);
-      roomChatEngine.emitPresenceEvent(roomId, userId, userName, "leave");
-    };
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/chat`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { messages?: RoomChatMessage[] };
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
+    } catch {
+      /* keep existing list — best-effort poll */
+    }
   }, [roomId]);
 
-  const refresh = () => {
-    const latest = roomChatEngine.getRecentMessages(roomId, 80);
-    setMessages([...latest]);
-  };
+  const postSystemMessage = useCallback(
+    (type: "join" | "leave") => {
+      void fetch(`/api/rooms/${encodeURIComponent(roomId)}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ text: `${userName} ${type === "join" ? "joined the room" : "left"}`, type }),
+      }).catch(() => {});
+    },
+    [roomId, userName],
+  );
+
+  // Real persisted room chat (Conversation/Message via /api/rooms/[id]/chat) —
+  // replaces the old client-only, per-browser-tab RoomChatEngine singleton.
+  useEffect(() => {
+    postSystemMessage("join");
+    void refresh();
+
+    const interval = setInterval(() => void refresh(), 1500);
+    return () => {
+      clearInterval(interval);
+      postSystemMessage("leave");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  const send = () => {
-    if (!draft.trim()) return;
-    roomChatEngine.sendMessage({
-      roomId,
-      senderId: userId,
-      senderName: userName,
-      senderRole: userRole,
-      body: draft.trim(),
-    });
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
     setDraft("");
-    refresh();
+    setSending(true);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text, type: "text", senderRole: userRole }),
+      });
+      if (res.ok) {
+        await refresh();
+      } else {
+        setDraft(text);
+      }
+    } catch {
+      setDraft(text);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const deleteMsg = (messageId: string) => {
+  const deleteMsg = async (messageId: string) => {
     if (!isMod) return;
-    roomChatEngine.deleteMessage(roomId, messageId);
-    refresh();
+    try {
+      const res = await fetch(
+        `/api/rooms/${encodeURIComponent(roomId)}/chat?messageId=${encodeURIComponent(messageId)}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      if (res.ok) await refresh();
+    } catch {
+      /* best-effort */
+    }
   };
 
   return (
@@ -161,6 +211,8 @@ export default function RoomChatPanel({
                   color: "rgba(255,255,255,0.2)",
                   textAlign: "center",
                   padding: "2px 0",
+                  userSelect: "text",
+                  WebkitUserSelect: "text",
                 }}
               >
                 {icon} {msg.body}
@@ -226,6 +278,8 @@ export default function RoomChatPanel({
                     color: isTip ? "#FFD700" : "rgba(255,255,255,0.75)",
                     lineHeight: 1.4,
                     wordBreak: "break-word",
+                    userSelect: "text",
+                    WebkitUserSelect: "text",
                   }}
                 >
                   {msg.body}
@@ -235,7 +289,7 @@ export default function RoomChatPanel({
               {/* Mod delete */}
               {isMod && msg.senderId !== "system" && (
                 <button
-                  onClick={() => deleteMsg(msg.messageId)}
+                  onClick={() => void deleteMsg(msg.messageId)}
                   title="Delete"
                   style={{
                     background: "none",
@@ -272,7 +326,7 @@ export default function RoomChatPanel({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              send();
+              void send();
             }
           }}
           placeholder="Say something..."
@@ -289,8 +343,8 @@ export default function RoomChatPanel({
           }}
         />
         <button
-          onClick={send}
-          disabled={!draft.trim()}
+          onClick={() => void send()}
+          disabled={!draft.trim() || sending}
           className="tmi-button-text"
           style={{
             padding: "6px 12px",

@@ -7,7 +7,7 @@ import StructuredData from '@/components/seo/StructuredData';
 import { JsonContentRenderer } from '@/components/editorial/JsonContentRenderer';
 import { getEditorialArticleBySlug, getLatestEditorialArticles, type NewsArticle } from '@/lib/editorial/NewsArticleModel';
 import { getLocalArticleBySlug, getLatestLocalArticles, type LocalArticle } from '@/lib/editorial/localArticleCatalog';
-import { getArticleBySlug } from '@/lib/magazine/magazineIssueData';
+import { getArticleBySlug } from '@/lib/magazine/getArticleBySlug';
 import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 
 type JsonNode = {

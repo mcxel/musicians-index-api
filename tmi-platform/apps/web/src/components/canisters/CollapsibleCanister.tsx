@@ -9,6 +9,7 @@ interface CollapsibleCanisterProps {
   summary?: string;
   accentColor?: string;
   defaultOpen?: boolean;
+  headerAction?: ReactNode;
   children: ReactNode;
 }
 
@@ -23,6 +24,7 @@ export default function CollapsibleCanister({
   summary,
   accentColor = "#AA2DFF",
   defaultOpen = false,
+  headerAction,
   children,
 }: CollapsibleCanisterProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -30,46 +32,62 @@ export default function CollapsibleCanister({
   return (
     <div style={{ background: "#0f0f1a", border: `1px solid ${accentColor}33`, borderRadius: 12, overflow: "hidden" }}>
       <style>{`@keyframes canisterPopOut { from { opacity: 0; transform: scale(0.97) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }`}</style>
-      <button
-        onClick={() => setOpen((v) => !v)}
+      <div
         style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px",
+          gap: 8,
+          padding: "8px 12px 8px 16px",
           background: "rgba(255,255,255,0.02)",
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>{icon}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{label}</span>
-          {summary && <span style={{ fontSize: 11, color: accentColor }}>{summary}</span>}
-        </span>
-        <span
-          aria-label={open ? "Close module" : "Open module"}
-          title={open ? "Close module" : "Open module"}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
           style={{
-            fontSize: open ? 14 : 12,
-            fontWeight: open ? 900 : 400,
-            color: open ? "#FF2DAA" : "rgba(255,255,255,0.55)",
-            border: open ? "1px solid rgba(255,45,170,0.7)" : "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 999,
-            width: 26,
-            height: 26,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            background: open ? "rgba(255,45,170,0.15)" : "rgba(255,255,255,0.03)",
+            justifyContent: "space-between",
+            gap: 10,
+            flex: 1,
+            minWidth: 0,
+            padding: "4px 0",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            textAlign: "left",
           }}
         >
-          {open ? "✕" : "▾"}
-        </span>
-      </button>
+          <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 16 }}>{icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{label}</span>
+            {summary && <span style={{ fontSize: 11, color: accentColor }}>{summary}</span>}
+          </span>
+          <span
+            aria-label={open ? "Close module" : "Open module"}
+            title={open ? "Close module" : "Open module"}
+            style={{
+              fontSize: open ? 14 : 12,
+              fontWeight: open ? 900 : 400,
+              color: open ? "#FF2DAA" : "rgba(255,255,255,0.55)",
+              border: open ? "1px solid rgba(255,45,170,0.7)" : "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 999,
+              width: 26,
+              height: 26,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              background: open ? "rgba(255,45,170,0.15)" : "rgba(255,255,255,0.03)",
+            }}
+          >
+            {open ? "✕" : "▾"}
+          </span>
+        </button>
+        {headerAction}
+      </div>
       {open && (
         <div style={{ padding: "0 12px 14px", animation: "canisterPopOut 0.22s ease-out" }}>
           {children}

@@ -3,15 +3,17 @@ import MagazineIssueReader from "@/components/magazine/MagazineIssueReader";
 import MagazineReaderCrawlBlock from "@/components/magazine/MagazineReaderCrawlBlock";
 import { buildMagazineIssuePages } from "@/components/magazine/buildMagazineIssuePages";
 import {
-  getMagazineArticleCrawlText,
   MAGAZINE_CANONICAL_READER,
   magazineReaderArticleUrl,
+} from "@/lib/magazine/MagazineReaderUrls";
+import {
+  getMagazineArticleCrawlText,
   resolveMagazineReaderPageIndex,
-} from "@/lib/magazine/MagazineReaderRoutes";
-import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+} from "@/lib/magazine/MagazineReaderServer";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 
 type CurrentIssuePageProps = {
-  searchParams?: Promise<{ article?: string; page?: string; from?: string }>;
+  searchParams?: Promise<{ article?: string; page?: string; from?: string; discover?: string }>;
 };
 
 export async function generateMetadata({ searchParams }: CurrentIssuePageProps): Promise<Metadata> {
@@ -44,6 +46,7 @@ export default async function CurrentMagazineIssuePage({ searchParams }: Current
   const articleSlug = resolved?.article;
   const explicitPage = resolved?.page ? Number.parseInt(resolved.page, 10) : undefined;
   const from = resolved?.from;
+  const preferUnseen = resolved?.discover === "unseen" && !articleSlug && explicitPage === undefined;
   const initialPageIndex = await resolveMagazineReaderPageIndex(articleSlug, explicitPage, "current");
   const pages = await buildMagazineIssuePages("current");
   const crawl = articleSlug ? await getMagazineArticleCrawlText(articleSlug) : null;
@@ -67,6 +70,7 @@ export default async function CurrentMagazineIssuePage({ searchParams }: Current
         initialArticleSlug={articleSlug}
         initialPageIndex={initialPageIndex}
         returnTo={from}
+        preferUnseen={preferUnseen}
       />
     </>
   );

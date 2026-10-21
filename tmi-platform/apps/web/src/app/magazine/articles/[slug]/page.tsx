@@ -1,6 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
-import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 
 type MagazineArticlePageProps = {
   params: Promise<{ slug: string }>;

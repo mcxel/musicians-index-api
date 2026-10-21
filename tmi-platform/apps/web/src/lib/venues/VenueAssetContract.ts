@@ -93,20 +93,32 @@ export interface VenueAssetContract {
 
 export const VENUE_CONTRACT_REGISTRY = new Map<VenueType, VenueAssetContract>();
 
-// Monday Night Stage — first venue to certify. All geometry missing: expected.
+// Monday Night Stage — Foundry JOB-VENUE-PROOF001 promoted to public/.
+// Geometry PRODUCTION-bound; certificationStatus stays PENDING_REVIEW until
+// the 18-step physical gate passes (Anti-Gravity / venue runtime lane).
+// DO NOT flip hasCanonical3DWorld in VenueAssetRegistry until CERTIFIED.
 VENUE_CONTRACT_REGISTRY.set("monday-night-stage", {
   venueId: "monday-night-stage",
-  version: 1,
-  visualGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
-  collisionGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
-  navmeshGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
+  version: 2,
+  visualGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/monday-night-stage-world.glb",
+    sha256: "52fa38706bf3c8d4cb4a473c02c5656f40fcb5e035d0b2f41e5aa25d0f36533a",
+  },
+  collisionGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/monday-night-stage-collision.glb",
+    sha256: "d4f7a46f46b5f9028480ee026bb8e138bbf6d98fc4ad093570bdf78aedb7b7e5",
+  },
+  // Navmesh not manufactured in JOB-VENUE-PROOF001 — remains missing honestly.
+  navmeshGlb: { status: "MISSING" },
   worldScaleMeters: 1,
   spawnAnchors: [],
   seatAnchors: [],
   cameraAnchors: [],
   screenAnchors: [],
   interactionZones: [],
-  certificationStatus: "DRAFT",
+  certificationStatus: "PENDING_REVIEW",
 });
 
 // ─── Preflight result types (shared by venuePreflight.ts script) ──────────────

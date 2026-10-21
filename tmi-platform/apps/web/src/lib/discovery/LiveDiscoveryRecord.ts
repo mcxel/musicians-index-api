@@ -21,6 +21,9 @@ export type LiveDiscoveryCategory =
   | "listening"
   | "dance"
   | "games"
+  | "events"
+  | "performers_live"
+  | "fans_live"
   | "comedy"
   | "djs"
   | "videos"
@@ -83,6 +86,18 @@ export interface LiveDiscoveryRecord {
   recruiting?: boolean;
   /** Mosaic / panel cast line (LIVE · … / LOOKING FOR · …). Never includes viewer counts. */
   castOverlay?: string;
+
+  /** Trust fields - written only by DiscoveryPublisher. */
+  isBotOnly: boolean;
+  isTest: boolean;
+  isRehearsal: boolean;
+  isLocalPreview: boolean;
+  isAdminOnly: boolean;
+  transportHealth: "HEALTHY" | "DEGRADED" | "UNHEALTHY" | "UNKNOWN";
+  requiresPaidEntry: boolean;
+  trustProvenance: "DiscoveryPublisher";
+  /** AUTOMATED inventory vs a human live session. Absent on older records. */
+  sourceType?: "AUTOMATED" | "HUMAN_CREATED";
 }
 
 export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, string> = {
@@ -96,6 +111,9 @@ export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, strin
   listening: "Listening",
   dance: "Dance",
   games: "Games",
+  events: "Events",
+  performers_live: "Performers Live",
+  fans_live: "Fans Live",
   comedy: "Comedy",
   djs: "DJs",
   videos: "Videos / Snips",
@@ -117,6 +135,9 @@ export const LIVE_DISCOVERY_RAIL_ORDER: LiveDiscoveryCategory[] = [
   "listening",
   "dance",
   "games",
+  "events",
+  "performers_live",
+  "fans_live",
   "comedy",
   "djs",
   "videos",
@@ -158,6 +179,9 @@ export function mapStreamCategoryToDiscovery(
   if (c === "listening" || c === "radio" || c === "stream-and-win") return "listening";
   if (c === "dance" || c === "dance-party" || c === "world-dance-party") return "dance";
   if (c === "game" || c === "games" || c === "game-show" || c === "session") return "games";
+  if (c === "event" || c === "events" || c === "automated-event") return "events";
+  if (c === "performers-live" || c === "performers_live") return "performers_live";
+  if (c === "fans-live" || c === "fans_live") return "fans_live";
   if (c === "comedy") return "comedy";
   if (c === "dj" || c === "djs") return "djs";
   if (c === "video" || c === "videos" || c === "snip" || c === "snips") return "videos";

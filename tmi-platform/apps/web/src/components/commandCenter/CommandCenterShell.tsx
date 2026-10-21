@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
 } from "react";
 import {
@@ -25,9 +26,11 @@ import PersistentMediaInteractionDock from "./PersistentMediaInteractionDock";
 import CommandCenterPlaylistBand from "./CommandCenterPlaylistBand";
 import CommandCenterSessionControlStrip from "./CommandCenterSessionControlStrip";
 import CommandCenterEarningsToday from "./CommandCenterEarningsToday";
+import RoleWelcomeBriefing from "@/components/welcome/RoleWelcomeBriefing";
 import {
   PENDING_GO_LIVE_KEY,
   presentInstantGoLiveInPlace,
+  resumePublishedHubSession,
 } from "@/lib/dock/presentInstantGoLiveInPlace";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
@@ -76,12 +79,24 @@ import HubCommunicationsRail, { type HubCommunicationsTab } from "./HubCommunica
 import HubMobileQuickActionBar from "./HubMobileQuickActionBar";
 import HubMobileCommunicationsDrawer from "./HubMobileCommunicationsDrawer";
 import HubMobileMonitorControlBar from "./HubMobileMonitorControlBar";
+import HubMobileGpsNavDrawer from "./HubMobileGpsNavDrawer";
+import { gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import {
+  describeMonitor2Occupancy,
+  isGpsDrawerVisible,
+  resolveDrawerPlacement,
+  shouldReplaceMonitor2Slot,
+  useMobileGpsMonitorLayoutStore,
+} from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
+import { useAdaptiveVoltronStore } from "@/lib/monitors/AdaptiveVoltronPresentationDirector";
 import PerformerExperienceQuickStrip from "./PerformerExperienceQuickStrip";
 import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
+  isCanonicalWorkspaceActive,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import HubNavigationRail from "./HubNavigationRail";
+import YourPageStudio from "@/components/profile/YourPageStudio";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
 import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
@@ -91,11 +106,16 @@ import {
   openHubQuickLaunch,
   isUniversalWorkspaceOpenForModule,
 } from "@/lib/commandCenter/hubQuickLaunch";
+import {
+  readHubViewport,
+  serverHubViewport,
+  subscribeHubViewport,
+} from "@/lib/commandCenter/hubViewportState";
 import CompactQuickPanelHost, { SnipsOverlayHost } from "@/components/hud/CompactQuickPanelHost";
+import PeerVideoCallOverlay from "@/components/media/PeerVideoCallOverlay";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
-import FloatingLobbyWallTrigger from "@/components/lobby/FloatingLobbyWallTrigger";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
 import AdRail, { type AdRailExperienceMode } from "@/components/monetization/AdRail";
 import TmiIdentitySurface from "./TmiIdentitySurface";
@@ -116,6 +136,8 @@ interface CommandCenterShellProps {
   role: CommandCenterRole;
   userId: string;
   displayName: string;
+  /** Already-published room from the hub's canonical user read. No extra session fetch. */
+  publishedRoomId?: string | null;
 }
 
 interface HubDebugSnapshot {
@@ -162,7 +184,7 @@ function formatDebugValue(value: string | number | boolean | null | undefined): 
   return String(value);
 }
 
-export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
+export default function CommandCenterShell({ role, userId, displayName, publishedRoomId }: CommandCenterShellProps) {
   const defaultPerformer = useMemo(() => {
     if (role !== "performer") return null;
     const p = getPerformerById(userId);
@@ -177,7 +199,7 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
       role={role}
       userId={userId}
     >
-      <CommandCenterShellInner role={role} userId={userId} displayName={displayName} />
+      <CommandCenterShellInner role={role} userId={userId} displayName={displayName} publishedRoomId={publishedRoomId} />
     </ActivePerformerProvider>
   );
 }
@@ -204,7 +226,12 @@ function HubSearchParamsBridge({
   return null;
 }
 
-function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
+function CommandCenterShellInner({
+  role,
+  userId,
+  displayName,
+  publishedRoomId: resumedRoomId,
+}: CommandCenterShellProps) {
   const isDevBuild = process.env.NODE_ENV === "development";
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -343,11 +370,39 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     stopWatching();
   }, [searchParams, pathname, stopWatching]);
 
+  // The hub page already read User.isLive / liveRoomId. Rebind that room without another fetch.
+  useEffect(() => {
+    const roomId = resumedRoomId?.trim() ?? "";
+    if (!roomId) {
+      document.documentElement.dataset.hubLiveResume = "no-room";
+      return;
+    }
+    const watchId = new URLSearchParams(window.location.search).get("watch")?.trim() ?? "";
+    if (watchId && watchId !== roomId) {
+      document.documentElement.dataset.hubLiveResume = "watch-other";
+      return;
+    }
+    const privacy = useLivePrivacyState.getState();
+    if (!(privacy.isLivePublished && privacy.publishedRoomId === roomId)) {
+      resumePublishedHubSession(roomId, role === "performer" ? "performer" : "fan");
+    }
+    document.documentElement.dataset.hubLiveResume = "applied";
+    document.documentElement.dataset.hubLiveRoom = roomId;
+  }, [resumedRoomId, role]);
+
   const inPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const hubShellRole = role === "performer" ? "performer" : "fan";
   const activeHubRoomId = inPlaceRoomId ?? publishedRoomId ?? mediaRoomId ?? null;
   const hasLiveFeed = Boolean(activeHubRoomId) || isLivePublished;
   const openMobileCommunications = useCallback((tab: HubCommunicationsTab) => {
+    if ((tab === "messages" || tab === "community") && gpsDestinationState(tab) !== "LIVE") {
+      useMobileGpsMonitorLayoutStore.getState().showReleaseNote(tab);
+      return;
+    }
+    if (tab === "people" && gpsDestinationState("friends") !== "LIVE") {
+      useMobileGpsMonitorLayoutStore.getState().showReleaseNote("friends");
+      return;
+    }
     setMobileCommsTab(tab);
     setMobileCommsOpen(true);
   }, []);
@@ -536,6 +591,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     return list.filter((id) => !ocPrimaryIds.has(id) && !headerOwned.has(id));
   }, [role, ocPrimaryIds]);
 
+  const [pageStudioKind, setPageStudioKind] = useState<"FAN" | "PERFORMER" | null>(null);
   const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(() => {
     const last = drawerStateStore.getLastPanel(role);
     if (last && role === "performer" && isFanOnlyPanel(last)) return null;
@@ -545,7 +601,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const mediaStageRef = useRef<HTMLDivElement>(null);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(true); // mobile-first: avoids desktop-grid overflow flash on phones
+  const viewportMode = useSyncExternalStore(subscribeHubViewport, readHubViewport, serverHubViewport);
+  const isMobile = viewportMode === "mobile";
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [mobileCommsOpen, setMobileCommsOpen] = useState(false);
   const [mobileCommsTab, setMobileCommsTab] = useState<HubCommunicationsTab>("messages");
@@ -631,6 +688,26 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   /** Drawer WORK layers BELOW monitors — never mutually exclusive with media fabric. */
   const stageDeckWork = false;
   const stageDeckShowMonitors = isMobile && monitorLayoutMode !== "HIDDEN";
+  const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
+  const drawerDock = useMobileGpsMonitorLayoutStore((s) => s.drawerDock);
+  const setDrawerDock = useMobileGpsMonitorLayoutStore((s) => s.setDrawerDock);
+  const m2ExplicitlyActivated = useMobileGpsMonitorLayoutStore((s) => s.m2ExplicitlyActivated);
+  const monitor2Panels = useAdaptiveVoltronStore((s) => s.panels);
+  const monitor2Occupancy = describeMonitor2Occupancy({
+    sourceB,
+    frameBSource: mediaFrames.b?.source ?? null,
+    panels: monitor2Panels,
+  });
+  const drawerPlacement = resolveDrawerPlacement({
+    m2ExplicitlyActivated,
+    m2HasActivePresentation: monitor2Occupancy.active,
+    m2HasProtectedSession: monitor2Occupancy.protectedSession,
+  });
+  const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
+  const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
+  const gpsReplacesMonitor2 = isMobile && shouldReplaceMonitor2Slot(gpsLayout);
+  const gpsDrawerDocked = Boolean(drawerDock && (isDrawerExpanded || activePanel));
+  const mobileColumnRef = useRef<HTMLDivElement>(null);
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -654,7 +731,11 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const isControlMode = mobilePresentation.mode === "CONTROL";
   // WORK (drawer open) must NOT zero monitors — drawer sits below the fabric.
   const effectiveMonitorCount = isControlMode ? 1 : monitorCount;
-  const monitorLayoutForStack = isControlMode || monitorLayoutMode === "PRIMARY_ONLY" ? "primary" : "dual";
+  // GPS presentation never consumes a monitor slot; Monitor 1 and Monitor 2 remain independent.
+  const monitorLayoutForStack =
+    isControlMode || monitorLayoutMode === "PRIMARY_ONLY" || gpsReplacesMonitor2
+      ? "primary"
+      : "dual";
   const isIdentityStageOwner =
     isMobile && isWatchMode && !isWorkMode && effectiveMonitorCount === 0;
   const shouldCollapseMonitorRegion =
@@ -826,6 +907,12 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
   const openStageWorkspace = (id: string) => {
     traceLaunch("OPEN_STAGE_WORKSPACE", { source: "command-center-shell", workspaceId: id });
+    if (isMobile && drawerWorkspace === id && isDrawerExpanded) {
+      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+      setDrawerDock(null);
+      return;
+    }
+    if (isMobile) setDrawerDock("under-b");
     // Monitor presentation mode persists while entering WORK.
     presentCanonicalWorkspace(id as any, "DRAWER");
   };
@@ -1046,6 +1133,16 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   /** Always open/swap into drawer (never toggle-close) — used by dock + drawer chips. */
   const openPanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
+    const canonicalPanelOpen = isMobile && isCanonicalWorkspaceActive(id);
+    if (isMobile && (activePanel === id || canonicalPanelOpen)) {
+      if (canonicalPanelOpen) {
+        useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+      }
+      setDrawerDock(null);
+      closeDrawer();
+      return;
+    }
+    if (isMobile) setDrawerDock("under-b");
     // Prefer Media Console / Stage Deck presentation over legacy CommandCenterDrawer + FLOATING.
     const opened = openCanonicalWorkspaceQuick(id);
     if (opened) {
@@ -1057,6 +1154,26 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     drawerStateStore.setLastPanel(role, id);
   };
 
+  const openYourPage = () => setPageStudioKind("FAN");
+  const openPerformerPage = () => setPageStudioKind("PERFORMER");
+  const openMagazine = () => router.push("/magazine");
+  const openSettings = () => router.push("/settings");
+  const stepPageStudio = (direction: -1 | 1) => {
+    if (role !== "performer" || pageStudioKind === null) return;
+    if (pageStudioKind === "FAN" && direction === 1) {
+      setPageStudioKind("PERFORMER");
+      return;
+    }
+    if (pageStudioKind === "PERFORMER" && direction === -1) {
+      setPageStudioKind("FAN");
+      return;
+    }
+    if (pageStudioKind === "PERFORMER" && direction === 1) {
+      setPageStudioKind(null);
+      openPanel("bio_magazine");
+    }
+  };
+
   const openAppearance = () => {
     setActivePanel(null);
     setAppearanceOpen((v) => !v);
@@ -1066,6 +1183,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const closeDrawer = () => {
     setActivePanel(null);
     setAppearanceOpen(false);
+    if (isMobile) setDrawerDock(null);
     drawerStateStore.setLastPanel(role, null);
   };
 
@@ -1116,6 +1234,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
   const openPerformerBioMagazineTab = (tabId: PerformerBioTab) => {
     // Route through Stage Deck (WATCH/WORK mutual exclusivity) on mobile instead of the
     // legacy CommandCenterDrawer, which is desktop-only and left this dead-tap on phones.
+    if (typeof window !== "undefined") {
+      (window as Window & { __TMI_BIO_MAGAZINE_TAB__?: PerformerBioTab }).__TMI_BIO_MAGAZINE_TAB__ = tabId;
+    }
     if (isMobile) {
       openStageWorkspace("bio-magazine");
     } else {
@@ -1129,6 +1250,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     window.requestAnimationFrame(emit);
     window.setTimeout(emit, 90);
   };
+  const openArticleEditor = () => openPerformerBioMagazineTab("biography");
+  const openArticles = () => openPerformerBioMagazineTab("magazine");
 
   useEffect(() => {
     let cancelled = false;
@@ -1169,17 +1292,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     };
   }, []);
 
-  useEffect(() => {
-    // Use matchMedia — reads CSS viewport width, immune to layout-overflow inflating window.innerWidth.
-    const mql = window.matchMedia("(max-width: 900px)");
-    const check = () => {
-      setIsMobile(mql.matches);
-    };
-    check();
-    mql.addEventListener("change", check);
-    return () => mql.removeEventListener("change", check);
-  }, []);
-
   const mediaSlots: CommandCenterMediaSlot[] = useMemo(() => {
     const monitorA: CommandCenterMediaSlot = playlistCast
       ? {
@@ -1204,9 +1316,21 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
     ];
   }, [playlistCast]);
 
+  if (viewportMode === "unknown") {
+    return (
+      <div
+        data-command-center-shell
+        data-viewport-state="unknown"
+        data-testid="hub-viewport-pending"
+        style={{ minHeight: "100vh", width: "100%", background: "#050510" }}
+      />
+    );
+  }
+
   return (
     <div
       data-command-center-shell
+      data-viewport-state={viewportMode}
       data-canonical-shell={role === "performer" ? "performer" : "fan"}
       data-role={role}
       data-active-command-panel={activePanel ?? "none"}
@@ -1254,7 +1378,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           backdropFilter: "blur(12px)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          {!isMobile ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 1, lineHeight: 1.1 }}>
             <span
               style={{
@@ -1281,6 +1406,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               THE MUSICIAN&apos;S INDEX MAGAZINE
             </span>
           </div>
+          ) : null}
           <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: theme.primary }}>
             {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
           </span>
@@ -1442,6 +1568,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       {isMobile ? (
         /* ── MOBILE: pure flex-column ── */
         <div
+          ref={mobileColumnRef}
+          data-testid="hub-mobile-column"
+          data-gps-reveal-build="2"
           style={{
             flex: 1,
             display: "flex",
@@ -1496,6 +1625,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     bezelVariant="chrome"
                     naturalHeight
                     monitorLayoutMode={monitorLayoutForStack}
+                    enableGpsControls={false}
                     role={role === "performer" ? "performer" : "fan"}
                     userId={userId}
                     displayName={resolvedDisplayName}
@@ -1508,7 +1638,41 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       setLivingDeskContext(null);
                       setVenueDockContext(context);
                     }}
-                    seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS" : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"}
+                    seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL MONITORS" : "FAN HUB · CHROME SERIES · DUAL MONITORS"}
+                    underMonitorIndex={gpsDrawerDocked ? 1 : null}
+                    yieldSecondaryMonitor={gpsDrawerDocked && drawerPlacement === "monitor-2-slot"}
+                    onRestoreMonitor2={() => {
+                      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
+                      setDrawerDock(null);
+                      closeDrawer();
+                    }}
+                    underMonitorSlot={
+                      gpsDrawerDocked ? (
+                        <>
+                          {isDrawerExpanded ? (
+                            <CanonicalBottomDrawerHost
+                              userId={userId}
+                              displayName={resolvedDisplayName}
+                              role={role === "performer" ? "performer" : "fan"}
+                            />
+                          ) : null}
+                          {activePanel ? (
+                            <GlobalErrorBoundary context="Command Center Drawer">
+                              <CommandCenterDrawer
+                                role={role}
+                                activePanel={activePanel}
+                                appearanceOpen={appearanceOpen}
+                                userId={userId}
+                                displayName={resolvedDisplayName}
+                                onClose={closeDrawer}
+                                onSelectPanel={openPanel}
+                                initialPlaylistId={deepLinkPlaylistId}
+                              />
+                            </GlobalErrorBoundary>
+                          ) : null}
+                        </>
+                      ) : null
+                    }
                   />
                 </GlobalErrorBoundary>
               </div>
@@ -1535,6 +1699,14 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               ) : null}
             </div>
 
+          </div>
+
+          <div data-hub-mobile-ad-rail="1" style={{ padding: "0 12px 12px", width: "100%", boxSizing: "border-box" }}>
+            {role === "fan" ? (
+              <AdRail placement="fan-cc-bottom" role="fan" reserve="medium-rectangle" experienceMode="dashboard" />
+            ) : (
+              <AdRail placement="performer-cc-bottom" role="performer" reserve="medium-rectangle" experienceMode="dashboard" />
+            )}
           </div>
 
           <HubMobileMonitorControlBar
@@ -1582,39 +1754,15 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             role={role === "performer" ? "performer" : "fan"}
             accentColor={theme.primary}
           />
+          {gpsDrawerDocked ? null : (
           <CanonicalBottomDrawerHost
             userId={userId}
             displayName={resolvedDisplayName}
             role={role === "performer" ? "performer" : "fan"}
           />
+          )}
 
-          {/* Monetization lives in scroll depth only — never overlays stage controls. */}
-          <div style={{ padding: "0 12px 16px" }}>
-            {role === "fan" ? (
-              <>
-                <AdRail
-                  placement="fan-cc-bottom"
-                  role="fan"
-                  reserve="medium-rectangle"
-                  experienceMode={monetizationExperienceMode}
-                />
-                <AdRail
-                  placement="fan-cc-mid"
-                  role="fan"
-                  reserve="mobile-banner"
-                  experienceMode={monetizationExperienceMode}
-                />
-              </>
-            ) : (
-              <AdRail
-                placement="performer-cc-bottom"
-                role="performer"
-                reserve="medium-rectangle"
-                experienceMode={monetizationExperienceMode}
-              />
-            )}
-          </div>
-          {activePanel ? (
+          {activePanel && !gpsDrawerDocked ? (
             <GlobalErrorBoundary context="Command Center Drawer">
               <CommandCenterDrawer
                 role={role}
@@ -1653,6 +1801,20 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                 centers={centers}
                 activePanel={activePanel}
                 onOpenPanel={openPanel}
+                onOpenYourPage={openYourPage}
+                onOpenPerformerPage={role === "performer" ? openPerformerPage : undefined}
+                onOpenArticleEditor={role === "performer" ? openArticleEditor : undefined}
+                onOpenArticles={role === "performer" ? openArticles : undefined}
+                onOpenMagazine={openMagazine}
+                onOpenSettings={openSettings}
+                identity={
+                  <CommandCenterIdentityCard
+                    userId={userId}
+                    displayName={resolvedDisplayName}
+                    role={role === "performer" ? "performer" : "fan"}
+                    roomId={activeHubRoomId}
+                  />
+                }
               />
             }
             mediaStage={
@@ -1668,6 +1830,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       bezelVariant="chrome"
                       naturalHeight
                       monitorLayoutMode={monitorLayoutForStack}
+                      enableGpsControls
                       role={role === "performer" ? "performer" : "fan"}
                       userId={userId}
                       displayName={resolvedDisplayName}
@@ -1682,8 +1845,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                       }}
                       seriesLabel={
                         role === "performer"
-                          ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
-                          : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                          ? "PERFORMER HUB · CHROME SERIES · DUAL MONITORS"
+                          : "FAN HUB · CHROME SERIES · DUAL MONITORS"
                       }
                     />
                   </GlobalErrorBoundary>
@@ -1785,6 +1948,8 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
             }
             communicationsRail={
               <HubCommunicationsRail
+                tab={mobileCommsTab}
+                onTabChange={setMobileCommsTab}
                 role={role === "performer" ? "performer" : "fan"}
                 userId={userId}
                 displayName={resolvedDisplayName}
@@ -1851,13 +2016,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
                     />
                   ) : undefined
                 }
-                identityHeader={
-                  <CommandCenterIdentityCard
-                    userId={userId}
-                    displayName={resolvedDisplayName}
-                    role={role === "performer" ? "performer" : "fan"}
-                  />
-                }
+                identityHeader={undefined}
               />
             }
           />
@@ -1869,6 +2028,56 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
         displayName={resolvedDisplayName}
         role={role === "performer" ? "performer" : "fan"}
       />
+      {gpsDrawerVisible ? (
+        <HubMobileGpsNavDrawer
+          placement="overlay"
+          role={hubShellRole}
+          centers={centers}
+          activePanel={activePanel}
+          onOpenPanel={openPanel}
+          onOpenWorkspace={openStageWorkspace}
+          onCloseActivePanel={closeDrawer}
+          onOpenYourPage={openYourPage}
+          onOpenPerformerPage={role === "performer" ? openPerformerPage : undefined}
+          onOpenArticleEditor={role === "performer" ? openArticleEditor : undefined}
+          onOpenArticles={role === "performer" ? openArticles : undefined}
+          onOpenMagazine={openMagazine}
+          onOpenSocial={openMobileCommunications}
+          displayName={resolvedDisplayName}
+          layout={gpsLayout}
+        />
+      ) : null}
+      <button
+        type="button"
+        data-testid="hub-gps-recall"
+        aria-label={gpsDrawerVisible ? "GPS navigation is open" : "Open GPS navigation"}
+        aria-controls="hub-mobile-gps-drawer"
+        aria-expanded={gpsDrawerVisible}
+        onClick={toggleGpsDrawer}
+        style={{
+          position: "fixed",
+          top: "max(58px, calc(env(safe-area-inset-top) + 50px))",
+          right: "max(10px, env(safe-area-inset-right))",
+          zIndex: 9350,
+          width: 44,
+          height: 44,
+          minWidth: 44,
+          minHeight: 44,
+          padding: 0,
+          borderRadius: 8,
+          border: gpsDrawerVisible ? "1px solid #00E5FF" : "1px solid rgba(0,229,255,0.5)",
+          background: "rgba(8,10,18,0.96)",
+          color: "rgba(255,255,255,0.94)",
+          boxShadow: gpsDrawerVisible ? "0 0 12px rgba(0,229,255,0.28)" : "0 3px 12px rgba(0,0,0,0.3)",
+          fontFamily: "inherit",
+          fontSize: 9,
+          fontWeight: 900,
+          letterSpacing: "0.04em",
+          cursor: "pointer",
+        }}
+      >
+        GPS
+      </button>
       {isMobile ? (
         <HubMobileCommunicationsDrawer
           open={mobileCommsOpen}
@@ -1887,6 +2096,9 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       ) : null}
       <SnipsOverlayHost />
 
+      {/* Fan/Performer peer video — Rule 35 sibling overlay; does not remount monitors */}
+      <PeerVideoCallOverlay />
+
       {/* Points-earned flight animation — fires on real backend balance increases only */}
       <PointFlightEngine />
 
@@ -1894,8 +2106,6 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
 
       <FloatingWorkspacePanel />
       <UniversalWorkspaceHost userId={userId} displayName={resolvedDisplayName} role={role} />
-      {/* Desktop floating LOBBY WALL trigger only — mobile uses HubMobileQuickActionBar LOBBIES. */}
-      {!isMobile ? <FloatingLobbyWallTrigger /> : null}
       <CanonicalLeftQuickPanelHost
         userId={userId}
         displayName={resolvedDisplayName}
@@ -1976,6 +2186,24 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           <div>cartCount: {formatDebugValue(hubDebugSnapshot.cartCount)}</div>
         </div>
       ) : null}
+      {pageStudioKind ? (
+        <YourPageStudio
+          key={pageStudioKind}
+          isOwner
+          ownerUserId={userId}
+          role={role}
+          profileKind={pageStudioKind}
+          capabilities={pageStudioKind === "PERFORMER" ? ["BASE", "PERFORMER"] : ["BASE"]}
+          accentColor={theme.primary}
+          showLauncher={false}
+          requestedOpen
+          onRequestedOpenChange={(next) => {
+            if (!next) setPageStudioKind(null);
+          }}
+          onStepWorkspace={role === "performer" ? stepPageStudio : undefined}
+        />
+      ) : null}
+      <RoleWelcomeBriefing role={role} />
     </div>
   );
 }

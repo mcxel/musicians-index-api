@@ -6,6 +6,8 @@
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import type { LiveSession } from "@/lib/broadcast/globalLiveSessionStore";
 import { FriendAcceptanceEngine } from "@/lib/social/FriendAcceptanceEngine";
+import { SHOWS_RELEASE_FEED_TYPE } from "@/lib/events/ScheduledEventRegistry";
+import { dbHasIssuedTicketForEventOwner } from "@/lib/tickets/DigitalTicketPersistence";
 
 export type RegistryLivePrivacy = LiveSession["privacy"];
 
@@ -31,9 +33,62 @@ export function resolveAudiencePrivacyFromSession(session: {
   }
   const reg = String(session.privacy ?? "PUBLIC").toUpperCase();
   if (reg === "PUBLIC") return "public";
+  // SECURITY NOTE (2026-09-23): this collapses PAID_ENTRY to "public" for the
+  // friends/invite/private mode this function's callers actually branch on —
+  // it is NOT a statement that a paid room is open access. Real ticket
+  // ownership is a separate, mandatory check — see `hasValidTicketForRoom`
+  // below — that every real entry point (page render AND the audience-entry
+  // API) must also run for any session whose *raw* `.privacy` is
+  // "PAID_ENTRY". Do not treat this function's "public" return alone as
+  // sufficient authorization for a paid room.
   if (reg === "PAID_ENTRY") return "public";
   // INVITE_ONLY without fine-grained mode → private (host-only). Honest deny > fake friends pass.
   return "private";
+}
+
+/**
+ * Resolve the real, durable Event.id backing a live room, without trusting
+ * any client-supplied eventId. LiveSession itself carries no eventId field,
+ * so this looks up the ShowsReleaseRecord that was written alongside the
+ * session at creation time (api/events/shows-releases/route.ts) — `entityId`
+ * on that FeedItem row IS the real `event.id`. Returns null (fail closed for
+ * ticket checks) if no such record exists for this roomId.
+ */
+export async function resolveEventIdForRoom(roomId: string): Promise<string | null> {
+  if (!roomId) return null;
+  const p = await getPrisma();
+    const record = await p.feedItem.findFirst({
+    where: {
+      type: SHOWS_RELEASE_FEED_TYPE,
+      data: { path: ["roomId"], equals: roomId },
+    },
+    select: { entityId: true },
+  });
+  return record?.entityId ?? null;
+}
+
+/**
+ * SECURITY (2026-09-23): the real ticket-entitlement check a PAID_ENTRY room
+ * must pass. Previously PAID_ENTRY was silently treated as public everywhere
+ * (see resolveAudiencePrivacyFromSession above) — a real ticket price could
+ * be set and paid, but the room itself never checked for it. Fails closed:
+ * no resolvable event, no authenticated viewer, or no issued ticket for that
+ * (event, viewer) pair all deny.
+ */
+async function getPrisma() {
+  const mod = await import("@/lib/prisma");
+  return mod.prisma || mod.default;
+}
+
+export async function hasValidTicketForRoom(
+  viewerUserId: string | null | undefined,
+  roomId: string,
+): Promise<boolean> {
+  const viewer = (viewerUserId ?? "").trim();
+  if (!viewer || !roomId) return false;
+  const eventId = await resolveEventIdForRoom(roomId);
+  if (!eventId) return false;
+  return dbHasIssuedTicketForEventOwner(eventId, viewer);
 }
 
 /** Map dock/UI privacy onto GlobalLiveSessionRegistry privacy enum. */

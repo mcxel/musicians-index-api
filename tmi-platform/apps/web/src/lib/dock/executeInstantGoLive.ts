@@ -114,8 +114,18 @@ export async function executeInstantGoLive(opts?: {
     }
   }
 
-  const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
-  const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
+  const role = (opts?.role ?? dock.role ?? "FAN").toUpperCase();
+  // Publish must not wait on another /api/auth/session round trip.
+  // The POST authenticates from the cookie. A blocked session probe was
+  // keeping this function from ever calling fetch("/api/live/go").
+  const identity = publishSession
+    ? {
+        name: opts?.displayName?.trim() || "Member",
+        role,
+        userId: undefined as string | undefined,
+        authenticated: false,
+      }
+    : await resolveDisplayName(opts?.displayName ?? "Performer");
 
   // Hard-block only when we are not publishing and have no session.
   // For publishSession, POST /api/live/go is the authoritative auth check —
@@ -446,7 +456,7 @@ export async function publishInstantGoLiveSession(opts: {
 
 /** End LiveSession → registry DELETE + DiscoveryBus unpublish (Lobby Wall / Home LIVE NOW). */
 export async function endInstantGoLiveSession(roomId?: string | null): Promise<void> {
-  const { useLivePrivacyState } = await import("@/lib/live/livePrivacyState");
+  const { useLivePrivacyState, releasePublishedLiveMedia } = await import("@/lib/live/livePrivacyState");
   const rid = roomId?.trim() || useLivePrivacyState.getState().publishedRoomId;
   try {
     await fetch("/api/live/go", { method: "DELETE", credentials: "include", cache: "no-store" });
@@ -454,7 +464,7 @@ export async function endInstantGoLiveSession(roomId?: string | null): Promise<v
     /* local unpublish still required */
   }
   if (rid) unpublishLiveRoom(rid);
-  useLivePrivacyState.getState().clearLivePublished();
+  releasePublishedLiveMedia();
   // Regular GO LIVE fabric canary teardown (no-op when flag off / no active canary).
   try {
     const { teardownRegularGoLiveCanary } = await import(

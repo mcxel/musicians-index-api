@@ -29,6 +29,10 @@ export type FanEquippedLook = {
   /** Fingerprint of THIS fan's equipped look — never a crowd/occupancy count. */
   loadoutId: string;
   updatedAt: string;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 export type ResolveFanEquippedLookInput = {
@@ -38,6 +42,10 @@ export type ResolveFanEquippedLookInput = {
   outfitLabel?: string;
   equippedCosmeticIds?: string[];
   glbSlotId?: AvatarGlbSlotId;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 let lastLook: FanEquippedLook | null = null;

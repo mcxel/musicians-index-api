@@ -62,7 +62,7 @@ const VIEW_TO_LAYOUT: Record<LivingViewCount, LayoutMode> = {
   2: "SPLIT_2",
   3: "SPLIT_3",
   4: "SPLIT_4",
-  5: "SPLIT_4",
+  5: "GRID_5",
   6: "GRID_6",
   7: "GRID_8",
   8: "GRID_8",

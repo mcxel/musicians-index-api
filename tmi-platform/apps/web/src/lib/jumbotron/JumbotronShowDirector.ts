@@ -106,6 +106,28 @@ export class JumbotronShowDirector {
     return JumbotronFaceTargetRegistry.cardinalFaces().map((d) => this.faceStates.get(d)!);
   }
 
+  /**
+   * Hydrate scheduled face ads BEFORE live PiP / takeover.
+   * Preserves underlying session; prize PiP must not wipe other faces' scheduled sponsors.
+   */
+  public applyScheduledProgram(
+    schedule: Partial<Record<JumbotronCardinalFace, string>>,
+  ): void {
+    for (const d of JumbotronFaceTargetRegistry.cardinalFaces()) {
+      const campaignId = schedule[d];
+      if (!campaignId) continue;
+      const cur = this.faceStates.get(d)!;
+      this.faceStates.set(d, {
+        ...cur,
+        currentComposition: "FULL",
+        sponsorCampaignId: campaignId,
+        sourceId: campaignId,
+        overlayText: null,
+      });
+      this.facesRegistry?.assignFaceContent(d, campaignId, campaignId);
+    }
+  }
+
   public handleLiveEvent(
     eventType: string,
     payload: Record<string, string>
@@ -119,7 +141,7 @@ export class JumbotronShowDirector {
         sourceId: payload.participantId ?? null,
       };
       this.faceStates.set("WEST", next);
-      // East keeps sponsor — ads can PiP while live moment shows
+      // EAST (and other faces) retain scheduled sponsorCampaignId — PiP is additive, not a wipe.
       return next;
     }
     return null;

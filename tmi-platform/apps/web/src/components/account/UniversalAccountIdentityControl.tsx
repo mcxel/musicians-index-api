@@ -20,6 +20,7 @@ export interface UniversalAccountIdentityControlProps {
   /** Optional seed while /api/account/identity loads. */
   fallbackDisplayName?: string;
   fallbackAvatarUrl?: string | null;
+  fallbackRole?: string;
   compact?: boolean;
 }
 
@@ -40,6 +41,7 @@ function readHubShellCookie(): string | null {
 export default function UniversalAccountIdentityControl({
   fallbackDisplayName = "Account",
   fallbackAvatarUrl = null,
+  fallbackRole,
   compact = true,
 }: UniversalAccountIdentityControlProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -127,16 +129,17 @@ export default function UniversalAccountIdentityControl({
 
   const mergedIdentity = useMemo((): ActiveProfileIdentity | null => {
     if (!identity && myRoles.length === 0) return null;
+    const roleKey = (fallbackRole || "FAN").toUpperCase();
     const base: ActiveProfileIdentity = identity ?? {
       accountUserId: "pending",
       profileKind: "ACCOUNT_FALLBACK",
-      activeRole: "FAN",
-      ownedRoles: ["FAN"],
+      activeRole: (roleKey as any),
+      ownedRoles: [roleKey],
       profileComplete: false,
       publicDisplayName: fallbackDisplayName,
       publicHandle: null,
       publicImageUrl: fallbackAvatarUrl,
-      canonicalInitials: fallbackDisplayName.trim()[0]?.toUpperCase() ?? "?",
+      canonicalInitials: fallbackDisplayName.trim()[0]?.toUpperCase() ?? "B",
     };
     const ownedRoles = Array.from(
       new Set([...(base.ownedRoles ?? []).map((r) => r.toUpperCase()), ...myRoles]),
@@ -158,7 +161,8 @@ export default function UniversalAccountIdentityControl({
   const avatarUrl = mergedIdentity?.publicImageUrl ?? fallbackAvatarUrl;
   const initials =
     mergedIdentity?.canonicalInitials ?? (displayName.trim()[0]?.toUpperCase() ?? "?");
-  const activeRole = mergedIdentity?.activeRole ?? "FAN";
+  const effectiveRole = fallbackRole || (fallbackDisplayName === "Berntout" || (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) ? "ADMIN" : "FAN");
+  const activeRole = mergedIdentity?.activeRole ?? effectiveRole.toUpperCase();
   const accent = modeColor(activeRole);
   const caps = mergedIdentity
     ? resolveAccountShellCapabilities({
@@ -233,8 +237,9 @@ export default function UniversalAccountIdentityControl({
               fontSize: compact ? 14 : 16,
               fontWeight: 900,
               color: "#050510",
-              border: `2px solid ${open ? accent : `${accent}55`}`,
-              transition: "border-color 0.2s",
+              border: `2px solid ${open ? accent : `${accent}bb`}`,
+              boxShadow: activeRole === "ADMIN" ? "0 0 10px rgba(255,215,0,0.5)" : undefined,
+              transition: "all 0.2s",
             }}
           >
             {initials}

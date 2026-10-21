@@ -26,6 +26,10 @@ import {
   sampleFanSkinTone,
 } from "@/lib/avatars/FanCosmeticCatalog";
 import type { AvatarFaceIdentityProfile } from "@/lib/avatar/AvatarFaceIdentityContract";
+import {
+  readPersistedBodyDiversity,
+  type BodyDiversityParameters,
+} from "@/lib/avatar/AvatarBodyTypeEngine";
 
 export const BOBBLEHEAD_RUNTIME_LABEL =
   "3D Avatar Runtime v0 — procedural bobblehead (not photoreal GLB)" as const;
@@ -125,6 +129,62 @@ const PALETTE_BY_BASE: Record<string, Omit<BobbleheadRuntimePalette, "bodyHeight
     skinHex: "#C68642",
     hairHex: "#1a1210",
     outfitTint: "#f0f0f0",
+    visorHex: "#AA2DFF",
+    bobbleheadRatio: 1.33,
+  },
+  "bh-hoodie-producer-male": {
+    skinHex: "#8D5524",
+    hairHex: "#111111",
+    outfitTint: "#2d3a28",
+    visorHex: "#00FF88",
+    bobbleheadRatio: 1.35,
+  },
+  "bh-cypher-spitter-male": {
+    skinHex: "#AA6C39",
+    hairHex: "#0a0a0a",
+    outfitTint: "#1a1a2e",
+    visorHex: "#00FFFF",
+    bobbleheadRatio: 1.34,
+  },
+  "bh-afro-retro-male": {
+    skinHex: "#6B3A1F",
+    hairHex: "#080808",
+    outfitTint: "#3d2b1f",
+    visorHex: "#FFD700",
+    bobbleheadRatio: 1.37,
+  },
+  "bh-executive-suit-male": {
+    skinHex: "#F1C27D",
+    hairHex: "#1c120c",
+    outfitTint: "#0a192f",
+    visorHex: "#00FFFF",
+    bobbleheadRatio: 1.32,
+  },
+  "bh-street-queen-female": {
+    skinHex: "#AA6C39",
+    hairHex: "#120B07",
+    outfitTint: "#2a0845",
+    visorHex: "#FF2DAA",
+    bobbleheadRatio: 1.36,
+  },
+  "bh-stage-diva-female": {
+    skinHex: "#C68642",
+    hairHex: "#1c0d06",
+    outfitTint: "#3b1443",
+    visorHex: "#FFD700",
+    bobbleheadRatio: 1.35,
+  },
+  "bh-braids-trend-female": {
+    skinHex: "#5C3317",
+    hairHex: "#0a0604",
+    outfitTint: "#1f2937",
+    visorHex: "#00FFFF",
+    bobbleheadRatio: 1.36,
+  },
+  "bh-executive-boss-female": {
+    skinHex: "#E0AC69",
+    hairHex: "#18100c",
+    outfitTint: "#111827",
     visorHex: "#AA2DFF",
     bobbleheadRatio: 1.33,
   },
@@ -239,6 +299,7 @@ export function bobbleheadRuntimeToRigProps(
     /** Override continuum t; default reads session skin slider. */
     skinT?: number;
     faceIdentity?: AvatarFaceIdentityProfile | null;
+    bodyDiversity?: BodyDiversityParameters | null;
   },
 ): AvatarRigProps & { bobbleheadRatio: number } {
   const faceIdentity = opts?.faceIdentity !== undefined ? opts.faceIdentity : readPersistedFaceIdentityProfile();
@@ -263,6 +324,26 @@ export function bobbleheadRuntimeToRigProps(
     if (def?.hairTint) hairHex = def.hairTint;
     if (def?.bodyTint) outfitTint = def.bodyTint;
   }
+  if (faceIdentity?.appearance.browColorHex) {
+    hairHex = faceIdentity.appearance.browColorHex;
+  }
+
+  const shape = faceIdentity?.shapeCoefficients;
+  const bodyDiversity = opts?.bodyDiversity !== undefined ? opts.bodyDiversity : readPersistedBodyDiversity();
+
+  const heightMod = bodyDiversity ? bodyDiversity.heightScale : 1.0;
+  const massMod = bodyDiversity
+    ? 1 + bodyDiversity.bodyMass * 0.4 + bodyDiversity.bellyFullness * 0.25 + bodyDiversity.muscleMass * 0.15
+    : 1.0;
+
+  const bobble =
+    (character.palette.bobbleheadRatio * (bodyDiversity ? 1 - (bodyDiversity.heightScale - 1) * 0.15 : 1)) +
+    (shape ? shape.faceWidth * 0.08 + shape.cheekWidth * 0.04 : 0);
+  const bodyHeight =
+    (character.palette.bodyHeight * heightMod) + (shape ? shape.faceLength * 12 : 0);
+  const bodyMass =
+    (character.palette.bodyMass * massMod) +
+    (shape ? shape.jawWidth * 14 + shape.cheekWidth * 8 : 0);
 
   return {
     active: true,
@@ -270,9 +351,15 @@ export function bobbleheadRuntimeToRigProps(
     hairColor: hairHex,
     outfitTint,
     visorColor: character.palette.visorHex,
-    bobbleheadRatio: character.palette.bobbleheadRatio,
-    bodyHeight: character.palette.bodyHeight,
-    bodyMass: character.palette.bodyMass,
+    bobbleheadRatio: Math.min(1.55, Math.max(1.05, bobble)),
+    bodyHeight: Math.min(100, Math.max(0, bodyHeight)),
+    bodyMass: Math.min(100, Math.max(0, bodyMass)),
+    headScaleX: shape ? 1 + shape.faceWidth * 0.12 + shape.jawWidth * 0.06 : 1,
+    headScaleY: shape
+      ? 1 + shape.faceLength * 0.1 + shape.foreheadHeight * 0.06
+      : 1,
+    identityShape: shape ?? null,
+    eyeColorHex: faceIdentity?.appearance.eyeColorHex,
     isSeated: opts?.isSeated,
     isPlaying: opts?.isPlaying,
     attachments,

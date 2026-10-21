@@ -25,6 +25,7 @@ import { useRetainAudibleExperience } from "@/components/audio/useAudibleExperie
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
+import TmiBroadcastSceneComposer from "@/components/broadcast/graphics/TmiBroadcastSceneComposer";
 import type {
   CompetitionParticipantView,
   CompetitionPhase,
@@ -45,6 +46,17 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from "@/lib/venues/EventVenueEnvironment";
+import {
+  applyVenuePresentationPrograms,
+  resolveVenuePresentationFabric,
+} from "@/lib/venue/VenuePresentationFabric";
+import {
+  advanceDirectedCameraIndex,
+  buildVenuePresentationExecution,
+  resolveChromaEntitlementFromTier,
+  viewModePreservesLiveSession,
+} from "@/lib/venue/VenuePresentationExecution";
+import { resolveChromaRuntimeSnapshot } from "@/lib/venue/ChromaSegmentationRuntime";
 import type { VenueSpatialMap, WorldViewMode } from "@/lib/world/WorldScenePlan";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 
@@ -204,6 +216,7 @@ interface ArenaEventShellProps {
   readonly jumbotronLookUpActive?: boolean;
   /** Step 4 Slice 2 — pre-bound certified package (no silent venue swap). */
   readonly certifiedPackage?: CertifiedVenuePackage | null;
+  readonly canonicalSpatialWorld?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -259,13 +272,16 @@ export default function ArenaEventShell({
   spatialMap: spatialMapProp,
   jumbotronLookUpActive,
   certifiedPackage: certifiedPackageProp = null,
+  canonicalSpatialWorld = false,
 }: ArenaEventShellProps) {
+  useRetainAudibleExperience();
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
   const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
   /** Internal LOOK UP when parent does not drive focus (public shells). */
-  useRetainAudibleExperience();
   const [internalLookUp, setInternalLookUp] = useState(false);
+  const [authPerformerTier, setAuthPerformerTier] = useState<string | null>(null);
+  const [cameraCutIndex, setCameraCutIndex] = useState(0);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const applyQuery = () => {
@@ -286,6 +302,17 @@ export default function ArenaEventShell({
     () => `jumbotron-presence-${roomId}`,
     [roomId],
   );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean; user?: { tier?: string; subscriptionTier?: string } }) => {
+        if (!data.authenticated || !data.user) return;
+        const tier = data.user.tier ?? data.user.subscriptionTier ?? null;
+        if (tier) setAuthPerformerTier(String(tier));
+      })
+      .catch(() => {});
+  }, []);
   const venueKindForEnv =
     eventType === "monday-stage"
       ? "monday-night-stage"
@@ -333,6 +360,145 @@ export default function ArenaEventShell({
     !suppressPresentation &&
     certifiedPackage.capabilities.HAS_JUMBOTRON &&
     Boolean(certifiedPackage.jumbotronMount);
+  const participantCount =
+    (leftParticipant ? 1 : 0) + (rightParticipant ? 1 : 0);
+  const chromaEntitlement = useMemo(
+    () =>
+      resolveChromaEntitlementFromTier({
+        authSessionTier: authPerformerTier,
+      }),
+    [authPerformerTier],
+  );
+  const chromaPreferredQuality = chromaEntitlement.authorized
+    ? ("CHROMA_READY" as const)
+    : ("STANDARD_VIDEO_FALLBACK" as const);
+  const presentationFabric = useMemo(
+    () =>
+      resolveVenuePresentationFabric({
+        roomId,
+        eventType,
+        venueEnvironment,
+        venueSkinId,
+        specialYearlyOutdoor,
+        participantCount,
+        certifiedPackage,
+        performerTier: authPerformerTier,
+        chromaQuality: chromaPreferredQuality,
+      }),
+    [
+      roomId,
+      eventType,
+      venueEnvironment,
+      venueSkinId,
+      specialYearlyOutdoor,
+      participantCount,
+      certifiedPackage,
+      authPerformerTier,
+      chromaPreferredQuality,
+    ],
+  );
+  useEffect(() => {
+    if (suppressPresentation) return;
+    applyVenuePresentationPrograms({
+      plan: presentationFabric,
+      cornerA: leftParticipant
+        ? { id: leftParticipant.id, displayName: leftParticipant.displayName }
+        : null,
+      cornerB: rightParticipant
+        ? { id: rightParticipant.id, displayName: rightParticipant.displayName }
+        : null,
+      circle:
+        eventType === "cypher"
+          ? [leftParticipant, rightParticipant]
+              .filter((p): p is CompetitionParticipantView => Boolean(p))
+              .map((p) => ({ id: p.id, displayName: p.displayName }))
+          : null,
+    });
+  }, [
+    suppressPresentation,
+    presentationFabric,
+    leftParticipant,
+    rightParticipant,
+    eventType,
+  ]);
+  const chromaRuntime = useMemo(() => {
+    const participants = [leftParticipant, rightParticipant]
+      .filter((p): p is CompetitionParticipantView => Boolean(p))
+      .map((p) => ({ id: p.id, displayName: p.displayName }));
+    const draftSlots =
+      presentationFabric.panelComposition === "BATTLE_DUAL_MIXED"
+        ? [
+            {
+              slotId: "corner-a",
+              participantId: participants[0]?.id ?? null,
+            },
+            {
+              slotId: "corner-b",
+              participantId: participants[1]?.id ?? null,
+            },
+          ]
+        : presentationFabric.panelComposition === "CYPHER_COLLABORATIVE_ROWS"
+          ? participants.map((p, i) => ({
+              slotId: `circle-${i}`,
+              participantId: p.id,
+            }))
+          : [
+              {
+                slotId: "primary",
+                participantId: participants[0]?.id ?? null,
+              },
+            ];
+    return resolveChromaRuntimeSnapshot({
+      entitled: chromaEntitlement.authorized,
+      panelComposition: presentationFabric.panelComposition,
+      slots: draftSlots,
+      cutoutMethod: "CHROMA_KEY",
+      preferredQuality: chromaPreferredQuality,
+    });
+  }, [
+    chromaEntitlement.authorized,
+    presentationFabric.panelComposition,
+    leftParticipant,
+    rightParticipant,
+    chromaPreferredQuality,
+  ]);
+
+  const presentationExecution = useMemo(
+
+    () =>
+      buildVenuePresentationExecution({
+        plan: presentationFabric,
+        sessionId: `session:${roomId}`,
+        participants: [leftParticipant, rightParticipant]
+          .filter((p): p is CompetitionParticipantView => Boolean(p))
+          .map((p) => ({ id: p.id, displayName: p.displayName })),
+        authSessionTier: authPerformerTier,
+        chromaRuntimeReady: chromaRuntime.runtimeReady,
+        jumbotronProgramBound: mountJumbotron,
+        cameraIndex: cameraCutIndex,
+        viewMode,
+      }),
+    [
+      presentationFabric,
+      roomId,
+      leftParticipant,
+      rightParticipant,
+      authPerformerTier,
+      mountJumbotron,
+      cameraCutIndex,
+      viewMode,
+      chromaRuntime,
+    ],
+  );
+  useEffect(() => {
+    if (suppressPresentation) return;
+    const seqLen = presentationExecution.camera.sequence.length;
+    const timer = window.setInterval(() => {
+      setCameraCutIndex((i) => advanceDirectedCameraIndex(seqLen, i));
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [suppressPresentation, presentationExecution.camera.sequence.length, roomId]);
+  void viewModePreservesLiveSession(viewMode, viewMode);
   const isLive = liveState === "live";
   const energyLevel =
     envResolution.policy === "exempt"
@@ -469,6 +635,17 @@ export default function ArenaEventShell({
           jumbotronLookUpActive={lookUpActive}
           venueId={certifiedPackage.venueId || venueSlug}
           certifiedPackage={certifiedPackage}
+          canonicalSpatialWorld={canonicalSpatialWorld}
+          presentationFabric={presentationFabric}
+          presentationExecution={presentationExecution}
+          chromaRuntime={chromaRuntime}
+          stageParticipants={[leftParticipant, rightParticipant]
+            .filter((p): p is CompetitionParticipantView => Boolean(p))
+            .map((p) => ({
+              id: p.id,
+              displayName: p.displayName,
+              imageUrl: p.imageUrl ?? null,
+            }))}
         />
         {/* World-space Automated Jumbotron — only when venue package declares LED/jumbotron mount */}
         {mountJumbotron && (
@@ -477,8 +654,40 @@ export default function ArenaEventShell({
             eventType={eventType}
             venueId={certifiedPackage.venueId || venueSlug}
             lookUpActive={lookUpActive}
+            physicalEnvironmentHint={
+              presentationFabric.jumbotron.physicalEnvironmentHint
+            }
           />
         )}
+        <div
+          hidden
+          data-venue-presentation-fabric="1"
+          data-venue-env={presentationFabric.environment.environment ?? "exempt"}
+          data-venue-panel-composition={presentationFabric.panelComposition}
+          data-venue-broadcast-layout={presentationFabric.broadcastLayout}
+          data-venue-camera-profile={presentationFabric.cameraProfile}
+          data-venue-framing={presentationFabric.framing}
+          data-venue-chroma-fallback={
+            presentationFabric.chroma.fallbackToVideoPanel ? "1" : "0"
+          }
+          data-venue-hd-webrtc={
+            presentationFabric.hdPerformancePanel.usesCanonicalWebRtc ? "1" : "0"
+          }
+          data-venue-jumbotron-authorized={
+            presentationFabric.jumbotron.mountAuthorized ? "1" : "0"
+          }
+          data-venue-media-state={presentationExecution.mediaState}
+          data-venue-presentation-mode={presentationExecution.presentationMode}
+          data-venue-chroma-authorized={
+            presentationExecution.chroma.authorized ? "1" : "0"
+          }
+          data-venue-chroma-active={
+            presentationExecution.chroma.active ? "1" : "0"
+          }
+          data-venue-camera-shot={presentationExecution.camera.currentShot.shotType}
+          data-venue-view-mode={presentationExecution.viewMode}
+          data-venue-session-preserved="1"
+        />
         {!suppressPresentation && jumbotronLookUpActive === undefined && (
           <div
             data-presence-session={lookUpSessionToken}
@@ -527,6 +736,32 @@ export default function ArenaEventShell({
             </span>
           </div>
         )}
+        {!suppressPresentation ? (
+          <TmiBroadcastSceneComposer
+            roomId={roomId}
+            eventType={eventType}
+            liveState={liveState}
+            title={label}
+            phaseLabel={roundLabel}
+            participants={[leftParticipant, rightParticipant]
+              .filter((p): p is CompetitionParticipantView => Boolean(p))
+              .map((p) => ({
+                id: p.id,
+                displayName: p.displayName,
+                imageUrl: p.imageUrl ?? null,
+                score: p.score ?? null,
+              }))}
+            activeParticipantId={leftParticipant?.id ?? null}
+            nextParticipantId={rightParticipant?.id ?? null}
+            timerLabel={
+              remainingSeconds != null
+                ? `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`
+                : null
+            }
+            winnerId={winnerParticipantId}
+            hasProgramMedia={liveState === "live"}
+          />
+        ) : null}
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
             format={competitionFormat}

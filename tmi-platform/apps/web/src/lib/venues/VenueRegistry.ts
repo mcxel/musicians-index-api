@@ -30,8 +30,10 @@ export interface VenueIdentity {
   tier: VenueTier;
 
   capacity: number;
+  /** Runtime-only. Seed registry values must be 0 — never fabricate live fill. */
   occupancyPct: number;
   isLive: boolean;
+  /** Runtime-only. Seed registry values must be 0. */
   audienceCount: number;
 
   ticketPriceUsd: number;
@@ -57,7 +59,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/the-underground-profile.jpg',
     city: 'New York, NY', countryName: 'United States', flag: '🇺🇸',
     category: 'Arena', tier: 'Diamond',
-    capacity: 12000, occupancyPct: 84, isLive: false, audienceCount: 10080,
+    capacity: 12000, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 45, openTickets: 1920,
     roomId: 'room-arena-prime',
     profileRoute: '/venues/arena-prime',
@@ -73,7 +75,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/cypher-dome-profile.jpg',
     city: 'Atlanta, GA', countryName: 'United States', flag: '🇺🇸',
     category: 'Theater', tier: 'Platinum',
-    capacity: 2400, occupancyPct: 71, isLive: false, audienceCount: 1704,
+    capacity: 2400, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 25, openTickets: 696,
     roomId: 'room-cypher-dome',
     profileRoute: '/venues/cypher-dome',
@@ -89,7 +91,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/battle-amphitheater-profile.jpg',
     city: 'Chicago, IL', countryName: 'United States', flag: '🇺🇸',
     category: 'Outdoor', tier: 'Gold',
-    capacity: 5000, occupancyPct: 67, isLive: false, audienceCount: 0,
+    capacity: 5000, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 30, openTickets: 1650,
     roomId: 'room-battle-amp',
     profileRoute: '/venues/battle-amphitheater',
@@ -105,7 +107,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/neon-pit-profile.jpg',
     city: 'Los Angeles', countryName: 'United States', flag: '🇺🇸',
     category: 'Club', tier: 'Gold',
-    capacity: 800, occupancyPct: 90, isLive: false, audienceCount: 720,
+    capacity: 800, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 20, openTickets: 80,
     roomId: 'room-neon-pit',
     profileRoute: '/venues/neon-pit',
@@ -121,7 +123,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/rnb-basement-profile.jpg',
     city: 'Houston, TX', countryName: 'United States', flag: '🇺🇸',
     category: 'Club', tier: 'Silver',
-    capacity: 400, occupancyPct: 55, isLive: false, audienceCount: 0,
+    capacity: 400, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 15, openTickets: 180,
     roomId: 'room-rnb-basement',
     profileRoute: '/venues/rnb-basement',
@@ -137,7 +139,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/the-underground-profile.jpg',
     city: 'Detroit, MI', countryName: 'United States', flag: '🇺🇸',
     category: 'Studio', tier: 'RUBY',
-    capacity: 200, occupancyPct: 40, isLive: false, audienceCount: 0,
+    capacity: 200, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 10, openTickets: 120,
     roomId: 'room-underground',
     profileRoute: '/venues/the-underground',
@@ -153,7 +155,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/crown-duel-stage-profile.jpg',
     city: 'Miami, FL', countryName: 'United States', flag: '🇺🇸',
     category: 'Theater', tier: 'Platinum',
-    capacity: 1200, occupancyPct: 78, isLive: false, audienceCount: 936,
+    capacity: 1200, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 35, openTickets: 264,
     roomId: 'room-crown-duel',
     profileRoute: '/venues/crown-duel-stage',
@@ -169,7 +171,7 @@ export const VENUE_REGISTRY: VenueIdentity[] = [
     profileImage: '/assets/generated/venues/jakarta-arena-profile.jpg',
     city: 'Jakarta, ID', countryName: 'Indonesia', flag: '🇮🇩',
     category: 'Stadium', tier: 'Diamond',
-    capacity: 18000, occupancyPct: 62, isLive: false, audienceCount: 0,
+    capacity: 18000, occupancyPct: 0, isLive: false, audienceCount: 0,
     ticketPriceUsd: 55, openTickets: 6840,
     roomId: 'room-jakarta-arena',
     profileRoute: '/venues/jakarta-arena',
@@ -200,7 +202,10 @@ export function getLiveVenues(): VenueIdentity[] {
     .filter(v => liveByRoomId.has(v.roomId))
     .map(v => {
       const session = liveByRoomId.get(v.roomId)!;
-      return { ...v, isLive: true, audienceCount: session.viewerCount };
+      const audienceCount = Math.max(0, session.viewerCount ?? 0);
+      const occupancyPct =
+        v.capacity > 0 ? Math.min(100, Math.round((audienceCount / v.capacity) * 100)) : 0;
+      return { ...v, isLive: true, audienceCount, occupancyPct };
     })
     .sort((a, b) => b.audienceCount - a.audienceCount);
 }

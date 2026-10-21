@@ -8,17 +8,23 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import RoleGate from "@/components/auth/RoleGate";
 import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
-import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
+
+const LobbyEntryFlow = dynamic(
+  () =>
+    import("@/components/room/UniversalLobbyEntry").then((m) => m.LobbyEntryFlow),
+  { ssr: false },
+);
 import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import {
-  LOBBY_WALL_CORE_CATEGORY_TABS,
-  advanceLobbyWallCategory,
+  LOBBY_WALL_CHANNEL_TABS,
+  advanceLobbyWallChannel,
   attachLobbyBoostFlags,
   canSearchFanAvatarLobbies,
   filterDiscoveryByWallCategory,
@@ -73,7 +79,7 @@ export default function LiveLobbyWallHost({
   viewerUserId = null,
   viewerRole: viewerRoleProp,
   onRoomJoin,
-  defaultCategory = "challenges",
+  defaultCategory = "all",
   showFanLobbySearch = true,
   enableMobileRoam = true,
 }: LiveLobbyWallHostProps) {
@@ -88,7 +94,6 @@ export default function LiveLobbyWallHost({
   const [boostMap, setBoostMap] = useState<Map<string, { expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>>(
     () => new Map(),
   );
-
   useEffect(() => {
     let cancelled = false;
     const loadBoosts = async () => {
@@ -310,7 +315,7 @@ export default function LiveLobbyWallHost({
   );
 
   const advanceCategory = useCallback((direction: "next" | "prev") => {
-    setActiveCategory((cur) => advanceLobbyWallCategory(cur, direction));
+    setActiveCategory((cur) => advanceLobbyWallChannel(cur, direction));
     setFanSearchQuery("");
   }, []);
 
@@ -319,7 +324,7 @@ export default function LiveLobbyWallHost({
   const categoryPills = fanSearchActive
     ? undefined
     : {
-        items: [...LOBBY_WALL_CORE_CATEGORY_TABS],
+        items: [...LOBBY_WALL_CHANNEL_TABS],
         activeId: activeCategory,
         onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
         onAdvance: advanceCategory,

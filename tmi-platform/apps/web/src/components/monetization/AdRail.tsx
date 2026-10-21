@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import { getActiveSponsorForZone } from "@/lib/commerce/SponsorRegistry";
 import { ADSENSE_SLOT_ENV } from "@/lib/ads/adConfig";
+import { resolveRouteAdEligibility } from "@/lib/ads/RouteAdEligibilityResolver";
 
 export type AdRailPlacement = "fan-cc-bottom" | "fan-cc-mid" | "performer-cc-bottom";
 export type AdRailRole = "fan" | "performer";
@@ -154,6 +156,8 @@ function HouseCard({ role }: { role: AdRailRole }) {
 
 export default function AdRail({ placement, role, reserve, experienceMode }: AdRailProps) {
   const meta = PLACEMENT_META[placement];
+  const pathname = usePathname() ?? "/";
+  const adSenseRouteEligible = resolveRouteAdEligibility(pathname).eligible;
 
   const resolved = useMemo(() => {
     if (!canRender(placement, role, experienceMode)) {
@@ -170,7 +174,7 @@ export default function AdRail({ placement, role, reserve, experienceMode }: AdR
       return { state: "sponsor" as AdRailState, mode: "sponsor" as ResolvedMode };
     }
 
-    if (hasNetworkSlot(meta.slotKey)) {
+    if (adSenseRouteEligible && hasNetworkSlot(meta.slotKey)) {
       return { state: "network" as AdRailState, mode: "network" as ResolvedMode };
     }
 
@@ -179,7 +183,7 @@ export default function AdRail({ placement, role, reserve, experienceMode }: AdR
     }
 
     return { state: "house" as AdRailState, mode: "house" as ResolvedMode };
-  }, [placement, role, experienceMode, meta.zone, meta.slotKey]);
+  }, [placement, role, experienceMode, meta.zone, meta.slotKey, adSenseRouteEligible]);
 
   if (resolved.mode === "unavailable") return null;
 

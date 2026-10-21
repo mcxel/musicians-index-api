@@ -23,7 +23,9 @@ export type BattleFormatType =
   | "joke-off"
   | "mini-dozens"
   | "open-performer-challenge"
-  | "musical-gauntlet";
+  | "musical-gauntlet"
+  | "cultural-challenge"
+  | "dj-world-dance-party";
 
 export interface BattleFormatRule {
   format: BattleFormatType;
@@ -53,6 +55,8 @@ const FORMAT_RULES: Record<BattleFormatType, BattleFormatRule> = {
   "mini-dozens": { format: "mini-dozens", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Mini Dozens" },
   "open-performer-challenge": { format: "open-performer-challenge", minTeamSize: 1, maxTeamSize: 20, defaultTeamSize: 4, category: "showcase", label: "Open Circle" },
   "musical-gauntlet": { format: "musical-gauntlet", minTeamSize: 2, maxTeamSize: 32, defaultTeamSize: 16, category: "contest", label: "Musical Gauntlet" },
+  "cultural-challenge": { format: "cultural-challenge", minTeamSize: 1, maxTeamSize: 2, defaultTeamSize: 1, category: "contest", label: "Cultural Challenge" },
+  "dj-world-dance-party": { format: "dj-world-dance-party", minTeamSize: 1, maxTeamSize: 1, defaultTeamSize: 1, category: "showcase", label: "World Dance Party" },
 };
 
 export class BattleFormatRulesEngine {

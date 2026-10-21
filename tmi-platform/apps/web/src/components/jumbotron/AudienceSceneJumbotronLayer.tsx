@@ -64,6 +64,7 @@ export interface AudienceSceneJumbotronLayerProps {
   eventType?: string | null;
   venueId?: string;
   lookUpActive?: boolean;
+  physicalEnvironmentHint?: import("@/lib/jumbotron/JumbotronContracts").VenuePhysicalEnvironmentType | string | null;
 }
 
 function JumbotronCameraFraming({ lookUpActive }: { lookUpActive: boolean }) {
@@ -86,9 +87,11 @@ export function AudienceSceneJumbotronLayer({
   eventType,
   venueId,
   lookUpActive = false,
+  physicalEnvironmentHint = null,
 }: AudienceSceneJumbotronLayerProps) {
   const experienceType = mapArenaEventToJumbotronExperience(eventType);
-  const venueEnvironment = venueIndexToJumbotronEnvironment(venue, experienceType);
+  const venueEnvironment = (physicalEnvironmentHint as import("@/lib/jumbotron/JumbotronContracts").VenuePhysicalEnvironmentType | null)
+    ?? venueIndexToJumbotronEnvironment(venue, experienceType);
 
   const director = useMemo(() => {
     return new AutomatedJumbotronDirector({

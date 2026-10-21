@@ -22,6 +22,9 @@ import { isShowsOrReleaseDiscoveryCategory } from "@/lib/events/ScheduledEventRe
  * one room can mix performers; tiles show country + genre + name so users pick visually.
  */
 export type LobbyWallCoreCategoryId =
+  | "all"
+  | "performers_live"
+  | "fans_live"
   | "challenges"
   | "battles"
   | "cyphers"
@@ -30,8 +33,10 @@ export type LobbyWallCoreCategoryId =
   | "fan_avatar_lobbies"
   | "lounges"
   | "games"
+  | "events"
   | "lives"
-  | "shows_and_releases";
+  | "shows_and_releases"
+  | "games_and_shows";
 
 /** Canonical order: Challenges → Battles → Cyphers → World Dance → Performer Lobbies → … */
 export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
@@ -43,8 +48,23 @@ export const LOBBY_WALL_CORE_CATEGORY_TABS: readonly LobbyCategoryPill[] = [
   { id: "fan_avatar_lobbies", label: "Fan Lobbies", icon: "👥", accentColor: "#00FFFF" },
   { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#00FFFF" },
   { id: "games", label: "Games", icon: "🎮", accentColor: "#22c55e" },
+  { id: "games_and_shows", label: "Games & Shows", icon: "🎭", accentColor: "#22c55e" },
   { id: "lives", label: "Live", icon: "🔴", accentColor: "#FF3B5C" },
   { id: "shows_and_releases", label: "Shows & Releases", icon: "📺", accentColor: "#FFD700" },
+] as const;
+
+/** One wall. These switches are filters, not routes. */
+export const LOBBY_WALL_CHANNEL_TABS: readonly LobbyCategoryPill[] = [
+  { id: "all", label: "All", icon: "◉", accentColor: "#00FFFF" },
+  { id: "performers_live", label: "Performers Live", icon: "🎤", accentColor: "#FFD700" },
+  { id: "fans_live", label: "Fans Live", icon: "👤", accentColor: "#00FF88" },
+  { id: "battles", label: "Battles", icon: "⚔️", accentColor: "#FF2DAA" },
+  { id: "challenges", label: "Challenges", icon: "🎯", accentColor: "#FF6B35" },
+  { id: "cyphers", label: "Cyphers", icon: "🎤", accentColor: "#AA2DFF" },
+  { id: "events", label: "Events", icon: "📺", accentColor: "#00FFFF" },
+  { id: "lounges", label: "Lounges", icon: "🛋️", accentColor: "#7a5cff" },
+  { id: "world_dance_party", label: "World Dance Party", icon: "🌍", accentColor: "#00FF88" },
+  { id: "games_and_shows", label: "Games & Shows", icon: "🎭", accentColor: "#22c55e" },
 ] as const;
 
 const ARENA_DISCOVERY_CATEGORIES = new Set<LiveDiscoveryCategory>([
@@ -68,7 +88,7 @@ const LIVE_GENERAL_CATEGORIES = new Set<LiveDiscoveryCategory>([
 export const WALL_TAB_TO_DISCOVERY: Record<
   Exclude<
     LobbyWallCoreCategoryId,
-    "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases"
+    "all" | "performers_live" | "fans_live" | "events" | "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases" | "games_and_shows"
   >,
   LiveDiscoveryCategory
 > = {
@@ -82,6 +102,10 @@ export const WALL_TAB_TO_DISCOVERY: Record<
 
 /** Maps wall tab → ExperienceRoomRegistry experience classes (canonical mill). */
 export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly ExperienceClass[]> = {
+  all: [],
+  performers_live: ["MAIN_AUDITORIUM"],
+  fans_live: ["MAIN_AUDITORIUM"],
+  events: [],
   challenges: ["CHALLENGE"],
   battles: [
     "BATTLE_SONG",
@@ -99,6 +123,7 @@ export const WALL_TAB_TO_EXPERIENCE: Record<LobbyWallCoreCategoryId, readonly Ex
   fan_avatar_lobbies: ["FAN_AVATAR_LOBBY"],
   lounges: ["LOUNGE_SIDE_ROOM"],
   games: ["DEALERS_CHOICE", "DEAL_OR_FEUD_1000", "CIRCLE_OF_SQUARES", "NAME_THAT_TUNE", "DIRTY_DOZENS", "MONDAY_NIGHT_STAGE", "MONTHLY_IDOL", "CHAMPIONSHIP"],
+  games_and_shows: ["DEALERS_CHOICE", "DEAL_OR_FEUD_1000", "CIRCLE_OF_SQUARES", "NAME_THAT_TUNE", "DIRTY_DOZENS", "MONDAY_NIGHT_STAGE", "MONTHLY_IDOL", "CHAMPIONSHIP", "CONTEST"],
   lives: ["MAIN_AUDITORIUM"],
   shows_and_releases: ["MAIN_AUDITORIUM"],
 };
@@ -177,25 +202,75 @@ export function isOfficialWDPRecord(r: LiveDiscoveryRecord): boolean {
 
 function isWorldDanceRecord(r: LiveDiscoveryRecord): boolean {
   const fam = (r.anchorFamily ?? "").toLowerCase();
+  const experience = (r.experienceId ?? "").toLowerCase();
   return (
-    r.category === "dance" ||
-    r.categories.includes("dance") ||
-    fam === "dance" ||
+    isOfficialWDPRecord(r) ||
     fam === "mini-dance-party" ||
-    r.roomId.includes("world-dance") ||
-    r.roomId.includes("mini-dance") ||
-    r.roomId === "anchor-world-dance-room" ||
-    (r.experienceId ?? "").includes("world-dance") ||
-    (r.experienceId ?? "").includes("mini-dance")
+    experience === "mini-dance-party"
   );
+}
+
+const GAME_SHOW_ROOM_IDS = new Set([
+  "deal-or-feud",
+  "dealer-feud-1000",
+  "circle-squares",
+  "name-that-tune",
+  "dirty-dozens",
+  "monday-night-stage",
+  "monthly-idol",
+  "championship",
+]);
+
+const GAME_SHOW_EXPERIENCE_IDS = new Set([
+  "DEALERS_CHOICE",
+  "DEAL_OR_FEUD_1000",
+  "CIRCLE_OF_SQUARES",
+  "NAME_THAT_TUNE",
+  "DIRTY_DOZENS",
+  "MONDAY_NIGHT_STAGE",
+  "MONTHLY_IDOL",
+  "CHAMPIONSHIP",
+  "CONTEST",
+]);
+
+/** Uses canonical category/experience/room IDs, never title matching. */
+export function isGamesAndShowsRecord(record: LiveDiscoveryRecord): boolean {
+  return record.category === "games" ||
+    record.categories.includes("games") ||
+    GAME_SHOW_ROOM_IDS.has(record.roomId) ||
+    GAME_SHOW_EXPERIENCE_IDS.has((record.experienceId ?? "").toUpperCase());
 }
 
 export function filterDiscoveryByWallCategory(
   records: LiveDiscoveryRecord[],
   categoryId: LobbyWallCoreCategoryId,
 ): LiveDiscoveryRecord[] {
+  if (categoryId === "all") return records;
+  if (categoryId === "performers_live") {
+    return records.filter(
+      (r) =>
+        r.category === "performers_live" ||
+        r.categories.includes("performers_live") ||
+        (r.experienceId === "REGULAR_GO_LIVE" && r.category !== "fans_live"),
+    );
+  }
+  if (categoryId === "fans_live") {
+    return records.filter(
+      (r) =>
+        !r.isAnchor &&
+        (r.category === "fans_live" || r.categories.includes("fans_live")),
+    );
+  }
+  if (categoryId === "events") {
+    return records.filter(
+      (r) => r.category === "events" || r.categories.includes("events") || (r.experienceId ?? "").startsWith("ev-"),
+    );
+  }
   if (categoryId === "world_dance_party") {
     return records.filter((r) => isWorldDanceRecord(r));
+  }
+  if (categoryId === "games_and_shows") {
+    return records.filter(isGamesAndShowsRecord);
   }
   if (categoryId === "performer_lobbies") {
     return records.filter((r) => isPerformerLobbyRecord(r));
@@ -239,7 +314,7 @@ export function filterDiscoveryByWallCategory(
     WALL_TAB_TO_DISCOVERY[
       categoryId as Exclude<
         LobbyWallCoreCategoryId,
-        "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases"
+        "all" | "performers_live" | "fans_live" | "events" | "lives" | "performer_lobbies" | "fan_avatar_lobbies" | "shows_and_releases" | "games_and_shows"
       >
     ];
   return records.filter(
@@ -248,6 +323,20 @@ export function filterDiscoveryByWallCategory(
       !isPerformerLobbyRecord(r) &&
       !isFanAvatarLobbyRecord(r),
   );
+}
+
+export function advanceLobbyWallChannel(
+  current: LobbyWallCoreCategoryId,
+  direction: "next" | "prev",
+): LobbyWallCoreCategoryId {
+  const tabs = LOBBY_WALL_CHANNEL_TABS;
+  const idx = tabs.findIndex((t) => t.id === current);
+  const base = idx >= 0 ? idx : 0;
+  const next =
+    direction === "next"
+      ? (base + 1) % tabs.length
+      : (base - 1 + tabs.length) % tabs.length;
+  return tabs[next]!.id as LobbyWallCoreCategoryId;
 }
 
 /** Advance category tab — used by horizontal swipe on mobile mosaic. */
@@ -371,6 +460,7 @@ const LOBBY_STATUS_RANK: Record<LobbyWallSortableTile["status"], number> = {
 
 /**
  * Marcel lock — organic: fewer views = top, more views = bottom.
+ * Shared with LiveMosaicPromotionDirector (HOME chaos vs LOBBY ladder).
  * Boost band: PROMOTED tiles rank above organic peers within the same status tier.
  * LIVE always beats starting/recruiting regardless of boost.
  */
@@ -412,3 +502,11 @@ export function boostLobbyWallCheckoutUrl(
   if (params.wdpEntryId) q.set("wdpEntryId", params.wdpEntryId);
   return `${origin}/api/stripe/checkout?${q.toString()}`;
 }
+
+
+/** Re-export mosaic director for Lobby/Home consumers — same least-viewers law. */
+export {
+  LiveMosaicPromotionDirector,
+  rankLobbyOrganicLeastViewersFirst,
+  buildHomeTileSchedules,
+} from "@/lib/discovery/LiveMosaicPromotionDirector";

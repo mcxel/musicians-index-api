@@ -337,7 +337,9 @@ export function projectDiscoveryRecordToSurfaceCard(
     state,
     audienceCount: Math.max(0, Math.round(record.humanViewerCount ?? 0)),
     country,
-    previewMediaUrl: record.previewUrl ?? record.posterUrl ?? null,
+    // previewUrl is an untyped URL and is not proof of spectator playback.
+    // Only render the explicitly registered static poster in this image surface.
+    previewMediaUrl: record.posterUrl ?? null,
     joinAction: {
       href,
       kind: resolveJoinKind({ joinGate: record.joinGate, isLive: record.isLive }),

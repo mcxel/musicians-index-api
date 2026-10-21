@@ -20,7 +20,7 @@ export interface UserEntitlement {
   userId: string;
   skuId: string;
   title: string;
-  category: "cosmetic" | "skin" | "chassis" | "pass" | "reward";
+  category: "cosmetic" | "skin" | "chassis" | "pass" | "reward" | "beat" | "yoalbum";
   provenance: EntitlementProvenance;
   pricePaidCents: number;
   obtainedAt: number;
@@ -88,6 +88,38 @@ class OwnershipRuntimeImpl {
       }
     });
     return found;
+  }
+
+  /** Equip one cosmetic/skin; clear equipped flag on other items in same category. */
+  equipExclusive(userId: string, skuId: string): boolean {
+    const list = userEntitlements.get(userId) ?? [];
+    const target = list.find((e) => e.skuId === skuId);
+    if (!target) return false;
+    if (target.category !== "cosmetic" && target.category !== "skin") {
+      target.equipped = true;
+      return true;
+    }
+    for (const e of list) {
+      if (e.category === target.category) e.equipped = e.skuId === skuId;
+    }
+    return true;
+  }
+
+  unequipSku(userId: string, skuId: string): boolean {
+    const list = userEntitlements.get(userId) ?? [];
+    const e = list.find((x) => x.skuId === skuId);
+    if (!e) return false;
+    e.equipped = false;
+    return true;
+  }
+
+  getEquippedSkus(userId: string): string[] {
+    return (userEntitlements.get(userId) ?? []).filter((e) => e.equipped).map((e) => e.skuId);
+  }
+
+  /** Test/harness only — never call from production purchase paths. */
+  clearUserEntitlementsForTest(userId: string): void {
+    userEntitlements.delete(userId);
   }
 }
 

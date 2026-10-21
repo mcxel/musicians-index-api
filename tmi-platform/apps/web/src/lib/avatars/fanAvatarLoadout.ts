@@ -143,15 +143,76 @@ export function catalogItemToInventorySeed(def: FanCosmeticDef): AvatarInventory
 }
 
 const SEED_IDS = [
+  // ── Universal Starter Hair Collection ──
+  "hair_fade_short",
+  "hair_taper_high",
+  "hair_fade_low",
+  "hair_buzz",
+  "hair_bald",
+  "hair_afro",
+  "hair_afro_mini",
+  "hair_flattop",
+  "hair_crop_textured",
+  "hair_locs",
+  "hair_locs_short",
+  "hair_braids",
+  "hair_cornrows",
+  "hair_twists",
+  "hair_curls",
+  "hair_coily_crown",
+  "hair_straight_classic",
+  "hair_waves",
+  "hair_slick_back",
+  "hair_side_part",
+  "hair_ponytail",
+  "hair_bun_top",
+  "hair_bob_classic",
+  "hair_pixie",
+  "hair_mohawk",
+  "hair_undercut",
+  "hair_topknot",
+  "hair_long_layers",
+
+  // ── Starter Tops & Outfits ──
+  "street_fit",
+  "tee_basic_black",
+  "tee_basic_white",
+  "tee_basic_cyan",
+  "hoodie_street_midnight_obsidian",
+
+  // ── Starter Bottoms ──
+  "pants_fit_black",
+  "pants_fit_denim",
+
+  // ── Starter Footwear ──
+  "kicks_white",
+  "kicks_black",
+
+  // ── Starter Accessories & Headwear ──
+  "street_beanie_black",
+  "glasses_black",
+  "neck_headphones",
+  "backwards_cap",
+  "gold_chain",
+
+  // ── Starter Props & Handhelds ──
+  "mic",
+  "lighter",
+  "candle",
   "sparkler",
+
+  // ── Starter Emotes & Gestures ──
+  "emote_wave",
+  "emote_dance",
+  "emote_clap",
+  "emote_point",
+  "emote_jump",
+  "emote_cheer",
+
+  // ── Featured & Legacy Seeds ──
   "jester_hat",
   "sunglasses",
-  "mic",
   "crown",
-  "candle",
-  "lighter",
-  "gold_chain",
-  "street_fit",
   "arena_captain",
   "royal_stage",
   "jester_costume",
@@ -159,23 +220,12 @@ const SEED_IDS = [
   "glow_stick",
   "diamond-shades-vip",
   "holographic-sneakers-gold",
-  "backwards_cap",
-  "street_beanie",
-  "neck_headphones",
-  "hair_fade_short",
-  "hair_buzz",
-  "glasses_black",
-  "tee_basic_black",
-  "pants_fit_black",
-  "kicks_white",
-  "emote_wave",
-  "emote_dance",
   "heart_prop",
   "inst_ukulele",
 ];
 
 export function fanCosmeticStarterItems(): AvatarInventoryItem[] {
   return getUnifiedFanCosmeticCatalog()
-    .filter((c) => SEED_IDS.includes(c.id))
+    .filter((c) => c.pointsCost === 0 || SEED_IDS.includes(c.id))
     .map(catalogItemToInventorySeed);
 }

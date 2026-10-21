@@ -35,7 +35,12 @@ type PrismaLike = {
     create: (args: object) => Promise<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }>;
     upsert: (args: object) => Promise<unknown>;
     findUnique: (args: object) => Promise<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date } | null>;
-    findMany: (args?: object) => Promise<Array<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }>>;
+    // Only ever called with select:{id,email,passwordHash,name,role} (the
+    // one real call site, loadFromDb() below) — typed to match that, not
+    // the fuller create/findUnique shape this hand-rolled interface uses
+    // elsewhere, since this minimal interface has no real select-based
+    // return-type narrowing.
+    findMany: (args?: object) => Promise<Array<{ id: string; email: string | null; passwordHash: string | null; name: string | null; role: string }>>;
     count: () => Promise<number>;
   };
 };
@@ -68,19 +73,6 @@ const DB_TO_ROLE: Record<string, UserRole> = {
   VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
 };
 
-function mapDbRow(row: { id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }): StoredUser {
-  return {
-    id: row.id,
-    email: row.email ?? '',
-    passwordHash: row.passwordHash ?? '',
-    displayName: row.displayName ?? (row.email ?? '').split('@')[0] ?? 'User',
-    tier: (row.tier as UserTier) ?? 'FREE',
-    role: DB_TO_ROLE[row.role.toUpperCase()] ?? 'user',
-    createdAt: row.userCreatedAt.getTime(),
-    ref: row.userRef ?? undefined,
-  };
-}
-
 async function loadFromDb(): Promise<void> {
   const client = getDb();
   if (!client || dbLoaded) return;
@@ -90,15 +82,22 @@ async function loadFromDb(): Promise<void> {
         id: true,
         email: true,
         passwordHash: true,
-        displayName: true,
-        tier: true,
+        name: true,
         role: true,
-        userRef: true,
-        userCreatedAt: true,
       },
     });
     rows.forEach((row) => {
-      if (row.email) STORE.set(row.email.toLowerCase(), mapDbRow(row as any));
+      const record = row as { id: string; email: string | null; passwordHash: string | null; name: string | null; role: string };
+      if (!record.email) return;
+      STORE.set(record.email.toLowerCase(), {
+        id: record.id,
+        email: record.email,
+        passwordHash: record.passwordHash ?? '',
+        displayName: record.name ?? record.email.split('@')[0] ?? 'User',
+        tier: 'FREE',
+        role: DB_TO_ROLE[record.role.toUpperCase()] ?? 'user',
+        createdAt: Date.now(),
+      });
     });
     dbLoaded = true;
   } catch (err) {
@@ -155,7 +154,22 @@ async function persistUser(user: StoredUser): Promise<void> {
 
 // Pre-load DB users into Map on module init (non-blocking)
 // Exported so routes can await it before first read on cold start.
-export const dbReady: Promise<void> = loadFromDb();
+let dbReadyPromise: Promise<void> | null = null;
+
+/** Starts the store preload on first await. Importing this module does not query. */
+export function ensureUserStoreReady(): Promise<void> {
+  if (!dbReadyPromise) dbReadyPromise = loadFromDb();
+  return dbReadyPromise;
+}
+
+export const dbReady: PromiseLike<void> = {
+  then<TResult1 = void, TResult2 = never>(
+    onFulfilled?: ((value: void) => TResult1 | PromiseLike<TResult1>) | null,
+    onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return ensureUserStoreReady().then(onFulfilled, onRejected);
+  },
+};
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -180,6 +194,7 @@ const HARDCODED_ADMINS = new Set([
 
 // Diamond lifetime accounts
 const HARDCODED_DIAMOND = new Set([
+  'jimmyabrica87@gmail.com',
   't.muse82@icloud.com',
   'facethebully916@gmail.com',
   'suedejs2000@gmail.com',

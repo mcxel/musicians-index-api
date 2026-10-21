@@ -1,7 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import { getMagazineArticleBySlug } from "@/lib/magazine/MagazineArticleResolver";
-import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 type Props = { params: Promise<{ slug: string }> };

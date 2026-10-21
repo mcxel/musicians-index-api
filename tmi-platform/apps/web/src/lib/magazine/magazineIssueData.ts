@@ -1,7 +1,3 @@
-import { contributorAccountEngine } from "@/lib/editorial-economy/ContributorAccountEngine";
-import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubmissionEngine";
-import type { EditorialSubmission } from "@/lib/editorial-economy/types";
-
 export interface ArticleBlock {
   type: "paragraph" | "heading" | "pullquote" | "image";
   text?: string;
@@ -25,9 +21,33 @@ export interface MagazineArticle {
   heroColor: string;
   icon: string;
   blocks: ArticleBlock[];
+  /** Lineup type: solo, band, duo, choir, trio, dance_group, ensemble, crew */
+  lineupType?: "solo" | "duo" | "trio" | "band" | "choir" | "ensemble" | "dance_group" | "crew" | "group";
+  /** Group / Choir / Band member roster for multi-member accounts */
+  groupMembers?: Array<{ name: string; role: string }>;
+  /** Multi-image gallery formatted for wide group, choir, and stage compositions */
+  galleryImages?: Array<{ url: string; caption: string }>;
 }
 
 export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
+  {
+    slug: "ricardo-parker",
+    title: "Ricardo Parker Talks Cyphers, Fans, and the Power of Sound",
+    subtitle: "From duo fame to solo triumphs, the artist opens up on life behind the beats",
+    author: "TMI Music Editor",
+    performerSlug: "ricardo-parker",
+    publishedAt: "2026-04-01",
+    category: "feature",
+    tags: ["hip-hop", "cypher", "cover-story", "performer"],
+    heroColor: "#FFD700",
+    icon: "👑",
+    blocks: [
+      { type: "paragraph", text: "The sound doesn't lie. When the crowd hits two thousand voices inside the arena, you feel the raw voltage pulse directly through your boots into the stage planks." },
+      { type: "paragraph", text: "Some know him as the formidable anchor of a chart-topping cypher duo, but Parker's solo journey has redefined how independent performers connect directly with their fan communities." },
+      { type: "pullquote", text: "\"We didn't wait for permission from legacy gatekeepers. TMI handed us the mic and the fans built the stage.\"" },
+      { type: "paragraph", text: "Inside the Monday Stage residency, Ricardo Parker commands an audience that spans global territories — from Atlanta to London to Tokyo — all tuning in for unvarnished, raw musical mastery." },
+    ],
+  },
   {
     slug: "wavetek-rise-billboard",
     title: "Wavetek's Rise: From the Block to the Billboard",
@@ -575,74 +595,191 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
       { type: "paragraph", text: "Producers on the platform keep the large majority of every license sale. The platform fee funds the marketplace infrastructure, the discovery algorithms, and the promotional placement that drives traffic to their catalog." },
     ],
   },
+  {
+    slug: "the-night-signals",
+    title: "The Night Signals: Synthesizing the Chicago Underground",
+    subtitle: "How four musicians turned analog synthesizers, driving basslines, and four-way vocal harmonies into an unstoppable live movement",
+    author: "TMI Rock & Indie Desk",
+    performerSlug: "the-night-signals",
+    publishedAt: "2026-06-01",
+    category: "feature",
+    tags: ["band", "indie", "synth-pop", "chicago", "group"],
+    heroColor: "#00E5FF",
+    icon: "🎸",
+    lineupType: "band",
+    groupMembers: [
+      { name: "Jordan Cole", role: "Lead Vocals & Analog Synth" },
+      { name: "Elena Cruz", role: "Lead Guitar & Textures" },
+      { name: "Darius Vance", role: "Bass Guitar & Sequencers" },
+      { name: "Samira Kai", role: "Drums & Live Electronic Percussion" },
+    ],
+    galleryImages: [
+      { url: "/tmi-curated/mag-20.jpg", caption: "The Night Signals studio rehearsal lineup in Chicago" },
+      { url: "/tmi-curated/mag-35.jpg", caption: "Mainstage lighting during 'Signal in the Static' live set" },
+      { url: "/tmi-curated/mag-28.jpg", caption: "Jordan Cole soundchecking the modular synth wall" },
+    ],
+    blocks: [
+      { type: "paragraph", text: "When The Night Signals play live, the air in the room changes. Four musicians locked into tempo, analog patch cords running across vintage racks like arterial veins, and a wall of harmony that lands like a physical force." },
+      { type: "paragraph", text: "Formed in Chicago's Logan Square neighborhood, the four-piece refused early offers that wanted them to reduce to a solo frontperson with backing tracks. 'A band is a living organism,' says frontperson Jordan Cole. 'When four people breathe at the same BPM, audiences feel that unity immediately.'" },
+      { type: "pullquote", text: "\"We didn't want to be a producer with hired hands. We are four equal writers, four voices, four instruments. That's why the live room shakes.\"" },
+      { type: "heading", text: "Inside the 2026 Residency Tour" },
+      { type: "paragraph", text: "Their upcoming four-city tour — hitting Chicago's Metro Hall, Detroit's Majestic, Minneapolis' First Avenue, and Milwaukee's Pabst — sold out its VIP allocation within six minutes through TMI's direct ticketing gateway." },
+      { type: "paragraph", text: "With two official singles on their public profile soundtrack, The Night Signals are demonstrating how bands and ensembles thrive on TMI with full member recognition and shared revenue ledgers." },
+    ],
+  },
+  {
+    slug: "amberlight-collective",
+    title: "Eight Voices, Zero Instruments: The Amberlight Collective Redefines A Cappella",
+    subtitle: "Inside the eight-voice vocal choir packing festival mainstages with complex multi-octave arrangements",
+    author: "TMI Arts Desk",
+    performerSlug: "amberlight-collective",
+    publishedAt: "2026-06-03",
+    category: "feature",
+    tags: ["choir", "vocal", "a-cappella", "ensemble", "group"],
+    heroColor: "#FFD700",
+    icon: "👑",
+    lineupType: "choir",
+    groupMembers: [
+      { name: "Maya Lin", role: "Soprano Lead" },
+      { name: "Devon Cross", role: "Tenor & Vocal Arranger" },
+      { name: "Chloe Vance", role: "Alto 1" },
+      { name: "Nia Thorne", role: "Alto 2" },
+      { name: "Elijah Brooks", role: "Baritone" },
+      { name: "Solomon Reed", role: "Sub-Bass Foundation" },
+      { name: "Kian Mercer", role: "Vocal Percussion & Beatbox" },
+      { name: "Tasha Rivera", role: "Soprano 2" },
+    ],
+    galleryImages: [
+      { url: "/tmi-curated/mag-50.jpg", caption: "The Amberlight Collective 8-voice choir in circular rehearsal" },
+      { url: "/tmi-curated/mag-42.jpg", caption: "Festival mainstage performance in Los Angeles" },
+      { url: "/tmi-curated/mag-58.jpg", caption: "Acoustic harmonizing backstage before broadcast" },
+    ],
+    blocks: [
+      { type: "paragraph", text: "Eight microphones. Eight singers. Absolutely zero instruments. Yet when The Amberlight Collective hits the first chord of their set, the sound carries all the depth, sub-bass rattle, and harmonic richness of a symphony." },
+      { type: "paragraph", text: "Founded by vocal arranger Devon Cross, this eight-piece ensemble has exploded across TMI's live rooms. Their Wednesday night choral sessions draw thousands of listeners who come specifically for unedited, natural vocal polyphony." },
+      { type: "pullquote", text: "\"The human voice is the original synthesizer. When eight voices tune to exact pure temperament, the overtone series generates notes that nobody is even singing.\"" },
+      { type: "heading", text: "Democratizing the Choral Economy" },
+      { type: "paragraph", text: "On traditional streaming, multi-vocal ensembles often struggle under royalty splits designed for solo pop acts. TMI's group ledger system splits tips, subscriptions, and live tickets evenly across all eight members in real time." },
+    ],
+  },
+  {
+    slug: "blue-hour-duo",
+    title: "Late-Night Resonance: Blue Hour Duo's Sax and Upright Chemistry",
+    subtitle: "How two New Orleans virtuosos strip jazz down to raw wood, brass, and intimate improvisation",
+    author: "TMI Jazz Editor",
+    performerSlug: "blue-hour-duo",
+    publishedAt: "2026-06-05",
+    category: "interview",
+    tags: ["duo", "jazz", "new-orleans", "improvisation"],
+    heroColor: "#AA2DFF",
+    icon: "🎷",
+    lineupType: "duo",
+    groupMembers: [
+      { name: "Miles Thorne", role: "Tenor & Soprano Saxophone" },
+      { name: "Clara Bennett", role: "Acoustic Upright Bass" },
+    ],
+    galleryImages: [
+      { url: "/tmi-curated/mag-58.jpg", caption: "Miles Thorne and Clara Bennett in late-night duo spotlight" },
+      { url: "/tmi-curated/mag-66.jpg", caption: "Intimate New Orleans loft session recording" },
+    ],
+    blocks: [
+      { type: "paragraph", text: "There is nowhere to hide in a duo. No drummer to cover a missed beat, no rhythm guitar to fill the frequency gap. Only the breath through a saxophone reed and the resonant slap of fingers on upright gut strings." },
+      { type: "paragraph", text: "Miles Thorne and Clara Bennett have been playing together since meeting outside Preservation Hall six years ago. Their partnership is intuitive, almost telepathic — an evolving dialogue where every phrase prompts an instant harmonic counter-argument." },
+      { type: "pullquote", text: "\"When it's just the two of us, every microtone matters. You can hear Clara's fingers press the spruce top. That closeness is what listeners crave.\"" },
+      { type: "paragraph", text: "Their late-night TMI broadcasts, titled 'Blue Hour Sessions,' have built a loyal global following of audiophiles and jazz aficionados tuning in at 1 AM for restorative, soulful soundscapes." },
+    ],
+  },
+  {
+    slug: "avatar-heavy",
+    title: "Avatar Heavy: The Tokyo Dance Crew Electrifying the Virtual Arena",
+    subtitle: "Merging four-person synchronized breakin', motion capture, and live crowd dynamics",
+    author: "TMI Arts Desk",
+    performerSlug: "avatar-heavy",
+    publishedAt: "2026-06-07",
+    category: "feature",
+    tags: ["dance", "crew", "tokyo", "breaking", "performance-group"],
+    heroColor: "#FF2DAA",
+    icon: "💃",
+    lineupType: "dance_group",
+    groupMembers: [
+      { name: "Kenji Sato", role: "Captain & Choreographer" },
+      { name: "Yuki Tanaka", role: "Power Moves & Flares" },
+      { name: "Rei Mori", role: "Popping & Isolation Specialist" },
+      { name: "Aoi Endo", role: "Visual Staging & Flips" },
+    ],
+    galleryImages: [
+      { url: "/tmi-curated/mag-66.jpg", caption: "Avatar Heavy four-person synchronized formation in Tokyo" },
+      { url: "/tmi-curated/mag-74.jpg", caption: "Mid-air freeze capture in the Virtual Arena" },
+    ],
+    blocks: [
+      { type: "paragraph", text: "Dance has traditionally been hard to monetize outside of backup touring for pop stars. Tokyo's Avatar Heavy turned that paradigm upside down by treating their four-member crew as headline performance artists." },
+      { type: "paragraph", text: "Their weekly arena showdowns combine high-precision synchronized routines with solo freestyle cyphers, backed by high-BPM trap and future funk productions." },
+      { type: "pullquote", text: "\"We aren't background dancers for anyone. The crew is the show, the choreography is the song, and our bodies are the instruments.\"" },
+    ],
+  },
+  {
+    slug: "hollow-creek-trio",
+    title: "High-String Speed: The Hollow Creek Trio's Appalachian Revival",
+    subtitle: "Banjo, fiddle, and acoustic guitar played at blistering speeds with three-part mountain harmony",
+    author: "TMI Roots Desk",
+    performerSlug: "hollow-creek-trio",
+    publishedAt: "2026-06-09",
+    category: "review",
+    tags: ["trio", "bluegrass", "country", "appalachian", "strings"],
+    heroColor: "#00FF88",
+    icon: "🪕",
+    lineupType: "trio",
+    groupMembers: [
+      { name: "Silas Vance", role: "Banjo & Lead Vocals" },
+      { name: "Evelyn Reed", role: "Fiddle & High Harmony" },
+      { name: "Caleb Stone", role: "Acoustic Guitar & Rhythm" },
+    ],
+    galleryImages: [
+      { url: "/tmi-curated/mag-28.jpg", caption: "The Hollow Creek Trio three-piece acoustic arrangement" },
+      { url: "/tmi-curated/mag-82.jpg", caption: "Appalachian festival performance in North Carolina" },
+    ],
+    blocks: [
+      { type: "paragraph", text: "Bluegrass is often misunderstood as museum music. Watch The Hollow Creek Trio launch into a 160-BPM reel and that myth evaporates instantly." },
+      { type: "paragraph", text: "Silas Vance's three-finger banjo rolls, Evelyn Reed's weeping fiddle improvisations, and Caleb Stone's percussive acoustic rhythm guitar form an airtight trio that proves traditional roots music can dominate modern live platforms." },
+      { type: "pullquote", text: "\"Three acoustic instruments around one ribbon microphone. If we aren't locked together, the song falls apart. That tension is the magic.\"" },
+    ],
+  },
 ];
-function getMagazineIssue1(): MagazineArticle[] {
-  return MAGAZINE_ISSUE_1;
-}
 
-/**
- * Approved contributor submissions become readable articles under their own
- * submissionId slug — this is what lets a writer's piece actually resolve to
- * full content once the review queue clears it (see /editorial/review).
- * Unapproved/rejected submissions never resolve here, so a guessed
- * submissionId can't leak unmoderated content onto a public surface.
- */
-async function writerArticleFromSubmission(submission: EditorialSubmission): Promise<MagazineArticle> {
-  const contributor = await contributorAccountEngine.get(submission.contributorId);
-  const paragraphs = submission.body
-    .split(/\n+/)
-    .map((text) => text.trim())
-    .filter(Boolean);
-
-  return {
-    slug: submission.submissionId,
-    title: submission.title,
-    subtitle: paragraphs[0]?.slice(0, 140) ?? submission.title,
-    author: contributor?.displayName ?? "TMI Contributor",
-    writerSlug: submission.contributorId,
-    performerSlug: submission.artistSlug,
-    publishedAt: submission.publishedAt ?? submission.updatedAt,
-    category: submission.category === "interview" ? "interview" : "news",
-    tags: [submission.category],
-    heroColor: "#00FFFF",
-    icon: "📝",
-    blocks: paragraphs.length > 0 ? paragraphs.map((text) => ({ type: "paragraph" as const, text })) : [{ type: "paragraph", text: submission.title }],
-  };
-}
-
-export async function getArticleBySlug(slug: string): Promise<MagazineArticle | undefined> {
-  const staffArticle = getMagazineIssue1().find(a => a.slug === slug);
-  if (staffArticle) return staffArticle;
-
-  const submission = await editorialSubmissionEngine.get(slug);
-  if (submission && (submission.status === "approved" || submission.status === "published")) {
-    return writerArticleFromSubmission(submission);
-  }
-  return undefined;
+/** Sync staff-registry lookup — client-safe. Async DB resolve: getArticleBySlug.ts */
+export function getStaffArticleBySlug(slug: string): MagazineArticle | undefined {
+  return MAGAZINE_ISSUE_1.find((a) => a.slug === slug);
 }
 
 export function getArticlesByCategory(category: MagazineArticle["category"]): MagazineArticle[] {
-  return getMagazineIssue1().filter(a => a.category === category);
+  return MAGAZINE_ISSUE_1.filter((a) => a.category === category);
 }
 
 export function getFeaturedArticles(count = 3): MagazineArticle[] {
-  return getMagazineIssue1().filter(a => a.category === "feature").slice(0, count);
+  return MAGAZINE_ISSUE_1.filter((a) => a.category === "feature").slice(0, count);
 }
 
 export function getRecentArticles(count = 4): MagazineArticle[] {
-  return [...getMagazineIssue1()]
+  return [...MAGAZINE_ISSUE_1]
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, count);
 }
 
 /** PERFORMER pool: articles tied to a registry slug. */
 export function getPerformerPoolArticles(): MagazineArticle[] {
-  return getMagazineIssue1().filter((article) => Boolean(article.performerSlug));
+  return MAGAZINE_ISSUE_1.filter((article) => Boolean(article.performerSlug));
+}
+
+/** The issue article for this performer, when one is actually in the issue. */
+export function findPerformerMagazineArticle(performerSlug: string): MagazineArticle | null {
+  const slug = performerSlug.trim();
+  if (!slug) return null;
+  return MAGAZINE_ISSUE_1.find((article) => article.performerSlug === slug) ?? null;
 }
 
 /** NEWS pool: news/editorial/interview that is not a performer feature. */
 export function getNewsPoolArticles(): MagazineArticle[] {
-  return getMagazineIssue1().filter((article) => {
+  return MAGAZINE_ISSUE_1.filter((article) => {
     if (article.performerSlug) return false;
     return article.category === "news" || article.category === "editorial" || article.category === "interview";
   });

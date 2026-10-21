@@ -11,17 +11,33 @@
  */
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import Link from "next/link";
+import HappyDaysPromptCard from "@/components/happydays/HappyDaysPromptCard";
+import InviteRewardPanel from "@/components/referral/InviteRewardPanel";
+import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import RoomChatPanel from "@/components/messaging/RoomChatPanel";
 import CommunityFeedPanel from "@/components/messaging/CommunityFeedPanel";
+
 import BroadcastAnnouncementTicker from "@/components/broadcast/BroadcastAnnouncementTicker";
 import {
   resolveRoomModerationControls,
   type RoomModerationRoomClass,
 } from "@/lib/moderation/RoomModerationCapabilityMap";
 import type { RoomParticipantKind } from "@/lib/moderation/RoomModerationAuthority";
+import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 
 export type HubCommunicationsTab = "messages" | "room" | "community" | "people" | "living-os";
+
+function ReleaseHeldNote({ id }: { id: "messages" | "community" }) {
+  const item = gpsDestinationById(id);
+  return (
+    <div data-testid={`hub-comms-${id}-soon`} style={{ padding: 16, fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.12em", color: "#fff" }}>COMING SOON</div>
+      <p style={{ margin: "8px 0 0" }}>{item?.building ?? "This is not active yet."}</p>
+    </div>
+  );
+}
 
 type Member = {
   userId?: string;
@@ -29,6 +45,8 @@ type Member = {
   role?: string;
   active?: boolean;
 };
+
+type PublicPerson = { id: string; name: string; role: string };
 
 export type HubCommunicationsRailProps = {
   role: "fan" | "performer";
@@ -64,6 +82,12 @@ function roomKindFromClass(
   return "personal";
 }
 
+
+function resolveCanonicalPublicProfilePath(userId: string): string {
+  if (!userId) return "/p/member";
+  return `/p/${userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`}`;
+}
+
 export default function HubCommunicationsRail({
   role,
   userId,
@@ -87,8 +111,59 @@ export default function HubCommunicationsRail({
   };
   const [people, setPeople] = useState<Member[]>([]);
   const [peopleState, setPeopleState] = useState<"idle" | "loading" | "ready" | "empty" | "error">("idle");
+  const [friends, setFriends] = useState<PublicPerson[]>([]);
+  const [friendsLoad, setFriendsLoad] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [peopleResults, setPeopleResults] = useState<PublicPerson[]>([]);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+  const [contextChip, setContextChip] = useState<"happydays" | "friends" | "profile">("happydays");
+  const [profileQuickPanelOpen, setProfileQuickPanelOpen] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tab !== "people") return;
+    // Held friends do not query the accepted-list authority.
+    if (gpsDestinationState("friends") !== "LIVE") {
+      setFriends([]);
+      setFriendsLoad("ready");
+      return;
+    }
+    const controller = new AbortController();
+    setFriendsLoad("loading");
+    void fetch("/api/users/search?scope=friends", { credentials: "include", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return { ok: false as const, users: [] as PublicPerson[] };
+        const data = await response.json() as { users?: PublicPerson[] };
+        return { ok: true as const, users: data.users ?? [] };
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setFriends(data.ok ? data.users : []);
+        setFriendsLoad(data.ok ? "ready" : "unavailable");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setFriends([]);
+        setFriendsLoad("unavailable");
+      });
+    return () => controller.abort();
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "people" || peopleQuery.trim().length < 2) {
+      setPeopleResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/users/search?q=${encodeURIComponent(peopleQuery.trim())}`, {
+        credentials: "include", signal: controller.signal,
+      }).then((response) => response.ok ? response.json() as Promise<{ users?: PublicPerson[] }> : null)
+        .then((data) => { if (!controller.signal.aborted) setPeopleResults(data?.users ?? []); })
+        .catch(() => { if (!controller.signal.aborted) setPeopleResults([]); });
+    }, 280);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [tab, peopleQuery]);
 
   useEffect(() => {
     if (companionDock) setTab("living-os");
@@ -269,10 +344,10 @@ export default function HubCommunicationsRail({
   }, [tab, roomId]);
 
   const tabs: { id: HubCommunicationsTab; label: string }[] = [
-    { id: "messages", label: "MESSAGES" },
+    { id: "messages", label: "CHAT" },
     { id: "room", label: "ROOM" },
-    { id: "community", label: "COMMUNITY" },
     { id: "people", label: "PEOPLE" },
+    { id: "community", label: "COMMUNITY" },
     ...(companionDock ? [{ id: "living-os" as const, label: "LIVING OS" }] : []),
   ];
 
@@ -397,9 +472,15 @@ export default function HubCommunicationsRail({
       <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {tab === "living-os" && companionDock ? companionDock : null}
 
-        <div style={{ flex: 1, minHeight: 420, padding: 8, display: tab === "messages" ? "block" : "none" }}>
-            <MessagingCanister height={420} />
-        </div>
+        {tab === "messages" ? (
+          <div style={{ flex: 1, minHeight: 420, padding: 8 }}>
+            {gpsDestinationState("messages") === "LIVE" ? (
+              <MessagingCanister height={420} />
+            ) : (
+              <ReleaseHeldNote id="messages" />
+            )}
+          </div>
+        ) : null}
 
         {tab === "room" ? (
           roomId ? (
@@ -422,15 +503,47 @@ export default function HubCommunicationsRail({
 
         {tab === "community" ? (
           <div style={{ flex: 1, minHeight: 420, padding: 8, overflow: "hidden" }}>
-            <CommunityFeedPanel />
+            {gpsDestinationState("community") === "LIVE" ? (
+              <CommunityFeedPanel />
+            ) : (
+              <ReleaseHeldNote id="community" />
+            )}
           </div>
         ) : null}
 
         {tab === "people" ? (
           <div data-hub-comms-people="1" style={{ padding: 12, overflowY: "auto" }}>
+            <label htmlFor="hub-people-search" style={{ fontSize: 10, color: accentColor }}>FIND PEOPLE</label>
+            <input id="hub-people-search" type="search" value={peopleQuery} onChange={(event) => setPeopleQuery(event.target.value)}
+              placeholder="Search public names" style={{ width: "100%", margin: "6px 0 12px", padding: 8, color: "#fff", background: "#101625", border: "1px solid #42516b", borderRadius: 4, boxSizing: "border-box" }} />
+            {peopleQuery.trim().length >= 2 ? (
+              <div data-hub-people-results="1">
+                {peopleResults.length === 0 ? <p style={{ fontSize: 11 }}>No public people found.</p> : peopleResults.map((person) => (
+                  <Link key={person.id} href={`/p/${encodeURIComponent(person.id)}`} style={{ display: "block", padding: "6px 0", color: "#fff" }}>{person.name} · {person.role}</Link>
+                ))}
+              </div>
+            ) : (
+              <div data-hub-people-friends="1">
+                <div style={{ fontSize: 10, color: accentColor }}>FRIENDS</div>
+                {gpsDestinationState("friends") !== "LIVE" ? (
+                  <p data-testid="hub-friends-soon" style={{ fontSize: 11 }}>{gpsDestinationById("friends")?.building ?? "We're building the accepted friends list and friend requests."}</p>
+                ) : friendsLoad === "unavailable" ? (
+                  <p data-testid="hub-friends-unavailable" style={{ fontSize: 11 }}>Unable to load accepted friends.</p>
+                ) : friendsLoad !== "ready" ? (
+                  <p style={{ fontSize: 11 }}>Loading accepted friends…</p>
+                ) : friends.length === 0 ? (
+                  <p style={{ fontSize: 11 }}>No accepted friends yet.</p>
+                ) : friends.map((friend) => (
+                  <Link key={friend.id} href={`/p/${encodeURIComponent(friend.id)}`} style={{ display: "block", padding: "6px 0", color: "#fff" }}>{friend.name}</Link>
+                ))}
+              </div>
+            )}
+            {roomId ? <div style={{ fontSize: 10, color: accentColor, marginTop: 16 }}>IN THIS ROOM</div> : null}
             {!roomId ? (
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0 }}>
-                People appear when a real live room/session is active. No fabricated audience.
+                {gpsDestinationState("friends") === "LIVE"
+                  ? "No current room participants. Friends and public people remain available above."
+                  : "No current room participants."}
               </p>
             ) : peopleState === "loading" ? (
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0 }}>Loading participants…</p>
@@ -527,6 +640,202 @@ export default function HubCommunicationsRail({
           </div>
         ) : null}
       </div>
+    
+      {/* ── Canonical Right Context Workspace ── */}
+      <div
+        data-hub-context-workspace="1"
+        style={{
+          flexShrink: 0,
+          borderTop: `1px solid ${accentColor}33`,
+          background: "rgba(6,3,15,0.95)",
+          display: "flex",
+          flexDirection: "column",
+          padding: "10px 8px 14px",
+          gap: 8,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 2px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 8,
+              fontWeight: 900,
+              letterSpacing: "0.12em",
+              color: "rgba(255,255,255,0.45)",
+              textTransform: "uppercase",
+            }}
+          >
+            COMMUNITY & IDENTITY
+          </span>
+          <div style={{ display: "flex", gap: 3 }}>
+            {[
+              { id: "happydays", label: "☀️ MOMENT" },
+              { id: "friends", label: "🎁 INVITE" },
+              { id: "profile", label: "👤 PROFILE" },
+            ].map((chip) => {
+              const active = contextChip === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  data-hub-context-chip={chip.id}
+                  onClick={() => setContextChip(chip.id as typeof contextChip)}
+                  style={{
+                    fontSize: 7,
+                    fontWeight: 900,
+                    letterSpacing: "0.06em",
+                    padding: "3px 6px",
+                    borderRadius: 4,
+                    border: active ? `1px solid ${accentColor}` : "1px solid rgba(255,255,255,0.12)",
+                    background: active ? `${accentColor}25` : "rgba(255,255,255,0.04)",
+                    color: active ? accentColor : "rgba(255,255,255,0.6)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ minHeight: 0 }}>
+          {contextChip === "happydays" && (
+            <div data-hub-context-slot="happydays">
+              <HappyDaysPromptCard
+                userId={userId}
+                displayName={displayName}
+                userRole={role}
+              />
+            </div>
+          )}
+
+          {contextChip === "friends" && (
+            <div data-hub-context-slot="friends">
+              <InviteRewardPanel userId={userId} />
+            </div>
+          )}
+
+          {contextChip === "profile" && (
+            <div
+              data-hub-context-slot="profile"
+              style={{
+                borderRadius: 12,
+                border: "1px solid rgba(0,255,255,0.25)",
+                background: "linear-gradient(135deg, rgba(8,12,28,0.9), rgba(4,6,16,0.95))",
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>{displayName}</div>
+                  <div style={{ fontSize: 8, color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    {role.toUpperCase()} PROFILE
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-testid="tmi-hub-quick-profile-launcher"
+                  onClick={() => setProfileQuickPanelOpen(true)}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    background: "rgba(0,255,255,0.12)",
+                    border: "1px solid rgba(0,255,255,0.4)",
+                    color: "#00FFFF",
+                    cursor: "pointer",
+                  }}
+                >
+                  QUICK MENU ↗
+                </button>
+              </div>
+
+              {/* Marcel P0: In-Hub EDIT PUBLIC PROFILE action -> lands directly in owner ProfileCustomizer (?edit=1) */}
+              <Link
+                href={`${resolveCanonicalPublicProfilePath(userId)}?edit=1`}
+                data-testid="tmi-hub-edit-public-profile"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textDecoration: "none",
+                  boxShadow: "0 0 16px rgba(255,45,170,0.3)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>✏️</span>
+                <span>EDIT PUBLIC PROFILE</span>
+              </Link>
+
+              <div style={{ display: "flex", gap: 6 }}>
+                <Link
+                  href={resolveCanonicalPublicProfilePath(userId)}
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: 8,
+                    fontWeight: 800,
+                    padding: "5px 6px",
+                    borderRadius: 5,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "rgba(255,255,255,0.75)",
+                    textDecoration: "none",
+                  }}
+                >
+                  VIEW PUBLIC PAGE
+                </Link>
+                <Link
+                  href="/account"
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: 8,
+                    fontWeight: 800,
+                    padding: "5px 6px",
+                    borderRadius: 5,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "rgba(255,255,255,0.75)",
+                    textDecoration: "none",
+                  }}
+                >
+                  ACCOUNT SETTINGS
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Canonical Profile Quick Panel reconciliation */}
+      <ProfileQuickPanel
+        fanId={userId}
+        open={profileQuickPanelOpen}
+        onClose={() => setProfileQuickPanelOpen(false)}
+        role={role}
+      />
     </aside>
   );
 }

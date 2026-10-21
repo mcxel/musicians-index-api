@@ -10,6 +10,7 @@ interface TmiIdentitySurfaceProps {
   avatarUrl?: string | null;
   role: "performer" | "fan";
   accentColor?: string;
+  showcase?: boolean;
 }
 
 /**
@@ -18,9 +19,8 @@ interface TmiIdentitySurfaceProps {
  * used everywhere else (YoPho cards, future posters) — never a second,
  * per-surface QR identity.
  *
- * Deliberately encodes identity.profileUrl, never oneTapActionUrl or the
- * action:"follow" qrPayload — scanning must open the profile and require an
- * explicit tap to follow/connect, never silently create a relationship.
+ * The QR encodes identity.cardUrl. identity.profileUrl stays the public page.
+ * Scanning opens the identity card. It does not follow or open the Hub.
  */
 export default function TmiIdentitySurface({
   userId,
@@ -28,6 +28,7 @@ export default function TmiIdentitySurface({
   avatarUrl,
   role,
   accentColor = "#FF2DAA",
+  showcase = false,
 }: TmiIdentitySurfaceProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -63,7 +64,8 @@ export default function TmiIdentitySurface({
       }),
     [userId, role, displayName, avatarUrl],
   );
-  const scanUrl = `${getShareBaseUrl()}${identity.profileUrl}`;
+  const scanUrl = `${getShareBaseUrl()}${identity.cardUrl}`;
+  const pageUrl = `${getShareBaseUrl()}${identity.profileUrl}`;
   const publicCode = `${role === "performer" ? "ART" : "FAN"}-${userId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
   const label = role === "performer" ? "TMI ARTIST ID" : "TMI FAN ID";
 
@@ -105,7 +107,9 @@ export default function TmiIdentitySurface({
 
   const qrSize = fullscreen
     ? Math.min(340, typeof window !== "undefined" ? window.innerWidth - 80 : 280)
-    : Math.max(120, stagePx > 0 ? Math.min(Math.floor(stagePx * 0.52), stagePx - 176) : 148);
+    : showcase
+      ? Math.max(120, Math.min(340, stagePx > 0 ? stagePx - 130 : 200))
+      : Math.max(120, stagePx > 0 ? Math.min(Math.floor(stagePx * 0.52), stagePx - 176) : 148);
 
   const card = (
     <div
@@ -187,8 +191,11 @@ export default function TmiIdentitySurface({
       </div>
 
       <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
-        SCAN TO CONNECT
+        SCAN TO OPEN THE CARD
       </div>
+      <a href={identity.profileUrl} style={{ fontSize: 9, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>
+        {pageUrl.replace(/^https?:\/\//, "")}
+      </a>
 
       <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", justifyContent: "center" }}>
         <button

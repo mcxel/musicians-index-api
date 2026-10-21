@@ -1,12 +1,16 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { Ref } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import CanonicalVenueHouse from '@/components/venues/CanonicalVenueHouse';
+import VenueStageProgramSurface from '@/components/venue/VenueStageProgramSurface';
+import type { VenuePresentationExecutionSnapshot } from '@/lib/venue/VenuePresentationExecution';
+import type { ChromaRuntimeSnapshot } from '@/lib/venue/ChromaSegmentationRuntime';
 import {
   getCanonicalVenueRecipe,
   type CanonicalVenueRecipe,
@@ -1275,24 +1279,50 @@ export default function AvatarLobbyCanvas({
   activeCount = 5,
   venueType,
   recipe,
+  worldId,
+  cameraPreset,
+  stagePresentation,
+  presentationSkinId = null,
 }: {
   activeCount?: number;
   venueType?: string;
   recipe?: CanonicalVenueRecipe;
+  worldId?: string;
+  cameraPreset?: CanonicalVenueRecipe['cameraPresets']['discoveryPreview'];
+  stagePresentation?: {
+    execution: VenuePresentationExecutionSnapshot;
+    mediaStream?: MediaStream | null;
+    videoRef?: Ref<HTMLVideoElement>;
+    participants?: Array<{ id: string; displayName?: string | null; imageUrl?: string | null }>;
+    chromaRuntime?: ChromaRuntimeSnapshot | null;
+  } | null;
+  /** Certified equipped presentation. Null keeps the recipe materials. */
+  presentationSkinId?: string | null;
 }) {
   const activeRecipe = useMemo(() => recipe ?? getCanonicalVenueRecipe(venueType), [recipe, venueType]);
+  const activeCamera = cameraPreset ?? activeRecipe.cameraPresets.discoveryPreview;
   const sockets = useMemo(() => activeRecipe.getSockets(), [activeRecipe]);
   const safeActiveCount = Math.min(activeCount, sockets.length);
+  const stage = activeRecipe.enclosure.stage;
+  const stagePresentationPosition: [number, number, number] = [
+    stage.centerPosition[0],
+    stage.centerPosition[1] + stage.height + 1.4,
+    stage.centerPosition[2] + stage.depth / 2 + 0.08,
+  ];
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.75 }}>
+    <div
+      data-canonical-world-id={worldId}
+      data-canonical-recipe-id={activeRecipe.id}
+      style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.75 }}
+    >
       <SafeReactThreeCanvas
         faultContext="Avatar Lobby"
         fallbackLabel="Lobby 3D unavailable"
         shadows
         camera={{
-          position: activeRecipe.cameraPresets.discoveryPreview.position,
-          fov: activeRecipe.cameraPresets.discoveryPreview.fov,
+          position: activeCamera.position,
+          fov: activeCamera.fov,
         }}
         gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
       >
@@ -1306,7 +1336,34 @@ export default function AvatarLobbyCanvas({
             recipe={activeRecipe}
             activeOccupancyCount={safeActiveCount}
             motionActive={true}
+            programStream={stagePresentation?.mediaStream ?? null}
+            presentationSkinId={presentationSkinId}
           />
+
+          {stagePresentation ? (
+            <Html
+              position={stagePresentationPosition}
+              center
+              transform
+              distanceFactor={8}
+              style={{ width: 640, pointerEvents: "auto" }}
+            >
+              <div
+                data-canonical-stage-world={worldId}
+                data-canonical-stage-recipe={activeRecipe.id}
+                data-canonical-stage-position={stagePresentationPosition.join(",")}
+                style={{ width: "100%" }}
+              >
+                <VenueStageProgramSurface
+                  execution={stagePresentation.execution}
+                  mediaStream={stagePresentation.mediaStream}
+                  videoRef={stagePresentation.videoRef}
+                  participants={stagePresentation.participants}
+                  chromaRuntime={stagePresentation.chromaRuntime}
+                />
+              </div>
+            </Html>
+          ) : null}
 
           {/* Real Participants in Designated Sockets: Never fake crowds (Rule 20) */}
           {sockets.slice(0, safeActiveCount).map((sock, i) => (
@@ -1329,8 +1386,9 @@ export default function AvatarLobbyCanvas({
             dampingFactor={0.08}
             autoRotate
             autoRotateSpeed={0.3}
+            minPolarAngle={Math.PI / 3.2}
             maxPolarAngle={Math.PI / 2.05}
-            target={activeRecipe.cameraPresets.discoveryPreview.target}
+            target={activeCamera.target}
           />
         </Suspense>
       </SafeReactThreeCanvas>

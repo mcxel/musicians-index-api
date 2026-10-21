@@ -32,6 +32,28 @@ export function canonicalPublicPath(username: string): string {
   return `/p/${encodeURIComponent(slug || username)}`;
 }
 
+/**
+ * Stable public identity card. The QR encodes this path, not today's link list.
+ * A username change still breaks a printed /card/[username] code.
+ * There is no slug-alias or immutable public-token column. Adding one
+ * needs an authorized schema change. Do not invent that token here.
+ */
+export function canonicalIdentityCardPath(username: string): string {
+  const slug = username.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  return `/card/${encodeURIComponent(slug || username)}`;
+}
+
+/** Owner's published address. Performer pages prefer the artist slug. Personal pages prefer the username. */
+export function resolveOwnerPublicSlug(
+  profileKind: "FAN" | "PERFORMER" | "WRITER_PORTFOLIO",
+  identity: { username?: string | null; artistSlug?: string | null },
+): string | null {
+  const username = identity.username?.trim() || "";
+  const artistSlug = identity.artistSlug?.trim() || "";
+  const chosen = profileKind === "PERFORMER" ? artistSlug || username : username || artistSlug;
+  return chosen || null;
+}
+
 export function resolvePerformerPublicTarget(slug: string): PublicProfileTarget | null {
   const performer = getPerformerBySlug(slug);
   if (!performer) return null;

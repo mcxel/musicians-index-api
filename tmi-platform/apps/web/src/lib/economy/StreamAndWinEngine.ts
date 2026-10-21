@@ -4,6 +4,27 @@ import { getListenLoungeXp } from "@/lib/xp/XpActionRegistry";
 export type FeedbackReaction = "hard" | "replay" | "original" | "skip";
 export type SongState = "active" | "decaying" | "expired";
 
+export interface ListenAccountingResult {
+  ok: boolean;
+  qualified: boolean;
+  publicPlayIncremented: boolean;
+  xpAwarded: boolean;
+  xpAmount: number;
+  participationRecorded: boolean;
+  rotationExtended: boolean;
+  extendedTrackIds: string[];
+  reason:
+    | "qualified_peer_listen"
+    | "duplicate_session"
+    | "self_farming_prevented"
+    | "premature_skip"
+    | "inactive_tab"
+    | "hourly_cap_reached"
+    | "skip_threshold_exceeded"
+    | "track_not_found"
+    | "track_expired";
+}
+
 export interface StreamWinSong {
   id: string;
   artistId: string;
@@ -32,6 +53,7 @@ const songs: Map<string, StreamWinSong> = new Map();
 const artistSubmissions: Map<string, number> = new Map();
 // userId -> { xpThisHour, windowStart, skipCount, noSkipStreak }
 const userActivity: Map<string, { xpThisHour: number; windowStart: number; skipCount: number; noSkipStreak: number }> = new Map();
+const creditedSessions: Set<string> = new Set();
 
 const DECAY_IDLE_MS   = 5 * 60 * 1000;  // 5 min → decaying
 const EXPIRE_IDLE_MS  = 15 * 60 * 1000; // 15 min → expired
@@ -114,30 +136,153 @@ export const StreamAndWinEngine = {
     return { ok: true, song };
   },
 
-  recordListen(songId: string, userId: string, listenPct: number, isActive = true, role?: string | null): boolean {
+  recordListenDetailed(
+    songId: string,
+    userId: string,
+    listenPct: number,
+    isActive = true,
+    role?: string | null,
+    sessionId?: string,
+  ): ListenAccountingResult {
     const song = songs.get(songId);
-    if (!song || song.state === "expired") return false;
+    if (!song) {
+      return {
+        ok: false,
+        qualified: false,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "track_not_found",
+      };
+    }
+    if (song.state === "expired") {
+      return {
+        ok: false,
+        qualified: false,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "track_expired",
+      };
+    }
 
-    // Anti-cheat: hidden tab = no XP
-    if (!isActive) return false;
+    // Anti-cheat: inactive or hidden tab
+    if (!isActive) {
+      return {
+        ok: true,
+        qualified: false,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "inactive_tab",
+      };
+    }
+
+    // Idempotency: deduplication key check (userId:songId:sessionId)
+    const dedupeKey = sessionId ? `${userId}:${songId}:${sessionId}` : null;
+    if (dedupeKey && creditedSessions.has(dedupeKey)) {
+      return {
+        ok: true,
+        qualified: true,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "duplicate_session",
+      };
+    }
 
     const rec = getUserActivity(userId);
     if (listenPct < 0.30) {
       rec.skipCount += 1;
       rec.noSkipStreak = 0;
       userActivity.set(userId, rec);
-      return false;
+      return {
+        ok: true,
+        qualified: false,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "premature_skip",
+      };
     }
 
+    // Anti-farming check: artist listening to their own track (0 XP, 0 public play increment)
+    const isSelfListen = song.artistId === userId;
+    if (isSelfListen) {
+      return {
+        ok: true,
+        qualified: false,
+        publicPlayIncremented: false,
+        xpAwarded: false,
+        xpAmount: 0,
+        participationRecorded: false,
+        rotationExtended: false,
+        extendedTrackIds: [],
+        reason: "self_farming_prevented",
+      };
+    }
+
+    // Deduplication key stored
+    if (dedupeKey) {
+      creditedSessions.add(dedupeKey);
+      if (creditedSessions.size > 20000) {
+        const first = creditedSessions.values().next().value;
+        if (first) creditedSessions.delete(first);
+      }
+    }
+
+    // Distinct accounting: public play counter incremented
     song.listenCount += 1;
-    song.listenSeconds += Math.round(listenPct * 180); // assume avg 3min track
+    song.listenSeconds += Math.round(listenPct * 180);
     song.lastActivityAt = Date.now();
     song.state = "active";
     song.visibilityScore = recomputeScore(song);
 
     rec.noSkipStreak += 1;
-    tryGrantXP(userId, "stream_listen", role);
-    return true;
+    const baseAmount = getListenLoungeXp(role);
+    const xpGranted = tryGrantXP(userId, "stream_listen", role);
+
+    // Performer Fair Exchange: Listening to peer music extends the rotation of own submitted tracks
+    const extendedIds: string[] = [];
+    for (const peerSong of songs.values()) {
+      if (peerSong.artistId === userId && peerSong.state !== "expired") {
+        peerSong.lastActivityAt = Date.now();
+        peerSong.visibilityScore = recomputeScore(peerSong);
+        extendedIds.push(peerSong.id);
+      }
+    }
+
+    return {
+      ok: true,
+      qualified: true,
+      publicPlayIncremented: true,
+      xpAwarded: xpGranted,
+      xpAmount: xpGranted ? baseAmount : 0,
+      participationRecorded: true,
+      rotationExtended: extendedIds.length > 0,
+      extendedTrackIds: extendedIds,
+      reason: "qualified_peer_listen",
+    };
+  },
+
+  recordListen(songId: string, userId: string, listenPct: number, isActive = true, role?: string | null, sessionId?: string): boolean {
+    const res = this.recordListenDetailed(songId, userId, listenPct, isActive, role, sessionId);
+    return res.qualified && (res.publicPlayIncremented || res.xpAwarded);
   },
 
   recordReaction(songId: string, userId: string, reaction: FeedbackReaction, role?: string | null): boolean {

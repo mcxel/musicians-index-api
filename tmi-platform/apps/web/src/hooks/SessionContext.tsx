@@ -12,15 +12,25 @@ export interface UserStyleConfig {
 
 export interface UserEconomy {
   userId: string;
-  platformPoints: number;
-  xpPoints: number;
-  accumulatedXp: number;
-  tierLevel: number;
+  /** Real fan-credits balance from GET /api/points/balance. Null until hydrated. */
+  platformPoints: number | null;
+  /** Real XP from GET /api/fan/stats (metrics.xp.value). Null until hydrated. */
+  xpPoints: number | null;
+  accumulatedXp: number | null;
+  /**
+   * No real authority currently defines what "tierLevel" (a number) should
+   * mean, distinct from the real string `tier` field above (FREE/PRO/RUBY/...
+   * from /api/auth/me). PRODUCT_POLICY_REQUIRED before this is wired to
+   * anything — do not derive it from XP level or duplicate `tier` as a guess.
+   */
+  tierLevel: number | null;
 }
 
 interface SessionContextType {
   userId: string;
   userName: string;
+  /** Membership tier from /api/auth/me. Null until that response includes one. */
+  tier: string | null;
   styleConfig: UserStyleConfig;
   economyState: UserEconomy;
   updateUserColors: (primary: string, secondary: string) => void;
@@ -46,6 +56,7 @@ export const SessionContext = createContext<SessionContextType | undefined>(unde
 export function TmiSessionProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState(FALLBACK_USER_ID);
   const [userName, setUserName] = useState(FALLBACK_USER_NAME);
+  const [tier, setTier] = useState<string | null>(null);
 
   const [styleConfig, setStyleConfig] = useState<UserStyleConfig>({
     userId: FALLBACK_USER_ID,
@@ -57,10 +68,13 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
 
   const [economyState, setEconomyState] = useState<UserEconomy>({
     userId: FALLBACK_USER_ID,
-    platformPoints: 120,
-    xpPoints: 340,
-    accumulatedXp: 340,
-    tierLevel: 1
+    // Honest "not yet known" state — these previously hardcoded 120/340/340
+    // for every user regardless of who was signed in (Rule 20 violation,
+    // 2026-10-04 fix). Real values are hydrated below once authenticated.
+    platformPoints: null,
+    xpPoints: null,
+    accumulatedXp: null,
+    tierLevel: null,
   });
 
   useEffect(() => {
@@ -80,13 +94,54 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
 
         const nextUserId = data.user.id;
         const nextUserName = data.user.name?.trim() || FALLBACK_USER_NAME;
+        const nextTier = data.user.tier?.trim() || null;
 
         setUserId(nextUserId);
         setUserName(nextUserName);
+        setTier(nextTier);
         setStyleConfig((prev) => ({ ...prev, userId: nextUserId }));
         setEconomyState((prev) => ({ ...prev, userId: nextUserId }));
+
+        // Real economy values — fire-and-forget, independent of identity
+        // hydration above so a slow/failed economy fetch never blocks name/tier.
+        void hydrateRealEconomy();
       } catch {
         // keep safe fallback identity
+      }
+    }
+
+    async function hydrateRealEconomy() {
+      try {
+        const [statsRes, balanceRes] = await Promise.all([
+          fetch("/api/fan/stats", { credentials: "include", cache: "no-store" }),
+          fetch("/api/points/balance", { credentials: "include", cache: "no-store" }),
+        ]);
+
+        let realXp: number | null = null;
+        if (statsRes.ok) {
+          const statsData = (await statsRes.json()) as { metrics?: { xp?: { value?: number } } };
+          if (typeof statsData?.metrics?.xp?.value === "number") {
+            realXp = statsData.metrics.xp.value;
+          }
+        }
+
+        let realPoints: number | null = null;
+        if (balanceRes.ok) {
+          const balanceData = (await balanceRes.json()) as { platformPoints?: number };
+          if (typeof balanceData?.platformPoints === "number") {
+            realPoints = balanceData.platformPoints;
+          }
+        }
+
+        if (!active) return;
+        setEconomyState((prev) => ({
+          ...prev,
+          xpPoints: realXp,
+          accumulatedXp: realXp,
+          platformPoints: realPoints,
+        }));
+      } catch {
+        // keep honest null state — never fabricate a value on fetch failure
       }
     }
 
@@ -107,13 +162,14 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
   };
 
   const incrementPoints = (amount: number) => {
-    setEconomyState((prev) => ({ ...prev, platformPoints: prev.platformPoints + amount }));
+    setEconomyState((prev) => ({ ...prev, platformPoints: (prev.platformPoints ?? 0) + amount }));
   };
 
   return (
     <SessionContext.Provider value={{
       userId,
       userName,
+      tier,
       styleConfig,
       economyState,
       updateUserColors,

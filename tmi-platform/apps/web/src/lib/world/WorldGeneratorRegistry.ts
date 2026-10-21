@@ -35,6 +35,10 @@ import type { CanonicalWorldZone } from "@/lib/live/canonicalWorldViewport";
 import { CANONICAL_WORLD_ZONE, isLoungeRoomId } from "@/lib/live/canonicalWorldViewport";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import type { VenueGeometry } from "@/lib/venues/VenueAssetRegistry";
+import {
+  applyHarvestSelectionToGeneratorSkin,
+  isHarvestWorldSelectionId,
+} from "@/lib/world/HarvestWorldRuntimeBinding";
 
 export type WorldGeneratorId =
   | "scene"
@@ -140,18 +144,28 @@ export function runSceneGenerator(ctx: WorldGeneratorContext): SceneGeneratorRes
 /** Environment — EventVenueEnvironment indoor/outdoor resolution. */
 export function runEnvironmentGenerator(ctx: WorldGeneratorContext): EnvironmentGeneratorResult {
   const kind = normalizeEventVenueKind(ctx.eventType) ?? ctx.eventType;
+  const harvest = applyHarvestSelectionToGeneratorSkin(ctx.venueSkinId);
+  const environment =
+    ctx.environment ??
+    (harvest.environmentHint === "outdoor"
+      ? "outdoor"
+      : harvest.environmentHint === "indoor"
+        ? "indoor"
+        : null);
   const resolution = resolveEventVenueEnvironment({
     kind,
-    environment: ctx.environment,
-    skinId: ctx.venueSkinId,
+    environment,
+    skinId: harvest.skinId ?? ctx.venueSkinId,
   });
   return {
     environment: resolution.environment,
-    skinId: resolution.skinId,
+    skinId: harvest.skinId ?? resolution.skinId,
     venueIndex: resolution.venueIndex as VenueIndex,
     ambientEnergy: resolution.ambientEnergy,
     copyTone: resolution.copyTone,
-    label: resolution.label,
+    label: isHarvestWorldSelectionId(ctx.venueSkinId)
+      ? `Harvest world · ${resolution.label}`
+      : resolution.label,
   };
 }
 
@@ -201,9 +215,10 @@ export function runSeatingGenerator(
 /** Material — TierBaseVenueSkin appearance only (geometry unchanged). */
 export function runMaterialGenerator(ctx: WorldGeneratorContext): MaterialProfileSlice {
   const tierSkin = resolveBaseVenueSkin(mapTierToUserTier(ctx.performerTier));
+  const harvest = applyHarvestSelectionToGeneratorSkin(ctx.venueSkinId);
   return {
     tierSkinId: tierSkin.id,
-    skinId: ctx.venueSkinId ?? null,
+    skinId: harvest.skinId,
     structureUnchanged: true,
   };
 }

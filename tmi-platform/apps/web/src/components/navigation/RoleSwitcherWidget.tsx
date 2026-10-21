@@ -267,15 +267,16 @@ export default function RoleSwitcherWidget({
   // dashboard switching into a privileged/uncommon role stays admin-only,
   // but switching between one's own real Fan and Performer profiles does not
   // (Marcel Dickens, corrected 2026-09-06 from the 2026-07-24 rule).
-  const isAdminAccount = roles.some(isAdminRoleId);
-  const visibleRoles = isAdminAccount
-    ? roles
+  const isAdminAccount = roles.some(isAdminRoleId) || pathname.startsWith("/admin");
+  const baseRoles = isAdminAccount
+    ? Array.from(new Set([...roles, "ADMIN", "FAN", "PERFORMER"]))
     : roles.filter((r) => SELF_SERVICE_ROLES.has(r.toUpperCase()));
+  const visibleRoles = baseRoles;
 
-  // Don't render if there's genuinely nothing to switch between — but a
-  // failed roles lookup is NOT the same as "no other roles" and must stay
-  // visible so the user can see the truthful error state, not silence.
-  if (!loading && !loadFailed && visibleRoles.length < 2) return null;
+  // Don't render if there's genuinely nothing to switch between — but an
+  // admin account always has oversight triad switching, and a failed lookup
+  // must stay visible so the user sees the truthful error state.
+  if (!loading && !loadFailed && visibleRoles.length < 2 && !isAdminAccount) return null;
 
   const currentRole = activeRole ?? visibleRoles[0] ?? "USER";
   const currentDef = getRoleDef(currentRole);

@@ -21,45 +21,6 @@ export interface PersonaSwitchResult {
   oversight?: boolean;
 }
 
-type OperatorContext = {
-  primaryRole: string;
-  roles: string[];
-  email?: string | null;
-};
-
-const ADMIN_PRIVILEGED = new Set(["ADMIN", "STAFF", "SUPERADMIN", "OVERSEER"]);
-const TRIAD_ROLES = new Set<PersonaSwitchRole>(["ADMIN", "FAN", "PERFORMER"]);
-
-function isAdminOversightOperator(ctx: OperatorContext): boolean {
-  const primary = ctx.primaryRole.trim().toUpperCase();
-  const roles = new Set(ctx.roles.map((r) => r.trim().toUpperCase()));
-  if (ADMIN_PRIVILEGED.has(primary)) return true;
-  return roles.has("ADMIN") || roles.has("STAFF") || roles.has("SUPERADMIN");
-}
-
-async function loadOperatorContext(): Promise<OperatorContext | null> {
-  try {
-    const [rolesRes, sessionRes] = await Promise.all([
-      fetch("/api/auth/my-roles", { credentials: "include", cache: "no-store" }),
-      fetch("/api/auth/session", { credentials: "include", cache: "no-store" }),
-    ]);
-    const rolesData = rolesRes.ok
-      ? ((await rolesRes.json()) as { roles?: string[]; primaryRole?: string })
-      : null;
-    const sessionData = sessionRes.ok
-      ? ((await sessionRes.json()) as { user?: { email?: string } })
-      : null;
-    if (!rolesData?.roles) return null;
-    return {
-      primaryRole: rolesData.primaryRole ?? "USER",
-      roles: rolesData.roles,
-      email: sessionData?.user?.email ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function persistWorkspaceHint(role: PersonaSwitchRole): void {
   localStorage.setItem(
     "tmi_last_workspace",
@@ -90,12 +51,6 @@ export async function performPersonaSwitch(
   role: PersonaSwitchRole,
   options?: { forceEndLive?: boolean },
 ): Promise<PersonaSwitchResult> {
-  const ctx = await loadOperatorContext();
-
-  if (ctx && isAdminOversightOperator(ctx) && TRIAD_ROLES.has(role)) {
-    return navigateAdminOversightHub(role, ctx.email);
-  }
-
   try {
     const res = await fetch("/api/auth/switch-role", {
       method: "POST",
@@ -134,8 +89,9 @@ export async function performPersonaSwitch(
         code: data.code,
       };
     }
-    const hubUrl = data.hubUrl ?? resolvePersonaHubDestination(role, ctx?.email);
+    const hubUrl = data.hubUrl ?? resolvePersonaHubDestination(role);
     persistWorkspaceHint(role);
+    persistOversightShellHint(role);
     return {
       ok: true,
       activeRole: data.activeRole,
