@@ -13,7 +13,6 @@ import { useWorkspacePresentationStore } from "@/lib/workspace/universal/Workspa
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useWorkspace } from "@/components/shell/WorkspaceProvider";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import { resolveMinMonitorCount } from "@/lib/monitors/RoleMediaWorkspaceAuthority";
@@ -350,6 +349,8 @@ interface CommandCenterMediaStackProps {
   onOpenLivingOs?: (context: { playerId: string; role: "fan" | "performer" }) => void;
   /** Canonical Venue Tools doorway re-presented by the shared Companion Dock. */
   onOpenVenueTools?: (context: { roomId?: string; isLoungeHost: boolean; readOnly: boolean }) => void;
+  /** Open the canonical Notes workspace (provider-safe; supplied by the shell's openStageWorkspace). */
+  onOpenNotes?: () => void;
   /** Show the existing role-aware GPS navigator entry in the Hub Command Bed. */
   enableGpsControls?: boolean;
   /** 0 sits the workspace under the first player. 1 sits it under the second. */
@@ -831,6 +832,7 @@ export default function CommandCenterMediaStack({
   onOpenYopho,
   onOpenLivingOs,
   onOpenVenueTools,
+  onOpenNotes,
   enableGpsControls = false,
   underMonitorIndex = null,
   underMonitorSlot = null,
@@ -869,7 +871,6 @@ export default function CommandCenterMediaStack({
   const goLiveBootActive =
     bootPhase !== "IDLE" && bootPhase !== "READY" && bootPhase !== "ERROR";
   const [swapOrder, setSwapOrder] = useState(false);
-  const { openWorkspace: openNotesWorkspace } = useWorkspace();
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [castPanelOpen, setCastPanelOpen] = useState(false);
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
@@ -1600,7 +1601,7 @@ export default function CommandCenterMediaStack({
               false,
               "#00FFFF",
               "NOTE",
-              () => openNotesWorkspace("notes", "half"),
+              () => onOpenNotes?.(),
               {
                 testId: "tmi-top-cluster-note",
                 title: "Open Notes — write, save to your Notes collection in Memory Wall",

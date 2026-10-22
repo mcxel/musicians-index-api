@@ -1843,6 +1843,7 @@ function CommandCenterShellInner({
                         setLivingDeskContext(null);
                         setVenueDockContext(context);
                       }}
+                      onOpenNotes={() => openStageWorkspace("notes")}
                       seriesLabel={
                         role === "performer"
                           ? "PERFORMER HUB · CHROME SERIES · DUAL MONITORS"
@@ -2057,7 +2058,11 @@ function CommandCenterShellInner({
         style={{
           position: "fixed",
           top: "max(58px, calc(env(safe-area-inset-top) + 50px))",
-          right: "max(10px, env(safe-area-inset-right))",
+          // Phone: dock LEFT so it never covers the top-right account/avatar control.
+          // Desktop unchanged (right).
+          ...(isMobile
+            ? { left: "max(10px, env(safe-area-inset-left))" }
+            : { right: "max(10px, env(safe-area-inset-right))" }),
           zIndex: 9350,
           width: 44,
           height: 44,

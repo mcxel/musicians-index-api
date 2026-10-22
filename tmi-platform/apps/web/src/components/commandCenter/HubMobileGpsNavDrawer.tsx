@@ -157,6 +157,19 @@ export default function HubMobileGpsNavDrawer({
   const { activePanel: qpPanel, togglePanel, openPanel, closePanel } = useCompactQuickPanelStore();
   const { primary } = getMobileQuickPanelCapabilities(role);
 
+  // Phone presentation: dock the rail to the LEFT edge so it never covers the
+  // top-right account/avatar control. Desktop keeps the right-side rail.
+  const [phonePortrait, setPhonePortrait] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 640px)");
+    const sync = () => setPhonePortrait(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  const dockLeft = placement === "overlay" && phonePortrait;
+
   const showMonitorBack = layout === "DRAWER_REPLACES_MONITOR_2";
   const drawerRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -225,8 +238,11 @@ export default function HubMobileGpsNavDrawer({
     if (!start || swipeClosing) return;
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
-    // Right-docked drawer: close on a RIGHT swipe (off the right edge).
-    if (!(deltaX >= 64 && deltaX >= Math.abs(deltaY) * 1.5)) return;
+    // Swipe off the docked edge to close: LEFT-docked closes on a left swipe,
+    // RIGHT-docked closes on a right swipe.
+    const closesLeft = dockLeft && deltaX <= -64 && Math.abs(deltaX) >= Math.abs(deltaY) * 1.5;
+    const closesRight = !dockLeft && deltaX >= 64 && deltaX >= Math.abs(deltaY) * 1.5;
+    if (!closesLeft && !closesRight) return;
     swipeConsumedRef.current = true;
     setSwipeClosing(true);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -264,7 +280,7 @@ export default function HubMobileGpsNavDrawer({
       data-testid="hub-mobile-gps-drawer"
       data-gps-placement={placement}
       data-gps-overlay-root={placement === "overlay" ? "shell" : undefined}
-      data-gps-side={placement === "overlay" ? "right" : undefined}
+      data-gps-side={placement === "overlay" ? (dockLeft ? "left" : "right") : undefined}
       data-gps-swipe-closing={swipeClosing ? "1" : "0"}
       aria-label="GPS navigation"
       onPointerDown={beginGpsSwipe}
@@ -280,9 +296,11 @@ export default function HubMobileGpsNavDrawer({
           ? {
               position: "fixed",
               top: "max(8px, env(safe-area-inset-top))",
-              right: "max(8px, env(safe-area-inset-right))",
+              ...(dockLeft
+                ? { left: "max(8px, env(safe-area-inset-left))" }
+                : { right: "max(8px, env(safe-area-inset-right))" }),
               bottom: "max(8px, env(safe-area-inset-bottom))",
-              transform: swipeClosing ? "translateX(calc(100% + 16px))" : "none",
+              transform: swipeClosing ? (dockLeft ? "translateX(calc(-100% - 16px))" : "translateX(calc(100% + 16px))") : "none",
               transition: swipeClosing ? "transform 150ms ease-in" : "none",
               // Same portal stack as HubMobileCommunicationsDrawer (9400); under Snips (9370) and camera (9500).
               zIndex: 9360,
@@ -470,7 +488,10 @@ export default function HubMobileGpsNavDrawer({
                 return;
               }
               if (item.kind === "profile" || item.kind === "publics") {
-                const dest = item.kind === "profile" ? "/profile" : "/profiles";
+                // PROFILE → the account/profile experience. PUBLICS → the canonical
+                // unified discovery surface (/search finds public profiles, live rooms,
+                // articles, tracks). /profiles does not exist (was a 404 on Galaxy).
+                const dest = item.kind === "profile" ? "/profile" : "/search";
                 document.documentElement.setAttribute("data-gps-last-command", `${item.kind}:${dest}`);
                 window.location.assign(dest);
                 return;
