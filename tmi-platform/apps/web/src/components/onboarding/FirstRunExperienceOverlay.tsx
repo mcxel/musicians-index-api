@@ -93,7 +93,8 @@ export default function FirstRunExperienceOverlay() {
       const state = getFirstRunState();
       if (state.dismissed) return;
 
-      // Already picked a role in this flow before — never ask again.
+      // Already picked a role in this flow before (a locally confirmed account
+      // persona) — never ask again.
       if (state.role) {
         showChecklist(state.role);
         return;
@@ -103,12 +104,14 @@ export default function FirstRunExperienceOverlay() {
       // already chose a role at signup — if so, use that instead of asking
       // "what brings you here?" a second time. tmi_role is httpOnly, so this
       // requires a server round-trip rather than reading document.cookie.
+      let authenticated = false;
       try {
         const res = await fetch('/api/auth/session', { credentials: 'include' });
         const data = await res.json().catch(() => null) as {
           authenticated?: boolean;
           user?: { role?: string; onboardingState?: string };
         } | null;
+        authenticated = Boolean(data?.authenticated);
         const onboardingState = data?.user?.onboardingState?.toLowerCase();
         if (!cancelled && data?.authenticated && onboardingState === 'complete') {
           dismissFirstRun();
@@ -123,10 +126,13 @@ export default function FirstRunExperienceOverlay() {
           return;
         }
       } catch {
-        // Session lookup failed — fall back to manual role-select below.
+        // Session lookup failed — fall through to the auth gate below.
       }
 
-      if (!cancelled) setVisible(true);
+      // P1 (Galaxy physical-cert): the welcome/first-run experience is an
+      // authenticated-account surface. Never mount it for an unauthenticated
+      // public visitor entering from Google. The public homepage stays public.
+      if (!cancelled && authenticated) setVisible(true);
     }
 
     init();

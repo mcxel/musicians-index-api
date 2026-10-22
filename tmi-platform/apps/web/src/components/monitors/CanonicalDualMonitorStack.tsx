@@ -753,6 +753,15 @@ export default function CanonicalDualMonitorStack({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // PHONE PORTRAIT: never cap monitor width from the height budget. On a tall
+    // narrow phone the chrome above the stack (header + direct controls) leaves
+    // little height, and the 16:9 budget equation crushes the monitors into a
+    // ~277px centered strip. Phone monitors use full content width + 16:9 and
+    // scroll vertically instead. Tablet/desktop keep the original budget.
+    if (isPhone) {
+      setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
+      return;
+    }
     const el = stackWrapperRef.current;
     if (!el) return;
 
@@ -807,7 +816,7 @@ export default function CanonicalDualMonitorStack({
       window.removeEventListener("orientationchange", recompute);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, yieldSecondaryMonitor, variant]);
+  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, yieldSecondaryMonitor, variant, isPhone]);
 
   const heightBudgetStackStyle: CSSProperties = heightBudgetMaxWidth
     ? { width: `${heightBudgetMaxWidth}px`, maxWidth: "100%", margin: "0 auto" }

@@ -187,6 +187,12 @@ export default function AdRail({ placement, role, reserve, experienceMode }: AdR
 
   if (resolved.mode === "unavailable") return null;
 
+  // Empty-inventory collapse: only reserve the large ad canvas when a real paid
+  // creative (network/sponsor) will render. House/affiliate fallbacks stay compact
+  // so they never consume a full phone screen of dead space.
+  const reservesCanvas = resolved.mode === "network" || resolved.mode === "sponsor";
+  const minHeight = reservesCanvas ? RESERVE_MIN_HEIGHT[reserve] : 0;
+
   return (
     <section
       data-monetization-rail
@@ -194,12 +200,13 @@ export default function AdRail({ placement, role, reserve, experienceMode }: AdR
       data-role={role}
       data-experience-mode={experienceMode}
       data-rail-state={resolved.state}
+      data-rail-reserve={reservesCanvas ? reserve : "collapsed"}
       style={{
         border: "1px solid rgba(255,255,255,0.12)",
         borderRadius: 12,
         padding: 12,
         background: "rgba(8,10,20,0.72)",
-        marginTop: 16,
+        marginTop: reservesCanvas ? 16 : 8,
       }}
     >
       <div
@@ -214,14 +221,14 @@ export default function AdRail({ placement, role, reserve, experienceMode }: AdR
         {meta.title}
       </div>
 
-      <div style={{ minHeight: RESERVE_MIN_HEIGHT[reserve] }}>
+      <div style={minHeight > 0 ? { minHeight } : undefined}>
         {(resolved.mode === "network" || resolved.mode === "sponsor") && (
           <UnifiedAdSlot
             venue="dashboard"
             slotKey={meta.slotKey}
             format={meta.format}
             label=""
-            style={{ minHeight: RESERVE_MIN_HEIGHT[reserve] }}
+            style={{ minHeight }}
             accentColor={role === "performer" ? "#FF2DAA" : "#00E5FF"}
           />
         )}

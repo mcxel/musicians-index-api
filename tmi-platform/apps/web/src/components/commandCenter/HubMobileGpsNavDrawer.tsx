@@ -10,7 +10,6 @@ import { createPortal } from "react-dom";
 import type { OperatingCenter } from "@/lib/drawers/operatingCenterRegistry";
 import type { CommandCenterPanelId } from "./commandCenterRegistry";
 import {
-  isGpsLeftSwipe,
   useMobileGpsMonitorLayoutStore,
   type MobileMonitorLayoutState,
 } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
@@ -226,7 +225,8 @@ export default function HubMobileGpsNavDrawer({
     if (!start || swipeClosing) return;
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
-    if (!isGpsLeftSwipe(deltaX, deltaY) && !(deltaX >= 64 && deltaX >= Math.abs(deltaY) * 1.5)) return;
+    // Right-docked drawer: close on a RIGHT swipe (off the right edge).
+    if (!(deltaX >= 64 && deltaX >= Math.abs(deltaY) * 1.5)) return;
     swipeConsumedRef.current = true;
     setSwipeClosing(true);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -286,7 +286,7 @@ export default function HubMobileGpsNavDrawer({
               transition: swipeClosing ? "transform 150ms ease-in" : "none",
               // Same portal stack as HubMobileCommunicationsDrawer (9400); under Snips (9370) and camera (9500).
               zIndex: 9360,
-              width: "clamp(118px, 34vw, 168px)",
+              width: "clamp(180px, 58vw, 232px)",
               height: "auto",
               overflow: "hidden",
               display: "flex",

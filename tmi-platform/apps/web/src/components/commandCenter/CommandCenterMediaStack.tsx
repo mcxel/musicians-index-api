@@ -13,6 +13,7 @@ import { useWorkspacePresentationStore } from "@/lib/workspace/universal/Workspa
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useWorkspace } from "@/components/shell/WorkspaceProvider";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 import { resolveMinMonitorCount } from "@/lib/monitors/RoleMediaWorkspaceAuthority";
@@ -54,7 +55,6 @@ import {
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
 import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
-import CompactAudioMixer from "@/components/audio/CompactAudioMixer";
 import { useRetainMixSlot, useRetainMonitorWorkspace } from "@/components/audio/useAudibleExperiencePresence";
 import FastPlaylistCastPicker from "@/components/playlists/FastPlaylistCastPicker";
 import ExploreMatrixDiscoveryHost, { type ExploreColumnType } from "@/components/explore/ExploreMatrixDiscoveryHost";
@@ -66,7 +66,6 @@ import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
 import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
 import TmiIdentitySurface from "@/components/commandCenter/TmiIdentitySurface";
-import ServerConnectionStatus from "@/components/shell/ServerConnectionStatus";
 import { isGpsDrawerVisible, useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import { hubGpsButtonStyle } from "@/components/commandCenter/HubMobileGpsNavDrawer";
 
@@ -863,10 +862,6 @@ export default function CommandCenterMediaStack({
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const previewStream = useLivePrivacyState((s) => s.previewStream);
   const previewVideoTrack = previewStream?.getVideoTracks().find((track) => track.readyState === "live");
-  const captureSettings = previewVideoTrack?.getSettings();
-  const captureLabel = captureSettings?.width && captureSettings.height
-    ? `${captureSettings.width}x${captureSettings.height}${captureSettings.frameRate ? ` / ${Math.round(captureSettings.frameRate)} fps` : ""}`
-    : "—";
   const hubLiveRoomId = hubInPlaceRoomId ?? publishedRoomId;
   const bootPhase = useGoLiveBootstrapStore((s) => s.phase);
   const bootErrorCode = useGoLiveBootstrapStore((s) => s.errorCode);
@@ -874,6 +869,7 @@ export default function CommandCenterMediaStack({
   const goLiveBootActive =
     bootPhase !== "IDLE" && bootPhase !== "READY" && bootPhase !== "ERROR";
   const [swapOrder, setSwapOrder] = useState(false);
+  const { openWorkspace: openNotesWorkspace } = useWorkspace();
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [castPanelOpen, setCastPanelOpen] = useState(false);
   const [playlistCastOpen, setPlaylistCastOpen] = useState(false);
@@ -881,7 +877,6 @@ export default function CommandCenterMediaStack({
   /** Canonical Hub profile launcher (Item 3, 2026-09-19) — opens ProfileQuickPanel,
    * a second, clearly-labeled trigger next to the existing QR "USER ID" touchpoint. */
   const [profileQuickPanelOpen, setProfileQuickPanelOpen] = useState(false);
-  const [controlBedCollapsed, setControlBedCollapsed] = useState(false);
   /**
    * RECORD honesty (P0): no certified session/cloud recording consumer is wired to
    * the hub top cluster. Live-fabric startRecording is metadata-only today;
@@ -1448,61 +1443,33 @@ export default function CommandCenterMediaStack({
     isDevDiagnostics,
   ]);
 
-  const sectionLabel: CSSProperties = {
-    fontSize: 8,
-    fontWeight: 900,
-    letterSpacing: "0.12em",
-    color: "rgba(255,255,255,0.38)",
-    marginBottom: 2,
-    width: "100%",
-  };
-
+  // Command Bed presentation REMOVED (Galaxy physical-cert P1). The gray chassis
+  // box, HIDE/EXPAND toggle, and wrapped group deck are gone. Existing handlers are
+  // exposed as clean, directly-visible controls — no extra fold, no second command
+  // surface. GO LIVE stays a direct canonical action.
   const toolbar = (
     <div
-      data-tmi-polished-control-bed="1"
+      data-tmi-direct-controls="1"
       style={{
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        padding: controlBedCollapsed ? "4px 12px" : "8px 12px",
         maxWidth: "100%",
         boxSizing: "border-box",
-        background: "linear-gradient(180deg, #323947 0%, #1c2230 50%, #262e3d 100%)",
-        border: "1px solid rgba(190, 210, 235, 0.35)",
-        borderRadius: 10,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 20px rgba(0,0,0,0.6)",
         marginBottom: 8,
-        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
-      {/* Upper Chassis Title & Specular Strip */}
+      {/* Status strip: GPS (when not surfaced elsewhere) + live state. No chassis box. */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: controlBedCollapsed ? "none" : "1px solid rgba(255,255,255,0.08)",
-          paddingBottom: controlBedCollapsed ? 0 : 4,
-          marginBottom: controlBedCollapsed ? 0 : 4,
+          gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: "0.14em",
-              color: "#00FFFF",
-              textShadow: "0 0 8px rgba(0,255,255,0.4)",
-            }}
-          >
-            COMMAND BED
-          </span>
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>
-            COMMAND · CAST · GPS · POWER MIX
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           {hubLiveRoomId && role === "performer" ? (
             <VenueToolsToggleButton
               roomId={hubLiveRoomId}
@@ -1515,7 +1482,7 @@ export default function CommandCenterMediaStack({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {!enableGpsControls ? (
-            /* Compact GPS stays on the Command Bed header, above the monitor frames. */
+            /* Compact GPS trigger stays in flow, above the monitor frames. */
             <button
               type="button"
               data-testid="hub-mobile-action-gps"
@@ -1540,52 +1507,33 @@ export default function CommandCenterMediaStack({
             </button>
           ) : null}
           <span style={{ fontSize: 8, fontWeight: 800, color: publishedRoomId ? "#00FF88" : "rgba(255,255,255,0.4)" }}>
-            {publishedRoomId ? "● BROADCAST ACTIVE" : "○ READY"}
+            {publishedRoomId ? "● LIVE" : "○ READY"}
           </span>
-          <button
-            type="button"
-            onClick={() => setControlBedCollapsed((v) => !v)}
-            title={controlBedCollapsed ? "Expand Command, Cast & GPS Controls" : "Collapse Controls into Performance Mirror Mode"}
-            style={{
-              background: controlBedCollapsed ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.06)",
-              border: controlBedCollapsed ? "1px solid #00FFFF" : "1px solid rgba(255,255,255,0.18)",
-              borderRadius: 4,
-              color: controlBedCollapsed ? "#00FFFF" : "rgba(255,255,255,0.7)",
-              fontSize: 8,
-              fontWeight: 900,
-              letterSpacing: "0.06em",
-              padding: "2px 8px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              textTransform: "uppercase",
-            }}
-          >
-            {controlBedCollapsed ? "▼ EXPAND BED" : "▲ HIDE (MIRROR)"}
-          </button>
         </div>
       </div>
 
-      {/* Main Split Control Deck: COMMAND | CAST | GPS | MIX / POWER MIX — never on bezel */}
-      {!controlBedCollapsed ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          {/* ── COMMAND CONTROLS (left) ── */}
+      {/* Direct control deck: COMMAND (left) | divider | CAST (right) — flush, no wrap stacking. */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 8,
+          flexWrap: "nowrap",
+          maxWidth: "100%",
+        }}
+      >
+          {/* ── COMMAND (left) ── compact rows; pulled up/left, no wrapping bed. */}
           <div
             data-tmi-command-controls-group="1"
             data-tmi-master-controls-group="1"
             style={{
               display: "flex",
-              alignItems: "center",
+              flexDirection: "column",
+              alignItems: "flex-start",
               gap: 6,
-              flexWrap: "wrap",
-              flex: "1 1 280px",
+              flex: "1 1 0",
+              minWidth: 0,
             }}
           >
             <span
@@ -1601,6 +1549,8 @@ export default function CommandCenterMediaStack({
               COMMAND CONTROLS:
             </span>
 
+            {/* Row: GO LIVE */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {utilityBtn(Boolean(publishedRoomId), "#FF2DAA", publishedRoomId ? "● LIVE" : "GO LIVE", () => {
               void presentInstantGoLiveInPlace({
                 pressedAt: Date.now(),
@@ -1615,7 +1565,10 @@ export default function CommandCenterMediaStack({
               title: "Go Live / broadcast to stage — not Cast, not bezel",
               icon: "🔴",
             })}
+            </div>
 
+            {/* Row: RECORD directly under GO LIVE */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button
               type="button"
               data-testid="tmi-top-cluster-record"
@@ -1627,7 +1580,10 @@ export default function CommandCenterMediaStack({
               <span style={{ pointerEvents: "none" }}>⏺</span>
               <span style={{ pointerEvents: "none" }}>RECORD</span>
             </button>
+            </div>
 
+            {/* Row: USER ID + NOTE side-by-side (NOTE immediately right of USER ID) */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {utilityBtn(
               identityOpen,
               role === "performer" ? "#FFD700" : "#00FF88",
@@ -1641,6 +1597,21 @@ export default function CommandCenterMediaStack({
             )}
 
             {utilityBtn(
+              false,
+              "#00FFFF",
+              "NOTE",
+              () => openNotesWorkspace("notes", "half"),
+              {
+                testId: "tmi-top-cluster-note",
+                title: "Open Notes — write, save to your Notes collection in Memory Wall",
+                icon: "📝",
+              },
+            )}
+            </div>
+
+            {/* Row: EDIT PROFILE */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {utilityBtn(
               profileQuickPanelOpen,
               "#FF2DAA",
               "EDIT PROFILE",
@@ -1651,7 +1622,10 @@ export default function CommandCenterMediaStack({
                 icon: "✏️",
               },
             )}
+            </div>
 
+            {/* Row: LOBBY WALL */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {utilityBtn(
               detachedLobbyWallOpen,
               "#00FFFF",
@@ -1663,6 +1637,7 @@ export default function CommandCenterMediaStack({
                 icon: "🧱",
               },
             )}
+            </div>
 
             <PerformanceRailControls
               role={role === "performer" ? "performer" : "fan"}
@@ -1671,11 +1646,11 @@ export default function CommandCenterMediaStack({
             />
           </div>
 
+          {/* ── flush divider line between COMMAND (left) and CAST (right) ── */}
           <div
             data-tmi-center-split-divider="1"
             style={{
               width: 2,
-              minHeight: 28,
               alignSelf: "stretch",
               background: "linear-gradient(180deg, rgba(0,255,255,0.2) 0%, #00FFFF 50%, rgba(0,255,255,0.2) 100%)",
               boxShadow: "0 0 8px rgba(0,255,255,0.6)",
@@ -1684,7 +1659,7 @@ export default function CommandCenterMediaStack({
             }}
           />
 
-          {/* ── CAST CONTROLS (right of command) ── */}
+          {/* ── CAST (right) ── */}
           <div
             ref={castControlsRef}
             data-tmi-cast-controls-group="1"
@@ -1694,7 +1669,8 @@ export default function CommandCenterMediaStack({
               alignItems: "center",
               gap: 6,
               flexWrap: "wrap",
-              flex: "1 1 220px",
+              flex: "1 1 0",
+              minWidth: 0,
               padding: castPanelOpen ? "4px 8px" : undefined,
               borderRadius: castPanelOpen ? 8 : undefined,
               border: castPanelOpen ? "1px solid rgba(0,255,255,0.55)" : undefined,
@@ -1742,100 +1718,26 @@ export default function CommandCenterMediaStack({
 
             {utilityBtn(promoteOpen || Boolean(activeSponsorOverlay && !activeSponsorOverlay.hidden), "#FFD700", "PROMOTE", () => setPromoteOpen((open) => !open), {
               testId: "tmi-top-cluster-promote",
-              title: "Open Promote — browse, add, then tap to show. Does not cover the screen by itself.",
+              title: "Open Promote — Share Link, sponsors & promotional tools",
               icon: "📣",
             })}
 
-            {utilityBtn(false, "#00FFFF", "SHARE LINK", () => void onShareClick(), {
-              testId: "tmi-top-cluster-share",
-              title: "Share live room link or copy URL",
-              icon: "🔗",
-            })}
-          </div>
-
-          {enableGpsControls ? (
-            <>
-              <div
-                data-tmi-gps-split-divider="1"
-                aria-hidden="true"
-                style={{
-                  width: 1,
-                  minHeight: 24,
-                  background: "rgba(255,255,255,0.15)",
-                  margin: "0 2px",
-                  flexShrink: 0,
-                }}
-              />
-              <div
-                data-tmi-gps-controls-group="1"
-                style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
-              >
-                <span
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    letterSpacing: "0.14em",
-                    color: "#00E5FF",
-                    textTransform: "uppercase",
-                    marginRight: 2,
-                  }}
-                >
-                  GPS CONTROLS:
-                </span>
-                {utilityBtn(gpsDrawerVisible, "rgba(255,255,255,0.9)", "GPS", toggleGpsDrawer, {
-                  testId: "tmi-command-gps",
-                  title: gpsDrawerVisible ? "Close the role-aware GPS navigator" : "Open the role-aware GPS navigator",
-                  icon: "📍",
-                  style: { ...hubGpsButtonStyle, width: "auto", minHeight: 36, justifyContent: "center" },
-                })}
-              </div>
-            </>
-          ) : null}
-
-          <div
-            data-tmi-mix-split-divider="1"
-            style={{
-              width: 1,
-              minHeight: 24,
-              background: "rgba(255,255,255,0.15)",
-              margin: "0 2px",
-              flexShrink: 0,
-            }}
-          />
-
-          {/* ── MIX / POWER MIX (adjacent to Cast) ── */}
-          <div
-            data-tmi-mix-controls-group="1"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginLeft: "auto",
-              flexWrap: "wrap",
-              maxWidth: "100%",
-              minWidth: 0,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 8,
-                fontWeight: 900,
-                letterSpacing: "0.14em",
-                color: "#FFD700",
-                textTransform: "uppercase",
-                marginRight: 2,
-              }}
+            {/* TELEPROMPTER takes SHARE LINK's visible slot. SHARE LINK moves inside PROMOTE.
+               No canonical private teleprompter authority exists yet → honestly disabled,
+               never faked onto an audience-visible path. */}
+            <button
+              type="button"
+              data-testid="tmi-top-cluster-teleprompter"
+              data-teleprompter-state="blocked"
+              disabled
+              title="Teleprompter — private performer read view. Authority not yet implemented; never broadcasts to audience."
+              style={utilityBtnStyle(false, "rgba(255,255,255,0.4)", true)}
             >
-              MIX:
-            </span>
-            <CompactAudioMixer />
-            <span data-tmi-capture-quality title="Local camera capture only; transmitted and received quality are not measured" style={{ color: "#aab0c3", fontSize: 9, whiteSpace: "nowrap" }}>
-              CAPTURE {captureLabel}
-            </span>
-            <ServerConnectionStatus />
+              <span style={{ pointerEvents: "none" }}>📜</span>
+              <span style={{ pointerEvents: "none" }}>TELEPROMPTER</span>
+            </button>
           </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 
