@@ -1,16 +1,25 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import SharedRoomVideoPanel from "@/components/room/SharedRoomVideoPanel";
 import GroupPhotoCanister from "@/components/capture/GroupPhotoCanister";
 import MemoryShareToast from "@/components/capture/MemoryShareToast";
+import { classifyShellIdentity, hubPathForIdentity } from "@/lib/auth/sessionRole";
+
+function resolveMyHubHref(): string {
+  const rawRole = cookies().get("tmi_role")?.value ?? "";
+  const identity = classifyShellIdentity(rawRole);
+  return identity ? hubPathForIdentity(identity, rawRole) : "/hub";
+}
 
 export default function RoomsLayout({ children }: { children: ReactNode }) {
+  const myHubHref = resolveMyHubHref();
   return (
     <>
       {/* ── Leave Room button — fixed top-left ── */}
       <div style={{ position: "fixed", top: 16, left: 12, zIndex: 9999 }}>
         <Link
-          href="/profile"
+          href={myHubHref}
           style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             padding: "6px 12px", borderRadius: 20,

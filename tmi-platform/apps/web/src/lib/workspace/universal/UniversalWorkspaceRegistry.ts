@@ -310,6 +310,16 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
     phase1Content: true,
     legacyDrawerId: "merch",
   },
+  notes: {
+    id: "notes",
+    label: "Notes",
+    accent: "#00FFFF",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 640, height: 520 },
+    minWidth: 360,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "notes",
+  },
 };
 
 export function getWorkspaceDef(id: UniversalWorkspaceId): UniversalWorkspaceDef {

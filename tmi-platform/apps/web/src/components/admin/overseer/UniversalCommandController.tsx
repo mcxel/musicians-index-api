@@ -16,6 +16,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { performPersonaSwitch, type PersonaSwitchRole } from "@/lib/auth/performPersonaSwitch";
+import { canonicalLogout } from "@/lib/auth/canonicalLogout";
 import type { AttachedMonitorCount } from "@/lib/admin/AdminMonitorLayoutResolver";
 
 export interface UniversalCommandControllerProps {
@@ -344,17 +345,24 @@ export default function UniversalCommandController({
             >
               ⚙️ Settings
             </a>
-            <a
-              href="/api/auth/logout" data-canonical-logout="1"
+            <button
+              type="button"
+              data-canonical-logout="1"
+              onClick={() => void canonicalLogout()}
               style={{
                 fontSize: 8.5,
                 color: "#ff6b6b",
                 textDecoration: "none",
                 fontWeight: 700,
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                fontFamily: "inherit",
               }}
             >
               Sign Out
-            </a>
+            </button>
           </div>
         </div>
       ) : null}

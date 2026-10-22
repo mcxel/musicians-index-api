@@ -6,7 +6,7 @@
  * Production presentation: PerformerLivePresentationShell (host-first DNA).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { resolveHubMonitorViewport } from "@/lib/live/canonicalWorldViewport";
 import { useGoLiveBootstrapStore } from "@/lib/live/goLiveBootstrapStore";
@@ -60,7 +60,7 @@ export default function HubMonitorCameraPlayer({
   displayName?: string | null;
   watchingCount?: number;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraPreviewActive = useLivePrivacyState((s) => s.cameraPreviewActive);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
   const previewStream = useLivePrivacyState((s) => s.previewStream);
@@ -96,11 +96,23 @@ export default function HubMonitorCameraPlayer({
     return () => window.clearInterval(id);
   }, [isLivePublished]);
 
+  // Bind on every element attach: a layout/drawer remount of <video> without a
+  // stream change must not leave the new element with no srcObject (black frame).
+  const attachVideo = useCallback(
+    (video: HTMLVideoElement | null) => {
+      videoRef.current = video;
+      if (!video || !showPreview || !previewStream) return;
+      if (video.srcObject !== previewStream) video.srcObject = previewStream;
+      void video.play().catch(() => {});
+    },
+    [showPreview, previewStream],
+  );
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     if (showPreview && previewStream) {
-      video.srcObject = previewStream;
+      if (video.srcObject !== previewStream) video.srcObject = previewStream;
       void video.play().catch(() => {});
       useGoLiveBootstrapStore.getState().markSelfPreview(true);
       return;
@@ -171,7 +183,8 @@ export default function HubMonitorCameraPlayer({
           {FOH.shortLabel} · STAGE
         </div>
         <video
-          ref={videoRef}
+          ref={attachVideo}
+          data-testid="hub-monitor-self-preview-video"
           muted
           playsInline
           autoPlay

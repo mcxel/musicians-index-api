@@ -67,6 +67,8 @@ import type { PublicPagePersistence } from "@/lib/publicPage/publicPagePersisten
 import PublicPagePublishedView from "@/components/profile/PublicPagePublishedView";
 import QuickAddShelf, { type QuickAddAnchor } from "@/components/profile/QuickAddShelf";
 import { presentPublicProfile } from "@/lib/publicPage/presentPublicPageDocument";
+import HubDrawerHeader from "@/components/workspace/universal/HubDrawerHeader";
+import { useHubDrawerBackContract } from "@/lib/workspace/universal/hubDrawerBackStack";
 import { PUBLIC_PAGE_STARTERS, starterPreviewDocument } from "@/lib/publicPage/publicPageStarterRegistry";
 import {
   addSection,
@@ -424,6 +426,28 @@ export default function YourPageStudio({
       });
   }, [isOpen, profileKind, ownerUserId]);
 
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const [leavePromptOpen, setLeavePromptOpen] = useState(false);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  const [leaveSaveFailed, setLeaveSaveFailed] = useState(false);
+  const hasUnsavedWork = Boolean(session && session.document !== session.savedDocument);
+  function requestClose(): boolean {
+    if (hasUnsavedWork) {
+      setLeaveSaveFailed(false);
+      setLeavePromptOpen(true);
+      return false;
+    }
+    closeStudio();
+    return true;
+  }
+  useHubDrawerBackContract(Boolean(mount) && isOpen, () => {
+    if (leavePromptOpen) {
+      setLeavePromptOpen(false);
+      return false;
+    }
+    return requestClose();
+  });
+
   if (!mount) return null;
   const pageOwnerId = ownerUserId ?? "pending_owner";
 
@@ -775,6 +799,75 @@ export default function YourPageStudio({
       ) : null}
       {isOpen && session ? (
         <>
+        {leavePromptOpen ? (
+          <div
+            data-testid="your-page-unsaved-prompt"
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Unsaved changes"
+            style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <div style={{ maxWidth: 360, width: "100%", background: "rgba(12, 10, 24, 0.98)", border: "2px solid #FF2DAA", borderRadius: 12, padding: 18, color: "#fff" }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.08em", marginBottom: 8 }}>
+                You have unsaved changes
+              </div>
+              <p style={{ fontSize: 12, lineHeight: 1.4, color: "rgba(255,255,255,0.8)", marginBottom: 16 }}>
+                {leaveSaveFailed
+                  ? "Your draft could not be saved. Your edits are still here."
+                  : "Save your draft before closing, or discard these edits."}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  data-testid="your-page-unsaved-save-close"
+                  disabled={leaveSaving}
+                  style={{ ...controlStyle, minHeight: 44 }}
+                  onClick={() => {
+                    setLeaveSaving(true);
+                    void saveStudioDraft(session, port, actor, profileKind).then((next) => {
+                      setSession(next);
+                      setLeaveSaving(false);
+                      if (next.phase === "DRAFT_SAVED") {
+                        setLeavePromptOpen(false);
+                        closeStudio();
+                      } else {
+                        setLeaveSaveFailed(true);
+                      }
+                    });
+                  }}
+                >
+                  {leaveSaving ? "Saving…" : "Save & Close"}
+                </button>
+                <button
+                  type="button"
+                  data-testid="your-page-unsaved-discard"
+                  disabled={leaveSaving}
+                  style={{ ...controlStyle, minHeight: 44 }}
+                  onClick={() => {
+                    setSession({
+                      ...session,
+                      document: session.savedDocument,
+                      proposal: null,
+                      phase: session.persistenceState === "LOCAL" ? "LOCAL_DRAFT" : "DRAFT_SAVED",
+                    });
+                    setLeavePromptOpen(false);
+                    closeStudio();
+                  }}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  data-testid="your-page-unsaved-keep"
+                  style={{ ...controlStyle, minHeight: 44 }}
+                  onClick={() => setLeavePromptOpen(false)}
+                >
+                  Keep Editing
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {confirmLayoutOpen ? (
           <div
             data-testid="change-layout-confirm-modal"
@@ -1021,7 +1114,9 @@ export default function YourPageStudio({
           </div>
         ) : null}
         <aside
+          ref={drawerRef}
           data-testid="your-page-drawer"
+          data-unsaved={hasUnsavedWork ? "1" : "0"}
           data-workspace={workspace}
           data-tools={workspace === "FULL" && !toolsOpen ? "collapsed" : "open"}
           aria-label="YOUR PAGE"
@@ -1031,7 +1126,7 @@ export default function YourPageStudio({
               setQuickAdd(null);
               return;
             }
-            if (event.key === "Escape") closeStudio();
+            if (event.key === "Escape") requestClose();
           }}
           style={{
             position: "fixed",
@@ -1051,6 +1146,7 @@ export default function YourPageStudio({
             transition: "top 0.2s ease, height 0.2s ease",
           }}
         >
+          <HubDrawerHeader drawerId="your-page" onClose={() => requestClose()} closeLabel="Close YOUR PAGE" scopeRef={drawerRef} />
           {/* YoPho Step 4 Scene Compositor Transform Strip */}
         {selectedId && session ? (() => {
           const selectedBlock = session.document.sections
@@ -1189,7 +1285,7 @@ export default function YourPageStudio({
               style={controlStyle}
               onClick={() => {
                 if (toolPath.length > 1) setToolPath((path) => path.slice(0, -1) as Array<"YOUR PAGE" | "BACKGROUND">);
-                else closeStudio();
+                else requestClose();
               }}
             >
               ‹ BACK
@@ -1229,7 +1325,7 @@ export default function YourPageStudio({
                 <button type="button" data-testid="studio-sibling-next" aria-label="Next workspace" style={controlStyle} onClick={() => onStepWorkspace(1)}>›</button>
               </>
             ) : null}
-            <button type="button" data-testid="studio-nav-close" aria-label="Close YOUR PAGE" style={controlStyle} onClick={closeStudio}>×</button>
+            <button type="button" data-testid="studio-nav-close" aria-label="Close YOUR PAGE" style={controlStyle} onClick={() => requestClose()}>×</button>
           </div>
           {cardQrOpen && publicSlug && cardOrigin ? (
             <div data-testid="identity-qr-panel" style={{ marginBottom: 12, padding: 12, borderRadius: 12, border: "1px solid rgba(0,255,255,0.35)" }}>
@@ -2851,7 +2947,7 @@ export default function YourPageStudio({
               </li>
             ))}
           </ul>
-          <button type="button" data-testid="studio-close" style={controlStyle} onClick={closeStudio}>Close</button>
+          <button type="button" data-testid="studio-close" style={controlStyle} onClick={() => requestClose()}>Close</button>
           {selectedId ? (
             <label>
               Title

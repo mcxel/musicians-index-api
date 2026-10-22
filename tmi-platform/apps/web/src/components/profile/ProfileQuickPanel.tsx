@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { useTmiSession } from "@/hooks/SessionContext";
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
 
 interface ProfileQuickPanelProps {
   /** Current user's id (Fan or Performer) — same identity used everywhere else in the Hub. */
@@ -50,9 +51,10 @@ interface ProfileQuickPanelProps {
  * always lands you in owner/self-view mode with the real CUSTOMIZE PAGE
  * control from ProfileCustomizer).
  */
+/** /p/[username] resolves the full account id (id startsWith); a synthesized "usr_" slug never matches a cuid. */
 function resolveCanonicalPublicProfilePath(userId: string): string {
-  if (!userId) return "/p/member";
-  return `/p/${userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`}`;
+  if (!userId) return "/profile";
+  return canonicalPublicPath(userId);
 }
 
 const C = {

@@ -17,13 +17,15 @@ export interface GpsReleaseDestination {
   roles?: GpsReleaseRole[];
   youCan: string;
   building: string;
+  /** Route-backed destinations: the existing page this tile navigates to. */
+  href?: string;
 }
 
 export const GPS_DESTINATIONS: readonly GpsReleaseDestination[] = [
   { id: "gps-guide", label: "GPS GUIDE", group: "GUIDE", state: "LIVE", openBadge: false, youCan: "Open the GPS guide.", building: "We're finishing the GPS guide." },
   { id: "your-page", label: "YOUR PAGE", group: "SOCIAL", state: "LIVE", openBadge: true, youCan: "Build and save your page.", building: "We're finishing page publishing." },
-  { id: "publics", label: "PUBLICS", group: "SOCIAL", state: "LIVE", openBadge: true, youCan: "Look through public profiles.", building: "We're finishing public discovery." },
-  { id: "profile", label: "PROFILE", group: "SOCIAL", state: "LIVE", openBadge: true, youCan: "Open your profile.", building: "We're finishing profile tools." },
+  { id: "publics", label: "PUBLICS", group: "SOCIAL", state: "LIVE", openBadge: true, youCan: "Look through public profiles.", building: "We're finishing public discovery.", href: "/search" },
+  { id: "profile", label: "PROFILE", group: "SOCIAL", state: "LIVE", openBadge: true, youCan: "Open your profile.", building: "We're finishing profile tools.", href: "/profile" },
   { id: "messages", label: "MESSAGES", group: "SOCIAL", state: "COMING_SOON", openBadge: false, youCan: "Message other members.", building: "We're building member messaging." },
   { id: "friends", label: "FRIENDS", group: "SOCIAL", state: "COMING_SOON", openBadge: false, youCan: "See accepted friends.", building: "We're building the accepted friends list and friend requests." },
   { id: "community", label: "COMMUNITY", group: "SOCIAL", state: "COMING_SOON", openBadge: false, youCan: "Join the community conversation.", building: "We're building community chat." },
@@ -59,6 +61,10 @@ export function gpsDestinationById(id: string): GpsReleaseDestination | undefine
   return BY_ID.get(id);
 }
 
+export function gpsDestinationHref(id: string): string | undefined {
+  return BY_ID.get(id)?.href;
+}
+
 export function gpsDestinationState(id: string): GpsReleaseState {
   return BY_ID.get(id)?.state ?? "HIDDEN";
 }
@@ -67,6 +73,54 @@ export function gpsDestinationState(id: string): GpsReleaseState {
 export function isGpsReleaseDestinationVisible(id: string): boolean {
   const state = gpsDestinationState(id);
   return state === "LIVE" || state === "COMING_SOON";
+}
+
+/** Hub drawer workspace → the release destination that governs it. */
+const WORKSPACE_RELEASE_ID: Readonly<Record<string, string>> = {
+  "memory-wall": "memory-wall",
+  store: "store",
+  shop: "store",
+  merch: "store",
+  "prize-vault": "rewards",
+  inventory: "inventory",
+  "avatar-quick": "avatar",
+  messaging: "messages",
+  "media-locker": "media",
+  booking: "booking",
+  notifications: "notifications",
+  "bio-magazine": "biography",
+};
+
+/** GPS operating center → the release destination that governs it. */
+const CENTER_RELEASE_ID: Readonly<Record<string, string>> = {
+  communication: "messages",
+  booking: "booking",
+  media: "media",
+  bio_magazine: "biography",
+  commerce_center: "commerce",
+  commercial: "store",
+  shop_center: "store",
+  marketplace_center: "store",
+  avatar: "avatar",
+  memory: "memory-wall",
+  rewards: "rewards",
+  beat_queue: "submissions",
+};
+
+function heldRelease(releaseId: string | undefined): GpsReleaseDestination | null {
+  if (!releaseId) return null;
+  const destination = BY_ID.get(releaseId);
+  return destination && destination.state !== "LIVE" ? destination : null;
+}
+
+/** The held release a drawer workspace sits behind, or null when it may open. */
+export function heldReleaseForWorkspace(workspaceId: string | null | undefined): GpsReleaseDestination | null {
+  return workspaceId ? heldRelease(WORKSPACE_RELEASE_ID[workspaceId]) : null;
+}
+
+/** The held release a GPS operating center sits behind, or null when it may open. */
+export function heldReleaseForCenter(centerId: string): GpsReleaseDestination | null {
+  return heldRelease(CENTER_RELEASE_ID[centerId]);
 }
 
 export function gpsDestinationsForRole(role: GpsReleaseRole): GpsReleaseDestination[] {

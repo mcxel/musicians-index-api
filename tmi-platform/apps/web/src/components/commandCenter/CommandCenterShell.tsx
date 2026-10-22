@@ -97,6 +97,7 @@ import {
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import HubNavigationRail from "./HubNavigationRail";
 import YourPageStudio from "@/components/profile/YourPageStudio";
+import { useHubDrawerBackContract } from "@/lib/workspace/universal/hubDrawerBackStack";
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
 import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
@@ -1186,6 +1187,14 @@ function CommandCenterShellInner({
     if (isMobile) setDrawerDock(null);
     drawerStateStore.setLastPanel(role, null);
   };
+  useHubDrawerBackContract(isMobile && Boolean(activePanel), () => {
+    closeDrawer();
+    return true;
+  });
+  useHubDrawerBackContract(isMobile && mobileCommsOpen, () => {
+    closeMobileCommunications();
+    return true;
+  });
 
   const launchQuickModule = (moduleId: CommandCenterPanelId, actionId?: ActionId) => {
     openHubQuickLaunch({

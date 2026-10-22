@@ -39,10 +39,8 @@ describe("first-run welcome stacking", () => {
     expect(overlay).not.toContain("zIndex: 9999");
     expect(overlay).toContain("zIndex: FIRST_RUN_Z");
     expect(overlay).toContain("pointerEvents: compactViewport ? 'none' : 'auto'");
-    // The checklist card itself keeps pointer events unless it is yielding to
-    // the open GPS drawer (compact + data-gps-rail-open) — see the dedicated
-    // interaction-ownership test below.
-    expect(overlay).toContain("pointerEvents: compactViewport && gpsRailOpen ? 'none' : 'auto'");
+    // The checklist card always owns its own taps; it never goes click-through.
+    expect(overlay).not.toContain("gpsRailOpen ? 'none'");
   });
 
   test("close control sits above the heading and keeps a practical touch target", () => {
@@ -66,15 +64,22 @@ describe("first-run welcome stacking", () => {
     expect(overlay).toContain("safe-area-inset-bottom");
   });
 
-  test("checklist yields taps to the open GPS drawer on compact screens", () => {
+  test("checklist collapses out of the way once Hub navigation starts on compact screens", () => {
     const overlay = read("components/onboarding/FirstRunExperienceOverlay.tsx");
     const drawer = read("components/commandCenter/HubMobileGpsNavDrawer.tsx");
+    const backStack = read("lib/workspace/universal/hubDrawerBackStack.ts");
 
-    // The drawer must publish its open state on <html> so overlays can yield.
+    // GPS and every Hub drawer publish their open state on <html>.
     expect(drawer).toContain('data-gps-rail-open');
-    // The checklist must track that signal and yield pointer events while open.
+    expect(backStack).toContain('HUB_DRAWER_OPEN_ATTR = "data-hub-drawer-open"');
+    // The checklist watches both and latches collapsed for the page visit, so a
+    // closed drawer never brings the card back over the launcher row.
     expect(overlay).toContain("GPS_RAIL_OPEN_SELECTOR");
-    expect(overlay).toContain("pointerEvents: compactViewport && gpsRailOpen ? 'none' : 'auto'");
+    expect(overlay).toContain("HUB_DRAWER_OPEN_SELECTOR");
+    expect(overlay).toContain("setHubNavEngaged(true)");
+    expect(overlay).not.toContain("setHubNavEngaged(false)");
+    expect(overlay).toContain("const collapsedForHubNav = compactViewport && hubNavEngaged;");
+    expect(overlay).toContain("{visible && !collapsedForHubNav && (");
   });
 
   test("GPS group labels never intercept destination taps", () => {

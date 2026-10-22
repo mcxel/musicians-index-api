@@ -78,6 +78,7 @@ export type UniversalWorkspaceId =
   | "championship-center"
   | "settings"
   | "bio-magazine"
+  | "notes"
   // Compact quick-HUD variants — route to LEFT_PANEL / RIGHT_PANEL, never DRAWER
   | "avatar-quick"
   | "inventory-quick"

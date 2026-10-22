@@ -16,6 +16,7 @@ import {
 } from "@/lib/drawers/DrawerAnimationProfile";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import DrawerGuideDirector from "@/components/drawers/DrawerGuideDirector";
+import HubDrawerFrame from "@/components/workspace/universal/HubDrawerFrame";
 import type { UniversalDrawerModuleId } from "@/lib/drawers/UniversalDrawerRegistry";
 
 export interface UniversalDrawerBaseProps {
@@ -39,6 +40,8 @@ export interface UniversalDrawerBaseProps {
   guideDrawerId?: UniversalDrawerModuleId;
   guideUserId?: string;
   guidePersona?: string;
+  /** Phone Hub: open inside the shared Hub drawer frame instead of this shell's own chrome. */
+  hubFrameId?: string;
 }
 
 export default function UniversalDrawerBase({
@@ -58,8 +61,17 @@ export default function UniversalDrawerBase({
   guideDrawerId,
   guideUserId,
   guidePersona = "fan",
+  hubFrameId,
 }: UniversalDrawerBaseProps) {
   const theme = useTheme();
+  if (hubFrameId) {
+    return open ? (
+      <HubDrawerFrame drawerId={hubFrameId} title={title} onRequestClose={onClose}>
+        {headerExtra ? <div style={{ marginBottom: 10 }}>{headerExtra}</div> : null}
+        {children}
+      </HubDrawerFrame>
+    ) : null;
+  }
   const profile = getDrawerAnimationProfile(animationId, theme);
   const accent = accentColor ?? theme.tertiary;
   const shellVariants =

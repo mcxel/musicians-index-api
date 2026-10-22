@@ -15,6 +15,33 @@ export type MobileMonitorLayoutState =
 
 export type GpsDrawerDock = "under-a" | "under-b";
 
+/** Screen edge the GPS launcher docks to; the rail opens from the same edge. */
+export type GpsDockSide = "left" | "right";
+export const GPS_DOCK_SIDE_STORAGE_KEY = "tmi_gps_dock_side";
+export const GPS_DEFAULT_DOCK_SIDE: GpsDockSide = "left";
+
+export function readStoredGpsDockSide(): GpsDockSide {
+  if (typeof window === "undefined") return GPS_DEFAULT_DOCK_SIDE;
+  try {
+    return window.localStorage.getItem(GPS_DOCK_SIDE_STORAGE_KEY) === "right" ? "right" : GPS_DEFAULT_DOCK_SIDE;
+  } catch {
+    return GPS_DEFAULT_DOCK_SIDE;
+  }
+}
+
+/** Released launcher position → docked edge. Left half docks left, right half docks right. */
+export function resolveGpsDockSide(releaseX: number, viewportWidth: number): GpsDockSide {
+  return releaseX >= viewportWidth / 2 ? "right" : "left";
+}
+
+/** A press becomes a drag once it travels this far horizontally; a drag never opens the rail. */
+export const GPS_LAUNCHER_DRAG_THRESHOLD_PX = 10;
+
+/** GPS rail width: about 42% of the phone, never narrower than readable labels. */
+export const GPS_OVERLAY_WIDTH = "clamp(176px, 42vw, 300px)";
+/** Overlay width plus its edge inset and a gap. */
+export const GPS_OVERLAY_CLEARANCE = `calc(${GPS_OVERLAY_WIDTH} + 16px)`;
+
 interface MobileGpsMonitorLayoutStore {
   layout: MobileMonitorLayoutState;
   /** Which media player the active drawer sits under. */
@@ -30,6 +57,10 @@ interface MobileGpsMonitorLayoutStore {
   m2ExplicitlyActivated: boolean;
   /** Ask the open GPS drawer to show its existing Coming Soon note. */
   releaseNoteId: string | null;
+  dockSide: GpsDockSide;
+  /** Read the saved side once on the client. */
+  hydrateDockSide: () => void;
+  setDockSide: (side: GpsDockSide) => void;
   setDrawerDock: (dock: GpsDrawerDock | null) => void;
   setRailShiftY: (y: number) => void;
   setRailScrollTop: (scrollTop: number) => void;
@@ -59,6 +90,16 @@ export const useMobileGpsMonitorLayoutStore = create<MobileGpsMonitorLayoutStore
   drawerFullscreen: false,
   m2ExplicitlyActivated: false,
   releaseNoteId: null,
+  dockSide: GPS_DEFAULT_DOCK_SIDE,
+  hydrateDockSide: () => set({ dockSide: readStoredGpsDockSide() }),
+  setDockSide: (dockSide) => {
+    set({ dockSide });
+    try {
+      window.localStorage.setItem(GPS_DOCK_SIDE_STORAGE_KEY, dockSide);
+    } catch {
+      // Storage unavailable: the side still applies for this visit.
+    }
+  },
   setDrawerDock: (drawerDock) => set({ drawerDock }),
   setRailShiftY: (railShiftY) => set({ railShiftY: Math.max(0, Math.min(280, railShiftY)) }),
   setRailScrollTop: (railScrollTop) => set({ railScrollTop: Math.max(0, railScrollTop) }),
@@ -91,6 +132,7 @@ export const useMobileGpsMonitorLayoutStore = create<MobileGpsMonitorLayoutStore
     drawerFullscreen: false,
     m2ExplicitlyActivated: false,
     releaseNoteId: null,
+    dockSide: GPS_DEFAULT_DOCK_SIDE,
   }),
 }));
 

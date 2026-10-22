@@ -3,6 +3,21 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { canonicalLogout } from "@/lib/auth/canonicalLogout";
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
+
+interface LobbyWallCardLite {
+  id: string;
+  status: string;
+  route: string;
+  realHumanCount: number;
+}
+
+const PROFILE_ROOMS: { name: string; href: string; anchorRoute?: string; accent: string }[] = [
+  { name: "World Dance Party", href: "/rooms/world-dance-party", anchorRoute: "/live/rooms/world-dance-party", accent: "#FF2DAA" },
+  { name: "Cypher Arena", href: "/rooms/cypher", accent: "#AA2DFF" },
+  { name: "Front Row", href: "/rooms/front-row", accent: "#00FFFF" },
+];
 
 interface SessionData {
   authenticated: boolean;
@@ -31,6 +46,24 @@ export default function MyProfilePage() {
   const router = useRouter();
   const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lobbyCards, setLobbyCards] = useState<LobbyWallCardLite[] | null>(null);
+  const [lobbyError, setLobbyError] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/live/lobby-wall", { cache: "no-store", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`lobby-wall ${r.status}`))))
+      .then((d: { cards?: LobbyWallCardLite[] }) => {
+        if (!cancelled) setLobbyCards(Array.isArray(d.cards) ? d.cards : []);
+      })
+      .catch(() => {
+        if (!cancelled) setLobbyError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
@@ -159,7 +192,7 @@ export default function MyProfilePage() {
         {/* Role-specific profile link */}
         {(role === "performer" || role === "artist") && (
           <Link
-            href={`/profile/performer/${displayName.toLowerCase().replace(/\s+/g, "-")}`}
+            href={canonicalPublicPath(session.user?.id ?? displayName)}
             style={{
               display: "block", padding: "14px 20px", borderRadius: 12,
               background: "rgba(255,45,170,0.06)", border: "1px solid rgba(255,45,170,0.25)",
@@ -177,11 +210,20 @@ export default function MyProfilePage() {
             Live Rooms
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[
-              { name: "World Dance Party", href: "/rooms/world-dance-party", live: true, count: "2.8K", accent: "#FF2DAA" },
-              { name: "Cypher Arena", href: "/rooms/cypher", live: true, count: "892", accent: "#AA2DFF" },
-              { name: "Front Row", href: "/rooms/front-row", live: false, count: "—", accent: "#00FFFF" },
-            ].map((room) => (
+            {PROFILE_ROOMS.map((base) => {
+              const card = base.anchorRoute ? lobbyCards?.find((c) => c.route === base.anchorRoute) : undefined;
+              const live = card?.status === "LIVE";
+              const statusText = card && live
+                ? `${card.realHumanCount} live`
+                : card
+                  ? card.realHumanCount > 0
+                    ? `${card.realHumanCount} here`
+                    : "open"
+                  : base.anchorRoute && lobbyCards === null && !lobbyError
+                    ? "…"
+                    : "enter";
+              return { ...base, live, statusText };
+            }).map((room) => (
               <Link
                 key={room.name}
                 href={room.href}
@@ -203,7 +245,7 @@ export default function MyProfilePage() {
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{room.name}</span>
                 </div>
                 <span style={{ fontSize: 11, color: room.live ? room.accent : "rgba(255,255,255,0.3)", fontWeight: 700 }}>
-                  {room.live ? `${room.count} live` : "offline"}
+                  {room.statusText}
                 </span>
               </Link>
             ))}
@@ -214,7 +256,18 @@ export default function MyProfilePage() {
         <div style={{ paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 8 }}>
           <Link href="/settings" style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textDecoration: "none", fontWeight: 600 }}>Settings</Link>
           <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-          <Link href="/api/auth/logout" style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textDecoration: "none", fontWeight: 600 }}>Sign Out</Link>
+          <button
+            type="button"
+            disabled={signingOut}
+            onClick={() => {
+              if (signingOut) return;
+              setSigningOut(true);
+              void canonicalLogout();
+            }}
+            style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textDecoration: "none", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: signingOut ? "wait" : "pointer", fontFamily: "inherit" }}
+          >
+            {signingOut ? "Signing out…" : "Sign Out"}
+          </button>
         </div>
       </div>
     </main>

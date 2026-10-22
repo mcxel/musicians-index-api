@@ -51,9 +51,14 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/auth/logout
- * 
- * Supports simple links from the UI (<Link href="/api/auth/logout">)
+ *
+ * Never destroys the session. Next.js prefetches <Link> targets and serves
+ * HEAD from GET, so a mutating GET logs users out on page view / Back.
+ * Logout is POST only, via canonicalLogout().
  */
-export async function GET(req: NextRequest) {
-  return handleLogout(req, true);
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method Not Allowed. Use POST /api/auth/logout.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
 }

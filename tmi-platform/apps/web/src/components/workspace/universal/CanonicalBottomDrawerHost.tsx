@@ -14,9 +14,15 @@ import React, { useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
-import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
+import {
+  GPS_OVERLAY_CLEARANCE,
+  isGpsDrawerVisible,
+  useMobileGpsMonitorLayoutStore,
+} from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
+import { useHubDrawerBackContract } from "@/lib/workspace/universal/hubDrawerBackStack";
+import { hubDrawerGuide } from "@/lib/workspace/universal/hubDrawerGuides";
 import {
   DRAWER_SHELL_VARIANTS,
   DRAWER_TRANSITION,
@@ -107,15 +113,23 @@ function hardwareLauncherStyle(active: boolean, accent = "#00FFFF"): React.CSSPr
   };
 }
 
-function chromeBtn(label: string, onClick: () => void, opts?: { accent?: string; title?: string }) {
+function chromeBtn(
+  label: string,
+  onClick: () => void,
+  opts?: { accent?: string; title?: string; testId?: string; touchSize?: boolean },
+) {
   const accent = opts?.accent ?? "#00FFFF";
   return (
     <button
       type="button"
       onClick={onClick}
       title={opts?.title}
+      aria-label={opts?.title}
+      data-testid={opts?.testId}
       style={{
         flexShrink: 0,
+        minWidth: opts?.touchSize ? 44 : undefined,
+        minHeight: opts?.touchSize ? 44 : undefined,
         background: "linear-gradient(180deg, #3a4254 0%, #1a1f2c 100%)",
         border: `1px solid ${accent}88`,
         borderRadius: 6,
@@ -157,6 +171,7 @@ export default function CanonicalBottomDrawerHost({
   const prefersReducedMotion = useReducedMotion();
   const drawerFrameHeight = useMobileGpsMonitorLayoutStore((s) => s.drawerFrameHeight);
   const setDrawerFrameHeight = useMobileGpsMonitorLayoutStore((s) => s.setDrawerFrameHeight);
+  const gpsOverlayOpen = useMobileGpsMonitorLayoutStore((s) => isGpsDrawerVisible(s.layout));
   const drawerFullscreen = useMobileGpsMonitorLayoutStore((s) => s.drawerFullscreen);
   const setDrawerFullscreen = useMobileGpsMonitorLayoutStore((s) => s.setDrawerFullscreen);
   const resizeRef = useRef<{ y: number; height: number } | null>(null);
@@ -186,6 +201,11 @@ export default function CanonicalBottomDrawerHost({
   const isContextualShop = drawerWorkspace === "shop" || drawerWorkspace === "merch";
   const isOwnerCommerce = drawerWorkspace === "store" && role === "performer";
   const contentOpen = Boolean(drawerWorkspace && isDrawerExpanded);
+  const drawerGuide = hubDrawerGuide(drawerWorkspace);
+  useHubDrawerBackContract(mobileMode !== "CONTROL" && contentOpen, () => {
+    closeSurface("DRAWER");
+    return true;
+  });
 
   if (mobileMode === "CONTROL") {
     return <ExperienceControlDeck mode={activeControlMode} userId={userId} role={role} />;
@@ -275,6 +295,7 @@ export default function CanonicalBottomDrawerHost({
           borderBottom: contentOpen ? "1px solid rgba(0,229,255,0.2)" : "none",
           scrollbarWidth: "none" as const,
           flexShrink: 0,
+          scrollPaddingRight: gpsOverlayOpen ? GPS_OVERLAY_CLEARANCE : undefined,
         }}
       >
         {visibleTools.map((tool) => {
@@ -309,6 +330,9 @@ export default function CanonicalBottomDrawerHost({
             </button>
           );
         })}
+        {gpsOverlayOpen ? (
+          <span aria-hidden data-gps-overlay-clearance="1" style={{ flex: `0 0 ${GPS_OVERLAY_CLEARANCE}` }} />
+        ) : null}
       </div>
 
       <AnimatePresence initial={false}>
@@ -373,8 +397,16 @@ export default function CanonicalBottomDrawerHost({
               {chromeBtn(isDrawerExpanded ? "MINIMIZE" : "EXPAND", toggleDrawerExpand, {
                 title: "Toggle drawer height",
               })}
-              {chromeBtn("×", closeDrawer, { accent: "#FF2DAA", title: "Close workspace" })}
+              {chromeBtn("×", closeDrawer, { accent: "#FF2DAA", title: "Close workspace", testId: "hub-drawer-close", touchSize: true })}
             </div>
+            {drawerGuide ? (
+              <p
+                data-testid="hub-drawer-purpose"
+                style={{ margin: 0, padding: "6px 10px", fontSize: 11, lineHeight: 1.4, color: "rgba(255,255,255,0.75)" }}
+              >
+                {drawerGuide.purpose}
+              </p>
+            ) : null}
 
             <motion.div
               data-lobby-drawer-scroll={isLobbyWall ? "1" : undefined}

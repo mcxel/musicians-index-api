@@ -26,6 +26,7 @@ import {
 } from "@/lib/moderation/RoomModerationCapabilityMap";
 import type { RoomParticipantKind } from "@/lib/moderation/RoomModerationAuthority";
 import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
 
 export type HubCommunicationsTab = "messages" | "room" | "community" | "people" | "living-os";
 
@@ -83,9 +84,10 @@ function roomKindFromClass(
 }
 
 
+/** /p/[username] resolves the full account id (id startsWith); a synthesized "usr_" slug never matches a cuid. */
 function resolveCanonicalPublicProfilePath(userId: string): string {
-  if (!userId) return "/p/member";
-  return `/p/${userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`}`;
+  if (!userId) return "/profile";
+  return canonicalPublicPath(userId);
 }
 
 export default function HubCommunicationsRail({

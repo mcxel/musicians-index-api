@@ -52,7 +52,7 @@ describe("galaxy mobile layout contract", () => {
 
   test("NOTE opens the canonical Notes workspace (no duplicate authority)", () => {
     const media = read("components/commandCenter/CommandCenterMediaStack.tsx");
-    expect(media).toContain('openNotesWorkspace("notes", "half")');
+    expect(media).toContain('presentCanonicalWorkspace("notes", "DRAWER")');
     expect(media).not.toContain("Notes2");
     expect(media).not.toContain("note-modal");
   });

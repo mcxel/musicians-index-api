@@ -278,6 +278,8 @@ interface CommandCenterDrawerProps {
   onSelectPanel?: (id: CommandCenterPanelId) => void;
   /** Deep-link playlist selection for Playlist drawer */
   initialPlaylistId?: string | null;
+  /** Phone Hub: present inside the shared Hub drawer frame. */
+  framed?: boolean;
 }
 
 export default function CommandCenterDrawer({
@@ -289,6 +291,7 @@ export default function CommandCenterDrawer({
   onClose,
   onSelectPanel,
   initialPlaylistId = null,
+  framed = false,
 }: CommandCenterDrawerProps) {
   const theme = useTheme();
   const { resolvePerformerId, activePerformerId, activePerformer } = useActivePerformer();
@@ -476,6 +479,7 @@ export default function CommandCenterDrawer({
       subtitle={appearanceOpen ? "Saved on this device (ThemeEngine)" : undefined}
       onClose={onClose}
       mode="under_dashboard"
+      hubFrameId={framed ? moduleId : undefined}
       headerExtra={swapChips}
       accentColor={accent}
       contentKey={

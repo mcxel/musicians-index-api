@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import type { OperatingCenter } from "@/lib/drawers/operatingCenterRegistry";
 import type { CommandCenterPanelId } from "./commandCenterRegistry";
 import {
+  GPS_OVERLAY_WIDTH,
   useMobileGpsMonitorLayoutStore,
   type MobileMonitorLayoutState,
 } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
@@ -304,7 +305,7 @@ export default function HubMobileGpsNavDrawer({
               transition: swipeClosing ? "transform 150ms ease-in" : "none",
               // Same portal stack as HubMobileCommunicationsDrawer (9400); under Snips (9370) and camera (9500).
               zIndex: 9360,
-              width: "clamp(180px, 58vw, 232px)",
+              width: GPS_OVERLAY_WIDTH,
               height: "auto",
               overflow: "hidden",
               display: "flex",

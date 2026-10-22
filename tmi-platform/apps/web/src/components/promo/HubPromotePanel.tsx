@@ -100,6 +100,7 @@ type Props = {
   onHideSponsor: () => void;
   onClearSponsor: () => void;
   visual: (PromoPlacementPreset & { sponsor: HouseSponsor; hidden: boolean }) | null;
+  onShareLink?: () => void;
 };
 
 export default function HubPromotePanel({
@@ -112,6 +113,7 @@ export default function HubPromotePanel({
   onHideSponsor,
   onClearSponsor,
   visual,
+  onShareLink,
 }: Props) {
   const reduce = useReducedMotion();
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -207,6 +209,17 @@ export default function HubPromotePanel({
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
+          {onShareLink ? (
+            <button
+              type="button"
+              data-testid="hub-promote-share-link"
+              title="Share your public page link or copy it"
+              onClick={onShareLink}
+              style={chipBtn}
+            >
+              🔗 SHARE LINK
+            </button>
+          ) : null}
           {live ? (
             <button type="button" data-testid="hub-promote-hide" onClick={hide} style={chipBtn}>
               HIDE

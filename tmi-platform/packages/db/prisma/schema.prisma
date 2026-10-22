@@ -265,6 +265,9 @@ model User {
 
   // Canonical per-user public profile theme + customization config
   publicProfileConfig    PublicProfileConfig?
+
+  // Prisma list back-relation only. PostgreSQL column lives on public_page_heads.owner_user_id.
+  publicPageHeads        PublicPageHead[]
 }
 
 model Account {
@@ -4341,4 +4344,49 @@ model SavedPerformance {
   @@index([status])
   @@index([expiresAt])
   @@map("saved_performances")
+}
+
+enum PublicPageProfileKind {
+  FAN
+  PERFORMER
+  WRITER_PORTFOLIO
+}
+
+enum PublicPageRevisionState {
+  DRAFT
+  PUBLISHED
+  SUPERSEDED
+}
+
+model PublicPageHead {
+  id                  String                 @id @default(cuid())
+  ownerUserId         String                 @map("owner_user_id")
+  owner               User                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profileKind         PublicPageProfileKind  @map("profile_kind")
+  draftRevisionId     String?                @unique @map("draft_revision_id")
+  publishedRevisionId String?                @unique @map("published_revision_id")
+  draftRevision       PublicPageRevision?    @relation("PublicPageDraftPointer", fields: [draftRevisionId], references: [id], onDelete: SetNull)
+  publishedRevision   PublicPageRevision?    @relation("PublicPagePublishedPointer", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  revisions           PublicPageRevision[]   @relation("PublicPageHeadRevisions")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+
+  @@unique([ownerUserId, profileKind])
+  @@map("public_page_heads")
+}
+
+model PublicPageRevision {
+  id              String                   @id @default(cuid())
+  headId          String                   @map("head_id")
+  head            PublicPageHead           @relation("PublicPageHeadRevisions", fields: [headId], references: [id], onDelete: Cascade)
+  revisionNumber  Int                      @map("revision_number")
+  state           PublicPageRevisionState
+  body            Json
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  draftForHead    PublicPageHead?          @relation("PublicPageDraftPointer")
+  publishedForHead PublicPageHead?         @relation("PublicPagePublishedPointer")
+
+  @@unique([headId, revisionNumber])
+  @@index([headId])
+  @@map("public_page_revisions")
 }

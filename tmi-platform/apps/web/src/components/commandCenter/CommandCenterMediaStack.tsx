@@ -64,10 +64,8 @@ import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
 import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
+import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
 import TmiIdentitySurface from "@/components/commandCenter/TmiIdentitySurface";
-import { isGpsDrawerVisible, useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
-import { hubGpsButtonStyle } from "@/components/commandCenter/HubMobileGpsNavDrawer";
-
 function lobbyRoomToUniversal(room: LobbyRoom): UniversalRoom {
   return {
     id: room.id,
@@ -887,11 +885,16 @@ export default function CommandCenterMediaStack({
     "Session recording runtime not certified — RECORD unavailable until Program/ISO recording is wired";
 
   const onShareClick = useCallback(async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
+    // The Hub URL is private and auth-gated; visitors must land on the public page.
+    const url = typeof window === 'undefined'
+      ? ''
+      : userId
+        ? new URL(canonicalPublicPath(userId), window.location.origin).toString()
+        : window.location.href;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: "The Musician's Index — Live Hub",
+          title: displayName ? `${displayName} on The Musician's Index` : "The Musician's Index",
           url,
         });
         return;
@@ -906,7 +909,7 @@ export default function CommandCenterMediaStack({
         /* fallback */
       }
     }
-  }, []);
+  }, [userId, displayName]);
   const [exploreMatrixOpen, setExploreMatrixOpen] = useState(false);
   const [exploreInitialColumn, setExploreInitialColumn] = useState<ExploreColumnType>("SNIPS");
   /** Desktop detach float only — same LiveLobbyWall authority as lower DRAWER (not Mini list). */
@@ -919,10 +922,6 @@ export default function CommandCenterMediaStack({
   const castControlsRef = useRef<HTMLDivElement | null>(null);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
-  const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
-  const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
-  const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
-
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1482,31 +1481,6 @@ export default function CommandCenterMediaStack({
           ) : null}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {!enableGpsControls ? (
-            /* Compact GPS trigger stays in flow, above the monitor frames. */
-            <button
-              type="button"
-              data-testid="hub-mobile-action-gps"
-              aria-label="Open GPS navigation"
-              aria-pressed={gpsDrawerVisible}
-              onClick={toggleGpsDrawer}
-              style={{
-                ...hubGpsButtonStyle,
-                flex: "0 0 44px",
-                width: 44,
-                height: 44,
-                minWidth: 44,
-                minHeight: 44,
-                padding: 0,
-                fontSize: 9,
-                letterSpacing: "0.04em",
-                justifyContent: "center",
-                textAlign: "center",
-              }}
-            >
-              GPS
-            </button>
-          ) : null}
           <span style={{ fontSize: 8, fontWeight: 800, color: publishedRoomId ? "#00FF88" : "rgba(255,255,255,0.4)" }}>
             {publishedRoomId ? "● LIVE" : "○ READY"}
           </span>
@@ -1604,7 +1578,7 @@ export default function CommandCenterMediaStack({
               () => onOpenNotes?.(),
               {
                 testId: "tmi-top-cluster-note",
-                title: "Open Notes — write, save to your Notes collection in Memory Wall",
+                title: "Open Notes — write and save your personal notes",
                 icon: "📝",
               },
             )}
@@ -1736,6 +1710,7 @@ export default function CommandCenterMediaStack({
             >
               <span style={{ pointerEvents: "none" }}>📜</span>
               <span style={{ pointerEvents: "none" }}>TELEPROMPTER</span>
+              <span data-testid="tmi-top-cluster-teleprompter-hold" style={{ pointerEvents: "none", fontSize: 7, fontWeight: 900, letterSpacing: "0.08em", color: "#FFD700" }}>SOON</span>
             </button>
           </div>
       </div>
@@ -1778,6 +1753,7 @@ export default function CommandCenterMediaStack({
             onHideSponsor={hideSponsor}
             onClearSponsor={clearSponsor}
             visual={activeSponsorOverlay}
+            onShareLink={() => void onShareClick()}
           />
         </div>
       ) : null}

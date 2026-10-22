@@ -30,11 +30,12 @@ const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '
 // 9999 painted this checklist over the welcome "Not now" control.
 const FIRST_RUN_Z = 9340;
 
-// The hub GPS drawer sets data-gps-rail-open="1" on <html> while it is open.
-// While the drawer is open its destination launchers must win taps over this
-// checklist card on compact screens; the card is non-destructive, so yielding
-// is safe and reversible (it restores as soon as the drawer closes).
+// The hub GPS drawer sets data-gps-rail-open="1" and every open Hub drawer sets
+// data-hub-drawer-open="1" on <html>. While either is open on a compact screen
+// the checklist card collapses out of the way (state kept) so it never sits over
+// GPS/drawer launchers or a drawer's close control; it returns when they close.
 const GPS_RAIL_OPEN_SELECTOR = '[data-gps-rail-open="1"]';
+const HUB_DRAWER_OPEN_SELECTOR = '[data-hub-drawer-open="1"]';
 
 const NEXT_ACTIONS = [
   { icon: '🎭', label: 'Join a Live Room',     desc: 'Watch artists perform right now',        href: '/fan/theater'      },
@@ -53,7 +54,7 @@ export default function FirstRunExperienceOverlay() {
   const [totalSteps, setTotalSteps] = useState(0);
   const [phase, setPhase] = useState<'role-select' | 'checklist'>('role-select');
   const [compactViewport, setCompactViewport] = useState(false);
-  const [gpsRailOpen, setGpsRailOpen] = useState(false);
+  const [hubNavEngaged, setHubNavEngaged] = useState(false);
 
   const isAuthPath = AUTH_PATHS.some(p => pathname === p || pathname?.startsWith(p + '/'));
 
@@ -65,15 +66,20 @@ export default function FirstRunExperienceOverlay() {
     return () => media.removeEventListener('change', apply);
   }, []);
 
-  // Track the hub GPS drawer's open state so this checklist yields taps to it.
+  // Once the member starts navigating the Hub (GPS or a Hub drawer) on a compact
+  // screen, the checklist stays out of the way for the rest of this page visit.
+  // It is not dismissed — it returns on the next visit until completed or closed.
   useEffect(() => {
+    if (!compactViewport) return;
     const root = document.documentElement;
-    const applyGps = () => setGpsRailOpen(root.matches(GPS_RAIL_OPEN_SELECTOR));
+    const applyGps = () => {
+      if (root.matches(GPS_RAIL_OPEN_SELECTOR) || root.matches(HUB_DRAWER_OPEN_SELECTOR)) setHubNavEngaged(true);
+    };
     applyGps();
     const observer = new MutationObserver(applyGps);
-    observer.observe(root, { attributes: true, attributeFilter: ['data-gps-rail-open'] });
+    observer.observe(root, { attributes: true, attributeFilter: ['data-gps-rail-open', 'data-hub-drawer-open'] });
     return () => observer.disconnect();
-  }, []);
+  }, [compactViewport]);
 
   useEffect(() => {
     if (isAuthPath) return;
@@ -161,13 +167,14 @@ export default function FirstRunExperienceOverlay() {
   }
 
   if (!mounted || !visible) return null;
+  const collapsedForHubNav = compactViewport && hubNavEngaged;
 
   const completedCount = totalSteps - steps.length;
   const progressPct = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible && !collapsedForHubNav && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -202,11 +209,7 @@ export default function FirstRunExperienceOverlay() {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              // While the hub GPS drawer is open, its destination launchers
-              // must receive taps. This checklist is non-destructive and
-              // restores itself when the drawer closes, so it yields pointer
-              // events on compact screens rather than covering the launchers.
-              pointerEvents: compactViewport && gpsRailOpen ? 'none' : 'auto',
+              pointerEvents: 'auto',
             }}
           >
             <button

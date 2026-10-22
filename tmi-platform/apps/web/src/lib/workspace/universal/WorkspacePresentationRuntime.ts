@@ -126,6 +126,7 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   "championship-center": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   rewards: { preferredSurface: "DRAWER", defaultWidth: 300, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   "bio-magazine": { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
+  notes: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
 
   // Compact quick-HUD variants — open side panels, with deepSurface pointing to full workspace
   "avatar-quick": { preferredSurface: "LEFT_PANEL", deepSurface: "DRAWER", mobileShellMode: "WORK", mediaConsoleMode: "mini" },

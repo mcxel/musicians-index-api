@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { canonicalLogout } from "@/lib/auth/canonicalLogout";
 
 type StripeWebhookHealth = {
   stripeMode: "test" | "live" | "not_configured" | "unknown";
@@ -40,7 +41,7 @@ const DOCK_BUTTONS: DockButton[] = [
   { id: "security", label: "Summon Big Ace", href: "/admin/overseer#chain-command",    tone: "fuchsia" },
   { id: "inbox",    label: "Approve Queue", href: "/admin/overseer#revenue-analytics", tone: "green" },
   { id: "settings", label: "Settings",      href: "/admin/settings",                    tone: "zinc" },
-  { id: "logout",   label: "Exit",          href: "/api/auth/logout",                   tone: "red" },
+  { id: "logout",   label: "Exit",                                                     tone: "red" },
 ];
 
 interface OverseerDockProps {
@@ -264,7 +265,11 @@ export default function OverseerDock({
             ) : (
               <button
                 key={`${btn.id}-${btn.label}`}
-                onClick={() => setLastAction(btn.label)}
+                type="button"
+                onClick={() => {
+                  setLastAction(btn.label);
+                  if (btn.id === "logout") void canonicalLogout();
+                }}
                 style={{
                   borderRadius: 8,
                   border: `1px solid ${toneStyles[btn.tone].border}`,

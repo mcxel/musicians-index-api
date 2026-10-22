@@ -7,7 +7,7 @@
  * which keeps its own row untouched.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/hud/TokenBalance";
@@ -15,13 +15,17 @@ import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
 import UniversalSignOutButton from "@/components/navigation/UniversalSignOutButton";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { NotificationEngine } from "@/lib/notifications/NotificationEngine";
-import { gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import { gpsDestinationHref, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import { openCanonicalWorkspaceQuick } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 interface CommandCenterTopNavProps {
   userId: string;
   displayName: string;
+  /** Phone Hub GPS launcher; it places itself at the docked edge of this bar. */
+  gpsLauncher?: ReactNode;
+  /** Hub-owned Messages entry; replaces the generic messaging workspace when provided. */
+  onOpenMessages?: () => void;
 }
 
 /** Shell-owned destinations only — no legacy Home/Discover/Live Now/Lobby board. */
@@ -32,10 +36,10 @@ const NAV_LINKS = [
   { label: "MAGAZINE", href: "/magazine" },
   { label: "MARKETPLACE", href: "/marketplace" },
   { label: "ARENA", href: "/arena" },
-  { label: "PUBLICS", href: "/profiles" },
+  { label: "PUBLICS", href: gpsDestinationHref("publics") ?? "/search" },
 ];
 
-export default function CommandCenterTopNav({ userId, displayName }: CommandCenterTopNavProps) {
+export default function CommandCenterTopNav({ userId, displayName, gpsLauncher, onOpenMessages }: CommandCenterTopNavProps) {
   const theme = useTheme();
   const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -152,6 +156,10 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
   };
 
   const openMessages = () => {
+    if (onOpenMessages) {
+      onOpenMessages();
+      return;
+    }
     if (gpsDestinationState("messages") !== "LIVE") {
       useMobileGpsMonitorLayoutStore.getState().showReleaseNote("messages");
       return;
@@ -190,7 +198,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           display: "block",
           textDecoration: "none",
           flexShrink: 0,
-          width: isMobile ? 168 : undefined,
+          width: isMobile ? (gpsLauncher ? 136 : 168) : undefined,
           height: isMobile ? 40 : undefined,
           overflow: isMobile ? "hidden" : undefined,
           position: "relative",
@@ -203,7 +211,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
             alignItems: "flex-start",
             gap: 0,
             lineHeight: 1.05,
-            transform: isMobile ? "scale(0.64)" : undefined,
+            transform: isMobile ? (gpsLauncher ? "scale(0.52)" : "scale(0.64)") : undefined,
             transformOrigin: "left center",
             width: isMobile ? 262 : undefined,
             position: isMobile ? "absolute" : undefined,
@@ -432,6 +440,7 @@ export default function CommandCenterTopNav({ userId, displayName }: CommandCent
           compact
         />
       </div>
+      {gpsLauncher}
     </div>
   );
 }

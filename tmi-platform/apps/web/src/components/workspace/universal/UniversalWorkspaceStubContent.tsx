@@ -17,6 +17,7 @@ import NotificationCanister from "@/components/canisters/NotificationCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import SubmissionsCanister from "@/components/canisters/SubmissionsCanister";
+import { NotesWorkspace } from "@/components/workspaces/NotesWorkspace";
 import ScoresCanister from "@/components/canisters/ScoresCanister";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
 import { defaultRoomAuthority } from "@/lib/lobby/FanLobbyPresence";
@@ -494,6 +495,8 @@ export default function UniversalWorkspaceStubContent({
       return <HubPrizeVaultDrawerPanel userId={userId} role={role} />;
     case "sponsors":
       return <HubSponsorsDrawerPanel role={role} />;
+    case "notes":
+      return <NotesWorkspace />;
     default:
       return (
         <div style={{ padding: 16, fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
