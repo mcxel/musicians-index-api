@@ -1,0 +1,2158 @@
+"use client";
+
+/**
+ * OverseerFlightDeck — ground-up Two-Deck layout (Marcel mandate 2026-07-29)
+ *
+ * Foundation: two equal stacked 16:9 monitors with ornate gold/brass bezels.
+ * Page extends (scrollable) — never 100vh squash.
+ *
+ * HEADER (minimal brand + LIVE) →
+ * OPERATIONS (LeftRail | MonitorStack×2 | RightRail) →
+ * LIVE CHANNEL TICKER →
+ * LIVING OS CONTROL DESK (Phase 1 rail + primary workspace) →
+ * INTELLIGENCE DECK →
+ * sticky bottom gem dock (Admin Concierge + Admin Cam on demand)
+ *
+ * Supersedes congested CanonOverseerShell patch attempts (Quick Dock / fake alert pills /
+ * top Admin Quick Switch oval bar). CanonOverseerShell re-exports this module.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import Link from "next/link";
+import OverlayHost from "@/components/shell/OverlayHost";
+import Canister from "@/components/admin/overseer/Canister";
+import AccountLinker from "@/components/admin/overseer/AccountLinker";
+import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
+import AdminRevenuePanel from "@/components/admin/AdminRevenuePanel";
+import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
+import BotSummonDeck from "@/components/admin/BotSummonDeck";
+import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
+import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
+import BusinessDeckRemote from "@/components/admin/overseer/BusinessDeckRemote";
+import OverseerSectionSwitcher, { OVERSEER_SECTION_SELECT_EVENT } from "@/components/admin/overseer/OverseerSectionSwitcher";
+import type { OverseerCenterViewId } from "@/components/admin/overseer/OverseerCommandViews";
+import { buildSurroundSectionOptions } from "@/components/admin/overseer/overseerSurroundSections";
+import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
+import OverseerCoverageRail from "@/components/admin/overseer/OverseerCoverageRail";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+import { type MonitorSplitMode } from "@/components/monitors/CanonicalDualMonitorStack";
+import { useMonitorScreenShare } from "@/hooks/useMonitorScreenShare";
+import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
+import OverseerMonitorWall from "@/components/admin/overseer/OverseerMonitorWall";
+import RolodexDisplayPanel, { type RolodexFace } from "@/components/admin/overseer/RolodexDisplayPanel";
+import CanonicalPanelExpansionAuthority, { type ExpandedPanelContext } from "@/components/admin/overseer/CanonicalPanelExpansionAuthority";
+import UniversalCommandController from "@/components/admin/overseer/UniversalCommandController";
+import UniversalAccountIdentityControl from "@/components/account/UniversalAccountIdentityControl";
+import type { AttachedMonitorCount } from "@/lib/admin/AdminMonitorLayoutResolver";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
+import { scrollToControlDesk } from "@/lib/admin/overseerInspectBridge";
+import type { OverseerMonitorId } from "@/lib/admin/overseerMonitorState";
+import {
+  desktopMonitorStageStyle,
+  computeAvailableCenterWidth,
+  focusIntelligenceWorkspace,
+  sideCardToDeskPanel,
+  commandViewToDeskPanel,
+  type SideCardActionId,
+} from "@/lib/admin/overseerDeckConvergence";
+
+export type ShellDockButton = {
+  label: string;
+  href: string;
+};
+
+export type ShellPanel = {
+  id?: string;
+  title: string;
+  accent?: string;
+  statusLabel?: string;
+  content: ReactNode;
+  fixedHeight?: number;
+  flex?: number;
+  fullscreenKey?: string;
+  /** Matched against DRAWER_OPENED CommandBus payloads to jump/fullscreen this panel. */
+  requiredPermission?: string;
+};
+
+export type ShellWorkspaceDefinition = {
+  title: string;
+  ribbon?: ReactNode;
+  leftRail: ShellPanel[];
+  center: ShellPanel[];
+  rightRail: ShellPanel[];
+  bottom: ShellPanel[];
+  dockButtons?: ShellDockButton[];
+};
+
+type OverseerFlightDeckProps = {
+  workspace?: ShellWorkspaceDefinition;
+  operatorLabel?: string;
+  fullControl?: boolean;
+  canAutoApplyFixes?: boolean;
+  onSuggestFix?: () => void | Promise<void>;
+  submittingFix?: boolean;
+};
+
+const DECK_GAP = 16;
+const RAIL_EXPANDED = 268;
+const RAIL_COLLAPSED = 74;
+/** First-paint cap before ResizeObserver measures monitors — avoid inflating ops row before measure. */
+const OPS_STAGE_HEIGHT_FALLBACK = "auto";
+const BOT_SCROLL_STEP = 48;
+
+type SideDisplaySelector = {
+  id: string;
+  label: string;
+  accent: string;
+  targetPanelId: string;
+  sectionId: string;
+};
+
+const LEFT_SIDE_DISPLAY_SELECTORS: SideDisplaySelector[] = [
+  { id: "automation", label: "Automation", accent: "#FF2DAA", targetPanelId: "chain-command", sectionId: "bot-summon" },
+];
+
+const RIGHT_SIDE_DISPLAY_SELECTORS: SideDisplaySelector[] = [
+  { id: "security", label: "Security", accent: "#FF4444", targetPanelId: "sentinel-wall", sectionId: "sentinel" },
+  { id: "revenue", label: "Revenue", accent: "#FFD700", targetPanelId: "sentinel-wall", sectionId: "stripe" },
+  { id: "media", label: "Media", accent: "#00FFFF", targetPanelId: "sentinel-wall", sectionId: "media-matrix" },
+];
+
+function gemStyle(active = false): CSSProperties {
+  return {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    background: active
+      ? "radial-gradient(circle, #66ffaa, #008844)"
+      : "radial-gradient(circle, #e066ff, #8b008b)",
+    border: "2px solid #D4AF37",
+    transform: "rotate(45deg)",
+    boxShadow: active
+      ? "0 0 8px #00FF88, inset 0 0 3px #fff"
+      : "0 0 8px #e066ff, inset 0 0 3px #fff",
+    zIndex: 200,
+  };
+}
+
+// ─── Screen share cell — shared primitive (Observatory monitor injection) ───
+
+export default function OverseerFlightDeck({
+  workspace,
+  operatorLabel = "Admin",
+  fullControl = false,
+  canAutoApplyFixes = false,
+  onSuggestFix,
+  submittingFix = false,
+}: OverseerFlightDeckProps) {
+  const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
+  const [clock, setClock] = useState("");
+  const [activeCoveragePanel, setActiveCoveragePanel] = useState<import("@/lib/admin/ObservatoryDeskState").DeskPanelId | null>(null);
+  const [botIntelOpen, setBotIntelOpen] = useState(false);
+  const [localSubmittingFix, setLocalSubmittingFix] = useState(false);
+  const [centerView, setCenterView] = useState<OverseerCenterViewId>("media");
+  const [shareTargetMonitor, setShareTargetMonitor] = useState<OverseerMonitorId | null>(null);
+  const [monitorSplits, setMonitorSplits] = useState<[MonitorSplitMode, MonitorSplitMode]>([1, 1]);
+  const [isMerging, setIsMerging] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpsTab, setMobileOpsTab] = useState<"left" | "center" | "right">("center");
+  const [pendingScrollTarget, setPendingScrollTarget] = useState<string | null>(null);
+  const {
+    screenStream,
+    shareActive,
+    shareButtonLabel,
+    shareSlot,
+    slotPickerOpen,
+    setSlotPickerOpen,
+    cycleSharePress,
+    stopScreenShare,
+    pickShareSlot,
+  } = useMonitorScreenShare({
+    defaultSlot: { monitor: 0, cellIndex: -1 },
+    openPickerOnStart: false,
+  });
+  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mergeTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const drawerManager = useDrawerManager();
+
+  // attach stream to floating PiP video whenever stream changes
+  useEffect(() => {
+    if (screenVideoRef.current) {
+      screenVideoRef.current.srcObject = screenStream;
+    }
+  }, [screenStream]);
+
+  // merge timers below — screen share via useMonitorScreenShare
+  const mergeAllMonitors = useCallback(() => {
+    setIsMerging(true);
+    mergeTimers.current.forEach(clearTimeout);
+    mergeTimers.current = [
+      setTimeout(() => setMonitorSplits((s) => [s[0], 1]), 0),
+      setTimeout(() => setMonitorSplits((_s) => [1, 1]), 280),
+      setTimeout(() => setIsMerging(false), 600),
+    ];
+  }, []);
+
+  // cascade all monitors to a target split
+  const expandAllMonitors = useCallback((n: MonitorSplitMode) => {
+    mergeTimers.current.forEach(clearTimeout);
+    mergeTimers.current = [
+      setTimeout(() => setMonitorSplits((s) => [n, s[1]]), 0),
+      setTimeout(() => setMonitorSplits((_s) => [n, n]), 280),
+    ];
+  }, []);
+
+  useEffect(() => {
+    return () => { mergeTimers.current.forEach(clearTimeout); };
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mql.matches);
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#bot-activity") setBotIntelOpen(true);
+    const onHash = () => {
+      if (window.location.hash === "#bot-activity") setBotIntelOpen(true);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    if (!shareSlot) {
+      setShareTargetMonitor(null);
+      return;
+    }
+    const map: OverseerMonitorId[] = ["A", "B", "C", "D"];
+    setShareTargetMonitor(map[shareSlot.monitor] ?? "A");
+  }, [shareSlot]);
+
+  const selectIntelligenceView = (view: OverseerCenterViewId) => {
+    setCenterView(view);
+    if (view !== "media") {
+      focusIntelligenceWorkspace(commandViewToDeskPanel(view));
+    }
+  };
+
+  const focusSideRail = (panelId: string) => {
+    if (isMobile && mobileOpsTab !== "left") {
+      // Left-rail panels (Chain Command, Money & Billing, Bot Roster, Unified
+      // Inbox) only mount into the DOM when mobileOpsTab === "left"; default
+      // mobile state is "center", so getElementById used to silently no-op.
+      setMobileOpsTab("left");
+      setPendingScrollTarget(panelId);
+      return;
+    }
+    document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  // Scrolls to a left-rail panel once the tab switch above has actually
+  // committed the panel into the DOM (runs post-render, unlike a raw rAF).
+  useEffect(() => {
+    if (!pendingScrollTarget) return;
+    if (isMobile && mobileOpsTab !== "left") return;
+    const targetId = pendingScrollTarget;
+    setPendingScrollTarget(null);
+    requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [pendingScrollTarget, isMobile, mobileOpsTab]);
+
+  const openBotIntel = () => {
+    setBotIntelOpen(true);
+    scrollToControlDesk();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:overseer-desk-focus", { detail: { panelId: "bots" } }),
+      );
+    }
+    try {
+      window.localStorage.setItem("tmi.overseer.sectionSlot.v1:surround:bot-roster", "bot-activity");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleOpsAction = (action: string) => {
+    if (action === "alerts") {
+      focusIntelligenceWorkspace("alerts");
+    }
+    if (action === "chain-pulse") focusSideRail("chain-command");
+    if (action === "summon") {
+      openBotIntel();
+      focusIntelligenceWorkspace("bots");
+    }
+    if (action === "start-meeting") {
+      focusIntelligenceWorkspace("webrtc");
+    }
+  };
+
+  const handleSuggestFix = async () => {
+    if (onSuggestFix) {
+      await onSuggestFix();
+      return;
+    }
+    const issue = window.prompt("What should we fix right now?");
+    if (!issue || !issue.trim()) return;
+    setLocalSubmittingFix(true);
+    try {
+      const response = await fetch("/api/admin/fix-intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issue: issue.trim(),
+          operator: operatorLabel,
+          autoApply: canAutoApplyFixes,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        status?: string;
+        ticketId?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        window.alert(payload.error ?? "Could not submit fix intake.");
+        return;
+      }
+      window.alert(
+        `${payload.status === "auto-fixed" ? "Auto-fixed" : "Queued"} as ${payload.ticketId ?? "ticket"}.`,
+      );
+    } catch {
+      window.alert("Network error while sending fix intake.");
+    } finally {
+      setLocalSubmittingFix(false);
+    }
+  };
+
+  useEffect(() => {
+    const updateClock = () =>
+      setClock(
+        new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
+    updateClock();
+    const id = setInterval(updateClock, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const defaultWorkspace = useMemo<ShellWorkspaceDefinition>(
+    () => ({
+      title: "Marcel - Founder and CEO",
+      leftRail: [],
+      center: [
+        {
+          id: "overseer-monitor-wall",
+          title: "LIVE MONITOR WALL · A/B/C/D",
+          accent: "#00FFFF",
+          content: <span aria-hidden />,
+          flex: 1,
+        },
+      ],
+      rightRail: [],
+      bottom: [],
+      dockButtons: [
+        { label: "Go Back", href: "/admin" },
+        { label: "Revenue", href: "/admin/revenue" },
+        { label: "Messages", href: "/admin/messages" },
+        { label: "Users", href: "/admin/users" },
+        { label: "Settings", href: "/admin/settings" },
+        { label: "Power", href: "/" },
+      ],
+    }),
+    [],
+  );
+
+  const activeWorkspace = workspace ?? defaultWorkspace;
+  const leftCollapsed = drawerManager.isRailCollapsed("left");
+  const rightCollapsed = drawerManager.isRailCollapsed("right");
+  const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
+  const leftRailScrollRef = useRef<HTMLDivElement>(null);
+  const botRosterScrollRef = useRef<HTMLDivElement>(null);
+  const botScrollHoldRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [leftRailScrollMax, setLeftRailScrollMax] = useState(0);
+  const [leftRailScrollValue, setLeftRailScrollValue] = useState(0);
+  const [botRosterScrollMax, setBotRosterScrollMax] = useState(0);
+  const [botRosterScrollValue, setBotRosterScrollValue] = useState(0);
+  const recomputeLeftRailScrollMax = useCallback(() => {
+    const el = leftRailScrollRef.current;
+    if (!el) return;
+    setLeftRailScrollMax(Math.max(0, el.scrollHeight - el.clientHeight));
+  }, []);
+  const recomputeBotRosterScrollMax = useCallback(() => {
+    const el = botRosterScrollRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollHeight - el.clientHeight);
+    setBotRosterScrollMax(max);
+    setBotRosterScrollValue(el.scrollTop);
+  }, []);
+
+  const centerColRef = useRef<HTMLDivElement>(null);
+  const [centerColHeight, setCenterColHeight] = useState<number | null>(null);
+  const [attachedMonitorCount, setAttachedMonitorCount] = useState<AttachedMonitorCount>(4);
+  const [expandedPanelContext, setExpandedPanelContext] = useState<ExpandedPanelContext | null>(null);
+
+  const handleLaunchPresentation = useCallback(
+    (presentationId: string, target: "LEFT" | "RIGHT" | "EXPAND" | "MONITOR_B") => {
+      if (target === "EXPAND") {
+        if (presentationId === "revenue") {
+          setExpandedPanelContext({
+            slotId: "revenue-deck",
+            faces: [
+              {
+                id: "revenue-analytics",
+                title: "ARTIST REVENUE & BUYOUTS",
+                accent: "#FFD700",
+                content: (
+                  <AdminRevenuePanel
+                    selectedId="billing"
+                    onSelect={(id) => {
+                      window.location.href =
+                        id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
+                    }}
+                  />
+                ),
+              },
+              {
+                id: "stripe-observatory",
+                title: "STRIPE WEBHOOK INTEGRITY",
+                accent: "#00FFFF",
+                content: <StripeObservatoryCard />,
+              },
+              {
+                id: "magazine-analytics",
+                title: "MAGAZINE & INDEX ANALYTICS",
+                accent: "#FF2DAA",
+                content: <MagazineAnalytics />,
+              },
+            ],
+            currentFaceIndex: 0,
+          });
+        } else if (presentationId === "bots") {
+          setExpandedPanelContext({
+            slotId: "bot-roster",
+            faces: [
+              {
+                id: "bot-roster",
+                title: "BOT OPERATIONS ROSTER",
+                accent: "#00FFFF",
+                content: <BotSummonDeck />,
+              },
+            ],
+            currentFaceIndex: 0,
+          });
+        }
+      } else if (target === "RIGHT") {
+        drawerManager.toggleRail("right");
+        const el = document.querySelector('[data-rail-boundary="right"]');
+        el?.scrollIntoView({ behavior: "smooth" });
+      } else if (target === "LEFT") {
+        drawerManager.toggleRail("left");
+        const el = document.querySelector('[data-rail-boundary="left"]');
+        el?.scrollIntoView({ behavior: "smooth" });
+      }
+    },
+    [drawerManager],
+  );
+  useEffect(() => {
+    const el = centerColRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height;
+      if (height) setCenterColHeight(Math.round(height));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const stageCapCss =
+    centerColHeight != null ? `${centerColHeight}px` : OPS_STAGE_HEIGHT_FALLBACK;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (centerColHeight == null) return;
+    const frame = requestAnimationFrame(() => {
+      const monitor = document.querySelector("[data-monitor-stage-boundary]");
+      const leftRail = document.querySelector('[data-rail-boundary="left"]');
+      if (!monitor || !leftRail) return;
+      const monitorBottom = monitor.getBoundingClientRect().bottom;
+      const leftBottom = leftRail.getBoundingClientRect().bottom;
+      const deltaPx = Math.round(Math.abs(monitorBottom - leftBottom));
+      console.info("[OverseerFlightDeck] rail/monitor bottom alignment", {
+        monitorBottom,
+        leftRailBottom: leftBottom,
+        deltaPx,
+        ok: deltaPx <= 2,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [centerColHeight, leftCollapsed, rightCollapsed, fullscreenPanel]);
+
+  useEffect(() => {
+    const el = leftRailScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recomputeLeftRailScrollMax);
+    observer.observe(el);
+    recomputeLeftRailScrollMax();
+    return () => observer.disconnect();
+  }, [recomputeLeftRailScrollMax, centerColHeight, leftCollapsed]);
+  useEffect(() => {
+    const el = botRosterScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recomputeBotRosterScrollMax);
+    observer.observe(el);
+    recomputeBotRosterScrollMax();
+    return () => observer.disconnect();
+  }, [recomputeBotRosterScrollMax, centerColHeight, leftCollapsed]);
+  useEffect(() => {
+    return () => {
+      if (botScrollHoldRef.current) clearInterval(botScrollHoldRef.current);
+    };
+  }, []);
+  const nudgeBotRosterScroll = useCallback((delta: number) => {
+    const el = botRosterScrollRef.current;
+    if (!el) return;
+    el.scrollTop = Math.min(Math.max(0, el.scrollTop + delta), el.scrollHeight - el.clientHeight);
+    setBotRosterScrollValue(el.scrollTop);
+  }, []);
+  const startBotScrollHold = useCallback(
+    (delta: number) => {
+      nudgeBotRosterScroll(delta);
+      if (botScrollHoldRef.current) clearInterval(botScrollHoldRef.current);
+      botScrollHoldRef.current = setInterval(() => nudgeBotRosterScroll(delta), 80);
+    },
+    [nudgeBotRosterScroll],
+  );
+  const stopBotScrollHold = useCallback(() => {
+    if (botScrollHoldRef.current) {
+      clearInterval(botScrollHoldRef.current);
+      botScrollHoldRef.current = null;
+    }
+  }, []);
+  const leftWidth = leftCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+  const rightWidth = rightCollapsed ? RAIL_COLLAPSED : RAIL_EXPANDED;
+  const availableCenterWidth =
+    typeof window !== "undefined"
+      ? computeAvailableCenterWidth({
+          viewportWidth: window.innerWidth,
+          leftRailPx: leftWidth,
+          rightRailPx: rightWidth,
+          gapPx: 12,
+          paddingPx: 32,
+        })
+      : 960;
+
+  const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
+
+  const toggleFullscreen = (panelId: string) => {
+    setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
+  };
+
+  const allPanels = useMemo(
+    () => [
+      ...activeWorkspace.leftRail,
+      ...activeWorkspace.center,
+      ...activeWorkspace.rightRail,
+      ...activeWorkspace.bottom,
+    ],
+    [activeWorkspace],
+  );
+
+  // Authority badges (ribbon) dispatch DRAWER_OPENED with the clicked permission —
+  // jump to (fullscreen if possible, else scroll into view) the first panel gated
+  // by that permission in the CURRENT role's workspace.
+  useEffect(() => {
+    return livingOsCommandBus.on("DRAWER_OPENED", (command) => {
+      const requiredPermission = command.payload?.requiredPermission;
+      if (typeof requiredPermission !== "string") return;
+
+      // Special full authorities
+      if (requiredPermission === "ai.executive") {
+        setBotIntelOpen(true);
+        return;
+      }
+      if (requiredPermission === "queue.manage") {
+        window.location.href = "/admin/visual-queue";
+        return;
+      }
+      if (requiredPermission === "deployment.manage") {
+        window.location.href = "/admin/runtime-check";
+        return;
+      }
+      if (requiredPermission === "music.manage") {
+        const match = allPanels.find((panel) => panel.requiredPermission === requiredPermission);
+        if (match?.id) {
+          document.getElementById(match.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          window.location.href = "/admin/submission-locker";
+        }
+        return;
+      }
+
+      const match = allPanels.find((panel) => panel.requiredPermission === requiredPermission);
+      if (!match) return;
+
+      if (isMobile) {
+        if (activeWorkspace.leftRail.some((p) => p.id === match.id)) {
+          setMobileOpsTab("left");
+        } else if (activeWorkspace.center.some((p) => p.id === match.id)) {
+          setMobileOpsTab("center");
+        } else if (activeWorkspace.rightRail.some((p) => p.id === match.id)) {
+          setMobileOpsTab("right");
+        }
+      }
+
+      if (match.fullscreenKey) {
+        setFullscreenPanel(match.fullscreenKey);
+        return;
+      }
+      if (match.id) {
+        document.getElementById(match.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, [allPanels, isMobile, activeWorkspace]);
+
+  const fullscreenMatch = allPanels.find((panel) => panel.fullscreenKey === fullscreenPanel);
+
+  const isFloatingPanel = (panel: ShellPanel) =>
+    Boolean(panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating");
+
+  const floatingCanisterStyle = (panel: ShellPanel): CSSProperties => ({
+    position: "fixed",
+    left: drawerManager.getWindowState(panel.id as string)?.x ?? 32,
+    top: drawerManager.getWindowState(panel.id as string)?.y ?? 32,
+    width: panel.id && activeWorkspace.bottom.some((b) => b.id === panel.id)
+      ? (isMobile ? "min(560px, calc(100% - 24px))" : 560)
+      : "min(720px, calc(100% - 24px))",
+    height: panel.fixedHeight
+      ? panel.fixedHeight
+      : activeWorkspace.bottom.some((b) => b.id === panel.id)
+        ? 320
+        : 360,
+    minWidth: isMobile ? 0 : 320,
+    maxWidth: "calc(100% - 16px)",
+    minHeight: 220,
+    zIndex: 1,
+    pointerEvents: "auto",
+    boxSizing: "border-box",
+  });
+
+  const surroundSections = useMemo(() => buildSurroundSectionOptions(), []);
+
+  const renderPanelCanister = (
+    panel: ShellPanel,
+    collapsed: boolean,
+    floating: boolean,
+    canisterStyle?: CSSProperties,
+    /** Side/intelligence slots rotate; center dual media monitors stay fixed. */
+    enableSectionSwitcher = false,
+  ) => {
+    const slotId = panel.id ?? panel.title;
+    const body =
+      enableSectionSwitcher ? (
+        <OverseerSectionSwitcher
+          slotId={`surround:${slotId}`}
+          defaultLabel={panel.title}
+          defaultContent={panel.content}
+          sections={surroundSections}
+          compact
+        />
+      ) : (
+        panel.content
+      );
+
+    const botAtTop = botRosterScrollValue <= 0;
+    const botAtBottom = botRosterScrollMax <= 0 || botRosterScrollValue >= botRosterScrollMax - 1;
+    const chevronBtnStyle = (disabled: boolean): CSSProperties => ({
+      flexShrink: 0,
+      height: 22,
+      border: "1px solid rgba(255,215,0,0.35)",
+      background: disabled ? "rgba(255,255,255,0.04)" : "rgba(0,255,255,0.12)",
+      color: disabled ? "rgba(255,255,255,0.25)" : "#00FFFF",
+      fontSize: 10,
+      fontWeight: 900,
+      cursor: disabled ? "default" : "pointer",
+      fontFamily: "inherit",
+      borderRadius: 4,
+      lineHeight: 1,
+    });
+
+    const sideCardIds = new Set<SideCardActionId>(["bot-roster", "unified-inbox", "sentinel-wall"]);
+    const openWorkspaceBtn =
+      panel.id && sideCardIds.has(panel.id as SideCardActionId) ? (
+        <button
+          type="button"
+          onClick={() => focusIntelligenceWorkspace(sideCardToDeskPanel(panel.id as SideCardActionId))}
+          style={{
+            flexShrink: 0,
+            marginBottom: 4,
+            width: "100%",
+            padding: "4px 8px",
+            borderRadius: 6,
+            border: "1px solid rgba(0,255,255,0.4)",
+            background: "rgba(0,255,255,0.1)",
+            color: "#00FFFF",
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          Open Intelligence Workspace
+        </button>
+      ) : null;
+
+    const panelBody =
+      panel.id === "bot-roster" && !collapsed ? (
+        <div
+          data-bot-roster-viewport
+          style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, flex: 1 }}
+        >
+          <button
+            type="button"
+            aria-label="Scroll bot roster up"
+            disabled={botAtTop}
+            onClick={() => nudgeBotRosterScroll(-BOT_SCROLL_STEP)}
+            onPointerDown={() => !botAtTop && startBotScrollHold(-BOT_SCROLL_STEP)}
+            onPointerUp={stopBotScrollHold}
+            onPointerLeave={stopBotScrollHold}
+            style={chevronBtnStyle(botAtTop)}
+          >
+            ▲
+          </button>
+          <div
+            ref={botRosterScrollRef}
+            onScroll={(e) => {
+              const t = e.currentTarget.scrollTop;
+              setBotRosterScrollValue(t);
+              recomputeBotRosterScrollMax();
+            }}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              overflowX: "hidden",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {body}
+          </div>
+          <button
+            type="button"
+            aria-label="Scroll bot roster down"
+            disabled={botAtBottom}
+            onClick={() => nudgeBotRosterScroll(BOT_SCROLL_STEP)}
+            onPointerDown={() => !botAtBottom && startBotScrollHold(BOT_SCROLL_STEP)}
+            onPointerUp={stopBotScrollHold}
+            onPointerLeave={stopBotScrollHold}
+            style={chevronBtnStyle(botAtBottom)}
+          >
+            ▼
+          </button>
+        </div>
+      ) : (
+        body
+      );
+
+    if (enableSectionSwitcher) {
+      const faces: RolodexFace[] = [
+        {
+          id: panel.id || slotId,
+          title: panel.title,
+          accent: panel.accent ?? "#00FFFF",
+          content: (
+            <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", padding: 4 }}>
+              {openWorkspaceBtn}
+              {panelBody}
+            </div>
+          ),
+        },
+      ];
+
+      if (panel.id === "stripe-observatory") {
+        faces.push(
+          {
+            id: "revenue-sub",
+            title: "ARTIST REVENUE",
+            accent: "#FFD700",
+            content: (
+              <div style={{ padding: 6 }}>
+                <AdminRevenuePanel
+                  selectedId="billing"
+                  onSelect={(id) => {
+                    window.location.href =
+                      id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
+                  }}
+                />
+              </div>
+            ),
+          },
+          {
+            id: "magazine-sub",
+            title: "MAGAZINE ANALYTICS",
+            accent: "#FF2DAA",
+            content: (
+              <div style={{ padding: 6 }}>
+                <MagazineAnalytics />
+              </div>
+            ),
+          },
+        );
+      } else if (panel.id === "sentinel-wall") {
+        faces.push({
+          id: "account-linker-sub",
+          title: "ACCOUNT LINKER",
+          accent: "#AA2DFF",
+          content: (
+            <div style={{ padding: 6 }}>
+              <AccountLinker />
+            </div>
+          ),
+        });
+      }
+
+      return (
+        <RolodexDisplayPanel
+          key={slotId}
+          slotId={slotId}
+          faces={faces}
+          isFolded={attachedMonitorCount >= 6}
+          canExpand={true}
+          onExpand={(sId, activeFace) => {
+            setExpandedPanelContext({
+              slotId: sId,
+              faces,
+              currentFaceIndex: faces.findIndex((f) => f.id === activeFace.id),
+            });
+          }}
+          canisterStyle={{
+            marginBottom: 6,
+            minHeight: 140,
+            ...canisterStyle,
+          }}
+        />
+      );
+    }
+
+    return (
+      <Canister
+        key={slotId}
+        id={panel.id}
+        title={panel.title}
+        accent={panel.accent ?? "#00FFFF"}
+        statusLabel={panel.statusLabel}
+        collapsed={collapsed}
+        floating={floating}
+        onToggleFullscreen={
+          panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined
+        }
+        onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
+        onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
+        style={{
+          ...(panel.id === "bot-roster"
+            ? { flex: "1 1 0", minHeight: 96, height: "100%", overflow: "hidden" }
+            : { flex: "0 0 auto" }),
+          ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
+          ...(panel.flex ? { flex: panel.flex } : {}),
+          ...(canisterStyle ?? {}),
+        }}
+      >
+        <div
+          onPointerDown={
+            panel.id && floating
+              ? (event) => drawerManager.beginDrag(panel.id as string, event)
+              : undefined
+          }
+          onPointerMove={panel.id && floating ? drawerManager.moveDrag : undefined}
+          onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
+          style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}
+        >
+          {openWorkspaceBtn}
+          {panelBody}
+        </div>
+      </Canister>
+    );
+  };
+
+  const renderRail = (panels: ShellPanel[], rail: "left" | "center" | "right") => {
+    const isLeft = rail === "left";
+    const isRight = rail === "right";
+    const visible = panels.filter((panel) => !isFloatingPanel(panel));
+    const isMonitorWall = rail === "center";
+    const isSideRail = rail === "left" || rail === "right";
+    const selectors = rail === "left" ? LEFT_SIDE_DISPLAY_SELECTORS : RIGHT_SIDE_DISPLAY_SELECTORS;
+    const availableSelectors = selectors.filter((selector) =>
+      panels.some((panel) => panel.id === selector.targetPanelId),
+    );
+    const selectSideDisplay = (selector: SideDisplaySelector) => {
+      window.dispatchEvent(
+        new CustomEvent(OVERSEER_SECTION_SELECT_EVENT, {
+          detail: {
+            slotId: `surround:${selector.targetPanelId}`,
+            sectionId: selector.sectionId,
+          },
+        }),
+      );
+      document.getElementById(selector.targetPanelId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    };
+
+    const selectorRail = isSideRail && availableSelectors.length > 0 ? (
+      <div
+        data-overseer-side-display-selectors={rail}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          padding: "4px",
+          marginBottom: 6,
+          border: "1px solid rgba(0,255,255,0.24)",
+          borderRadius: 6,
+          background: "rgba(0,0,0,0.34)",
+        }}
+      >
+        {availableSelectors.map((selector) => (
+          <button
+            key={selector.id}
+            type="button"
+            data-side-display-selector={selector.id}
+            onClick={() => selectSideDisplay(selector)}
+            style={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              padding: "4px 6px",
+              border: `1px solid ${selector.accent}66`,
+              borderRadius: 4,
+              background: `${selector.accent}12`,
+              color: selector.accent,
+              fontSize: 7,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {selector.label}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
+    if (isMonitorWall) {
+      return (
+        <div
+          data-col={rail}
+          data-overseer-monitor-stage="true"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            flexShrink: 0,
+            alignSelf: "flex-start",
+            height: "auto",
+            maxHeight: isMobile ? "none" : "none",
+            overflowX: "hidden",
+            paddingRight: 2,
+          }}
+        >
+          <OverseerMonitorWall
+            isMobile={isMobile}
+            screenStream={screenStream}
+            shareMonitorId={shareTargetMonitor}
+            onStopScreenShare={stopScreenShare}
+            attachedCount={attachedMonitorCount}
+            onAttachedCountChange={setAttachedMonitorCount}
+          />
+        </div>
+      );
+    }
+
+    if (isLeft && !leftCollapsed) {
+      const botIndex = visible.findIndex((p) => p.id === "bot-roster");
+      const before = botIndex >= 0 ? visible.slice(0, botIndex) : visible;
+      const botPanel = botIndex >= 0 ? visible[botIndex] : null;
+      const after = botIndex >= 0 ? visible.slice(botIndex + 1) : [];
+
+      return (
+        <div
+          data-col={rail}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            minWidth: 0,
+            flex: 1,
+            minHeight: 0,
+            height: "100%",
+            maxHeight: "100%",
+            overflow: "hidden",
+            paddingRight: 2,
+          }}
+        >
+          {selectorRail}
+          {before.length > 0 ? (
+            <div
+              ref={leftRailScrollRef}
+              onScroll={(e) => setLeftRailScrollValue(e.currentTarget.scrollTop)}
+              style={{
+                flexShrink: 0,
+                maxHeight: "26%",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {before.map((panel) =>
+                renderPanelCanister(panel, false, false, undefined, true),
+              )}
+            </div>
+          ) : null}
+          {botPanel
+            ? renderPanelCanister(botPanel, false, false, undefined, true)
+            : null}
+          {after.length > 0 ? (
+            <div
+              style={{
+                flexShrink: 0,
+                maxHeight: "22%",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {after.map((panel) =>
+                renderPanelCanister(panel, false, false, undefined, true),
+              )}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        data-col={rail}
+        ref={isLeft ? leftRailScrollRef : undefined}
+        onScroll={isLeft ? (e) => setLeftRailScrollValue(e.currentTarget.scrollTop) : undefined}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          minWidth: 0,
+          flex: 1,
+          minHeight: 0,
+          height: "auto",
+          maxHeight: "none",
+          overflowY: "visible",
+          overflowX: "hidden",
+          paddingRight: 2,
+        }}
+      >
+        {selectorRail}
+        {visible.map((panel) =>
+          renderPanelCanister(
+            panel,
+            isLeft ? leftCollapsed : isRight ? rightCollapsed : false,
+            false,
+            undefined,
+            isSideRail,
+          ),
+        )}
+      </div>
+    );
+  };
+
+  const dockBtnStyle = (active = false): CSSProperties => ({
+    width: isMobile ? 44 : 36,
+    height: isMobile ? 44 : 36,
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: "50%",
+    background: active
+      ? "linear-gradient(180deg, #0a4a2a 0%, #063018 100%)"
+      : "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+    border: active ? "2px solid #00FF88" : "2px solid #D4AF37",
+    color: active ? "#00FF88" : "#ffe3a3",
+    fontSize: 14,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: active ? "0 0 12px rgba(0,255,136,0.45)" : "0 3px 8px rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    touchAction: "manipulation",
+  });
+
+  return (
+    <div
+      data-overseer-flight-deck
+      data-canon-overseer-shell
+      data-two-deck="ops-ticker-intelligence"
+      data-mobile={isMobile ? "true" : "false"}
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        height: "auto",
+        maxHeight: "none",
+        boxSizing: "border-box",
+        background:
+          "radial-gradient(130% 90% at 50% -5%, rgba(92,26,74,0.45) 0%, rgba(28,10,32,0.85) 46%, rgba(7,3,12,1) 100%)",
+        border: isMobile ? "6px solid transparent" : "14px solid transparent",
+        borderImage:
+          "linear-gradient(135deg, #ffd700 0%, #b8860b 35%, #ffd700 50%, #b8860b 65%, #ffd700 100%) 14",
+        boxShadow:
+          "inset 0 0 90px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,215,0,0.15), 0 16px 40px rgba(0,0,0,0.8)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: isMobile ? 6 : 10,
+        paddingBottom: isMobile ? "calc(80px + env(safe-area-inset-bottom, 14px))" : 24,
+        fontFamily: "inherit",
+        position: "relative",
+        overflowX: "hidden",
+        overflowY: "visible",
+      }}
+    >
+      <div style={{ ...gemStyle(), top: 2, left: 2 }} />
+      <div style={{ ...gemStyle(), top: 2, right: 2 }} />
+      <div style={{ ...gemStyle(), bottom: 2, left: 2 }} />
+      <div style={{ ...gemStyle(), bottom: 2, right: 2 }} />
+
+      {/* CANONICAL IN-PLACE PANEL EXPANSION & INSPECTION AUTHORITY */}
+      <CanonicalPanelExpansionAuthority
+        expandedContext={expandedPanelContext}
+        onClose={() => setExpandedPanelContext(null)}
+      />
+
+      {/* Sticky global account escape — not Concierge-owned */}
+      <header
+        data-row="flight-header"
+        data-tmi-global-account-escape-host="1"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 200,
+          border: "2px solid #D4AF37",
+          borderRadius: 10,
+          background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
+          padding: "8px 14px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+          boxShadow: "0 4px 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(255,215,0,0.15)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #FFD700, #B8860B)",
+              boxShadow: "0 0 8px #FFD700",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#150910",
+              fontSize: 11,
+              fontWeight: 900,
+            }}
+          >
+            B
+          </div>
+          <span style={{ color: "#FFD700", fontSize: 13, fontWeight: 900, letterSpacing: "0.05em" }}>
+            BerntttGlobal
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span
+            style={{
+              color: "rgba(255,255,255,0.45)",
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.14em",
+            }}
+          >
+            OVERSEER DECK
+          </span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              border: "1px solid rgba(255,0,136,0.4)",
+              background: "rgba(255,0,136,0.1)",
+              borderRadius: 6,
+              padding: "2px 8px",
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#FF0088",
+                boxShadow: "0 0 6px #FF0088",
+              }}
+            />
+            <span style={{ color: "#FF8FBE", fontSize: 8, fontWeight: 900 }}>LIVE</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            minWidth: 0,
+            width: isMobile ? "100%" : undefined,
+            flexWrap: isMobile ? "wrap" : "nowrap",
+            justifyContent: isMobile ? "flex-end" : undefined,
+          }}
+        >
+          <span style={{ color: "#fff", fontSize: 11, fontWeight: 900, letterSpacing: "0.05em" }}>
+            {clock || "—"}
+          </span>
+          <button
+            type="button"
+            onClick={openBotIntel}
+            style={{
+              borderRadius: 8,
+              border: "1.5px solid #00FFFF",
+              background: "linear-gradient(180deg, #1a3a4a 0%, #0a1520 100%)",
+              color: "#9ef6ff",
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "5px 12px",
+              cursor: "pointer",
+              boxShadow: "0 0 12px rgba(0,255,255,0.2)",
+            }}
+            title="Bot Activity — All Bots / Who's Who / NPC Journal"
+          >
+            Bot Intel
+          </button>
+          <a href="/admin/asset-foundry" data-testid="tmi-admin-asset-foundry-entry" data-admin-creator="asset-foundry" style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #D4AF37", color: "#ffe3a3", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em", textDecoration: "none", textTransform: "uppercase" }}>Asset Foundry</a>
+          <RoleHubAccountMenu accentColor="#FFD700" showInlineSignOut />
+        </div>
+      </header>
+
+      <style>{`
+        @keyframes overseer-center-flip {
+          0% { transform: rotateY(82deg) scale(0.96); opacity: 0.35; }
+          55% { transform: rotateY(-8deg) scale(1.01); opacity: 0.95; }
+          100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes overseer-merge-pulse {
+          0%   { box-shadow: 0 0 0 rgba(0,255,255,0); }
+          40%  { box-shadow: 0 0 20px rgba(0,255,255,0.7); }
+          100% { box-shadow: 0 0 0 rgba(0,255,255,0); }
+        }
+        @media (max-width: 767px) {
+          [data-overseer-flight-deck] {
+            border-width: 2px !important;
+            padding: 6px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+          }
+          [data-deck="operations"] {
+            flex-direction: column !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+          [data-rail-boundary="left"],
+          [data-monitor-stage-boundary],
+          [data-rail-boundary="right"] {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          [data-row="monitor-controls"] {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            max-width: 100% !important;
+          }
+          [data-admin-cyan-ribbon] {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            max-width: 100% !important;
+          }
+          [data-row="dock-bottom"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 6px !important;
+            right: 6px !important;
+            width: calc(100% - 12px) !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+            gap: 4px !important;
+            flex-wrap: nowrap !important;
+            z-index: 9999 !important;
+          }
+        }
+      `}</style>
+
+      {activeWorkspace.ribbon ? (
+        <Canister
+          title={activeWorkspace.title.toUpperCase()}
+          accent="#FFD700"
+          style={{ borderRadius: 10, position: "relative", zIndex: 1 }}
+        >
+          {activeWorkspace.ribbon}
+        </Canister>
+      ) : null}
+
+      {/* MONITOR CONTROL STRIP — MERGE ALL / per-split presets */}
+      <div
+        data-row="monitor-controls"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 10px",
+          border: "1px solid rgba(255,215,0,0.22)",
+          borderRadius: 8,
+          background: "linear-gradient(180deg, rgba(30,15,10,0.92), rgba(10,5,8,0.96))",
+          flexWrap: "wrap",
+          maxWidth: "100%",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,215,0,0.6)", marginRight: 2 }}>
+          MONITORS
+        </span>
+        {/* MERGE ALL */}
+        <button
+          type="button"
+          onClick={mergeAllMonitors}
+          title="Merge all media players into one large monitor"
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: `1px solid ${isMerging ? "#00FFFF" : "rgba(0,255,255,0.5)"}`,
+            background: isMerging ? "rgba(0,255,255,0.25)" : "rgba(0,255,255,0.1)",
+            color: "#00FFFF",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            boxShadow: isMerging ? "0 0 12px rgba(0,255,255,0.4)" : "none",
+            animation: isMerging ? "overseer-merge-pulse 0.6s ease" : "none",
+          }}
+        >
+          {isMerging ? "⟳ MERGING…" : "⊡ MERGE ALL → 1"}
+        </button>
+        <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
+        {/* Quick split presets for both monitors */}
+        {([1, 2, 3, 4, 5, 6, 7, 8] as MonitorSplitMode[]).map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => expandAllMonitors(n)}
+            title={`Set both monitors to ${n === 1 ? "single" : `${n}-pane`} (dual max 8+8=16)`}
+            style={{
+              padding: "4px 9px",
+              borderRadius: 6,
+              border: `1px solid ${monitorSplits[0] === n && monitorSplits[1] === n ? "rgba(255,215,0,0.8)" : "rgba(255,215,0,0.25)"}`,
+              background: monitorSplits[0] === n && monitorSplits[1] === n ? "rgba(255,215,0,0.2)" : "rgba(0,0,0,0.4)",
+              color: monitorSplits[0] === n && monitorSplits[1] === n ? "#FFD700" : "rgba(255,255,255,0.55)",
+              fontSize: 10,
+              fontWeight: 900,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              minWidth: 28,
+            }}
+          >
+            {n}
+          </button>
+        ))}
+
+        {/* SHARE SCREEN — cyclic getDisplayMedia controller (not playlist) */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 3 }}>
+          <button
+            type="button"
+            onClick={() => void cycleSharePress()}
+            title={
+              shareActive
+                ? "Cycle share sources — press after last source to stop"
+                : "Share screen / window / tab via getDisplayMedia"
+            }
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: `1px solid ${shareActive ? "#00FF88" : "rgba(0,255,136,0.6)"}`,
+              background: shareActive ? "rgba(0,255,136,0.15)" : "rgba(0,255,136,0.08)",
+              color: "#00FF88",
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            ⬡ {shareButtonLabel}
+          </button>
+          {shareActive && (
+            <button
+              type="button"
+              onClick={stopScreenShare}
+              title="Stop screen share"
+              style={{ padding: "3px 7px", borderRadius: 999, border: "1px solid rgba(255,68,68,0.5)", background: "rgba(255,68,68,0.12)", color: "#FF6B6B", fontSize: 8, fontWeight: 900, cursor: "pointer" }}
+            >
+              ✕
+            </button>
+          )}
+          {/* slot picker dropdown */}
+          {slotPickerOpen && screenStream && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                zIndex: 200,
+                width: 260,
+                background: "#0a0a1e",
+                border: "1px solid rgba(0,255,136,0.5)",
+                borderRadius: 10,
+                padding: 12,
+                boxShadow: "0 16px 48px rgba(0,0,0,0.8), 0 0 24px rgba(0,255,136,0.15)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#00FF88" }}>⬡ ROUTE TO MONITOR SLOT</span>
+                <button type="button" onClick={() => setSlotPickerOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 12 }}>✕</button>
+              </div>
+              {([0, 1] as const).map((mon) => (
+                <div key={mon} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,215,0,0.6)", marginBottom: 5 }}>
+                    MONITOR {mon + 1}
+                  </div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box" }}>
+                    {([-1, 0, 1, 2, 3, 4, 5, 6, 7] as const).map((ci) => {
+                      const active = shareSlot?.monitor === mon && shareSlot.cellIndex === ci;
+                      return (
+                        <button
+                          key={ci}
+                          type="button"
+                          onClick={() => pickShareSlot({ monitor: mon, cellIndex: ci })}
+                          style={{
+                            padding: "3px 8px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer",
+                            border: `1px solid ${active ? "#00FF88" : "rgba(255,215,0,0.2)"}`,
+                            background: active ? "rgba(0,255,136,0.2)" : "rgba(255,255,255,0.04)",
+                            color: active ? "#00FF88" : "rgba(255,255,255,0.5)",
+                            minWidth: 28, textAlign: "center" as const,
+                          }}
+                        >
+                          {ci === -1 ? "FULL" : ci + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", lineHeight: 1.5, marginTop: 4 }}>
+                FULL = entire monitor. Numbers = split-grid cells. Camera feed stays on its own slot.
+              </div>
+            </div>
+          )}
+        </div>
+        <span aria-hidden style={{ width: 1, height: 18, background: "rgba(255,215,0,0.3)" }} />
+        {/* Rail toggles — quick access */}
+        <button
+          type="button"
+          onClick={() => drawerManager.toggleRail("left")}
+          title={leftCollapsed ? "Expand left rail" : "Collapse left rail"}
+          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(0,0,0,0.4)", color: "#FFD700", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          {leftCollapsed ? "◀▏" : "▏◀"}
+        </button>
+        <button
+          type="button"
+          onClick={() => drawerManager.toggleRail("right")}
+          title={rightCollapsed ? "Expand right rail" : "Collapse right rail"}
+          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.3)", background: "rgba(0,0,0,0.4)", color: "#FFD700", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          {rightCollapsed ? "▕▶" : "▶▕"}
+        </button>
+      </div>
+
+      {/* OPERATIONS DECK — row height = center monitor natural height (align-items:flex-start).
+          Side rails share data-stage-cap height with centerColRef so gold bottom line aligns.
+          Verify in DevTools: compare getBoundingClientRect().bottom on
+          [data-monitor-stage-boundary] vs [data-rail-boundary="left"]. */}
+      <div
+        data-deck="operations"
+        data-stage-cap={stageCapCss}
+        data-center-col-height={centerColHeight ?? "pending"}
+        data-mobile-ops-tab={isMobile ? mobileOpsTab : "desktop"}
+        style={{
+          position: "relative",
+          zIndex: 1,
+          flex: "0 0 auto",
+          flexShrink: 0,
+          height: "auto",
+          maxHeight: "none",
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "flex-start",
+          gap: 8,
+          border: "1px solid rgba(255,215,0,0.18)",
+          borderRadius: 10,
+          padding: 8,
+          background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
+          boxSizing: "border-box",
+          overflowX: "clip",
+        }}
+      >
+        {fullscreenPanel ? (
+          <Canister
+            title="FOCUS MODE"
+            accent="#00FFFF"
+            statusLabel="FOCUSED"
+            onToggleFullscreen={() => setFullscreenPanel(null)}
+            style={{
+              minHeight: "min(70vh, 720px)",
+              aspectRatio: "16 / 9",
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
+            }}
+          >
+            {fullscreenMatch?.content ?? null}
+          </Canister>
+        ) : (
+          <>
+            {isMobile ? (
+              <div style={{ display: "flex", gap: 6, width: "100%", minWidth: 0 }}>
+                {([
+                  ["left", "SENTINEL"],
+                  ["center", "MONITOR"],
+                  ["right", "INBOX"],
+                ] as const).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setMobileOpsTab(tab)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: "7px 4px",
+                      borderRadius: 8,
+                      border: `1px solid ${mobileOpsTab === tab ? "rgba(255,215,0,0.85)" : "rgba(148,163,184,0.25)"}`,
+                      background: mobileOpsTab === tab ? "rgba(255,215,0,0.12)" : "rgba(15,23,42,0.6)",
+                      color: mobileOpsTab === tab ? "#FFD700" : "rgba(255,255,255,0.45)",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase" as const,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "left") ? (
+            <div
+              data-rail-boundary="left"
+              style={{
+                flexShrink: 0,
+                width: isMobile ? "100%" : leftWidth,
+                height: isMobile ? "auto" : stageCapCss,
+                maxHeight: isMobile ? "none" : stageCapCss,
+                maxWidth: "100%",
+                minWidth: 0,
+                overflowX: "hidden",
+                overflowY: isMobile ? "visible" : "auto",
+                transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "flex-start",
+                minHeight: 0,
+              }}
+            >
+              <div style={{ padding: "6px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                <OverseerCoverageRail
+                  activePanelId={activeCoveragePanel}
+                  onActivePanelChange={(id) => setActiveCoveragePanel(id)}
+                />
+              </div>
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", height: "100%", minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", height: "100%" }}>
+                  {renderRail(activeWorkspace.leftRail, "left")}
+                </div>
+                {!isMobile && !leftCollapsed && botRosterScrollMax > 0 ? (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min={0}
+                      max={botRosterScrollMax}
+                      value={botRosterScrollValue}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setBotRosterScrollValue(v);
+                        if (botRosterScrollRef.current) botRosterScrollRef.current.scrollTop = v;
+                      }}
+                      aria-label="Scroll bot roster"
+                      style={{
+                        width: Math.max(80, Math.min(botRosterScrollMax + 60, 420)),
+                        height: 20,
+                        transform: "rotate(-90deg)",
+                        accentColor: "#FFD700",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+                ) : !isMobile && !leftCollapsed && leftRailScrollMax > 0 ? (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min={0}
+                      max={leftRailScrollMax}
+                      value={leftRailScrollValue}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setLeftRailScrollValue(v);
+                        if (leftRailScrollRef.current) leftRailScrollRef.current.scrollTop = v;
+                      }}
+                      aria-label="Scroll left rail"
+                      style={{
+                        width: Math.max(80, Math.min(leftRailScrollMax + 60, 420)),
+                        height: 20,
+                        transform: "rotate(-90deg)",
+                        accentColor: "#FFD700",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "center") ? (
+            <div
+              ref={centerColRef}
+              data-monitor-stage-boundary
+              style={{
+                position: "relative",
+                zIndex: 2,
+                flex: attachedMonitorCount === 0 ? "0 0 auto" : 1,
+                width: isMobile ? "100%" : undefined,
+                maxWidth: "100%",
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "flex-start",
+                ...(!isMobile && attachedMonitorCount > 0
+                  ? desktopMonitorStageStyle(true, availableCenterWidth)
+                  : { maxWidth: "100%", minWidth: 0 }),
+              }}
+            >
+              {renderRail(activeWorkspace.center, "center")}
+            </div>
+            ) : null}
+
+            {(!isMobile || mobileOpsTab === "right") ? (
+            <div
+              data-rail-boundary="right"
+              style={{
+                flexShrink: 0,
+                width: isMobile ? "100%" : rightWidth,
+                height: isMobile ? "auto" : stageCapCss,
+                maxHeight: isMobile ? "none" : stageCapCss,
+                maxWidth: "100%",
+                minWidth: 0,
+                overflowX: "hidden",
+                overflowY: isMobile ? "visible" : "auto",
+                transition: isMobile ? undefined : "width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                display: "flex",
+                flexDirection: "column",
+                alignSelf: "flex-start",
+                minHeight: 0,
+              }}
+            >
+              <div style={{ flex: 1, minHeight: 0, height: "auto", display: "flex", flexDirection: "column", minWidth: 0, gap: 6 }}>
+                {renderRail(activeWorkspace.rightRail, "right")}
+              </div>
+            </div>
+            ) : null}
+          </>
+        )}
+      </div>
+
+      <LiveChannelTicker />
+
+      {/* BRACER — divider between live feed and analytics */}
+      <div
+        data-row="ops-bracer"
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "0 8px",
+          height: 28,
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #B8860B 20%, #FFD700 50%, #B8860B 80%, transparent)", borderRadius: 1, boxShadow: "0 0 8px rgba(255,215,0,0.35)" }} />
+        <span style={{ flexShrink: 0, fontSize: 8, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,215,0,0.6)", textTransform: "uppercase", padding: "2px 10px", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 999, background: "rgba(0,0,0,0.45)", whiteSpace: "nowrap" }}>
+          ▼ ANALYTICS
+        </span>
+        <div style={{ flex: 1, height: 2, background: "linear-gradient(90deg, transparent, #B8860B 20%, #FFD700 50%, #B8860B 80%, transparent)", borderRadius: 1, boxShadow: "0 0 8px rgba(255,215,0,0.35)" }} />
+      </div>
+      <div
+        data-deck="control-desk"
+        id="living-os-control-desk"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          flex: "0 0 auto",
+          flexShrink: 0,
+        }}
+      >
+        <BusinessDeckRemote />
+        <ObservatoryControlDesk />
+      </div>
+
+      {/* INTELLIGENCE DECK — below control desk / fold */}
+      <div
+        data-deck="intelligence"
+        id="intelligence-deck"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          flex: "0 0 auto",
+          flexShrink: 0,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          minHeight: intelligenceMinHeight,
+          height: bottomCollapsed ? intelligenceMinHeight : "auto",
+          maxHeight: "none",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
+          gap: DECK_GAP,
+          border: "2px solid rgba(255,45,170,0.35)",
+          borderRadius: 12,
+          padding: bottomCollapsed ? 6 : isMobile ? 10 : 18,
+          background: "linear-gradient(180deg, rgba(255,45,170,0.08), rgba(255,215,0,0.05))",
+          boxShadow: "inset 0 0 24px rgba(255,45,170,0.06), 0 8px 28px rgba(0,0,0,0.45)",
+          boxSizing: "border-box",
+          overflowX: "clip",
+        }}
+      >
+        {!bottomCollapsed ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <span
+              style={{
+                color: "#FF2DAA",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+              }}
+            >
+              Intelligence Deck
+            </span>
+            <button
+              type="button"
+              onClick={() => drawerManager.toggleRail("bottom")}
+              style={{
+                borderRadius: 999,
+                border: "1px solid rgba(170,45,255,0.35)",
+                background: "rgba(170,45,255,0.06)",
+                color: "rgba(216,135,255,0.75)",
+                fontSize: 8,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                padding: "3px 8px",
+                cursor: "pointer",
+              }}
+            >
+              Collapse
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => drawerManager.toggleRail("bottom")}
+            style={{
+              gridColumn: "1 / -1",
+              borderRadius: 8,
+              border: "1px solid rgba(255,45,170,0.4)",
+              background: "rgba(255,45,170,0.08)",
+              color: "#FF2DAA",
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              padding: "8px",
+              cursor: "pointer",
+            }}
+          >
+            Expand Intelligence Deck
+          </button>
+        )}
+        {!bottomCollapsed
+          ? activeWorkspace.bottom
+              .filter((panel) => !isFloatingPanel(panel))
+              .map((panel) =>
+                renderPanelCanister(
+                  panel,
+                  false,
+                  false,
+                  {
+                    minHeight: isMobile ? "auto" : 480,
+                    flex: "0 0 auto",
+                    height: "auto",
+                    overflow: "visible",
+                  },
+                  true,
+                ),
+              )
+          : null}
+      </div>
+
+      {/* Sticky bottom gem dock */}
+      <div
+        data-row="dock-bottom"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: isMobile ? 4 : 8,
+          padding: isMobile ? "6px 8px max(12px, env(safe-area-inset-bottom, 12px))" : "8px 24px",
+          background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
+          border: "3px solid #b8860b",
+          borderRadius: 14,
+          boxShadow: "0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,215,0,0.15)",
+          position: isMobile ? "fixed" : "sticky",
+          bottom: 0,
+          left: isMobile ? 6 : undefined,
+          right: isMobile ? 6 : undefined,
+          zIndex: 150,
+          marginTop: 4,
+          boxSizing: "border-box",
+          maxWidth: "100%",
+          width: isMobile ? "calc(100% - 12px)" : "100%",
+          pointerEvents: "auto",
+          flexWrap: "nowrap",
+          overflowX: "hidden",
+        }}
+      >
+        {/* [ ADMIN ] */}
+        <div style={{ display: "flex", gap: isMobile ? 4 : 8, alignItems: "center", flexShrink: 0 }}>
+          <UniversalCommandController
+            currentPersona="ADMIN"
+            activeMonitorCount={attachedMonitorCount}
+            onSetMonitorCount={setAttachedMonitorCount}
+            onLaunchPresentation={handleLaunchPresentation}
+          />
+        </div>
+
+        {/* [ navigation/control ] */}
+        <div style={{ display: "flex", gap: isMobile ? 4 : 8, alignItems: "center", flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => drawerManager.toggleRail("left")}
+            title="Toggle left rail"
+            style={dockBtnStyle(!leftCollapsed)}
+            aria-label="Toggle left rail"
+          >
+            {leftCollapsed ? "◀" : "◀"}
+          </button>
+          <button
+            type="button"
+            onClick={() => drawerManager.toggleRail("right")}
+            title="Toggle right rail"
+            style={dockBtnStyle(!rightCollapsed)}
+            aria-label="Toggle right rail"
+          >
+            {rightCollapsed ? "▶" : "▶"}
+          </button>
+          <Link
+            href="/admin/overseer"
+            style={{
+              ...dockBtnStyle(),
+              textDecoration: "none",
+            }}
+            title="Admin Overseer Deck"
+            aria-label="Admin Overseer Deck"
+          >
+            ⚡
+          </Link>
+        </div>
+
+        {/* [ B ] (Canonical gold "B" persona / account control) */}
+        <div
+          data-testid="tmi-dock-canonical-account-b"
+          style={{ display: "flex", gap: isMobile ? 4 : 8, alignItems: "center", flexShrink: 0 }}
+        >
+          <UniversalAccountIdentityControl compact={isMobile} fallbackDisplayName="Berntout" />
+        </div>
+
+        {/* [ other authorized controls ] */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <Link
+            href="/"
+            style={{
+              ...dockBtnStyle(),
+              width: isMobile ? 44 : 36,
+              height: isMobile ? 44 : 36,
+              background: "linear-gradient(180deg, #c0392b 0%, #7f0c0d 100%)",
+              border: "2px solid #D4AF37",
+              color: "#fff",
+              textDecoration: "none",
+            }}
+            title="Exit"
+            aria-label="Exit"
+          >
+            ⏻
+          </Link>
+        </div>
+      </div>
+
+      {/* ── SCREEN SHARE FLOATING OVERLAY ────────────────────────────────── */}
+      {screenStream && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 90,
+            right: 24,
+            zIndex: 9999,
+            width: 420,
+            borderRadius: 12,
+            border: "2px solid #00FF88",
+            background: "#000",
+            boxShadow: "0 0 32px rgba(0,255,136,0.4), 0 8px 40px rgba(0,0,0,0.8)",
+            overflow: "hidden",
+          }}
+          role="dialog"
+          aria-label="Screen share preview"
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "6px 12px",
+              background: "rgba(0,255,136,0.08)",
+              borderBottom: "1px solid rgba(0,255,136,0.3)",
+            }}
+          >
+            <span style={{ color: "#00FF88", fontSize: 10, fontWeight: 900, letterSpacing: "0.12em" }}>
+              ⬡ SCREEN SHARE ACTIVE
+            </span>
+            <button
+              type="button"
+              onClick={stopScreenShare}
+              aria-label="Stop screen share"
+              style={{
+                background: "rgba(255,68,68,0.2)",
+                border: "1px solid #FF4444",
+                borderRadius: 6,
+                color: "#FF6B6B",
+                fontSize: 10,
+                fontWeight: 900,
+                padding: "2px 8px",
+                cursor: "pointer",
+              }}
+            >
+              ✕ STOP
+            </button>
+          </div>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            ref={screenVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: "100%", display: "block", maxHeight: 240, objectFit: "contain", background: "#000" }}
+          />
+        </div>
+      )}
+
+      {botIntelOpen ? (
+        <div
+          role="dialog"
+          aria-label="Bot Activity Switcher"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1400,
+            background: "rgba(3,2,14,0.72)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            pointerEvents: "auto",
+          }}
+          onClick={() => setBotIntelOpen(false)}
+        >
+          <div
+            id="bot-activity"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(720px, 96vw)",
+              height: "min(640px, 88vh)",
+              borderRadius: 16,
+              border: "1.5px solid rgba(255,215,0,0.4)",
+              background: "linear-gradient(165deg, rgba(10,6,24,0.98), rgba(5,5,16,0.99))",
+              boxShadow: "0 0 40px rgba(0,255,255,0.15), 0 20px 60px rgba(0,0,0,0.65)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderBottom: "1px solid rgba(255,215,0,0.25)",
+                background: "rgba(0,0,0,0.45)",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700" }}>
+                  BOT ACTIVITY SWITCHER
+                </div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                  All Bots · Who&apos;s Who · NPC Journal (Revenue Businessman + team included)
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBotIntelOpen(false)}
+                style={{
+                  border: "1px solid rgba(255,45,170,0.5)",
+                  background: "rgba(255,45,170,0.12)",
+                  color: "#FF2DAA",
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 900,
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <BotActivitySwitcherPanel />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <OverlayHost zIndex={1000} pointerEvents="none">
+        {activeWorkspace.leftRail
+          .concat(activeWorkspace.center)
+          .concat(activeWorkspace.rightRail)
+          .concat(activeWorkspace.bottom ?? [])
+          .filter((panel) => isFloatingPanel(panel))
+          .map((panel) => (
+            <div key={`floating-${panel.id ?? panel.title}`} style={floatingCanisterStyle(panel)}>
+              {renderPanelCanister(panel, false, true)}
+            </div>
+          ))}
+
+        {Object.entries(drawerManager.rawState?.windows ?? {})
+          .filter(([, state]) => state.mode === "closed")
+          .map(([id], index) => {
+            const panel = allPanels.find((item) => item.id === id);
+            if (!panel) return null;
+            return (
+              <button
+                key={`restore-${id}`}
+                type="button"
+                onClick={() => drawerManager.restoreWindow(id)}
+                style={{
+                  position: "fixed",
+                  right: 16,
+                  bottom: 16 + index * 42,
+                  zIndex: 1200,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,215,0,0.45)",
+                  background:
+                    "linear-gradient(180deg, rgba(255,215,0,0.16), rgba(255,215,0,0.06))",
+                  color: "#FFD88F",
+                  padding: "8px 12px",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  pointerEvents: "auto",
+                }}
+              >
+                Restore {panel.title}
+              </button>
+            );
+          })}
+
+      </OverlayHost>
+    </div>
+  );
+}

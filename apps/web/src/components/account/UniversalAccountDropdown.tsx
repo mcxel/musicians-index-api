@@ -1,0 +1,557 @@
+"use client";
+
+/**
+ * UniversalAccountDropdown — one shared account menu for every role.
+ * Calls existing switch-role / companion-profile APIs; does not duplicate
+ * authorization rules in React (Rule 31 ACCOUNT-SHELL, current-schema mode).
+ */
+
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
+import Link from "next/link";
+import type { ActiveProfileIdentity } from "@/lib/account/ActiveProfileIdentity";
+import {
+  resolveAccountShellCapabilities,
+  resolveAccountHubDestination,
+} from "@/lib/account/resolveAccountShellCapabilities";
+import {
+  performPersonaSwitch,
+  type PersonaSwitchRole,
+} from "@/lib/auth/performPersonaSwitch";
+import {
+  accountProfileTarget,
+  presentCartCount,
+  SHARED_ACCOUNT_BILLING,
+  SHARED_ACCOUNT_CART,
+  SHARED_ACCOUNT_SETTINGS,
+} from "@/lib/account/sharedAccountMenu";
+
+export interface UniversalAccountDropdownProps {
+  identity: ActiveProfileIdentity;
+  open: boolean;
+  onClose: () => void;
+  anchorRight?: number;
+  anchorLeft?: number;
+  anchorTop?: number;
+  anchorBottom?: number;
+  /** True when role/identity discovery failed to load — distinct from the
+   *  user genuinely owning only one role. Never silently hide switch
+   *  options as though this were a permission fact. */
+  rolesUnavailable?: boolean;
+}
+
+interface CompanionOffer {
+  isFree: boolean;
+  price: number;
+  currency: string;
+}
+
+
+const rowStyle: CSSProperties = {
+  display: "flex",
+  width: "100%",
+  padding: "10px 14px",
+  borderRadius: 8,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  color: "#fff",
+  textDecoration: "none",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  textAlign: "left",
+  alignItems: "center",
+  gap: 8,
+};
+
+const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;
+
+export default function UniversalAccountDropdown({
+  identity,
+  open,
+  onClose,
+  anchorRight = 12,
+  anchorLeft,
+  anchorTop = 56,
+  anchorBottom,
+  rolesUnavailable = false,
+}: UniversalAccountDropdownProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [switchingRole, setSwitchingRole] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
+  const [companionOffers, setCompanionOffers] = useState<Record<"FAN" | "PERFORMER", CompanionOffer> | null>(null);
+  const [cartCount, setCartCount] = useState<number | null>(null);
+
+  const caps = resolveAccountShellCapabilities({
+    ownedRoles: identity.ownedRoles,
+    activeRole: identity.activeRole,
+  });
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(onClose, ACCOUNT_MENU_IDLE_CLOSE_MS);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (!panel) return;
+    const onInteraction = () => resetIdleTimer();
+    resetIdleTimer();
+    panel.addEventListener("mousemove", onInteraction);
+    panel.addEventListener("pointerdown", onInteraction);
+    panel.addEventListener("touchstart", onInteraction);
+    panel.addEventListener("focusin", onInteraction);
+
+    return () => {
+      panel.removeEventListener("mousemove", onInteraction);
+      panel.removeEventListener("pointerdown", onInteraction);
+      panel.removeEventListener("touchstart", onInteraction);
+      panel.removeEventListener("focusin", onInteraction);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    };
+  }, [open, resetIdleTimer]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setCartCount(null);
+    fetch("/api/cart", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { authenticated?: boolean; itemCount?: unknown } | null) => {
+        if (active) setCartCount(presentCartCount(body));
+      })
+      .catch(() => {
+        if (active) setCartCount(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/account/companion-profile", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { offers?: Record<"FAN" | "PERFORMER", CompanionOffer> } | null) => {
+        if (d?.offers) setCompanionOffers(d.offers);
+      })
+      .catch(() => {});
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      // Trigger owns toggle — do not close-on-mousedown then re-open on click (role-trap feel).
+      if (
+        target instanceof Element &&
+        target.closest("[data-tmi-account-menu-trigger]")
+      ) {
+        return;
+      }
+      if (panelRef.current && !panelRef.current.contains(target)) {
+        onClose();
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  // Close on route change
+  useEffect(() => {
+    if (!open) return;
+    const onRouteChange = () => onClose();
+    window.addEventListener("popstate", onRouteChange);
+    // Next.js router events are omitted here, but standard navigation via router.push
+    // inside this component triggers onClose() manually before navigating.
+    return () => {
+      window.removeEventListener("popstate", onRouteChange);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const profilePath = accountProfileTarget(identity.activeRole);
+
+  const handleRoleHubClick = async (targetRole: PersonaSwitchRole) => {
+    if (switchingRole) return;
+    setSwitchingRole(targetRole);
+    setSwitchError(null);
+    try {
+      const result = await performPersonaSwitch(targetRole);
+      if (result.ok && result.hubUrl) {
+        onClose();
+        window.location.href = result.hubUrl;
+      } else {
+        setSwitchError(result.error ?? "Unable to switch accounts right now. Please try again.");
+      }
+    } finally {
+      setSwitchingRole(null);
+    }
+  };
+
+  const addCompanionProfile = async (targetProfile: "FAN" | "PERFORMER") => {
+    if (provisioningProfile) return;
+    setProvisioningProfile(targetProfile);
+    try {
+      const res = await fetch("/api/account/companion-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ targetProfile, switchToNewProfile: true }),
+      });
+      const data = (await res.json()) as { ok?: boolean; hubUrl?: string };
+      if (res.ok && data.ok) {
+        onClose();
+        localStorage.setItem("tmi_last_workspace", targetProfile === "PERFORMER" ? "performer" : "fan");
+        const dest = data.hubUrl ?? resolveAccountHubDestination(targetProfile);
+        window.location.href = dest;
+      }
+    } catch {
+      /* keep open */
+    } finally {
+      setProvisioningProfile(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    onClose();
+    const { canonicalLogout } = await import("@/lib/auth/canonicalLogout");
+    await canonicalLogout();
+  };
+
+  const offer = caps.companionOfferTarget ? companionOffers?.[caps.companionOfferTarget] : null;
+  const priceLabel = offer ? (offer.isFree ? "FREE" : `$${(offer.price / 100).toFixed(2)}`) : "";
+
+  return (
+    <div
+      ref={panelRef}
+      data-testid="tmi-universal-account-dropdown"
+      data-tmi-account-menu-panel="1"
+      data-profile-kind={identity.profileKind}
+      role="menu"
+      style={{
+        position: "fixed",
+        ...(anchorBottom !== undefined ? { bottom: anchorBottom, top: "auto" } : { top: anchorTop }),
+        ...(anchorLeft !== undefined
+          ? { left: anchorLeft, right: "auto" }
+          : { right: anchorRight }),
+        width: "min(320px, calc(100vw - 16px))",
+        maxHeight: "min(80vh, 560px)",
+        overflowY: "auto",
+        zIndex: 100000,
+        background: "rgba(8, 8, 20, 0.98)",
+        border: "1px solid rgba(255,45,170,0.35)",
+        borderRadius: 12,
+        boxShadow: "0 18px 48px rgba(0,0,0,0.75)",
+        fontFamily: "inherit",
+      }}
+    >
+      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+          ACTIVE PROFILE
+        </div>
+        <div data-testid="tmi-active-profile-name" style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>
+          {identity.publicDisplayName}
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 4 }}>
+          {caps.activeModeLabel} mode
+          {identity.publicHandle ? ` · @${identity.publicHandle}` : ""}
+        </div>
+        {identity.profileKind === "ACCOUNT_FALLBACK" && (
+          <div
+            data-testid="tmi-account-fallback-honesty"
+            style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 6, lineHeight: 1.35 }}
+          >
+            One account identity (shared name/photo). Separate Fan/Performer profile names are not available yet.
+          </div>
+        )}
+      </div>
+
+      {rolesUnavailable && (
+        <div
+          data-testid="tmi-roles-unavailable"
+          style={{
+            margin: 10,
+            padding: "8px 10px",
+            background: "rgba(255,45,90,0.08)",
+            border: "1px solid rgba(255,45,90,0.3)",
+            borderRadius: 8,
+            fontSize: 9.5,
+            color: "#FF6B9A",
+            lineHeight: 1.4,
+          }}
+        >
+          Account roles could not be loaded — the options below may be incomplete. Try again, or use Log Out.
+        </div>
+      )}
+
+      {caps.canAdminPersonaTriad && (
+        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-admin-persona-triad">
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+            PERSONA SWITCH · SAME ACCOUNT
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {(
+              [
+                { role: "ADMIN" as const, label: "ADMINISTRATION", color: "#FFD700" },
+                { role: "FAN" as const, label: "FAN", color: "#00FFFF" },
+                { role: "PERFORMER" as const, label: "PERFORMER", color: "#FF2DAA" },
+              ] as const
+            ).map(({ role, label, color }) => {
+              const isActive = caps.activeModeLabel === role;
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  disabled={!!switchingRole}
+                  data-testid={`tmi-switch-to-${role.toLowerCase()}`}
+                  onClick={() => void handleRoleHubClick(role)}
+                  style={{
+                    ...rowStyle,
+                    justifyContent: "flex-start",
+                    padding: "12px 14px",
+                    minHeight: 44,
+                    fontSize: 12,
+                    color,
+                    border: `1px solid ${color}55`,
+                    background: isActive ? `${color}22` : "transparent",
+                  }}
+                >
+                  {switchingRole === role
+                    ? "…"
+                    : isActive
+                      ? label + " · active"
+                      : role === "ADMIN"
+                        ? "RETURN TO ADMINISTRATION"
+                        : "SWITCH TO " + label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {caps.canSwitchFanPerformer && !caps.canAdminPersonaTriad && (
+        <div style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }} data-testid="tmi-role-switch-row">
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+            SWITCH PROFILE
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["FAN", "PERFORMER"] as const).map((role) => (
+              <button
+                key={role}
+                type="button"
+                disabled={!!switchingRole}
+                data-testid={`tmi-switch-to-${role.toLowerCase()}`}
+                onClick={() => void handleRoleHubClick(role)}
+                style={{
+                  ...rowStyle,
+                  justifyContent: "center",
+                  flex: 1,
+                  padding: "8px 6px",
+                  fontSize: 10,
+                  color: role === "FAN" ? "#00FFFF" : "#FF2DAA",
+                  border: `1px solid ${role === "FAN" ? "rgba(0,255,255,0.3)" : "rgba(255,45,170,0.3)"}`,
+                  background:
+                    caps.activeModeLabel === role
+                      ? role === "FAN"
+                        ? "rgba(0,255,255,0.12)"
+                        : "rgba(255,45,170,0.12)"
+                      : "transparent",
+                }}
+              >
+                {switchingRole === role
+                  ? "…"
+                  : caps.activeModeLabel === role
+                    ? role + " · active"
+                    : "SWITCH TO " + role}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {switchError && (
+        <div
+          data-testid="tmi-switch-error"
+          style={{
+            margin: 10,
+            padding: "8px 10px",
+            background: "rgba(255,45,90,0.1)",
+            border: "1px solid rgba(255,45,90,0.35)",
+            borderRadius: 8,
+            fontSize: 9.5,
+            color: "#FF6B9A",
+            lineHeight: 1.4,
+          }}
+        >
+          {switchError}
+        </div>
+      )}
+
+      {caps.companionOfferTarget && (
+        <div
+          style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          data-testid="tmi-companion-cta"
+          data-companion-container={caps.companionOfferTarget === "PERFORMER" ? "tmi-companion-add-performer" : "tmi-companion-add-fan"}
+        >
+          {caps.companionOfferTarget === "PERFORMER" ? (
+            <div
+              data-testid="tmi-companion-add-performer"
+              style={{
+                padding: "8px 10px",
+                background: "rgba(255,45,170,0.08)",
+                border: "1px solid rgba(255,45,170,0.3)",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.08em" }}>
+                UNLOCK YOUR OTHER SIDE
+              </div>
+              <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                You already have a Fan account. Add your Performer account FREE and switch between Fan and Performer anytime with the same login.
+              </div>
+              <button
+                type="button"
+                disabled={!!provisioningProfile}
+                data-testid="tmi-btn-add-performer-free"
+                data-companion-prompt="tmi-btn-add-performer-free"
+                onClick={() => void addCompanionProfile("PERFORMER")}
+                style={{
+                  ...rowStyle,
+                  marginTop: 6,
+                  justifyContent: "center",
+                  background: "#FF2DAA",
+                  color: "#050510",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  padding: "6px 8px",
+                }}
+              >
+                {provisioningProfile ? "ADDING…" : (offer && !offer.isFree ? `ADD PERFORMER $${(offer.price / 100).toFixed(2)}` : "ADD PERFORMER FREE")}
+              </button>
+            </div>
+          ) : (
+            <div
+              data-testid="tmi-companion-add-fan"
+              style={{
+                padding: "8px 10px",
+                background: "rgba(0,255,255,0.08)",
+                border: "1px solid rgba(0,255,255,0.3)",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.08em" }}>
+                ADD YOUR FAN ACCOUNT — FREE
+              </div>
+              <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.7)", marginTop: 3, lineHeight: 1.35 }}>
+                Get your Fan profile and switch between Performer and Fan anytime without creating another login.
+              </div>
+              <button
+                type="button"
+                disabled={!!provisioningProfile}
+                data-testid="tmi-btn-add-fan-free"
+                data-companion-prompt="tmi-btn-add-fan-free"
+                onClick={() => void addCompanionProfile("FAN")}
+                style={{
+                  ...rowStyle,
+                  marginTop: 6,
+                  justifyContent: "center",
+                  background: "#00FFFF",
+                  color: "#050510",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  padding: "6px 8px",
+                }}
+              >
+                {provisioningProfile ? "ADDING…" : (offer && !offer.isFree ? `ADD FAN $${(offer.price / 100).toFixed(2)}` : "ADD FAN FREE")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(caps.activeModeLabel === "FAN" || caps.activeModeLabel === "PERFORMER") ? (
+      <div style={{ padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <Link
+          href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"}
+          onClick={onClose}
+          data-testid={caps.activeModeLabel === "PERFORMER" ? "tmi-upgrade-performer-link" : "tmi-upgrade-fan-link"}
+          style={{
+            display: "block",
+            textAlign: "center",
+            padding: "6px 10px",
+            borderRadius: 6,
+            background: caps.activeModeLabel === "PERFORMER" ? "rgba(255,215,0,0.12)" : "rgba(0,255,255,0.12)",
+            border: `1px solid ${caps.activeModeLabel === "PERFORMER" ? "#FFD700" : "#00FFFF"}44`,
+            color: caps.activeModeLabel === "PERFORMER" ? "#FFD700" : "#00FFFF",
+            fontSize: 9.5,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textDecoration: "none",
+          }}
+        >
+          {caps.activeModeLabel === "PERFORMER" ? "★ UPGRADE PERFORMER PROFILE" : "★ UPGRADE FAN PROFILE"}
+        </Link>
+      </div>
+      ) : null}
+      <div style={{ padding: "6px 8px" }}>
+        {caps.activeModeLabel === "FAN" ? (
+          <Link href="/avatar/studio" onClick={onClose} data-testid="tmi-menu-digital-self" style={rowStyle}>
+            Digital Self · Avatar
+          </Link>
+        ) : null}
+        <Link href={profilePath} onClick={onClose} data-testid="tmi-menu-profile" data-profile-target={profilePath} style={rowStyle}>
+          Profile
+        </Link>
+        <Link
+          href={SHARED_ACCOUNT_CART}
+          onClick={onClose}
+          data-testid="tmi-menu-cart"
+          data-cart-count={cartCount === null ? "unavailable" : String(cartCount)}
+          style={rowStyle}
+        >
+          {cartCount === null ? "Cart" : `Cart · ${cartCount}`}
+        </Link>
+        <Link href={SHARED_ACCOUNT_BILLING} onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
+          Billing
+        </Link>
+        <Link href={SHARED_ACCOUNT_SETTINGS} onClick={onClose} data-testid="tmi-menu-settings" style={rowStyle}>
+          Settings
+        </Link>
+        <Link href="/notifications" onClick={onClose} data-testid="tmi-menu-notifications" style={rowStyle}>
+          Notifications
+        </Link>
+        <Link href="/help" onClick={onClose} data-testid="tmi-menu-help" style={rowStyle}>
+          Help & Support
+        </Link>
+        <button type="button" data-testid="tmi-menu-logout" onClick={() => void handleLogout()} style={{ ...rowStyle, color: "#FF3B5C", minHeight: 48, fontWeight: 900, border: "1px solid rgba(255,59,92,0.35)", marginTop: 6 }}>
+          LOG OUT
+        </button>
+      </div>
+    </div>
+  );
+}

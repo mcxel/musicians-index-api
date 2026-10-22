@@ -1,0 +1,581 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import AudienceScene, { type VenueIndex } from "@/components/live/AudienceScene";
+import { RoomChatBubbleLayer } from "@/components/chat/RoomChatBubbleLayer";
+import { PerformerFeedbackPanel } from "@/components/chat/PerformerFeedbackPanel";
+import { CrowdChatOverflowPanel } from "@/components/chat/CrowdChatOverflowPanel";
+import { ModeratorShield } from "@/components/chat/ModeratorShield";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
+import { RoomChatEngine } from "@/lib/chat/RoomChatEngine";
+import type { RoomChatMessage, RoomRuntimeState, ChatRoomId } from "@/lib/chat/RoomChatEngine";
+import type { OverflowRailEntry } from "@/lib/chat/ChatOverflowRailEngine";
+import {
+  claimSeat as claimSeatEngine,
+  createSeatMap,
+  releaseSeat as releaseSeatEngine,
+  type LobbySeat,
+  type LobbySeatMap,
+} from "@/lib/lobby/lobbySeatEngine";
+import {
+  createInitialPresence,
+  sendReaction as sendReactionEngine,
+  sendTip as sendTipEngine,
+  startCountdown,
+} from "@/lib/lobby/lobbyPresenceEngine";
+import {
+  advanceQueue,
+  getQueueSnapshot,
+  joinQueue as joinQueueEngine,
+  removeFromQueue,
+  type QueueSlot,
+} from "@/lib/live/queueEngine";
+import LobbyPreviewBillboard from "@/components/lobbies/LobbyPreviewBillboard";
+import LobbyQueueRail, { type LobbyQueueEntry } from "@/components/lobbies/LobbyQueueRail";
+import LobbyReactionRail, { type LobbyReactionType } from "@/components/lobbies/LobbyReactionRail";
+import LobbySeatGrid, { type TheaterSeat } from "@/components/lobbies/LobbySeatGrid";
+import LobbyStageViewport from "@/components/lobbies/LobbyStageViewport";
+import LobbyTipRail from "@/components/lobbies/LobbyTipRail";
+import { getLobbyIdleInteraction, summarizeLobbyIdleInteractions } from "@/lib/lobby/LobbyIdleInteractionEngine";
+import LobbyBillboardSurface from "@/components/lobbies/LobbyBillboardSurface";
+import LobbyMainBillboard from "@/components/lobbies/LobbyMainBillboard";
+import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
+import { emitLobbyFeedState, type LobbyBillboardStatus } from "@/lib/lobby/LobbyFeedBus";
+import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
+import { slugToVenueType, getVenueAsset } from "@/lib/venues/VenueAssetRegistry";
+
+/** Map a room slug to one of the 5 AudienceScene venue types */
+function slugToVenue(slug: string): VenueIndex {
+  const s = slug.toLowerCase();
+  if (/battle|versus|cypher|octagon|arena|championship|ring|dirty-dozen|deal-or-feud|contest/.test(s)) return 1; // Arena
+  if (/vip|club|lounge|backstage|green-room/.test(s)) return 2;  // Club
+  if (/outdoor|festival|rooftop/.test(s)) return 3;              // Outdoor
+  if (/boardroom|judge|trivia|game|quiz/.test(s)) return 4;      // Boardroom
+  return 0; // Theater — default (concerts, idol, shows, monthly, world-concert)
+}
+
+type LobbyTheaterShellProps = {
+  slug: string;
+  mode?: "directory" | "room";
+  autoSeat?: boolean;
+  /** If true the current user is the performer — shows crowd facing them */
+  isPerformer?: boolean;
+};
+
+function slugToChatRoomId(slug: string): ChatRoomId {
+  const canonical = getCanonicalRoomSlug(slug);
+  const MAP: Record<string, ChatRoomId> = {
+    "world-concert": "world-concert",
+    "battle-arena": "battle-arena",
+    "challenge-arena": "challenge-arena",
+    "vip-lounge": "vip-lounge",
+    "monthly-idol": "monthly-idol",
+    "monday-night-stage": "monday-night-stage",
+    "cypher-drop": "cypher-arena",
+    "cypher-arena": "cypher-arena",
+  };
+  return MAP[canonical] ?? (canonical as ChatRoomId);
+}
+
+function slugToRoomType(slug: string): string {
+  if (slug.includes("arena"))    return "arena";
+  if (slug.includes("cypher"))   return "cypher";
+  if (slug.includes("producer")) return "producer";
+  if (slug.includes("battle"))   return "battle";
+  if (slug.includes("vip"))      return "vip";
+  if (slug.includes("listening") || slug.includes("party")) return "listening";
+  if (slug.includes("idol"))     return "gameshow";
+  return "lobby";
+}
+
+const CHAT_RUNTIME_STATE: RoomRuntimeState = "LIVE_SHOW";
+
+// Real chat only — no fake seed messages presented as real participants
+// (LEGACY-ROOMS-03 purge, 2026-09-24). Chat starts empty until real users speak.
+
+const GUEST_VIEWER_NAME = "Guest";
+
+/** Local display only — never used as authoritative presence/seat/queue id. */
+function isAuthenticatedViewerId(id: string): boolean {
+  return Boolean(id) && id !== "guest" && !id.startsWith("guest-");
+}
+
+function mapSeatState(seat: LobbySeat): TheaterSeat["visualState"] {
+  if (seat.state === "reserved" && seat.occupantName?.toLowerCase().includes("host")) return "host";
+  if (seat.state === "bot-held") return "speaker";
+  if (seat.state === "reserved") return "reserved";
+  if (seat.zone === "vip" && seat.state === "empty") return "vip";
+  if (seat.state === "occupied") return "occupied";
+  return "open";
+}
+
+function mapQueueState(slot: QueueSlot): LobbyQueueEntry["state"] {
+  if (slot.status === "done") return "complete";
+  if (slot.status === "on-stage") return "live";
+  if (slot.status === "next-up" || slot.status === "staging") return "onDeck";
+  return "waiting";
+}
+
+export default function LobbyTheaterShell({ slug: rawSlug, mode = "room", autoSeat = false, isPerformer = false }: LobbyTheaterShellProps) {
+  const slug = getCanonicalRoomSlug(rawSlug);
+  const canonicalRoomSlug = slug;
+  const [seatMap, setSeatMap] = useState<LobbySeatMap>(() => createSeatMap(slug));
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [presence, setPresence] = useState(() => createInitialPresence());
+  const [reactionCount, setReactionCount] = useState(0);
+  const [tipTotal, setTipTotal] = useState(0);
+  const [queueVersion, setQueueVersion] = useState(0);
+  const [idleBeat, setIdleBeat] = useState(0);
+  // Display-only until /api/auth/session resolves a real user id.
+  // Never share one authoritative "guest" id across browsers for presence/seats.
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [viewerName, setViewerName] = useState(GUEST_VIEWER_NAME);
+  const [sessionResolved, setSessionResolved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { user?: { id?: string; name?: string; email?: string } } | null) => {
+        if (cancelled) return;
+        if (data?.user?.id && isAuthenticatedViewerId(data.user.id)) {
+          setViewerId(data.user.id);
+          setViewerName(data.user.name ?? data.user.email ?? data.user.id);
+        } else {
+          setViewerId(null);
+          setViewerName(GUEST_VIEWER_NAME);
+        }
+        setSessionResolved(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setViewerId(null);
+          setViewerName(GUEST_VIEWER_NAME);
+          setSessionResolved(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ── Arena / AudienceScene state ───────────────────────────────────────────
+  const venueIndex = useMemo(() => slugToVenue(slug), [slug]);
+  const [arenaView, setArenaView] = useState<"fan" | "performer">(isPerformer ? "performer" : "fan");
+  const [audienceReactions, setAudienceReactions] = useState(0);
+
+  // ── Auto-seat when fan clicks JOIN from the lobby wall ────────────────────
+  useEffect(() => {
+    if (!autoSeat) return;
+    setSeatMap((prev) => {
+      const openSeat = prev.seats.find((s) => s.state === "empty");
+      if (!openSeat) return prev;
+      setSelectedSeatId(openSeat.id);
+      return claimSeatEngine(prev, openSeat.id, "You");
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSeat]);
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  const chatEngine = useMemo(() => new RoomChatEngine(slugToChatRoomId(canonicalRoomSlug), CHAT_RUNTIME_STATE), [canonicalRoomSlug]);
+  const [chatMessages, setChatMessages] = useState<RoomChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setChatMessages(chatEngine.getMessages());
+  }, [chatEngine]);
+
+  const overflowEntries = useMemo<OverflowRailEntry[]>(() =>
+    chatMessages.map(m => ({
+      id: m.id, message: m, role: m.role, displayName: m.displayName,
+      text: m.text, timestamp: m.timestampMs, isNew: false,
+    })), [chatMessages]);
+
+  const historyByUser = useMemo(() =>
+    chatMessages.reduce<Record<string, RoomChatMessage[]>>((acc, m) => {
+      acc[m.userId] = [...(acc[m.userId] ?? []), m]; return acc;
+    }, {}), [chatMessages]);
+
+  const handleChatSubmit = useCallback(() => {
+    const text = chatInput.trim();
+    if (!text) return;
+    try {
+      chatEngine.pushMessage({ userId: "viewer-local", displayName: "You", role: "audience", text });
+      setChatMessages(chatEngine.getMessages());
+    } catch { /* safety blocker */ }
+    setChatInput("");
+    chatInputRef.current?.focus();
+  }, [chatEngine, chatInput]);
+
+  // ── Presence Heartbeat — authenticated identity only (no shared Guest id) ─
+  useEffect(() => {
+    if (!sessionResolved || !viewerId || !isAuthenticatedViewerId(viewerId)) {
+      return;
+    }
+    const pingHeartbeat = () => {
+      fetch("/api/rooms/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: canonicalRoomSlug, userId: viewerId }),
+      }).catch(console.error);
+    };
+
+    pingHeartbeat();
+    const heartbeatInterval = setInterval(pingHeartbeat, 15000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      fetch("/api/rooms/heartbeat", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: canonicalRoomSlug, userId: viewerId }),
+        keepalive: true,
+      }).catch(console.error);
+    };
+  }, [canonicalRoomSlug, viewerId, sessionResolved]);
+
+  useEffect(() => {
+    setSeatMap(createSeatMap(canonicalRoomSlug));
+    setSelectedSeatId(null);
+  }, [canonicalRoomSlug]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPresence((prev) => startCountdown(prev));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIdleBeat((prev) => prev + 1);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // Truthful empty queue — no fabricated performers to fill it (LEGACY-ROOMS-04 purge, 2026-09-24)
+  }, [canonicalRoomSlug]);
+
+  const queueSnapshot = useMemo(() => getQueueSnapshot(canonicalRoomSlug), [canonicalRoomSlug]);
+
+  const seats = useMemo<TheaterSeat[]>(
+    () =>
+      seatMap.seats.map((seat) => ({
+        id: seat.id,
+        row: seat.row,
+        index: seat.index,
+        occupantName: seat.occupantName,
+        visualState: mapSeatState(seat),
+      })),
+    [seatMap],
+  );
+
+  const queueEntries = useMemo<LobbyQueueEntry[]>(
+    () =>
+      queueSnapshot.slots.map((slot) => ({
+        slotId: slot.slotId,
+        performerId: slot.performerId,
+        performerName: slot.performerName,
+        state: mapQueueState(slot),
+        readyTimerLabel: slot.status === "next-up" ? "ready now" : undefined,
+        failedEntryCount: 0,
+      })),
+    [queueSnapshot],
+  );
+
+  const occupancyCount = useMemo(
+    () => seats.filter((seat) => seat.visualState === "occupied" || seat.visualState === "host" || seat.visualState === "speaker").length,
+    [seats],
+  );
+  const occupancyPercent = useMemo(() => Math.round((occupancyCount / Math.max(1, seats.length)) * 100), [occupancyCount, seats.length]);
+  const shareCount = Math.round(reactionCount * 0.4);
+  const attendanceRetention = Math.max(0, Math.min(100, occupancyPercent));
+  const roomHeat = (presence.activeUsers + reactionCount + tipTotal + shareCount + attendanceRetention) / 5;
+
+  const queueDepth = queueEntries.filter((entry) => entry.state !== "complete").length;
+
+  // ── LobbyFeedBus — single-source state for all billboard surfaces ─────────
+  const roomName = slug.replace(/-/g, " ").toUpperCase();
+  const liveEntry = useMemo(() => queueEntries.find((e) => e.state === "live"), [queueEntries]);
+  const activePerformer = useMemo(
+    () => liveEntry?.performerName ?? queueEntries.find((e) => e.state === "onDeck")?.performerName ?? "—",
+    [liveEntry, queueEntries],
+  );
+  const lobbyStatus = useMemo<LobbyBillboardStatus>(
+    () => (liveEntry ? "LIVE" : presence.countdownSeconds > 0 ? "PRE-SHOW" : "QUEUE OPEN"),
+    [liveEntry, presence.countdownSeconds],
+  );
+  const currentEvent = useMemo(
+    () =>
+      liveEntry
+        ? `${liveEntry.performerName} — LIVE`
+        : presence.countdownSeconds > 0
+          ? `SHOW IN ${presence.countdownSeconds}s`
+          : queueEntries.length > 0
+            ? `Next: ${queueEntries[0].performerName}`
+            : "PRE-SHOW",
+    [liveEntry, presence.countdownSeconds, queueEntries],
+  );
+  const roomRanking = useMemo(() => Math.max(1, Math.round(roomHeat / 10)), [roomHeat]);
+
+  useEffect(() => {
+    emitLobbyFeedState({
+      slug,
+      title: roomName,
+      performer: activePerformer,
+      occupancy: occupancyCount,
+      occupancyPct: occupancyPercent,
+      currentEvent,
+      status: lobbyStatus,
+      ranking: roomRanking,
+      roomType: slugToRoomType(slug),
+      heat: roomHeat,
+    });
+  }, [slug, roomName, activePerformer, occupancyCount, occupancyPercent, currentEvent, lobbyStatus, roomRanking, roomHeat]);
+
+  function claimSeat(seatId: string) {
+    setSeatMap((prev) => claimSeatEngine(prev, seatId, viewerName));
+  }
+
+  function releaseSeat(seatId: string) {
+    setSeatMap((prev) => releaseSeatEngine(prev, seatId));
+  }
+
+  function joinQueue(performerId: string, performerName: string) {
+    if (!performerId || !performerName) return;
+    joinQueueEngine(slug, performerId, performerName, 5);
+    setQueueVersion((prev) => prev + 1);
+  }
+
+  function leaveQueue(performerId: string) {
+    if (!performerId) return;
+    removeFromQueue(slug, performerId);
+    setQueueVersion((prev) => prev + 1);
+  }
+
+  function nextPerformer() {
+    advanceQueue(slug);
+    setQueueVersion((prev) => prev + 1);
+  }
+
+  function hostOverride() {
+    advanceQueue(slug);
+    setQueueVersion((prev) => prev + 1);
+  }
+
+  function failedEntry(performerId: string) {
+    removeFromQueue(slug, performerId);
+    setQueueVersion((prev) => prev + 1);
+  }
+
+  function sendReaction(type: LobbyReactionType) {
+    const mappedType =
+      type === "mic" ? "heart" : type === "crown" ? "star" : type === "shock" ? "fire" : type;
+    setPresence((prev) => sendReactionEngine(prev, mappedType));
+    setReactionCount((prev) => prev + 1);
+  }
+
+  function sendTip(amount: number) {
+    setPresence((prev) => sendTipEngine(prev, amount));
+    setTipTotal((prev) => prev + amount);
+  }
+
+  const selectedSeat = seats.find((seat) => seat.id === selectedSeatId) ?? null;
+  const selectedSeatInteraction = selectedSeat ? getLobbyIdleInteraction(selectedSeat, idleBeat) : null;
+  const idleSummary = useMemo(() => summarizeLobbyIdleInteractions(seats, idleBeat), [idleBeat, seats]);
+
+  const venueType = slugToVenueType(slug);
+  const venueAsset = getVenueAsset(venueType);
+
+  return (
+    <RoomEnvironmentLayer
+      venueType={venueType}
+      mode="audience"
+      energyLevel={lobbyStatus === 'LIVE' ? 0.8 : 0.35}
+      style={{ minHeight: '100vh' }}
+    >
+    <main style={{ minHeight: "100vh", padding: 20 }}>
+      <header style={{ maxWidth: 1360, margin: "0 auto 14px", color: "#f1e8ff" }}>
+        <div style={{ fontSize: 11, color: venueAsset.accentColor, letterSpacing: 2, textTransform: "uppercase" }}>{venueAsset.tagline}</div>
+        <h1 style={{ margin: "6px 0 8px", fontSize: 31, color: venueAsset.accentColor }}>{venueAsset.label}</h1>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <Link href="/lobbies" style={{ color: "#b8e9ff", textDecoration: "underline", fontSize: 12 }}>Lobby Directory</Link>
+          {mode === "room" ? <span style={{ color: "#dbcdf2", fontSize: 12 }}>Room: {roomName}</span> : null}
+          <span style={{ color: "#dbcdf2", fontSize: 12 }}>Viewer: {viewerName}</span>
+        </div>
+        {/* Main billboard — rotates: featured article / live cypher / performer / sponsor */}
+        <div style={{ marginTop: 8 }}>
+          <LobbyMainBillboard />
+        </div>
+        {/* Billboard: entrance — mirrors live room state across full header width */}
+        <div style={{ marginTop: 6 }}>
+          <LobbyBillboardSurface variant="entrance" slug={slug} />
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 1360, margin: "0 auto", display: "grid", gap: 12 }}>
+        {/* Billboard: hanging screen — strip above stage viewport */}
+        <LobbyBillboardSurface variant="hanging" slug={slug} />
+
+        {/* Stage + chat bubble overlay */}
+        <div style={{ position: "relative" }}>
+          <LobbyStageViewport
+            roomName={roomName}
+            countdownSeconds={presence.countdownSeconds}
+            activeUsers={presence.activeUsers}
+            vipUsers={presence.vipUsers}
+            queueDepth={queueDepth}
+            occupancyPercent={occupancyPercent}
+          />
+          <RoomChatBubbleLayer messages={chatMessages} state={CHAT_RUNTIME_STATE} viewerDistance="mid" seed={7} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 0.9fr) minmax(420px, 1.4fr) minmax(300px, 0.9fr)", gap: 12, alignItems: "start" }}>
+          {/* Left column: wall monitor billboard above queue rail */}
+          <div style={{ display: "grid", gap: 12 }}>
+            <LobbyBillboardSurface variant="wall" slug={slug} />
+            <LobbyQueueRail
+              entries={queueEntries}
+              onJoinQueue={joinQueue}
+              onLeaveQueue={leaveQueue}
+              onNextPerformer={nextPerformer}
+              onHostOverride={hostOverride}
+              onFailedEntry={failedEntry}
+              showAdminControls
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {/* ── 3D Arena / AudienceScene ─────────────────────────────── */}
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510", position: "relative" }}>
+              {/* Arena header + view toggle */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2020", display: "inline-block", animation: "tmiLivePulse 1s ease-in-out infinite" }} />
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.16em" }}>
+                    LIVE ARENA — {["THEATER","ARENA","CLUB","OUTDOOR","BOARDROOM"][venueIndex]}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => setArenaView("fan")}
+                    style={{ padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer", border: "none", background: arenaView === "fan" ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.04)", color: arenaView === "fan" ? "#00FFFF" : "rgba(255,255,255,0.35)", outline: arenaView === "fan" ? "1px solid rgba(0,255,255,0.4)" : "1px solid rgba(255,255,255,0.08)" }}
+                  >👥 FAN VIEW</button>
+                  <button
+                    onClick={() => setArenaView("performer")}
+                    style={{ padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer", border: "none", background: arenaView === "performer" ? "rgba(255,45,170,0.18)" : "rgba(255,255,255,0.04)", color: arenaView === "performer" ? "#FF2DAA" : "rgba(255,255,255,0.35)", outline: arenaView === "performer" ? "1px solid rgba(255,45,170,0.4)" : "1px solid rgba(255,255,255,0.08)" }}
+                  >🎤 STAGE VIEW</button>
+                </div>
+              </div>
+              <AudienceScene
+                view={arenaView}
+                venue={venueIndex}
+                watcherCount={presence.activeUsers}
+                hideControls={false}
+                onReaction={() => {
+                  setAudienceReactions((n) => n + 1);
+                  sendReaction("fire");
+                }}
+              />
+              
+              {/* Interactive Fan Overlays */}
+              {arenaView === "fan" && selectedSeat && (
+                <div style={{ position: "absolute", bottom: 20, right: 20, zIndex: 20 }}>
+                  <SeatUpgradeWidget roomId={slug} compact />
+                </div>
+              )}
+              {/* Reaction count bubble */}
+              {audienceReactions > 0 && (
+                <div style={{ padding: "4px 12px", background: "rgba(0,0,0,0.5)", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "right" }}>
+                  {audienceReactions} crowd reaction{audienceReactions !== 1 ? "s" : ""} sent
+                </div>
+              )}
+            </div>
+
+            <LobbySeatGrid seats={seats} selectedSeatId={selectedSeatId} onSelectSeat={setSelectedSeatId} />
+            <section style={{ borderRadius: 14, border: "1px solid #624590", background: "#160d25", padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ color: "#9f7dd6", fontSize: 11, textTransform: "uppercase", letterSpacing: 1.2 }}>Selected Seat</div>
+                <div style={{ color: "#f1e8ff", fontSize: 18, fontWeight: 800, marginTop: 4 }}>{selectedSeat?.id ?? "None"}</div>
+                <div style={{ color: "#cdb9eb", fontSize: 12, marginTop: 2 }}>{selectedSeat?.occupantName ?? "Choose a seat to claim or release."}</div>
+                <div style={{ color: "#8ef3d7", fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 8 }}>
+                  {selectedSeatInteraction ? `${selectedSeatInteraction.emoji} ${selectedSeatInteraction.label}` : idleSummary.headline}
+                </div>
+                <div style={{ color: "#a7f3d0", fontSize: 11, marginTop: 2 }}>
+                  {selectedSeatInteraction ? selectedSeatInteraction.detail : idleSummary.detail}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => (selectedSeatId ? claimSeat(selectedSeatId) : undefined)}
+                  disabled={!selectedSeatId || selectedSeat?.visualState !== "open"}
+                  style={{ borderRadius: 10, border: "1px solid #74c8ff", background: "#173b59", color: "#d7efff", padding: "8px 12px", cursor: !selectedSeatId || selectedSeat?.visualState !== "open" ? "not-allowed" : "pointer", opacity: !selectedSeatId || selectedSeat?.visualState !== "open" ? 0.45 : 1 }}
+                >
+                  Claim Seat
+                </button>
+                <button
+                  onClick={() => (selectedSeatId ? releaseSeat(selectedSeatId) : undefined)}
+                  disabled={!selectedSeatId || selectedSeat?.visualState === "open" || selectedSeat?.visualState === "host"}
+                  style={{ borderRadius: 10, border: "1px solid #b9839f", background: "#4d2034", color: "#ffd8e6", padding: "8px 12px", cursor: !selectedSeatId || selectedSeat?.visualState === "open" || selectedSeat?.visualState === "host" ? "not-allowed" : "pointer", opacity: !selectedSeatId || selectedSeat?.visualState === "open" || selectedSeat?.visualState === "host" ? 0.45 : 1 }}
+                >
+                  Release Seat
+                </button>
+              </div>
+            </section>
+            <LobbyPreviewBillboard
+              roomHeat={roomHeat}
+              occupancyPercent={occupancyPercent}
+              queueDepth={queueDepth}
+              reactionCount={reactionCount}
+              tipTotal={tipTotal}
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {/* Billboard: side — compact right-column panel */}
+            <LobbyBillboardSurface variant="side" slug={slug} />
+            <LobbyTipRail onSendTip={sendTip} tipTotal={tipTotal} />
+            <LobbyReactionRail onSendReaction={sendReaction} reactionCount={reactionCount} />
+            <PerformerFeedbackPanel messages={chatMessages} state={CHAT_RUNTIME_STATE} />
+            <ModeratorShield incoming={chatMessages.slice(-20)} historyByUser={historyByUser} />
+          </div>
+        </div>
+
+        {/* Overflow rail */}
+        <CrowdChatOverflowPanel
+          entries={overflowEntries}
+          unreadCount={0}
+          isOpen={overflowOpen}
+          onToggle={() => setOverflowOpen(v => !v)}
+          density={chatMessages.length}
+        />
+
+        {/* Chat input */}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input
+            ref={chatInputRef}
+            type="text"
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSubmit(); } }}
+            placeholder="Say something..."
+            maxLength={240}
+            style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, color: "#f1e8ff", fontSize: 13, outline: "none" }}
+          />
+          <button
+            type="button"
+            onClick={handleChatSubmit}
+            style={{ padding: "10px 20px", background: "rgba(159,125,214,0.18)", border: "1px solid #9f7dd6", borderRadius: 10, color: "#c9b6f0", fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", cursor: "pointer" }}
+          >
+            SEND
+          </button>
+        </div>
+      </div>
+    </main>
+    </RoomEnvironmentLayer>
+  );
+}

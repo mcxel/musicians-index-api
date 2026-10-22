@@ -1,0 +1,1016 @@
+/**
+ * Elastic 24/7 Anchor Room Network — permanent Live Lobby Wall rooms.
+ *
+ * Locked model (Marcel): 12 anchors always on the wall (even at 0 humans).
+ * Overflow rooms spawn only from real capacity signals; anchors never shut down.
+ * Support agents never inflate human viewers / votes / rankings / revenue (Rule 20).
+ *
+ * Assembles onto LiveRoomEngine + DiscoveryPublisher — not a parallel venue runtime.
+ */
+
+import {
+  ensureLiveRoom,
+  getLiveRoom,
+  type LiveRoom,
+  type LiveRoomType,
+} from "@/lib/live/LiveRoomEngine";
+import { getLivePresenceSnapshot } from "@/lib/live/LivePresenceEngine";
+import { getVenueSupportState } from "@/lib/venues/VenueSupportPresenceEngine";
+import {
+  publishLiveRoom,
+  type PublishLiveRoomInput,
+} from "@/lib/discovery/DiscoveryPublisher";
+import type { LiveDiscoveryCategory, LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
+import type { LiveRoomRecord } from "@/lib/broadcast/BroadcastQueueRegistry";
+import {
+  getCapacityForFamily,
+  type AnchorRoomFamily,
+  type AnchorRoomCapacity,
+} from "@/lib/live/AnchorRoomCapacityMatrix";
+import {
+  CYPHER_IDLE_ROTATION_POOL,
+  buildCypherOpenCallCopy,
+  getCypherDefinitionByStyle,
+} from "@/lib/cypher/CypherDefinition";
+import {
+  CHALLENGE_IDLE_ROTATION_POOL,
+  buildChallengeOpenCallCopy,
+  getAiMusicChallengeDefinition,
+} from "@/lib/challenge/ChallengeDefinition";
+import {
+  GAUNTLET_IDLE_ROTATION_POOL,
+  buildGauntletOpenCallCopy,
+  getGauntletDefinitionByStyle,
+} from "@/lib/gauntlet/GauntletDefinition";
+import {
+  BATTLE_SECTION_ROTATION_POOL,
+  PERFORMER_STYLE_LABEL,
+  encodeCalloutBatch,
+  formatCypherTripleCallout,
+  formatVsTripleCallout,
+  pickUnlikeStyleBatch,
+  styleVsCallout,
+  type PerformerStyleSlot,
+} from "@/lib/competition/PerformerStyleSlots";
+import { resolvePlaylistLoungeJoinHref } from "@/lib/venue-hud/loungeContainer";
+import {
+  COMPETITION_EVENT_WINDOW_MS,
+  getCompetitionEventWindow,
+  hashRoomId,
+  runCompetitionRestartLoop,
+  resetRoomCompetitionWindow,
+} from "@/lib/live/CompetitionRestartLoop";
+
+export type { AnchorRoomFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
+
+// ── Observatory control knobs (read path — not a full admin redesign) ─────────
+
+export const ANCHOR_NETWORK_CONTROLS = {
+  /** Soft capacity before overflow consideration (humans only). */
+  overflowHumanThreshold: 40,
+  /** Soft queue depth before overflow consideration (humans only). */
+  overflowQueueThreshold: 8,
+  /** Idle featured-category rotation window (ms) — canonical 15-min staggered event window. */
+  idleCategoryRotateMs: COMPETITION_EVENT_WINDOW_MS,
+  /** Anchors always listed on Live Lobby Wall. */
+  anchorsAlwaysOnWall: true,
+  /** Overflow spawn requires real LivePresence capacity — not RoomPopulationEngine seeds. */
+  overflowRequiresRealPresence: true,
+  /** Day-one capacity matrix source */
+  capacityMatrix: "lib/live/AnchorRoomCapacityMatrix.ts",
+} as const;
+
+export type AnchorNetworkControlSnapshot = typeof ANCHOR_NETWORK_CONTROLS & {
+  anchorCount: number;
+  overflowWired: boolean;
+  overflowNote: string;
+};
+
+export function getAnchorNetworkControlSnapshot(): AnchorNetworkControlSnapshot {
+  return {
+    ...ANCHOR_NETWORK_CONTROLS,
+    anchorCount: ANCHOR_ROOM_DEFS.length,
+    overflowWired: true,
+    overflowNote:
+      "Overflow spawns only when LivePresence human viewers/queue exceed capacity matrix knobs. Anchors never cool; only empty overflows cool. RoomPopulationEngine seeds never count.",
+  };
+}
+
+/** Overflow rooms spawned from real human capacity — never fake fill. */
+type OverflowRecord = {
+  roomId: string;
+  parentAnchorId: string;
+  createdAtMs: number;
+  /** Inherits parent anchor matchup batch (same personality). */
+  calloutSlots: PerformerStyleSlot[];
+  calloutCursor: number;
+};
+
+const overflowRegistry = new Map<string, OverflowRecord>();
+let overflowSeq = 0;
+
+// ── Families ─────────────────────────────────────────────────────────────────
+
+/** Aligns with PerformerStyleSlots — battles/cyphers/challenges/gauntlet. */
+export type AnchorCategorySlot = PerformerStyleSlot;
+
+export interface AnchorRoomDef {
+  roomId: string;
+  title: string;
+  family: AnchorRoomFamily;
+  liveRoomType: LiveRoomType;
+  discoveryCategory: LiveDiscoveryCategory;
+  streamCategory: string;
+  accentColor: string;
+  /** Categories that rotate while IDLE (battle / challenge / cypher). */
+  rotationPool?: readonly AnchorCategorySlot[];
+  /** Cypher open-call target when idle. */
+  openCallNeeds?: number;
+  openCallRole?: string;
+}
+
+export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
+  {
+    roomId: "anchor-global-fan-lobby",
+    title: "Global Fan Avatar Lobby",
+    family: "fan_lobby",
+    liveRoomType: "venue",
+    discoveryCategory: "fan_lobbies",
+    streamCategory: "fan_lobby",
+    accentColor: "#00FFFF",
+  },
+  {
+    roomId: "anchor-chill-fan-lobby",
+    title: "Chill Fan Avatar Lobby",
+    family: "fan_lobby",
+    liveRoomType: "venue",
+    discoveryCategory: "fan_lobbies",
+    streamCategory: "fan_lobby",
+    accentColor: "#38bdf8",
+  },
+  {
+    roomId: "anchor-thunder-dome-battle",
+    title: "Thunder Dome Battle",
+    family: "battle",
+    liveRoomType: "battle",
+    discoveryCategory: "battles",
+    streamCategory: "battle",
+    accentColor: "#FF2DAA",
+    rotationPool: BATTLE_SECTION_ROTATION_POOL,
+  },
+  {
+    roomId: "anchor-open-genre-battle",
+    title: "Open Genre Battle Arena",
+    family: "battle",
+    liveRoomType: "battle",
+    discoveryCategory: "battles",
+    streamCategory: "battle",
+    accentColor: "#FF6B35",
+    rotationPool: BATTLE_SECTION_ROTATION_POOL,
+  },
+  {
+    roomId: "anchor-freestyle-cypher",
+    title: "Multi-Style Cypher",
+    family: "cypher",
+    liveRoomType: "cypher",
+    discoveryCategory: "cyphers",
+    streamCategory: "cypher",
+    accentColor: "#AA2DFF",
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
+    openCallNeeds: 3,
+    openCallRole: "performers",
+  },
+  {
+    roomId: "anchor-rotating-genre-cypher",
+    title: "Rotating Genre Cypher",
+    family: "cypher",
+    liveRoomType: "cypher",
+    discoveryCategory: "cyphers",
+    streamCategory: "cypher",
+    accentColor: "#c084fc",
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
+    openCallNeeds: 4,
+    openCallRole: "performers",
+  },
+  {
+    roomId: "anchor-open-mic-cypher",
+    title: "Open Mic Cypher",
+    family: "cypher",
+    liveRoomType: "cypher",
+    discoveryCategory: "cyphers",
+    streamCategory: "cypher",
+    accentColor: "#00FFFF",
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
+    openCallNeeds: 3,
+    openCallRole: "performers",
+  },
+  {
+    roomId: "anchor-song-challenge-lab",
+    title: "Work Challenge Lab",
+    family: "song_challenge",
+    liveRoomType: "contest",
+    discoveryCategory: "challenges",
+    streamCategory: "challenge",
+    accentColor: "#FFD700",
+    rotationPool: CHALLENGE_IDLE_ROTATION_POOL,
+    openCallNeeds: 2,
+    openCallRole: "works",
+  },
+  {
+    roomId: "anchor-rotating-creative-challenge",
+    title: "Rotating Creative Challenge",
+    family: "creative_challenge",
+    liveRoomType: "contest",
+    discoveryCategory: "challenges",
+    streamCategory: "challenge",
+    accentColor: "#FFAB00",
+    rotationPool: CHALLENGE_IDLE_ROTATION_POOL,
+    openCallNeeds: 2,
+    openCallRole: "works",
+  },
+  {
+    roomId: "anchor-ai-music-challenge",
+    title: "AI Music Challenge",
+    family: "creative_challenge",
+    liveRoomType: "contest",
+    discoveryCategory: "challenges",
+    streamCategory: "challenge",
+    accentColor: "#7C3AED",
+    rotationPool: ["ai_music"] as const,
+    openCallNeeds: 2,
+    openCallRole: "AI works",
+  },
+  {
+    roomId: "anchor-musical-gauntlet",
+    title: "TMI Musical Gauntlet",
+    family: "battle",
+    liveRoomType: "battle",
+    discoveryCategory: "battles",
+    streamCategory: "battle",
+    accentColor: "#FFD700",
+    rotationPool: GAUNTLET_IDLE_ROTATION_POOL,
+    openCallNeeds: 8,
+    openCallRole: "competitors",
+  },
+  {
+    roomId: "anchor-playlist-listening-lounge",
+    title: "Playlist Listening Lounge",
+    family: "playlist_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "listening",
+    streamCategory: "listening",
+    accentColor: "#00FF88",
+  },
+  {
+    roomId: "anchor-chill-conversation-lounge",
+    title: "Chill Conversation Lounge",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#7a5cff",
+  },
+  {
+    roomId: "anchor-science-lounge",
+    title: "Science Lounge",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#00E5FF",
+  },
+  {
+    roomId: "anchor-music-lounge",
+    title: "Music Lounge",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#AA2DFF",
+  },
+  {
+    roomId: "anchor-dating-lounge",
+    title: "Dating Lounge (21+)",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#FF2DAA",
+  },
+  {
+    roomId: "anchor-world-dance-room",
+    title: "World Dance Room",
+    family: "dance",
+    liveRoomType: "event",
+    discoveryCategory: "dance",
+    streamCategory: "dance",
+    accentColor: "#FF1493",
+  },
+  {
+    roomId: "anchor-deal-or-feud-variety",
+    title: "Deal or Feud / Variety Room",
+    family: "variety",
+    liveRoomType: "contest",
+    discoveryCategory: "games",
+    streamCategory: "game",
+    accentColor: "#FFD700",
+  },
+];
+
+const CATEGORY_LABEL: Record<string, string> = { ...PERFORMER_STYLE_LABEL };
+
+// ── Runtime state (idle rotation + lock) ──────────────────────────────────────
+
+export interface AnchorRuntimeState {
+  roomId: string;
+  featuredCategory: AnchorCategorySlot | null;
+  categoryLocked: boolean;
+  lockedAtMs: number | null;
+  lastRotatedAtMs: number;
+  /** Staggered 15-min window index (UTC + hash offset). */
+  windowIndex: number;
+  /** Battle/Challenge recruiting: up to 3 like-with-like matchups. */
+  calloutSlots: PerformerStyleSlot[];
+  calloutCursor: number;
+  /** Honest human queue depth when a real queue publisher wires in — else 0. */
+  humanQueueCount: number;
+  /** Optional now-playing label from a real playlist publisher only. */
+  nowPlayingLabel: string | null;
+}
+
+const runtime = new Map<string, AnchorRuntimeState>();
+
+function defaultCategory(def: AnchorRoomDef): AnchorCategorySlot | null {
+  return def.rotationPool?.[0] ?? null;
+}
+
+function usesEventWindows(def: AnchorRoomDef): boolean {
+  return (
+    def.family === "battle" ||
+    def.family === "cypher" ||
+    def.family === "song_challenge" ||
+    def.family === "creative_challenge" ||
+    def.family === "variety"
+  );
+}
+
+function usesTripleCallout(def: AnchorRoomDef): boolean {
+  return (
+    def.family === "battle" ||
+    def.family === "cypher" ||
+    def.family === "song_challenge" ||
+    def.family === "creative_challenge"
+  );
+}
+
+function usesVsPairCallout(def: AnchorRoomDef): boolean {
+  return (
+    def.family === "battle" ||
+    def.family === "song_challenge" ||
+    def.family === "creative_challenge"
+  );
+}
+
+/** Battle/Challenge 3-at-a-time vs-pair recruiting (alias for typecheck/call sites). */
+function usesVsTripleCallout(def: AnchorRoomDef): boolean {
+  return usesVsPairCallout(def);
+}
+
+function familyRoomKind(def: AnchorRoomDef): string {
+  if (def.roomId.includes("gauntlet")) return "gauntlet";
+  if (def.family === "cypher") return "cypher";
+  if (def.family === "song_challenge" || def.family === "creative_challenge") return "challenge";
+  if (def.family === "variety") return "game";
+  return "battle";
+}
+
+function seedCalloutBatch(
+  def: AnchorRoomDef,
+): { slots: PerformerStyleSlot[]; cursor: number; featured: AnchorCategorySlot | null } {
+  const pool = def.rotationPool;
+  if (!pool?.length) {
+    return { slots: [], cursor: 0, featured: defaultCategory(def) };
+  }
+  const cursor = hashRoomId(def.roomId) % pool.length;
+  const batch = pickUnlikeStyleBatch(pool, cursor);
+  return {
+    slots: batch.slots,
+    cursor: batch.nextCursor,
+    featured: null,
+  };
+}
+
+function getOrInitRuntime(def: AnchorRoomDef): AnchorRuntimeState {
+  let state = runtime.get(def.roomId);
+  if (!state) {
+    const window = getCompetitionEventWindow(def.roomId);
+    const seeded = seedCalloutBatch(def);
+    state = {
+      roomId: def.roomId,
+      featuredCategory: seeded.featured,
+      categoryLocked: false,
+      lockedAtMs: null,
+      lastRotatedAtMs: window.startMs,
+      windowIndex: window.index,
+      calloutSlots: seeded.slots,
+      calloutCursor: seeded.cursor,
+      humanQueueCount: 0,
+      nowPlayingLabel: null,
+    };
+    runtime.set(def.roomId, state);
+  }
+  return state;
+}
+
+/** Lock featured category when queue/joins are forming (honest human queue > 0). */
+export function lockAnchorCategory(roomId: string): void {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  if (!def) return;
+  const state = getOrInitRuntime(def);
+  state.categoryLocked = true;
+  state.lockedAtMs = Date.now();
+}
+
+export function unlockAnchorCategory(roomId: string): void {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  if (!def) return;
+  const state = getOrInitRuntime(def);
+  state.categoryLocked = false;
+  state.lockedAtMs = null;
+}
+
+/** Set honest human queue depth (never invent). Locks category when > 0. */
+export function setAnchorHumanQueue(roomId: string, humanQueueCount: number): void {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  if (!def) return;
+  const state = getOrInitRuntime(def);
+  state.humanQueueCount = Math.max(0, Math.round(humanQueueCount));
+  if (state.humanQueueCount > 0) {
+    state.categoryLocked = true;
+    state.lockedAtMs = state.lockedAtMs ?? Date.now();
+  } else if (state.categoryLocked && state.humanQueueCount === 0) {
+    state.categoryLocked = false;
+    state.lockedAtMs = null;
+  }
+}
+
+/** Wire a real now-playing label from playlist engines only — never fabricate track names. */
+export function setAnchorNowPlaying(roomId: string, label: string | null): void {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  if (!def || def.family !== "playlist_lounge") return;
+  const state = getOrInitRuntime(def);
+  const trimmed = (label ?? "").trim();
+  state.nowPlayingLabel = trimmed.length > 0 ? trimmed : null;
+}
+
+function maybeRotateIdle(def: AnchorRoomDef, state: AnchorRuntimeState, now: number): void {
+  if (!usesEventWindows(def) && !def.rotationPool?.length) return;
+  const window = getCompetitionEventWindow(def.roomId, now);
+  if (state.windowIndex === window.index) return;
+
+  const occupied = state.categoryLocked || state.humanQueueCount > 0;
+  if (occupied) {
+    // Keep current matchup while people are in-room; do not share a global expiry.
+    state.windowIndex = window.index;
+    state.lastRotatedAtMs = window.startMs;
+    return;
+  }
+
+  // Empty window end → RESET → SHUFFLE → next 3 (or next style) → RECRUITING.
+  // This room only — reset its independent clock so peers are unaffected (Rule 38).
+  runCompetitionRestartLoop({
+    venueSlug: def.roomId,
+    roomKind: familyRoomKind(def),
+  });
+  resetRoomCompetitionWindow(def.roomId, now);
+
+  const pool = def.rotationPool;
+  if (pool?.length) {
+    if (usesTripleCallout(def)) {
+      const batch = pickUnlikeStyleBatch(pool, state.calloutCursor);
+      state.calloutSlots = batch.slots;
+      state.calloutCursor = batch.nextCursor;
+      state.featuredCategory = null;
+    } else {
+      const idx = Math.max(0, pool.indexOf(state.featuredCategory as AnchorCategorySlot));
+      state.featuredCategory = pool[(idx + 1) % pool.length] ?? pool[0];
+      state.calloutSlots = state.featuredCategory ? [state.featuredCategory] : [];
+    }
+  }
+
+  // Fresh independent window for THIS room only (index 0 after epoch reset).
+  state.windowIndex = 0;
+  state.lastRotatedAtMs = now;
+}
+
+export function getAnchorRuntimeState(roomId: string): AnchorRuntimeState | undefined {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  if (!def) return undefined;
+  const state = getOrInitRuntime(def);
+  maybeRotateIdle(def, state, Date.now());
+  return { ...state };
+}
+
+export function isAnchorRoomId(roomId: string): boolean {
+  return ANCHOR_ROOM_DEFS.some((d) => d.roomId === roomId);
+}
+
+// ── Family-distinct card copy (honest — never fake humans / challenger names) ─
+
+function categoryLabel(slot: AnchorCategorySlot | null | undefined): string {
+  if (!slot) return "Open";
+  return CATEGORY_LABEL[slot] ?? slot.replace(/_/g, " ");
+}
+
+function isSessionOccupied(state: AnchorRuntimeState, humanParticipants: number): boolean {
+  return state.categoryLocked || state.humanQueueCount > 0 || humanParticipants > 0;
+}
+
+function isBatchRecruiting(def: AnchorRoomDef, state: AnchorRuntimeState): boolean {
+  return usesTripleCallout(def) && state.calloutSlots.length > 1;
+}
+
+/**
+ * Mosaic / panel overlay — no viewer counts. Battle/Challenge: 3 vs-pairs while recruiting;
+ * Cypher stays collaborative (Country Cypher), not vs-pair.
+ */
+export function buildAnchorCastOverlay(
+  def: AnchorRoomDef,
+  state: AnchorRuntimeState,
+  humanParticipants: number,
+): { recruiting: boolean; overlay: string } {
+  const occupied = isSessionOccupied(state, humanParticipants);
+  const recruiting = isBatchRecruiting(def, state) || !occupied;
+  const style = categoryLabel(state.featuredCategory);
+  const slots =
+    state.calloutSlots.length > 0
+      ? state.calloutSlots
+      : state.featuredCategory
+        ? [state.featuredCategory]
+        : [];
+
+  if (def.family === "cypher") {
+    const line =
+      recruiting && slots.length > 1
+        ? formatCypherTripleCallout(slots)
+        : `${style} Cypher`;
+    return {
+      recruiting,
+      overlay: recruiting ? `LOOKING FOR PERFORMERS · ${line}` : `LIVE · ${line}`,
+    };
+  }
+
+  if (usesVsTripleCallout(def)) {
+    if (!recruiting) {
+      return {
+        recruiting: false,
+        overlay: `LIVE · ${styleVsCallout(state.featuredCategory ?? slots[0])}`,
+      };
+    }
+    const triples = slots.length > 0 ? formatVsTripleCallout(slots) : styleVsCallout(state.featuredCategory);
+    return { recruiting: true, overlay: `LOOKING FOR · ${triples}` };
+  }
+
+  if (def.family === "playlist_lounge") {
+    return {
+      recruiting: false,
+      overlay: state.nowPlayingLabel ? `LIVE · ${state.nowPlayingLabel}` : "ALWAYS OPEN · Playlist Lounge",
+    };
+  }
+  if (def.family === "conversation_lounge") {
+    return { recruiting: false, overlay: "ALWAYS OPEN · Lounge" };
+  }
+  if (def.family === "fan_lobby") {
+    return { recruiting: false, overlay: "ALWAYS OPEN · Fan Lobby" };
+  }
+  if (def.family === "dance") {
+    return {
+      recruiting,
+      overlay: recruiting ? "LOOKING FOR PERFORMERS · World Dance" : "LIVE · World Dance",
+    };
+  }
+  if (def.family === "variety") {
+    return {
+      recruiting,
+      overlay: recruiting ? "LOOKING FOR PERFORMERS · Deal or Feud" : "LIVE · Deal or Feud",
+    };
+  }
+
+  return {
+    recruiting,
+    overlay: recruiting ? `LOOKING FOR PERFORMERS · ${def.title}` : `LIVE · ${def.title}`,
+  };
+}
+
+export function buildAnchorStatusLine(
+  def: AnchorRoomDef,
+  state: AnchorRuntimeState,
+  humanViewers: number,
+  humanParticipants: number,
+): string {
+  const humans = `👤 ${humanViewers} human${humanViewers === 1 ? "" : "s"}`;
+  const cat = categoryLabel(state.featuredCategory);
+
+  switch (def.family) {
+    case "battle": {
+      if (def.roomId.includes("gauntlet")) {
+        const gDef = getGauntletDefinitionByStyle(state.featuredCategory ?? "open_genre");
+        return `${buildGauntletOpenCallCopy({
+          styleSlot: state.featuredCategory,
+          needsCompetitors: def.openCallNeeds ?? gDef?.needsCompetitors ?? 8,
+          openCallRole: def.openCallRole ?? gDef?.openCallRole,
+          waitingCount: state.humanQueueCount,
+          locked: state.categoryLocked || state.humanQueueCount > 0,
+        })} · ${humans}`;
+      }
+      if (state.categoryLocked || state.humanQueueCount > 0) {
+        return `LOCKED: ${cat} · Performer vs performer · Queue ${state.humanQueueCount} · ${humans}`;
+      }
+      return `Featured: ${cat} · Performer vs performer · Open · ${humans}`;
+    }
+    case "song_challenge": {
+      const songOnly = def.roomId.includes("song");
+      return `${buildChallengeOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsWorks: def.openCallNeeds ?? 2,
+        openCallRole: def.openCallRole ?? (songOnly ? "songs" : "works"),
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+        songOnly,
+      })} · ${humans}`;
+    }
+    case "creative_challenge": {
+      const aiLane = def.roomId.includes("ai-music") || state.featuredCategory === "ai_music";
+      if (aiLane) {
+        const ai = getAiMusicChallengeDefinition();
+        return `${buildChallengeOpenCallCopy({
+          styleSlot: "ai_music",
+          needsWorks: ai.needsWorks,
+          openCallRole: ai.openCallRole,
+          locked: state.categoryLocked || state.humanQueueCount > 0,
+          aiLane: true,
+        })} · ${humans}`;
+      }
+      return `${buildChallengeOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsWorks: def.openCallNeeds ?? 2,
+        openCallRole: def.openCallRole ?? "works",
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+      })} · ${humans}`;
+    }
+    case "cypher": {
+      const styleDef = getCypherDefinitionByStyle(state.featuredCategory ?? "open_genre");
+      const need = def.openCallNeeds ?? styleDef?.needsPerformers ?? 3;
+      const role = def.openCallRole ?? styleDef?.openCallRole ?? "performers";
+      return `${buildCypherOpenCallCopy({
+        styleSlot: state.featuredCategory,
+        needsPerformers: need,
+        openCallRole: role,
+        humanJoined: humanParticipants,
+        locked: state.categoryLocked || state.humanQueueCount > 0,
+      })} · ${humans}`;
+    }
+    case "playlist_lounge": {
+      if (state.nowPlayingLabel) {
+        return `Now Playing: ${state.nowPlayingLabel} · ${humans}`;
+      }
+      return `Always open · Waiting for the next track · ${humans}`;
+    }
+    case "conversation_lounge":
+      return `Open 24/7 · Voice & video · Ambient · ${humans}`;
+    case "fan_lobby":
+      return `Avatar lobby · Always open · ${humans} · cap ${getCapacityForFamily(def.family).humanViewersMax}`;
+    case "dance":
+      return `World Dance · Floor open · ${humans} · cap ${getCapacityForFamily(def.family).humanViewersMax}`;
+    case "variety":
+      return `Deal or Feud / Variety · Platform room · ${humans} · cap ${getCapacityForFamily(def.family).humanViewersMax}`;
+    default:
+      return humans;
+  }
+}
+
+// ── Honest occupancy (humans ≠ support) ──────────────────────────────────────
+
+export interface AnchorOccupancy {
+  humanViewers: number;
+  humanParticipants: number;
+  supportAgents: number;
+}
+
+export function getAnchorOccupancy(roomId: string): AnchorOccupancy {
+  const presence = getLivePresenceSnapshot(roomId);
+  // LivePresenceEngine tracks real joins only — never BotCrowdFill as humans.
+  const humanViewers = Math.max(0, presence.fanCount);
+  const humanParticipants = Math.max(0, presence.performerCount + presence.hostCount);
+  let supportAgents = 0;
+  try {
+    supportAgents = Math.max(0, getVenueSupportState(roomId)?.agents.length ?? 0);
+  } catch {
+    supportAgents = 0;
+  }
+  return { humanViewers, humanParticipants, supportAgents };
+}
+
+// ── Seed + publish ───────────────────────────────────────────────────────────
+
+const PLATFORM_HOST_ID = "tmi-platform-anchor";
+
+export function ensureAnchorRoomsSeeded(): LiveRoom[] {
+  const rooms: LiveRoom[] = [];
+  for (const def of ANCHOR_ROOM_DEFS) {
+    getOrInitRuntime(def);
+    const cap = getCapacityForFamily(def.family);
+    const room = ensureLiveRoom({
+      roomId: def.roomId,
+      roomType: def.liveRoomType,
+      title: def.title,
+      hostUserId: PLATFORM_HOST_ID,
+      description: `Permanent 24/7 anchor — ${def.family}`,
+      genre: def.rotationPool?.[0],
+      tags: ["anchor", def.family, "always-on"],
+      forceLive: true,
+      configOverrides: {
+        maxCapacity: cap.humanViewersMax + cap.humanParticipantsMax,
+      },
+    });
+    rooms.push(room);
+  }
+  return rooms;
+}
+
+export function toLiveRoomRecord(def: AnchorRoomDef): LiveRoomRecord {
+  const room = getLiveRoom(def.roomId);
+  const cap = getCapacityForFamily(def.family);
+  return {
+    roomId: def.roomId,
+    roomType:
+      def.liveRoomType === "battle"
+        ? "battle"
+        : def.liveRoomType === "cypher"
+          ? "cypher"
+          : def.liveRoomType === "contest"
+            ? "contest"
+            : def.liveRoomType === "event"
+              ? "event"
+              : "venue",
+    title: def.title,
+    status: room?.status === "live" || room?.status === "open" ? "live" : room?.status ?? "open",
+    genre: getOrInitRuntime(def).featuredCategory ?? undefined,
+    isAnchor: true,
+    anchorFamily: def.family,
+    humanParticipantsMax: cap.humanParticipantsMax,
+    humanViewersMax: cap.humanViewersMax,
+    humanQueueMax: cap.humanQueueMax,
+    supportAgentsMax: cap.supportAgentsMax,
+    vrVisibleSeats: cap.vrVisibleSeats,
+    vrMetaphor: cap.vrMetaphor,
+  };
+}
+
+export function listAnchorLiveRoomRecords(): LiveRoomRecord[] {
+  ensureAnchorRoomsSeeded();
+  return ANCHOR_ROOM_DEFS.map(toLiveRoomRecord);
+}
+
+function toPublishInput(def: AnchorRoomDef): PublishLiveRoomInput {
+  const state = getOrInitRuntime(def);
+  maybeRotateIdle(def, state, Date.now());
+  const occ = getAnchorOccupancy(def.roomId);
+  const cast = buildAnchorCastOverlay(def, state, occ.humanParticipants);
+  const statusLine = cast.overlay;
+
+  return {
+    roomId: def.roomId,
+    title: def.title,
+    hostName: "TMI",
+    hostUserId: PLATFORM_HOST_ID,
+    countryCode: "ZZ",
+    category: def.streamCategory,
+    visibility: "public",
+    humanViewerCount: occ.humanViewers,
+    accentColor: def.accentColor,
+    joinRoute: buildAnchorJoinRoute(def, state, cast.recruiting),
+    joinGate: "none",
+    experienceId: `anchor:${def.family}`,
+    startedAt: getLiveRoom(def.roomId)?.createdAtMs ?? Date.now(),
+    listed: true,
+    statusLine,
+    isAnchor: true,
+    anchorFamily: def.family,
+    featuredCategory:
+      cast.recruiting && state.calloutSlots.length > 1
+        ? undefined
+        : (state.featuredCategory ?? undefined),
+    calloutSlots: state.calloutSlots.length > 0 ? [...state.calloutSlots] : undefined,
+    categoryLocked: state.categoryLocked,
+    recruiting: cast.recruiting,
+    castOverlay: cast.overlay,
+  };
+}
+
+function buildAnchorJoinRoute(
+  def: AnchorRoomDef,
+  state: AnchorRuntimeState,
+  recruiting: boolean,
+): string {
+  if (def.family === "playlist_lounge" || def.family === "conversation_lounge") {
+    return resolvePlaylistLoungeJoinHref(def.roomId, { from: "anchor-network" });
+  }
+  const base = `/live/rooms/${encodeURIComponent(def.roomId)}?from=anchor-network`;
+  if (!recruiting || state.calloutSlots.length === 0) return base;
+  return `${base}&eligibleStyles=${encodeURIComponent(encodeCalloutBatch(state.calloutSlots))}&recruiting=open`;
+}
+
+function listOverflowsForAnchor(anchorRoomId: string): OverflowRecord[] {
+  return [...overflowRegistry.values()].filter((o) => o.parentAnchorId === anchorRoomId);
+}
+
+function publishOverflowDiscovery(def: AnchorRoomDef, overflowRoomId: string): LiveDiscoveryRecord | null {
+  const occ = getAnchorOccupancy(overflowRoomId);
+  const ov = overflowRegistry.get(overflowRoomId);
+  const calloutSlots = ov?.calloutSlots ?? [];
+  const recruiting = calloutSlots.length > 1;
+  const cast = buildAnchorCastOverlay(
+    def,
+    {
+      roomId: overflowRoomId,
+      featuredCategory: recruiting ? null : (calloutSlots[0] ?? null),
+      categoryLocked: false,
+      lockedAtMs: null,
+      lastRotatedAtMs: Date.now(),
+      windowIndex: 0,
+      calloutSlots,
+      calloutCursor: ov?.calloutCursor ?? 0,
+      humanQueueCount: 0,
+      nowPlayingLabel: null,
+    },
+    occ.humanParticipants,
+  );
+  const joinBase = `/live/rooms/${encodeURIComponent(overflowRoomId)}?from=anchor-overflow&parent=${encodeURIComponent(def.roomId)}`;
+  const joinRoute =
+    recruiting && calloutSlots.length > 0
+      ? `${joinBase}&eligibleStyles=${encodeURIComponent(encodeCalloutBatch(calloutSlots))}&recruiting=open`
+      : joinBase;
+  return publishLiveRoom({
+    roomId: overflowRoomId,
+    title: `${def.title} · Overflow`,
+    hostName: `Overflow of ${def.title}`,
+    hostUserId: PLATFORM_HOST_ID,
+    countryCode: "ZZ",
+    category: def.streamCategory,
+    visibility: "public",
+    humanViewerCount: occ.humanViewers,
+    accentColor: def.accentColor,
+    joinRoute,
+    joinGate: "none",
+    experienceId: `anchor-overflow:${def.family}`,
+    startedAt: ov?.createdAtMs ?? Date.now(),
+    listed: true,
+    statusLine: cast.overlay,
+    isAnchor: false,
+    anchorFamily: def.family,
+    calloutSlots: calloutSlots.length > 0 ? [...calloutSlots] : undefined,
+    recruiting: cast.recruiting,
+    castOverlay: cast.overlay,
+  });
+}
+
+/** Build discovery records for all anchors + active overflows (honest 0 humans when empty). */
+export function getAnchorDiscoveryRecords(): LiveDiscoveryRecord[] {
+  ensureAnchorRoomsSeeded();
+  coolEmptyOverflowRooms();
+  const out: LiveDiscoveryRecord[] = [];
+  for (const def of ANCHOR_ROOM_DEFS) {
+    const input = toPublishInput(def);
+    const published = publishLiveRoom(input);
+    if (published) out.push(published);
+    for (const ov of listOverflowsForAnchor(def.roomId)) {
+      const pub = publishOverflowDiscovery(def, ov.roomId);
+      if (pub) out.push(pub);
+    }
+  }
+  return out;
+}
+
+/**
+ * Overflow spawn — real LivePresence + capacity matrix only (Rule 20).
+ * Anchors stay permanently; overflow rooms mint when humans hit thresholds.
+ * Returns an existing under-capacity overflow when possible.
+ */
+export function maybeSpawnOverflowRoom(anchorRoomId: string): LiveRoom | null {
+  if (!isAnchorRoomId(anchorRoomId)) return null;
+  if (!ANCHOR_NETWORK_CONTROLS.overflowRequiresRealPresence) return null;
+
+  const occ = getAnchorOccupancy(anchorRoomId);
+  const state = getAnchorRuntimeState(anchorRoomId);
+  const queue = state?.humanQueueCount ?? 0;
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === anchorRoomId);
+  if (!def) return null;
+  const cap = getCapacityForFamily(def.family);
+  const viewerThresh = cap.humanViewersMax;
+  const participantThresh = cap.humanParticipantsMax;
+  const roomFull =
+    occ.humanViewers >= viewerThresh || occ.humanParticipants >= participantThresh;
+  // Elastic scale-out: seed fills + ≥2 contestants waiting who don't fit.
+  const overCapacity = roomFull && queue >= 2;
+
+  if (!overCapacity) return null;
+
+  // Reuse an overflow that still has capacity (honest occupancy).
+  for (const ov of listOverflowsForAnchor(anchorRoomId)) {
+    const ovOcc = getAnchorOccupancy(ov.roomId);
+    if (ovOcc.humanViewers < viewerThresh) {
+      return getLiveRoom(ov.roomId) ?? null;
+    }
+  }
+
+  overflowSeq += 1;
+  const overflowRoomId = `${anchorRoomId}-ov-${overflowSeq}`;
+  const parentState = getOrInitRuntime(def);
+  const room = ensureLiveRoom({
+    roomId: overflowRoomId,
+    roomType: def.liveRoomType,
+    title: `${def.title} — Overflow ${overflowSeq}`,
+    hostUserId: PLATFORM_HOST_ID,
+    description: `Overflow of permanent anchor ${def.roomId} — cools when empty; anchor stays`,
+    tags: ["overflow", "anchor-child", def.family],
+    forceLive: true,
+    configOverrides: {
+      maxCapacity: cap.humanViewersMax + cap.humanParticipantsMax,
+    },
+  });
+  overflowRegistry.set(overflowRoomId, {
+    roomId: overflowRoomId,
+    parentAnchorId: anchorRoomId,
+    createdAtMs: Date.now(),
+    calloutSlots: [...parentState.calloutSlots],
+    calloutCursor: parentState.calloutCursor,
+  });
+  publishOverflowDiscovery(def, overflowRoomId);
+  return room;
+}
+
+/** Only overflow rooms cool when empty — anchors never shut down. */
+export function coolEmptyOverflowRooms(): number {
+  let closed = 0;
+  for (const [id, ov] of [...overflowRegistry.entries()]) {
+    if (isAnchorRoomId(id)) continue;
+    const occ = getAnchorOccupancy(id);
+    if (occ.humanViewers === 0 && occ.humanParticipants === 0) {
+      const room = getLiveRoom(id);
+      if (room && room.status !== "closed") {
+        // leave room record; discovery unlist via registry delete
+      }
+      overflowRegistry.delete(id);
+      closed += 1;
+    }
+  }
+  return closed;
+}
+
+export function listOverflowCandidates(): Array<{
+  anchorRoomId: string;
+  humanViewers: number;
+  humanQueueCount: number;
+  wouldSpawn: boolean;
+  reason: string;
+  activeOverflows: number;
+}> {
+  return ANCHOR_ROOM_DEFS.map((def) => {
+    const occ = getAnchorOccupancy(def.roomId);
+    const queue = getOrInitRuntime(def).humanQueueCount;
+    const cap = getCapacityForFamily(def.family);
+    const roomFull =
+      occ.humanViewers >= cap.humanViewersMax ||
+      occ.humanParticipants >= cap.humanParticipantsMax;
+    const would = roomFull && queue >= 2;
+    const activeOverflows = listOverflowsForAnchor(def.roomId).length;
+    return {
+      anchorRoomId: def.roomId,
+      humanViewers: occ.humanViewers,
+      humanQueueCount: queue,
+      wouldSpawn: would,
+      activeOverflows,
+      reason: would
+        ? activeOverflows > 0
+          ? `Over capacity — ${activeOverflows} overflow room(s) active`
+          : "Over capacity — next join/poll will mint overflow"
+        : "Below overflow knobs — anchor only",
+    };
+  });
+}
+
+export function getActiveOverflowRooms(): OverflowRecord[] {
+  return [...overflowRegistry.values()];
+}
+
+
+
+/** Observatory / admin read path — full capacity matrix for all anchor families. */
+export function listAnchorCapacityMatrix(): AnchorRoomCapacity[] {
+  return ANCHOR_ROOM_DEFS.map((d) => getCapacityForFamily(d.family));
+}
+
+export function getAnchorCapacity(roomId: string): AnchorRoomCapacity | null {
+  const def = ANCHOR_ROOM_DEFS.find((d) => d.roomId === roomId);
+  return def ? getCapacityForFamily(def.family) : null;
+}

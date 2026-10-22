@@ -1,0 +1,162 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import ArtistStats from '@/components/artist/ArtistStats';
+import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
+import ArtistCommandRail from '@/components/artist/ArtistCommandRail';
+import ArtistRevenueRail from '@/components/artist/ArtistRevenueRail';
+import ArtistShowRail from '@/components/artist/ArtistShowRail';
+import ArtistBackstageRail from '@/components/artist/ArtistBackstageRail';
+import ArtistPulseRail from '@/components/artist/ArtistPulseRail';
+import ArtistTipRail from '@/components/artist/ArtistTipRail';
+import Link from 'next/link';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
+
+export default function ArtistHubPage() {
+  const [showState, setShowState] = useState<ArtistShowState>('closed');
+  const [artistSlug, setArtistSlug] = useState('me');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { user?: { id?: string; name?: string; email?: string } }) => {
+        if (d?.user) {
+          setArtistSlug(d.user.id ?? 'me');
+          setDisplayName(d.user.name?.trim() || 'artist');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  function advanceShow(state: ArtistShowState) {
+    setShowState(nextShowState(state));
+  }
+
+  return (
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 16px 64px', color: '#e2e8f0' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 10, color: '#00FFFF', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 6 }}>Artist Command Deck</div>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>@{displayName || 'artist'}</h1>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
+            Live show control · revenue · tips · setlist · backstage · pulse
+          </p>
+        </div>
+
+        {/* Stats row */}
+        <ArtistStats
+          followers={{ kind: "NOT_INSTRUMENTED" }}
+          views={{ kind: "NOT_INSTRUMENTED" }}
+          verified={null}
+          genres={[]}
+        />
+
+        {/* Main grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+
+          {/* Left column */}
+          <div>
+            {/* Live curtain control */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Live Show</SectionLabel>
+              <ArtistCurtainShell
+                showState={showState}
+                showTitle="Crown Night Vol.4"
+                onStateChange={advanceShow}
+              />
+            </div>
+
+            {/* Revenue rail */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Revenue This Month</SectionLabel>
+              <ArtistRevenueRail />
+            </div>
+
+            {/* Show schedule */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Show Schedule</SectionLabel>
+              <ArtistShowRail />
+            </div>
+
+            {/* Pulse (fan activity feed) */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Fan Pulse</SectionLabel>
+              <ArtistPulseRail />
+            </div>
+
+            {/* Tips */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Tips Received</SectionLabel>
+              <ArtistTipRail artistSlug={artistSlug} mode="received" />
+            </div>
+          </div>
+
+          {/* Right sidebar */}
+          <div>
+            {/* Command rail (signal + quick actions) */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Command Rail</SectionLabel>
+              <ArtistCommandRail showState={showState} slug={artistSlug} onStateChange={advanceShow} />
+            </div>
+
+            {/* Backstage crew */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Backstage</SectionLabel>
+              <ArtistBackstageRail />
+            </div>
+
+            {/* Quick analytics links */}
+            <div style={{ marginBottom: 20 }}>
+              <SectionLabel>Analytics</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { label: 'Full Analytics Dashboard', href: `/artists/${artistSlug}/analytics`, color: '#00FFFF' },
+                  { label: 'Revenue Report',            href: `/artists/${artistSlug}/analytics?tab=revenue`, color: '#FFD700' },
+                  { label: 'Audience Retention',        href: `/artists/${artistSlug}/analytics?tab=retention`, color: '#AA2DFF' },
+                  { label: 'Beat Performance',          href: `/artists/${artistSlug}/analytics?tab=beats`, color: '#FF2DAA' },
+                ].map(link => (
+                  <Link key={link.href} href={link.href} style={{ textDecoration: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', border: `1px solid ${link.color}22`, borderRadius: 8, padding: '10px 14px' }}>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{link.label}</span>
+                      <span style={{ fontSize: 12, color: link.color }}>→</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Notifications placeholder */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>
+                Notifications
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                Activity is not available.
+              </div>
+            </div>
+          </div>
+        </div>
+      <div style={{ marginTop: 24 }}>
+        <LiveMediaWall
+          roomId="artist-hub"
+          title="LIVE ROOMS — HAPPENING NOW"
+          mode="spotlight"
+          nodeCount={6}
+          accentColor="#00FFFF"
+          enterHref="/live/rooms"
+          compact={false}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800, marginBottom: 10 }}>
+      {children}
+    </div>
+  );
+}
