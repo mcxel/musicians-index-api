@@ -752,71 +752,16 @@ export default function CanonicalDualMonitorStack({
   const [heightBudgetMaxWidth, setHeightBudgetMaxWidth] = useState<number | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    // PHONE PORTRAIT: never cap monitor width from the height budget. On a tall
-    // narrow phone the chrome above the stack (header + direct controls) leaves
-    // little height, and the 16:9 budget equation crushes the monitors into a
-    // ~277px centered strip. Phone monitors use full content width + 16:9 and
-    // scroll vertically instead. Tablet/desktop keep the original budget.
-    if (isPhone) {
-      setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
-      return;
-    }
-    const el = stackWrapperRef.current;
-    if (!el) return;
-
-    const recompute = () => {
-      const rect = el.getBoundingClientRect();
-      // Measure the parent. This element's own width is what the budget writes,
-      // so comparing against rect.width clears the cap on the next observation
-      // and applies it again — a width loop while the stack top is on screen.
-      const naturalWidth = el.parentElement?.clientWidth ?? rect.width;
-      if (naturalWidth <= 0) return;
-
-      // Chrome under the stack this component does not own (bottom drawer
-      // affordance, monitor controls / command bed strip). Conservative
-      // constant since those live in sibling components (CommandCenterMediaStack)
-      // that this fix intentionally does not touch.
-      const BOTTOM_CHROME_RESERVE_PX = 96;
-      const GAP_PX = variant === "chrome" ? 6 : 8;
-
-      const visibleCount = panes.reduce((n, _pane, i) => {
-        const isParked = i === 0 ? frameAPark : frameBPark;
-        const activeMon = (typeof document !== "undefined" ? document.documentElement.getAttribute("data-focused-monitor") : null) || "A";
-        const yieldIdx = activeMon === "B" ? 0 : 1;
-        const isHiddenByRuntime2 = (runtimeLayoutSingle && i === 1) || (yieldSecondaryMonitor && i === yieldIdx);
-        return isParked || isHiddenByRuntime2 ? n : n + 1;
-      }, 0) || 1;
-
-      const availableHeight = window.innerHeight - rect.top - BOTTOM_CHROME_RESERVE_PX;
-      if (availableHeight <= 0) {
-        setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
-        return;
-      }
-
-      const totalGap = (visibleCount - 1) * GAP_PX;
-      const maxWidthFromHeight = ((availableHeight - totalGap) * 16) / (9 * visibleCount);
-
-      if (maxWidthFromHeight > 0 && maxWidthFromHeight < naturalWidth - 1) {
-        const next = Math.floor(maxWidthFromHeight);
-        setHeightBudgetMaxWidth((prev) => (prev === next ? prev : next));
-      } else {
-        setHeightBudgetMaxWidth((prev) => (prev == null ? prev : null));
-      }
-    };
-
-    recompute();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recompute) : null;
-    ro?.observe(el.parentElement ?? el);
-    window.addEventListener("resize", recompute);
-    window.addEventListener("orientationchange", recompute);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", recompute);
-      window.removeEventListener("orientationchange", recompute);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panes.length, frameAPark, frameBPark, runtimeLayoutSingle, yieldSecondaryMonitor, variant, isPhone]);
+    // NEVER cap monitor WIDTH from the height budget. The hub shell already
+    // scrolls vertically (CommandCenterShell overflowY:auto), so crushing the
+    // width to fit height produces a narrow centered strip (~280px) with dead
+    // horizontal margins — the proven physical defect on both phone and
+    // desktop. Monitors use full content width + 16:9-derived height and the
+    // page scrolls. Keep the cap permanently cleared. (Root cause traced via
+    // live DOM: heightBudgetStackStyle margin:0 auto + fixed px width was the
+    // clamp; the former ResizeObserver/recompute body is removed.)
+    setHeightBudgetMaxWidth(null);
+  }, []);
 
   const heightBudgetStackStyle: CSSProperties = heightBudgetMaxWidth
     ? { width: `${heightBudgetMaxWidth}px`, maxWidth: "100%", margin: "0 auto" }
