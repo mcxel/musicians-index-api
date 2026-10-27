@@ -21,6 +21,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -58,12 +67,15 @@ jobs:
       - name: Typecheck apps
         working-directory: tmi-platform
         run: |
-          pnpm -C apps/web exec tsc -p tsconfig.json --noEmit
           pnpm -C packages/db run prisma:generate
+          pnpm -C apps/web exec tsc -p tsconfig.json --noEmit
           pnpm -C apps/api exec tsc -p tsconfig.json --noEmit
 
       - name: Build apps
         working-directory: tmi-platform
+        env:
+          # CI-only heap raise for Next production build OOM (exit 134). Kept out of package.json.
+          NODE_OPTIONS: --max-old-space-size=5120
         run: |
           set -o pipefail
           pnpm -C apps/web build
@@ -139,10 +151,31 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
         run: pnpm -C packages/db exec prisma migrate deploy
 
+      - name: Wait for Redis
+        run: |
+          for i in {1..30}; do
+            if redis-cli -h 127.0.0.1 -p 6379 ping 2>/dev/null | grep -q PONG; then
+              echo "redis ready"
+              exit 0
+            fi
+            # redis-cli may be absent on the runner; fall back to TCP probe
+            if (echo > /dev/tcp/127.0.0.1/6379) >/dev/null 2>&1; then
+              echo "redis port open"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "redis not reachable on 127.0.0.1:6379"
+          exit 1
+
       - name: Start API (e2e)
         working-directory: tmi-platform
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
+          # BullMQ (app.module) reads REDIS_HOST/REDIS_PORT; readyz cache check reads REDIS_URL
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+          REDIS_URL: redis://127.0.0.1:6379
           PORT: "4000"
           CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://127.0.0.1:3001
         run: |
@@ -158,6 +191,7 @@ jobs:
       - name: Start Web (e2e)
         working-directory: tmi-platform
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
           NODE_ENV: production
           NEXTAUTH_SECRET: ci-nextauth-secret
           NEXTAUTH_URL: http://127.0.0.1:3001

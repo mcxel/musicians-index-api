@@ -241,5 +241,39 @@ export function getSessionStats(): {
   };
 }
 
+/**
+ * Whether auth cookies may use the Secure attribute.
+ *
+ * Do NOT key this only on NODE_ENV=production: CI runs ext start\ with
+ * NODE_ENV=production over http://127.0.0.1, and browsers drop Secure cookies
+ * on non-HTTPS → empty jar / missing tmi_session_id in e2e.
+ *
+ * Prefer explicit COOKIE_SECURE, then public URL scheme, then NODE_ENV.
+ */
+export function shouldUseSecureAuthCookies(): boolean {
+  if (process.env.COOKIE_SECURE === 'true') return true;
+  if (process.env.COOKIE_SECURE === 'false') return false;
+  const publicUrl = (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    ''
+  ).trim();
+  if (publicUrl.startsWith('https://')) return true;
+  if (publicUrl.startsWith('http://')) return false;
+  return process.env.NODE_ENV === 'production';
+}
+
+/** Canonical opts for tmi_session_id / tmi_session / role cookies. */
+export function authSessionCookieOpts(overrides?: { httpOnly?: boolean }) {
+  return {
+    httpOnly: overrides?.httpOnly ?? true,
+    secure: shouldUseSecureAuthCookies(),
+    sameSite: 'lax' as const,
+    maxAge: 7 * 24 * 60 * 60,
+    path: '/',
+  };
+}
+
 // Run cleanup every 10 minutes
 setInterval(cleanupExpiredSessions, 10 * 60 * 1000);

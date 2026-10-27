@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import prisma, { isPrismaTableMissingError } from "@/lib/prisma";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
@@ -16,15 +16,20 @@ import {
   purchaseChassisWithPointsDb,
   unequipChassisDb,
 } from "@/lib/artifacts/MediaPlayerOwnershipService";
+import { resolveTierFromDb } from "@/lib/auth/resolveAuthoritativeTier";
 
 async function resolveUserId(req: NextRequest): Promise<string | null> {
-  const email = req.cookies.get("tmi_user_email")?.value;
-  if (!email) return null;
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  return user?.id ?? null;
+  try {
+    const email = req.cookies.get("tmi_user_email")?.value;
+    if (!email) return null;
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    }).catch(() => null);
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Free starters + tier rewards + store SKUs — store UI groups by unlockMethod. */
@@ -71,23 +76,44 @@ function catalogPayload() {
 /** GET — ownership + equipped + store catalog. Provisions free Standard on first access. */
 export async function GET(req: NextRequest) {
   const catalog = catalogPayload();
-  const userId = await resolveUserId(req);
-  if (!userId) {
-    return NextResponse.json({
-      authenticated: false,
-      catalog,
-      ownedChassisIds: ["standard", "tmi_classic", "tmi_dark", "tmi_neon"],
-      equippedChassisId: "standard",
-      pointsBalance: 0,
-    });
-  }
-
-  const state = await getMediaPlayerOwnership(userId);
-  return NextResponse.json({
-    authenticated: true,
+  const defaultFreeState = {
+    authenticated: false,
     catalog,
-    ...state,
-  });
+    ownedChassisIds: ["standard", "tmi_classic", "tmi_dark", "tmi_neon"] as MediaPlayerChassisId[],
+    equippedChassisId: "standard" as MediaPlayerChassisId,
+    pointsBalance: 0,
+  };
+
+  try {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      return NextResponse.json(defaultFreeState);
+    }
+
+    const state = await getMediaPlayerOwnership(userId);
+    return NextResponse.json({
+      authenticated: true,
+      catalog,
+      ...state,
+    });
+  } catch (err: unknown) {
+    if (isPrismaTableMissingError(err, "media_player")) {
+      console.warn(
+        "[api/media-players] MEDIA_PLAYER_DEGRADED_MODE: MEDIA_PLAYER_SCHEMA_UNAVAILABLE in route GET. Returning 200 with starter chassis.",
+      );
+      return NextResponse.json({
+        authenticated: true,
+        catalog,
+        ownedChassisIds: ["standard", "tmi_classic", "tmi_dark", "tmi_neon"] as MediaPlayerChassisId[],
+        equippedChassisId: "standard" as MediaPlayerChassisId,
+        pointsBalance: 0,
+        degradedMode: true,
+        degradedReason: "MEDIA_PLAYER_SCHEMA_UNAVAILABLE",
+      });
+    }
+    console.error("[api/media-players] UNEXPECTED_SERVER_ERROR in GET /api/media-players:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 type Body = {
@@ -136,15 +162,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === "equip") {
-    const cookieTier = (req.cookies.get("tmi_tier")?.value ?? "FREE").toUpperCase() as
-      | "FREE"
-      | "PRO"
-      | "RUBY"
-      | "SILVER"
-      | "GOLD"
-      | "PLATINUM"
-      | "DIAMOND";
-    const result = await equipChassisDb(userId, chassisId, cookieTier);
+    // SECURITY (2026-09-23): previously trusted the client-writable `tmi_tier`
+    // cookie directly, with zero server-side re-verification — a Free user
+    // could forge `tmi_tier=DIAMOND` in devtools and equip a Diamond-exclusive
+    // chassis. Tier is now resolved fresh from the DB via the same honesty-
+    // gated resolver session routes use, so a stale/unverified paid tier row
+    // still can't equip past what's actually verified.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, tier: true },
+    });
+    const verifiedTier = resolveTierFromDb(dbUser?.email ?? "", dbUser?.tier);
+    const result = await equipChassisDb(userId, chassisId, verifiedTier);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 403 });
     }

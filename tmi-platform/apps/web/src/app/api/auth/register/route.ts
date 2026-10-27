@@ -5,21 +5,13 @@ import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { ageYearsFromDateOfBirthIso } from '@/lib/trustSafety/YouthSocialGuard';
 import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
-import { createSession } from '@/lib/auth/SessionManager';
+import { authSessionCookieOpts, createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 import { waitUntil } from '@vercel/functions';
 import { acceptAllRequiredPolicies } from "@/lib/messaging/PolicyAcceptance";
-
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60,
-  path: '/',
-};
 
 type RegisterStage =
   | 'REQUEST_RECEIVED'
@@ -489,18 +481,13 @@ async function ensureUserDatabaseSchema() {
       { status: 201 }
     );
 
+    const COOKIE_OPTS = authSessionCookieOpts();
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
     response.cookies.set('tmi_roles', JSON.stringify(platformRoles), COOKIE_OPTS);  // All roles
     response.cookies.set('tmi_tier', effectiveTier, COOKIE_OPTS);
-    response.cookies.set('tmi_user_email', email, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    });
+    response.cookies.set('tmi_user_email', email, authSessionCookieOpts({ httpOnly: false }));
 
     return response;
   } catch (err) {

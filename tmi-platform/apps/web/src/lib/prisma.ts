@@ -58,6 +58,7 @@ function getPrismaClient(): PrismaClient {
 let schemaHealed = false;
 
 export async function ensureUserDatabaseSchema(): Promise<void> {
+  if (process.env.TMI_FORBID_SCHEMA_HEAL === "1") return;
   if (schemaHealed) return;
   try {
     const client = getPrismaClient();
@@ -92,3 +93,30 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
 });
 
 export default prisma;
+
+
+/**
+ * Detects whether an error thrown by Prisma is specifically a P2021 TableDoesNotExist error.
+ * Allows graceful degraded-mode fallbacks for known unmigrated tables without masking
+ * unexpected database outages, connection errors, or authentication bugs.
+ */
+export function isPrismaTableMissingError(err: unknown, tableName?: string): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; message?: string; meta?: { modelName?: string; table?: string } };
+  const isTableCode = e.code === 'P2021' || e.code === '42P01' || (typeof e.message === 'string' && e.message.includes('P2021'));
+  const mentionsMissingTable = typeof e.message === 'string' && (
+    e.message.includes('does not exist in the current database') ||
+    e.message.includes('does not exist') ||
+    e.message.includes('TableDoesNotExist')
+  );
+  if (isTableCode || mentionsMissingTable) {
+    if (tableName) {
+      const lower = tableName.toLowerCase();
+      const inMsg = typeof e.message === 'string' && e.message.toLowerCase().includes(lower);
+      const inModel = typeof e.meta?.modelName === 'string' && e.meta.modelName.toLowerCase().includes(lower);
+      return inMsg || inModel;
+    }
+    return true;
+  }
+  return false;
+}

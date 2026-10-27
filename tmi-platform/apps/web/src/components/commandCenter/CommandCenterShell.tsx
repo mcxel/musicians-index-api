@@ -348,7 +348,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       const [authRes, profileRes, liveRes, cartRes] = await Promise.allSettled([
         fetch("/api/auth/session", { cache: "no-store", credentials: "include" }),
         fetch("/api/profile/self", { cache: "no-store", credentials: "include" }),
-        fetch("/api/live/go", { cache: "no-store", credentials: "include" }),
+        fetch("/api/live/go?lite=1", { cache: "no-store", credentials: "include" }),
         fetch("/api/cart", { cache: "no-store", credentials: "include" }),
       ]);
 
@@ -478,14 +478,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [
-    inPlaceCategory,
-    inPlaceRoomId,
-    localhostDebugEnabled,
-    mediaRoomId,
-    publishedRoomId,
-    watchSession?.viewers,
-  ]);
+  }, [localhostDebugEnabled]);
 
   // Real audience occupancy on media-player watch path (Fan SOCIAL_LIVE join allowed).
   // Host GO LIVE path skips join — END LIVE remains session authority.

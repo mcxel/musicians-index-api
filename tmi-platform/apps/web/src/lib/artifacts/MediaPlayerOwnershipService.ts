@@ -3,7 +3,7 @@
  * Mirrors VenueSkinCommerce pattern. Playlist Artifact ownership is separate.
  */
 
-import prisma from "@/lib/prisma";
+import prisma, { isPrismaTableMissingError } from "@/lib/prisma";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
@@ -22,6 +22,8 @@ const FREE_STARTER_CHASSIS: MediaPlayerChassisId[] = [
 export type ChassisUnlockVia = "purchase" | "points" | "free" | "tier";
 
 export interface MediaPlayerOwnershipState {
+  degradedMode?: boolean;
+  degradedReason?: string;
   userId: string;
   ownedChassisIds: MediaPlayerChassisId[];
   equippedChassisId: MediaPlayerChassisId;
@@ -48,7 +50,8 @@ export function isStoreListedChassis(chassisId: string): boolean {
 export async function provisionDefaultMediaPlayer(
   userId: string,
 ): Promise<MediaPlayerOwnershipState> {
-  const existing = await prisma.mediaPlayerChassisOwnership.findMany({
+  try {
+    const existing = await prisma.mediaPlayerChassisOwnership.findMany({
     where: { userId },
     select: { chassisId: true },
   });
@@ -113,6 +116,25 @@ export async function provisionDefaultMediaPlayer(
       : FREE_DEFAULT_CHASSIS_ID,
     pointsBalance: wallet?.fanCredits ?? 0,
   };
+  } catch (err) {
+    if (isPrismaTableMissingError(err, "media_player")) {
+      console.warn(
+        "[api/media-players] MEDIA_PLAYER_DEGRADED_MODE: MEDIA_PLAYER_SCHEMA_UNAVAILABLE — returning canonical starter chassis",
+        err,
+      );
+      return {
+        userId,
+        ownedChassisIds: FREE_STARTER_CHASSIS,
+        equippedChassisId: FREE_DEFAULT_CHASSIS_ID,
+        pointsBalance: 0,
+        degradedMode: true,
+        degradedReason: "MEDIA_PLAYER_SCHEMA_UNAVAILABLE",
+      };
+    }
+    // Unexpected database errors must NOT be swallowed!
+    console.error("[api/media-players] UNEXPECTED_DB_ERROR in provisionDefaultMediaPlayer:", err);
+    throw err;
+  }
 }
 
 export async function getMediaPlayerOwnership(
