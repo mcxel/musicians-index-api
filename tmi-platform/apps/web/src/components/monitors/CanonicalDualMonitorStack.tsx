@@ -201,17 +201,37 @@ function MonitorCellGrid({
   animKey?: number;
 }) {
   const { isPhone, isTablet } = useViewportMode();
-  if (split === 1) return <>{children}</>;
 
   const preset = resolveMonitorLayoutPreset(split, isPhone, isTablet);
   const filled: ReactNode[] = [];
   for (let i = 0; i < split; i++) {
-    filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
+    if (i === 0) {
+      filled.push(cells?.[0] ?? children);
+    } else {
+      filled.push(cells?.[i] ?? <StandbyFill key={`empty-${i}`} />);
+    }
+  }
+
+  if (split === 1) {
+    return (
+      <div
+        data-monitor-cell-wrapper="0-0"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
+        {filled[0]}
+      </div>
+    );
   }
 
   return (
     <div
-      key={animKey}
+      data-monitor-grid-split={split}
       style={{
         position: "absolute",
         inset: 0,
@@ -220,7 +240,6 @@ function MonitorCellGrid({
         gridTemplateRows: preset.gridTemplateRows,
         gap: preset.gap,
         background: "#0a0a1a",
-        animation: "monitor-cell-in 0.38s cubic-bezier(0.22,1,0.36,1)",
         width: "100%",
         height: "100%",
         boxSizing: "border-box",
@@ -230,12 +249,12 @@ function MonitorCellGrid({
       {filled.map((cell, i) => (
         <div
           key={i}
+          data-monitor-cell-wrapper={`${animKey ?? 0}-${i}`}
           style={{
             position: "relative",
             overflow: "hidden",
             background: "#030318",
             border: "1px solid #1A1A3A",
-            animation: `monitor-cell-pop 0.32s cubic-bezier(0.22,1,0.36,1) ${i * 28}ms both`,
           }}
         >
           {cell}

@@ -13,7 +13,7 @@
  * revalidateForCheckout() always re-resolves the current canonical price via
  * StoreItemEngine.findStoreItemById before checkout proceeds.
  */
-import prisma from '@/lib/prisma';
+import prisma, { isPrismaTableMissingError } from '@/lib/prisma';
 import { findStoreItemById, type StoreItem } from '@/lib/store/StoreItemEngine';
 
 export interface CartItemView {
@@ -27,6 +27,8 @@ export interface CartItemView {
 }
 
 export interface CartView {
+  degradedMode?: boolean;
+  degradedReason?: 'CART_SCHEMA_UNAVAILABLE' | null;
   items: CartItemView[];
   subtotalCents: number;
   itemCount: number; // sum of quantities — what the cart badge shows
@@ -72,9 +74,26 @@ function buildView(rows: { itemId: string; quantity: number; unitPriceCents: num
 }
 
 export async function getCart(userId: string): Promise<CartView> {
-  const cart = await prisma.cart.findUnique({ where: { userId }, include: { items: true } });
-  if (!cart) return emptyCart();
-  return buildView(cart.items);
+  try {
+    const cart = await prisma.cart.findUnique({ where: { userId }, include: { items: true } });
+    if (!cart) {
+      console.log(`[api/cart] CART_EMPTY: User ${userId} has no active cart items.`);
+      return emptyCart();
+    }
+    return buildView(cart.items);
+  } catch (err: unknown) {
+    if (isPrismaTableMissingError(err, 'cart')) {
+      console.warn('[api/cart] CART_DEGRADED_MODE: CART_SCHEMA_UNAVAILABLE (Prisma P2021 TableDoesNotExist). Serving degraded empty cart.');
+      return {
+        ...emptyCart(),
+        degradedMode: true,
+        degradedReason: 'CART_SCHEMA_UNAVAILABLE',
+      };
+    }
+    // Unexpected database errors must NOT be swallowed!
+    console.error('[api/cart] UNEXPECTED_DB_ERROR in getCart:', err);
+    throw err;
+  }
 }
 
 export async function addItem(userId: string, itemId: string, quantity = 1): Promise<CartView> {

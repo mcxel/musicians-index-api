@@ -1,6 +1,7 @@
 "use client";
 
 import { canBroadcastExternalDestinations } from "@/lib/broadcast/BroadcastCapabilityResolver";
+import { useAuth } from "@/lib/hooks/useAuth";
 import {
   openCanonicalWorkspaceQuick,
   presentCanonicalWorkspace,
@@ -687,6 +688,31 @@ export default function CommandCenterMediaStack({
   const hubInPlaceRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const publishedRoomId = useLivePrivacyState((s) => s.publishedRoomId);
   const hubLiveRoomId = hubInPlaceRoomId ?? publishedRoomId;
+  const auth = useAuth();
+  const sessionUser = auth.user;
+  const activeRoleName = (auth.role ?? role).toUpperCase();
+  const userTier = auth.tier ?? null;
+  const isOperator =
+    activeRoleName === "OPERATOR" ||
+    sessionUser?.role?.toUpperCase() === "OPERATOR";
+  const isAdmin =
+    activeRoleName === "ADMIN" ||
+    activeRoleName === "STAFF" ||
+    activeRoleName === "SUPERADMIN" ||
+    sessionUser?.role?.toUpperCase() === "ADMIN" ||
+    sessionUser?.role?.toUpperCase() === "STAFF" ||
+    sessionUser?.role?.toUpperCase() === "SUPERADMIN";
+  const isLiveOwner = Boolean(hubLiveRoomId || publishedRoomId);
+  const hasBroadcastAuth = isLiveOwner && (userTier === "DIAMOND" || isOperator || isAdmin);
+
+  const canBroadcast = canBroadcastExternalDestinations({
+    activeRole: activeRoleName,
+    tier: userTier,
+    isOperator,
+    isAdmin,
+    isLiveSessionOwner: isLiveOwner,
+    hasBroadcastAuthority: hasBroadcastAuth,
+  });
   const bootPhase = useGoLiveBootstrapStore((s) => s.phase);
   const bootErrorCode = useGoLiveBootstrapStore((s) => s.errorCode);
   const bootErrorMessage = useGoLiveBootstrapStore((s) => s.errorMessage);
@@ -1544,7 +1570,7 @@ export default function CommandCenterMediaStack({
           role={role === "performer" ? "performer" : "fan"}
           compact={compactHubLayout}
         />
-        {canBroadcastExternalDestinations({ activeRole: role }) ? (
+        {canBroadcast ? (
           <div style={{ flex: 1, minWidth: 160 }}>
             <LiveDistributionBezel userId={userId} />
           </div>
