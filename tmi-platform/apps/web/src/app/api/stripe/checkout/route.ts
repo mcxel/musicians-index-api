@@ -6,7 +6,7 @@ import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS, isRealPriceId, reso
 import type { UserTier } from '@/lib/auth/UserStore';
 import { resolveCheckoutMetadataPlan, tierForPriceId } from '@/lib/stripe/tierMapping';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
-import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
+import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerceCatalog';
 import { venueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
 import { MEDIA_PLAYER_CHASSIS_REGISTRY } from '@/lib/artifacts/PlaylistArtifactEngine';
 import {
@@ -20,6 +20,17 @@ import {
 } from '@/lib/tips/tipFulfillment';
 import { getFanCosmetic } from '@/lib/avatars/FanCosmeticCatalog';
 import { findStoreItemByPriceId } from '@/lib/store/StoreItemEngine';
+import { getPointPackBySku } from '@/lib/points/PointPackCatalog';
+import {
+  canAccountPurchaseSeasonPassOffer,
+  isExcludedSeasonPassOfferId,
+  isSeasonPassAccountRoleEligible,
+} from '@/lib/season/SeasonPassEligibility';
+import {
+  resolveDiscoveryBoostStripeKey,
+  type DiscoveryBoostTarget,
+  type DiscoveryBoostTierId,
+} from '@/lib/discovery/DiscoveryBoostEngine';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -55,6 +66,71 @@ function resolveRegionalPriceId(requestedPriceId: string, req: NextRequest): str
 // Used by season pass and credits CTA links — creates a session and redirects
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = req.nextUrl;
+
+  // ─── POINTS PACK (canonical currency, server-resolved) ──────────────────
+  // Fixed 2026-10-04 (TMI Critical Gate: real-money credits fulfillment
+  // convergence). /credits previously linked to priceId=price_credits_* —
+  // not a real Stripe price ID, not registered in STRIPE_PRODUCTS or any
+  // store catalog, so isRealPriceId (below) was always false and this always
+  // fell through to the no-amount placeholder branch, which redirects away
+  // without ever calling Stripe. No real charge was ever possible via that
+  // path. This branch replaces it: price (pack.priceCents) and point grant
+  // (pack.points) come only from the locked PointPackCatalog server-side —
+  // never from a client-supplied amount/quantity — and buyerId is resolved
+  // from the authenticated session cookie, never trusted from the client.
+  // metadata exactly matches the existing, already-shipped webhook branch
+  // (apps/web/src/app/api/stripe/webhook/route.ts: metadata.type ===
+  // 'points_pack' && metadata.packSku && metadata.buyerId ->
+  // grantPointPackFromStripeSession), so no new fulfillment logic is needed.
+  const packSkuParam = searchParams.get('packSku');
+  if (packSkuParam) {
+    if (isStripePaused()) {
+      return NextResponse.redirect(new URL('/credits?notice=stripe-paused', req.url));
+    }
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      return NextResponse.redirect(new URL('/credits?notice=stripe-pending', req.url));
+    }
+    const pack = getPointPackBySku(packSkuParam);
+    if (!pack) {
+      console.warn('[stripe/checkout:GET] Unknown points-pack SKU:', packSkuParam);
+      return NextResponse.redirect(new URL('/credits?notice=price-not-configured', req.url));
+    }
+    const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    const buyer = userEmail
+      ? await prisma.user.findFirst({ where: { email: userEmail.toLowerCase() }, select: { id: true } })
+      : null;
+    if (!buyer) {
+      return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent('/credits')}`, req.url));
+    }
+    try {
+      const session = await stripeClient.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: pack.priceCents,
+            product_data: { name: `${pack.name} — ${pack.points.toLocaleString()} TM Credits` },
+          },
+        }],
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=points_pack&packSku=${pack.sku}`,
+        cancel_url: `${origin}/credits`,
+        allow_promotion_codes: true,
+        customer_email: userEmail,
+        // These three fields are the complete, exact contract the existing
+        // webhook branch checks for — do not add/rename fields here without
+        // updating that branch too.
+        metadata: { type: 'points_pack', packSku: pack.sku, buyerId: buyer.id },
+      });
+      if (!session.url) throw new Error('No session URL returned');
+      return NextResponse.redirect(session.url, 303);
+    } catch (err) {
+      console.error('[stripe/checkout:GET] points-pack session creation failed', err);
+      return NextResponse.redirect(new URL('/credits?notice=checkout-error', req.url));
+    }
+  }
+
   const priceId = searchParams.get('priceId');
   const mode = (searchParams.get('mode') ?? 'subscription') as 'subscription' | 'payment';
 
@@ -104,23 +180,30 @@ export async function GET(req: NextRequest) {
     if (!userEmail) {
       return NextResponse.redirect(new URL('/login?next=/hub/performer/network', req.url));
     }
-    const tierRaw = (searchParams.get('tier') ?? 'spark') as
-      | 'spark'
-      | 'pulse'
-      | 'wave'
-      | 'blast';
-    const tier = ['spark', 'pulse', 'wave', 'blast'].includes(tierRaw) ? tierRaw : 'spark';
-    const target = searchParams.get('target') ?? 'profile';
+    const tierRaw = (searchParams.get('tier') ?? 'entry_299') as DiscoveryBoostTierId;
+    const tier: DiscoveryBoostTierId = ['spark', 'entry_299', 'pulse', 'wave', 'blast'].includes(tierRaw)
+      ? tierRaw
+      : 'entry_299';
+    const targetRaw = (searchParams.get('target') ?? 'profile') as DiscoveryBoostTarget;
+    const validTargets: readonly DiscoveryBoostTarget[] = [
+      'profile',
+      'upcoming_show',
+      'mini_concert',
+      'world_concert',
+      'release',
+      'venue',
+      'booking_availability',
+      'merch',
+      'video_shuffle',
+      'lobby_wall',
+      'yopho_card',
+      'stream_win_radio',
+      'shows_releases',
+    ];
+    const target: DiscoveryBoostTarget = validTargets.includes(targetRaw) ? targetRaw : 'profile';
     const targetRefId = searchParams.get('targetRefId') ?? '';
     const ownerRole = searchParams.get('ownerRole') === 'venue' ? 'venue' : 'performer';
-    const productKey =
-      tier === 'pulse'
-        ? 'DISCOVERY_BOOST_PULSE'
-        : tier === 'wave'
-          ? 'DISCOVERY_BOOST_WAVE'
-          : tier === 'blast'
-            ? 'DISCOVERY_BOOST_BLAST'
-            : 'DISCOVERY_BOOST_SPARK';
+    const productKey = resolveDiscoveryBoostStripeKey(tier, target);
     const catalog = STRIPE_PRODUCTS[productKey];
     try {
       const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
@@ -161,6 +244,7 @@ export async function GET(req: NextRequest) {
 
   if (
     purchaseType === 'boost_lobby_wall' ||
+    purchaseType === 'boost_lobby_wall_299' ||
     purchaseType === 'wdp_submission_boost'
   ) {
     if (isStripePaused()) {
@@ -180,7 +264,10 @@ export async function GET(req: NextRequest) {
     try {
       const buyer = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
       const performerId = buyer?.id ?? userEmail;
-      const catalog = STRIPE_PRODUCTS.LOBBY_WALL_BOOST_24H;
+      const catalog =
+        purchaseType === 'boost_lobby_wall_299'
+          ? STRIPE_PRODUCTS.LOBBY_WALL_PROFILE_BOOST_299
+          : STRIPE_PRODUCTS.LOBBY_WALL_BOOST_24H;
       const isRealBoostPrice = /^price_[A-Za-z0-9]{16,}$/.test(catalog.priceId);
       const lineItem = isRealBoostPrice
         ? { price: catalog.priceId, quantity: 1 as const }
@@ -192,7 +279,12 @@ export async function GET(req: NextRequest) {
               product_data: { name: catalog.name },
             },
           };
-      const boostKind = purchaseType === 'wdp_submission_boost' ? 'wdp_submission' : 'lobby_wall';
+      const boostKind =
+        purchaseType === 'wdp_submission_boost'
+          ? 'wdp_submission'
+          : purchaseType === 'boost_lobby_wall_299'
+            ? 'lobby_wall_299'
+            : 'lobby_wall';
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [lineItem],
@@ -221,6 +313,10 @@ export async function GET(req: NextRequest) {
   const productName = searchParams.get('productName') ?? 'TMI Pass';
   const passType    = searchParams.get('passType') ?? '';
   const amount      = amountStr ? parseInt(amountStr, 10) : null;
+  const isSeasonPassCheckout = Boolean(passType) || purchaseType === 'season_pass';
+  if (isSeasonPassCheckout && isExcludedSeasonPassOfferId(passType)) {
+    return NextResponse.redirect(new URL('/pricing?notice=season-pass-role-ineligible', req.url));
+  }
 
   // metadata.plan = FAN | PERFORMER (account family). Entitlement uses priceId → tier.
   const planKey = resolveCheckoutMetadataPlan(resolvedPriceId, productName);
@@ -229,8 +325,20 @@ export async function GET(req: NextRequest) {
   // Read user email from non-httpOnly cookie set at login/register
   const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
   const buyer = userEmail
-    ? await prisma.user.findFirst({ where: { email: userEmail.toLowerCase() }, select: { id: true } })
+    ? await prisma.user.findFirst({
+        where: { email: userEmail.toLowerCase() },
+        select: { id: true, role: true, activeRole: true },
+      })
     : null;
+  if (isSeasonPassCheckout && buyer) {
+    const accountRole = String(buyer.activeRole ?? buyer.role ?? "");
+    const allowed = passType
+      ? canAccountPurchaseSeasonPassOffer(accountRole, passType)
+      : isSeasonPassAccountRoleEligible(accountRole);
+    if (!allowed) {
+      return NextResponse.redirect(new URL('/pricing?notice=season-pass-role-ineligible', req.url));
+    }
+  }
   const storeCatalogItem = findStoreItemByPriceId(resolvedPriceId);
 
   // Build success URL — include sponsor params so payment-success can auto-attach

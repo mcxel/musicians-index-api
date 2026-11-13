@@ -167,6 +167,10 @@ interface PendingOrder {
   id: string;
   providerPaymentId: string | null;
   buyerUserId: string | null;
+  orderKind?: string | null;
+  refId?: string | null;
+  fulfillmentMetadataJson?: string | null;
+  adActivationStatus?: string | null;
 }
 
 async function reconcileOneOrder(
@@ -205,12 +209,60 @@ async function reconcileOneOrder(
     }
 
     const metadata = session.metadata ?? {};
+    const isAdPurchase =
+      metadata.type === 'ad_purchase' || order.orderKind === 'ad_purchase';
+
+    if (isAdPurchase) {
+      const { ensureAdPurchasePendingActivation } = await import(
+        '@/lib/commerce/AdPurchaseFulfillmentAuthority'
+      );
+      const trail = await ensureAdPurchasePendingActivation({
+        orderId: order.id,
+        prisma,
+        existing: {
+          orderKind: order.orderKind,
+          refId: order.refId,
+          fulfillmentMetadataJson: order.fulfillmentMetadataJson,
+          adActivationStatus: order.adActivationStatus,
+        },
+        stripeMetadata: {
+          type: 'ad_purchase',
+          refId: metadata.refId || order.refId || undefined,
+          creativeUrl: metadata.creativeUrl,
+          startDate: metadata.startDate,
+          productName: metadata.productName,
+          zone: metadata.zone,
+          slotId: metadata.slotId || metadata.refId,
+          buyerEmail: metadata.buyerEmail || metadata.userEmail,
+        },
+      });
+      await prisma.order
+        .update({
+          where: { id: order.id },
+          data: {
+            fulfillmentRetryCount: { increment: 1 },
+            lastFulfillmentAttemptAt: attemptAt,
+            lastFulfillmentError: null,
+          },
+        })
+        .catch(() => {});
+      // STILL_PENDING until human creative review — never auto LIVE.
+      return {
+        orderId: order.id,
+        outcome: 'STILL_PENDING',
+        detail: trail.detail,
+      };
+    }
+
     if (metadata.type !== 'store') {
-      // Real gap, disclosed rather than mis-handled: NFT/ad_purchase honest
-      // stubs also land in PAID_PENDING_FULFILLMENT with the same Order
-      // shape, but have no recovery path of their own yet — this worker
-      // must not attempt to "fulfill" them as if they were store items.
-      return recordAttempt(order.id, attemptAt, 'NOT_APPLICABLE', `metadata.type=${metadata.type ?? 'none'} — not a store order`);
+      // NFT / other non-store kinds remain disclosed NOT_APPLICABLE until
+      // they gain their own durable fulfillment path.
+      return recordAttempt(
+        order.id,
+        attemptAt,
+        'NOT_APPLICABLE',
+        `metadata.type=${metadata.type ?? 'none'} — not a store order`,
+      );
     }
 
     let items: { itemId: string; qty: number }[] = [];
@@ -260,7 +312,15 @@ export async function reconcilePendingStoreOrders(limit = 25): Promise<Reconcile
     where: { status: 'PAID_PENDING_FULFILLMENT' },
     orderBy: { createdAt: 'asc' },
     take: limit,
-    select: { id: true, providerPaymentId: true, buyerUserId: true },
+    select: {
+      id: true,
+      providerPaymentId: true,
+      buyerUserId: true,
+      orderKind: true,
+      refId: true,
+      fulfillmentMetadataJson: true,
+      adActivationStatus: true,
+    },
   });
 
   const results: ReconcileResult[] = [];

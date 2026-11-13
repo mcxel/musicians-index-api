@@ -496,6 +496,60 @@ export const STRIPE_PRODUCTS = {
     interval:  "one_time" as const,
   },
 
+  /**
+   * $2.99 (299 cents) Entry-Level 4-Hour Discovery Boosts across eligible sections
+   * (UniversalFourHourBoostPolicy §16718 — additive; never overwrites higher tiers).
+   */
+  VIDEO_SHUFFLE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_VIDEO_SHUFFLE_BOOST_299 ?? "price_video_shuffle_boost_299",
+    name:      "TMI Video Shuffle — $2.99 Entry Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  LOBBY_WALL_PROFILE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_LOBBY_WALL_PROFILE_BOOST_299 ?? "price_lobby_wall_profile_boost_299",
+    name:      "TMI Live Lobby Wall — $2.99 Profile/Video Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  PERFORMER_PROFILE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_PERFORMER_PROFILE_BOOST_299 ?? "price_performer_profile_boost_299",
+    name:      "TMI Performer Profile Discovery — $2.99 Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  YOPHO_CARD_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_YOPHO_CARD_BOOST_299 ?? "price_yopho_card_boost_299",
+    name:      "TMI YoPho Card Discovery — $2.99 Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  STREAM_WIN_RADIO_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_STREAM_WIN_RADIO_BOOST_299 ?? "price_stream_win_radio_boost_299",
+    name:      "TMI Stream & Win Radio — $2.99 Rotation Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  SHOWS_RELEASES_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_SHOWS_RELEASES_BOOST_299 ?? "price_shows_releases_boost_299",
+    name:      "TMI Shows & Releases — $2.99 Event Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  YOPHO_PROP_PACK_299: {
+    productId: "prod_yopho_customization",
+    priceId:   process.env.STRIPE_PRICE_YOPHO_PROP_PACK_299 ?? "price_yopho_prop_pack_299",
+    name:      "YoPho Card Customization — Props, Borders & Frames Pack",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+
   // ── Media Player chassis (Stage 2 store Rare SKUs ~$2.99) ─────────────────
   // Checkout uses product type MEDIA_PLAYER_CHASSIS + price_data fallback when
   // placeholder price IDs are not yet live in Stripe Dashboard.

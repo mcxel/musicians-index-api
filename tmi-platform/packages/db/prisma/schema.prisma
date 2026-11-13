@@ -189,6 +189,7 @@ model User {
   bookingRequestsAsVenue BookingRequest[]    @relation("VenueBookingRequests")
   bookingOffersAsArtist  BookingOffer[]      @relation("ArtistBookingOffers")
   bookingOffersAsVenue   BookingOffer[]      @relation("VenueBookingOffers")
+  eventAssignments       EventPerformerAssignment[] @relation("PerformerEventAssignments")
 
   // Social Graph
   friendshipsAsRequester Friendship[]         @relation("FriendshipRequester")
@@ -265,6 +266,9 @@ model User {
 
   // Canonical per-user public profile theme + customization config
   publicProfileConfig    PublicProfileConfig?
+
+  // Prisma list back-relation only. PostgreSQL column lives on public_page_heads.owner_user_id.
+  publicPageHeads        PublicPageHead[]
 }
 
 model Account {
@@ -616,6 +620,11 @@ model Event {
   // optional lightweight refund policy JSON for MVP
   refundPolicy Json?
 
+  // Booking convergence & capacity lifecycle
+  inventoryLifecycle InventoryLifecycleStatus @default(PENDING_CAPACITY)
+  assignments        EventPerformerAssignment[]
+  bookingHistory     BookingHistory[]
+
   ticketTypes TicketType[]
   tickets     Ticket[]
 }
@@ -646,7 +655,17 @@ model Order {
   providerPaymentId String? // e.g. stripe payment intent / charge id
   currency          String?
   amountCents       Int?
-  status            String? // PAID | REFUND_PENDING | REFUNDED
+  status            String? // PAID | REFUND_PENDING | REFUNDED | PAID_PENDING_FULFILLMENT
+
+  /// Checkout product family — e.g. ad_purchase | store | tip. Nullable for legacy rows.
+  orderKind String?
+  /// Purchased catalog / slot reference (Stripe metadata.refId). Nullable for legacy rows.
+  refId     String?
+  /// Durable JSON: creativeUrl, startDate, zone, productName, etc. Never invents live ads.
+  fulfillmentMetadataJson String?
+  /// Ad purchases only: PENDING_CREATIVE_REVIEW | AWAITING_ADMIN | APPROVED | REJECTED | LIVE
+  /// LIVE requires human creative review — never auto-set by webhook alone.
+  adActivationStatus String?
 
   /// Fulfillment recovery observability (Lane D Phase 2, 2026-09-02) — set by
   /// EntitlementFulfillmentEngine's reconciliation path when retrying a
@@ -659,14 +678,22 @@ model Order {
   refunds Refund[]
 
   @@index([providerPaymentId])
+  @@index([orderKind, status])
+  @@index([adActivationStatus])
 }
 
-/// Durable Stripe webhook idempotency — event.id (evt_xxx) processed exactly once.
+/// Stripe event receipt. status is not a financial credit.
+/// RECEIVED | PROCESSING | FINANCIAL_CREDIT_RECORDED | PROCESSED | FAILED_RETRYABLE
+/// PROCESSED means the handler finished. A credit is EconomicPayment, not this row.
 model StripeWebhookEvent {
-  id          String   @id @default(cuid())
-  eventId     String   @unique
-  type        String
-  processedAt DateTime @default(now())
+  id              String    @id @default(cuid())
+  eventId         String    @unique
+  type            String
+  status          String    @default("RECEIVED")
+  processedAt     DateTime?
+  processingError String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Ticket {
@@ -1174,6 +1201,10 @@ enum ArticleStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+  // Article Submission Form workflow additions (source-prepared, 2026-10-29).
+  // Submitted into the canonical editorial/review workflow; not yet public.
+  SUBMITTED
+  UNDER_REVIEW
 }
 
 model Article {
@@ -1189,11 +1220,40 @@ model Article {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  // ---- Article Submission Form / interview onboarding (2026-10-29, source-prepared only) ----
+  // The performer/subject this article is ABOUT. Same unenforced-string-FK
+  // convention as AuditLog.targetId: subjectUserId is always the owning
+  // User.id for self-submissions, or the bound subject for writer interviews.
+  // A soft reference keeps the heavily-edited User model free of a new formal
+  // relation (merge-conflict surface) while the app layer guarantees linkage.
+  subjectUserId String?
+  // Writer interview byline — set only when an authorized writer created the
+  // interview for a subject. Null for self-submissions. Never fabricated.
+  writerUserId  String?
+  // Selected Magazine composition/layout key. Persisted at creation so the
+  // SAME article keeps a STABLE layout across loads; variety is ACROSS
+  // articles, not reshuffles of one article. Null until composed.
+  compositionId String?
+  // Interview question/answer + photo records that seeded this article. JSON:
+  //   answers:   [{ questionId, questionText, category, answerText, answeredAt }]
+  //   photoRefs: [{ mediaId, url, caption?, credit?, position, isHero }]
+  //   questionSet: [questionId]  (the persisted five-question selection)
+  interviewData Json?
+  // Free tier => 1 article photo; paid tiers => multi-photo. Resolved server-
+  // side from the canonical subscription entitlement at write time.
+  photoCount    Int     @default(0)
+  // Canonical category for Magazine routing/sections (feature/interview/news/...).
+  articleCategory String @default("feature")
+
   // An article can be generated from a poll snapshot
   pollSnapshot PollSnapshot?
 
   // Back-relation: this article may be an artist's profile article
   artistProfile Artist? @relation("ArtistProfileArticle")
+
+  @@index([subjectUserId])
+  @@index([status, publishedAt])
+  @@index([writerUserId])
 
   @@map("articles")
 }
@@ -1286,6 +1346,183 @@ model EditorialPerformance {
   updatedAt                DateTime @updatedAt @map("updated_at")
 
   @@map("editorial_performance")
+}
+
+// ------------------------------------------------------------------------------
+// Creator Expression Content Spine — canonical authored text (2026-09-16).
+// Same soft-reference convention as ContributorAccount/EditorialSubmission
+// above: authorUserId is an unenforced string FK to User.id, not a formal
+// @relation, to avoid touching the heavily-concurrently-edited User model.
+// First content type: PAGE_WRITING — replaces the non-durable
+// PersonalWritingEntry/personalWritings JSON path (structurally proven to
+// have no persistence destination: dropped by useProfileConfig's client
+// serializer, dropped again by ProfileConfigService's server whitelist, and
+// PublicProfileConfig has no column for it at all). Structure stays
+// extensible to TODAYS_QUOTE, HAPPY_DAYS_REFLECTION, POEM, LETTER,
+// DEDICATION, STORY, ANNOUNCEMENT, PROFILE_QUOTE, HAPPY_DAYS_ARTICLE in
+// later slices — not implemented here.
+// Content owns WHAT WAS AUTHORED only. Profile placement/theme/presentation
+// stays out of this table by design (resolved by the composition layer).
+// DRAFTED 2026-09-16, not yet applied to the database — apps/web/.env.local's
+// DATABASE_URL points at the production Neon host (ep-misty-paper-ai08hmy9),
+// so no migration was run against it this session; schema-only until a safe
+// target exists.
+// ------------------------------------------------------------------------------
+
+enum ContentType {
+  PAGE_WRITING
+}
+
+enum ContentVisibility {
+  PUBLIC
+  FRIENDS
+  PRIVATE
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Content {
+  id              String            @id @default(cuid())
+  authorUserId    String            @map("author_user_id")
+  contentType     ContentType       @map("content_type")
+  title           String?
+  body            String            @db.Text
+  visibility      ContentVisibility @default(PUBLIC)
+  status          ContentStatus     @default(PUBLISHED)
+  /// Nullable daily-period key, reserved for a future TODAYS_QUOTE slice.
+  /// Timezone/day-boundary policy is unresolved — do not populate yet.
+  periodKey       String?           @map("period_key")
+  currentRevision Int               @default(1) @map("current_revision")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  revisions       ContentRevision[]
+  promotions      ContentPromotion[]
+  telemetryEvents ContentTelemetryEvent[]
+
+  @@index([authorUserId, contentType])
+  @@index([authorUserId, contentType, visibility, status])
+  @@map("creator_content")
+}
+
+model ContentRevision {
+  id           String   @id @default(cuid())
+  contentId    String   @map("content_id")
+  content      Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  revision     Int
+  title        String?
+  body         String   @db.Text
+  editorUserId String   @map("editor_user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([contentId, revision])
+  @@index([contentId])
+  @@map("creator_content_revisions")
+}
+
+// ------------------------------------------------------------------------------
+// Content Promotion + Telemetry foundation (2026-09-16, Writer Phase A).
+// Reconciliation found no existing durable Campaign/Promotion model fits —
+// AdCampaign is advertiser/creative-shaped, not content-owner-shaped. This is
+// deliberately generic (ContentPromotion/ContentTelemetryEvent, not
+// WriterPromotion) so any future canonical Content type can reuse it, not
+// just PAGE_WRITING. ownerUserId is a soft string reference to User.id, same
+// convention as Content.authorUserId above (avoids touching the
+// heavily-concurrently-edited User model).
+// Funding type is POINTS | MONEY with NO encoded exchange rate — the points
+// price for any given promotion type remains product policy, never inferred
+// from a dollar amount or vice versa.
+// DRAFTED 2026-09-16, not yet applied to the database — see
+// migrations/20260916010000_add_content_promotion_telemetry for the
+// reviewable artifact; no migration was run against production.
+// ------------------------------------------------------------------------------
+
+enum ContentPromotionFundingType {
+  POINTS
+  MONEY
+}
+
+enum ContentPromotionStatus {
+  CREATED
+  FUNDING_PENDING
+  FUNDED
+  ELIGIBLE
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  INELIGIBLE
+  PAYMENT_FAILED
+  REFUNDED
+}
+
+model ContentPromotion {
+  id               String                       @id @default(cuid())
+  contentId        String                       @map("content_id")
+  content          Content                      @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  ownerUserId      String                       @map("owner_user_id")
+  /// Free-text extensible type, e.g. "writer_article_boost" — not an enum,
+  /// so a future promotion type never requires a schema migration.
+  promotionType    String                       @map("promotion_type")
+  fundingType      ContentPromotionFundingType  @map("funding_type")
+  /// Stripe session/payment id (MONEY) or LedgerEntry id (POINTS) — whichever
+  /// applies for this fundingType. Never both meaningfully populated.
+  fundingReference String?                      @map("funding_reference")
+  cashAmountCents  Int?                         @map("cash_amount_cents")
+  pointsAmount     Int?                         @map("points_amount")
+  status           ContentPromotionStatus       @default(CREATED)
+  startsAt         DateTime?                    @map("starts_at")
+  endsAt           DateTime?                    @map("ends_at")
+  /// Bounded delivery/pacing policy (e.g. max impressions) — structure is
+  /// intentionally open (Json) since real inventory/pacing rules don't exist
+  /// yet; do not treat this as a place to fabricate delivery.
+  deliveryPolicy   Json?                        @map("delivery_policy")
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+
+  telemetryEvents  ContentTelemetryEvent[]
+
+  @@index([ownerUserId])
+  @@index([contentId])
+  @@index([status])
+  @@map("content_promotions")
+}
+
+enum ContentTelemetryEventType {
+  DISCOVERY_IMPRESSION
+  CONTENT_OPEN
+}
+
+model ContentTelemetryEvent {
+  id           String                     @id @default(cuid())
+  contentId    String                     @map("content_id")
+  content      Content                    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  eventType    ContentTelemetryEventType  @map("event_type")
+  /// Null = anonymous viewer (sessionId folded into dedupeKey instead).
+  viewerUserId String?                    @map("viewer_user_id")
+  /// Registered discovery surface identifier (e.g. "writer_spread",
+  /// "magazine_feature") — free text, not yet a closed enum since the real
+  /// surface registry doesn't exist yet.
+  surface      String
+  /// True when viewerUserId equals the Content's authorUserId — excluded
+  /// from any future eligible-performance aggregation, never silently
+  /// dropped from the raw event log.
+  isSelfView   Boolean                    @default(false) @map("is_self_view")
+  promotionId  String?                    @map("promotion_id")
+  promotion    ContentPromotion?          @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  /// Deterministic hash of (contentId+eventType+viewer/session+surface+time
+  /// bucket) — the unique constraint is the actual deduplication mechanism,
+  /// not application-level "check then insert" (race-safe under concurrency).
+  dedupeKey    String                     @unique @map("dedupe_key")
+  createdAt    DateTime                   @default(now()) @map("created_at")
+
+  @@index([contentId, eventType])
+  @@index([contentId, createdAt])
+  @@map("content_telemetry_events")
 }
 
 model PollSnapshot {
@@ -1393,6 +1630,38 @@ model ArtistCommerceProduct {
   @@index([artistId, type])
 }
 
+// ArtistCommerceOwnership — durable buyer-side entitlement for
+// ArtistCommerceProduct purchases (DIGITAL_PRODUCT/LICENSING_PACK/VIP_PASS/
+// OTHER only — MERCH/SHOUTOUT/MEET_AND_GREET remain Order-fulfillment, not
+// ownership). Same runtime-DDL pattern as ArtistCommerceProduct above — see
+// apps/web/src/lib/commerce/ArtistCommerceOwnership.ts for the actual
+// ensure-table SQL and all reads/writes (raw SQL, not the typed client
+// accessor, for the same reason ArtistCommerceCatalog.ts uses raw SQL: this
+// table has no real `prisma migrate` history yet, only its parent does not
+// either). Declared here for documentation/future typed-client use only.
+model ArtistCommerceOwnership {
+  id                String   @id @default(cuid())
+  buyerUserId       String
+  artistId          String
+  productId         String
+  productType       String
+  productTitle      String
+  orderId           String   @unique
+  stripeSessionId   String?
+  stripePaymentId   String?
+  priceCentsPaid    Int
+  currency          String   @default("usd")
+  acquisitionSource String   @default("PURCHASE")
+  status            String   @default("ACTIVE")
+  acquiredAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([buyerUserId])
+  @@index([artistId])
+  @@index([productId])
+}
+
 // -- WALLET & ECONOMY ----------------------------------------------------------
 
 model Wallet {
@@ -1408,6 +1677,90 @@ model Wallet {
   transactions        Transaction[]
   payouts             Payout[]
   walletTransactions  WalletTransaction[]
+  modeBalances        WalletModeBalance[]
+  economicPayments    EconomicPayment[]
+}
+
+/// Post-migration balances isolated by Stripe mode.
+/// Legacy Wallet.availableBalance / pendingBalance / lifetimeEarnings are the
+/// untouched historical aggregate (UNKNOWN until reconciled). They are not the
+/// payout authority and are not rewritten into LIVE.
+model WalletModeBalance {
+  id               String   @id @default(cuid())
+  walletId         String
+  wallet           Wallet   @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  livemode         Boolean
+  availableBalance Int      @default(0)
+  pendingBalance   Int      @default(0)
+  lifetimeEarnings Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([walletId, livemode], map: "wallet_mode_balance_key")
+  @@map("wallet_mode_balances")
+}
+
+/// One economic payment → one credit. Identity is Checkout Session id +
+/// transaction type + Stripe mode. Transaction.stripeId is intentionally not unique.
+model EconomicPayment {
+  id                   String                @id @default(cuid())
+  economicPaymentId    String
+  transactionType      String
+  livemode             Boolean
+  walletId             String
+  wallet               Wallet                @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  status               String
+  priceCents           Int
+  grossCents           Int
+  platformFeeBps       Int
+  platformFeeCents     Int
+  performerShareCents  Int
+  sellerTier           String
+  paymentIntentId      String?
+  chargeId             String?
+  productId            String?
+  committingEventId    String?
+  createdAt            DateTime              @default(now())
+  adjustments          FinancialAdjustment[]
+
+  @@unique([economicPaymentId, transactionType, livemode], map: "economic_payment_identity_key")
+  @@index([paymentIntentId, livemode], map: "economic_payment_payment_intent_idx")
+  @@index([walletId, livemode], map: "economic_payment_wallet_mode_idx")
+  @@map("economic_payments")
+}
+
+model FinancialAdjustment {
+  id                  String          @id @default(cuid())
+  economicPaymentId   String
+  transactionType     String
+  livemode            Boolean
+  payment             EconomicPayment @relation(fields: [economicPaymentId, transactionType, livemode], references: [economicPaymentId, transactionType, livemode], onDelete: Restrict)
+  externalId          String
+  kind                String
+  status              String
+  grossCents          Int
+  performerShareCents Int
+  stripeEventId       String?
+  note                String?
+  createdAt           DateTime        @default(now())
+
+  @@unique([externalId], map: "financial_adjustment_external_id_key")
+  @@index([economicPaymentId, transactionType, livemode], map: "financial_adjustment_payment_idx")
+  @@map("financial_adjustments")
+}
+
+model FinancialIntegrityFlag {
+  id                String   @id @default(cuid())
+  code              String
+  economicPaymentId String
+  transactionType   String
+  livemode          Boolean
+  externalId        String   @default("")
+  detail            String
+  createdAt         DateTime @default(now())
+
+  @@unique([code, economicPaymentId, transactionType, livemode, externalId], map: "financial_integrity_flag_key")
+  @@map("financial_integrity_flags")
 }
 
 model Transaction {
@@ -1419,7 +1772,10 @@ model Transaction {
   fee         Int      @default(0)
   netAmount   Int
   status      String
+  /// Nullable Stripe object id. NOT unique — session, payment intent, and charge ids are different object types.
   stripeId    String?
+  /// True = live, false = test. Null = historical UNKNOWN. Not a uniqueness key and not backfilled to live.
+  livemode    Boolean?
   referenceId String?
   note        String?
   createdAt   DateTime @default(now())
@@ -2956,7 +3312,9 @@ model BookingOffer {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  history BookingHistory?
+  history        BookingHistory?
+  snapshot       BookingEconomicSnapshot?
+  assignment     EventPerformerAssignment?
 
   @@index([artistUserId, status])
   @@index([venueUserId, status])
@@ -2978,11 +3336,16 @@ model BookingHistory {
   eventType      EventType     @default(LOCAL)
   confirmedAt    DateTime      @default(now())
   completedAt    DateTime?
-  cancelledAt    DateTime?
-  note           String?
+  cancelledAt        DateTime?
+  note               String?
+  eventId            String?
+  event              Event?                   @relation(fields: [eventId], references: [id])
+  economicSnapshotId String?                  @unique
+  economicSnapshot   BookingEconomicSnapshot? @relation(fields: [economicSnapshotId], references: [id])
 
   @@index([venueProfileId, eventDate])
   @@index([artistUserId, eventDate])
+  @@index([eventId])
   @@map("booking_history")
 }
 
@@ -3223,6 +3586,8 @@ model WalletTransaction {
   referenceId String
   direction   String   // debit | credit
   status      String   @default("COMPLETED") // COMPLETED | PENDING | REFUNDED
+  /// True = live, false = test. Null = historical UNKNOWN. Not backfilled to live.
+  livemode    Boolean?
   createdAt   DateTime @default(now())
 
   @@map("wallet_transactions")
@@ -3545,6 +3910,110 @@ model PlaylistItem {
   @@map("playlist_items")
 }
 
+/**
+ * Video Shuffle shared station authority (convergence audit, 2026-10-28).
+ * Prepared to replace the module-level `let stationQueue`/`currentTrackIndex` in
+ * app/api/shuffle/route.ts, which is not deployment-safe across multiple server
+ * instances. One row per main genre (station), one row per queued/playing/aired
+ * program entry. Current item is derived from currentEntryId + startedAt +
+ * durationSeconds so join-in-progress position never needs a per-second write.
+ *
+ * SCHEMA PREPARED, NOT APPLIED: no reachable non-production database exists in
+ * this environment (local Docker Postgres unavailable; the only configured
+ * DATABASE_URL points at the live Neon production instance) to run
+ * `prisma migrate dev` against. Do not run migrate deploy against production
+ * without explicit separate authorization. See the hand-authored, unverified
+ * migration SQL at packages/db/prisma/migrations/20261028000000_video_shuffle_station/.
+ */
+model VideoShuffleStation {
+  id             String    @id @default(cuid())
+  /** Reuses PerformerRegistry's PerformerCategory taxonomy — never a separate invented genre list. */
+  mainGenre      String    @unique
+  currentEntryId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  programEntries VideoShuffleProgramEntry[]
+
+  @@map("video_shuffle_stations")
+}
+
+model VideoShuffleProgramEntry {
+  id              String    @id @default(cuid())
+  stationId       String
+  station         VideoShuffleStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  mediaId         String
+  boxNumber       String
+  title           String
+  artist          String
+  performerUsername String?
+  videoUrl        String
+  durationSeconds Int
+  sequenceIndex   Int
+  /** queued | playing | aired | skipped */
+  status          String    @default("queued")
+  startedAt       DateTime?
+  voteCount       Int       @default(0)
+  encoreCount     Int       @default(0)
+  /** Set once the Add Your Video submission pipeline exists; null for core-roster entries. */
+  submissionId    String?
+  createdAt       DateTime  @default(now())
+
+  @@index([stationId, status])
+  @@index([stationId, sequenceIndex])
+  @@map("video_shuffle_program_entries")
+}
+
+/**
+ * PlayReceipt — canonical qualified-play event, the source-of-truth layer for
+ * rankings/charts/creator analytics/boost attribution. Designed 2026-10-29 per
+ * the forensic finding that Song.playCount/Video.viewCount have zero real
+ * write callers anywhere, and StreamAndWinEngine's qualification logic is real
+ * but in-memory/Lounge-scoped only. Aggregate counters (playCount, Top 10/50/
+ * 100 positions, etc.) must be DERIVED from receipts, never an independent
+ * second truth. NOT YET APPLIED to any database — see migration file header.
+ */
+model PlayReceipt {
+  id                        String   @id @default(cuid())
+  playbackSessionId         String
+  mediaId                   String
+  /** 'SONG' | 'VIDEO' | 'VIDEO_SHUFFLE_ENTRY' | 'STREAM_WIN_SONG' — no hard FK, media lives in different tables by type. */
+  mediaType                 String
+  creatorId                 String
+  /** Authenticated listener id when known; null for anonymous/session-only identity. */
+  listenerId                String?
+  /** The actual identity dedup used — listenerId if present, else a client-supplied session id. Never "anon" silently merged across real distinct users. */
+  sessionIdentity           String
+  submissionId              String?
+  programEntryId            String?
+  queueEntryId              String?
+  stationId                 String?
+  programId                 String?
+  /** Real saved-playlist id — only set when discoverySource = PLAYLIST. */
+  playlistId                String?
+  /** GENRE_STATION | MIXED_ALL_MUSIC | DISCOVERY | VIDEO_SHUFFLE | STREAM_WIN | CHART | DIRECT | ARTIST_PROFILE | YO_PHO | SEARCH | SHARE | BOOSTED_PROGRAMMING | PLAYLIST | OTHER_CANONICAL */
+  discoverySource           String
+  /** Set only when a real boosted-programming-opportunity causal chain connects to this play — never merely "a boost happened to be active." */
+  boostCampaignId           String?
+  qualifiedAt               DateTime @default(now())
+  qualifiedConsumedSeconds  Float
+  validMediaDurationSeconds Float
+  qualificationPercentage   Float
+  /** True when creatorId === the playing identity. Playback still occurred — this never hides that — but see isRankingEligible/isRewardEligible. */
+  isSelfPlay                Boolean  @default(false)
+  isRankingEligible         Boolean  @default(true)
+  isRewardEligible          Boolean  @default(true)
+  /** sha256(mediaId:sessionIdentity:playbackSessionId) — DB-level uniqueness enforces "at most one receipt per user+media+session," race-safe, not app-level check-then-insert (ContentTelemetryService pattern). */
+  dedupeKey                 String   @unique
+  createdAt                 DateTime @default(now())
+
+  @@index([mediaId])
+  @@index([creatorId])
+  @@index([discoverySource])
+  @@index([boostCampaignId])
+  @@map("play_receipts")
+}
+
 model Song {
   id          String         @id @default(cuid())
   uploaderId  String
@@ -3554,7 +4023,10 @@ model Song {
   audioUrl    String
   coverUrl    String?
   duration    Int?
+  /** Raw creator-declared genre text — never fabricated, honestly null when not provided. Distinct from primaryGenre (canonical classification). */
   genre       String?
+  /** MusicGenreTaxonomy primary genre id, classified from `genre` at write time via classifyDeclaredGenre() — null when genuinely unresolved/unmatched. Added 2026-10-29 genre-ingestion-closure unit; not retroactively backfilled for pre-existing rows (see TrackRankingEngine's on-the-fly classification fallback). */
+  primaryGenre String?
   bpm         Int?
   key         String?
   isPublic    Boolean        @default(true)
@@ -3566,6 +4038,7 @@ model Song {
 
   @@index([uploaderId])
   @@index([genre])
+  @@index([primaryGenre])
   @@map("songs")
 }
 
@@ -3580,7 +4053,10 @@ model Video {
   videoUrl     String
   thumbnailUrl String?
   duration     Int?
+  /** Raw creator-declared genre text — never fabricated, honestly null when not provided. Distinct from primaryGenre (canonical classification). */
   genre        String?
+  /** MusicGenreTaxonomy primary genre id, classified from `genre` at write time via classifyDeclaredGenre() — null when genuinely unresolved/unmatched. Added 2026-10-29 genre-ingestion-closure unit; not retroactively backfilled for pre-existing rows (see TrackRankingEngine's on-the-fly classification fallback). */
+  primaryGenre String?
   isPublic     Boolean  @default(true)
   viewCount    Int      @default(0)
   status       String   @default("ACTIVE")
@@ -3589,6 +4065,7 @@ model Video {
 
   @@index([uploaderId])
   @@index([genre])
+  @@index([primaryGenre])
   @@map("videos")
 }
 
@@ -4341,4 +4818,236 @@ model SavedPerformance {
   @@index([status])
   @@index([expiresAt])
   @@map("saved_performances")
+}
+
+enum PublicPageProfileKind {
+  FAN
+  PERFORMER
+  WRITER_PORTFOLIO
+}
+
+enum PublicPageRevisionState {
+  DRAFT
+  PUBLISHED
+  SUPERSEDED
+}
+
+model PublicPageHead {
+  id                  String                 @id @default(cuid())
+  ownerUserId         String                 @map("owner_user_id")
+  owner               User                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profileKind         PublicPageProfileKind  @map("profile_kind")
+  draftRevisionId     String?                @unique @map("draft_revision_id")
+  publishedRevisionId String?                @unique @map("published_revision_id")
+  draftRevision       PublicPageRevision?    @relation("PublicPageDraftPointer", fields: [draftRevisionId], references: [id], onDelete: SetNull)
+  publishedRevision   PublicPageRevision?    @relation("PublicPagePublishedPointer", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  revisions           PublicPageRevision[]   @relation("PublicPageHeadRevisions")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+
+  @@unique([ownerUserId, profileKind])
+  @@map("public_page_heads")
+}
+
+model PublicPageRevision {
+  id              String                   @id @default(cuid())
+  headId          String                   @map("head_id")
+  head            PublicPageHead           @relation("PublicPageHeadRevisions", fields: [headId], references: [id], onDelete: Cascade)
+  revisionNumber  Int                      @map("revision_number")
+  state           PublicPageRevisionState
+  body            Json
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  draftForHead    PublicPageHead?          @relation("PublicPageDraftPointer")
+  publishedForHead PublicPageHead?         @relation("PublicPagePublishedPointer")
+
+  @@unique([headId, revisionNumber])
+  @@index([headId])
+  @@map("public_page_revisions")
+}
+
+
+// ─── Booking Convergence & Multi-Performer Bill Contracts ─────────────────────
+
+enum BillRole {
+  UNSPECIFIED
+  HEADLINER
+  DIRECT_SUPPORT
+  FEATURED_SUPPORT
+  OPENER
+  LOCAL_SUPPORT
+  SHOWCASE
+  GUEST
+}
+
+enum CompensationType {
+  UNSPECIFIED
+  GUARANTEE
+  DOOR_SPLIT
+  GUARANTEE_PLUS_SPLIT
+  BONUS
+  CUSTOM_TERMS
+}
+
+enum TravelResponsibility {
+  UNSPECIFIED
+  PERFORMER_PAYS
+  VENUE_PROVIDES
+  PROMOTER_PROVIDES
+  SPLIT_AGREED
+  MUTUAL_WAIVER
+}
+
+enum LodgingResponsibility {
+  UNSPECIFIED
+  PERFORMER_PAYS
+  VENUE_PROVIDES
+  PROMOTER_PROVIDES
+  SPLIT_AGREED
+  MUTUAL_WAIVER
+}
+
+enum HospitalityResponsibility {
+  UNSPECIFIED
+  VENUE_PROVIDES
+  PERFORMER_PAYS
+  PROMOTER_PROVIDES
+  NONE_AGREED
+}
+
+enum AssignmentFulfillmentStatus {
+  PENDING
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED_UNVERIFIED
+  VERIFIED_COMPLETED
+  COMPLETED // legacy compatibility
+  NO_SHOW
+  CANCELLED_VENUE
+  CANCELLED_PERFORMER
+  DISPUTED
+}
+
+enum InventoryLifecycleStatus {
+  PENDING_CAPACITY
+  CAPACITY_CONFIGURED
+  ACTIVE_SELLABLE
+  PAUSED
+  CLOSED
+}
+
+enum SubscriptionTierProvenance {
+  VERIFIED
+  UNRESOLVED
+  EXEMPT
+}
+
+model BookingEconomicSnapshot {
+  id                            String                     @id @default(cuid())
+  bookingOfferId                String                     @unique
+  bookingOffer                  BookingOffer               @relation(fields: [bookingOfferId], references: [id])
+  performerUserId               String
+  venueUserId                   String
+  venueProfileId                String
+
+  // Compensation Structure (Nullable / Unspecified by default — NO silent contractual defaults)
+  compensationType              CompensationType           @default(UNSPECIFIED)
+  guaranteeCents                Int?
+  splitPercentage               Float?
+  revenueBasis                  String?
+  thresholdCents                Int?
+  bonusTerms                    Json?
+  currency                      String?
+
+  // Subscription & Policy State at Acceptance (Truthful Provenance — NO fake tier inference)
+  subscriptionTierAtAcceptance  String?
+  subscriptionTierProvenance    SubscriptionTierProvenance @default(UNRESOLVED)
+  commissionPolicyVersion       String?
+  commissionPercent             Float?
+  commissionCents               Int?
+
+  // Fulfillment & Recoupable Responsibilities (Nullable / Unspecified — NO silent deductions)
+  authorizedRecoupables         Json?
+  travelResponsibility          TravelResponsibility       @default(UNSPECIFIED)
+  lodgingResponsibility         LodgingResponsibility      @default(UNSPECIFIED)
+  hospitalityResponsibility     HospitalityResponsibility  @default(UNSPECIFIED)
+
+  // Estimated Gross / Net Pre-Acceptance Disclosure
+  estimatedGrossCents           Int?
+  estimatedVariableCents        Int?
+  estimatedNetCents             Int?
+
+  // Immutability & Audit
+  acceptedAt                    DateTime                   @default(now())
+  acceptedByUserId              String
+  termsHash                     String?
+  createdAt                     DateTime                   @default(now())
+
+  assignment                    EventPerformerAssignment?
+  history                       BookingHistory?
+
+  @@index([performerUserId, acceptedAt])
+  @@index([venueProfileId, acceptedAt])
+  @@map("booking_economic_snapshots")
+}
+
+model EventPerformerAssignment {
+  id                  String                      @id @default(cuid())
+  eventId             String
+  event               Event                       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  performerUserId     String
+  performerUser       User                        @relation("PerformerEventAssignments", fields: [performerUserId], references: [id])
+  billRole            BillRole                    @default(UNSPECIFIED)
+  performanceOrder    Int                         @default(1)
+  bookingOfferId      String?                     @unique
+  bookingOffer        BookingOffer?               @relation(fields: [bookingOfferId], references: [id])
+  economicSnapshotId  String?                     @unique
+  economicSnapshot    BookingEconomicSnapshot?    @relation(fields: [economicSnapshotId], references: [id])
+  fulfillmentStatus   AssignmentFulfillmentStatus @default(PENDING)
+  fulfillmentEvidence Json?
+  verifiedAt          DateTime?
+  verifiedByUserId    String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  @@unique([eventId, performerUserId])
+  @@index([eventId, performanceOrder])
+  @@map("event_performer_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Jukebox Number Authority (§6632–§6666)
+// ONE shared numbering namespace across Stream & Win Radio + Video Shuffle.
+// number = the participant's SHARED SUBMISSION POSITION (1→001, 15→015, 2017→2017).
+// Number is RESERVED while ACTIVE; RELEASED only on true shared-jukebox removal
+// (no active destination/reference). Released positions may be REUSED.
+// Historical playback resolves via immutable canonicalMediaId, never by current
+// holder of a (possibly reused) number.
+// ─────────────────────────────────────────────────────────────────────────────
+model JukeboxEntry {
+  id        String   @id @default(cuid())
+  /// Shared submission position. Reserved-while-active; released+reusable.
+  /// Concurrency-safe via @@unique + serializable allocation transaction.
+  number    Int      @unique
+  /// Immutable canonical media identity (Song.id or Video.id) — survives reuse.
+  canonicalMediaId String
+  mediaType String // "SONG" | "VIDEO"
+  /// Creator/owner user id at acceptance (immutable provenance for history).
+  creatorId String
+  title     String
+  /// Destination memberships — independent libraries/queues share this number.
+  streamWinMember   Boolean @default(false)
+  videoShuffleMember Boolean @default(false)
+  /// Lifecycle: ACTIVE = number reserved; REMOVED = position released/reusable.
+  status    String   @default("ACTIVE") // "ACTIVE" | "REMOVED"
+  /// Idempotent acceptance key (unique) — retry resolves the same entry/number.
+  idempotencyKey String? @unique
+  /// Submission that produced this entry (traceability).
+  submissionId String?
+  allocatedAt DateTime @default(now())
+  removedAt   DateTime?
+
+  @@index([status, number])
+  @@index([canonicalMediaId])
+  @@index([creatorId])
+  @@map("jukebox_entries")
 }

@@ -201,15 +201,22 @@ export const CANONICAL_PRICING_REGISTRY: readonly CanonicalPricingEntry[] = [
   entry("ad.curtain.intermission", "CURTAIN_INTERMISSION_SPOT", "CURTAIN", "PERFORMANCE_NATIVE", false, ["curtain-ad-rail"], ["VenueCurtainDirector", "CurtainRuntimeManager.resolveCurtainAdCampaign"], "NEVER_INTERRUPT_ACTIVE_PERFORMANCE"),
   entry("ad.ribbon.day", "RIBBON_SPONSOR_DAY", "RIBBON", "PERFORMANCE_NATIVE", false, ["header-sponsor-ribbon", "media-underlay-ribbon"], ["AdPlacementRegistry"], "NOT_APPLICABLE"),
 
-  // Existing one-time boosts
+  // Existing one-time boosts + $2.99 (299 cents) entry-level 4h discovery boosts
   entry("boost.lobby_wall", "LOBBY_WALL_BOOST_24H", "ONE_TIME_BOOST", null, false, [], ["LobbyWallBoostEngine"], "NOT_APPLICABLE"),
   entry("boost.discovery.spark", "DISCOVERY_BOOST_SPARK", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.video_shuffle", "VIDEO_SHUFFLE_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "UniversalFourHourBoostPolicy", "VideoShuffleModeRuntime"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.lobby_wall", "LOBBY_WALL_PROFILE_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "LobbyWallBoostEngine", "UniversalFourHourBoostPolicy"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.performer_profile", "PERFORMER_PROFILE_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "UniversalFourHourBoostPolicy"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.yopho_card", "YOPHO_CARD_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "YoPhoCardRegistry", "UniversalFourHourBoostPolicy"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.stream_win_radio", "STREAM_WIN_RADIO_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "StreamAndWinRadioRuntimeEngine", "UniversalFourHourBoostPolicy"], "NOT_APPLICABLE"),
+  entry("boost.entry_299.shows_releases", "SHOWS_RELEASES_BOOST_299", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine", "WorldConcertSessionBoostPolicy", "UniversalFourHourBoostPolicy"], "NOT_APPLICABLE"),
   entry("boost.discovery.pulse", "DISCOVERY_BOOST_PULSE", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine"], "NOT_APPLICABLE"),
   entry("boost.discovery.wave", "DISCOVERY_BOOST_WAVE", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine"], "NOT_APPLICABLE"),
   entry("boost.discovery.blast", "DISCOVERY_BOOST_BLAST", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine"], "NOT_APPLICABLE"),
   entry("boost.artist", "ARTIST_BOOST", "ONE_TIME_BOOST", null, false, [], ["DiscoveryBoostEngine"], "NOT_APPLICABLE"),
   entry("boost.spotlight", "ARTIST_SPOTLIGHT", "ONE_TIME_BOOST", null, false, ["home-banner"], ["SponsorRegistry"], "NOT_APPLICABLE"),
   entry("boost.beat_featured", "BEAT_FEATURED", "ONE_TIME_BOOST", null, false, [], ["BeatStoreEngine"], "NOT_APPLICABLE"),
+  entry("commerce.yopho.prop_pack_299", "YOPHO_PROP_PACK_299", "OTHER", null, false, [], ["YoPhoCompositorCatalog", "YoPhoSkinRegistry"], "NOT_APPLICABLE"),
 
   // Recurring ad plans (existing)
   entry("ad.recurring.billboard", "AD_BILLBOARD_WEEKLY", "RECURRING_AD", "PLATFORM_AD", true, ["home-banner"], ["AdPlacementRegistry"], "NOT_APPLICABLE"),
@@ -265,6 +272,16 @@ export function listCanonicalPricingLowestFirst(
 
 export function listMembershipOffersLowestFirst(accountType: SubscriptionAccountType) {
   return getSubscriptionOffersLowestFirst(accountType);
+}
+
+/**
+ * Returns the 6 $2.99 (299 cents) entry-level 4h discovery boosts sorted lowest-price-first.
+ * Preserves all higher-priced boosts ($4.99, $9.99, $19.00, $19.99, $49.00) in the full catalog.
+ */
+export function listEntryLevel299BoostOffersLowestFirst(): CanonicalPricingEntry[] {
+  return listCanonicalPricingLowestFirst((e) =>
+    e.family === "ONE_TIME_BOOST" && e.catalogId.startsWith("boost.entry_299."),
+  );
 }
 
 export function listSyncPendingEntries(): CanonicalPricingEntry[] {

@@ -15,7 +15,7 @@ import { reconcilePendingStoreOrders } from "@/lib/commerce/EntitlementFulfillme
  *        repeatedly. Admin-gated; no scheduled worker exists for this yet.
  */
 export async function GET(req: NextRequest) {
-  const denied = requireAdmin(req);
+  const denied = await requireAdmin(req);
   if (denied) return denied;
 
   const pending = await prisma.order.findMany({
@@ -29,17 +29,28 @@ export async function GET(req: NextRequest) {
       providerPaymentId: true,
       amountCents: true,
       currency: true,
+      orderKind: true,
+      refId: true,
+      fulfillmentMetadataJson: true,
+      adActivationStatus: true,
       fulfillmentRetryCount: true,
       lastFulfillmentAttemptAt: true,
       lastFulfillmentError: true,
     },
   });
 
-  return NextResponse.json({ ok: true, count: pending.length, orders: pending });
+  const adPurchases = pending.filter((o) => o.orderKind === "ad_purchase");
+  return NextResponse.json({
+    ok: true,
+    count: pending.length,
+    adPurchaseCount: adPurchases.length,
+    orders: pending,
+    adPurchases,
+  });
 }
 
 export async function POST(req: NextRequest) {
-  const denied = requireAdmin(req);
+  const denied = await requireAdmin(req);
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));

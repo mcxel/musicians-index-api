@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import ArtistIdShareStrip from "@/components/identity/ArtistIdShareStrip";
@@ -8,8 +8,24 @@ import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profile/PublicProfileMediaComposer";
 import IdentityPlate from "@/components/profile/IdentityPlate";
 import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
+import ProfileSoundtrackPlayer from "@/components/profile/ProfileSoundtrackPlayer";
+import PersonalWritingWall from "@/components/profile/PersonalWritingWall";
+import ProfileHeroBanner from "@/components/profile/ProfileHeroBanner";
+import ProfileShareModal from "@/components/profile/ProfileShareModal";
 import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
+import { usePageWritingContent, toContentMediaBlocks } from "@/hooks/usePageWritingContent";
+import { TMI_CANVAS_MAX_WIDTH_PX } from "@/lib/magazine/TmiSurfaceParityEngine";
+import type { PublicPageDocument } from "@/lib/publicPage/publicPageDocument";
+import { presentPublicProfile, type DocumentPreviewPresentation } from "@/lib/publicPage/presentPublicPageDocument";
+import { hidePrivateSocialMoments, readLocalPublicPageDraft } from "@/lib/happydays/publicPageSocialPlacement";
+import { previewDraftDocument } from "@/lib/publicPage/editPublicPageDraft";
+import PublicPageDraftPreview from "@/components/profile/PublicPageDraftPreview";
+import PublicPagePublishedView from "@/components/profile/PublicPagePublishedView";
+import PublicPageViewerStrip from "@/components/profile/PublicPageViewerStrip";
+import FanThemButton from "@/components/identity/FanThemButton";
+import FanSponsorShelf from "@/components/fan/FanSponsorShelf";
+import type { FanSponsorship } from "@/lib/registries/FanSponsorRegistry";
 
 export interface FanPublicPageProps {
   slug: string;
@@ -24,6 +40,15 @@ export interface FanPublicPageProps {
   /** Current saved profile config (server-read). */
   profileConfig?: PublicProfileConfig;
   ownedStylePacks?: string[];
+  /**
+   * Owner-only in-memory draft. Omitted on the live /p route.
+   * Never synthesized from PublicProfileConfig.
+   */
+  draftDocument?: PublicPageDocument | null;
+  /** Read-only published document. Visitors never receive an owner draft here. */
+  publishedPresentation?: DocumentPreviewPresentation | null;
+  /** Real FanSponsorRegistry rows only — never fabricate sponsors. */
+  sponsors?: FanSponsorship[];
 }
 
 const TABS = ["FEATURED", "PROFILE", "PLAYLISTS", "YOPHO", "ACTIVITY"] as const;
@@ -145,9 +170,35 @@ export default function FanPublicPage({
   isOwner = false,
   profileConfig,
   ownedStylePacks = [],
+  draftDocument = null,
+  publishedPresentation = null,
+  sponsors = [],
 }: FanPublicPageProps) {
   const [tab, setTab] = useState<Tab>("FEATURED");
-  const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("edit") === "1";
+    }
+    return false;
+  });
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [ownerDraft, setOwnerDraft] = useState<PublicPageDocument | null>(draftDocument);
+  const [localPresentation, setLocalPresentation] = useState<DocumentPreviewPresentation | null>(null);
+  useEffect(() => {
+    if (publishedPresentation?.mode === "DOCUMENT_PREVIEW" || !userId) return;
+    const local = readLocalPublicPageDraft(userId, "FAN");
+    if (!local) return;
+    const presented = presentPublicProfile({
+      mode: "DOCUMENT_PREVIEW",
+      document: hidePrivateSocialMoments(local),
+      authorizedCapabilities: ["BASE"],
+    });
+    if (presented && "mode" in presented && presented.mode === "DOCUMENT_PREVIEW") setLocalPresentation(presented);
+  }, [publishedPresentation, userId]);
+  const visiblePresentation = publishedPresentation?.mode === "DOCUMENT_PREVIEW" ? publishedPresentation : localPresentation;
+  const draftPreview = previewDraftDocument(ownerDraft, ["BASE"]);
+  const draftHero = draftPreview.mode === "DOCUMENT_PREVIEW" ? draftPreview.hero : null;
+  const draftMode = draftPreview.mode === "DOCUMENT_PREVIEW";
   const ac = tierColor(tier);
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -156,6 +207,44 @@ export default function FanPublicPage({
     isOwner ? (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG) : undefined
   );
   const activeCfg = isOwner ? liveConfig : (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG);
+
+  // PAGE_WRITING now backed by canonical Content — personalWritings JSON was
+  // structurally proven to have no persistence destination (see
+  // ContentService.ts / schema.prisma). The four hardcoded
+  // DEFAULT_PUBLIC_PROFILE_CONFIG.personalWritings samples are placeholder
+  // copy only and must never render as if the owner authored them.
+  const {
+    writings: pageWritings,
+    loading: pageWritingsLoading,
+    handleUpdate: handlePageWritingUpdate,
+  } = usePageWritingContent(
+    isOwner ? { mode: "owner" } : { mode: "public", slug },
+  );
+
+  if (visiblePresentation?.mode === "DOCUMENT_PREVIEW") {
+    return (
+      <main data-testid="personal-public-page" style={{ minHeight: "100vh", width: "100%", background: "#050510", color: "#fff" }}>
+        <PublicPageViewerStrip />
+        <div data-testid="personal-page-actions" style={{ position: "fixed", top: 12, right: 12, zIndex: 40, display: "flex", gap: 8 }}>
+          <Link href={`/messages/new?recipientId=${encodeURIComponent(userId ?? slug)}&name=${encodeURIComponent(displayName)}`} style={ctaStyle(ac)}>MESSAGE</Link>
+          {!isOwner && userId ? <FanThemButton targetUserId={userId} returnPath={`/p/${encodeURIComponent(slug)}`} accent={ac} /> : null}
+          <button type="button" data-testid="share-profile-btn" onClick={() => setShareModalOpen(true)} style={ctaStyle(ac)}>SHARE</button>
+        </div>
+        <div data-testid="personal-canvas-frame" style={{ width: "100%", maxWidth: "none" }}>
+          <PublicPagePublishedView presentation={visiblePresentation} ownerUserId={userId} />
+        </div>
+        <ProfileShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          profileName={displayName}
+          username={slug}
+          role="FAN"
+          accentColor={ac}
+          heroImageUrl={activeCfg.hero?.imageUrl ?? avatarUrl ?? "/bot-images/Bot image 2.png"}
+        />
+      </main>
+    );
+  }
 
   return (
     <main
@@ -172,27 +261,61 @@ export default function FanPublicPage({
         <Link href="/explore" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>← EXPLORE</Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>/</span>
         <span style={{ color: ac }}>{displayName}</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <Link
+            href={`/explore?profile=${slug}`}
+            style={{
+              color: "#00FFFF",
+              textDecoration: "none",
+              fontSize: 9,
+              fontWeight: 800,
+              background: "rgba(0,255,255,0.08)",
+              border: "1px solid rgba(0,255,255,0.2)",
+              padding: "4px 8px",
+              borderRadius: 4,
+            }}
+          >
+            EXPLORE SWIPE MODE ‹ ›
+          </Link>
+        </div>
       </div>
 
-      {/* Hero banner */}
+      {/* Hero stage — opening presentation can compact this shell. Identity stays the profile hero. */}
       <div
-        style={{
-          position: "relative",
-          height: "clamp(160px, 28vw, 260px)",
-          background: `linear-gradient(135deg, ${ac}18, rgba(5,3,16,0.95) 70%)`,
-          borderBottom: `1px solid ${ac}22`,
-          overflow: "hidden",
-        }}
+        data-testid="profile-opening"
+        data-opening={visiblePresentation?.canvas?.opening ?? "KEEP"}
+        style={visiblePresentation?.canvas?.opening === "COMPACT" ? { maxHeight: 220, overflow: "hidden" } : undefined}
       >
-        {/* Atmospheric glow */}
-        <div style={{ position: "absolute", top: "20%", left: "30%", width: 320, height: 320, borderRadius: "50%", background: `${ac}0C`, filter: "blur(80px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: "10%", right: "20%", width: 200, height: 200, borderRadius: "50%", background: "rgba(255,45,170,0.06)", filter: "blur(60px)", pointerEvents: "none" }} />
-
-
+      <ProfileHeroBanner
+        hero={
+          draftHero
+            ? {
+                enabled: true,
+                variant: "WIDE_CINEMATIC",
+                headline: draftHero.headline,
+                showNowPlaying: false,
+                showLiveIndicator: false,
+                showBio: false,
+              }
+            : activeCfg.hero
+        }
+        profileName={displayName}
+        username={slug}
+        roleType="FAN"
+        tier={tier}
+        accentColor={activeCfg.accentColor}
+        isLive={isLive}
+        liveRoomRoute={liveRoomRoute}
+        isOwner={isOwner}
+        onEditHero={() => setCustomizerOpen(true)}
+        onShare={() => setShareModalOpen(true)}
+        nowPlayingTrack={draftMode ? undefined : (activeCfg.soundtrack?.enabled ? activeCfg.soundtrack.title : undefined)}
+        thoughtOfTheDay={draftMode ? undefined : (activeCfg.statusMessage ?? activeCfg.personalWritings?.find((w) => w.type === "THOUGHT_OF_DAY")?.body)}
+      />
       </div>
 
       {/* Identity block — overlaps banner bottom */}
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px" }}>
+      <div style={{ maxWidth: TMI_CANVAS_MAX_WIDTH_PX, margin: "0 auto", padding: "0 24px" }}>
         <div style={{ display: "flex", gap: 20, alignItems: "flex-end", marginTop: -48, marginBottom: 20, flexWrap: "wrap" }}>
           {/* Avatar */}
           <div
@@ -245,10 +368,11 @@ export default function FanPublicPage({
             ) : null}
             <button
               type="button"
-              onClick={() => navigator.clipboard?.writeText(window.location.href)}
-              style={{ ...ctaStyle("rgba(255,255,255,0.5)"), border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.06)" }}
+              data-testid="share-fan-profile-btn"
+              onClick={() => setShareModalOpen(true)}
+              style={ctaStyle(ac)}
             >
-              SHARE
+              🚀 SHARE PAGE
             </button>
             {isOwner && (
               <button
@@ -262,16 +386,69 @@ export default function FanPublicPage({
           </div>
         </div>
 
+        {/* Profile Share Modal (Profile Share Law) */}
+        <ProfileShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          profileName={displayName}
+          username={slug}
+          role="FAN"
+          accentColor={ac}
+          heroImageUrl={activeCfg.hero?.imageUrl ?? avatarUrl ?? "/bot-images/Bot image 2.png"}
+          personalQuote={draftMode ? undefined : activeCfg.personalWritings?.find((w) => w.type === "HAPPY_DAY_QUOTE")?.body}
+          nowPlayingTrack={draftMode ? undefined : (activeCfg.soundtrack?.enabled ? activeCfg.soundtrack.title : undefined)}
+        />
+
         {/* Owner customizer overlay */}
         {isOwner && customizerOpen && (
           <ProfileCustomizer
             config={activeCfg}
+            profileName={displayName}
+            profileSlug={slug}
+            profileRole="FAN"
             ownedPackIds={ownedStylePacks}
             accountTier={tier}
             onSave={async (next) => { await save(next); }}
             onClose={() => setCustomizerOpen(false)}
             saveStatus={saveStatus}
             saveError={saveError}
+          />
+        )}
+
+        {visiblePresentation?.mode === "DOCUMENT_PREVIEW" ? (
+          <PublicPagePublishedView presentation={visiblePresentation} ownerUserId={userId} />
+        ) : ownerDraft ? (
+          <PublicPageDraftPreview
+            document={ownerDraft}
+            authorizedCapabilities={["BASE"]}
+            onDocumentChange={setOwnerDraft}
+          />
+        ) : null}
+
+        {/* ── PROFILE SOUNDTRACK (MySpace Music Law) ── */}
+        {ownerDraft ? null : (
+        <ProfileSoundtrackPlayer
+          soundtrack={activeCfg.soundtrack}
+          ownerName={displayName}
+          ownerSlug={slug}
+          accentColor={ac}
+          isOwner={isOwner}
+          onEditSoundtrack={() => setCustomizerOpen(true)}
+        />
+        )}
+
+        {/* ── WORDS & PERSONAL JOURNAL (Thought of the day, happy quotes) ── */}
+        {isOwner && !pageWritingsLoading && (
+          // See PerformerPublicPage.tsx — PersonalWritingWall only reads its
+          // `writings` prop on first mount, so gate on loading rather than
+          // passing [] and hoping a later prop change re-syncs it.
+          <PersonalWritingWall
+            writings={pageWritings}
+            accentColor={ac}
+            isOwner={isOwner}
+            onUpdateWritings={(next) => {
+              void handlePageWritingUpdate(next);
+            }}
           />
         )}
 
@@ -304,7 +481,10 @@ export default function FanPublicPage({
         {/* ── FEATURED (media composer) ── */}
         {tab === "FEATURED" && (
           <PublicProfileMediaComposer
-            blocks={deriveFanBlocks({ slug, displayName, avatarUrl, tier, userId, isLive, liveRoomRoute }, ac)}
+            blocks={[
+              ...deriveFanBlocks({ slug, displayName, avatarUrl, tier, userId, isLive, liveRoomRoute }, ac),
+              ...toContentMediaBlocks(pageWritings),
+            ]}
             accentColor={ac}
             role="fan"
             ownerSlug={slug}
@@ -340,6 +520,14 @@ export default function FanPublicPage({
                 <SectionLabel label="BADGES & ACHIEVEMENTS" color={ac} />
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", margin: 0 }}>No badges earned yet.</p>
               </div>
+
+              <FanSponsorShelf
+                fanSlug={slug}
+                fanDisplayName={displayName}
+                tier={tier}
+                sponsors={sponsors}
+                accentColor={ac}
+              />
 
               {userId ? (
                 <ArtistIdShareStrip userId={userId} displayName={displayName} role="fan" username={slug} />

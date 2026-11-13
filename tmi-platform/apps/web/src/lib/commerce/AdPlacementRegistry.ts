@@ -20,7 +20,50 @@ export type AdSurface =
   | "COMMAND_CENTER_MID"
   | "MAGAZINE_LEADERBOARD"
   | "MAGAZINE_MODULE"
-  | "HOME_BANNER";
+  | "HOME_BANNER"
+  | "SNIPS_SPONSORED";
+
+/** Canonical AdCampaign.slot values that bind to Sponsored Snip (§10778). */
+export const SPONSORED_SNIP_SLOT_IDS = [
+  "sponsored-snip",
+  "snips",
+  "snips-sponsored",
+] as const;
+
+/**
+ * Canonical AdCampaign.slot values that bind to Jumbotron faces (§10847–§10851).
+ * Face package is derived from slot or campaign.targeting.facePackage / faceCount.
+ */
+export const JUMBOTRON_SLOT_IDS = [
+  "jumbotron-face",
+  "jumbotron",
+  "jumbotron-1-face",
+  "jumbotron-2-face",
+  "jumbotron-4-face",
+  "jumbotron-6-face",
+  "jumbotron-8-face",
+  "jumbotron-10-face",
+] as const;
+
+export type JumbotronFacePackageId =
+  | "SINGLE_FACE"
+  | "TWO_FACES"
+  | "FOUR_FACES"
+  | "SIX_FACES"
+  | "EIGHT_FACES"
+  | "TEN_FACES";
+
+/** §10848 — purchased face package → max faces (no accidental overdelivery). */
+export const JUMBOTRON_FACE_PACKAGE_BY_SLOT: Record<string, JumbotronFacePackageId> = {
+  "jumbotron-face": "FOUR_FACES",
+  jumbotron: "FOUR_FACES",
+  "jumbotron-1-face": "SINGLE_FACE",
+  "jumbotron-2-face": "TWO_FACES",
+  "jumbotron-4-face": "FOUR_FACES",
+  "jumbotron-6-face": "SIX_FACES",
+  "jumbotron-8-face": "EIGHT_FACES",
+  "jumbotron-10-face": "TEN_FACES",
+};
 
 export interface AdPlacementSlot {
   slotId: string;
@@ -117,7 +160,9 @@ export const AD_PLACEMENT_REGISTRY: AdPlacementSlot[] = [
     height: 1080,
     minHeight: 720,
     protectedRegions: ["emergency-overlay", "critical-live-cue", "scoreboard"],
-    description: "In-world Jumbotron face — PERFORMANCE_NATIVE inventory",
+    description:
+      "In-world Jumbotron face — PERFORMANCE_NATIVE; Direct TMI → AdSense overlay fallback → empty (JumbotronAdFabricResolver)",
+    neverInterruptActivePerformance: true,
   },
   {
     slotId: "magazine-leaderboard",
@@ -238,6 +283,19 @@ export const AD_PLACEMENT_REGISTRY: AdPlacementSlot[] = [
     minHeight: 90,
     protectedRegions: ["crown-holder", "live-ticker"],
     description: "Homepage banner slot",
+  },
+  {
+    slotId: "sponsored-snip",
+    surface: "SNIPS_SPONSORED",
+    inventoryClass: "DIRECT_SPONSOR",
+    monetizationKind: "PLATFORM_AD",
+    countsAgainstMemberAdAllowance: true,
+    zoneKey: "snipsSponsored",
+    width: 1080,
+    height: 1920,
+    minHeight: 960,
+    protectedRegions: ["snips-organic-chronology", "people-you-may-know"],
+    description: "Native full-frame Sponsored Snip — PLATFORM_AD; never invents inventory",
   },
 ];
 
