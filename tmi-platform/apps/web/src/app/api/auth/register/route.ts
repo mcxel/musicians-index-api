@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { ageYearsFromDateOfBirthIso } from '@/lib/trustSafety/YouthSocialGuard';
-import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
+import { registerArrival, qualifyReferral } from '@/lib/referral/ReferralEngine';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
@@ -141,9 +141,18 @@ export async function POST(req: NextRequest) {
     .map(r => ROLE_MAP[r])
     .filter((r): r is string => r !== undefined && r.length > 0);
 
-  // Default to FAN if no roles provided
+  // Authentication ≠ role selection: email signup must send an explicit roles[]
+  // from the role-choice UI. Never silently default to FAN (same authority as
+  // Google → /onboarding). Canonical completion marker: User.onboardingState.
   if (platformRoles.length === 0) {
-    platformRoles.push('fan');
+    return NextResponse.json(
+      {
+        ok: false,
+        errorCode: 'ROLE_REQUIRED',
+        error: 'Choose a role before creating your account.',
+      },
+      { status: 400 },
+    );
   }
 
   stage = 'INPUT_VALIDATED';
@@ -287,6 +296,8 @@ async function ensureUserDatabaseSchema() {
         displayName: displayName || email.split('@')[0],
         role: platformRoles[0].toUpperCase() as any,
         tier: resolvedTier,
+        // Explicit roles[] on this route = role choice completed (canonical).
+        onboardingState: 'INCOMPLETE',
         termsAccepted: true,
         ...(hasSignupDob
           ? {
@@ -471,12 +482,14 @@ async function ensureUserDatabaseSchema() {
       try {
         registerArrival(parsed.ref, user.id);
         const refResult = qualifyReferral(parsed.ref, user.id, 999, 1);
+        // Rule 20 / revenue honesty: referral milestones must never mint a paid
+        // membership tier. GOLD/etc. only via verified Stripe entitlement.
         if (refResult.qualified && refResult.milestoneBonus > 0) {
-          const link = resolveToken(parsed.ref);
-          if (link) {
-            const owner = await prisma.user.findUnique({ where: { id: link.ownerId } });
-            if (owner) await prisma.user.update({ where: { id: owner.id }, data: { tier: 'GOLD' } });
-          }
+          emitAdminLiveEvent({
+            type: 'engagement',
+            message: `[${new Date().toLocaleTimeString()}] Referral milestone qualified for ${email} (no tier grant)`,
+            meta: { ref: parsed.ref, userId: user.id, milestoneBonus: refResult.milestoneBonus },
+          });
         }
       } catch (refErr) {
         console.error('[TMI register] referral bonus failed (non-fatal):', refErr);
@@ -494,6 +507,7 @@ async function ensureUserDatabaseSchema() {
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
     response.cookies.set('tmi_roles', JSON.stringify(platformRoles), COOKIE_OPTS);  // All roles
     response.cookies.set('tmi_tier', effectiveTier, COOKIE_OPTS);
+    response.cookies.set('tmi_onboarding_state', 'incomplete', COOKIE_OPTS);
     response.cookies.set('tmi_user_email', email, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',

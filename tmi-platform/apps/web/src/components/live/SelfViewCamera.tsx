@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useCameraOrientationPhysics } from "@/hooks/useCameraOrientationPhysics";
 
 export type CameraFacing = "user" | "environment";
 export type SelfViewSize = "sm" | "md" | "lg" | "fullscreen";
@@ -63,7 +64,7 @@ export default function SelfViewCamera({
   onStreamStopped,
   onError,
   showControls = true,
-  showLiveBadge = true,
+  showLiveBadge = false,
   viewerCount,
   accent = "#FF2DAA",
   style,
@@ -77,6 +78,11 @@ export default function SelfViewCamera({
   const [error,    setError]    = useState<string | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [duration, setDuration] = useState(0);
+  const orientationPhysics = useCameraOrientationPhysics({
+    facingMode: facing,
+    isSelfPreview: true,
+    videoRef,
+  });
 
   // Live timer
   useEffect(() => {
@@ -220,7 +226,7 @@ export default function SelfViewCamera({
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          transform: mirror && facing === "user" ? "scaleX(-1)" : "none",
+              transform: mirror ? orientationPhysics.transform : "none",
           display: active ? "block" : "none",
           background: "#000",
         }}

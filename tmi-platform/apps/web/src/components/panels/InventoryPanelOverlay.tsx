@@ -24,10 +24,15 @@ export default function InventoryPanelOverlay({
     <div
       style={{
         position: 'fixed',
-        left: 140,
+        left: 12,
+        right: 12,
         bottom: 110,
         zIndex: 9500,
-        width: 320,
+        width: 'auto',
+        maxWidth: 360,
+        maxHeight: 'min(70dvh, 520px)',
+        marginLeft: 'auto',
+        marginRight: 'auto',
         background: 'rgba(10, 10, 26, 0.95)',
         backdropFilter: 'blur(20px)',
         border: '1px solid rgba(255, 45, 170, 0.35)',
@@ -36,6 +41,9 @@ export default function InventoryPanelOverlay({
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 45, 170, 0.2)',
         fontFamily: "'Inter', sans-serif",
         color: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -58,6 +66,17 @@ export default function InventoryPanelOverlay({
         </button>
       </div>
 
+      {/* Tabs + body scroll as one owner (P0-04 · 390×844 reachable) */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+        }}
+      >
       {/* Sub Tabs */}
       <div
         style={{
@@ -124,21 +143,28 @@ export default function InventoryPanelOverlay({
           }}
         />
 
-        {/* 3D Chibi Avatar Graphic Preview */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=300&auto=format&fit=crop&q=80"
-          alt="Avatar Preview"
+        {/* Honest empty pedestal — no stock/Unsplash stand-in (Rule 20) */}
+        <div
           style={{
             width: 110,
             height: 140,
-            objectFit: 'cover',
             borderRadius: 16,
+            border: '1.5px dashed rgba(0,255,255,0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             position: 'relative',
             zIndex: 2,
-            filter: 'drop-shadow(0 0 15px rgba(255,45,170,0.5))',
+            fontSize: 9,
+            fontWeight: 800,
+            color: 'rgba(255,255,255,0.45)',
+            letterSpacing: '0.08em',
+            textAlign: 'center',
+            padding: 8,
           }}
-        />
+        >
+          OPEN AVATAR STUDIO
+        </div>
       </div>
 
       {/* Item Selector Slots */}
@@ -205,6 +231,7 @@ export default function InventoryPanelOverlay({
           VIEW ALL INVENTORY
         </button>
       ) : null}
+      </div>
     </div>
   );
 }

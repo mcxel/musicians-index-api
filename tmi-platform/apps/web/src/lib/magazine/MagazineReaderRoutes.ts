@@ -39,8 +39,8 @@ export function magazineReaderUrl(options?: { from?: string; page?: number }): s
  * Resolve spread index for an article slug inside the current issue layout.
  * Returns cover (0) when unknown.
  */
-export function findMagazineArticlePageIndex(slug: string, issueKey = "current"): number {
-  const slots = buildCanonicalMagazineIssueSlots(issueKey);
+export async function findMagazineArticlePageIndex(slug: string, issueKey = "current"): Promise<number> {
+  const slots = await buildCanonicalMagazineIssueSlots(issueKey);
   const slotIndex = slots.findIndex((slot) => slot.articleSlug === slug);
   if (slotIndex >= 0) return slotIndex + 1;
 
@@ -52,11 +52,11 @@ export function findMagazineArticlePageIndex(slug: string, issueKey = "current")
   return MAGAZINE_DEFAULT_START_PAGE;
 }
 
-export function resolveMagazineReaderPageIndex(
+export async function resolveMagazineReaderPageIndex(
   slug: string | undefined,
   explicitPage: number | undefined,
   issueKey = "current",
-): number {
+): Promise<number> {
   if (explicitPage !== undefined && Number.isFinite(explicitPage) && explicitPage >= 0) {
     return explicitPage;
   }
@@ -66,14 +66,14 @@ export function resolveMagazineReaderPageIndex(
   return MAGAZINE_DEFAULT_START_PAGE;
 }
 
-export function getMagazineArticleCrawlText(slug: string): {
+export async function getMagazineArticleCrawlText(slug: string): Promise<{
   title: string;
   deck: string;
   author: string;
   publishedAt: string;
   body: string;
-} | null {
-  const article = getArticleBySlug(slug);
+} | null> {
+  const article = await getArticleBySlug(slug);
   if (!article) return null;
 
   const body = article.blocks

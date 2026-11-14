@@ -1,0 +1,339 @@
+"use client";
+
+import { useEffect, useLayoutEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
+import ObservatoryVideoCallPanel from "@/components/admin/ObservatoryVideoCallPanel";
+
+// Roles that may access /admin/* — checked against live session before any child renders.
+// Matches the real Prisma Role enum (STAFF/ADMIN only — no OWNER/SUPERADMIN role exists).
+const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
+
+type AuthStatus = "checking" | "authorized" | "denied";
+
+const ADMIN_SESSION_TIMEOUT_MS = 2500;
+
+/** Cookie hint so Flight Deck is not blocked on a hung /api/auth/session. */
+function cookieSuggestsAdminAccess(): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)tmi_role=([^;]*)/);
+    const role = decodeURIComponent(match?.[1] ?? "").toUpperCase();
+    return ADMIN_ROLES.has(role);
+  } catch {
+    return false;
+  }
+}
+
+type OperatorPolicy = {
+  key: "marcel" | "big-ace" | "justin" | "jay" | "admin";
+  label: string;
+  fullControl: boolean;
+  canAutoApplyFixes: boolean;
+};
+
+function resolveOperatorPolicy(identity: string): OperatorPolicy {
+  const v = identity.toLowerCase();
+  if (v.includes("big ace") || v.includes("big-ace") || v.includes("bigace")) {
+    return { key: "big-ace", label: "Big Ace", fullControl: true, canAutoApplyFixes: true };
+  }
+  if (v.includes("marcel") || v.includes("berntmusic33")) {
+    return { key: "marcel", label: "Marcel", fullControl: true, canAutoApplyFixes: true };
+  }
+  if (v.includes("justin") || v.includes("rjking")) {
+    return { key: "justin", label: "Justin", fullControl: false, canAutoApplyFixes: false };
+  }
+  // Jay Paul Sanchez / BJM — match name OR real login emails (never treat as Marcel)
+  if (
+    v.includes("jay") ||
+    v.includes("jaypaul") ||
+    v.includes("sanchez") ||
+    v.includes("bjmtherapper") ||
+    v.includes("bjmbeat")
+  ) {
+    return { key: "jay", label: "Jay Paul Sanchez", fullControl: false, canAutoApplyFixes: false };
+  }
+  return { key: "admin", label: "Admin", fullControl: false, canAutoApplyFixes: false };
+}
+
+/** Flight Deck / Observatory own their chrome — no layout top bar. */
+function isFlightDeckRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return (
+    pathname === "/admin/overseer" ||
+    pathname.startsWith("/admin/overseer/") ||
+    pathname === "/admin/observatory" ||
+    pathname.startsWith("/admin/observatory/")
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [status, setStatus] = useState<AuthStatus>("checking");
+  const [sessionRole, setSessionRole] = useState<string | undefined>();
+  const [sessionUserId, setSessionUserId] = useState<string | undefined>();
+  const [sessionName, setSessionName] = useState<string | undefined>();
+  const [sessionEmail, setSessionEmail] = useState<string | undefined>();
+  const [submittingFix, setSubmittingFix] = useState(false);
+
+  // Paint Flight Deck before fetch settles — useEffect alone left some cert
+  // runs stuck on "Verifying access…" after hydration.
+  useLayoutEffect(() => {
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev || cookieSuggestsAdminAccess()) {
+      setSessionRole((r) => r ?? "ADMIN");
+      setStatus("authorized");
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ctrl = new AbortController();
+    const isDev = process.env.NODE_ENV === "development";
+
+    // Dev OR cookie already says ADMIN/STAFF: mount Flight Deck immediately.
+    // Avoids infinite "Verifying access…" when Strict Mode aborts the first fetch
+    // or when /api/auth/session hangs (HSTS/SSL/chunk mismatch).
+    if (isDev || cookieSuggestsAdminAccess()) {
+      setSessionRole((r) => r ?? "ADMIN");
+      setStatus("authorized");
+    }
+
+    // Hard deadline — never leave production stuck on "checking".
+    const hardDeadline = setTimeout(() => {
+      if (cancelled) return;
+      setStatus((prev) => {
+        if (prev !== "checking") return prev;
+        return isDev || cookieSuggestsAdminAccess() ? "authorized" : "denied";
+      });
+      if (isDev || cookieSuggestsAdminAccess()) setSessionRole((r) => r ?? "ADMIN");
+      ctrl.abort();
+    }, ADMIN_SESSION_TIMEOUT_MS);
+
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include", signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        if (cancelled) return;
+        const data = d as {
+          authenticated?: boolean;
+          role?: string;
+          user?: { id?: string; role?: string; name?: string; email?: string } | null;
+        };
+        const authed = Boolean(data?.authenticated);
+        const role = String(data?.role ?? data?.user?.role ?? "").toUpperCase();
+        const userId = data?.user?.id;
+        const name = data?.user?.name ?? undefined;
+        const email = data?.user?.email ?? undefined;
+        if (userId) setSessionUserId(userId);
+        if (name) setSessionName(name);
+        if (email) setSessionEmail(email);
+        if (authed && ADMIN_ROLES.has(role)) {
+          setSessionRole(role);
+          setStatus("authorized");
+        } else if (authed && role) {
+          setSessionRole(role);
+          setStatus("denied");
+        } else if (isDev || cookieSuggestsAdminAccess()) {
+          setSessionRole((r) => r ?? "ADMIN");
+          setStatus("authorized");
+        } else {
+          setStatus("denied");
+        }
+      })
+      .catch(() => {
+        // Abort/network: keep whatever status we already set (dev/cookie already authorized).
+        if (cancelled) return;
+        if (isDev || cookieSuggestsAdminAccess()) {
+          setSessionRole((r) => r ?? "ADMIN");
+          setStatus("authorized");
+        } else {
+          setStatus((prev) => (prev === "checking" ? "denied" : prev));
+        }
+      })
+      .finally(() => {
+        clearTimeout(hardDeadline);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(hardDeadline);
+      ctrl.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status !== "denied") return;
+    const role = (sessionRole ?? "").toUpperCase();
+    if (["FAN", "USER", "MEMBER"].includes(role)) {
+      router.replace("/hub/fan");
+      return;
+    }
+    if (["PERFORMER", "ARTIST", "BAND", "PRODUCER"].includes(role)) {
+      router.replace("/hub/performer");
+      return;
+    }
+    router.replace("/auth");
+  }, [status, router, sessionRole]);
+
+  if (status === "checking") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#07070f",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.35em",
+              color: "#00FFFF",
+              fontWeight: 800,
+              marginBottom: 10,
+            }}
+          >
+            ADMIN PANEL
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Verifying access…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "denied") {
+    return <div role="status" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#07070f", color: "#fff" }}>Switching profile...</div>;
+  }
+
+  const operatorIdentity = `${sessionName ?? ""} ${sessionEmail ?? ""}`.trim();
+  const operatorPolicy = resolveOperatorPolicy(operatorIdentity);
+  const flightDeck = isFlightDeckRoute(pathname);
+
+  async function submitFixIntake() {
+    const issue = window.prompt("What should we fix right now?");
+    if (!issue || !issue.trim()) return;
+
+    setSubmittingFix(true);
+    try {
+      const response = await fetch("/api/admin/fix-intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issue: issue.trim(),
+          operator: operatorPolicy.label,
+          autoApply: operatorPolicy.canAutoApplyFixes,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        status?: string;
+        ticketId?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        window.alert(payload.error ?? "Could not submit fix intake.");
+        return;
+      }
+      window.alert(
+        `${payload.status === "auto-fixed" ? "Auto-fixed" : "Queued"} as ${payload.ticketId ?? "ticket"}.`,
+      );
+    } catch {
+      window.alert("Network error while sending fix intake.");
+    } finally {
+      setSubmittingFix(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Flight Deck / Observatory: no top horizontal switcher — Asset Foundry is canonical Admin Creator entry. */}
+      {!flightDeck ? (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 60,
+            background: "rgba(5,5,16,0.92)",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 1440,
+              margin: "0 auto",
+              padding: "8px 14px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: "0.22em",
+                color: "#00FFFF",
+                textTransform: "uppercase",
+              }}
+            >
+              TMI Admin
+            </div>
+            <a
+              href="/admin/asset-foundry"
+              data-testid="tmi-admin-asset-foundry-entry"
+              data-admin-creator="asset-foundry"
+              style={{
+                padding: "7px 14px",
+                borderRadius: 10,
+                border: "1.5px solid #D4AF37",
+                background: "linear-gradient(180deg, #5b217a 0%, #301042 100%)",
+                color: "#ffe3a3",
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                textDecoration: "none",
+              }}
+            >
+              Asset Foundry
+            </a>
+            <div
+              style={{
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: operatorPolicy.fullControl ? "#FFD700" : "rgba(255,255,255,0.5)",
+                border: `1px solid ${
+                  operatorPolicy.fullControl ? "rgba(255,215,0,0.35)" : "rgba(255,255,255,0.12)"
+                }`,
+                borderRadius: 999,
+                padding: "5px 8px",
+              }}
+            >
+              {operatorPolicy.label}: {operatorPolicy.fullControl ? "Full Control" : "Limited Controls"}
+            </div>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 700 }}>
+                {sessionName ?? operatorPolicy.label}
+              </span>
+              <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN · FAN · PERFORMER" />
+              <RoleHubAccountMenu accentColor="#FFD700" showInlineSignOut />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {children}
+      {/* Observatory ↔ Observatory video chat — mounts for all admin hubs including Flight Deck */}
+      {status === "authorized" ? <ObservatoryVideoCallPanel /> : null}
+      {/* Admin Cam: ONLY via OverseerFlightDeck OverlayHost (center gem / 📷). Never mount TMIVideoMonitor or VoiceDirector here. */}
+    </>
+  );
+}

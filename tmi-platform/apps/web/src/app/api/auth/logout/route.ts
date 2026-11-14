@@ -27,6 +27,7 @@ async function handleLogout(req: NextRequest, isGet: boolean) {
     response.cookies.delete('tmi_user_email');
     response.cookies.delete('phase11_session');
     response.cookies.delete('phase11_role');
+    response.cookies.delete('tmi_hub_shell');
 
     return response;
   } catch (error) {

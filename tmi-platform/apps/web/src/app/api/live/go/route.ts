@@ -34,8 +34,9 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from '@/lib/venues/EventVenueEnvironment';
-import { mapLivePrivacyToRegistry } from '@/lib/live/liveRoomPrivacyGate';
+import { mapLivePrivacyToRegistry, normalizeLivePrivacyMode } from '@/lib/live/liveRoomPrivacyGate';
 import { admitGoLive } from '@/lib/live/goLiveAdmitGate';
+import { getUserByEmail } from '@/lib/auth/UserStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,8 +54,17 @@ function parseVenueSkinId(raw: unknown): string | null {
 async function sessionUserId(req: NextRequest): Promise<string | null> {
   const email = req.cookies.get('tmi_user_email')?.value;
   if (email) {
-    const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
-    if (dbUser?.id) return dbUser.id;
+    const mem = getUserByEmail(email);
+    if (mem?.id) return mem.id;
+    try {
+      const dbUser = await Promise.race([
+        prisma.user.findUnique({ where: { email }, select: { id: true } }),
+        new Promise<null>((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
+      ]);
+      if (dbUser?.id) return dbUser.id;
+    } catch {
+      // proceed to session cookie fallback
+    }
   }
   const sessionId = req.cookies.get('tmi_session_id')?.value;
   if (!sessionId) return null;
@@ -126,10 +136,22 @@ export async function POST(req: NextRequest) {
       req.cookies.get('tmi_role')?.value ??
       '';
     if (!roleHint) {
-      const dbUser = await prisma.user
-        .findUnique({ where: { id: userId }, select: { role: true } })
-        .catch(() => null);
-      roleHint = dbUser?.role ?? 'PERFORMER';
+      const email = req.cookies.get('tmi_user_email')?.value;
+      if (email) {
+        const mem = getUserByEmail(email);
+        if (mem?.role) roleHint = mem.role.toUpperCase();
+      }
+      if (!roleHint) {
+        try {
+          const dbUser = await Promise.race([
+            prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
+            new Promise<null>((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
+          ]);
+          roleHint = dbUser?.role ?? 'PERFORMER';
+        } catch {
+          roleHint = 'PERFORMER';
+        }
+      }
     }
     const privacyHint =
       (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC';
@@ -210,6 +232,10 @@ export async function POST(req: NextRequest) {
     venueSkinId = resolved.skinId;
   }
 
+  const rawAudiencePrivacy =
+    (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC';
+  const audiencePrivacyMode = normalizeLivePrivacyMode(String(rawAudiencePrivacy));
+
   const session = registerLiveSession({
     userId,
     displayName,
@@ -219,9 +245,8 @@ export async function POST(req: NextRequest) {
     avatarUrl:     body.avatarUrl,
     previewUrl:    body.previewUrl,
     thumbnailUrl:  body.thumbnailUrl,
-    privacy:       mapLivePrivacyToRegistry(
-      (body as { audiencePrivacy?: string }).audiencePrivacy ?? body.privacy ?? 'PUBLIC',
-    ),
+    privacy:       mapLivePrivacyToRegistry(rawAudiencePrivacy),
+    audiencePrivacyMode,
     entryPriceUsd: body.entryPriceUsd,
     accentColor:   body.accentColor,
     performerTier: body.performerTier,
@@ -306,13 +331,26 @@ export async function DELETE(req: NextRequest) {
  * sessions = registry-active only (TTL-evicted; no LiveRegistry seeds).
  * count = public truth (dedupe roomId; exclude INVITE_ONLY). Anchors are
  * returned separately and MUST NOT be added into count.
+ *
+ * Default = lite (sessions/live/count only). Hub DiscoveryBus / HUD / dock polls
+ * must not serialize anchors + genreDiscovery every few seconds — that starved
+ * browser HTTP/1.1 so POST /api/live/go never completed.
+ * Explicit full inventory: ?full=1 (lobby walls / PlaylistLounge that need anchors).
+ * ?lite=1 remains an explicit lite alias.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const sp = req.nextUrl.searchParams;
+  const wantFull =
+    sp.get("full") === "1" ||
+    sp.get("full") === "true" ||
+    sp.get("lite") === "0" ||
+    sp.get("lite") === "false";
+  const lite = !wantFull;
   try {
-    ensureAnchorRoomsSeeded();
-    ensureGenreRoomsSeeded();
-    const anchorRecords = getAnchorDiscoveryRecords();
-    const genreRecords = getAllGenreDiscoveryRecords();
+    if (!lite) {
+      ensureAnchorRoomsSeeded();
+      ensureGenreRoomsSeeded();
+    }
     const sessions = await getActiveSessionsDurable();
     const count = getActiveRoomTruthCount(sessions);
     // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
@@ -328,6 +366,30 @@ export async function GET() {
       privacy:       s.privacy,
       performerTier: s.performerTier,
     }));
+    if (lite) {
+      return NextResponse.json(
+        {
+          sessions,
+          live,
+          count,
+          lite: true,
+          activeDefinition: {
+            source: 'GlobalLiveSessionRegistry.getActiveSessions',
+            staleEvictionMs: 120_000,
+            publicCountExcludes: ['INVITE_ONLY'],
+            dedupeKey: 'roomId',
+            neverCounted: ['seedSessions', 'anchors', 'static-/rooms/*', 'stale-db-without-registry'],
+          },
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, max-age=0',
+          },
+        },
+      );
+    }
+    const anchorRecords = getAnchorDiscoveryRecords();
+    const genreRecords = getAllGenreDiscoveryRecords();
     return NextResponse.json(
       {
         sessions,
@@ -357,8 +419,9 @@ export async function GET() {
         sessions: [],
         live: [],
         count: 0,
-        anchors: [],
-        anchorDiscovery: [],
+        lite: lite || undefined,
+        anchors: lite ? undefined : [],
+        anchorDiscovery: lite ? undefined : [],
         activeDefinition: {
           source: 'GlobalLiveSessionRegistry.getActiveSessions',
           staleEvictionMs: 120_000,

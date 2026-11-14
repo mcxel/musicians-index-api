@@ -21,6 +21,9 @@ import {
 
 let hydratedFromDb = false;
 let hydratePromise: Promise<void> | null = null;
+/** Throttle durable reconcile — every GET used to hit Prisma and starve POST /api/live/go. */
+let lastDurableReconcileAt = 0;
+const DURABLE_RECONCILE_MIN_MS = 2500;
 
 /** Load durable sessions into the in-memory store (idempotent per process). */
 export async function ensureHydrated(): Promise<void> {
@@ -37,6 +40,7 @@ export async function ensureHydrated(): Promise<void> {
     } finally {
       hydratedFromDb = true;
       hydratePromise = null;
+      lastDurableReconcileAt = Date.now();
     }
   })();
   return hydratePromise;
@@ -44,16 +48,19 @@ export async function ensureHydrated(): Promise<void> {
 
 export async function getActiveSessionsDurable(): Promise<LiveSession[]> {
   await ensureHydrated();
-  // Always merge durable → memory. Next.js can serve GET /api/live/go from a
-  // worker that never saw the create POST; empty-only reconcile left anonymous
-  // /home/3 at count=0 while the host worker already reported n+1 (Gate 3).
-  try {
-    const durable = await loadPersistedLiveSessions();
-    for (const session of durable) {
-      upsertHydratedSession(session);
+  // Merge durable → memory for multi-worker visibility, but not on every poll tick.
+  // Unthrottled Prisma reads under hub DiscoveryPoll made GET ~5–30s and starved publish POST.
+  const now = Date.now();
+  if (now - lastDurableReconcileAt >= DURABLE_RECONCILE_MIN_MS) {
+    lastDurableReconcileAt = now;
+    try {
+      const durable = await loadPersistedLiveSessions();
+      for (const session of durable) {
+        upsertHydratedSession(session);
+      }
+    } catch (err) {
+      console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
     }
-  } catch (err) {
-    console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
   }
   return getActiveSessions();
 }

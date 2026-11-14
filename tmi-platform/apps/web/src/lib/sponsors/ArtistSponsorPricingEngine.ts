@@ -160,6 +160,7 @@ export function getSponsorPackage(packageId: string): SponsorPackage | null {
 /**
  * Calculate artist payout from a sponsor payment.
  * Platform takes tier-based percentage; artist keeps the rest.
+ * Fan sponsorship reuses this exact math via calculateCreatorSponsorPayout.
  */
 export function calculateArtistSponsorPayout(input: {
   grossCents: number;
@@ -169,6 +170,26 @@ export function calculateArtistSponsorPayout(input: {
   const platformCents = Math.round(input.grossCents * platformShare);
   const artistCents = input.grossCents - platformCents;
   return { artistCents, platformCents, platformShareFraction: platformShare };
+}
+
+/**
+ * Creator sponsorship split (fan or performer). Same approved percentages —
+ * does not invent fees. Maps to EconomicPayment.performerShareCents as the
+ * creator earning field for both profile kinds (column name preserved).
+ */
+export function calculateCreatorSponsorPayout(input: {
+  grossCents: number;
+  creatorSubscriptionTier: SubscriptionTier;
+}): { creatorCents: number; platformCents: number; platformShareFraction: number } {
+  const split = calculateArtistSponsorPayout({
+    grossCents: input.grossCents,
+    artistSubscriptionTier: input.creatorSubscriptionTier,
+  });
+  return {
+    creatorCents: split.artistCents,
+    platformCents: split.platformCents,
+    platformShareFraction: split.platformShareFraction,
+  };
 }
 
 /**

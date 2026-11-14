@@ -580,71 +580,37 @@ function BookingContent() {
   );
 }
 
-// 💼 SPONSOR HUB
+// 💼 SPONSOR HUB — Rule 20: honest empty until real campaign registry is wired
 function SponsorHubContent() {
-  const sponsors = [
-    { name: "Lawtigers", status: "Active", revenue: "$4,200", renewal: "Sep 15" },
-    { name: "Coca-Cola", status: "Active", revenue: "$12,000", renewal: "Oct 1" },
-    { name: "Chipdust", status: "Pending", revenue: "$3,500", renewal: "—" },
-    { name: "Brothers Apparel", status: "Renewal Due", revenue: "$6,800", renewal: "Aug 20" },
-  ];
   return (
     <Rail>
-      {/* Active Sponsors */}
       <Card minWidth={280} accent="#FFD700">
         <Label color="#FFD700">ACTIVE SPONSORS</Label>
-        {sponsors.map((s) => (
-          <div key={s.name} style={{ background: "#0A0A1A", border: `1px solid #FFD70033`, borderRadius: 6, padding: 8, marginBottom: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: "#E8E8FF" }}>{s.name}</span>
-              <span style={{ fontSize: 8, color: s.status === "Active" ? "#00FF88" : s.status === "Renewal Due" ? "#FF6B1A" : "#FFD700", fontWeight: 700 }}>{s.status}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 8, color: "#00FF88" }}>{s.revenue}</span>
-              <span style={{ fontSize: 7, color: "#7878AA" }}>Renews {s.renewal}</span>
-            </div>
-          </div>
-        ))}
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>
+          No active sponsor deals yet.
+        </div>
         <Btn color="#FFD700">+ Find New Sponsors</Btn>
       </Card>
 
-      {/* Campaign Performance */}
       <Card minWidth={240} accent="#00D4FF">
         <Label color="#00D4FF">CAMPAIGN PERFORMANCE</Label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-          <StatBox label="Impressions" value="847K" color="#00D4FF" />
-          <StatBox label="Engagements" value="24.3K" color="#9B59FF" />
-          <StatBox label="Clicks" value="8,204" color="#FFD700" />
-          <StatBox label="Conversions" value="612" color="#00FF88" />
+          <StatBox label="Impressions" value="0" color="#00D4FF" />
+          <StatBox label="Engagements" value="0" color="#9B59FF" />
+          <StatBox label="Clicks" value="0" color="#FFD700" />
+          <StatBox label="Conversions" value="0" color="#00FF88" />
         </div>
         <Label color="#7878AA">REVENUE FROM SPONSORS</Label>
-        <div style={{ color: "#FFD700" }}>
-          <BarChart bars={[3200, 4100, 5500, 3800, 7200, 6100, 8400, 12000]} />
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "6px 0" }}>
+          $0 — stats appear after real campaign activity.
         </div>
-        <div style={{ fontSize: 7, color: "#7878AA", textAlign: "right", marginTop: 2 }}>Jan → Aug</div>
       </Card>
 
-      {/* Deliverables + Messaging */}
       <Card minWidth={230} accent="#FF6B1A">
         <Label color="#FF6B1A">DELIVERABLES</Label>
-        {[["Coca-Cola Post", "Story posts x3", "Due Aug 5", true], ["Lawtigers Mention", "Shoutout in 2 lives", "Due Aug 9", false]].map(([b, d, due, done]) => (
-          <Row key={b as string} accent="#FF6B1A">
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: "#E8E8FF", fontWeight: 700 }}>{b as string}</div>
-              <div style={{ fontSize: 7, color: "#7878AA" }}>{d as string} · {due as string}</div>
-            </div>
-            <span style={{ fontSize: 9, color: done ? "#00FF88" : "#FF6B1A" }}>{done ? "✓" : "○"}</span>
-          </Row>
-        ))}
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>No deliverables yet.</div>
         <Label color="#9B59FF">SPONSOR MESSAGING</Label>
-        {["Coca-Cola Brand Team", "Lawtigers Legal"].map((name) => (
-          <Row key={name} accent="#9B59FF">
-            <span style={{ fontSize: 8, color: "#E8E8FF", flex: 1 }}>{name}</span>
-            <Btn color="#9B59FF" outline>Chat</Btn>
-          </Row>
-        ))}
-        <Label color="#FFD700">BRAND APPROVALS</Label>
-        <Btn color="#FFD700">📋 Review Queue (3)</Btn>
+        <div style={{ fontSize: 9, color: "#7878AA", padding: "8px 0" }}>No sponsor threads yet.</div>
       </Card>
     </Rail>
   );
@@ -771,11 +737,11 @@ function YoPhoContent({ roleLabel = "PERFORMER" }: { roleLabel?: string }) {
       {/* Analytics */}
       <Card minWidth={180} accent="#FFD700">
         <Label color="#FFD700">YOPHO ANALYTICS</Label>
-        <StatBox label="Card Views" value="12.4K" color="#FFD700" />
-        <StatBox label="Shares" value="847" color="#FF2DAA" />
-        <StatBox label="QR Scans" value="203" color="#00D4FF" />
+        <StatBox label="Card Views" value="0" color="#FFD700" />
+        <StatBox label="Shares" value="0" color="#FF2DAA" />
+        <StatBox label="QR Scans" value="0" color="#00D4FF" />
         <div style={{ color: "#FFD700", marginTop: 4 }}>
-          <BarChart bars={[40, 55, 48, 70, 65, 80, 92, 75]} />
+          <BarChart bars={[0, 0, 0, 0, 0, 0, 0, 0]} />
         </div>
       </Card>
     </Rail>
@@ -788,23 +754,23 @@ function AnalyticsContent() {
   const [period, setPeriod] = useState<RevPeriod>("month");
 
   const periodData: Record<RevPeriod, { label: string; rev: string; bars: number[] }> = {
-    today: { label: "Today", rev: "$1,840", bars: [20, 40, 60, 30, 80, 50, 90, 70, 100, 85] },
-    week: { label: "This Week", rev: "$12.4K", bars: [60, 40, 80, 50, 70, 90, 75, 85, 65, 95] },
-    month: { label: "This Month", rev: "$184K", bars: [30, 50, 70, 40, 90, 60, 80, 100, 75, 85] },
-    year: { label: "This Year", rev: "$1.84M", bars: [20, 40, 50, 60, 80, 70, 90, 85, 95, 100] },
-    "5yr": { label: "Last 5 Years", rev: "$6.2M", bars: [15, 30, 50, 70, 100] },
-    lifetime: { label: "Lifetime", rev: "$8.1M", bars: [5, 15, 30, 50, 80, 100] },
+    today: { label: "Today", rev: "$0", bars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    week: { label: "This Week", rev: "$0", bars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    month: { label: "This Month", rev: "$0", bars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    year: { label: "This Year", rev: "$0", bars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    "5yr": { label: "Last 5 Years", rev: "$0", bars: [0, 0, 0, 0, 0] },
+    lifetime: { label: "Lifetime", rev: "$0", bars: [0, 0, 0, 0, 0, 0] },
   };
 
   const pd = periodData[period];
 
   const revCategories = [
-    { label: "Tickets", value: "38%", color: "#FF6B1A" },
-    { label: "Tips", value: "22%", color: "#00FF88" },
-    { label: "Merch", value: "18%", color: "#9B59FF" },
-    { label: "Sponsors", value: "12%", color: "#FFD700" },
-    { label: "Booking", value: "6%", color: "#00D4FF" },
-    { label: "Other", value: "4%", color: "#7878AA" },
+    { label: "Tickets", value: "0%", color: "#FF6B1A" },
+    { label: "Tips", value: "0%", color: "#00FF88" },
+    { label: "Merch", value: "0%", color: "#9B59FF" },
+    { label: "Sponsors", value: "0%", color: "#FFD700" },
+    { label: "Booking", value: "0%", color: "#00D4FF" },
+    { label: "Other", value: "0%", color: "#7878AA" },
   ];
 
   return (
@@ -852,40 +818,26 @@ function AnalyticsContent() {
       <Card minWidth={230} accent="#00D4FF">
         <Label color="#00D4FF">AUDIENCE</Label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 6 }}>
-          <StatBox label="New Followers" value="+4,231" color="#00D4FF" />
-          <StatBox label="Avg Attendance" value="8.6K" color="#9B59FF" />
-          <StatBox label="Watch Time" value="184K hrs" color="#FFD700" />
-          <StatBox label="Countries" value="47" color="#FF6B1A" />
+          <StatBox label="New Followers" value="0" color="#00D4FF" />
+          <StatBox label="Avg Attendance" value="0" color="#9B59FF" />
+          <StatBox label="Watch Time" value="0 hrs" color="#FFD700" />
+          <StatBox label="Countries" value="0" color="#FF6B1A" />
         </div>
         <Label color="#7878AA">TOP CITIES</Label>
-        {[["Atlanta, GA", "#00D4FF"], ["Miami, FL", "#9B59FF"], ["New York, NY", "#FF6B1A"]].map(([c, col]) => (
-          <Row key={c as string} accent="#00D4FF">
-            <span style={{ fontSize: 8, color: "#E8E8FF", flex: 1 }}>● {c as string}</span>
-            <span style={{ fontSize: 8, color: col as string, fontWeight: 700 }}>Top 3</span>
-          </Row>
-        ))}
+        <div style={{ fontSize: 8, color: "#7878AA", padding: "4px 0" }}>No location data yet</div>
       </Card>
 
       {/* Performance Card */}
       <Card minWidth={220} accent="#9B59FF">
         <Label color="#9B59FF">PERFORMANCE</Label>
-        <StatBox label="Ranking Move" value="↑ #14 → #8" color="#00FF88" />
+        <StatBox label="Ranking Move" value="—" color="#00FF88" />
         <div style={{ height: 6 }} />
-        <StatBox label="XP This Month" value="+24,850" color="#9B59FF" />
+        <StatBox label="XP This Month" value="0" color="#9B59FF" />
         <div style={{ height: 6 }} />
         <Label color="#FFD700">COMPETITION WINS</Label>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {["🏆 Cypher Champ", "🥇 Battle S4", "⭐ Top Streamer"].map((a) => (
-            <span key={a} style={{ fontSize: 7, color: "#FFD700", background: "#FFD70022", border: "1px solid #FFD70044", borderRadius: 3, padding: "2px 5px" }}>{a}</span>
-          ))}
-        </div>
+        <div style={{ fontSize: 8, color: "#7878AA", padding: "4px 0" }}>No wins recorded yet</div>
         <Label color="#00D4FF">BEST CONTENT</Label>
-        {[["Hustle & Flow (Video)", "57M"], ["Crown Me (Battle)", "8.2M"], ["Live Concert Aug 1", "12K viewers"]].map(([t, v]) => (
-          <Row key={t as string} accent="#00D4FF">
-            <span style={{ fontSize: 7, color: "#E8E8FF", flex: 1 }}>{t as string}</span>
-            <span style={{ fontSize: 7, color: "#00D4FF", fontWeight: 800 }}>{v as string}</span>
-          </Row>
-        ))}
+        <div style={{ fontSize: 8, color: "#7878AA", padding: "4px 0" }}>No content stats yet</div>
       </Card>
     </Rail>
   );
@@ -1001,12 +953,12 @@ function FanStatsContent() {
   const periodLabels: Record<FanPeriod, string> = { today: "Today", week: "This Week", month: "This Month", year: "This Year", lifetime: "Lifetime" };
 
   const spendingCats = [
-    { label: "Tickets", value: "$142", color: "#FF6B1A" },
-    { label: "Merch", value: "$88", color: "#9B59FF" },
-    { label: "Avatar Items", value: "$54", color: "#00D4FF" },
-    { label: "YoPho Items", value: "$22", color: "#FF2DAA" },
-    { label: "Tips", value: "$64", color: "#00FF88" },
-    { label: "Giveaways", value: "$18", color: "#FFD700" },
+    { label: "Tickets", value: "$0", color: "#FF6B1A" },
+    { label: "Merch", value: "$0", color: "#9B59FF" },
+    { label: "Avatar Items", value: "$0", color: "#00D4FF" },
+    { label: "YoPho Items", value: "$0", color: "#FF2DAA" },
+    { label: "Tips", value: "$0", color: "#00FF88" },
+    { label: "Giveaways", value: "$0", color: "#FFD700" },
   ];
 
   return (
@@ -1022,28 +974,26 @@ function FanStatsContent() {
           ))}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-          <StatBox label="Hours Watched" value="84 hrs" color="#9B59FF" />
-          <StatBox label="Tips Sent" value="23" color="#00FF88" />
-          <StatBox label="Battles Joined" value="8" color="#FF6B1A" />
-          <StatBox label="Concerts" value="5" color="#00D4FF" />
+          <StatBox label="Hours Watched" value="0 hrs" color="#9B59FF" />
+          <StatBox label="Tips Sent" value="0" color="#00FF88" />
+          <StatBox label="Battles Joined" value="0" color="#FF6B1A" />
+          <StatBox label="Concerts" value="0" color="#00D4FF" />
         </div>
       </Card>
 
       {/* Progress Card */}
       <Card minWidth={220} accent="#00D4FF">
         <Label color="#00D4FF">PROGRESS</Label>
-        <StatBox label="Total XP" value="12,450" color="#9B59FF" />
+        <StatBox label="Total XP" value="0" color="#9B59FF" />
         <div style={{ height: 4 }} />
-        <div style={{ fontSize: 8, color: "#7878AA", marginBottom: 2 }}>LEVEL 87 — 50% to 88</div>
+        <div style={{ fontSize: 8, color: "#7878AA", marginBottom: 2 }}>No level progress yet</div>
         <div style={{ height: 6, background: "#1A1A40", borderRadius: 6, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ height: "100%", width: "50%", background: "linear-gradient(90deg,#9B59FF,#00D4FF)", borderRadius: 6 }} />
+          <div style={{ height: "100%", width: "0%", background: "linear-gradient(90deg,#9B59FF,#00D4FF)", borderRadius: 6 }} />
         </div>
         <Label color="#FFD700">ACHIEVEMENTS</Label>
-        {["🏆 Top Fan 2025", "🎯 100 Battles Watched", "💎 Diamond Supporter", "⭐ Super Fan"].map((a) => (
-          <div key={a} style={{ fontSize: 8, color: "#FFD700", padding: "2px 0" }}>{a}</div>
-        ))}
+        <div style={{ fontSize: 8, color: "#7878AA", padding: "2px 0" }}>No achievements yet</div>
         <Label color="#00FF88">STREAKS</Label>
-        <div style={{ fontSize: 14, fontWeight: 900, color: "#00FF88" }}>🔥 28 Day Streak</div>
+        <div style={{ fontSize: 14, fontWeight: 900, color: "#00FF88" }}>0 Day Streak</div>
       </Card>
 
       {/* Spending Card */}
@@ -1056,7 +1006,7 @@ function FanStatsContent() {
               <span style={{ color: c.color, fontWeight: 800 }}>{c.value}</span>
             </div>
             <div style={{ height: 2, background: "#1A1A40", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: "60%", background: c.color, borderRadius: 2 }} />
+              <div style={{ height: "100%", width: "0%", background: c.color, borderRadius: 2 }} />
             </div>
           </div>
         ))}

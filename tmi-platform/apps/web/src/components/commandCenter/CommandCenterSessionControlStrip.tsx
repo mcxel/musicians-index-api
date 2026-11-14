@@ -312,8 +312,11 @@ function SessionBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      data-session-btn={label}
       style={{
         padding: "6px 12px",
+        minHeight: 36,
+        minWidth: 88,
         borderRadius: 12,
         background: gradient ?? "rgba(255,255,255,0.05)",
         border: `1px solid ${border}`,
@@ -326,6 +329,13 @@ function SessionBtn({
         opacity: disabled ? 0.6 : 1,
         flexShrink: 0,
         whiteSpace: "nowrap",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+        lineHeight: 1,
+        boxSizing: "border-box",
+        verticalAlign: "middle",
       }}
     >
       {label}

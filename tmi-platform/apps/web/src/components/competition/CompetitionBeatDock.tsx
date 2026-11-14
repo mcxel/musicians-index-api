@@ -9,11 +9,24 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { listBeats, type BeatLockerRecord } from "@/lib/beats/BeatLockerClient";
-import {
-  styleLabel,
-  type CompetitionBeatLane,
-  type CompetitionBeatRoomState,
+import type {
+  CompetitionBeatLane,
+  CompetitionBeatRoomState,
+  CompetitionBeatStyle,
 } from "@/lib/competition/CompetitionBeatRoomEngine";
+
+function styleLabel(style: CompetitionBeatStyle): string {
+  const map: Record<CompetitionBeatStyle, string> = {
+    attached: "Locker / competition beat",
+    acapella: "A cappella (no beat)",
+    instrumental: "Instrumental starter",
+    bass: "Bass line",
+    drum_line: "Drum line",
+    kick: "Kick only",
+    metronome: "Metronome",
+  };
+  return map[style] ?? style;
+}
 import CompetitionBeatBroadcastTag from "@/components/competition/CompetitionBeatBroadcastTag";
 
 const CYAN = "#00FFFF";

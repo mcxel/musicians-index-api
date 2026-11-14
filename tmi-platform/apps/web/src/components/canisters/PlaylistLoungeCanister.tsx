@@ -121,7 +121,7 @@ export function PlaylistLoungeCanister({
     }
 
     try {
-      const res = await fetch("/api/live/go", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/live/go?full=1", { cache: "no-store", credentials: "include" });
       if (res.ok) {
         const data = await res.json() as {
           anchorDiscovery?: LiveDiscoveryRecord[];

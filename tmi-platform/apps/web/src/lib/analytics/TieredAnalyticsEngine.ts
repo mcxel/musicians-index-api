@@ -235,72 +235,32 @@ export function getAnalyticsSnapshot(
 ): TieredAnalyticsSnapshot {
   const capabilities = TIER_CAPABILITIES[userTier];
 
+  // Rule 20 Real-Stat Law: never fabricate views/earnings/rank.
+  // Until a real analytics registry feed is wired, unlocked metrics are honest zeros.
+  const empty = '0';
   const metrics: AnalyticsMetric[] = [
-    { label: 'Profile Views', value: '12.4K', delta: '+8%', color: '#00FFFF', locked: false, requiredTier: 'free' },
-    { label: 'Beat Plays',    value: '89.2K', delta: '+22%', color: '#FF2DAA', locked: isLocked('pro', userTier), requiredTier: 'pro' },
-    { label: 'Fan Messages',  value: '1,842', delta: '+5%',  color: '#FFD700', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
-    { label: 'Avg Watch Time', value: '4m 12s', delta: '-1m', color: '#AA2DFF', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
-    { label: 'Follower Growth', value: '+340', delta: '+12%', color: '#00FF88', locked: isLocked('silver', userTier), requiredTier: 'silver' },
-    { label: 'Revenue This Month', value: '$12,680', delta: '+31%', color: '#FFD700', locked: isLocked('gold', userTier), requiredTier: 'gold' },
-    { label: 'Sponsor Interactions', value: '5,910', delta: '+44%', color: '#FF9200', locked: isLocked('silver', userTier), requiredTier: 'silver' },
-    { label: 'Conversion Rate', value: '7.3%', delta: '+1.2%', color: '#00FF88', locked: isLocked('gold', userTier), requiredTier: 'gold' },
-    { label: 'Audience Score', value: '84/100', delta: '+3', color: '#AA2DFF', locked: isLocked('platinum', userTier), requiredTier: 'platinum' },
-    { label: 'Revenue Forecast', value: '$18K', delta: '30-day', color: '#FFD700', locked: isLocked('platinum', userTier), requiredTier: 'platinum' },
-    { label: 'Heatmap Sessions', value: '2,441', delta: 'live', color: '#FF2DAA', locked: isLocked('diamond', userTier), requiredTier: 'diamond' },
-    { label: 'Ranking Trajectory', value: '#12 → #7', delta: '7-day', color: '#00FFFF', locked: isLocked('gold', userTier), requiredTier: 'gold' },
+    { label: 'Profile Views', value: empty, color: '#00FFFF', locked: false, requiredTier: 'free' },
+    { label: 'Beat Plays', value: empty, color: '#FF2DAA', locked: isLocked('pro', userTier), requiredTier: 'pro' },
+    { label: 'Fan Messages', value: empty, color: '#FFD700', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
+    { label: 'Avg Watch Time', value: '—', color: '#AA2DFF', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
+    { label: 'Follower Growth', value: empty, color: '#00FF88', locked: isLocked('silver', userTier), requiredTier: 'silver' },
+    { label: 'Revenue This Month', value: '$0', color: '#FFD700', locked: isLocked('gold', userTier), requiredTier: 'gold' },
+    { label: 'Sponsor Interactions', value: empty, color: '#FF9200', locked: isLocked('silver', userTier), requiredTier: 'silver' },
+    { label: 'Conversion Rate', value: '—', color: '#00FF88', locked: isLocked('gold', userTier), requiredTier: 'gold' },
+    { label: 'Audience Score', value: '—', color: '#AA2DFF', locked: isLocked('platinum', userTier), requiredTier: 'platinum' },
+    { label: 'Revenue Forecast', value: '—', color: '#FFD700', locked: isLocked('platinum', userTier), requiredTier: 'platinum' },
+    { label: 'Heatmap Sessions', value: empty, color: '#FF2DAA', locked: isLocked('diamond', userTier), requiredTier: 'diamond' },
+    { label: 'Ranking Trajectory', value: '—', color: '#00FFFF', locked: isLocked('gold', userTier), requiredTier: 'gold' },
   ];
 
-  const allInsights: AiInsight[] = [
-    {
-      engine: 'AudienceInsightEngine',
-      headline: 'Peak audience window: 8–10 PM ET on Fridays',
-      body: 'Your most engaged fans are active Fri nights. Schedule live drops during this window to maximize reach by ~34%.',
-      urgency: 'opportunity',
-      locked: isLocked('pro', userTier),
-    },
-    {
-      engine: 'FanRetentionEngine',
-      headline: 'Day-7 retention dropped 12% — post-show engagement gap',
-      body: 'Fans who miss the first week after a show churn 3× faster. Consider an automated follow-up beat clip or behind-the-scenes drop on day 3.',
-      urgency: 'warning',
-      locked: isLocked('ruby', userTier),
-    },
-    {
-      engine: 'TrendMomentumEngine',
-      headline: '"Trap Soul" genre trending +61% in your audience this week',
-      body: 'Three artists you compete with are posting Trap Soul content. A single release in this genre could capture 400+ new fans.',
-      urgency: 'opportunity',
-      locked: isLocked('silver', userTier),
-    },
-    {
-      engine: 'SponsorPerformanceEngine',
-      headline: 'Sponsor placement CTR below baseline by 2.1×',
-      body: 'Your current sponsor slot at show minute 18 is underperforming. Moving it to minute 8 (pre-peak) typically improves CTR by 40%.',
-      urgency: 'warning',
-      locked: isLocked('silver', userTier),
-    },
-    {
-      engine: 'CreatorGrowthEngine',
-      headline: 'Upload cadence gap detected — 14 days since last drop',
-      body: 'Creators with 7-day or less upload gaps grow 2.8× faster. Drop a short beat loop or freestyle to re-activate the algorithm.',
-      urgency: 'warning',
-      locked: isLocked('gold', userTier),
-    },
-    {
-      engine: 'RevenuePredictionEngine',
-      headline: 'Projected monthly revenue: $18,400 (+45% vs current)',
-      body: 'Based on current beat sales velocity and ticket presales, you are on track for $18.4K this month if you launch a beat bundle drop this week.',
-      urgency: 'opportunity',
-      locked: isLocked('platinum', userTier),
-    },
-    {
-      engine: 'EngagementHeatmapEngine',
-      headline: 'Heatmap: audience exits spike at show minute 23',
-      body: 'Live sessions show 30% of viewers exit at minute 23 consistently. This correlates with a 4-minute instrumental-only segment. Consider mixing in crowd interaction.',
-      urgency: 'warning',
-      locked: isLocked('diamond', userTier),
-    },
-  ];
+  // No fabricated AI insights. Engines stay capability-gated; bodies stay empty until real data exists.
+  const allInsights: AiInsight[] = capabilities.enabledEngines.map((engine) => ({
+    engine,
+    headline: 'No activity yet',
+    body: 'Insights appear after real campaign, stream, or engagement data is recorded.',
+    urgency: 'info' as const,
+    locked: false,
+  }));
 
   const nextTier = TIER_ORDER[TIER_ORDER.indexOf(userTier) + 1];
   const upgradePrompt = nextTier

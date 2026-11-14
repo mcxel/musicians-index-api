@@ -26,9 +26,24 @@
 import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { getVenueAsset, type VenueType, type VenueAsset } from "@/lib/venues/VenueAssetRegistry";
+import type { CertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+
+/**
+ * Default venue backdrop for the non-certified legacy callers only (no
+ * caller passing a certifiedPackage is part of the Step 4 Slice 2 Regular
+ * Go Live binding contract, so this default never applies to it).
+ */
+const LEGACY_UNCERTIFIED_FALLBACK_VENUE_TYPE: VenueType = "concert";
 
 interface RoomEnvironmentLayerProps {
   venueType: VenueType;
+  /**
+   * Optional Step 4 Slice 2 bind evidence. When provided and renderMode is
+   * UNAVAILABLE, the ambient video layer is suppressed rather than presenting
+   * an unverified asset as certified (no silent venue substitution). Omitting
+   * this prop keeps prior behavior unchanged for callers that don't pass it.
+   */
+  certifiedPackage?: CertifiedVenuePackage | null;
   /** mode controls which perspective video plays */
   mode?: "ambient" | "audience" | "performer";
   /** Overlaid content (performers, HUD, chat rail, etc.) */
@@ -69,6 +84,7 @@ const SPONSOR_ZONE_STYLES: Record<string, React.CSSProperties> = {
 
 export default function RoomEnvironmentLayer({
   venueType,
+  certifiedPackage = null,
   mode = "ambient",
   children,
   energyLevel = 0.5,
@@ -77,7 +93,16 @@ export default function RoomEnvironmentLayer({
   className = "",
   style,
 }: RoomEnvironmentLayerProps) {
-  const asset = getVenueAsset(venueType) ?? getVenueAsset("concert");
+  // No silent venue substitution (CertifiedVenuePackage.ts law): a certified
+  // caller (Regular Go Live — ArenaEventShell/GoLiveRuntime/InstantGoLiveStage)
+  // always uses the package's own pre-resolved, audited asset — it must never
+  // independently re-resolve via venueType and fall back to a fake "concert"
+  // default. Only the remaining non-certified legacy callers (Fan Lobby /
+  // LobbyTheaterShell, which pass no certifiedPackage at all) keep that
+  // defensive default, since they sit outside the certified binding contract.
+  const asset = certifiedPackage
+    ? certifiedPackage.asset ?? undefined
+    : getVenueAsset(venueType) ?? getVenueAsset(LEGACY_UNCERTIFIED_FALLBACK_VENUE_TYPE);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
 
@@ -98,7 +123,8 @@ export default function RoomEnvironmentLayer({
   // AMBIENT_SURFACE and IN_WORLD_SCREEN belong on in-world surfaces, not here.
   const renderVideoLayer =
     videoRole === "FALLBACK_PREVIEW" &&
-    !asset?.hasCanonical3DWorld;
+    !asset?.hasCanonical3DWorld &&
+    (certifiedPackage ? certifiedPackage.renderMode !== "UNAVAILABLE" : true);
   const rig = RIG_CONFIG[asset?.geometry?.lightingRig ?? ""] ?? RIG_CONFIG["studio-grid"];
   const bannerUrl = bannerOverrideUrl ?? asset?.bannerUrl;
 
@@ -111,6 +137,32 @@ export default function RoomEnvironmentLayer({
     v.playsInline = true;
     v.play().catch(() => {/* autoplay blocked — video will be visible but paused */});
   }, [videoUrl]);
+
+  // Certified-but-unresolvable venue (asset: null on the package) — never
+  // render decorative geometry/color from an unrelated venue's asset.
+  // Children (performer feed, HUD) still render; only the environment
+  // decoration is honestly skipped.
+  if (!asset) {
+    return (
+      <div
+        className={className}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          minHeight: 480,
+          overflow: "hidden",
+          background: "#050510",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div

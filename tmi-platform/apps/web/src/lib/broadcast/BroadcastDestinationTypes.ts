@@ -8,6 +8,7 @@ export type BroadcastProvider =
   | "youtube"
   | "instagram"
   | "facebook"
+  | "tiktok"
   | "kick"
   | "twitch"
   | "custom"
@@ -49,7 +50,7 @@ export interface BroadcastDestinationPublic {
   provider: BroadcastProvider;
   /** Display label */
   label: string;
-  /** Bezel short code: YT IG FB KK TW CST */
+  /** Bezel short code: YT IG FB TT KK TW CST */
   shortCode: string;
   connectionStatus: DestinationConnectionStatus;
   authState: DestinationAuthState;
@@ -72,6 +73,7 @@ export const CANONICAL_BEZEL_PROVIDERS: ReadonlyArray<{
   { provider: "youtube", shortCode: "YT", label: "YouTube" },
   { provider: "instagram", shortCode: "IG", label: "Instagram" },
   { provider: "facebook", shortCode: "FB", label: "Facebook" },
+  { provider: "tiktok", shortCode: "TT", label: "TikTok" },
   { provider: "kick", shortCode: "KK", label: "Kick" },
   { provider: "twitch", shortCode: "TW", label: "Twitch" },
   { provider: "custom", shortCode: "CST", label: "Custom RTMP" },

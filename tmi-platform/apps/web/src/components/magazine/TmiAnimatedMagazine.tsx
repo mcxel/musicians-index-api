@@ -9,6 +9,7 @@ import {
   type TmiPeelOrigin,
 } from "@/lib/magazine/tmiMagazinePageFlipEngine";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
+import { getSoundById } from "@/lib/sound/SoundManifest";
 import type { TmiMagazinePageMeta } from "@/lib/magazine/tmiMagazineMetadataModel";
 import {
   TMI_MAGAZINE_IDLE_TIMERS_MS,
@@ -112,7 +113,11 @@ export default function TmiAnimatedMagazine({
 
   useEffect(() => {
     console.info("[TmiAnimatedMagazine] mount", { pageCount: pages.length, initialPage });
-    const audio = new TmiMagazineAudioEngine();
+    const audio = new TmiMagazineAudioEngine({
+      pageTurn: getSoundById("magazine_page_turn")?.file ?? null,
+      pagesTurning: getSoundById("magazine_pages_turning")?.file ?? null,
+      softSwipe: getSoundById("magazine_page_turn")?.file ?? null,
+    });
     audioRef.current = audio;
     setSoundEnabled(audio.soundEnabled);
 
@@ -136,6 +141,11 @@ export default function TmiAnimatedMagazine({
 
     flipEngineRef.current = engine;
     setSnapshot(engine.getSnapshot());
+
+    // Rule 37 — stop any in-flight page-turn sound on unmount.
+    return () => {
+      audio.dispose();
+    };
   }, [initialPage, onNavigate, pages]);
 
   useEffect(() => {

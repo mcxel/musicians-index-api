@@ -1,5 +1,14 @@
 import React from "react";
+import Link from "next/link";
 import GlobalTmiHeader from "@/components/shell/GlobalTmiHeader";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About The Musician's Index",
+  description:
+    "TMI is a live music magazine and performance platform for independent artists, fans, battles, cyphers, and ranked discovery.",
+  alternates: { canonical: "https://themusiciansindex.com/about" },
+};
 
 export default function AboutPage() {
   return (
@@ -7,28 +16,64 @@ export default function AboutPage() {
       <GlobalTmiHeader />
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px 80px" }}>
         <h1 style={{ fontSize: 28, fontWeight: 900, color: "#FFD700", marginBottom: 16 }}>
-          About The Musicians Index (TMI)
+          About The Musician&apos;s Index (TMI)
         </h1>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.6 }}>
-          The Musicians Index (TMI) is the next-generation 3D live broadcast ecosystem connecting independent music performers, beat producers, and global fans.
+          The Musician&apos;s Index Magazine is a live interactive music platform operated by BernoutGlobal LLC.
+          Artists, performers, and fans connect through magazine features, live rooms, battles, cyphers, rankings,
+          and discovery — on the open web at themusiciansindex.com.
         </p>
 
         <h2 style={{ fontSize: 18, fontWeight: 800, color: "#FF2DAA", marginTop: 28, marginBottom: 10 }}>
-          Our Vision
-        </h2>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
-          TMI breaks down the wall between performers and audiences by combining photorealistic 3D venues, interactive 3D avatars, real-time audio/video streaming, and direct fan monetization into one seamless platform OS.
-        </p>
-
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#00FFFF", marginTop: 28, marginBottom: 10 }}>
-          Key Features
+          What you can do here
         </h2>
         <ul style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.8, paddingLeft: 20 }}>
-          <li><strong>3D Live Venues:</strong> Photorealistic performance stages with PBR materials and Global Illumination.</li>
-          <li><strong>Star-Travel Ecosystem:</strong> Instant hyperspace room navigation and audience seat reservation.</li>
-          <li><strong>Group Avatar Canisters:</strong> Seated social group calls directly beneath broadcast streams.</li>
-          <li><strong>Direct Economy:</strong> Integrated Diamond tier tipping, beat licensing, and venue ticketing.</li>
+          <li>
+            <strong>Magazine &amp; discovery:</strong> Read features, interviews, and charts that link to real
+            performer profiles and live surfaces.
+          </li>
+          <li>
+            <strong>Live performance:</strong> Join or host live sessions, battles, and cyphers when rooms are
+            active — live status comes from the platform live registry, not fabricated viewer counts.
+          </li>
+          <li>
+            <strong>Creator economy:</strong> Tips, memberships, sponsorships, and bookings when you choose to
+            participate — payments run through Stripe; we do not invent payout numbers on public pages.
+          </li>
+          <li>
+            <strong>Audience presence:</strong> Fan avatars and lobby/venue experiences continue to expand; what
+            ships is labeled honestly as live, in progress, or unavailable.
+          </li>
         </ul>
+
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#00FFFF", marginTop: 28, marginBottom: 10 }}>
+          Advertising
+        </h2>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+          Free public surfaces may show Google AdSense and sponsor inventory after consent. See{" "}
+          <Link href="/disclosures" style={{ color: "#00FFFF" }}>
+            Disclosures
+          </Link>{" "}
+          and the{" "}
+          <Link href="/privacy" style={{ color: "#00FFFF" }}>
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#FFD700", marginTop: 28, marginBottom: 10 }}>
+          Contact
+        </h2>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+          BernoutGlobal LLC ·{" "}
+          <Link href="/contact" style={{ color: "#00FFFF" }}>
+            Contact
+          </Link>{" "}
+          ·{" "}
+          <Link href="/support" style={{ color: "#00FFFF" }}>
+            Support
+          </Link>
+        </p>
       </main>
     </div>
   );

@@ -38,6 +38,10 @@ import {
   resolveEventVenueEnvironment,
   type VenueEnvironmentKind,
 } from "@/lib/venues/EventVenueEnvironment";
+import {
+  resolveGoLiveCertifiedVenuePackage,
+  type CertifiedVenuePackage,
+} from "@/lib/venues/CertifiedVenuePackage";
 import { useWorldScenePlanStore } from "@/lib/world/worldScenePlanStore";
 import { worldScenePlanToRenderProps } from "@/lib/world/WorldScenePlan";
 import TMIInteractiveVenueHud from "@/components/venue-hud/TMIInteractiveVenueHud";
@@ -305,6 +309,10 @@ export default function InstantGoLiveStage({
   }, []);
 
   const eventType = categoryToEventType(category);
+  const certifiedPackage: CertifiedVenuePackage = resolveGoLiveCertifiedVenuePackage({
+    category: eventType,
+    eventType,
+  });
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const renderFromPlan = scenePlan ? worldScenePlanToRenderProps(scenePlan) : null;
   const envResolution = resolveEventVenueEnvironment({
@@ -344,6 +352,9 @@ export default function InstantGoLiveStage({
       data-instant-go-live="true"
       data-instant-go-live-contained={contained ? "true" : "false"}
       data-privacy={privacy}
+      data-certified-venue-id={certifiedPackage.venueId || undefined}
+      data-venue-render-mode={certifiedPackage.renderMode}
+      data-venue-class={certifiedPackage.classification}
     >
       {(!contained || initPhase === "error") && (
         <GoLiveStatusPill
@@ -441,6 +452,7 @@ export default function InstantGoLiveStage({
             instantEmptyStage={renderFromPlan?.instantEmptyStage ?? true}
             venueEnvironment={renderFromPlan?.venueEnvironment ?? envResolution.environment}
             venueSkinId={renderFromPlan?.venueSkinId ?? envResolution.skinId}
+            certifiedPackage={certifiedPackage}
           />
         ) : (
           <GoLiveRuntime
@@ -450,6 +462,8 @@ export default function InstantGoLiveStage({
             contained={contained}
             showLiveChrome={false}
             venueIndex={envResolution.policy === "exempt" ? 1 : envResolution.venueIndex}
+            certifiedPackage={certifiedPackage}
+            venueType={certifiedPackage.venueType ?? undefined}
           />
         )}
       </div>

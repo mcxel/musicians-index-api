@@ -12,6 +12,7 @@ export type SoundCategory =
   | 'battle'
   | 'gameshow'
   | 'concert'
+  | 'magazine'
   | 'ui'
   | 'venue';
 
@@ -74,6 +75,10 @@ export const SOUND_MANIFEST: SoundManifestEntry[] = [
   { id: 'concert_dark_engine_logo',file:'/sounds/concert/concert-dark-engine-logo.mp3',category: 'concert', trigger: 'dramatic/dark genre opener',   volume: 0.6,  loop: false },
   { id: 'concert_uplift_theme',   file: '/sounds/concert/concert-uplift-theme.mp3',   category: 'concert', trigger: 'uplifting genre opener',       volume: 0.6,  loop: false },
   { id: 'concert_stinger',        file: '/sounds/concert/concert-stinger.mp3',        category: 'concert', trigger: 'pre-segment stinger',          volume: 0.55, loop: false },
+
+  // ── Magazine ──────────────────────────────────────────────────────────────
+  { id: 'magazine_page_turn',     file: '/sounds/magazine/page-turn.mp3',             category: 'magazine', trigger: 'successful single-page next/previous transition', volume: 0.14, loop: false },
+  { id: 'magazine_pages_turning', file: '/sounds/magazine/pages-turning.mp3',          category: 'magazine', trigger: 'successful multi-page magazine jump', volume: 0.16, loop: false },
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   { id: 'ui_menu_pack',       file: '/sounds/ui/ui-menu-pack.mp3',       category: 'ui', trigger: 'menu open/close line pack', volume: 0.4, loop: false },

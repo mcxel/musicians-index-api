@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import { buildVenueEventRoutes } from "@/lib/venues/VenueEventPromotionRoutingEngine";
@@ -84,22 +83,7 @@ export default function PromoterHubPage() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
-      {/* Top bar */}
-      <div style={{ background: "rgba(0,0,0,0.88)", borderBottom: "1px solid rgba(0,255,136,0.2)", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-        <div>
-          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>PROMOTER HUB</div>
-          <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Event Promoter Command Center</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <RoleHubAccountMenu accentColor={ACCENT} />
-          <Link href="/dashboard/promoter" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(0,255,136,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
-          <Link href="/booking" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>BOOK ARTIST</Link>
-          <Link href="/hub/venue" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>VENUE HUB</Link>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 80px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 16px 80px" }}>
 
         {/* Platform Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 32 }}>
@@ -413,6 +397,5 @@ export default function PromoterHubPage() {
         </div>
 
       </div>
-    </main>
   );
 }

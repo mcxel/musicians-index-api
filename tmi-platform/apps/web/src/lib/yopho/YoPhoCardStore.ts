@@ -1,6 +1,10 @@
 /**
  * Server-side in-memory store for published YoPho interactive cards.
  * Soft-launch glue — swap for DB later. Survives within the Node process.
+ *
+ * YoPho Lounge Wall Placement Law (deferred post–Step 5A):
+ * `.cursor/artifacts/yopho-lounge/TMI_YOPHO_LOUNGE_WALL_PLACEMENT_LAW.md`
+ * This store is authoring/publish persistence only — not lounge socket placement.
  */
 
 import type { PublishedYoPhoCard } from "./YoPhoCardRegistry";

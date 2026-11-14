@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * InstantGoLiveLauncher — default /live/go entry.
- * Opens venue immediately via executeInstantGoLive (shared dock path).
- * No full-screen BROADCAST SETUP on normal/repeat launch.
+ * InstantGoLiveLauncher — LEGACY /live/go shell (route already redirects to hub).
+ *
+ * Step 4 Slice 1: must NOT call executeInstantGoLive then re-publish on hub.
+ * Canonical entry = triggerCanonicalGoLive → presentInstantGoLiveInPlace →
+ * executeInstantGoLive → POST /api/live/go (one publish authority).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
-import { PENDING_GO_LIVE_KEY } from "@/lib/dock/presentInstantGoLiveInPlace";
+import { triggerCanonicalGoLive } from "@/lib/dock/presentInstantGoLiveInPlace";
 import {
   loadPersistedLivePrivacy,
   loadPersistedPreferredExperience,
@@ -45,33 +46,20 @@ export default function InstantGoLiveLauncher() {
     setErrorMsg("");
     persistPreferredExperience(experience);
 
-    const result = await executeInstantGoLive({
+    // Single authority — may navigate to hub or publish in-place; no double mint.
+    const result = await triggerCanonicalGoLive({
+      role: "PERFORMER",
       privacy,
       preferredExperience: experience,
-      // Media init runs on InstantGoLiveStage — venue first
-      deferMedia: true,
+      publishSession: true,
     });
 
-    if (!result.ok || !result.href) {
+    if (!result.ok) {
       setPhase("error");
       setErrorMsg(result.error ?? "Could not open venue. Sign in and retry.");
       return;
     }
-
-    try {
-      sessionStorage.setItem(
-        PENDING_GO_LIVE_KEY,
-        JSON.stringify({
-          role: "PERFORMER",
-          preferredExperience: experience,
-          roomId: result.roomId,
-          publishSession: true,
-        }),
-      );
-    } catch {
-      /* hub query fallback */
-    }
-    window.location.replace("/hub/performer?golive=1");
+    // Off-hub: triggerCanonicalGoLive navigates to hub; keep preparing_venue UI.
   }, [experience, privacy]);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveTicketFee, TICKET_FEE_POLICY_ID } from "@/lib/tickets/TicketFeeResolver";
+import SeatClaimRail from "@/components/venues/SeatClaimRail";
 
 type SeatTier = "standard" | "premium" | "vip" | "sold";
 
@@ -23,6 +24,8 @@ const TIER_CONFIG: Record<SeatTier, { color: string; bg: string; label: string; 
 };
 
 const VENUE_ID = "interactive-seating";
+const VENUE_SLUG = "interactive-seating";
+const EVENT_SLUG = "interactive-seating-event";
 
 function seatsFromConfig(config: {
   zones: Array<{ id: string; label: string; capacity: number; priceCents: number; tier: string }>;
@@ -80,6 +83,7 @@ export default function SeatingPage() {
   const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [loadStatus, setLoadStatus] = useState("Loading seat map…");
+  const [userId, setUserId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +104,19 @@ export default function SeatingPage() {
         if (!cancelled) setLoadStatus("Failed to load seat map");
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { user?: { id?: string } }) => {
+        if (!cancelled && d?.user?.id) setUserId(d.user.id);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -297,6 +314,25 @@ export default function SeatingPage() {
             </div>
 
             <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+              {userId ? (
+                <SeatClaimRail
+                  venueSlug={VENUE_SLUG}
+                  eventSlug={EVENT_SLUG}
+                  userId={userId}
+                  seats={selectedSeats.map((s) => ({
+                    seatId: s.id,
+                    row: s.row,
+                    seatNumber: s.number,
+                    zone: s.tier === "vip" ? "vip" : s.tier === "premium" ? "front" : "mid",
+                    price: s.price,
+                  }))}
+                  onClear={() => setSelected(new Set())}
+                />
+              ) : (
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+                  Sign in to use Seat Claim Rail (/api/tickets/claim-seat).
+                </p>
+              )}
               <Link href="/tickets/create" style={{ padding: "10px 14px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 12, textDecoration: "none", textAlign: "center" }}>
                 🎟️ Create Tickets
               </Link>

@@ -176,6 +176,15 @@ const MOCK_NEWS: NewsAlertEntry[] = [
 
 import { getUniversalRankingSnapshot } from '@/lib/rankings/UniversalRankingSnapshot';
 
+/**
+ * Deliberate exception to this file's "never empty" mock-fallback pattern
+ * (see header comment): getGlobalRanking() feeds CrownRankRuntime.ts's
+ * getCrownRankRuntime(), the real-profile fallback for Home 1's Crown /
+ * Home1Top10DoubleSpreaded. Falling back to MOCK_GLOBAL_RANKING here would
+ * silently reintroduce fake performer cards (KOVA, Nera Vex, ...) into a
+ * production discovery surface that is otherwise real-only. Returns []
+ * honestly instead — callers must render their own empty state.
+ */
 export function getGlobalRanking(): ArtistRankEntry[] {
   const snapshot = getUniversalRankingSnapshot();
   if (snapshot && snapshot.slots.length > 0) {
@@ -188,12 +197,15 @@ export function getGlobalRanking(): ArtistRankEntry[] {
       badge: s.rank === 1 ? 'CROWN' : 'TOP',
     }));
   }
-  return MOCK_GLOBAL_RANKING;
+  return [];
 }
+
+/** Honest "no real crown holder yet" sentinel — never a fabricated artist identity. */
+const NO_CROWN_YET: ArtistRankEntry = { rank: 0, name: 'Crown Unclaimed', genre: '', score: 0, delta: 0, badge: 'PENDING' };
 
 export function getCrownLeader(): ArtistRankEntry {
   const global = getGlobalRanking();
-  return global[0] ?? MOCK_GLOBAL_RANKING[0];
+  return global[0] ?? NO_CROWN_YET;
 }
 
 export function getTop10(): ArtistRankEntry[] {

@@ -6,8 +6,8 @@ export const metadata = {
   description: "Contributor lane for applications, submissions, payouts, and editorial workflow.",
 };
 
-export default function ContributorsPage() {
-  const roster = contributorAccountEngine.list();
+export default async function ContributorsPage() {
+  const roster = await contributorAccountEngine.list();
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "72px 20px 32px", display: "grid", gap: 16 }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRetainAudibleExperience } from '@/components/audio/useAudibleExperiencePresence';
 
 interface MediaMonitorProps {
   mode: 'self-view' | 'remote-view' | 'standby';
@@ -8,6 +9,7 @@ interface MediaMonitorProps {
 }
 
 export default function MediaMonitor({ mode, isActive }: MediaMonitorProps) {
+  useRetainAudibleExperience();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);

@@ -12,12 +12,12 @@ export function generateStaticParams() {
   return [{ id: "1" }];
 }
 
-export default function MagazineIssueByIdPage({ params }: MagazineIssueByIdProps) {
+export default async function MagazineIssueByIdPage({ params }: MagazineIssueByIdProps) {
   const issueId = params.id;
   if (!/^\d+$/.test(issueId)) {
     notFound();
   }
 
-  const pages = buildMagazineIssuePages(issueId);
+  const pages = await buildMagazineIssuePages(issueId);
   return <MagazineIssueReader issue={issueId} issueTitle="The Musician's Index" pages={pages} />;
 }

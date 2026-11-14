@@ -6,6 +6,8 @@ import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
+import RoleHubAccountMenu from '@/components/navigation/RoleHubAccountMenu';
+import RoleSwitcherWidget from '@/components/navigation/RoleSwitcherWidget';
 
 interface Event { id: string; title: string; date: string; sold: number; capacity: number; revenue: number; }
 
@@ -35,7 +37,11 @@ export default function PromoterDashboard() {
               <div style={{ fontSize: 10, color: '#FF9500', fontWeight: 900, letterSpacing: '0.2em' }}>PROMOTER HUB</div>
               <h1 style={{ fontSize: 32, margin: 0, fontFamily: "'Bebas Neue', Impact, sans-serif" }}>EVENT MANAGEMENT</h1>
             </div>
-            <button style={{ background: '#FF9500', color: '#000', border: 'none', padding: '10px 20px', fontWeight: 900, borderRadius: 6, cursor: 'pointer' }}>+ CREATE EVENT</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RoleSwitcherWidget accentColor="#FF9500" buttonLabel="SWITCH ROLES" />
+              <RoleHubAccountMenu accentColor="#FF9500" showInlineSignOut />
+              <button style={{ background: '#FF9500', color: '#000', border: 'none', padding: '10px 20px', fontWeight: 900, borderRadius: 6, cursor: 'pointer' }}>+ CREATE EVENT</button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>

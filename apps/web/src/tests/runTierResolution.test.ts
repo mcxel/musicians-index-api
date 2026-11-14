@@ -1,0 +1,157 @@
+import { computeAuthoritativeTier } from '../lib/auth/resolveAuthoritativeTier'
+
+// Honesty note: this exercises computeAuthoritativeTier — the pure decision
+// logic with zero I/O — which is everything about the P0 tier-resolution
+// fix that can be verified without a live database/HTTP server in this
+// environment. It does NOT prove the four converged routes
+// (/api/auth/signin, /api/auth/session, /api/auth/me, getTmiAuth.ts) wire
+// their fetched DB value into this function correctly at runtime — that
+// requires an actual authenticated request against a real database, which
+// this script cannot fabricate. The code diff for those four call sites is
+// the evidence for that part; this script is the evidence for the decision
+// rule itself.
+
+const FOUNDER_EMAIL = 'leeanncoats.79@gmail.com'   // real entry in FounderDiamondPassEngine
+const NON_FOUNDER_EMAIL = 'random.fan@example.com' // not in the founder-passes list
+
+function runTierResolutionTest() {
+  const results: Record<string, boolean> = {}
+
+  // 1. FREE DB tier, non-founder -> FREE
+  results['free_db_stays_free'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'FREE').tier === 'FREE'
+
+  // 2. DIAMOND DB tier, non-founder -> DIAMOND
+  results['diamond_db_stays_diamond'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'DIAMOND').tier === 'DIAMOND'
+
+  // 3. Mid-tier without entitlement arg (legacy) still passes through —
+  //    honesty mode requires the 3rd arg. Session routes always pass evidence.
+  results['gold_db_stays_gold'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD').tier === 'GOLD'
+
+  // 3b. Honesty mode: GOLD with empty evidence → FREE (read-path heal)
+  const goldHonesty = computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {})
+  results['gold_without_entitlement_reads_free'] =
+    goldHonesty.tier === 'FREE' && goldHonesty.needsUnpaidTierHeal === true
+
+  // 3c. Honesty mode: GOLD with live subscription preserved
+  results['gold_with_subscription_preserved'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {
+      stripeSubscriptionId: 'sub_live',
+      billingStatus: 'active',
+    }).tier === 'GOLD'
+
+  // 3d. Complimentary grant preserves paid display without inventing Stripe
+  results['gold_complimentary_preserved'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'GOLD', {
+      complimentaryGrant: true,
+    }).tier === 'GOLD'
+
+  // 4. Missing/invalid tier must resolve to FREE, never DIAMOND — this is
+  //    the exact anti-pattern bf9024fd introduced and this fix reverts.
+  results['missing_tier_resolves_free_not_diamond'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, undefined).tier === 'FREE'
+  results['null_tier_resolves_free_not_diamond'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, null).tier === 'FREE'
+  results['garbage_tier_resolves_free_not_diamond'] =
+    computeAuthoritativeTier(NON_FOUNDER_EMAIL, 'not_a_real_tier').tier === 'FREE'
+
+  // 5. Founder-pass email with a stale/non-diamond DB tier -> DIAMOND, and
+  //    flags that a DB self-heal write is needed (login/session routes
+  //    perform that write; this pure function only signals it).
+  const founderResolved = computeAuthoritativeTier(FOUNDER_EMAIL, 'FREE')
+  results['founder_email_resolves_diamond'] = founderResolved.tier === 'DIAMOND'
+  results['founder_email_signals_heal_when_stale'] = founderResolved.needsFounderHeal === true
+
+  // 6. Founder-pass email already DIAMOND in DB -> no redundant heal write
+  const founderAlreadyDiamond = computeAuthoritativeTier(FOUNDER_EMAIL, 'DIAMOND')
+  results['founder_already_diamond_no_redundant_heal'] =
+    founderAlreadyDiamond.tier === 'DIAMOND' && founderAlreadyDiamond.needsFounderHeal === false
+
+  const preauthorizedEmail = 'wright8732king@gmail.com'
+  results['preauthorized_email_without_verified_identity_stays_free'] =
+    computeAuthoritativeTier(preauthorizedEmail, 'FREE', { emailVerified: false }).tier === 'FREE'
+  results['preauthorized_stale_database_diamond_stays_free'] =
+    computeAuthoritativeTier(preauthorizedEmail, 'DIAMOND', { emailVerified: false }).tier === 'FREE'
+  const originalDiamondEmailsForPreauthorization = process.env.DIAMOND_EMAILS
+  try {
+    process.env.DIAMOND_EMAILS = preauthorizedEmail
+    results['legacy_environment_diamond_cannot_bypass_verification'] =
+      computeAuthoritativeTier(preauthorizedEmail, 'FREE', { emailVerified: false }).tier === 'FREE'
+  } finally {
+    if (originalDiamondEmailsForPreauthorization === undefined) delete process.env.DIAMOND_EMAILS
+    else process.env.DIAMOND_EMAILS = originalDiamondEmailsForPreauthorization
+  }
+  const verifiedPreauthorized = computeAuthoritativeTier(preauthorizedEmail, 'FREE', { emailVerified: true })
+  results['verified_preauthorized_email_resolves_diamond'] = verifiedPreauthorized.tier === 'DIAMOND'
+  results['verified_preauthorized_email_signals_tier_heal'] = verifiedPreauthorized.needsFounderHeal
+
+  // 7. Arity is (email, dbTier, entitlement?) — no role parameter. Optional
+  //    3rd arg still counts toward Function.length in JS (no default value).
+  results['no_role_parameter_exists'] = computeAuthoritativeTier.length === 3
+
+  // 8. Two different emails with two different DB tiers never bleed into
+  //    each other — same call site, independent inputs, independent
+  //    outputs (proves the function carries no hidden shared state that
+  //    could leak Account A's resolution into Account B's).
+  const accountA = computeAuthoritativeTier('account-a@example.com', 'FREE')
+  const accountB = computeAuthoritativeTier('account-b@example.com', 'DIAMOND')
+  results['account_a_b_independent'] = accountA.tier === 'FREE' && accountB.tier === 'DIAMOND'
+
+  // 9. Owner-approved complimentary lifetime tester grant (e.g. the DIAMOND_EMAILS
+  //    env var used for pre-authorized public-profile testers — the real list
+  //    is never committed to source; this test uses a synthetic address set
+  //    only for the duration of this process, never a real tester's email).
+  const originalDiamondEmails = process.env.DIAMOND_EMAILS
+  try {
+    process.env.DIAMOND_EMAILS = 'synthetic.tester@example.com, Other.Tester@Example.com '
+
+    // 9a. Exact-case match resolves DIAMOND with a heal signal, same as a founder pass.
+    const testerResolved = computeAuthoritativeTier('synthetic.tester@example.com', 'FREE')
+    results['env_diamond_tester_resolves_diamond'] = testerResolved.tier === 'DIAMOND'
+    results['env_diamond_tester_signals_heal_when_stale'] = testerResolved.needsFounderHeal === true
+
+    // 9b. Case-insensitive / whitespace-trimmed matching — real signup emails
+    //     are not guaranteed to match the env var's exact casing/spacing.
+    const testerCaseInsensitive = computeAuthoritativeTier('OTHER.TESTER@EXAMPLE.COM', 'FREE')
+    results['env_diamond_tester_case_insensitive'] = testerCaseInsensitive.tier === 'DIAMOND'
+
+    // 9c. Idempotent — already-DIAMOND DB tier never signals a redundant heal
+    //     write (first signup reconciliation, second login, third login all
+    //     resolve to the exact same outcome; never a duplicate grant).
+    const testerAlreadyDiamond = computeAuthoritativeTier('synthetic.tester@example.com', 'DIAMOND')
+    results['env_diamond_tester_already_diamond_no_redundant_heal'] =
+      testerAlreadyDiamond.tier === 'DIAMOND' && testerAlreadyDiamond.needsFounderHeal === false
+
+    // 9d. An email NOT on the approved list never self-elevates merely by
+    //     resembling an approved address — the match is exact, not a prefix
+    //     or substring check.
+    const unapproved = computeAuthoritativeTier('not.synthetic.tester@example.com', 'FREE')
+    results['env_diamond_non_match_stays_free'] = unapproved.tier === 'FREE'
+  } finally {
+    // Restore real environment exactly as found — this test must never leak
+    // a mutated DIAMOND_EMAILS value into any other test run in this process.
+    if (originalDiamondEmails === undefined) delete process.env.DIAMOND_EMAILS
+    else process.env.DIAMOND_EMAILS = originalDiamondEmails
+  }
+
+  const allPassed = Object.values(results).every(Boolean)
+
+  console.log('[TIER_RESOLUTION_TEST_ASSERT]', { allPassed, results })
+
+  if (!allPassed) {
+    const failed = Object.entries(results).filter(([, v]) => !v).map(([k]) => k)
+    throw new Error(`[TIER_RESOLUTION_TEST] FAILED: ${failed.join(', ')}`)
+  }
+}
+
+if (typeof describe === 'function') {
+  describe('Authoritative tier resolution', () => {
+    it('keeps Diamond preauthorization gated by verified email evidence', () => {
+      expect(runTierResolutionTest).not.toThrow()
+    })
+  })
+} else {
+  runTierResolutionTest()
+}

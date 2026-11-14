@@ -7,7 +7,7 @@ import { TIMING } from "@/lib/motion/timingRegistry";
 import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
-import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
+import CanonicalAdSlot from "@/components/ads/CanonicalAdSlot";
 import { ARCHETYPES, type MagazineArchetype, type ArchetypeConfig } from "@/lib/magazine/MagazineDesignEngine";
 import type { MagazinePageClass, RandomPageSubtype } from "@/lib/magazine/MagazineIssueContract";
 import { MAGAZINE_XP_POLICY } from "@/lib/magazine/MagazineIssueContract";
@@ -157,7 +157,7 @@ function LockedSpreadModal({ onBack }: { onBack: () => void }) {
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <Link
-            href="/checkout"
+            href="/pricing?ref=magazine"
             style={{ padding: "10px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", borderRadius: 8, textDecoration: "none" }}
           >
             SUBSCRIBE →
@@ -255,13 +255,14 @@ export default function MagazineShell({
     }
   }, [currentLeft, issue]);
 
-  // Boot audio engine with crisp page turn sounds
+  // Boot audio engine with real paper page-turn sounds (not generic UI SFX).
   useEffect(() => {
     audioRef.current = new TmiMagazineAudioEngine({
-      pageTurn: "/sounds/ui/ui-whoosh-bubbles.mp3",
+      pageTurn: "/sounds/magazine/page-turn.mp3",
+      pagesTurning: "/sounds/magazine/pages-turning.mp3",
       pageOpen: "/sounds/ui/ui-menu-pack.mp3",
       pageClose: "/sounds/ui/ui-menu-pack.mp3",
-      softSwipe: "/sounds/ui/ui-whoosh-bubbles.mp3",
+      softSwipe: "/sounds/magazine/page-turn.mp3",
     });
   }, []);
 
@@ -525,12 +526,16 @@ export default function MagazineShell({
       aria-label="TMI Magazine"
       style={{
         minHeight: "100vh",
+        maxWidth: "100vw",
+        width: "100%",
+        overflowX: "hidden",
         paddingTop: 56,
         background: "linear-gradient(160deg, #0a0014 0%, #020617 60%, #0a0a0f 100%)",
         color: "#e2e8f0",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
         position: "relative",
+        boxSizing: "border-box",
       }}
     >
       <style>{`
@@ -571,6 +576,14 @@ export default function MagazineShell({
           }
           .tmi-mag-cols {
             column-count: 1 !important;
+          }
+          .tmi-mag-shell-container,
+          .tmi-mag-shell-canvas,
+          [data-testid^="magazine-page-"] {
+            max-width: 100vw !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
           }
         }
         .tmi-mag-dropcap::first-letter {
@@ -797,6 +810,8 @@ export default function MagazineShell({
             minHeight: 540,
             maxWidth: showSpread ? 1100 : 680,
             margin: "0 auto",
+            boxSizing: "border-box",
+            overflowX: "hidden",
             position: "relative",
             transition: reduced ? undefined : flipTransition,
             transform: flipTransform,
@@ -973,10 +988,9 @@ export default function MagazineShell({
           borderTop: `1px solid ${archetype.borderColor}40`,
           boxShadow: `0 -4px 16px rgba(0,0,0,0.2)`,
         }}>
-          <AdSenseSlot
-            slot={AD_SLOTS.magazineLeaderboard}
-            format="horizontal"
-            label="ADVERTISEMENT"
+          <CanonicalAdSlot
+            slotId="magazine-leaderboard"
+            venue="magazine"
             style={{ minHeight: 60, maxWidth: 900, margin: "0 auto", border: `1px dashed ${archetype.borderColor}55`, padding: 8, borderRadius: 6 }}
           />
         </div>
@@ -995,10 +1009,9 @@ export default function MagazineShell({
             pointerEvents: "auto",
           }}
         >
-          <AdSenseSlot
-            slot={AD_SLOTS.magazineInline}
-            format="vertical"
-            label="ADVERTISEMENT"
+          <CanonicalAdSlot
+            slotId="magazine-sponsor-sidebar"
+            venue="magazine"
             style={{ minHeight: 280 }}
           />
         </div>

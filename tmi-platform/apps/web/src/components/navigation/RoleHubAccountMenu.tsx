@@ -8,12 +8,18 @@
 
 import { useEffect, useState } from "react";
 import AccountCommandMenu from "@/components/navigation/AccountCommandMenu";
+import UniversalSignOutButton from "@/components/navigation/UniversalSignOutButton";
 
 export interface RoleHubAccountMenuProps {
   accentColor?: string;
+  /** Show a visible LOG OUT button beside the account avatar (required on role shells). */
+  showInlineSignOut?: boolean;
 }
 
-export default function RoleHubAccountMenu({ accentColor = "#00FFFF" }: RoleHubAccountMenuProps) {
+export default function RoleHubAccountMenu({
+  accentColor = "#00FFFF",
+  showInlineSignOut = true,
+}: RoleHubAccountMenuProps) {
   const [userId, setUserId] = useState("session");
   const [displayName, setDisplayName] = useState("Account");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -35,7 +41,11 @@ export default function RoleHubAccountMenu({ accentColor = "#00FFFF" }: RoleHubA
   }, []);
 
   return (
-    <div data-tmi-role-hub-account-menu="1" style={{ position: "relative", flexShrink: 0, zIndex: 50 }}>
+    <div
+      data-tmi-role-hub-account-menu="1"
+      style={{ position: "relative", flexShrink: 0, zIndex: 50, display: "flex", alignItems: "center", gap: 8 }}
+    >
+      {showInlineSignOut ? <UniversalSignOutButton accentColor="#FF5555" compact /> : null}
       <AccountCommandMenu
         userId={userId}
         displayName={displayName}

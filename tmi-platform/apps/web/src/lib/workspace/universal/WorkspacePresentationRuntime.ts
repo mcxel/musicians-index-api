@@ -99,6 +99,8 @@ export const WORKSPACE_PRESENTATION_MAP: Record<string, WorkspacePresentationCon
   messaging: { preferredSurface: "DRAWER", defaultWidth: 340, preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
   yopho: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   store: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  shop: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
+  merch: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   analytics: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   booking: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "expanded" },
   settings: { preferredSurface: "DRAWER", preserveState: true, mobileShellMode: "WORK", mediaConsoleMode: "mini" },
@@ -182,6 +184,8 @@ interface PresentationState {
   activeControlMode: MobileControlMode | null;
   previousMonitorCount: 0 | 1 | 2;
   monitorCount: 0 | 1 | 2;
+  /** Internal view count per focused monitor (1-8). Never 16. */
+  activeViewCount: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   focusedViewport: MediaViewportId;
   sourceA: string | null;
   sourceB: string | null;
@@ -193,6 +197,7 @@ interface PresentationState {
   toggleDrawerExpand: () => void;
   cycleMonitorCount: () => void;
   setMonitorCount: (count: 0 | 1 | 2) => void;
+  setActiveViewCount: (count: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => void;
   openWorkspace: (id: UniversalWorkspaceId) => void;
   closeWorkspace: () => void;
   openControl: (mode: MobileControlMode, viewport?: MediaViewportId, workspaceId?: UniversalWorkspaceId | null) => void;
@@ -212,6 +217,7 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
   activeControlMode: null,
   previousMonitorCount: 2,
   monitorCount: 2,
+  activeViewCount: 1,
   focusedViewport: "A",
   sourceA: null,
   sourceB: null,
@@ -442,4 +448,10 @@ export const useWorkspacePresentationStore = create<PresentationState>((set, get
       monitorCount: count,
       transition: "IDLE",
     })),
+
+  setActiveViewCount: (count) =>
+    set({
+      activeViewCount: Math.max(1, Math.min(8, count)) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
+      transition: "IDLE",
+    }),
 }));

@@ -23,14 +23,16 @@ export default function TipButton({ artistSlug, artistName, compact = false }: T
   async function sendTip(cents: number) {
     setSending(true);
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      // Canonical tip authority: POST /api/tips -> tipFulfillment -> stripe webhook grantTipFromStripeSession
+      const res = await fetch("/api/tips", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ product: "TIP", artistSlug, amount: cents }),
+        credentials: "include",
+        body: JSON.stringify({ artistSlug, amount: cents }),
       });
-      const data = await res.json() as { url?: string; error?: string };
+      const data = await res.json() as { url?: string; error?: string; code?: string };
       if (!res.ok || !data.url) {
-        console.error('[TipButton]', data.error ?? res.status);
+        console.error('[TipButton]', data.error ?? data.code ?? res.status);
         setOpen(false);
         return;
       }

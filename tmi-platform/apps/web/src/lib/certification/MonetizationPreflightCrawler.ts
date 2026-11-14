@@ -37,6 +37,7 @@ const CRAWLABLE_ROUTES = [
   "/privacy",
   "/terms",
   "/contact",
+  "/disclosures",
   "/home/1",
   "/home/2",
   "/home/3",

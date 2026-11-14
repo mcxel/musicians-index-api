@@ -84,7 +84,9 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: false },
   staticPageGenerationTimeout: 600,
   async headers() {
-    const csp = [
+    const isProd = process.env.NODE_ENV === 'production';
+
+    const cspDirectives = [
       "default-src 'self'",
       "base-uri 'self'",
       "object-src 'none'",
@@ -98,8 +100,25 @@ const nextConfig = {
       "frame-src 'self' https:",
       "worker-src 'self' blob:",
       "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join('; ');
+    ];
+
+    if (isProd) {
+      cspDirectives.push("upgrade-insecure-requests");
+    }
+
+    const csp = cspDirectives.join('; ');
+
+    const commonHeaders = [
+      { key: 'Content-Security-Policy', value: csp },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(self)' },
+    ];
+
+    if (isProd) {
+      commonHeaders.push({ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' });
+    }
 
     return [
       {
@@ -116,14 +135,7 @@ const nextConfig = {
       },
       {
         source: '/(.*)',
-        headers: [
-          { key: 'Content-Security-Policy', value: csp },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(self)' },
-          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-        ],
+        headers: commonHeaders,
       },
     ];
   },
@@ -136,8 +148,11 @@ const nextConfig = {
         destination: 'https://themusiciansindex.com/:path*',
         permanent: true,
       },
-      // ── Root → Home 1 ─────────────────────────────────────────────────────
-      { source: '/', destination: '/home/1', permanent: false },
+      // ── Root → Home 1 Canonical Public Entry ──────────────────────────────
+      { source: '/', destination: '/home/1', permanent: true },
+
+      // ── Cookie Policy Canonical Alias ────────────────────────────────────
+      { source: '/cookie-policy', destination: '/privacy#cookies', permanent: true },
 
       // ── Battles ───────────────────────────────────────────────────────────
       { source: '/battles/new', destination: '/battles/create', permanent: false },
@@ -153,14 +168,18 @@ const nextConfig = {
 
       // ── Rooms: legacy /rooms/live/[x] → /live/rooms/[x] ─────────────────
       { source: '/rooms/live/:room', destination: '/live/rooms/:room', permanent: false },
-      { source: '/rooms/live', destination: '/live/lobby', permanent: false },
+      // P0 lobby convergence: superseded discovery walls → canonical LiveLobbyWallHost
+      { source: '/rooms/live', destination: '/live/lobby-wall', permanent: false },
       { source: '/live/world', destination: '/home/3', permanent: false },
       { source: '/live/arena/:id', destination: '/live/rooms/:id', permanent: false },
 
-      // ── Lobbies ───────────────────────────────────────────────────────────
-      { source: '/lobbies/live-world', destination: '/live/lobby', permanent: false },
+      // ── Lobbies → canonical /live/lobby-wall (never BillboardLiveWall) ───
+      { source: '/live/lobby', destination: '/live/lobby-wall', permanent: false },
+      { source: '/live/lobbies', destination: '/live/lobby-wall', permanent: false },
+      { source: '/lobbies', destination: '/live/lobby-wall', permanent: false },
+      { source: '/lobbies/live-world', destination: '/live/lobby-wall', permanent: false },
       { source: '/lobbies/monday-cypher', destination: '/cypher/stage', permanent: false },
-      { source: '/lobbies/:slug', destination: '/live/lobby', permanent: false },
+      { source: '/lobbies/:slug', destination: '/live/lobby-wall', permanent: false },
 
       // ── Magazine ──────────────────────────────────────────────────────────
       { source: '/magazine/1', destination: '/magazine/issue/1', permanent: false },

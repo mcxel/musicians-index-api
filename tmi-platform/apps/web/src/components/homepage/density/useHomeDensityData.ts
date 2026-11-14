@@ -42,76 +42,34 @@ export interface HomeDensityData {
   ticker: DensityTickerItem[];
   articles: HomeEditorialArticle[];
   venues: DensityVenueItem[];
+  rooms: HomeLiveRoom[];
   events: HomeLiveShow[];
   sponsors: HomeSponsorRow[];
   charts: HomeChartRow[];
   releases: HomeReleaseRow[];
-  battle: DensityBattleCard;
-  cypher: DensityCypherCard;
+  battle: DensityBattleCard | null;
+  cypher: DensityCypherCard | null;
   crownWinners: HomeCrownWinner[];
   isLive: boolean;
 }
 
+/**
+ * Rule 20: honest empty state, not fabricated activity. Every list starts
+ * empty; battle/cypher cards start null so consumers render their own real
+ * "nothing happening right now" state instead of a fake specific event.
+ */
 const FALLBACK_DENSITY_DATA: HomeDensityData = {
-  ticker: [
-    { id: "bn-1", label: "Breaking", text: "Battle finals locked: Wavetek vs FlowMaster tonight", href: "/battles" },
-    { id: "bn-2", label: "Live", text: "Cypher Arena filled to 92% in last 20 minutes", href: "/cypher" },
-    { id: "bn-3", label: "Drop", text: "New sponsor drop unlocked in Home 1-2 spread", href: "/home/1-2" },
-    { id: "bn-4", label: "Alert", text: "Top 10 leaderboard updated after surprise overtime", href: "/leaderboard" },
-  ],
-  articles: [
-    { id: "a-1", title: "Inside the Crown Run", category: "FEATURE", slug: "" },
-    { id: "a-2", title: "How Cypher Rooms Are Filling Faster", category: "LIVE", slug: "" },
-    { id: "a-3", title: "Producer Heatmap and Beat Momentum", category: "ANALYSIS", slug: "" },
-    { id: "a-4", title: "Venue Loyalty and VIP Rotation", category: "VENUES", slug: "" },
-  ],
-  venues: [
-    { id: "v-1", name: "Neon Forum", occupancy: 94, href: "/venues/neon-forum" },
-    { id: "v-2", name: "Crown Ring", occupancy: 88, href: "/venues/crown-ring" },
-    { id: "v-3", name: "Drift Hall", occupancy: 76, href: "/venues/drift-hall" },
-    { id: "v-4", name: "Pulse District", occupancy: 69, href: "/venues/pulse-district" },
-  ],
-  events: [
-    { id: "e-1", title: "Battle Season Qualifier", artist: "TMI Host", date: "Tonight", venue: "Main Stage", ticketsLeft: 0 },
-    { id: "e-2", title: "Producer Beat Auction", artist: "TMI Host", date: "Tomorrow", venue: "Auction Hall", ticketsLeft: 0 },
-    { id: "e-3", title: "Comedy Night Open Set", artist: "TMI Host", date: "Thu", venue: "Comedy Room", ticketsLeft: 0 },
-    { id: "e-4", title: "Dance-Off Regional", artist: "TMI Host", date: "Fri", venue: "Dance Hall", ticketsLeft: 0 },
-  ],
-  sponsors: [
-    { name: "VELOCITY AUDIO", tier: "PLATINUM" },
-    { name: "BEATPORT USA", tier: "GOLD" },
-    { name: "ROLAND", tier: "SILVER" },
-  ],
-  charts: [
-    { id: "c-1", rank: 1, title: "Wavetek", artist: "Wavetek", genre: "Hip-Hop", change: "up", plays: "14.2K", slug: "wavetek", followers: 14200 },
-    { id: "c-2", rank: 2, title: "FlowMaster", artist: "FlowMaster", genre: "Hip-Hop", change: "up", plays: "11.8K", slug: "flowmaster", followers: 11800 },
-    { id: "c-3", rank: 3, title: "Krypt", artist: "Krypt", genre: "Rap", change: "up", plays: "9.4K", slug: "krypt", followers: 9400 },
-    { id: "c-4", rank: 4, title: "Neon Vibe", artist: "Neon Vibe", genre: "R&B", change: "same", plays: "8.2K", slug: "neon-vibe", followers: 8200 },
-    { id: "c-5", rank: 5, title: "Zuri", artist: "Zuri", genre: "Afrobeats", change: "up", plays: "7.1K", slug: "zuri", followers: 7100 },
-  ],
-  releases: [
-    { id: "b-1", slug: "", title: "Midnight Bars", genre: "Hip-Hop", bpm: 142, playCount: 0, createdAt: "", color: "#00FFFF" },
-    { id: "b-2", slug: "", title: "Neon Dust", genre: "R&B", bpm: 136, playCount: 0, createdAt: "", color: "#FF2DAA" },
-    { id: "b-3", slug: "", title: "Tunnel Echo", genre: "Trap", bpm: 128, playCount: 0, createdAt: "", color: "#FFD700" },
-    { id: "b-4", slug: "", title: "Riverline", genre: "Afrobeats", bpm: 150, playCount: 0, createdAt: "", color: "#2DFFAA" },
-  ],
-  battle: {
-    title: "Wavetek vs FlowMaster Championship Round",
-    subtitle: "Audience-first voting · double XP window · sponsor ring active",
-    entries: "1,842",
-    heat: "96%",
-    eta: "12m",
-  },
-  cypher: {
-    title: "Neon District Open Mic Cypher",
-    subtitle: "12 genres live · multilingual lane · crowd clip vault enabled",
-    queue: "47",
-    wait: "3m",
-    status: "Open Queue",
-  },
-  crownWinners: [
-    { name: "WAVETEK", genre: "Hip-Hop", title: "Crown Season", votes: "24,881", week: "Week 14" },
-  ],
+  ticker: [],
+  articles: [],
+  venues: [],
+  rooms: [],
+  events: [],
+  sponsors: [],
+  charts: [],
+  releases: [],
+  battle: null,
+  cypher: null,
+  crownWinners: [],
   isLive: false,
 };
 
@@ -138,9 +96,9 @@ function buildVenues(rooms: HomeLiveRoom[]): DensityVenueItem[] {
   }));
 }
 
-function buildBattleCard(winners: HomeCrownWinner[]): DensityBattleCard {
+function buildBattleCard(winners: HomeCrownWinner[]): DensityBattleCard | null {
   const winner = winners[0];
-  if (!winner) return FALLBACK_DENSITY_DATA.battle;
+  if (!winner) return null;
 
   return {
     title: `${winner.name} Championship Push`,
@@ -151,9 +109,10 @@ function buildBattleCard(winners: HomeCrownWinner[]): DensityBattleCard {
   };
 }
 
-function buildCypherCard(rooms: HomeLiveRoom[]): DensityCypherCard {
-  const cypherRoom = rooms.find((room) => room.type.toLowerCase().includes("cypher")) ?? rooms[0];
-  if (!cypherRoom) return FALLBACK_DENSITY_DATA.cypher;
+/** Only a genuine cypher-type room qualifies — never mislabel an unrelated live room as a Featured Cypher. */
+function buildCypherCard(rooms: HomeLiveRoom[]): DensityCypherCard | null {
+  const cypherRoom = rooms.find((room) => room.type.toLowerCase().includes("cypher"));
+  if (!cypherRoom) return null;
 
   return {
     title: cypherRoom.name,
@@ -196,6 +155,7 @@ export function useHomeDensityData() {
           ticker,
           articles,
           venues,
+          rooms: liveEnvelope.data.rooms,
           events,
           sponsors,
           charts,

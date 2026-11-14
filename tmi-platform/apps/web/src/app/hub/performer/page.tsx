@@ -5,6 +5,7 @@ import PerformerHubSessionFallback from "@/components/auth/PerformerHubSessionFa
 import {
   classifyShellIdentity,
   hubPathForIdentity,
+  normalizeRoleToken,
 } from "@/lib/auth/sessionRole";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,18 @@ export default function PerformerHubPage() {
     redirect("/hub/fan");
   }
   if (identity === "OTHER") {
+    const r = normalizeRoleToken(roleCookie);
+    if (r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN") {
+      const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
+      const displayName = store.get("tmi_display_name")?.value?.trim() || "Operator";
+      const session = {
+        identity: "PERFORMER" as const,
+        rawRole: r,
+        userId,
+        displayName,
+      };
+      return <PerformerHubMount session={session} />;
+    }
     redirect(hubPathForIdentity("OTHER", roleCookie ?? ""));
   }
 

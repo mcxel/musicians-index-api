@@ -108,6 +108,7 @@ export default function PerformerLivePresentationShell({
               {isLivePublished ? (
                 <span
                   data-live-badge="true"
+                  data-session-mode="PUBLISHED"
                   style={{
                     background: "#FF2020",
                     color: "#fff",
@@ -122,6 +123,8 @@ export default function PerformerLivePresentationShell({
                 </span>
               ) : (
                 <span
+                  data-live-badge="false"
+                  data-session-mode="LOCAL_PREVIEW"
                   style={{
                     background: "rgba(0,255,136,0.12)",
                     color: "#00FF88",
@@ -133,7 +136,7 @@ export default function PerformerLivePresentationShell({
                     letterSpacing: "0.12em",
                   }}
                 >
-                  PREVIEW
+                  LOCAL PREVIEW
                 </span>
               )}
               <span
@@ -175,23 +178,43 @@ export default function PerformerLivePresentationShell({
             </div>
           </div>
 
-          <div
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              background: "rgba(5,5,16,0.85)",
-              border: "1px solid rgba(170,45,255,0.35)",
-              fontSize: 9,
-              fontWeight: 800,
-              color: "#AA2DFF",
-              letterSpacing: "0.08em",
-              whiteSpace: "nowrap",
-            }}
-            data-audience-watching={watchingCount}
-            title="Real human watching count only"
-          >
-            {watchingCount} watching
-          </div>
+          {isLivePublished ? (
+            <div
+              style={{
+                padding: "6px 10px",
+                borderRadius: 8,
+                background: "rgba(5,5,16,0.85)",
+                border: "1px solid rgba(170,45,255,0.35)",
+                fontSize: 9,
+                fontWeight: 800,
+                color: "#AA2DFF",
+                letterSpacing: "0.08em",
+                whiteSpace: "nowrap",
+              }}
+              data-audience-watching={watchingCount}
+              title="Published session · real human watching count only"
+            >
+              {watchingCount} watching
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: "6px 10px",
+                borderRadius: 8,
+                background: "rgba(5,5,16,0.85)",
+                border: "1px solid rgba(0,255,136,0.28)",
+                fontSize: 9,
+                fontWeight: 800,
+                color: "#00FF88",
+                letterSpacing: "0.08em",
+                whiteSpace: "nowrap",
+              }}
+              data-audience-watching="local-preview"
+              title="Local camera preview is not a published LIVE session"
+            >
+              Not broadcasting
+            </div>
+          )}
         </div>
       ) : null}
     </div>

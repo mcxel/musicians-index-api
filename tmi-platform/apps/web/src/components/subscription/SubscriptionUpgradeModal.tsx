@@ -1,33 +1,52 @@
 "use client";
 /**
  * SubscriptionUpgradeModal — upgrade/downgrade flow for all TMI plans.
- * Wires to existing Stripe checkout. Shows tier comparison.
+ * Wires to existing Stripe checkout. Lowest eligible price first.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAllSubscriptionProducts, type SubscriptionAccountType } from "@/lib/stripe/products";
+import {
+  getSubscriptionOffersLowestFirst,
+  type SubscriptionAccountType,
+} from "@/lib/stripe/products";
 
-// Plans are built from the canonical registry (@/lib/stripe/products.ts),
-// not hardcoded — this file previously listed invented tier names ("Artist
-// Gold", "VIP Diamond") with placeholder price IDs that don't correspond to
-// any real TMI tier or Stripe price at all (Lane A A8, 2026-09-01).
-const TIER_ICONS: Record<string, string> = { PRO: "⭐", RUBY: "💎", SILVER: "🥈", GOLD: "🥇", PLATINUM: "🏆", DIAMOND: "👑" };
-const TIER_COLORS: Record<string, string> = { PRO: "#FF6B35", RUBY: "#FF2DAA", SILVER: "#00FFFF", GOLD: "#FFD700", PLATINUM: "#E5E4E2", DIAMOND: "#AA2DFF" };
+// Plans from getSubscriptionOffersLowestFirst (PriceSortAuthority) — never
+// hard-coded tier-name order when prices disagree with vanity ranking.
+const TIER_ICONS: Record<string, string> = {
+  FREE: "🎧",
+  PRO: "⭐",
+  RUBY: "💎",
+  SILVER: "🥈",
+  GOLD: "🥇",
+  PLATINUM: "🏆",
+  DIAMOND: "👑",
+  FAMILY: "👨‍👩‍👧",
+  BAND: "🎸",
+};
+const TIER_COLORS: Record<string, string> = {
+  FREE: "#00FFFF",
+  PRO: "#FF6B35",
+  RUBY: "#FF2DAA",
+  SILVER: "#00FFFF",
+  GOLD: "#FFD700",
+  PLATINUM: "#E5E4E2",
+  DIAMOND: "#AA2DFF",
+  FAMILY: "#00FF88",
+  BAND: "#FF9500",
+};
 
 function buildPlans(accountType: SubscriptionAccountType) {
-  return [
-    { id: "free", name: "Free", price: 0, period: "forever", color: "#00FFFF", icon: "🎧", features: ["Watch live shows", "Browse battles", "Basic chat"], priceId: null as string | null },
-    ...getAllSubscriptionProducts(accountType).map((p) => ({
-      id: p.tier.toLowerCase(),
-      name: p.name,
-      price: p.price / 100,
-      period: "month",
-      color: TIER_COLORS[p.tier] ?? "#AA2DFF",
-      icon: TIER_ICONS[p.tier] ?? "⭐",
-      features: [...p.features],
-      priceId: p.priceId as string | null,
-    })),
-  ];
+  return getSubscriptionOffersLowestFirst(accountType).map((p) => ({
+    id: String(p.tier).toLowerCase(),
+    name: p.name,
+    price: p.priceCents / 100,
+    priceCents: p.priceCents,
+    period: p.priceCents === 0 ? "forever" : "month",
+    color: TIER_COLORS[p.tier] ?? "#AA2DFF",
+    icon: TIER_ICONS[p.tier] ?? "⭐",
+    features: [...p.features],
+    priceId: p.priceId,
+  }));
 }
 
 interface Props {
@@ -50,7 +69,7 @@ export default function SubscriptionUpgradeModal({ currentPlanId = "free", isOpe
     setLoading(plan.id);
     const params = new URLSearchParams({
       priceId: plan.priceId,
-      amount: String(Math.round(plan.price * 100)),
+      amount: String(Math.round(plan.priceCents ?? plan.price * 100)),
       productName: `TMI ${plan.name} Subscription`,
       mode: "subscription",
     });

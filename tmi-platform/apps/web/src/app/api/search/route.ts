@@ -48,27 +48,9 @@ function matchesQuery(text: string | null | undefined, q: string): boolean {
   return text.toLowerCase().includes(q.toLowerCase());
 }
 
-function searchRegistryPerformers(q: string): UnifiedSearchResult[] {
-  return PERFORMER_REGISTRY.filter((p) => {
-    if (!q) return true;
-    return (
-      matchesQuery(p.name, q) ||
-      matchesQuery(p.slug, q) ||
-      matchesQuery(p.category, q) ||
-      matchesQuery(p.city, q)
-    );
-  }).slice(0, 15).map((p) => ({
-    id: `registry-performer-${p.slug}`,
-    kind: 'profile' as const,
-    title: p.name,
-    subtitle: [p.category, p.city].filter(Boolean).join(' · '),
-    href: `/profile/performer/${p.slug}`,
-    imageUrl: p.profileImageUrl,
-    isLive: p.isLive,
-    viewerCount: p.audienceCount,
-    role: 'PERFORMER',
-  }));
-}
+// searchRegistryPerformers() removed (ORBITAL Wheel Profile Truth hotfix) —
+// it surfaced PERFORMER_REGISTRY seed profiles (fake identities) inside real
+// search results. Profile search is real-DB-only via searchProfiles() now.
 
 function searchTracks(q: string): UnifiedSearchResult[] {
   const out: UnifiedSearchResult[] = [];
@@ -221,17 +203,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results, query: q, type });
   }
 
-  const [dbProfiles, registryProfiles, liveRooms, articles, tracks] = await Promise.all([
+  const [dbProfiles, liveRooms, articles, tracks] = await Promise.all([
     searchProfiles(q, type),
-    Promise.resolve(type === 'performers' ? searchRegistryPerformers(q) : []),
     searchLiveRooms(q),
     Promise.resolve(searchArticles(q)),
     Promise.resolve(type === 'performers' ? searchTracks(q) : []),
   ]);
 
+  // Real DB profiles only (ORBITAL-11) — no PERFORMER_REGISTRY seed fill.
   const seenProfile = new Set<string>();
   const profiles: UnifiedSearchResult[] = [];
-  for (const r of [...dbProfiles, ...registryProfiles]) {
+  for (const r of dbProfiles) {
     const key = r.href;
     if (seenProfile.has(key)) continue;
     seenProfile.add(key);

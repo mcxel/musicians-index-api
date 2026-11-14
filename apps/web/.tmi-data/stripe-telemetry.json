@@ -1,0 +1,592 @@
+{
+  "counter": 39,
+  "events": [
+    {
+      "id": "1779937483275-1",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1779937483275,
+      "meta": {
+        "fingerprint": "sim-1779937483275",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "founding_packs",
+        "amountCents": 9900,
+        "currency": "usd",
+        "userUpgraded": true,
+        "payoutQueued": true,
+        "emailSent": true,
+        "simulated": true,
+        "source": "admin/manual-simulation"
+      }
+    },
+    {
+      "id": "1782850032066-2",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1782850032066,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "one_time",
+        "sessionId": "cs_test_b1ahasVGOk4cYBdaenxWRn6SbSI2SssccfQBjzcDsR7oSHbAd2FCg6T9mM",
+        "customerEmail": "p02browser@tmi.test"
+      }
+    },
+    {
+      "id": "1783298388499-3",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783298388499,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783298386481",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299175231-4",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299175231,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299174006",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299319605-5",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299319605,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299318679",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299363087-6",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299363087,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299361891",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299474477-7",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299474477,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299471782",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299769297-8",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299769298,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299767263",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299828128-9",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299828128,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299826515",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299870756-10",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299870756,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299868786",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783300059952-11",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783300059952,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783300057791",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1787794063149-12",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794063150,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787794063151-13",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794063151,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787794192742-14",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794192742,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787794192743-15",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794192743,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787794407543-16",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794407543,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787794407544-17",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787794407544,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787882037881-18",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787882037881,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1787882038024-19",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1787882038024,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788244993030-20",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788244993031,
+      "meta": {
+        "fingerprint": "cs_test_b1RauohECtUtwAw0ZMurm3SFSxGL0MhXYMabsrfVgiwmyvC14jDOH89DSQ",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248460086-21",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248460086,
+      "meta": {
+        "fingerprint": "cs_test_b1js8bUHbgxdeVqowC05Bu0CR4b2iqsmhXwQDGunDhlvUuIdwyIoINfPuE",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "season_pass",
+        "amountCents": 999,
+        "currency": "usd",
+        "type": "season_pass",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248584353-22",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248584353,
+      "meta": {
+        "fingerprint": "cs_test_b17T4jqvqBLh2i2vAQZETzfGnrzBBk9VldwvJHNFLczPlhMG30f9vTYgY1",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "season_pass",
+        "amountCents": 999,
+        "currency": "usd",
+        "type": "season_pass",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788248837241-23",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788248837242,
+      "meta": {
+        "fingerprint": "cs_test_b1XOWOwRL5qx1cO43rzciNYkA2eyuZHxcWJmQvYnwyMdNXeUtLCARIlO6b",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 299,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788295125811-24",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788295125811,
+      "meta": {
+        "fingerprint": "cs_test_b1IWTxnyyMJtegUamAWClfkzl9cwrQtHsFC1hDgBAkHXv2GhoShTuSbY4d",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "subscriptions",
+        "amountCents": 299,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788320009991-25",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788320009991,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1788320009992-26",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1788320009992,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789406557897-27",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789406557897,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789406557898-28",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789406557898,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789409587099-29",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789409587099,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789409587104-30",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789409587104,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789410064479-31",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789410064479,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789410064519-32",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789410064519,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789696867780-33",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789696867780,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1789696867782-34",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1789696867782,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1790843778095-35",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1790843778095,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1790843778097-36",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1790843778097,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1790851573576-37",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1790851573576,
+      "meta": {
+        "fingerprint": "sess_test_venue_skin_001",
+        "eventType": "checkout.session.completed",
+        "livemode": true,
+        "revenueStream": "venue_skin",
+        "amountCents": 499,
+        "currency": "usd",
+        "type": "venue_skin",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1790851573579-38",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1790851573579,
+      "meta": {
+        "fingerprint": "sub_test_diamond_001",
+        "eventType": "customer.subscription.created",
+        "livemode": true,
+        "revenueStream": "subscriptions",
+        "amountCents": 2999,
+        "currency": "usd",
+        "type": "subscription",
+        "simulated": false
+      }
+    },
+    {
+      "id": "1792397923870-39",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1792397923870,
+      "meta": {
+        "fingerprint": "cs_test_a10wodFFhUmLIoyOwFzlnC34O0eLEo6lwEUkaid0AUOUvXqzBfSSRsPJVF",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "tips",
+        "amountCents": 100,
+        "currency": "usd",
+        "type": "tip",
+        "simulated": false
+      }
+    }
+  ]
+}

@@ -7,7 +7,12 @@ import {
 import { getVenueTemplate, getAllVenueTemplates } from "../lib/venues/VenueTemplateRegistry";
 import { SEASON_PASS_INCLUDED_SKINS } from "../lib/venue/VenueSkinCommerce";
 import { venueSkinSku, parseVenueSkinSku } from "../lib/commerce/CommerceCatalogContract";
-import { ANCHOR_SLUG_TO_NETWORK_ROOM_ID } from "../lib/venues/VenueOverflowSystemMap";
+import {
+  ANCHOR_SLUG_TO_NETWORK_ROOM_ID,
+  ORCHESTRA_AUTHORITY_LOCK,
+  aliasElasticSlugFromNetworkId,
+  resolveOrchestraAuthority,
+} from "../lib/venues/VenueOverflowSystemMap";
 import {
   AUDIENCE_MIGRATION_POLICY,
   BATTLE_ARENA_ELASTICITY_CERT_SEQUENCE,
@@ -20,8 +25,10 @@ import {
 import { DEFAULT_CAMPUS_PORTALS } from "../lib/venues/VenuePortalContract";
 import {
   SCENE_FACTORY_AUDIT,
+  SCENE_FACTORY_LOCK,
   requestVenueSceneInstance,
 } from "../lib/venues/VenueSceneFactory";
+import { ELASTIC_ORCHESTRA_LOCK } from "../lib/live/ElasticRoomOrchestrator";
 
 function runVenuePlatformGlueTest() {
   const results: Record<string, boolean> = {};
@@ -55,6 +62,16 @@ function runVenuePlatformGlueTest() {
   results["sku_roundtrip"] = parseVenueSkinSku(venueSkinSku("neon-club")) === "neon-club";
 
   results["twelve_anchor_aliases"] = Object.keys(ANCHOR_SLUG_TO_NETWORK_ROOM_ID).length === 12;
+  results["orchestra_authority_locked"] =
+    ORCHESTRA_AUTHORITY_LOCK.locked === true &&
+    ORCHESTRA_AUTHORITY_LOCK.parallelOrchestraForbidden === true &&
+    ELASTIC_ORCHESTRA_LOCK.locked === true &&
+    SCENE_FACTORY_LOCK.locked === true &&
+    SCENE_FACTORY_LOCK.parallelGeneratorForbidden === true;
+  results["network_maps_to_elastic"] =
+    aliasElasticSlugFromNetworkId("anchor-thunder-dome-battle") === "battle-thunder-dome" &&
+    resolveOrchestraAuthority("anchor-thunder-dome-battle").allowNetworkOverflowSpawn === false &&
+    resolveOrchestraAuthority("anchor-ai-music-challenge").allowNetworkOverflowSpawn === true;
   results["portals_preserve_show"] = DEFAULT_CAMPUS_PORTALS.every((p) => p.preservesShowAuthority);
   results["portals_geometry_missing"] = DEFAULT_CAMPUS_PORTALS.every((p) => p.geometryStatus === "MISSING");
   results["failed_migration_keeps_seat"] = AUDIENCE_MIGRATION_POLICY.failedMigrationKeepsOriginalSeat;

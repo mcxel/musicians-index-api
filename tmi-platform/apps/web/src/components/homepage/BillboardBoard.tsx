@@ -22,25 +22,33 @@ interface BillboardBoardProps {
   accentColor?: string;
 }
 
-export const LIVE_ARTIST_SLOTS: BillboardSlot[] = [
-  { id: "bb1", label: "Wavetek", sublabel: "Trap · Houston TX", stat: "12.4K watching", badge: "LIVE", href: "/live/wavetek", color: "#FF2DAA", rank: 1 },
-  { id: "bb2", label: "FlowMaster", sublabel: "Hip-Hop · ATL", stat: "8.1K watching", badge: "LIVE", href: "/live/flowmaster", color: "#00FFFF", rank: 2 },
-  { id: "bb3", label: "Krypt", sublabel: "Drill · Chicago", stat: "5.8K watching", badge: "ACTIVE", href: "/live/krypt", color: "#FFD700", rank: 3 },
-  { id: "bb4", label: "Neon Vibe", sublabel: "R&B · LA", stat: "4.2K watching", badge: "LIVE", href: "/live/neon-vibe", color: "#AA2DFF", rank: 4 },
-  { id: "bb5", label: "Zuri", sublabel: "Afrobeats · NYC", stat: "3.9K watching", badge: "UPCOMING", href: "/live/zuri", color: "#00FF88", rank: 5 },
-  { id: "bb6", label: "DD4 Crew", sublabel: "Comedy · Detroit", stat: "3.1K watching", badge: "LIVE", href: "/live/dd4", color: "#FF2DAA", rank: 6 },
-];
+/** Rule 20: no fabricated live artists/watch counts. Real callers build this from live room data. */
+export const LIVE_ARTIST_SLOTS: BillboardSlot[] = [];
 
 export default function BillboardBoard({ slots, title, scrollMs = 4000, variant = "horizontal", accentColor = "#00FFFF" }: BillboardBoardProps) {
   const [active, setActive] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (slots.length === 0) return;
     intervalRef.current = setInterval(() => {
       setActive(prev => (prev + 1) % slots.length);
     }, scrollMs);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [slots.length, scrollMs]);
+
+  if (slots.length === 0) {
+    return (
+      <div>
+        {title && (
+          <div style={{ fontSize: 9, color: accentColor, fontWeight: 800, letterSpacing: "0.18em", marginBottom: 4 }}>{title}</div>
+        )}
+        <div style={{ padding: "10px 12px", fontSize: 10, color: "rgba(255,255,255,0.35)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 8 }}>
+          No one live right now
+        </div>
+      </div>
+    );
+  }
 
   if (variant === "vertical") {
     return (

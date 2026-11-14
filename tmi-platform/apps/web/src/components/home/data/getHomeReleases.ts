@@ -25,14 +25,8 @@ function genreColor(genre: string): string {
   return GENRE_COLORS[genre.toLowerCase()] ?? '#AA2DFF';
 }
 
-const FALLBACK_RELEASES: HomeReleaseRow[] = [
-  { id: '1', slug: '', title: 'Frequencies', genre: 'Neo-Soul', bpm: 90, playCount: 0, createdAt: '', color: '#FF2DAA' },
-  { id: '2', slug: '', title: 'Crown Season Vol. 3', genre: 'Hip-Hop', bpm: 96, playCount: 0, createdAt: '', color: '#00FFFF' },
-  { id: '3', slug: '', title: 'Mirror Language', genre: 'R&B', bpm: 82, playCount: 0, createdAt: '', color: '#AA2DFF' },
-  { id: '4', slug: '', title: 'Underground Atlas', genre: 'Trap', bpm: 140, playCount: 0, createdAt: '', color: '#FFD700' },
-  { id: '5', slug: '', title: 'Midnight Frequencies', genre: 'R&B / Soul', bpm: 88, playCount: 0, createdAt: '', color: '#2DFFAA' },
-  { id: '6', slug: '', title: 'Unwritten Maps', genre: 'Neo-Soul', bpm: 95, playCount: 0, createdAt: '', color: '#FF6B2D' },
-];
+/** Rule 20: no fabricated release titles. Empty until real releases exist. */
+const FALLBACK_RELEASES: HomeReleaseRow[] = [];
 
 export async function getHomeReleases(limit = 6): Promise<HomeReleaseRow[]> {
   try {

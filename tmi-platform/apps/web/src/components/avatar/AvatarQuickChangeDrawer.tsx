@@ -99,10 +99,13 @@ export default function AvatarQuickChangeDrawer({
         </button>
       </div>
 
-      {/* 3D Mini Viewport */}
+      {/* 3D Mini Viewport — explicit canvas bounds (P1-03); no fake mesh if Foundry unbound */}
       <div
+        data-avatar-quick-viewport="1"
         style={{
-          height: 160,
+          height: 180,
+          minHeight: 180,
+          width: "100%",
           borderRadius: 10,
           border: "1px solid rgba(0,255,255,0.3)",
           background: "radial-gradient(ellipse at center, rgba(0,255,255,0.1) 0%, rgba(5,5,16,0.9) 75%)",
@@ -110,11 +113,15 @@ export default function AvatarQuickChangeDrawer({
           overflow: "hidden",
         }}
       >
-        <AvatarViewer
-          {...bobbleheadRuntimeToRigProps(resolveBobbleheadRuntimeCharacter(baseId), { skinT })}
-          size={160}
-          enableOrbit={true}
-        />
+        <div style={{ position: "absolute", inset: 0 }}>
+          <AvatarViewer
+            {...bobbleheadRuntimeToRigProps(resolveBobbleheadRuntimeCharacter(baseId), { skinT })}
+            size={180}
+            fill
+            enableOrbit={true}
+            cameraFocus="body"
+          />
+        </div>
         <div
           style={{
             position: "absolute",

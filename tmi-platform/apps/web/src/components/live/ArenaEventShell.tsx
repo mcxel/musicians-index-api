@@ -21,6 +21,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { useRetainAudibleExperience } from "@/components/audio/useAudibleExperiencePresence";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
@@ -31,6 +32,10 @@ import type {
 import VenueAutomatedJumbotronMount from "@/components/jumbotron/VenueAutomatedJumbotronMount";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
+import {
+  resolveGoLiveCertifiedVenuePackage,
+  type CertifiedVenuePackage,
+} from "@/lib/venues/CertifiedVenuePackage";
 import { MemoryLedger } from "@/core/eos/memoryLedger";
 import FanRubricVotingPanel from "@/components/voting/FanRubricVotingPanel";
 import CompetitionBeatDock from "@/components/competition/CompetitionBeatDock";
@@ -197,6 +202,8 @@ interface ArenaEventShellProps {
    * Certification must toggle this explicitly (never force always-on).
    */
   readonly jumbotronLookUpActive?: boolean;
+  /** Step 4 Slice 2 — pre-bound certified package (no silent venue swap). */
+  readonly certifiedPackage?: CertifiedVenuePackage | null;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -251,11 +258,13 @@ export default function ArenaEventShell({
   viewMode: viewModeProp,
   spatialMap: spatialMapProp,
   jumbotronLookUpActive,
+  certifiedPackage: certifiedPackageProp = null,
 }: ArenaEventShellProps) {
   const scenePlan = useWorldScenePlanStore((s) => s.plans[roomId] ?? null);
   const viewMode = viewModeProp ?? scenePlan?.viewMode ?? "FREE_ROAM_3D";
   const spatialMap = spatialMapProp ?? scenePlan?.spatialMap ?? null;
   /** Internal LOOK UP when parent does not drive focus (public shells). */
+  useRetainAudibleExperience();
   const [internalLookUp, setInternalLookUp] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -314,6 +323,16 @@ export default function ArenaEventShell({
   const watchingColor = competitionFormat ? theme.colors.leftFrame : "#00FFFF";
 
   const venueType = arenaEventTypeToVenueType(eventType);
+  const certifiedPackage: CertifiedVenuePackage =
+    certifiedPackageProp ??
+    resolveGoLiveCertifiedVenuePackage({
+      venueId: venueType,
+      eventType,
+    });
+  const mountJumbotron =
+    !suppressPresentation &&
+    certifiedPackage.capabilities.HAS_JUMBOTRON &&
+    Boolean(certifiedPackage.jumbotronMount);
   const isLive = liveState === "live";
   const energyLevel =
     envResolution.policy === "exempt"
@@ -379,6 +398,7 @@ export default function ArenaEventShell({
   return (
     <RoomEnvironmentLayer
       venueType={venueType}
+      certifiedPackage={certifiedPackage}
       mode={mode}
       energyLevel={energyLevel}
       showSponsorZones={false}
@@ -447,14 +467,15 @@ export default function ArenaEventShell({
           spatialMap={spatialMap}
           eventType={eventType}
           jumbotronLookUpActive={lookUpActive}
-          venueId={venueSlug}
+          venueId={certifiedPackage.venueId || venueSlug}
+          certifiedPackage={certifiedPackage}
         />
-        {/* World-space Automated Jumbotron — geometry from venue dims; LOOK UP reveals surface */}
-        {!suppressPresentation && (
+        {/* World-space Automated Jumbotron — only when venue package declares LED/jumbotron mount */}
+        {mountJumbotron && (
           <VenueAutomatedJumbotronMount
             roomId={roomId}
             eventType={eventType}
-            venueId={venueSlug}
+            venueId={certifiedPackage.venueId || venueSlug}
             lookUpActive={lookUpActive}
           />
         )}

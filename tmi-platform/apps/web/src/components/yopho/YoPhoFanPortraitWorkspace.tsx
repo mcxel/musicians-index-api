@@ -19,7 +19,7 @@ interface YoPhoFanPortraitWorkspaceProps {
 
 /**
  * Fan YoPho triple-stage studio — Media Console BOTTOM_DEEP + /fan/canvas.
- * Tier capacity gates multi-image / dimensional layers (FREE = 3 pictures).
+ * FREE 2+1 = 1 background + 2 user images (3 image slots). Performers use YoPhoStudio.
  */
 export default function YoPhoFanPortraitWorkspace({
   userId,

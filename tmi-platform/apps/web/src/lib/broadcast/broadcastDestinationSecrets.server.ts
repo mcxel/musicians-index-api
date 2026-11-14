@@ -51,6 +51,11 @@ export function providerEnvConfigured(provider: BroadcastProvider): boolean {
         process.env.INSTAGRAM_STREAM_KEY?.trim() ||
           (process.env.INSTAGRAM_APP_ID?.trim() && process.env.INSTAGRAM_APP_SECRET?.trim()),
       );
+    case "tiktok":
+      return Boolean(
+        process.env.TIKTOK_STREAM_KEY?.trim() ||
+          (process.env.TIKTOK_CLIENT_ID?.trim() && process.env.TIKTOK_CLIENT_SECRET?.trim()),
+      );
     case "kick":
       return Boolean(
         process.env.KICK_STREAM_KEY?.trim() ||
@@ -100,6 +105,8 @@ export function linkDestinationSecrets(
           ? process.env.FACEBOOK_STREAM_KEY?.trim()
           : provider === "instagram"
             ? process.env.INSTAGRAM_STREAM_KEY?.trim()
+              : provider === "tiktok"
+                ? process.env.TIKTOK_STREAM_KEY?.trim()
             : provider === "kick"
               ? process.env.KICK_STREAM_KEY?.trim()
               : process.env.GENERIC_RTMP_STREAM_KEY?.trim()) ||

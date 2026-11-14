@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * OverseerMonitorWall — TOP deck live monitor grid (A/B/C/D).
- * Live/video sources only. Honest NO SOURCE ASSIGNED when idle.
- * Per-monitor: SOURCE · SWAP · FULLSCREEN · INSPECT
+ * OverseerMonitorWall — TOP deck live monitor grid (0–8 Monitors).
+ * Live room feeds first. Honest NO SOURCE ASSIGNED when idle.
+ * Uses CanonicalAdminMonitorBezel: SOURCE · SWAP · FULL · INSPECT · PIN · DETACH.
+ * Supports elastic detachment down to DISPLAY-ONLY (0), rising operational deck.
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -27,7 +28,11 @@ import {
   scrollToControlDesk,
 } from "@/lib/admin/overseerInspectBridge";
 import { desktopMonitorStageStyle } from "@/lib/admin/overseerDeckConvergence";
-import { resolveMonitorLayoutPreset } from "@/lib/monitors/MonitorLayoutDirector";
+import {
+  resolveAdminMonitorLayout,
+  type AttachedMonitorCount,
+} from "@/lib/admin/AdminMonitorLayoutResolver";
+import CanonicalAdminMonitorBezel from "./CanonicalAdminMonitorBezel";
 
 type LiveSessionRow = {
   roomId?: string;
@@ -45,6 +50,8 @@ export type OverseerMonitorWallProps = {
   screenStream?: MediaStream | null;
   shareMonitorId?: OverseerMonitorId | null;
   onStopScreenShare?: () => void;
+  attachedCount?: AttachedMonitorCount;
+  onAttachedCountChange?: (count: AttachedMonitorCount) => void;
 };
 
 const ROSE_FALLBACK_URL =
@@ -59,7 +66,7 @@ function controlBtn(active = false): CSSProperties {
     border: active ? "1px solid #00FFFF" : "1px solid rgba(255,215,0,0.35)",
     background: active ? "rgba(0,255,255,0.15)" : "rgba(0,0,0,0.45)",
     color: active ? "#00FFFF" : "#FFD700",
-    fontSize: 7,
+    fontSize: 7.5,
     fontWeight: 900,
     letterSpacing: "0.08em",
     cursor: "pointer",
@@ -73,15 +80,27 @@ export default function OverseerMonitorWall({
   screenStream = null,
   shareMonitorId = null,
   onStopScreenShare,
+  attachedCount: externalAttachedCount,
+  onAttachedCountChange,
 }: OverseerMonitorWallProps) {
   const viewport = useViewportMode();
   const isMobile = isMobileProp ?? viewport.isPhone;
   const isDesktop = !isMobile && !viewport.isTablet;
 
+  const [internalAttachedCount, setInternalAttachedCount] = useState<AttachedMonitorCount>(4);
+  const attachedCount = externalAttachedCount ?? internalAttachedCount;
+
+  const handleSetAttachedCount = (count: AttachedMonitorCount) => {
+    setInternalAttachedCount(count);
+    onAttachedCountChange?.(count);
+  };
+
   const [assignments, setAssignments] = useState<OverseerMonitorState>(() => createEmptyMonitorState());
-  const [swapAnchor, setSwapAnchor] = useState<OverseerMonitorId | null>(null);
-  const [sourcePickerSlot, setSourcePickerSlot] = useState<OverseerMonitorId | null>(null);
-  const [fullscreenSlot, setFullscreenSlot] = useState<OverseerMonitorId | null>(null);
+  const [pinnedSlots, setPinnedSlots] = useState<Set<string>>(new Set());
+  const [detachedPool, setDetachedPool] = useState<Record<string, string | null>>({});
+  const [swapAnchor, setSwapAnchor] = useState<string | null>(null);
+  const [sourcePickerSlot, setSourcePickerSlot] = useState<string | null>(null);
+  const [fullscreenSlot, setFullscreenSlot] = useState<string | null>(null);
   const [liveSessions, setLiveSessions] = useState<LiveSessionRow[]>([]);
   const [liveFetch, setLiveFetch] = useState<"loading" | "ok" | "empty" | "error">("loading");
 
@@ -100,6 +119,23 @@ export default function OverseerMonitorWall({
         const sessions = data.sessions ?? [];
         setLiveSessions(sessions);
         setLiveFetch(sessions.length > 0 ? "ok" : "empty");
+
+        // ROOM-FEED-FIRST DEFAULTS:
+        // When sessions arrive and Monitor A / B are empty, seed them with real active rooms!
+        if (sessions.length > 0) {
+          setAssignments((prev) => {
+            const next = { ...prev };
+            if (!next.A.sourceId) {
+              const liveA = sessions.find((s) => s.category === "cypher") || sessions[0];
+              if (liveA) next.A = { sourceId: `live:${liveA.roomId || "main-stage"}`, pinned: false };
+            }
+            if (!next.B.sourceId && sessions.length > 1) {
+              const liveB = sessions.find((s) => s.category === "battle") || sessions[1] || sessions[0];
+              if (liveB) next.B = { sourceId: `live:${liveB.roomId || "battle-ring"}`, pinned: false };
+            }
+            return next;
+          });
+        }
       } catch {
         if (!active) return;
         setLiveSessions([]);
@@ -115,8 +151,8 @@ export default function OverseerMonitorWall({
   }, []);
 
   const layout = useMemo(
-    () => resolveMonitorLayoutPreset(4, isMobile, viewport.isTablet),
-    [isMobile, viewport.isTablet],
+    () => resolveAdminMonitorLayout(attachedCount, isMobile, viewport.isTablet),
+    [attachedCount, isMobile, viewport.isTablet],
   );
 
   const stageStyle = desktopMonitorStageStyle(isDesktop);
@@ -124,6 +160,10 @@ export default function OverseerMonitorWall({
   const pickSessionForSource = useCallback(
     (sourceId: string | null): LiveSessionRow | null => {
       if (!sourceId) return null;
+      if (sourceId.startsWith("live:")) {
+        const rId = sourceId.replace("live:", "");
+        return liveSessions.find((s) => s.roomId === rId) ?? liveSessions[0] ?? null;
+      }
       const source = getLiveMonitorSource(sourceId);
       if (!source) return null;
       if (source.categoryFilter) {
@@ -137,13 +177,15 @@ export default function OverseerMonitorWall({
     [liveSessions],
   );
 
-  const assignSource = (slot: OverseerMonitorId, sourceId: string | null) => {
-    setAssignments((prev) => assignMonitorSource(prev, slot, sourceId));
+  const assignSource = (slot: string, sourceId: string | null) => {
+    if (OVERSEER_MONITOR_IDS.includes(slot as OverseerMonitorId)) {
+      setAssignments((prev) => assignMonitorSource(prev, slot as OverseerMonitorId, sourceId));
+    }
     setSourcePickerSlot(null);
     setSwapAnchor(null);
   };
 
-  const handleSwap = (slot: OverseerMonitorId) => {
+  const handleSwap = (slot: string) => {
     if (swapAnchor === null) {
       setSwapAnchor(slot);
       return;
@@ -152,26 +194,68 @@ export default function OverseerMonitorWall({
       setSwapAnchor(null);
       return;
     }
-    setAssignments((prev) => swapMonitorSources(prev, swapAnchor, slot));
+    if (
+      OVERSEER_MONITOR_IDS.includes(swapAnchor as OverseerMonitorId) &&
+      OVERSEER_MONITOR_IDS.includes(slot as OverseerMonitorId)
+    ) {
+      setAssignments((prev) =>
+        swapMonitorSources(prev, swapAnchor as OverseerMonitorId, slot as OverseerMonitorId),
+      );
+    }
     setSwapAnchor(null);
   };
 
-  const handleInspect = (slot: OverseerMonitorId) => {
-    const sourceId = assignments[slot].sourceId;
+  const handleTogglePin = (slot: string) => {
+    setPinnedSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot);
+      else next.add(slot);
+      return next;
+    });
+  };
+
+  const handleDetach = (slot: string) => {
+    // Save current source to detached pool to restore on reattach
+    const currentSrc = (assignments as Record<string, { sourceId: string | null }>)[slot]?.sourceId ?? null;
+    setDetachedPool((prev) => ({ ...prev, [slot]: currentSrc }));
+
+    // Decrement attached monitor count
+    if (attachedCount > 0) {
+      handleSetAttachedCount((attachedCount - 1) as AttachedMonitorCount);
+    }
+  };
+
+  const handleInspect = (slot: string) => {
+    const sourceId = (assignments as Record<string, { sourceId: string | null }>)[slot]?.sourceId ?? null;
     const source = sourceId ? getLiveMonitorSource(sourceId) : null;
     const session = pickSessionForSource(sourceId);
     dispatchOverseerInspect({
       monitorId: slot,
       sourceId: sourceId ?? "none",
       roomId: session?.roomId,
-      label: source?.label ?? `Monitor ${slot}`,
+      label: source?.label ?? session?.title ?? `Monitor ${slot}`,
       type: source?.kind?.toUpperCase() ?? "LIVE",
       viewerCount: session?.viewerCount,
     });
     scrollToControlDesk();
   };
 
-  const renderMonitorBody = (slot: OverseerMonitorId, sourceId: string | null) => {
+  const handleOpenLivingOs = (slot: string) => {
+    const sourceId = (assignments as Record<string, { sourceId: string | null }>)[slot]?.sourceId ?? null;
+    const source = sourceId ? getLiveMonitorSource(sourceId) : null;
+    const session = pickSessionForSource(sourceId);
+    dispatchOverseerInspect({
+      monitorId: slot,
+      sourceId: sourceId ?? "none",
+      roomId: session?.roomId,
+      label: source?.label ?? session?.title ?? `Monitor ${slot}`,
+      type: "MEDIA_PLAYER",
+      viewerCount: session?.viewerCount,
+    });
+    scrollToControlDesk();
+  };
+
+  const renderMonitorBody = (slot: string, sourceId: string | null) => {
     if (screenStream && shareMonitorId === slot) {
       return (
         <MonitorScreenShareVideo
@@ -259,12 +343,57 @@ export default function OverseerMonitorWall({
     );
   };
 
-  const gridMonitors = fullscreenSlot ? [fullscreenSlot] : OVERSEER_MONITOR_IDS;
+  // DISPLAY-ONLY MODE (attachedCount === 0):
+  // Render minimal bar; center grid collapses so operational deck rises to Media Player boundary
+  if (attachedCount === 0) {
+    return (
+      <div
+        data-overseer-monitor-wall="collapsed"
+        style={{
+          width: "100%",
+          padding: "6px 12px",
+          background: "linear-gradient(90deg, rgba(0,255,255,0.1), rgba(255,215,0,0.08))",
+          border: "1px solid rgba(0,255,255,0.3)",
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 4,
+          transition: "all 300ms cubic-bezier(0.25, 1, 0.5, 1)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.14em" }}>
+            DISPLAY-ONLY MODE · 0 MONITORS ATTACHED
+          </span>
+          <span style={{ fontSize: 8, color: "rgba(255,255,255,0.6)" }}>
+            Operational Display Deck elevated to Media Player boundary
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {([1, 2, 4, 8] as AttachedMonitorCount[]).map((count) => (
+            <button
+              key={count}
+              type="button"
+              data-monitor-count-btn={count}
+              onClick={() => handleSetAttachedCount(count)}
+              style={controlBtn(false)}
+            >
+              Attach {count}M
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeSlots = fullscreenSlot ? [fullscreenSlot] : layout.activeSlots;
 
   return (
     <div
       data-overseer-monitor-wall
       data-desktop={isDesktop ? "true" : "false"}
+      data-attached-count={attachedCount}
       data-fullscreen-slot={fullscreenSlot ?? "none"}
       style={{
         width: "100%",
@@ -272,9 +401,11 @@ export default function OverseerMonitorWall({
         flexDirection: "column",
         gap: 8,
         minWidth: 0,
+        transition: "all 280ms cubic-bezier(0.25, 1, 0.5, 1)",
         ...stageStyle,
       }}
     >
+      {/* Elastic Monitor Strip & Count Selector */}
       <div
         style={{
           display: "flex",
@@ -284,24 +415,54 @@ export default function OverseerMonitorWall({
           flexWrap: "wrap",
         }}
       >
-        <span
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.16em",
-            color: "rgba(255,215,0,0.7)",
-            textTransform: "uppercase",
-          }}
-        >
-          Live Monitor Wall · {liveFetch === "ok" ? `${liveSessions.length} live` : liveFetch}
-        </span>
-        {fullscreenSlot ? (
-          <button type="button" style={controlBtn(true)} onClick={() => setFullscreenSlot(null)}>
-            Exit Fullscreen
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            style={{
+              fontSize: 8.5,
+              fontWeight: 900,
+              letterSpacing: "0.16em",
+              color: "rgba(255,215,0,0.85)",
+              textTransform: "uppercase",
+            }}
+          >
+            Live Monitor Wall · {liveFetch === "ok" ? `${liveSessions.length} live` : liveFetch}
+          </span>
+          <span style={{ fontSize: 7.5, color: "#00FFFF", fontWeight: 800 }}>
+            ({attachedCount} Attached)
+          </span>
+        </div>
+
+        {/* Monitor Count Selector Strip */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            data-monitor-count-btn="0"
+            onClick={() => handleSetAttachedCount(0)}
+            style={controlBtn(false)}
+            title="Display-only mode: collapse monitors and elevate display deck"
+          >
+            Display (0)
           </button>
-        ) : null}
+          {([1, 2, 3, 4, 6, 8] as AttachedMonitorCount[]).map((count) => (
+            <button
+              key={count}
+              type="button"
+              data-monitor-count-btn={count}
+              onClick={() => handleSetAttachedCount(count)}
+              style={controlBtn(attachedCount === count)}
+            >
+              {count}
+            </button>
+          ))}
+          {fullscreenSlot ? (
+            <button type="button" style={controlBtn(true)} onClick={() => setFullscreenSlot(null)}>
+              Exit Fullscreen
+            </button>
+          ) : null}
+        </div>
       </div>
 
+      {/* Monitor Grid */}
       <div
         data-monitor-wall-grid
         style={{
@@ -313,11 +474,14 @@ export default function OverseerMonitorWall({
           minWidth: 0,
         }}
       >
-        {gridMonitors.map((slot) => {
-          const sourceId = assignments[slot].sourceId;
+        {activeSlots.map((slot) => {
+          const sourceId =
+            (assignments as Record<string, { sourceId: string | null }>)[slot]?.sourceId ?? null;
           const source = sourceId ? getLiveMonitorSource(sourceId) : null;
+          const session = pickSessionForSource(sourceId);
           const isSwapAnchor = swapAnchor === slot;
           const pickerOpen = sourcePickerSlot === slot;
+          const isPinned = pinnedSlots.has(slot);
 
           return (
             <div
@@ -337,86 +501,49 @@ export default function OverseerMonitorWall({
                 outline: isSwapAnchor ? "0 0 12px rgba(0,255,255,0.35)" : undefined,
               }}
             >
-              <div
-                style={{
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 4,
-                  padding: "4px 6px",
-                  borderBottom: "1px solid rgba(255,215,0,0.2)",
-                  background: "rgba(0,0,0,0.55)",
-                  flexWrap: "wrap",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 8,
-                    fontWeight: 900,
-                    letterSpacing: "0.12em",
-                    color: source?.accent ?? "#FFD700",
-                  }}
-                >
-                  MONITOR {slot}
-                  {source ? ` · ${source.label}` : " · NO SOURCE"}
-                </span>
-                <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    style={controlBtn(pickerOpen)}
-                    onClick={() =>
-                      setSourcePickerSlot((cur) => (cur === slot ? null : slot))
-                    }
-                  >
-                    Source
-                  </button>
-                  <button
-                    type="button"
-                    style={controlBtn(isSwapAnchor)}
-                    onClick={() => handleSwap(slot)}
-                  >
-                    Swap
-                  </button>
-                  <button
-                    type="button"
-                    style={controlBtn(fullscreenSlot === slot)}
-                    onClick={() =>
-                      setFullscreenSlot((cur) => (cur === slot ? null : slot))
-                    }
-                  >
-                    Full
-                  </button>
-                  <button
-                    type="button"
-                    style={controlBtn(false)}
-                    onClick={() => handleInspect(slot)}
-                    disabled={!sourceId}
-                  >
-                    Inspect
-                  </button>
-                </div>
-              </div>
+              {/* Canonical Shared Monitor Bezel */}
+              <CanonicalAdminMonitorBezel
+                monitorId={slot}
+                sourceLabel={source?.label ?? session?.title ?? (sourceId ? "LIVE ROOM" : "NO SOURCE")}
+                accentColor={source?.accent ?? "#FFD700"}
+                isLive={Boolean(source?.status === "LIVE" || session?.stageState === "live")}
+                viewerCount={session?.viewerCount}
+                isPinned={isPinned}
+                isFullscreen={fullscreenSlot === slot}
+                isSwapAnchor={isSwapAnchor}
+                isPickerOpen={pickerOpen}
+                hasSource={Boolean(sourceId)}
+                onSourceClick={() => setSourcePickerSlot((cur) => (cur === slot ? null : slot))}
+                onLivingOsClick={() => handleOpenLivingOs(slot)}
+                onSwapClick={() => handleSwap(slot)}
+                onFullClick={() => setFullscreenSlot((cur) => (cur === slot ? null : slot))}
+                onInspectClick={() => handleInspect(slot)}
+                onPinClick={() => handleTogglePin(slot)}
+                onDetachClick={() => handleDetach(slot)}
+                isMobile={isMobile}
+              />
 
+              {/* Monitor Video Viewport */}
               <div
                 data-monitor-viewport
                 style={{
                   position: "relative",
                   width: "100%",
                   aspectRatio: layout.aspectRatio,
-                  minHeight: isDesktop ? 140 : 100,
+                  minHeight: isDesktop ? layout.minHeight : 100,
                   background: "#030318",
                 }}
               >
                 {renderMonitorBody(slot, sourceId)}
               </div>
 
+              {/* Source Picker Drawer */}
               {pickerOpen ? (
                 <div
                   data-source-picker
                   style={{
                     borderTop: "1px solid rgba(0,255,255,0.25)",
-                    background: "rgba(0,0,0,0.85)",
+                    background: "rgba(0,0,0,0.92)",
                     padding: 8,
                     maxHeight: 180,
                     overflowY: "auto",
@@ -434,6 +561,43 @@ export default function OverseerMonitorWall({
                   >
                     Clear · No Source
                   </button>
+
+                  {/* Active Live Rooms direct assign */}
+                  {liveSessions.length > 0 ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <div
+                        style={{
+                          fontSize: 7,
+                          fontWeight: 900,
+                          letterSpacing: "0.14em",
+                          color: "#00FFFF",
+                          marginBottom: 4,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Active Live Rooms ({liveSessions.length})
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {liveSessions.map((ls) => (
+                          <button
+                            key={ls.roomId}
+                            type="button"
+                            onClick={() => assignSource(slot, `live:${ls.roomId}`)}
+                            style={{
+                              ...controlBtn(sourceId === `live:${ls.roomId}`),
+                              width: "100%",
+                              textAlign: "left",
+                              padding: "5px 8px",
+                              fontSize: 8,
+                            }}
+                          >
+                            🔴 {ls.title || ls.displayName || ls.roomId} · {ls.category?.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {LIVE_MONITOR_SOURCE_GROUPS.map((group) => (
                     <div key={group.id} style={{ marginBottom: 8 }}>
                       <div

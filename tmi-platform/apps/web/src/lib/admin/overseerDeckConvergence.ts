@@ -23,10 +23,32 @@ export {
 
 export const OVERSEER_DESK_PANEL_EVENT = "tmi:overseer-desk-focus";
 
-/** Desktop monitor stage — cinematic 16:9, not mobile max-height inheritance. */
-export function desktopMonitorStageStyle(isDesktop: boolean): {
+/** available center width = viewport - left rail - right rail - gaps/padding */
+export function computeAvailableCenterWidth(input: {
+  viewportWidth: number;
+  leftRailPx: number;
+  rightRailPx: number;
+  gapPx?: number;
+  paddingPx?: number;
+}): number {
+  const gap = input.gapPx ?? 12;
+  const pad = input.paddingPx ?? 24;
+  return Math.max(
+    320,
+    input.viewportWidth - input.leftRailPx - input.rightRailPx - gap * 2 - pad,
+  );
+}
+
+/** Desktop monitor stage — cinematic 16:9 inside computed center width. */
+export function desktopMonitorStageStyle(
+  isDesktop: boolean,
+  availableCenterWidthPx?: number,
+): {
   minHeight?: string;
   maxHeight?: string;
+  maxWidth?: string | number;
+  width?: string;
+  boxSizing?: "border-box";
 } {
   if (!isDesktop) {
     return {};
@@ -34,6 +56,9 @@ export function desktopMonitorStageStyle(isDesktop: boolean): {
   return {
     minHeight: "min(56vw, calc(100vh - 420px))",
     maxHeight: "none",
+    maxWidth: availableCenterWidthPx ?? "100%",
+    width: "100%",
+    boxSizing: "border-box",
   };
 }
 

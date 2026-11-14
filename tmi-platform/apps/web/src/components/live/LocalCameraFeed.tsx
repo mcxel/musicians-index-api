@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCameraOrientationPhysics } from "@/hooks/useCameraOrientationPhysics";
 
 type State = "idle" | "requesting" | "active" | "denied" | "unavailable";
 
@@ -10,6 +11,11 @@ export default function LocalCameraFeed() {
   const [state, setState] = useState<State>("idle");
   const [muted, setMuted] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const orientationPhysics = useCameraOrientationPhysics({
+    facingMode: "user",
+    isSelfPreview: true,
+    videoRef,
+  });
 
   async function enable() {
     if (state === "requesting") return;
@@ -88,7 +94,7 @@ export default function LocalCameraFeed() {
             autoPlay
             playsInline
             muted
-            style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", transform: orientationPhysics.transform }}
           />
         ) : (
           <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
@@ -122,7 +128,7 @@ export default function LocalCameraFeed() {
           </div>
         )}
 
-        {/* Live badge */}
+        {/* Preview only — camera open ≠ ACTIVE publish session (no LIVE badge) */}
         {state === "active" && (
           <div style={{
             position: "absolute", top: 4, left: 4,
@@ -132,7 +138,7 @@ export default function LocalCameraFeed() {
             letterSpacing: "0.1em",
           }}>
             <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#00FF88", boxShadow: "0 0 4px #00FF88" }} />
-            LIVE
+            PREVIEW
           </div>
         )}
       </div>

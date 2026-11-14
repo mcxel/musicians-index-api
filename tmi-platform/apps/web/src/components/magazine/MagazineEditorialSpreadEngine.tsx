@@ -7,6 +7,7 @@ import type { EditorialTemplateId } from "@/lib/magazine/MagazineLayoutRuntime";
 import type { RandomPageSubtype } from "@/lib/magazine/MagazineIssueContract";
 import { magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import { ImageSlotWrapper } from "@/components/visual-enforcement";
+import MagazineExpandableArticleBody from "@/components/magazine/MagazineExpandableArticleBody";
 
 export interface EditorialSpreadProps {
   templateId: EditorialTemplateId;
@@ -18,6 +19,8 @@ export interface EditorialSpreadProps {
   heroImage?: string;
   secondaryImages?: string[];
   bodyParagraphs?: string[];
+  /** When set, long bodies use ExpandableMotionPanel → FULL_READER (Bounded Physical Page Law). */
+  articleSlug?: string;
   pullQuote?: string;
   ratings?: { track: string; score: number }[];
   audioUrl?: string;
@@ -96,6 +99,7 @@ export default function MagazineEditorialSpreadEngine({
     "In an era dominated by algorithmic streams, TMI Magazine returns to the authoritative weight of true editorial craft.",
     "Spatial audio, polyrhythmic soundscapes, and community culture converge inside this digital printing press.",
   ],
+  articleSlug,
   pullQuote = "Music is no longer just consumed — it is lived and inhabited.",
   ratings = [
     { track: "01. Neon Frequency", score: 9.8 },
@@ -136,12 +140,11 @@ export default function MagazineEditorialSpreadEngine({
           <div style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: 14, fontSize: 14, fontStyle: "italic", color: accentColor, fontWeight: "bold" }}>
             &ldquo;{pullQuote}&rdquo;
           </div>
-          {bodyParagraphs.map((p, idx) => (
-            <p key={idx} style={{ fontSize: 12, lineHeight: 1.7, margin: 0 }}>
-              {idx === 0 ? <span style={{ fontSize: 28, float: "left", lineHeight: 1, paddingRight: 6, color: accentColor, fontWeight: 900 }}>{p[0]}</span> : null}
-              {idx === 0 ? p.slice(1) : p}
-            </p>
-          ))}
+          <MagazineExpandableArticleBody
+            paragraphs={bodyParagraphs}
+            articleSlug={articleSlug}
+            accentColor={accentColor}
+          />
           <div style={{ marginTop: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
             <NativeEditorialAction label="Listen to Audio Feature" href="/live" color={accentColor} icon="🎵" />
             <NativeEditorialAction label="View Artist Profile" href="/artists/ray-journey" color="#00FFFF" icon="👤" />

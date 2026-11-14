@@ -1,0 +1,181 @@
+'use client';
+
+/** LEGACY — prefer CanonicalAdSlot for new surfaces. Kept for UnifiedAdSlot internal use. */
+
+import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import {
+  AD_CONSENT_STORAGE_KEY,
+  ADSENSE_SLOT_ENV,
+  getAdSensePublisherId,
+  type AdConsentValue,
+} from '@/lib/ads/adConfig';
+import { decideAdSenseLoad, detectNonHumanClientTraffic } from '@/lib/ads/AdLoadDirector';
+
+// Re-export slot map — values come from NEXT_PUBLIC_ADSENSE_SLOT_* (empty until ENV set)
+export const AD_SLOTS = {
+  homepageBanner: ADSENSE_SLOT_ENV.homepageBanner,
+  homepageMid: ADSENSE_SLOT_ENV.homepageMid,
+  dashboardSidebar: ADSENSE_SLOT_ENV.dashboardSidebar,
+  liveLobbyBanner: ADSENSE_SLOT_ENV.liveLobbyBanner,
+  articleInline: ADSENSE_SLOT_ENV.articleInline,
+  magazineLeaderboard: ADSENSE_SLOT_ENV.magazineLeaderboard,
+  magazineInline: ADSENSE_SLOT_ENV.magazineInline,
+  magazineArticleEnd: ADSENSE_SLOT_ENV.magazineArticleEnd,
+  gameShowBanner: ADSENSE_SLOT_ENV.gameShowBanner,
+  gameShowInterstitial: ADSENSE_SLOT_ENV.gameShowInterstitial,
+  showSidebar: ADSENSE_SLOT_ENV.showSidebar,
+  roomLeaderboard: ADSENSE_SLOT_ENV.roomLeaderboard,
+  roomBetweenSegments: ADSENSE_SLOT_ENV.roomBetweenSegments,
+  sponsorFallback: ADSENSE_SLOT_ENV.sponsorFallback,
+  dashboardBanner: ADSENSE_SLOT_ENV.dashboardBanner,
+  dashboardMid: ADSENSE_SLOT_ENV.dashboardMid,
+  arenaBanner: ADSENSE_SLOT_ENV.arenaBanner,
+  arenaInterstitial: ADSENSE_SLOT_ENV.arenaInterstitial,
+  battleBanner: ADSENSE_SLOT_ENV.battleBanner,
+  battleInterstitial: ADSENSE_SLOT_ENV.battleInterstitial,
+  cypherBanner: ADSENSE_SLOT_ENV.cypherBanner,
+  concertBanner: ADSENSE_SLOT_ENV.concertBanner,
+  concertSidebar: ADSENSE_SLOT_ENV.concertSidebar,
+};
+
+function readConsent(): AdConsentValue | null {
+  try {
+    const v = localStorage.getItem(AD_CONSENT_STORAGE_KEY);
+    if (v === 'accepted' || v === 'declined') return v;
+  } catch {
+    /* private mode */
+  }
+  return null;
+}
+
+interface Props {
+  slot: string;
+  format?: 'auto' | 'rectangle' | 'horizontal' | 'vertical';
+  style?: React.CSSProperties;
+  label?: string;
+}
+
+export default function AdSenseSlot({ slot, format = 'auto', style, label }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pushed = useRef(false);
+  const [consent, setConsent] = useState<AdConsentValue | null>(null);
+  const pathname = usePathname() ?? '/';
+  const publisherId = getAdSensePublisherId();
+  const decision = decideAdSenseLoad({
+    pathname,
+    hasConsent: consent === 'accepted',
+    billableAds: true,
+    nonHuman: detectNonHumanClientTraffic(),
+  });
+
+  useEffect(() => {
+    setConsent(readConsent());
+    const onConsent = () => setConsent(readConsent());
+    window.addEventListener('tmi:ad-consent', onConsent);
+    return () => window.removeEventListener('tmi:ad-consent', onConsent);
+  }, []);
+
+  useEffect(() => {
+    if (!decision.allowed || !slot || pushed.current) return;
+    // The `pushed` ref only guards against double-push within one mount.
+    // On a remount (Strict Mode dev cycle, route-cache restore, HMR) the ref
+    // resets to false while the physical <ins> (injected via
+    // dangerouslySetInnerHTML below) can already be filled from the prior
+    // mount — pushing again then throws Google's own "already have ads"
+    // error. Check the real DOM node's own fill-status attribute too.
+    const ins = containerRef.current?.querySelector('ins.adsbygoogle');
+    if (ins?.getAttribute('data-adsbygoogle-status')) {
+      pushed.current = true;
+      return;
+    }
+    pushed.current = true;
+    try {
+      type AdsByGoogle = { push: (v: Record<string, unknown>) => void };
+      const adsbygoogle = (window as Window & { adsbygoogle?: AdsByGoogle }).adsbygoogle;
+      if (adsbygoogle) adsbygoogle.push({});
+    } catch {
+      /* AdSense script not ready yet */
+    }
+  }, [decision.allowed, slot]);
+
+  if (!slot) {
+    return (
+      <div style={{ position: 'relative', overflow: 'hidden', minHeight: 40, ...style }}>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: 8 }}>
+          Ad unit pending — set NEXT_PUBLIC_ADSENSE_SLOT_* in ENV
+        </div>
+      </div>
+    );
+  }
+
+  if (!decision.allowed) {
+    return (
+      <div style={{ position: 'relative', overflow: 'hidden', minHeight: 40, ...style }}>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: 8 }}>
+          {consent === 'declined'
+            ? 'Ads hidden'
+            : consent !== 'accepted'
+              ? 'Awaiting ad consent'
+              : 'Ads not eligible on this route'}
+        </div>
+      </div>
+    );
+  }
+
+  // Safe placement: labeled rail, padding away from CTAs, min height to reduce accidental taps.
+  return (
+    <div
+      data-tmi-ad-slot="adsense"
+      data-ad-safe="true"
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        marginTop: 16,
+        marginBottom: 16,
+        padding: '12px 8px',
+        minHeight: 90,
+        isolation: 'isolate',
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 8,
+          color: 'rgba(255,255,255,0.35)',
+          letterSpacing: '0.15em',
+          textAlign: 'center',
+          paddingBottom: 6,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label ?? 'Advertisement'}
+      </div>
+      <div
+        ref={containerRef}
+        style={{ pointerEvents: 'auto', maxWidth: '100%' }}
+        dangerouslySetInnerHTML={{
+          __html: `<ins class="adsbygoogle" style="display:block;min-height:90px" data-ad-client="${publisherId}" data-ad-slot="${slot}" data-ad-format="${format}" data-full-width-responsive="true"></ins>`,
+        }}
+      />
+    </div>
+  );
+}
+
+interface SponsorOrAdProps {
+  sponsorContent?: React.ReactNode;
+  adSlot?: string;
+  style?: React.CSSProperties;
+}
+
+export function SponsorOrAd({ sponsorContent, adSlot, style }: SponsorOrAdProps) {
+  if (sponsorContent) return <div style={style}>{sponsorContent}</div>;
+  return (
+    <AdSenseSlot
+      slot={adSlot ?? AD_SLOTS.sponsorFallback}
+      format="auto"
+      label="ADVERTISEMENT"
+      style={style}
+    />
+  );
+}

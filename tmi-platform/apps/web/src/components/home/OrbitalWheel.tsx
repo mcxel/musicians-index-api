@@ -5,7 +5,7 @@ import MotionPhotoPreview from '@/components/media/MotionPhotoPreview';
 import Link from 'next/link';
 import {
   ORBITAL_TOP_N,
-  publishUniversalRankingSnapshot,
+  publishRealDiscoverySnapshot,
   subscribeUniversalRanking,
   type RankSlot,
 } from '@/lib/rankings/UniversalRankingSnapshot';
@@ -140,8 +140,11 @@ export default memo(function OrbitalWheel() {
   const [crownLeader, setCrownLeader] = useState<OrbitalNode | null>(null);
 
   useEffect(() => {
-    // Universal Ranking snapshot — MJ Rule human-over-bot, Top 12
-    publishUniversalRankingSnapshot(undefined, ORBITAL_TOP_N);
+    // Real, DB-backed candidates only (ORBITAL-04: no seed/demo/bot filler).
+    // Until this resolves, subscribeUniversalRanking's initial emit is the
+    // honest empty snapshot (no flash of seed performers) — see
+    // getUniversalRankingSnapshot()'s doc comment.
+    void publishRealDiscoverySnapshot(ORBITAL_TOP_N);
     return subscribeUniversalRanking((snap) => {
       const mapped = snap.slots.slice(0, ORBITAL_TOP_N).map(slotToNode);
       if (mapped.length === 0) {

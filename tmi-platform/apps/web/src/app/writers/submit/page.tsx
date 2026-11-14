@@ -38,6 +38,10 @@ export default function WritersSubmitPage() {
           sourceUrls: form.sourceUrls.split("\n").map((u) => u.trim()).filter(Boolean),
         }),
       });
+      if (res.status === 401) {
+        setError("Sign in to your TMI account to submit an article.");
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Submission failed. Try again.");
@@ -132,8 +136,11 @@ export default function WritersSubmitPage() {
           </div>
 
           {error && (
-            <div style={{ background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.35)", borderRadius: 10, padding: "12px 14px", fontSize: 11, color: "#ff9b9b" }}>
-              {error}
+            <div style={{ background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.35)", borderRadius: 10, padding: "12px 14px", fontSize: 11, color: "#ff9b9b", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <span>{error}</span>
+              {error.startsWith("Sign in") && (
+                <Link href="/login?redirect=/writers/submit" style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", textDecoration: "none", whiteSpace: "nowrap" }}>SIGN IN →</Link>
+              )}
             </div>
           )}
 

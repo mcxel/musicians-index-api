@@ -15,6 +15,7 @@ import DirectorRegistry from "./DirectorRegistry";
 import { PresentationCommand, PresentationContext } from "./directors/types";
 import PresentationTelemetryDirector from "./directors/PresentationTelemetryDirector";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
+import { canServeCurtainAd } from "@/lib/commerce/CanonicalPricingRegistry";
 
 export type CurtainState =
   | "PRE_SHOW"
@@ -131,7 +132,21 @@ export function performPreflightResumeCheck(_sessionId: string): ResumeReadiness
 }
 
 /** Rule 12 ad rail — paid → platform promo → advertise CTA. Never empty, never fake revenue. */
-export function resolveCurtainAdCampaign(zone: string = "curtain-ad-rail"): AdRailCampaign {
+export function resolveCurtainAdCampaign(
+  zone: string = "curtain-ad-rail",
+  curtainState?: CurtainState | string | null,
+): AdRailCampaign {
+  // Curtain ads NEVER interrupt active performance (OPEN curtain / live stage).
+  if (curtainState != null && !canServeCurtainAd(curtainState)) {
+    return {
+      campaignId: "curtain-blocked-active-performance",
+      advertiserName: "Intermission",
+      creativeUrl: "/images/tmi-intermission-placeholder.jpg",
+      isHousePromotion: true,
+      eligibleCountryCodes: [],
+      frequencyCapPerUser: 0,
+    };
+  }
   const slot = getAdSlotForZone(zone);
   if (slot.type === "paid" && slot.sponsor) {
     return {

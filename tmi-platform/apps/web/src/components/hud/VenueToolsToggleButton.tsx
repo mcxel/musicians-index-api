@@ -31,6 +31,8 @@ export interface VenueToolsToggleButtonProps {
   className?: string;
   policyContext?: Omit<VenueToolsPolicyContext, "role">;
   role?: VenueToolsPolicyContext["role"];
+  /** Optional shared-dock presentation. Authority/context remain canonical. */
+  onOpen?: (context: { roomId?: string; isLoungeHost: boolean; readOnly: boolean }) => void;
 }
 
 /** Open if closed, close if already open — never a separate close-only control. */
@@ -54,6 +56,7 @@ export default function VenueToolsToggleButton({
   className,
   policyContext,
   role = "performer",
+  onOpen,
 }: VenueToolsToggleButtonProps) {
   const activePanel = useCompactQuickPanelStore((s) => s.activePanel);
   const setVenueContext = useCompactQuickPanelStore((s) => s.setVenueContext);
@@ -87,6 +90,15 @@ export default function VenueToolsToggleButton({
       roomId,
       readOnly: isVenueToolsReadOnly(policy),
     });
+    const context = {
+      roomId,
+      isLoungeHost: loungeHost,
+      readOnly: isVenueToolsReadOnly(policy),
+    };
+    if (onOpen) {
+      onOpen(context);
+      return;
+    }
     toggleVenueToolsPanel(corner);
   };
 

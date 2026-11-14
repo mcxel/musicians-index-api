@@ -64,8 +64,8 @@ const ROLE_GAINS: Record<AudioRole, number> = {
 };
 
 /* ─── Speaking detection thresholds ─────────────────────────────────────── */
-const SPEAKING_THRESHOLD = 0.035;   // RMS threshold to count as speaking
-const SPEAKING_HOLD_MS   = 600;     // keep "speaking" flag for 600ms after silence
+export const SPEAKING_THRESHOLD = 0.035;   // RMS threshold to count as speaking
+export const SPEAKING_HOLD_MS   = 600;     // keep "speaking" flag for 600ms after silence
 
 /* ─── Auto-duck amounts ──────────────────────────────────────────────────── */
 const DUCK_LEVEL      = 0.2;   // everyone else drops to 20% when someone is speaking

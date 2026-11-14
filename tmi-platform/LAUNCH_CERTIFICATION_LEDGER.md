@@ -1,9 +1,57 @@
 # LAUNCH CERTIFICATION LEDGER
-**Last Updated:** 2026-08-23 (TWO-DEVICE PRESENCE GATE freeze) | **Phase 4 → Soft Launch Gate** + World Director + Game Runtime Constitution locked; next cert = manual two-device avatar presence only
+**Last Updated:** 2026-09-12 (Lane D Phase 1–2 closeout + TWO-DEVICE PRESENCE GATE re-freeze) | **Phase 4 → Soft Launch Gate** + World Director + Game Runtime Constitution locked; next cert = manual two-device avatar presence only (not PASS by inference)
 
 ---
 
-## TMI GAME RUNTIME CONSTITUTION — STATUS LOCK 2026-08-23
+## LANE D — COMMERCE PHASE 1–2 CLOSEOUT (FROZEN 2026-09-12)
+
+**Lane:** Store catalog integrity + entitlement fulfillment + Universal Cart + ownership persistence  
+**Hard fence:** Step 5A publish files untouched (`DiscoveryPublisher.ts`, `executeInstantGoLive.ts`, `presentInstantGoLiveInPlace.ts`, `MediaPlayerGoLiveControl.tsx`)  
+**Commit/push/deploy:** not authorized this resume — ledger + status artifact only
+
+```text
+LANE D PHASE 1              🟢 PASS (code + unit cert)
+LANE D PHASE 2              🟡 PARTIAL (wired; DB-backed physical cert blocked without DATABASE_URL this run)
+VENUE PATHS A/B             🔒 DOCUMENTED — NOT MERGED
+DEAD VENUE PRODUCT GUARD    🟢 ACTIVE (VENUE_ITEMS excluded from getAllStoreItems)
+NEXT CERT (UNCHANGED):
+TWO-DEVICE AVATAR PRESENCE  ⏳ PHYSICAL ONLY
+```
+
+### Phase 1 — PASS (landed)
+
+| Check | Evidence |
+| :--- | :--- |
+| Catalog integrity | `apps/web/src/tests/runStoreCatalogIntegrity.test.ts` — StoreItem.priceId → `STRIPE_PRODUCTS` registry |
+| Security cert TS | `runSecurityStabilityCertification.test.ts` — structural union narrow; assertions intact |
+| Shoutout / Meet & Greet | Removed from sellable StoreItemEngine catalog; legacy `price_legacy_*_unused` in `products.ts` |
+| Landed commit | `ed61a4cb` — `feat(commerce): Lane D Phase 1 close + store ownership fulfillment` |
+
+### Phase 2 — PARTIAL (wired in tree; honest gaps remain)
+
+| Capability | Status | Canonical |
+| :--- | :--- | :--- |
+| `StoreItemOwnership` + Prisma migration | 🟢 in schema + `packages/db/prisma/migrations/20260901000000_add_store_item_ownership/` (`7cb534a1`) | `StoreItemOwnershipEngine` |
+| Entitlement fulfillment webhook path | 🟢 code | `EntitlementFulfillmentEngine.ts` |
+| Server-authoritative Universal Cart | 🟢 code (`3ab40473`) | `CartService.ts` (Prisma; not in-memory tab Map) |
+| Fulfillment recovery worker | 🟢 code (`054ee4b9`) | reconciler in `EntitlementFulfillmentEngine` |
+| Dead Venue Product Revenue Guard | 🟢 (`a7c04b2c`) | VENUE_ITEMS not in `getAllStoreItems()` — Path B = `/store/venue-skins` |
+| Authenticated lobby skin ownership | 🟢 (`3ec71e9f`) | Fan lobby premium skins |
+| DB migration applied on target DB | ⏳ OPEN — migration file exists; apply/verify per environment |
+| Jest physical DB cert this resume | ⏳ BLOCKED — `DATABASE_URL` missing in agent shell (no invented PASS) |
+| Live Stripe E2E payment proof | ⏳ OPEN — ledger §11 evidence block still blank until operator run |
+
+**Venue commerce law (do not merge):**
+- **Path A** — `StoreItemEngine` VENUE_ITEMS → `/store/venues` → `store_item_ownerships` (**not sellable** while Dead Venue Guard active)
+- **Path B** — `VenueSkinCommerce` VENUE_SKINS → `/store/venue-skins` → `venue_skin_ownerships` (live sell path)
+
+**Resume cert evidence (2026-09-12 agent shell):**
+- Offline: `runStoreCatalogIntegrity` + `runEntitlementFulfillment` + `runCartCrossSurfaceCert` + `runCommercePurchaseLoop` → **4 suites / 29 tests PASS** (EXIT 0)
+- DB suites (`runStoreItemOwnershipPersistence`, `runUniversalCartPersistence`, `runFulfillmentRecoveryWorker`) → **BLOCKED** — `DATABASE_URL` missing in agent shell; **not marked PASS**
+
+---
+
+## TMI GAME RUNTIME CONSTITUTION — STATUS LOCK 2026-08-23 (RE-AFFIRMED 2026-09-12)
 
 ```text
 GAME RUNTIME CONSTITUTION   🔒 LOCKED
@@ -144,9 +192,14 @@ NEXT CERT (FROZEN):
 TWO-DEVICE AVATAR PRESENCE  ⏳ PHYSICAL ONLY
 ```
 
-### TWO-DEVICE PRESENCE GATE — NEXT CERT (LOCKED 2026-08-23)
+### TWO-DEVICE PRESENCE GATE — NEXT CERT (LOCKED 2026-08-23 · RE-FROZEN 2026-09-12)
 
-**Status: ⏳ PHYSICAL ONLY** — not PASS. Prior agent physical attempt was **BLOCKED** (no credentials / hung `:3000`). Result remains open until Marcel (or operator) completes the manual sequence below on two real devices.
+**Status: ⏳ PHYSICAL ONLY** — not PASS. **Rule 20:** no invented presence/live/viewer counts; `allowBotFill: false` / `maxBotFillRatio: 0` remain in `AutonomousWorldDirector`; `WORLD_DIRECTOR_CERT_STATUS = "OPEN"` in `WorldScenePlan.ts`. Prior agent physical attempt was **BLOCKED** (no credentials / hung `:3000`). Result remains open until Marcel (or operator) completes the manual sequence below on two real devices.
+
+**2026-09-12 freeze confirmation (ledger-only; no constitution reopen):**
+- Game Runtime Constitution stays 🔒 LOCKED — no LOD / stadium fill / GLB stubs started this resume
+- Lane D Phase 1–2 closeout recorded above — does **not** close this presence gate
+- Next meaningful cert is still Device A Fan + Device B Performer Monitor B on two real devices
 
 ```text
 TWO-DEVICE PRESENCE GATE

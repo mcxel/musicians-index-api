@@ -28,6 +28,7 @@ import {
   type PersonaType,
 } from '@/lib/identity/MultiPersonaEngine';
 import { Analytics } from '@/lib/analytics/PersonaAnalyticsEngine';
+import { performPersonaSwitch } from '@/lib/auth/performPersonaSwitch';
 
 interface PersonaSwitcherProps {
   userId?:     string;
@@ -108,15 +109,30 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
     if (switching || personaType === activePersona) { setOpen(false); return; }
     setSwitching(true);
     try {
-      // Server-side cookie update
+      const canonicalRole =
+        personaType === 'admin' ? 'ADMIN' :
+        personaType === 'performer' ? 'PERFORMER' :
+        personaType === 'fan' ? 'FAN' : null;
+
+      if (canonicalRole) {
+        const result = await performPersonaSwitch(canonicalRole);
+        if (result.ok && result.hubUrl) {
+          Analytics.personaSwitch({ userId, from: activePersona, to: personaType });
+          switchPersonaLocal(personaType);
+          setActivePersona(personaType);
+          setOpen(false);
+          window.location.href = result.hubUrl;
+          return;
+        }
+      }
+
       if (userId) {
         await fetch('/api/auth/switch-persona', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ personaType, userId }),
-        }).catch(() => {}); // best-effort — local switch always works
+        }).catch(() => {});
       }
-      // Local-first switch (no round-trip dependency)
       const result = switchPersonaLocal(personaType);
       if (result.ok) {
         Analytics.personaSwitch({ userId, from: activePersona, to: personaType });

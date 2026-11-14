@@ -1,11 +1,64 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import MonitorSatelliteSystem from '@/components/canisters/MonitorSatelliteSystem';
 
+type LiteLiveSession = {
+  roomId?: string;
+  displayName?: string;
+  title?: string;
+  viewerCount?: number;
+  avatarUrl?: string | null;
+  thumbnailUrl?: string | null;
+  accentColor?: string;
+  privacy?: string;
+};
+
+type LiteGoResponse = {
+  sessions?: LiteLiveSession[];
+  count?: number;
+  lite?: boolean;
+};
+
+/**
+ * Overseer / admin observatory shell.
+ * Monitor satellites render registry-backed LIVE only — never fabricated
+ * isLive / audience counts (Rule 20).
+ */
 export default function OmniDashboards() {
   const [activeTab, setActiveTab] = useState<'fan' | 'artist' | 'overseer' | 'admin'>('admin');
-  
+  const [liveSessions, setLiveSessions] = useState<LiteLiveSession[]>([]);
+  const [liveCount, setLiveCount] = useState<number | null>(null);
+  const [liveLoadState, setLiveLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    if (activeTab !== 'overseer') return;
+    let cancelled = false;
+    const load = async () => {
+      setLiveLoadState('loading');
+      try {
+        const res = await fetch('/api/live/go?lite=1', { cache: 'no-store', credentials: 'include' });
+        if (!res.ok) throw new Error(`live go ${res.status}`);
+        const data = (await res.json()) as LiteGoResponse;
+        if (cancelled) return;
+        setLiveSessions(Array.isArray(data.sessions) ? data.sessions : []);
+        setLiveCount(typeof data.count === 'number' ? data.count : null);
+        setLiveLoadState('ready');
+      } catch {
+        if (cancelled) return;
+        setLiveSessions([]);
+        setLiveCount(null);
+        setLiveLoadState('error');
+      }
+    };
+    void load();
+    const id = window.setInterval(() => void load(), 12000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeTab]);
+
   return (
     <div style={{ background: '#050815', minHeight: '100vh', color: '#FF8C00', fontFamily: 'var(--font-orbitron), sans-serif' }}>
       {/* Navigation */}
@@ -16,10 +69,10 @@ export default function OmniDashboards() {
           { id: 'overseer', label: '👁 OVERSEER DECK' },
           { id: 'admin', label: '⚙️ ADMIN HUB' }
         ].map(tab => (
-          <button 
-            key={tab.id} 
-            onClick={() => setActiveTab(tab.id as any)}
-            style={{ 
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as 'fan' | 'artist' | 'overseer' | 'admin')}
+            style={{
               background: activeTab === tab.id ? 'rgba(230,48,0,0.2)' : 'transparent',
               color: activeTab === tab.id ? '#FFD700' : 'rgba(255,140,0,0.5)',
               border: 'none', borderBottom: activeTab === tab.id ? '2px solid #E63000' : 'none',
@@ -31,133 +84,118 @@ export default function OmniDashboards() {
       </div>
 
       <div style={{ padding: '24px' }}>
-        {/* OVERSEER DECK - BROADCAST COMMAND CENTER */}
         {activeTab === 'overseer' && (
           <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.5)', padding: '12px 20px', borderRadius: '8px', marginBottom: '16px' }}>
               <h2 style={{ color: '#00FFFF', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>OVERSEER DECK — BROADCAST COMMAND CENTER</h2>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ color: '#00FF7F', fontSize: '12px', fontWeight: 800 }}>● NETWORK LIVE</span>
-                <button style={{ background: '#E63000', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', letterSpacing: '1px' }}>⚠ TRUST KILLER FEED</button>
+                <span style={{ color: liveLoadState === 'ready' ? '#00FF7F' : liveLoadState === 'error' ? '#FF4444' : '#FFD700', fontSize: '12px', fontWeight: 800 }}>
+                  {liveLoadState === 'loading'
+                    ? '● LOADING REGISTRY'
+                    : liveLoadState === 'error'
+                      ? '● REGISTRY UNAVAILABLE'
+                      : liveCount != null && liveCount > 0
+                        ? `● ${liveCount} PUBLIC LIVE`
+                        : '● NO PUBLIC LIVE'}
+                </span>
               </div>
             </div>
 
-            {/* Multi-Monitor Observatory Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              <MonitorSatelliteSystem 
-                mainLabel="ARENA TELEMETRY" 
-                isLive={true} 
-                staticImageUrl="/assets/generated/venues/the-underground-profile.jpg"
-                accentColor="#E63000"
-                adZone="admin-overseer-1"
-                audienceCount={18500}
-              />
-              <MonitorSatelliteSystem 
-                mainLabel="CYPHER FEED" 
-                isLive={true} 
-                staticImageUrl="/assets/generated/venues/cypher-dome-profile.jpg"
-                accentColor="#00FFFF"
-                adZone="admin-overseer-2"
-                audienceCount={2730}
-              />
-              <MonitorSatelliteSystem 
-                mainLabel="CHALLENGE FEED" 
-                isLive={true} 
-                staticImageUrl="/assets/generated/venues/battle-amphitheater-profile.jpg"
-                accentColor="#FFD700"
-                adZone="admin-overseer-3"
-                audienceCount={5000}
-              />
-              <MonitorSatelliteSystem 
-                mainLabel="FAN LOBBY FEED" 
-                isLive={true} 
-                staticImageUrl="/assets/generated/venues/neon-pit-profile.jpg"
-                accentColor="#FF2DAA"
-                adZone="admin-overseer-4"
-                audienceCount={800}
-              />
+              {liveLoadState === 'loading' && (
+                <div style={{ gridColumn: '1 / -1', padding: 24, color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>
+                  Loading live registry…
+                </div>
+              )}
+              {liveLoadState === 'error' && (
+                <div style={{ gridColumn: '1 / -1', padding: 24, color: '#ff8a8a', fontSize: 13 }}>
+                  Unable to load live sessions. Retry shortly.
+                </div>
+              )}
+              {liveLoadState === 'ready' && liveSessions.length === 0 && (
+                <div
+                  data-overseer-monitors-empty="1"
+                  style={{ gridColumn: '1 / -1', padding: 24, color: 'rgba(255,255,255,0.55)', fontSize: 13 }}
+                >
+                  No active public live sessions. Monitors stay idle until GlobalLiveSessionRegistry reports real rooms.
+                </div>
+              )}
+              {liveSessions.slice(0, 8).map((session, idx) => {
+                const roomId = session.roomId?.trim();
+                const label = session.title || session.displayName || `LIVE ${idx + 1}`;
+                const accent = session.accentColor || ['#E63000', '#00FFFF', '#FFD700', '#FF2DAA'][idx % 4];
+                return (
+                  <MonitorSatelliteSystem
+                    key={roomId || `session-${idx}`}
+                    mainLabel={label}
+                    isLive={Boolean(roomId)}
+                    liveRoomRoute={roomId ? `/live/rooms/${roomId}` : undefined}
+                    staticImageUrl={
+                      session.thumbnailUrl ||
+                      session.avatarUrl ||
+                      '/images/tmi-placeholder.jpg'
+                    }
+                    accentColor={accent}
+                    adZone={`admin-overseer-${idx + 1}`}
+                    audienceCount={typeof session.viewerCount === 'number' ? session.viewerCount : 0}
+                    showAudienceMonitor
+                  />
+                );
+              })}
             </div>
 
-            {/* Broadcast Telemetry */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-              {[
-                { icon: '👥', label: 'Network Audience', val: '27,030', trend: 'Live', color: '#00FF7F' },
-                { icon: '🎤', label: 'Active Streams', val: '42', trend: '+5', color: '#00FFFF' },
-                { icon: '⚔️', label: 'Battles Now', val: '8', trend: 'Steady', color: '#FFD700' },
-                { icon: '🔥', label: 'Cyphers Now', val: '14', trend: '+2', color: '#FF2DAA' },
-              ].map(stat => (
-                <div key={stat.label} style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.3)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(0,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{stat.label}</div>
-                  <div style={{ fontSize: '20px', color: '#fff', fontWeight: 900 }}>{stat.val}</div>
-                  <div style={{ fontSize: '10px', color: stat.color, marginTop: '4px', fontWeight: 800 }}>{stat.trend}</div>
+              <div style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.3)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔴</div>
+                <div style={{ fontSize: '10px', color: 'rgba(0,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Public Live Count</div>
+                <div style={{ fontSize: '20px', color: '#fff', fontWeight: 900 }}>
+                  {liveCount == null ? '—' : liveCount.toLocaleString()}
                 </div>
-              ))}
+                <div style={{ fontSize: '10px', color: '#00FF7F', marginTop: '4px', fontWeight: 800 }}>
+                  Registry truth (INVITE_ONLY excluded)
+                </div>
+              </div>
+              <div style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.3)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📡</div>
+                <div style={{ fontSize: '10px', color: 'rgba(0,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Monitor Feeds</div>
+                <div style={{ fontSize: '20px', color: '#fff', fontWeight: 900 }}>{liveSessions.length}</div>
+                <div style={{ fontSize: '10px', color: '#00FFFF', marginTop: '4px', fontWeight: 800 }}>Active session rows</div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ADMIN HUB */}
         {activeTab === 'admin' && (
           <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(220,70,0,0.5)', padding: '12px 20px', borderRadius: '8px', marginBottom: '16px' }}>
               <h2 style={{ color: '#E63000', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>SYSTEM ADMINISTRATION</h2>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ color: '#00FF7F', fontSize: '12px', fontWeight: 800 }}>● CORE HEALTHY</span>
+                <span style={{ color: '#FFD700', fontSize: '12px', fontWeight: 800 }}>● METRICS: OPEN KPI SURFACES</span>
               </div>
             </div>
 
-            {/* Financial & User Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-              {[
-                { icon: '👥', label: 'Total Users', val: '12,841', trend: '+124', color: '#00FF7F' },
-                { icon: '🟢', label: 'Online Now', val: '1,204', trend: '+8', color: '#00FF7F' },
-                { icon: '💳', label: 'Paid Members', val: '3,271', trend: '+22', color: '#00FF7F' },
-                { icon: '💰', label: 'Revenue Today', val: '$8,940', trend: '+$1.2k', color: '#00FF7F' },
-                { icon: '🎤', label: 'Live Now', val: '14', trend: '+3', color: '#00FF7F' },
-                { icon: '📢', label: 'Ad Revenue', val: '$520', trend: '+$80', color: '#00E5FF' },
-                { icon: '🤝', label: 'Pending Sponsors', val: '12', trend: 'Needs review', color: '#FFD700' },
-                { icon: '⭐', label: 'Active Sponsors', val: '45', trend: '+3', color: '#00FF7F' },
-                { icon: '⏳', label: 'Expired Sponsors', val: '8', trend: '-2', color: '#FF4444' },
-                { icon: '📅', label: 'Booking Requests', val: '28', trend: '8 pending', color: '#FF2DAA' },
-                { icon: '🚚', label: 'Logistics Quotes', val: '15', trend: '+$4.2k est', color: '#00FFFF' },
-                { icon: '💎', label: 'Sponsor Rev', val: '$12,450', trend: '+$2.1k', color: '#00FF88' },
-                { icon: '🎟️', label: 'Booking Rev', val: '$8,200', trend: '+$900', color: '#00FF88' },
-              ].map(stat => (
-                <div key={stat.label} style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(220,70,0,0.5)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,140,0,0.5)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{stat.label}</div>
-                  <div style={{ fontSize: '20px', color: '#FFD700', fontWeight: 900 }}>{stat.val}</div>
-                  <div style={{ fontSize: '10px', color: stat.color, marginTop: '4px', fontWeight: 800 }}>{stat.trend}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* System Health Monitors */}
-            <div style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(220,70,0,0.5)', padding: '20px', borderRadius: '8px' }}>
-              <h3 style={{ color: '#FF8C00', fontSize: '14px', textTransform: 'uppercase', marginBottom: '16px', letterSpacing: '1px' }}>System Health Monitors</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                {[
-                  { label: 'Auth Service', status: 'Operational', color: '#00FF7F' },
-                  { label: 'PostgreSQL', status: 'Operational', color: '#00FF7F' },
-                  { label: 'Stripe Hooks', status: 'Operational', color: '#00FF7F' },
-                  { label: 'WebRTC', status: 'Operational', color: '#00FF7F' },
-                  { label: 'Redis Cache', status: 'Degraded', color: '#FFD700' },
-                  { label: 'CDN Storage', status: 'Operational', color: '#00FF7F' },
-                ].map(sys => (
-                  <div key={sys.label} style={{ background: 'rgba(12,20,50,0.9)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(220,70,0,0.3)', textAlign: 'center' }}>
-                    <div style={{ color: sys.color, marginBottom: '6px', fontSize: '14px' }}>●</div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,140,0,0.7)', textTransform: 'uppercase', marginBottom: '4px' }}>{sys.label}</div>
-                    <div style={{ fontSize: '12px', fontWeight: 900, color: sys.color }}>{sys.status}</div>
-                  </div>
-                ))}
-              </div>
+            <div
+              data-admin-hub-honest-empty="1"
+              style={{
+                background: 'rgba(8,14,38,0.95)',
+                border: '1px solid rgba(220,70,0,0.5)',
+                padding: '20px',
+                borderRadius: '8px',
+                color: 'rgba(255,255,255,0.65)',
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+            >
+              Fabricated user/revenue/live tiles were removed (Rule 20). Use certified admin KPI / revenue routes for real numbers — this shell no longer paints demo stats.
             </div>
           </div>
         )}
-        
-        {/* Other tabs can be expanded similarly */}
-        {activeTab !== 'admin' && activeTab !== 'overseer' && <div style={{ color: '#FFD700', textAlign: 'center', padding: '40px', fontSize: '18px', fontWeight: 900 }}>[ {activeTab.toUpperCase()} MODULE LOADED ]</div>}
+
+        {activeTab !== 'admin' && activeTab !== 'overseer' && (
+          <div style={{ color: '#FFD700', textAlign: 'center', padding: '40px', fontSize: '18px', fontWeight: 900 }}>
+            [ {activeTab.toUpperCase()} MODULE LOADED ]
+          </div>
+        )}
       </div>
     </div>
   );

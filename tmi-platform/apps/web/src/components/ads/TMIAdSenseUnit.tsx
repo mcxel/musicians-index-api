@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   AD_CONSENT_STORAGE_KEY,
   getAdSensePublisherId,
   type AdConsentValue,
 } from '@/lib/ads/adConfig';
+import { decideAdSenseLoad, detectNonHumanClientTraffic } from '@/lib/ads/AdLoadDirector';
 
 export interface TMIAdSenseUnitProps {
   slotId: string;
@@ -37,6 +39,13 @@ export default function TMIAdSenseUnit({
   const adClientId = getAdSensePublisherId();
   const [consent, setConsent] = useState<AdConsentValue | null>(null);
   const pushed = useRef(false);
+  const pathname = usePathname() ?? '/';
+  const decision = decideAdSenseLoad({
+    pathname,
+    hasConsent: consent === 'accepted',
+    billableAds: true,
+    nonHuman: detectNonHumanClientTraffic(),
+  });
 
   useEffect(() => {
     setConsent(readConsent());
@@ -46,7 +55,7 @@ export default function TMIAdSenseUnit({
   }, []);
 
   useEffect(() => {
-    if (consent !== 'accepted' || !slotId || pushed.current) return;
+    if (!decision.allowed || !slotId || pushed.current) return;
     try {
       if (typeof window !== 'undefined' && containerRef.current) {
         const win = window as unknown as { adsbygoogle?: unknown[] };
@@ -57,7 +66,7 @@ export default function TMIAdSenseUnit({
     } catch (err) {
       console.warn('[TMIAdSenseUnit] Error initializing Google AdSense slot:', err);
     }
-  }, [slotId, consent]);
+  }, [slotId, decision.allowed]);
 
   if (!slotId) {
     return (
@@ -80,7 +89,7 @@ export default function TMIAdSenseUnit({
     );
   }
 
-  if (consent !== 'accepted') {
+  if (!decision.allowed) {
     return (
       <div
         className={className}
@@ -94,7 +103,11 @@ export default function TMIAdSenseUnit({
           ...style,
         }}
       >
-        {consent === 'declined' ? 'Ads hidden — consent declined' : 'Ads pending consent'}
+        {consent === 'declined'
+          ? 'Ads hidden — consent declined'
+          : consent !== 'accepted'
+            ? 'Ads pending consent'
+            : 'Ads not eligible'}
       </div>
     );
   }
@@ -103,23 +116,33 @@ export default function TMIAdSenseUnit({
     <div
       ref={containerRef}
       className={className}
+      data-tmi-ad-slot="adsense"
+      data-ad-safe="true"
       style={{
         width: '100%',
         overflow: 'hidden',
         minHeight: 90,
-        background: 'rgba(5, 5, 16, 0.4)',
-        border: '1px dashed rgba(255, 215, 0, 0.18)',
-        borderRadius: 6,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBlock: 8,
+        marginBlock: 16,
+        padding: '12px 8px',
+        isolation: 'isolate',
         ...style,
       }}
     >
+      <div
+        style={{
+          fontSize: 8,
+          color: 'rgba(255,255,255,0.35)',
+          letterSpacing: '0.15em',
+          textAlign: 'center',
+          paddingBottom: 6,
+          textTransform: 'uppercase',
+        }}
+      >
+        Advertisement
+      </div>
       <ins
         className="adsbygoogle"
-        style={{ display: 'block', width: '100%', height: '100%' }}
+        style={{ display: 'block', width: '100%', minHeight: 90 }}
         data-ad-client={adClientId}
         data-ad-slot={slotId}
         data-ad-format={format}

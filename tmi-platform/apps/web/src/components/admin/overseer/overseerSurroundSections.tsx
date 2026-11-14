@@ -22,6 +22,7 @@ import ChainCommandPanel from "@/components/admin/overseer/ChainCommandPanel";
 import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import RevenueBusinessmanPanel from "@/components/admin/RevenueBusinessmanPanel";
 import BotActivitySwitcherPanel from "@/components/admin/overseer/BotActivitySwitcherPanel";
+import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
 
 /** Extra sections every surround slot can rotate into (plus the panel's default). */
 export function buildSurroundSectionOptions(): OverseerSectionOption[] {
@@ -79,6 +80,12 @@ export function buildSurroundSectionOptions(): OverseerSectionOption[] {
       label: "Live Feed Monitor",
       accent: "#00FFFF",
       render: () => <LiveFeedMonitor />,
+    },
+    {
+      id: "media-matrix",
+      label: "Media Matrix",
+      accent: "#00FFFF",
+      render: () => <MediaMatrixEngine />,
     },
     {
       id: "feed-explorer",

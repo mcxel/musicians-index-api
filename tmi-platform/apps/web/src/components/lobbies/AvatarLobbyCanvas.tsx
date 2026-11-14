@@ -37,17 +37,6 @@ const ROLE_EMOJI: Record<string, string> = {
   npc:       "🎵",
 };
 
-const SEED_CROWD: LobbyAvatar[] = [
-  { id: "s1",  name: "Skywave",  emoji: "🎧", color: "#00FFFF", role: "fan",       seat: "G-R12", tier: "SILVER"  },
-  { id: "s2",  name: "VenusRhym",emoji: "💎", color: "#FFD700", role: "vip",       seat: "VIP-2",  tier: "DIAMOND" },
-  { id: "s3",  name: "BeatLvr",  emoji: "🔥", color: "#FF2DAA", role: "fan",       seat: "G-R8",   tier: "FREE"   },
-  { id: "s4",  name: "NovaMix",  emoji: "🎤", color: "#AA2DFF", role: "performer", seat: "F-R1",   tier: "GOLD"   },
-  { id: "s5",  name: "EchoStar", emoji: "⚡", color: "#00FF88", role: "artist",    seat: "F-R3",   tier: "GOLD"   },
-  { id: "s6",  name: "CrownKng", emoji: "👑", color: "#FFD700", role: "vip",       seat: "VIP-1",  tier: "DIAMOND" },
-  { id: "s7",  name: "RhymeXL",  emoji: "🎵", color: "#FF6B35", role: "fan",       seat: "G-R20",  tier: "FREE"   },
-  { id: "s8",  name: "ArcLight", emoji: "💫", color: "#00FFFF", role: "fan",       seat: "G-R15",  tier: "SILVER"  },
-];
-
 export default function AvatarLobbyCanvas({
   is3DReady: _is3DReady = false,
   roomName = "TMI Lobby",
@@ -57,7 +46,8 @@ export default function AvatarLobbyCanvas({
 }: AvatarLobbyCanvasProps) {
   const [mode, setMode] = useState<"compact" | "expanded" | "fullscreen">("expanded");
   const [beat, setBeat] = useState(false);
-  const crowd = avatars ?? SEED_CROWD;
+  // Rule 20: zero real presence must render as zero presence, never a fabricated crowd.
+  const crowd = avatars ?? [];
   const liveCount = crowd.filter(a => a.isLive).length;
 
   // BPM beat pulse
@@ -136,7 +126,17 @@ export default function AvatarLobbyCanvas({
           }}
         />
 
-        {/* Avatar crowd row */}
+        {/* Avatar crowd row — honest empty state when zero real presence exists (Rule 20) */}
+        {crowd.length === 0 ? (
+          <div className="relative z-10 flex flex-col items-center justify-center pb-8 px-4 text-center" style={{ maxWidth: "100%" }}>
+            <div className="text-sm font-black tracking-wide" style={{ color: accentColor }}>
+              THIS LOBBY IS CURRENTLY QUIET
+            </div>
+            <div className="text-[11px] text-white/40 mt-2 max-w-xs">
+              Be the first to take a seat. No occupants are shown until someone real is actually present.
+            </div>
+          </div>
+        ) : (
         <div className="relative z-10 flex gap-3 items-end pb-8 px-4 flex-wrap justify-center" style={{ maxWidth: "100%" }}>
           {crowd.map((av, i) => {
             const glowColor = TIER_GLOW[av.tier ?? "FREE"] ?? accentColor;
@@ -210,6 +210,7 @@ export default function AvatarLobbyCanvas({
             );
           })}
         </div>
+        )}
 
         {/* Spotlight beam (performer) */}
         {crowd.some(a => a.isLive) && (
@@ -244,8 +245,10 @@ export default function AvatarLobbyCanvas({
         className="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-center px-3 py-1.5"
         style={{ background: "rgba(5,5,16,0.85)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <span className="text-[8px] text-white/40 font-mono">{bpm} BPM · {crowd.length} AVATARS</span>
-        <span className="text-[8px] font-bold" style={{ color: accentColor }}>LOBBY ACTIVE ●</span>
+        <span className="text-[8px] text-white/40 font-mono">{bpm} BPM · {crowd.length} PRESENT</span>
+        <span className="text-[8px] font-bold" style={{ color: crowd.length > 0 ? accentColor : "rgba(255,255,255,0.3)" }}>
+          {crowd.length > 0 ? "LOBBY ACTIVE ●" : "LOBBY QUIET"}
+        </span>
       </div>
     </div>
   );

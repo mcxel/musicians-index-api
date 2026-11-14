@@ -329,7 +329,7 @@ export const BATTLE_ARENA_ELASTICITY_CERT_STATUS = {
   sequenceId: "BATTLE_ARENA_ELASTICITY_CERT_SEQUENCE",
   stepCount: 9,
   certified: false,
-  note: "CONTROLLER_UNLOCKED — Scene Factory Controller may request instances via controlRequestVenueScene. Full elasticity runtime cert (placement/expansion/compaction/migration/teardown/media) remains not claimed.",
+  note: "AUTHORITY_LOCKED 2026-09-12 — VenueSceneFactory + ElasticRoomOrchestrator are sole scene/orchestra authorities (controller still callable). Full elasticity runtime cert (placement/expansion/compaction/migration/teardown/media) remains not claimed.",
 } as const;
 
 export type VenueTemplateDefinition = {

@@ -267,18 +267,15 @@ export default function RotatingHeroBanner({
       {/* ── Responsive Triptych Layout: full-width center on mobile ── */}
       <div className="h1-banner-triptych" style={{ display: 'flex', width: '100%', height: '100%' }}>
 
-        {/* Left flank (25% on desktop, hidden on mobile) — masked so the outer
-            edge softly fades instead of ending in a hard rectangular cutoff. */}
+        {/* Left flank (25% on desktop, hidden on mobile) — single-axis soft edge fade (no dual maskComposite). */}
         <div
           className="h1-banner-flank-left"
           style={{
             flex: '0 0 25%',
             position: 'relative',
             overflow: 'hidden',
-            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
-            WebkitMaskComposite: 'source-in',
-            maskImage: 'linear-gradient(to right, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
-            maskComposite: 'intersect',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 100%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 100%)',
           }}
         >
           <Image
@@ -414,18 +411,15 @@ export default function RotatingHeroBanner({
         {/* Electric divider line */}
         <div className="h1-banner-divider" style={{ width: 1, flexShrink: 0, background: 'linear-gradient(180deg, #FFD700, #AA2DFF, #00FFFF)', zIndex: 2 }} />
 
-        {/* Right flank (25% on desktop, hidden on mobile) — mirrors the left
-            flank's edge feathering, fading toward the outer (right) edge. */}
+        {/* Right flank (25% on desktop, hidden on mobile) — mirrors left soft edge fade. */}
         <div
           className="h1-banner-flank-right"
           style={{
             flex: '0 0 25%',
             position: 'relative',
             overflow: 'hidden',
-            WebkitMaskImage: 'linear-gradient(to left, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
-            WebkitMaskComposite: 'source-in',
-            maskImage: 'linear-gradient(to left, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
-            maskComposite: 'intersect',
+            WebkitMaskImage: 'linear-gradient(to left, transparent 0%, black 18%, black 100%)',
+            maskImage: 'linear-gradient(to left, transparent 0%, black 18%, black 100%)',
           }}
         >
           <Image

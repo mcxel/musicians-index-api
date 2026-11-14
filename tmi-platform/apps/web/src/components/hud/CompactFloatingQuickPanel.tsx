@@ -47,6 +47,8 @@ export default function CompactFloatingQuickPanel({
         ...horizontal,
         width: QUICK_PANEL_WIDTH,
         maxHeight: collapsed ? "auto" : QUICK_PANEL_MAX_HEIGHT,
+        height: collapsed ? "auto" : QUICK_PANEL_MAX_HEIGHT,
+        overflow: "hidden",
         zIndex: 9360,
         display: "flex",
         flexDirection: "column",

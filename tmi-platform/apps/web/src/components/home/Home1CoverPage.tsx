@@ -29,7 +29,7 @@ import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import RotatingHeroBanner, { HERO_BILLBOARD_SLIDES } from '@/components/home/RotatingHeroBanner';
 import HeroLightningAtmosphere from '@/components/home/HeroLightningAtmosphere';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, getPerformerById, getPerformerBySlug, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, computeRanks, getPerformerHonorTitle, isRankedEligible, isVerifiedRankedPerformer, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getPerformerById, getPerformerBySlug, getFeaturedFreePerformers, getTopPerformers, getPerformerHonorTitle, isVerifiedRankedPerformer, PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
@@ -48,10 +48,9 @@ import {
 } from '@/lib/discovery/HomeDiscoveryRotationEngine';
 import { useHomeDiscoveryRotation } from '@/lib/discovery/useHomeDiscoveryRotation';
 import type { LiveDiscoveryRecord } from '@/lib/discovery/LiveDiscoveryRecord';
-import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
 import {
   getOrbitalTopSlots,
-  publishUniversalRankingSnapshot,
+  publishRealDiscoverySnapshot,
   subscribeUniversalRanking,
 } from '@/lib/rankings/UniversalRankingSnapshot';
 
@@ -126,124 +125,13 @@ function hasUploadedProfileImage(url?: string): boolean {
   return !DEFAULT_PROFILE_PLACEHOLDERS.has(trimmed);
 }
 
-function identityOrbitFields(p: PerformerIdentity, rank: number) {
-  return {
-    slug: p.slug,
-    performerId: p.id,
-    name: p.name,
-    rank,
-    score: p.xp,
-    genre: p.category,
-    image: p.profileImageUrl,
-    avatarImage: p.profileImageUrl,
-    profileRoute: p.profileRoute,
-    voteCount: null as number | null,
-    audienceCount: p.audienceCount,
-    isLive: p.isLive,
-    liveRoomRoute: p.liveRoomRoute,
-    lineupType: p.lineupType,
-    honorTitle: getPerformerHonorTitle(p),
-    verified: isVerifiedRankedPerformer(p),
-  };
-}
-
-function rankByPerformerId(): Map<string, number> {
-  return new Map(computeRanks().map((p) => [p.id, p.rank]));
-}
-
-function buildDiamondOrbitMembers(): Performer[] {
-  const ranks = rankByPerformerId();
-  return PERFORMER_REGISTRY
-    .filter((p) => isRankedEligible(p) && p.tier === 'Diamond' && hasUploadedProfileImage(p.profileImageUrl))
-    .sort((a, b) => b.xp - a.xp)
-    .map((p) => ({
-      ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
-      emoji: '💎',
-      profileRoute: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image`,
-      accountType: 'diamond-member' as const,
-    }));
-}
-
-function buildRealMemberProfileRing(genreKey: string): Performer[] {
-  const ranks = rankByPerformerId();
-  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
-    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl));
-  const profiledFallback = PERFORMER_REGISTRY
-    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && !byGenre.some((g) => g.slug === p.slug))
-    .sort((a, b) => b.xp - a.xp);
-  return [...byGenre, ...profiledFallback].slice(0, 4).map((p) => ({
-    ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
-    emoji: '👥',
-    accountType: 'real-member' as const,
-  }));
-}
-
-function buildVerifiedPerformerRing(genreKey: string): Performer[] {
-  const ranks = rankByPerformerId();
-  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
-    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedRankedPerformer(p));
-  const verifiedFallback = PERFORMER_REGISTRY
-    .filter((p) => isRankedEligible(p) && p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedRankedPerformer(p) && !byGenre.some((g) => g.slug === p.slug))
-    .sort((a, b) => b.xp - a.xp);
-
-  return [...byGenre, ...verifiedFallback].slice(0, 4).map((p) => ({
-    ...identityOrbitFields(p, ranks.get(p.id) ?? 0),
-    emoji: '🎤',
-    accountType: 'verified-performer' as const,
-  }));
-}
-
-function buildSystemBotRing(): Performer[] {
-  return OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS
-    .filter((bot) => bot.accountType === 'OPERATIONS_AGENT' || bot.accountType === 'SIMULATION_AGENT')
-    .map((bot, index) => ({
-    slug: bot.slug,
-    name: bot.name,
-    emoji: '🤖',
-    rank: index + 1,
-    score: 0,
-    genre: 'System Bot',
-    image: bot.image,
-    avatarImage: bot.image,
-    profileRoute: bot.profileRoute,
-    accountType: 'system-bot',
-    botRole: bot.botRole,
-    activityType: bot.activityType,
-    dashboardRoute: bot.dashboardRoute,
-    activityPurpose: bot.activityPurpose,
-    systemFunction: bot.systemFunction,
-    avatarPlaceholder: bot.avatarPlaceholder,
-    voteCount: null,
-    audienceCount: 0,
-    isLive: false,
-  }));
-}
-
-function buildSystemActorRing(): Performer[] {
-  return OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS
-    .filter((bot) => bot.accountType === 'SYSTEM_ACTOR')
-    .map((bot, index) => ({
-    slug: bot.slug,
-    name: bot.name,
-    emoji: '🛠',
-    rank: index + 1,
-    score: 0,
-    genre: 'System Actor',
-    image: bot.image,
-    avatarImage: bot.image,
-    profileRoute: bot.profileRoute,
-    accountType: 'system-actor',
-    botRole: bot.botRole,
-    activityType: bot.activityType,
-    dashboardRoute: bot.dashboardRoute,
-    activityPurpose: bot.activityPurpose,
-    systemFunction: bot.systemFunction,
-    avatarPlaceholder: bot.avatarPlaceholder,
-    voteCount: null,
-    audienceCount: 0,
-    isLive: false,
-  }));
-}
+// identityOrbitFields/rankByPerformerId and the PERFORMER_REGISTRY/bot ring
+// builders (buildDiamondOrbitMembers, buildRealMemberProfileRing,
+// buildVerifiedPerformerRing, buildSystemBotRing, buildSystemActorRing) were
+// removed here (ORBITAL Wheel Profile Truth hotfix) — they fabricated seed
+// and bot cards into the real-discovery orbit. buildOrbitPerformers() now
+// falls back to buildHonestEmptySlots() only. See CanonicalRankedUsers.server.ts
+// for the real, DB-backed replacement source.
 
 function buildHonestEmptySlots(count: number): Performer[] {
   const openPositions = [
@@ -278,7 +166,11 @@ function slotKindToAccountType(kind: 'human' | 'bot' | 'placeholder'): Performer
 }
 
 function buildOrbitPerformersFromSnapshot(): Performer[] {
-  publishUniversalRankingSnapshot(undefined, 10);
+  // Reads whatever is currently published — the actual publish (real,
+  // DB-backed candidates only) happens once on mount via
+  // publishRealDiscoverySnapshot(), not here. This function runs during
+  // render (called from buildOrbitPerformers on every genre cycle), so it
+  // must stay a pure read, never trigger the async fetch itself.
   return getOrbitalTopSlots(10).map((slot) => {
     const identity = getPerformerById(slot.profileId) ?? getPerformerBySlug(slot.slug);
     const honorTitle = slot.honorTitle ?? (identity ? getPerformerHonorTitle(identity) : undefined);
@@ -307,8 +199,10 @@ function buildOrbitPerformersFromSnapshot(): Performer[] {
 }
 
 function buildOrbitPerformers(genreKey: string): Performer[] {
-  // MJ Rule snapshot first — humans with points > 0, then bot fill.
-  // No static System Actor cards when real ranked profiles exist.
+  // ORBITAL-04: real DB-backed humans only — never seed/demo/bot/system-actor
+  // fill. genreKey is accepted for call-site compatibility (directoryPerformers
+  // rebuilds on genre cycle) but no longer selects a seed/registry ring.
+  void genreKey;
   const fromSnapshot = buildOrbitPerformersFromSnapshot();
   const hasRealHuman = fromSnapshot.some((p) => p.accountType !== 'system-bot' && p.accountType !== 'system-actor' && p.accountType !== 'empty-slot');
   if (hasRealHuman && fromSnapshot.length >= 10) return fromSnapshot.slice(0, 10);
@@ -317,15 +211,10 @@ function buildOrbitPerformers(genreKey: string): Performer[] {
     return [...fromSnapshot, ...buildHonestEmptySlots(need)];
   }
 
-  // Fallback when snapshot has no active humans yet
-  const ring1 = buildDiamondOrbitMembers();
-  const ring2 = buildVerifiedPerformerRing(genreKey);
-  const ring3 = buildRealMemberProfileRing(genreKey);
-  const ring5 = buildSystemBotRing();
-  const merged = [...ring1, ...ring2, ...ring3, ...ring5];
-  const unique = merged.filter((p, idx, arr) => arr.findIndex((x) => x.slug === p.slug) === idx);
-  if (unique.length >= 10) return unique.slice(0, 10);
-  return [...unique, ...buildHonestEmptySlots(10 - unique.length)];
+  // No real ranked humans yet — show honest open positions, never seed
+  // performers (buildDiamondOrbitMembers/buildVerifiedPerformerRing/
+  // buildRealMemberProfileRing) or bot fill (buildSystemBotRing).
+  return buildHonestEmptySlots(10);
 }
 
 function homeOrbitCardToPerformer(card: HomeOrbitDiscoveryCard, index: number): Performer {
@@ -907,10 +796,15 @@ export default function Home1CoverPage() {
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
   const genreConfig = GENRE_CONFIG[genreKey]!;
 
-  // Directory grid / left-rail — PerformerRegistry ranking snapshot (NOT live orbit).
+  // Directory grid / left-rail — real DB-backed ranking snapshot (NOT live orbit).
   const [directoryPerformers, setDirectoryPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
   useEffect(() => {
-    publishUniversalRankingSnapshot(undefined, 12);
+    // Real fetch fires once on mount (publishRealDiscoverySnapshot has its
+    // own short-lived cache) — genre changes below only re-filter/re-read
+    // the already-published snapshot, they never re-trigger the network call.
+    void publishRealDiscoverySnapshot(12);
+  }, []);
+  useEffect(() => {
     setDirectoryPerformers(buildOrbitPerformers(genreKey));
     return subscribeUniversalRanking(() => {
       setDirectoryPerformers(buildOrbitPerformers(genreKey));

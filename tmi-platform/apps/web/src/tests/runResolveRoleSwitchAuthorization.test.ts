@@ -132,4 +132,23 @@ export function runResolveRoleSwitchAuthorizationTest(): {
   return { allPassed, results };
 }
 
-runResolveRoleSwitchAuthorizationTest();
+describe("Role-Switch Authorization", () => {
+  it("owner FAN<->PERFORMER self-switch allowed; ADMIN/STAFF never self-service; governance email bypass works", () => {
+    const report = runResolveRoleSwitchAuthorizationTest();
+    for (const [key, value] of Object.entries(report.results)) {
+      expect(value).toBe(true);
+    }
+    expect(report.allPassed).toBe(true);
+  });
+});
+
+if (typeof describe === "undefined") {
+  const report = runResolveRoleSwitchAuthorizationTest();
+  if (!report.allPassed) {
+    const failed = Object.entries(report.results)
+      .filter(([, v]) => !v)
+      .map(([k]) => k);
+    console.error(`[RESOLVE_ROLE_SWITCH_AUTHORIZATION_TEST] FAILED: ${failed.join(", ")}`);
+    process.exitCode = 1;
+  }
+}

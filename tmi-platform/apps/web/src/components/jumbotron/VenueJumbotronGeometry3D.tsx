@@ -34,7 +34,7 @@ function EndZoneDisplay3D({
   const { widthMeters, heightMeters, depthMeters } = descriptor.dimensions;
   return (
     <group
-      data-testid="3d-end-zone-jumbotron-root"
+      userData={{ tmiTestId: "3d-end-zone-jumbotron-root" }}
       position={[cx, cy, cz]}
       rotation={[0, (descriptor.viewingOrientationYawDegrees * Math.PI) / 180, 0]}
     >
@@ -73,7 +73,7 @@ function DiscoOrb3D({
   ) / 2;
   const cableLen = Math.max(1.2, (descriptor.mountRiggingAnchor[1] ?? cy + radius + 2) - (cy + radius));
   return (
-    <group data-testid="3d-disco-orb-jumbotron-root" position={[cx, cy, cz]}>
+    <group userData={{ tmiTestId: "3d-disco-orb-jumbotron-root" }} position={[cx, cy, cz]}>
       <mesh position={[0, radius + cableLen / 2, 0]}>
         <cylinderGeometry args={[0.03, 0.03, cableLen, 8]} />
         <meshStandardMaterial color="#333344" metalness={0.9} roughness={0.2} />
@@ -106,7 +106,7 @@ function WallHangingLed3D({
   const [cx, cy, cz] = descriptor.centerPosition;
   const { widthMeters, heightMeters, depthMeters } = descriptor.dimensions;
   return (
-    <group data-testid="3d-wall-led-jumbotron-root" position={[cx, cy, cz]}>
+    <group userData={{ tmiTestId: "3d-wall-led-jumbotron-root" }} position={[cx, cy, cz]}>
       <mesh>
         <boxGeometry args={[widthMeters, heightMeters, depthMeters]} />
         <meshStandardMaterial color="#080818" metalness={0.7} roughness={0.35} />
@@ -130,6 +130,16 @@ export function VenueJumbotronGeometry3D({
   challengeFacePlan = null,
   ceilingElevationMeters,
 }: VenueJumbotronGeometry3DProps) {
+  // Fail closed — no invented geometry when venue bind is incomplete (P0-03).
+  if (
+    !descriptor?.dimensions ||
+    typeof descriptor.dimensions.widthMeters !== "number" ||
+    !Array.isArray(descriptor.centerPosition) ||
+    descriptor.centerPosition.length < 3
+  ) {
+    return null;
+  }
+
   switch (descriptor.architecture) {
     case "CENTER_HUNG_ARENA_JUMBOTRON":
       return (

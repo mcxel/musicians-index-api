@@ -24,24 +24,35 @@ export async function GET(_req: NextRequest) {
   const auth = await getTmiAuth();
   if (!auth) {
     return NextResponse.json(
-      { roles: [], primaryRole: "USER", activeRole: null },
-      { status: 200 },
+      { ok: false, error: "unauthenticated" },
+      { status: 401 },
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: auth.user.id },
-    select: {
-      role: true,
-      activeRole: true,
-      userRoles: { select: { role: true } },
-    },
-  });
+  // Identity/authorization boundary: a DB failure must never be reported as
+  // "this user has no roles" — that is a distinct, truthful infrastructure
+  // failure, not an empty-but-valid role set. Fail closed with a 503.
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: auth.user.id },
+      select: {
+        role: true,
+        activeRole: true,
+        userRoles: { select: { role: true } },
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "roles_lookup_failed" },
+      { status: 503 },
+    );
+  }
 
   if (!user) {
     const roles = synthesizeAdminSwitchRoles(auth.user.role, auth.user.email, [auth.user.role]);
     return NextResponse.json(
-      { roles, primaryRole: auth.user.role, activeRole: null },
+      { ok: true, roles, primaryRole: auth.user.role, activeRole: null },
       { status: 200 },
     );
   }
@@ -52,6 +63,7 @@ export async function GET(_req: NextRequest) {
   const allRoles = synthesizeAdminSwitchRoles(user.role as string, auth.user.email, base);
 
   return NextResponse.json({
+    ok: true,
     roles: allRoles,
     primaryRole: user.role as string,
     activeRole: user.activeRole as string | null,

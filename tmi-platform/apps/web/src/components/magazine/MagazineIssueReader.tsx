@@ -3,10 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MagazineShell, { type MagazinePage } from "@/components/magazine/MagazineShell";
 import { readMagazinePosition, writeMagazinePosition } from "@/components/magazine/MagazinePositionStorage";
-import {
-  MAGAZINE_DEFAULT_START_PAGE,
-  resolveMagazineReaderPageIndex,
-} from "@/lib/magazine/MagazineReaderRoutes";
+import { MAGAZINE_DEFAULT_START_PAGE } from "@/lib/magazine/MagazineReaderRoutes";
 
 type MagazineIssueReaderProps = {
   issue: string;
@@ -43,10 +40,11 @@ export default function MagazineIssueReader({
       return;
     }
 
-    if (initialArticleSlug) {
-      setInitialLeftIndex(resolveMagazineReaderPageIndex(initialArticleSlug, undefined, issue));
-      return;
-    }
+    // Page-index resolution now requires an async Prisma-backed lookup
+    // (contributor-submission articles), so it can only run server-side —
+    // every real caller already resolves and passes initialPageIndex
+    // alongside initialArticleSlug (see /magazine/issue/current/page.tsx).
+    // This branch stays as the honest fallback for the no-slug case only.
 
     const saved = readMagazinePosition();
     if (!saved || saved.lastIssue !== issue) {

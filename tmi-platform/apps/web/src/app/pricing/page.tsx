@@ -3,18 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSubscriptionProduct } from '@/lib/stripe/products';
+import { getRealFoundingPacks, isRealPriceId } from '@/lib/stripe/products';
+import {
+  listCanonicalPricingByFamily,
+  listMembershipOffersLowestFirst,
+  type CanonicalPricingEntry,
+} from '@/lib/commerce/CanonicalPricingRegistry';
 
-// PRO/RUBY price + priceId + checkout amount are read from the canonical
-// registry (@/lib/stripe/products.ts), not hardcoded — this page used to
-// carry its own copy of every tier's amount/priceId, which is exactly what
-// let it silently drift from what checkout actually charged after the
-// PRO/RUBY migration (Lane A A5, 2026-09-01: this page still showed no PRO
-// tier at all and priced "Ruby" at the old pre-migration $4.99/$2.99).
-const FAN_PRO = getSubscriptionProduct('fan', 'PRO');
-const FAN_RUBY = getSubscriptionProduct('fan', 'RUBY');
-const PERF_PRO = getSubscriptionProduct('performer', 'PRO');
-const PERF_RUBY = getSubscriptionProduct('performer', 'RUBY');
+// Membership cards are built only via listMembershipOffersLowestFirst →
+// CanonicalPricingRegistry / products.ts (no parallel hard-coded $ ladder).
 
 // ── Founding supporter one-time packs ────────────────────────────────────────
 
@@ -41,7 +38,7 @@ const FOUNDING_PACKS = [
     icon: '🎙️',
     price: '$15',
     color: '#FF2DAA',
-    badge: 'POPULAR',
+    badge: null as string | null,
     perks: [
       'Everything in Supporter Pack',
       'Extra vibe presets for your lobby',
@@ -75,7 +72,7 @@ const FOUNDING_PACKS = [
     icon: '💎',
     price: '$50',
     color: '#AA2DFF',
-    badge: 'ELITE',
+    badge: null as string | null,
     perks: [
       'Everything in Founding Member',
       'Diamond Founder badge — permanent',
@@ -89,254 +86,48 @@ const FOUNDING_PACKS = [
   },
 ] as const;
 
-// ── Tier data (lowest price first, free always first) ─────────────────────────
+// Advertiser entry cards: price/name/priceId come from CanonicalPricingRegistry's
+// ONE_TIME_PLATFORM_AD ladder (never a hand-rolled $ table — that's what caused
+// the $10-$25/wk mismatch this replaced). Presentation-only fields (icon/color/
+// perks/cta copy) are looked up locally by catalogId below.
+const ADVERTISER_PRESENTATION: Record<string, { icon: string; color: string; perks: string[]; cta: string }> = {
+  "ad.platform.micro": {
+    icon: "🎯",
+    color: "#00FFFF",
+    perks: ["Home banner rotation", "Fan hub bottom slot", "No commitment"],
+    cta: "TRY A MICRO SPOT",
+  },
+  "ad.platform.day": {
+    icon: "📣",
+    color: "#00FFFF",
+    perks: ["Home banner + hub placements", "24-hour run", "Real impression reporting"],
+    cta: "RUN A DAY SPOT",
+  },
+  "ad.platform.week": {
+    icon: "📅",
+    color: "#FF2DAA",
+    perks: ["Home banner + magazine leaderboard", "7-day run", "Real impression reporting"],
+    cta: "RUN A WEEK SPOT",
+  },
+  "ad.platform.feature": {
+    icon: "⭐",
+    color: "#FFD700",
+    perks: ["Featured home banner placement", "Priority rotation", "Real impression reporting"],
+    cta: "FEATURE MY BRAND",
+  },
+  "ad.platform.premium": {
+    icon: "💠",
+    color: "#AA2DFF",
+    perks: ["Top-tier home banner placement", "Maximum rotation priority", "Real impression reporting"],
+    cta: "GO PREMIUM",
+  },
+};
 
-const FAN_TIERS = [
-  {
-    key: 'fan-free',
-    name: 'FREE',
-    icon: '👤',
-    color: '#00FFFF',
-    price: '$0',
-    badge: null as string | null,
-    perks: ['Read TMI magazine', 'Browse profiles', 'Watch public streams', 'Create fan account'],
-    cta: 'JOIN FREE',
-    ctaHref: '/signup',
-    highlighted: false,
-  },
-  {
-    key: 'fan-pro',
-    name: 'PRO FAN',
-    icon: '⭐',
-    color: '#FF6B35',
-    price: `$${(FAN_PRO.price / 100).toFixed(2)}/mo`,
-    badge: 'START HERE' as string | null,
-    perks: ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements'],
-    cta: 'GET PRO',
-    ctaHref: `/api/stripe/checkout?priceId=${FAN_PRO.priceId}&mode=subscription&amount=${FAN_PRO.price}&productName=TMI+Fan+Pro`,
-    highlighted: true,
-  },
-  {
-    key: 'fan-ruby',
-    name: 'RUBY FAN',
-    icon: '🔴',
-    color: '#FF4444',
-    price: `$${(FAN_RUBY.price / 100).toFixed(2)}/mo`,
-    badge: null as string | null,
-    perks: ['Everything in Pro', 'Early access drops', 'Fan leaderboard placement', 'Ruby avatar glow'],
-    cta: 'GET RUBY',
-    ctaHref: `/api/stripe/checkout?priceId=${FAN_RUBY.priceId}&mode=subscription&amount=${FAN_RUBY.price}&productName=TMI+Fan+Ruby`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-silver',
-    name: 'SILVER FAN',
-    icon: '🥈',
-    color: '#C0C0C0',
-    price: '$9.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Ruby', 'Early access drops', 'Fan leaderboard placement', 'Silver avatar glow'],
-    cta: 'UPGRADE TO SILVER',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? 'price_fan_silver'}&mode=subscription&amount=999&productName=TMI+Fan+Silver`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-gold',
-    name: 'GOLD FAN',
-    icon: '🥇',
-    color: '#FFD700',
-    price: '$14.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Silver', 'Exclusive fan rooms', 'Gold avatar glow', 'Priority merch drops'],
-    cta: 'UPGRADE TO GOLD',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? 'price_fan_gold'}&mode=subscription&amount=1499&productName=TMI+Fan+Gold`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-platinum',
-    name: 'PLATINUM FAN',
-    icon: '💠',
-    color: '#AA2DFF',
-    price: '$24.99/mo',
-    badge: null as string | null,
-    perks: ['Everything in Gold', 'Backstage passes', 'Direct artist DMs', 'Platinum badge'],
-    cta: 'UPGRADE TO PLATINUM',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? 'price_fan_platinum'}&mode=subscription&amount=2499&productName=TMI+Fan+Platinum`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-diamond',
-    name: 'DIAMOND FAN',
-    icon: '💎',
-    color: '#00FF88',
-    price: '$49.99/mo',
-    badge: null as string | null,
-    perks: ['All Platinum perks', 'NFT access', 'VIP front-row seats', 'Diamond avatar glow', 'Season Zero recognition'],
-    cta: 'GO DIAMOND',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? 'price_fan_diamond'}&mode=subscription&amount=4999&productName=TMI+Fan+Diamond`,
-    highlighted: false,
-  },
-  {
-    key: 'fan-family',
-    name: 'FAMILY PLAN',
-    icon: '👨‍👩‍👧',
-    color: '#00FFFF',
-    price: '$27.99/mo',
-    badge: 'BEST VALUE' as string | null,
-    perks: ['Gold Fan perks for up to 4 accounts', 'Shared fan room', 'Family badge'],
-    cta: 'GET FAMILY PLAN',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? 'price_fan_family'}&mode=subscription&amount=2799&productName=TMI+Fan+Family`,
-    highlighted: false,
-  },
-];
-
-const PERFORMER_TIERS = [
-  {
-    key: 'perf-free',
-    name: 'FREE',
-    icon: '🎤',
-    color: '#FF2DAA',
-    price: '$0',
-    badge: null as string | null,
-    perks: ['10 Local + 10 Major Sponsor Slots', 'Performer profile', 'Basic bio + links', 'Submit to magazine', 'Audience discovery', 'Contest eligible (20 sponsors)'],
-    cta: 'JOIN FREE',
-    ctaHref: '/signup?role=performer',
-    highlighted: false,
-  },
-  {
-    key: 'perf-pro',
-    name: 'PRO PERFORMER',
-    icon: '🎧',
-    color: '#FF6B35',
-    price: `$${(PERF_PRO.price / 100).toFixed(2)}/mo`,
-    badge: 'START HERE' as string | null,
-    perks: ['Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard'],
-    cta: 'GET PRO',
-    ctaHref: `/api/stripe/checkout?priceId=${PERF_PRO.priceId}&mode=subscription&amount=${PERF_PRO.price}&productName=TMI+Performer+Pro`,
-    highlighted: true,
-  },
-  {
-    key: 'perf-ruby',
-    name: 'RUBY PERFORMER',
-    icon: '🎙️',
-    color: '#FF2DAA',
-    price: `$${(PERF_RUBY.price / 100).toFixed(2)}/mo`,
-    badge: null as string | null,
-    perks: ['15 Local + 15 Major Sponsor Slots', 'Everything in Pro', 'Fan club tools', 'Tipping enabled', 'Ruby badge'],
-    cta: 'GET RUBY',
-    ctaHref: `/api/stripe/checkout?priceId=${PERF_RUBY.priceId}&mode=subscription&amount=${PERF_RUBY.price}&productName=TMI+Performer+Ruby`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-silver',
-    name: 'SILVER PERFORMER',
-    icon: '🥈',
-    color: '#C0C0C0',
-    price: '$4.99/mo',
-    badge: null as string | null,
-    perks: ['20 Local + 20 Major Sponsor Slots', 'Fan club tools', 'Tipping enabled', 'Merch store access', 'Silver badge', 'Sponsor analytics'],
-    cta: 'UPGRADE TO SILVER',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? 'price_performer_silver'}&mode=subscription&amount=499&productName=TMI+Performer+Silver`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-gold',
-    name: 'GOLD PERFORMER',
-    icon: '🏆',
-    color: '#FFD700',
-    price: '$9.99/mo',
-    badge: null as string | null,
-    perks: ['30 Local + 30 Major Sponsor Slots', 'Priority placement', 'Billboard rotation', 'Gold performer badge', 'Sponsor rotation controls'],
-    cta: 'UPGRADE TO GOLD',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? 'price_performer_gold'}&mode=subscription&amount=999&productName=TMI+Performer+Gold`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-platinum',
-    name: 'PLATINUM PERFORMER',
-    icon: '🎖️',
-    color: '#AA2DFF',
-    price: '$19.99/mo',
-    badge: null as string | null,
-    perks: ['50 Local + 50 Major Sponsor Slots', 'Homepage eligibility', 'Priority booking visibility', 'NFT minting rights', 'Unlimited uploads', 'Platinum badge'],
-    cta: 'UPGRADE TO PLATINUM',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? 'price_performer_platinum'}&mode=subscription&amount=1999&productName=TMI+Performer+Platinum`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-diamond',
-    name: 'DIAMOND PERFORMER',
-    icon: '💎',
-    color: '#00FF88',
-    price: '$29.99/mo',
-    badge: null as string | null,
-    perks: ['100 Local + 100 Major Sponsor Slots', 'Premium sponsor marketplace access', 'Highest visibility + priority promotion', 'Full revenue split access', 'Diamond badge + NFT minting'],
-    cta: 'GO DIAMOND',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? 'price_performer_diamond'}&mode=subscription&amount=2999&productName=TMI+Performer+Diamond`,
-    highlighted: false,
-  },
-  {
-    key: 'perf-band',
-    name: 'BAND / GROUP',
-    icon: '🎸',
-    color: '#FF9500',
-    price: '$24.99/mo',
-    badge: 'GROUPS' as string | null,
-    perks: ['150 Local + 150 Major Sponsor Slots', 'Up to 5 linked members', 'Shared live room', 'Band profile page', 'Diamond Performer perks for all members'],
-    cta: 'REGISTER YOUR GROUP',
-    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? 'price_performer_band'}&mode=subscription&amount=2499&productName=TMI+Band+Group+Diamond`,
-    highlighted: false,
-  },
-];
-
-// ── Advertiser entry-level products ──────────────────────────────────────────
-
-const ADVERTISER_ENTRY = [
-  {
-    key: 'ad-micro',
-    name: 'MICRO AD',
-    icon: '📣',
-    color: '#00FFFF',
-    price: '$10/wk',
-    amount: 1000,
-    perks: ['1 ad slot for 7 days', 'Reaches active listeners', 'Basic impression report'],
-    cta: 'RUN MICRO AD',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_micro_weekly&mode=payment&amount=1000&productName=TMI+Micro+Ad',
-  },
-  {
-    key: 'ad-local',
-    name: 'LOCAL SHOUTOUT',
-    icon: '📍',
-    color: '#00FF88',
-    price: '$15/wk',
-    amount: 1500,
-    perks: ['Shoutout on 3 active rooms', 'Fan chat mentions', 'Weekly reach summary'],
-    cta: 'GET SHOUTOUT',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_local_weekly&mode=payment&amount=1500&productName=TMI+Local+Shoutout',
-  },
-  {
-    key: 'ad-playlist',
-    name: 'PLAYLIST BOOST',
-    icon: '🎵',
-    color: '#FF2DAA',
-    price: '$20/wk',
-    amount: 2000,
-    perks: ['Song featured in 2 TMI playlists', 'Artist discovery boost', 'Play count report'],
-    cta: 'BOOST PLAYLIST',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_playlist_weekly&mode=payment&amount=2000&productName=TMI+Playlist+Boost',
-  },
-  {
-    key: 'ad-sidebar',
-    name: 'SIDEBAR AD',
-    icon: '🖼️',
-    color: '#FFD700',
-    price: '$25/wk',
-    amount: 2500,
-    perks: ['Sidebar placement across live rooms', 'Click-through tracking', 'Weekly impression report'],
-    cta: 'PLACE SIDEBAR AD',
-    ctaHref: '/api/stripe/checkout?priceId=price_ad_sidebar_weekly&mode=payment&amount=2500&productName=TMI+Sidebar+Ad',
-  },
-] as const;
+function formatAdPrice(priceCents: number, interval: CanonicalPricingEntry["interval"]): string {
+  const dollars = (priceCents / 100).toFixed(2).replace(/\.00$/, "");
+  if (interval && interval !== "one_time") return `$${dollars}/${interval}`;
+  return `$${dollars}`;
+}
 
 // ── Support economy ───────────────────────────────────────────────────────────
 
@@ -363,14 +154,82 @@ const SUPPORT_TIERS = [
   },
 ] as const;
 
+const MEMBERSHIP_COLORS = {
+  FREE: '#00FFFF',
+  PRO: '#FF6B35',
+  RUBY: '#FF4444',
+  SILVER: '#C0C0C0',
+  GOLD: '#FFD700',
+  PLATINUM: '#AA2DFF',
+  DIAMOND: '#00FF88',
+  FAMILY: '#00FFFF',
+  BAND: '#FF9500',
+} as const;
+
+const MEMBERSHIP_ICONS = {
+  FREE: '👤',
+  PRO: '⭐',
+  RUBY: '🔴',
+  SILVER: '🥈',
+  GOLD: '🥇',
+  PLATINUM: '💠',
+  DIAMOND: '💎',
+  FAMILY: '👨‍👩‍👧',
+  BAND: '🎸',
+} as const;
+
+function getMembershipTierCards(accountType: 'fan' | 'performer') {
+  return listMembershipOffersLowestFirst(accountType).map((offer) => {
+    const isFree = offer.tier === 'FREE';
+    const roleLabel = accountType === 'fan' ? 'FAN' : 'PERFORMER';
+    return {
+      key: offer.id,
+      name: isFree ? 'FREE' : `${offer.tier} ${roleLabel}`,
+      icon: MEMBERSHIP_ICONS[offer.tier],
+      color: MEMBERSHIP_COLORS[offer.tier],
+      price: isFree ? '$0' : `$${(offer.priceCents / 100).toFixed(2)}/mo`,
+      badge: null as string | null,
+      perks: offer.features,
+      cta: isFree ? 'JOIN FREE' : offer.tier === 'PRO' ? 'GET PRO' : `UPGRADE TO ${offer.tier}`,
+      ctaHref: isFree
+        ? accountType === 'fan' ? '/signup' : '/signup?role=performer'
+        : `/api/stripe/checkout?priceId=${encodeURIComponent(offer.priceId!)}&mode=subscription&amount=${offer.priceCents}&productName=${encodeURIComponent(offer.name)}`,
+      highlighted: offer.tier === 'PRO',
+    };
+  });
+}
 
 export default function PricingPage() {
-  const [segment, setSegment] = useState<'fans' | 'performers'>('fans');
   const [showAll, setShowAll] = useState(false);
 
-  const tiers = segment === 'fans' ? FAN_TIERS : PERFORMER_TIERS;
-  // Always show FREE + first paid tier upfront. Show rest on demand.
-  const visibleTiers = showAll ? tiers : tiers.slice(0, 2);
+  const fanTiers = getMembershipTierCards('fan');
+  const performerTiers = getMembershipTierCards('performer');
+  // Both paths stay visible: a Fan can discover Performer creation without
+  // hiding their existing Fan path, and vice versa.
+  const visibleTiers = showAll
+    ? [...fanTiers, ...performerTiers]
+    : [...fanTiers.slice(0, 2), ...performerTiers.slice(0, 2)];
+  // Advertiser cards: price/name/priceId sourced live from the canonical
+  // ONE_TIME_PLATFORM_AD ladder — never a hand-rolled $ table (Rule 20).
+  const advertiserEntries = listCanonicalPricingByFamily('ONE_TIME_PLATFORM_AD')
+    .filter((e) => ADVERTISER_PRESENTATION[e.catalogId])
+    .map((e) => ({
+      key: e.catalogId,
+      name: e.name,
+      price: formatAdPrice(e.priceCents, e.interval),
+      ctaHref: `/api/stripe/checkout?priceId=${encodeURIComponent(e.priceId)}&mode=payment&amount=${e.priceCents}&productName=${encodeURIComponent(e.name)}`,
+      ...ADVERTISER_PRESENTATION[e.catalogId],
+    }));
+
+  // Founder packs stay hidden until registry SKUs have real Stripe Price IDs.
+  const realFounding = getRealFoundingPacks();
+  const purchasableFoundingPacks =
+    realFounding.length === 0
+      ? []
+      : FOUNDING_PACKS.filter((pack) => {
+          const m = pack.ctaHref.match(/priceId=([^&]+)/);
+          return Boolean(m && isRealPriceId(decodeURIComponent(m[1])));
+        });
 
   return (
     <main style={{ minHeight: '100vh', background: '#060410', color: '#fff', padding: '60px 20px 80px', fontFamily: "'Inter',sans-serif" }}>
@@ -383,7 +242,8 @@ export default function PricingPage() {
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 10 }}>Join free. Upgrade when you&apos;re ready. Cancel anytime.</p>
         </div>
 
-        {/* ── Founding Supporters ───────────────────────────────────────────── */}
+        {/* ── Founding Supporters (only when real Stripe Price IDs exist) ── */}
+        {purchasableFoundingPacks.length > 0 && (
         <div style={{
           marginBottom: 52,
           padding: '28px 24px 32px',
@@ -407,7 +267,7 @@ export default function PricingPage() {
 
           {/* Pack cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 24 }}>
-            {FOUNDING_PACKS.map((pack) => (
+            {purchasableFoundingPacks.map((pack) => (
               <div
                 key={pack.key}
                 style={{
@@ -488,27 +348,14 @@ export default function PricingPage() {
             so your input routes directly into live triage.
           </div>
         </div>
+        )}
 
-        {/* Toggle — Fans | Performers */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40 }}>
-          <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 40, padding: 4, gap: 4 }}>
-            {(['fans', 'performers'] as const).map((seg) => (
-              <button
-                key={seg}
-                onClick={() => { setSegment(seg); setShowAll(false); }}
-                style={{
-                  padding: '10px 28px', borderRadius: 36, border: 'none', cursor: 'pointer',
-                  fontWeight: 900, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
-                  background: segment === seg
-                    ? (seg === 'fans' ? 'linear-gradient(135deg,#00FFFF,#00DDFF)' : 'linear-gradient(135deg,#FF2DAA,#AA2DFF)')
-                    : 'transparent',
-                  color: segment === seg ? '#050510' : 'rgba(255,255,255,0.45)',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {seg === 'fans' ? '👤 Fans' : '🎤 Performers'}
-              </button>
-            ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, margin: '0 auto 28px', maxWidth: 720 }}>
+          <div style={{ borderBottom: '2px solid #00FFFF', paddingBottom: 8, color: '#00FFFF', fontSize: 11, fontWeight: 900, letterSpacing: '0.14em', textAlign: 'center' }}>
+            FAN MEMBERSHIP
+          </div>
+          <div style={{ borderBottom: '2px solid #FF2DAA', paddingBottom: 8, color: '#FF2DAA', fontSize: 11, fontWeight: 900, letterSpacing: '0.14em', textAlign: 'center' }}>
+            PERFORMER MEMBERSHIP
           </div>
         </div>
 
@@ -598,7 +445,7 @@ export default function PricingPage() {
                 fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', cursor: 'pointer',
               }}
             >
-              SEE ALL {segment === 'fans' ? 'FAN' : 'PERFORMER'} PLANS ↓
+              SEE ALL FAN &amp; PERFORMER PLANS ↓
             </button>
           </div>
         )}
@@ -645,7 +492,7 @@ export default function PricingPage() {
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 16 }}>
-            {ADVERTISER_ENTRY.map((ad) => (
+            {advertiserEntries.map((ad) => (
               <div key={ad.key} style={{ background: `${ad.color}06`, border: `1px solid ${ad.color}25`, borderRadius: 12, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 24, marginBottom: 5 }}>{ad.icon}</div>

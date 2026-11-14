@@ -18,7 +18,7 @@ const CONTEXT_OPTIONS = [
 ];
 
 export default function DashboardAnalyticsPage() {
-  const [tier, setTier] = useState<SubscriptionTier>('platinum');
+  const [tier, setTier] = useState<SubscriptionTier>('free');
   const [context, setContext] = useState<'artist' | 'fan' | 'sponsor' | 'advertiser' | 'venue'>('artist');
   const snapshot = getAnalyticsSnapshot(tier, context);
   const { capabilities, metrics, insights, upgradePrompt } = snapshot;

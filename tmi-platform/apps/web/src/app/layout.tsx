@@ -1,40 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import AppProviders from "@/components/providers";
+import { headers } from "next/headers";
+import AudioProvider from "@/components/AudioProvider";
+import FullAppShell from "@/components/layout/FullAppShell";
+import { CANONICAL_RELEASE_MANIFEST } from "@/lib/system/TmiReleaseMigrationAuthority";
+import { isAuthCriticalPath } from "@/lib/auth/isAuthCriticalPath";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
 import "@/styles/tmi/globals.css";
-import HudRuntimeProvider from "@/components/hud/HudRuntimeProvider";
-import { TmiSessionProvider } from "@/hooks/SessionContext";
-import GamificationHUD from "@/components/hud/GamificationHUD";
-import LiveSyncProvider from "@/components/media/LiveSyncProvider";
-import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
-import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
-import BotProvider from "@/components/providers/BotProvider";
-import ChevronNavigation from "@/components/navigation/ChevronNavigation";
-import TMIWorkspaceSwitcher from "@/components/system/TMIWorkspaceSwitcher";
-import { NavigationLock } from "@/components/navigation/NavigationLock";
-import NavigationRuntime from "@/components/navigation/NavigationRuntime";
-import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
-import LiveMarqueeTicker from "@/components/live/LiveMarqueeTicker";
-import { PWARegistration } from "@/components/mobile/PWARegistration";
-import BetaModeBanner from "@/components/launch/BetaModeBanner";
-import BetaStatusChip from "@/components/launch/BetaStatusChip";
-import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
-import { MonitorRuntimeProvider } from "@/components/monitor/MonitorRuntimeContext";
-import MonitorRuntime from "@/components/monitor/MonitorRuntime";
-import PlatformFooter from "@/components/layout/PlatformFooter";
-import { WatchSessionProvider } from "@/lib/presence/WatchSessionContext";
-import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
-import LaunchDock from "@/components/dock/LaunchDock";
-import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
-import BeatPurchaseInterestPrompt from "@/components/beats/BeatPurchaseInterestPrompt";
-import AdConsentBanner from "@/components/ads/AdConsentBanner";
+
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -42,13 +21,25 @@ export const metadata: Metadata = {
     default: "The Musician's Index Magazine | Official Live Music Platform",
     template: "%s | The Musician's Index Magazine",
   },
-  description: "The Musician's Index Magazine is a live interactive music platform where artists, performers, and fans connect, compete, and perform in real time through shows, battles, cyphers, and ranked music discovery.",
+  description:
+    "The Musician's Index Magazine is a live interactive music platform where artists, performers, and fans connect, compete, and perform in real time through shows, battles, cyphers, and ranked music discovery.",
   metadataBase: new URL("https://themusiciansindex.com"),
   keywords: [
-    "The Musician's Index", "TMI", "live music platform", "music battles",
-    "artist ranking", "hip hop battles", "music competition", "live cypher",
-    "artist discovery", "music magazine", "online music venue",
-    "live music shows", "music competitions", "performers", "fans",
+    "The Musician's Index",
+    "TMI",
+    "live music platform",
+    "music battles",
+    "artist ranking",
+    "hip hop battles",
+    "music competition",
+    "live cypher",
+    "artist discovery",
+    "music magazine",
+    "online music venue",
+    "live music shows",
+    "music competitions",
+    "performers",
+    "fans",
   ],
   robots: {
     index: true,
@@ -67,7 +58,8 @@ export const metadata: Metadata = {
   publisher: "BernoutGlobal",
   openGraph: {
     title: "The Musician's Index Magazine",
-    description: "The Musician's Index Magazine — a live interactive platform where artists, performers, and fans connect through music, shows, competitions, and real-time audience experiences.",
+    description:
+      "The Musician's Index Magazine — a live interactive platform where artists, performers, and fans connect through music, shows, competitions, and real-time audience experiences.",
     siteName: "The Musician's Index",
     url: "https://themusiciansindex.com",
     type: "website",
@@ -98,54 +90,49 @@ const JSON_LD = {
   "@graph": [
     {
       "@type": "WebSite",
-      "@id": "https://themusiciansindex.com/#website",
-      "name": "The Musician's Index",
-      "url": "https://themusiciansindex.com",
-      "description": "The Musician's Index Magazine — a live interactive platform where artists, performers, and fans connect through music, shows, competitions, and real-time audience experiences.",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "https://themusiciansindex.com/search?q={search_term_string}",
-        },
-        "query-input": "required name=search_term_string",
-      },
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://themusiciansindex.com/#organization",
-      "name": "The Musician's Index",
-      "alternateName": ["TMI", "The Musicians Index"],
-      "url": "https://themusiciansindex.com",
-      "description": "Live music competition platform for artists, fans, battles, cyphers, and ranked music discovery.",
-      "founder": { "@type": "Person", "name": "Marcel Dickens" },
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://themusiciansindex.com/og-image.jpg",
-      },
+      name: "The Musician's Index Magazine",
+      url: "https://themusiciansindex.com",
+      description:
+        "Live interactive music platform for artists, performers, and fans.",
     },
   ],
 };
 
 const ENABLE_AD_NETWORK_SCRIPTS =
-  process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENABLE_AD_NETWORK_SCRIPTS === "1";
+  process.env.NODE_ENV === "production" ||
+  process.env.NEXT_PUBLIC_ENABLE_AD_NETWORK_SCRIPTS === "1";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = headers().get("x-pathname") ?? "";
+  const authCritical = isAuthCriticalPath(pathname);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="tmi-release-id" content={CANONICAL_RELEASE_MANIFEST.releaseId} />
+        <meta name="tmi-ui-schema" content={String(CANONICAL_RELEASE_MANIFEST.uiSchemaVersion)} />
+        <meta name="tmi-cache-schema" content={String(CANONICAL_RELEASE_MANIFEST.cacheSchemaVersion)} />
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
-        {/*
-          AdSense script loads only after AdConsentBanner accept (CMP stub).
-          ads.txt + meta google-adsense-account remain for verification.
-          Pub id: ca-pub-4088577529436039 (or NEXT_PUBLIC_ADSENSE_CLIENT_ID).
-        */}
       </head>
-      <body className="tmi-obsidian-cinematic overflow-x-hidden" data-build-sha={process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"} suppressHydrationWarning>
-        {/* BidVertiser site verification rendered as real HTML comment in page source */}
-        <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
-        {/* Media.net — Yahoo/Bing contextual ads */}
+      <body
+        className="tmi-obsidian-cinematic overflow-x-hidden"
+        data-build-sha={process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev"}
+        data-auth-critical={authCritical ? "1" : "0"}
+        data-tmi-release={CANONICAL_RELEASE_MANIFEST.releaseId}
+        suppressHydrationWarning
+      >
+        <div
+          id="bv-verify"
+          dangerouslySetInnerHTML={{ __html: "<!-- Bidvertiser2104976 -->" }}
+          style={{
+            display: "none",
+            position: "absolute",
+            width: 0,
+            height: 0,
+            overflow: "hidden",
+          }}
+        />
         {process.env.NEXT_PUBLIC_MEDIANET_CID && (
           <Script
             id="medianet-init"
@@ -155,7 +142,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
         )}
-        {/* Amazon Publisher Services (APS) */}
         {process.env.NEXT_PUBLIC_AMAZON_PUB_ID && (
           <Script
             id="amazon-aps"
@@ -165,18 +151,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               const pubId = process.env.NEXT_PUBLIC_AMAZON_PUB_ID;
               if (!pubId) return;
               try {
-                (window as any).apstag?.init({ pubID: pubId, adServer: 'googletag' });
+                (window as any).apstag?.init({ pubID: pubId, adServer: "googletag" });
               } catch {}
             }}
           />
         )}
-        {/* Infolinks ad network global script */}
-        {ENABLE_AD_NETWORK_SCRIPTS && (
+        {ENABLE_AD_NETWORK_SCRIPTS && process.env.NEXT_PUBLIC_INFOLINKS_WSID && (
           <>
             <Script id="infolinks-config" strategy="afterInteractive">
               {`
                 var infolinks_pid = 3445854;
-                var infolinks_wsid = 0;
+                var infolinks_wsid = ${process.env.NEXT_PUBLIC_INFOLINKS_WSID};
               `}
             </Script>
             <Script
@@ -190,45 +175,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
-        {/* Visually hidden — gives Google the primary H1 for indexing */}
-        <h1 style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
-          The Musician&apos;s Index Magazine — Live music platform for artists, performers, and fans.
+        <h1
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: "hidden",
+            clip: "rect(0,0,0,0)",
+            whiteSpace: "nowrap",
+            border: 0,
+          }}
+        >
+          The Musician&apos;s Index Magazine — Live music platform for artists,
+          performers, and fans.
         </h1>
-        <AppProviders>
-          <TmiSessionProvider>
-            <MonitorRuntimeProvider>
-            <HudRuntimeProvider>
-            <WatchSessionProvider>
-              <AdConsentBanner />
-              <TMIWorkspaceSwitcher />
-              <PWARegistration />
-              <BetaModeBanner />
-              {children}
-              <PlatformFooter />
-              <PWAInstallPrompt />
-              <ChevronNavigation />
-              <NavigationRuntime />
-              <NavigationLock />
-              <GamificationHUD />
-              <LiveSyncProvider />
-              <FirstRunExperienceOverlay />
-              {/* TMIGlobalHUD unmounted Slice 1A — duplicate identity/persona/GO LIVE vs GlobalTmiHeader + LaunchDock */}
-              <BotRuntimeProvider />
-              <LiveMarqueeTicker />
-              {/* VoiceDirector / TMIVideoMonitor floaters permanently unmounted — Admin Cam = Overseer gem OverlayHost only */}
-              <LiveFeedbackPanel />
-              <MonitorRuntime />
-              <PersistentMiniPlayer />
-              <LaunchDock />
-              <GlobalLiveDiscoveryOverlay />
-              <BeatPurchaseInterestPrompt />
-            </WatchSessionProvider>
-            </HudRuntimeProvider>
-            </MonitorRuntimeProvider>
-          </TmiSessionProvider>
-        </AppProviders>
+        <AudioProvider>
+          {authCritical ? children : <FullAppShell>{children}</FullAppShell>}
+        </AudioProvider>
       </body>
     </html>
   );
 }
-

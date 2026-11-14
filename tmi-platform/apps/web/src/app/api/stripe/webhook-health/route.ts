@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getRecentEvents, getSummary } from '@/lib/stripe/stripe-telemetry-store';
 import { getStripeIncidentStatus } from '@/lib/stripe/stripe-incident-engine';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 
 function stripeModeFromKey(key: string | undefined): 'test' | 'live' | 'not_configured' | 'unknown' {
   if (!key) return 'not_configured';
@@ -12,14 +13,12 @@ function stripeModeFromKey(key: string | undefined): 'test' | 'live' | 'not_conf
   return 'unknown';
 }
 
-function isAdminOrStaff(role: string): boolean {
-  const v = role.toUpperCase();
-  return v === 'ADMIN' || v === 'STAFF';
-}
-
 export async function GET(req: NextRequest) {
-  const role = req.cookies.get('tmi_role')?.value ?? '';
-  if (!isAdminOrStaff(role)) {
+  // SECURITY (2026-09-23, Batch 2): verified DB role via getTmiAuth() —
+  // the previous tmi_role cookie check was forgeable by any caller.
+  const auth = await getTmiAuth();
+  const role = (auth?.user.role ?? '').toUpperCase();
+  if (role !== 'ADMIN' && role !== 'STAFF') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

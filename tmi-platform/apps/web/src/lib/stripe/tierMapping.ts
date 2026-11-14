@@ -1,6 +1,9 @@
 import type { UserTier } from '@/lib/auth/UserStore';
 import { STRIPE_PRODUCTS, SUBSCRIPTION_TIER_ORDER, SUBSCRIPTION_TIER_PRODUCT_KEYS } from './products';
 
+/** Checkout session metadata.plan — account family, not entitlement tier. */
+export type CheckoutAccountPlan = 'FAN' | 'PERFORMER';
+
 // Map Stripe price IDs → platform tier. Single source of truth — both the
 // webhook (real grant path) and the payment-success activation check
 // (verification path) must resolve a given Stripe price ID to the exact same
@@ -15,10 +18,13 @@ import { STRIPE_PRODUCTS, SUBSCRIPTION_TIER_ORDER, SUBSCRIPTION_TIER_PRODUCT_KEY
 // products (sponsor/venue/promoter/advertiser) aren't part of that ladder and
 // stay listed explicitly below.
 const TIER_LADDER: Record<string, UserTier> = {};
+const ACCOUNT_PLAN_LADDER: Record<string, CheckoutAccountPlan> = {};
 for (const accountType of ['fan', 'performer'] as const) {
   for (const tier of SUBSCRIPTION_TIER_ORDER) {
     const key = SUBSCRIPTION_TIER_PRODUCT_KEYS[accountType][tier];
-    TIER_LADDER[STRIPE_PRODUCTS[key].priceId] = tier;
+    const priceId = STRIPE_PRODUCTS[key].priceId;
+    TIER_LADDER[priceId] = tier;
+    ACCOUNT_PLAN_LADDER[priceId] = accountType === 'fan' ? 'FAN' : 'PERFORMER';
   }
 }
 
@@ -26,13 +32,9 @@ export const PRICE_TO_TIER: Record<string, UserTier> = {
   ...TIER_LADDER,
   [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FREE ?? 'price_1TcJXrEAwH1Fjtu9pYxAwEqi']: 'FREE',
   [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? 'price_1TcJxBEAwH1Fjtu9xjMfLhw4']: 'GOLD',
-  // LEGACY (2026-09-01 pricing migration): original Fan/Performer "Ruby" prices,
-  // actually priced at what's now PRO's amount. Kept mapped to RUBY — their tier
-  // at time of sale — for any historical reconciliation. Verified 0 real Stripe
-  // subscriptions referenced either before this migration; never used for new
-  // checkout (products.ts no longer references these IDs at all).
-  'price_1TcJnFEAwH1Fjtu98MhoEGqG': 'RUBY', // legacy Fan Ruby
-  'price_1TcJzdEAwH1Fjtu9Nx5DsRzL': 'RUBY', // legacy Performer Ruby
+  // LIVE-mode Pro twins (resource_missing under TEST keys). Map for live webhooks.
+  'price_1TcJnFEAwH1Fjtu98MhoEGqG': 'PRO', // live Fan Pro $4.99
+  'price_1TcKDBEAwH1Fjtu9fyPClyCM': 'PRO', // live Performer Pro $2.99
   [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? 'price_1TcK68EAwH1Fjtu9KGLcf8HE']: 'GOLD',
   // Sponsor/Advertiser/Venue/Promoter — not part of the Fan/Performer ladder
   [process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_BASIC    ?? 'price_1Tb148EAwH1Fjtu9KZFL3H3Y']: 'RUBY',
@@ -44,6 +46,41 @@ export const PRICE_TO_TIER: Record<string, UserTier> = {
   [process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER  ?? 'price_1TdY0UEAwH1Fjtu9FTrdprdy']: 'GOLD',
 };
 
+/** priceId → FAN | PERFORMER for checkout metadata.plan (analytics/receipts). */
+export const PRICE_TO_ACCOUNT_PLAN: Record<string, CheckoutAccountPlan> = {
+  ...ACCOUNT_PLAN_LADDER,
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? 'price_1TcJxBEAwH1Fjtu9xjMfLhw4']: 'FAN',
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? 'price_1TcK68EAwH1Fjtu9KGLcf8HE']: 'PERFORMER',
+  // LIVE-mode Pro twins — preserve both TEST (UAj28…) and LIVE (Tc…) IDs; never swap globally.
+  'price_1TcJnFEAwH1Fjtu98MhoEGqG': 'FAN',
+  'price_1TcKDBEAwH1Fjtu9fyPClyCM': 'PERFORMER',
+};
+
 export function tierForPriceId(priceId: string): UserTier | null {
   return PRICE_TO_TIER[priceId] ?? null;
+}
+
+export function accountPlanForPriceId(priceId: string): CheckoutAccountPlan | null {
+  return PRICE_TO_ACCOUNT_PLAN[priceId] ?? null;
+}
+
+/**
+ * Checkout session metadata.plan — account family for analytics/receipts.
+ * Entitlement still resolves via priceId → tierForPriceId (unchanged).
+ */
+export function resolveCheckoutMetadataPlan(
+  priceId: string,
+  productName = '',
+): CheckoutAccountPlan {
+  const fromPrice = accountPlanForPriceId(priceId);
+  if (fromPrice) return fromPrice;
+
+  const pn = productName.toUpperCase();
+  if (pn.includes('PERFORMER') || pn.includes('ARTIST') || pn.includes('BAND')) {
+    return 'PERFORMER';
+  }
+  if (pn.includes('FAN') || pn.includes('FAMILY')) {
+    return 'FAN';
+  }
+  return 'FAN';
 }

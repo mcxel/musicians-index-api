@@ -2,7 +2,11 @@
 
 /**
  * Hub live privacy — separate preview vs publication (engineering controls, not legal advice).
- * Defaults ALL false on load. Never calls getUserMedia from this module.
+ * Defaults ALL false on load. Never calls getUserMedia from this module's store ctor.
+ *
+ * MUTE vs OFF (product law):
+ * - While PUBLISHED: toggles MUTE tracks via enabled=false (keep WebRTC / session alive).
+ * - While LOCAL_PREVIEW: OFF stops & releases hardware tracks — UI OFF must never leave capture active.
  */
 
 import { create } from "zustand";
@@ -22,10 +26,24 @@ export interface LivePrivacyState {
   clearLivePublished: () => void;
   releasePreviewTracks: () => void;
   syncPreviewTracks: () => void;
+  /** Preview-only: stop video tracks (true OFF). No-op while published (use mute). */
+  stopCameraHardware: () => void;
+  /** Preview-only: stop audio tracks (true OFF). No-op while published (use mute). */
+  stopMicHardware: () => void;
 }
 
 function stopStreamTracks(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((track) => track.stop());
+}
+
+function stopKind(stream: MediaStream | null | undefined, kind: "video" | "audio") {
+  if (!stream) return;
+  stream.getTracks().forEach((track) => {
+    if (track.kind === kind) {
+      track.stop();
+      stream.removeTrack(track);
+    }
+  });
 }
 
 export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
@@ -76,25 +94,47 @@ export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
     set({ previewStream: null });
   },
 
+  stopCameraHardware: () => {
+    const { previewStream, isLivePublished } = get();
+    if (isLivePublished || !previewStream) return;
+    stopKind(previewStream, "video");
+    set({ cameraPreviewActive: false });
+    const remaining = previewStream.getTracks().filter((t) => t.readyState !== "ended");
+    if (remaining.length === 0) {
+      set({ previewStream: null });
+    }
+  },
+
+  stopMicHardware: () => {
+    const { previewStream, isLivePublished } = get();
+    if (isLivePublished || !previewStream) return;
+    stopKind(previewStream, "audio");
+    set({ micPreviewActive: false });
+    const remaining = previewStream.getTracks().filter((t) => t.readyState !== "ended");
+    if (remaining.length === 0) {
+      set({ previewStream: null });
+    }
+  },
+
   syncPreviewTracks: () => {
     const { previewStream, isLivePublished, cameraPreviewActive, micPreviewActive } = get();
     if (!previewStream) return;
-    // While LIVE: keep video; respect StageLifecycle audienceMicMuted during intermission.
+    // While LIVE: MUTE via enabled (keep hardware for WebRTC continuity).
     if (isLivePublished) {
       const audienceMicMuted = getStageSnapshot().audienceMicMuted;
       previewStream.getVideoTracks().forEach((track) => {
-        track.enabled = true;
+        if (track.readyState === "live") track.enabled = cameraPreviewActive;
       });
       previewStream.getAudioTracks().forEach((track) => {
-        track.enabled = !audienceMicMuted;
+        if (track.readyState === "live") track.enabled = micPreviewActive && !audienceMicMuted;
       });
       return;
     }
     previewStream.getVideoTracks().forEach((track) => {
-      track.enabled = cameraPreviewActive;
+      if (track.readyState === "live") track.enabled = cameraPreviewActive;
     });
     previewStream.getAudioTracks().forEach((track) => {
-      track.enabled = micPreviewActive;
+      if (track.readyState === "live") track.enabled = micPreviewActive;
     });
   },
 }));
@@ -103,9 +143,17 @@ export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
 export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: string }> {
   const state = useLivePrivacyState.getState();
   if (state.previewStream) {
-    state.setCameraPreviewActive(true);
-    state.syncPreviewTracks();
-    return { ok: true };
+    const hasVideo = state.previewStream.getVideoTracks().some((t) => t.readyState === "live");
+    const hasAudio = state.previewStream.getAudioTracks().some((t) => t.readyState === "live");
+    if (hasVideo && hasAudio) {
+      state.setCameraPreviewActive(true);
+      state.setMicPreviewActive(true);
+      state.syncPreviewTracks();
+      return { ok: true };
+    }
+    // Partial stream after OFF — reacquire missing kinds.
+    stopStreamTracks(state.previewStream);
+    state.setPreviewStream(null);
   }
 
   try {
@@ -135,24 +183,47 @@ export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: 
 
 export async function toggleHubMicPreview(): Promise<void> {
   const state = useLivePrivacyState.getState();
-  if (!state.previewStream) {
+  if (state.isLivePublished) {
+    // MUTE while published — do not tear WebRTC.
+    if (!state.previewStream) {
+      const result = await requestHubCameraPreview();
+      if (!result.ok) return;
+    }
+    useLivePrivacyState.getState().setMicPreviewActive(!useLivePrivacyState.getState().micPreviewActive);
+    useLivePrivacyState.getState().syncPreviewTracks();
+    return;
+  }
+  if (!state.previewStream || !state.micPreviewActive) {
     const result = await requestHubCameraPreview();
     if (!result.ok) return;
     useLivePrivacyState.getState().setMicPreviewActive(true);
     return;
   }
-  state.setMicPreviewActive(!state.micPreviewActive);
+  // OFF — release mic hardware so UI OFF never leaves capture active.
+  state.stopMicHardware();
+  if (!useLivePrivacyState.getState().cameraPreviewActive) {
+    useLivePrivacyState.getState().releasePreviewTracks();
+  }
 }
 
 export async function toggleHubCameraPreview(): Promise<void> {
   const state = useLivePrivacyState.getState();
-  if (!state.previewStream) {
+  if (state.isLivePublished) {
+    if (!state.previewStream) {
+      await requestHubCameraPreview();
+      return;
+    }
+    useLivePrivacyState.getState().setCameraPreviewActive(!state.cameraPreviewActive);
+    useLivePrivacyState.getState().syncPreviewTracks();
+    return;
+  }
+  if (!state.previewStream || !state.cameraPreviewActive) {
     await requestHubCameraPreview();
     return;
   }
-  const next = !state.cameraPreviewActive;
-  state.setCameraPreviewActive(next);
-  if (!next && !state.micPreviewActive && !state.isLivePublished) {
-    state.releasePreviewTracks();
+  // OFF — release camera hardware.
+  state.stopCameraHardware();
+  if (!useLivePrivacyState.getState().micPreviewActive) {
+    useLivePrivacyState.getState().releasePreviewTracks();
   }
 }

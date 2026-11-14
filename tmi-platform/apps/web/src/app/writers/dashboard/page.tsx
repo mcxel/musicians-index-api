@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { contributorAccountEngine } from "@/lib/editorial-economy/ContributorAccountEngine";
 import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubmissionEngine";
 import { contributorPayoutEngine } from "@/lib/editorial-economy/ContributorPayoutEngine";
 import type { ContributorLevel } from "@/lib/editorial-economy/types";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 
 export const metadata: Metadata = {
   title: "Writer Dashboard | TMI",
@@ -17,40 +19,35 @@ const LEVEL_COLOR: Record<ContributorLevel, string> = {
   "staff-editor": "#FFD700",
 };
 
-const SEED_CONTRIBUTOR_ID = "writer-demo";
+export default async function WritersDashboardPage() {
+  const session = await getTmiAuth();
+  if (!session) redirect("/login?redirect=/writers/dashboard");
 
-function seedDemoData() {
-  if (!contributorAccountEngine.get(SEED_CONTRIBUTOR_ID)) {
-    contributorAccountEngine.create({
-      contributorId: SEED_CONTRIBUTOR_ID,
-      displayName: "Demo Writer",
-      level: "verified-contributor",
-    });
-  }
-}
+  const contributorId = session.user.id;
+  const account = await contributorAccountEngine.getOrCreate({
+    contributorId,
+    displayName: session.user.name,
+    level: "new-contributor",
+  });
+  const allSubmissions = await editorialSubmissionEngine.list();
+  const submissions = allSubmissions.filter(s => s.contributorId === contributorId);
 
-export default function WritersDashboardPage() {
-  seedDemoData();
-
-  const account = contributorAccountEngine.get(SEED_CONTRIBUTOR_ID);
-  const submissions = editorialSubmissionEngine.list().filter(s => s.contributorId === SEED_CONTRIBUTOR_ID);
-
-  const approvedSubs = submissions.filter(s => s.status === "approved");
+  const approvedSubs = submissions.filter(s => s.status === "approved" || s.status === "published");
   const pendingSubs = submissions.filter(s => s.status === "submitted");
-  const rejectedSubs = submissions.filter(s => s.status === "rejected");
 
   // Rule 20: no fabricated sponsor revenue — payout calc uses real zeros until ledger exists.
-  const totalPayout = approvedSubs.reduce((sum, sub) => {
-    const result = contributorPayoutEngine.calculate({
-      contributorId: SEED_CONTRIBUTOR_ID,
+  let totalPayout = 0;
+  for (const sub of approvedSubs) {
+    const result = await contributorPayoutEngine.calculate({
+      contributorId,
       submissionId: sub.submissionId,
       approved: true,
       sponsorRevenueUsd: 0,
     });
-    return sum + result.amountUsd;
-  }, 0);
+    totalPayout += result.amountUsd;
+  }
 
-  const levelColor = account ? LEVEL_COLOR[account.level] : "#888";
+  const levelColor = LEVEL_COLOR[account.level];
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
@@ -61,8 +58,7 @@ export default function WritersDashboardPage() {
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
-        {account ? (
-          <>
+        <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12, marginBottom: 36 }}>
               {[
                 { label: "Account Level", value: account.level.replace(/-/g, " ").toUpperCase(), color: levelColor },
@@ -91,7 +87,7 @@ export default function WritersDashboardPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {submissions.map((sub) => {
-                  const statusColor = sub.status === "approved" ? "#00FF88" : sub.status === "rejected" ? "#FF4466" : "#FF9500";
+                  const statusColor = sub.status === "approved" || sub.status === "published" ? "#00FF88" : sub.status === "rejected" ? "#FF4466" : "#FF9500";
                   return (
                     <div key={sub.submissionId} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "14px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
@@ -109,15 +105,7 @@ export default function WritersDashboardPage() {
                 })}
               </div>
             )}
-          </>
-        ) : (
-          <div style={{ textAlign: "center", padding: "60px 24px" }}>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 24 }}>No contributor account found. Sign up to get started.</div>
-            <Link href="/writers/signup" style={{ fontSize: 10, fontWeight: 800, color: "#050510", background: "#FFD700", borderRadius: 8, padding: "12px 28px", textDecoration: "none" }}>
-              JOIN AS CONTRIBUTOR
-            </Link>
-          </div>
-        )}
+        </>
       </div>
     </main>
   );

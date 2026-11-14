@@ -12,7 +12,7 @@ export type StageState   = "pre-show" | "live" | "intermission" | "post-show";
 // "lounge" added 2026-08-12 — DestinationResolver.ts's LobbyWallKind already
 // routed to lounges (?mode=lounge on /live/rooms/[roomId]) before this session
 // could store/filter a session AS a lounge. Now first-class here too.
-export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby";
+export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby" | "dance-party" | "dance";
 
 export interface AudienceCountrySlice {
   countryCode: string;
@@ -60,6 +60,12 @@ export interface LiveSession {
 
   // Meta
   privacy:       "PUBLIC" | "PAID_ENTRY" | "INVITE_ONLY";
+  /**
+   * Fine-grained join mode (public|friends|invite|private).
+   * Registry `privacy` stays the discovery visibility enum; this field drives
+   * server-side join decisions so friends ≠ private after INVITE_ONLY mapping.
+   */
+  audiencePrivacyMode?: "public" | "friends" | "invite" | "private" | null;
   entryPriceUsd: number | null;
   accentColor:   string;
   startedAt:     number;
@@ -169,6 +175,7 @@ export interface GoLivePayload {
   previewUrl?:   string;
   thumbnailUrl?: string;
   privacy?:      LiveSession["privacy"];
+  audiencePrivacyMode?: LiveSession["audiencePrivacyMode"];
   entryPriceUsd?: number;
   accentColor?:  string;
   performerTier?: LiveSession["performerTier"];
@@ -192,6 +199,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     viewerCount:   0,
     tipTotal:      0,
     privacy:       payload.privacy ?? "PUBLIC",
+    audiencePrivacyMode: payload.audiencePrivacyMode ?? null,
     entryPriceUsd: payload.entryPriceUsd ?? null,
     accentColor:   payload.accentColor ?? pickAccent(payload.userId),
     startedAt:          Date.now(),

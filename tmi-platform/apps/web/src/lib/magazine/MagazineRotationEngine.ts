@@ -532,10 +532,13 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
   return pool.filter((item) => !NON_LIVING_COMMUNITY_RANDOM.includes(item.subtype));
 }
 
-export function listQueuedWriterStories(): EditorialStory[] {
-  return editorialSubmissionEngine
-    .list()
-    .filter((submission) => submission.status === "approved")
+export async function listQueuedWriterStories(): Promise<EditorialStory[]> {
+  const submissions = await editorialSubmissionEngine.list();
+  return submissions
+    // "published" stays eligible too — otherwise a story would drop out of
+    // the pool the moment it's first placed and could never rotate back in
+    // on a later issue build.
+    .filter((submission) => submission.status === "approved" || submission.status === "published")
     .map((submission) =>
       editorialSubmissionToStory({
         submissionId: submission.submissionId,
@@ -549,29 +552,85 @@ export function listQueuedWriterStories(): EditorialStory[] {
     );
 }
 
-export function assembleDefaultIssuePools(): {
+/** Approved writer stories become real NEWS-slot candidates, same shape as
+ * staff articles — the composition engine below decides if/when they're
+ * actually placed into a built issue (writer owns content, magazine owns
+ * placement — CLAUDE.md editorial pipeline law). */
+function writerStoriesToNewsSlotSources(stories: EditorialStory[]): MagazineNewsSlotSource[] {
+  return stories
+    .map((story) => ({
+      slug: story.storyId,
+      title: story.title,
+      subtitle: story.subtitle ?? "",
+      href: story.href,
+      preview: story.blocks.find((block) => block.type === "paragraph")?.text,
+      author: story.author,
+    }));
+}
+
+export async function assembleDefaultIssuePools(): Promise<{
   performers: MagazinePerformerSlotSource[];
   news: MagazineNewsSlotSource[];
   randomPool: MagazineRandomSlotSource[];
-} {
+}> {
   const ranked = computeRanks();
   const performerArticles = getPerformerPoolArticles();
-  const news = newsArticlesToSlotSources(getNewsPoolArticles());
+  const staffNews = newsArticlesToSlotSources(getNewsPoolArticles());
+  const writerStories = await listQueuedWriterStories();
+  const writerNews = writerStoriesToNewsSlotSources(writerStories);
   return {
     performers: performersToSlotSources(ranked, performerArticles),
-    news,
+    news: [...staffNews, ...writerNews],
     randomPool: assembleDefaultRandomPool(),
   };
 }
 
-export function buildCanonicalMagazineIssueSlots(issueKey: string): MagazineIssueSlot[] {
-  const pools = assembleDefaultIssuePools();
+/**
+ * Computes what the issue would look like right now. Safe to call from any
+ * reader GET, crawler, or cache revalidation: it never mutates submission
+ * state. A reader opening the magazine must never be the event that
+ * permanently changes editorial publication state.
+ */
+export async function buildCanonicalMagazineIssueSlots(issueKey: string): Promise<MagazineIssueSlot[]> {
+  const pools = await assembleDefaultIssuePools();
   const seed = hashStringToSeed(`${issueKey}|${new Date().toISOString().slice(0, 10)}`);
   return buildMagazineIssueSequence({
     ...pools,
     rng: mulberry32(seed),
     maxPerformerSlots: 8,
   });
+}
+
+/**
+ * The real commit boundary: APPROVED → (this function, an explicit,
+ * authorized action — see POST /api/editorial/publish-issue) → PUBLISHED.
+ * Idempotent — re-publishing an already-published submission is a no-op, so
+ * calling this again for the same day's composition never flaps state.
+ *
+ * Scope-honest: this is an on-demand transaction a staff-editor/admin
+ * triggers, not a scheduled composition job — no cron/queue infra exists in
+ * this codebase yet to hang a real "nightly issue build" off of. Building
+ * that scheduler is separate, larger work; this is the correct commit
+ * boundary for whenever that scheduler calls it too.
+ */
+export async function publishIssueComposition(issueKey: string): Promise<{
+  slots: MagazineIssueSlot[];
+  publishedSubmissionIds: string[];
+}> {
+  const slots = await buildCanonicalMagazineIssueSlots(issueKey);
+  const publishedSubmissionIds: string[] = [];
+
+  for (const slot of slots) {
+    if (slot.pageClass !== "NEWS" || !slot.articleSlug) continue;
+    const result = await editorialSubmissionEngine.markPublished(slot.articleSlug, slot.articleSlug);
+    // markPublished() no-ops (returns null) for staff-article slugs that
+    // aren't real submission ids, and for anything not currently "approved".
+    if (result && result.status === "published") {
+      publishedSubmissionIds.push(slot.articleSlug);
+    }
+  }
+
+  return { slots, publishedSubmissionIds };
 }
 
 export function issueSlotMonetizationLabel(layer: MonetizationLayer): string {

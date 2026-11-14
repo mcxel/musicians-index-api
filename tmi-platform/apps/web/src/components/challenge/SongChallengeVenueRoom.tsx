@@ -7,7 +7,8 @@
  * Mode = song-challenge with distinct skin, dual WebRTC competitor tiles,
  * Media Locker song picker, and winner/crown overlays.
  *
- * Capacity: AnchorRoomCapacityMatrix song_challenge (~2 competitors, ~150 audience, ~60 VR seats).
+ * Capacity: AnchorRoomCapacityMatrix song_challenge (~2 competitors, ~150 audience seats).
+ * LEGACY note: former "VR seats" labeling removed — XR/VR runtime is downstream (not built here).
  */
 
 import dynamic from "next/dynamic";
@@ -327,7 +328,7 @@ export default function SongChallengeVenueRoom({
           {SKIN.label}
         </span>
         <span style={{ marginLeft: "auto", fontSize: 10, color: SKIN.sideB, fontWeight: 700 }}>
-          {humanWatching} watching · cap {CAP.humanViewersMax} · VR seats {CAP.vrVisibleSeats}
+          {humanWatching} watching · cap {CAP.humanViewersMax} · audience seats {CAP.vrVisibleSeats}
         </span>
       </nav>
 
@@ -468,6 +469,7 @@ export default function SongChallengeVenueRoom({
           )}
           <span style={{ fontSize: 10, color: SKIN.textMuted }}>
             Metaphor: {CAP.vrMetaphor} · human participants max {CAP.humanParticipantsMax}
+            {/* LEGACY: CAP.vrMetaphor is capacity-matrix naming only — no WebXR entry point */}
           </span>
         </div>
 

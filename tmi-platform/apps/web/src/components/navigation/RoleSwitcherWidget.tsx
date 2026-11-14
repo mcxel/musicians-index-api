@@ -30,6 +30,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { performPersonaSwitch } from "@/lib/auth/performPersonaSwitch";
 
 // ─── Role metadata ────────────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ interface RoleDef {
 }
 
 const ROLE_DEFS: RoleDef[] = [
-  { id: "ADMIN",      label: "ADMIN DECK",     icon: "⚡", color: "#FFD700", hubUrl: "/admin" },
+  { id: "ADMIN",      label: "ADMIN DECK",     icon: "⚡", color: "#FFD700", hubUrl: "/admin/overseer" },
   { id: "PERFORMER",  label: "PERFORMER HUB",  icon: "🎤", color: "#FF2DAA", hubUrl: "/hub/performer" },
   { id: "ARTIST",     label: "ARTIST HUB",     icon: "🎙️", color: "#FF2DAA", hubUrl: "/hub/artist" },
   { id: "BAND",       label: "BAND HUB",       icon: "🎸", color: "#AA2DFF", hubUrl: "/hub/performer" },
@@ -54,7 +55,7 @@ const ROLE_DEFS: RoleDef[] = [
   { id: "SPONSOR",    label: "SPONSOR HUB",    icon: "🤝", color: "#C0C0C0", hubUrl: "/hub/sponsor" },
   { id: "ADVERTISER", label: "ADVERTISER HUB", icon: "📊", color: "#E5E4E2", hubUrl: "/hub/advertiser" },
   { id: "WRITER",     label: "WRITER HUB",     icon: "✍️", color: "#A3E635", hubUrl: "/hub/writer" },
-  { id: "STAFF",      label: "STAFF DECK",     icon: "🛡️", color: "#F59E0B", hubUrl: "/admin" },
+  { id: "STAFF",      label: "STAFF DECK",     icon: "🛡️", color: "#F59E0B", hubUrl: "/admin/overseer" },
 ];
 
 function getRoleDef(role: string): RoleDef {
@@ -118,6 +119,8 @@ export default function RoleSwitcherWidget({
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isNarrow, setIsNarrow] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -140,15 +143,24 @@ export default function RoleSwitcherWidget({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Fetch available roles once on mount
+  // Fetch available roles once on mount. A failed lookup is a distinct,
+  // truthful state from "this account has no other roles" — it must not
+  // silently collapse into an empty role list (which would hide this whole
+  // widget below, as if the user simply lacked permission to switch).
   useEffect(() => {
     fetch("/api/auth/my-roles", { credentials: "include", cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { roles?: string[]; activeRole?: string | null }) => {
+      .then(async (r) => {
+        const d = (await r.json().catch(() => null)) as
+          | { ok?: boolean; roles?: string[]; activeRole?: string | null }
+          | null;
+        if (!r.ok || !d || d.ok === false) {
+          setLoadFailed(true);
+          return;
+        }
         setRoles(d.roles ?? []);
         setActiveRole(d.activeRole ?? null);
       })
-      .catch(() => {})
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -192,36 +204,61 @@ export default function RoleSwitcherWidget({
     async (role: string) => {
       if (switching) return;
       setSwitching(role);
+      setSwitchError(null);
       try {
+        const r = role.toUpperCase();
+        const triadRole =
+          r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN"
+            ? "ADMIN"
+            : r === "PERFORMER" || r === "ARTIST" || r === "BAND"
+              ? "PERFORMER"
+              : r === "FAN" || r === "USER" || r === "MEMBER"
+                ? "FAN"
+                : null;
+
+        if (triadRole) {
+          const result = await performPersonaSwitch(triadRole);
+          if (result.ok && result.hubUrl) {
+            setActiveRole(role);
+            setOpen(false);
+            window.location.href = result.hubUrl;
+            return;
+          }
+          setSwitchError(result.error ?? "Unable to switch accounts right now. Please try again.");
+          return;
+        }
+
         const res = await fetch("/api/auth/switch-role", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role }),
           credentials: "include",
         });
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          setSwitchError("Unable to switch accounts right now. Please try again.");
+          return;
+        }
         const data = await res.json();
         if (res.ok && data.ok) {
           setActiveRole(role);
           setOpen(false);
-          // Sync to DashboardWorkspaceContainer's localStorage key before navigating
-          const r = role.toUpperCase();
           const ws =
             ["PERFORMER", "ARTIST", "BAND"].includes(r) ? "performer" :
             ["ADMIN", "STAFF", "SUPERADMIN"].includes(r) ? "admin" : "fan";
           localStorage.setItem("tmi_last_workspace", ws);
-          // Small delay so panel closes before navigation
-          setTimeout(() => {
-            router.push(data.hubUrl ?? getRoleDef(role).hubUrl);
-            router.refresh();
-          }, 150);
+          const dest = data.hubUrl ?? getRoleDef(role).hubUrl;
+          window.location.href = dest;
+        } else {
+          setSwitchError(data.error ?? "Unable to switch accounts right now. Please try again.");
         }
       } catch {
-        // silent — keep panel open
+        setSwitchError("Unable to switch accounts right now. Please try again.");
       } finally {
         setSwitching(null);
       }
     },
-    [router, switching],
+    [switching],
   );
 
   // Admin/staff/governance accounts keep full oversight visibility over
@@ -235,8 +272,10 @@ export default function RoleSwitcherWidget({
     ? roles
     : roles.filter((r) => SELF_SERVICE_ROLES.has(r.toUpperCase()));
 
-  // Don't render if there's nothing to switch between.
-  if (!loading && visibleRoles.length < 2) return null;
+  // Don't render if there's genuinely nothing to switch between — but a
+  // failed roles lookup is NOT the same as "no other roles" and must stay
+  // visible so the user can see the truthful error state, not silence.
+  if (!loading && !loadFailed && visibleRoles.length < 2) return null;
 
   const currentRole = activeRole ?? visibleRoles[0] ?? "USER";
   const currentDef = getRoleDef(currentRole);
@@ -390,6 +429,21 @@ export default function RoleSwitcherWidget({
                 </span>{" "}
                 Loading roles…
               </div>
+            ) : loadFailed ? (
+              <div
+                data-testid="tmi-role-switcher-load-error"
+                style={{
+                  padding: "12px 10px",
+                  color: "#FF6B9A",
+                  fontSize: 10.5,
+                  lineHeight: 1.4,
+                  background: "rgba(255,45,90,0.08)",
+                  border: "1px solid rgba(255,45,90,0.3)",
+                  borderRadius: 8,
+                }}
+              >
+                Account roles could not be loaded. Please try again, or use Log Out.
+              </div>
             ) : (
               visibleRoles.map((role, i) => {
                 const def = getRoleDef(role);
@@ -494,6 +548,24 @@ export default function RoleSwitcherWidget({
               })
             )}
           </div>
+
+          {switchError && (
+            <div
+              data-testid="tmi-role-switcher-switch-error"
+              style={{
+                marginTop: 10,
+                padding: "8px 10px",
+                background: "rgba(255,45,90,0.1)",
+                border: "1px solid rgba(255,45,90,0.35)",
+                borderRadius: 8,
+                color: "#FF6B9A",
+                fontSize: 10,
+                lineHeight: 1.4,
+              }}
+            >
+              {switchError}
+            </div>
+          )}
 
           {/* Footer */}
           <div

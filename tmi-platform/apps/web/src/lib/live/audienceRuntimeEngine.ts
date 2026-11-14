@@ -1,4 +1,5 @@
 // AudienceRuntimeEngine — audience tracking, venue occupancy, presence
+import { releaseSeat as releasePrioritySeat } from "@/lib/audience/SeatPriorityEngine";
 
 export type AudienceMember = {
   userId: string;
@@ -66,6 +67,13 @@ const BLOCKED_CHAT_PATTERNS = [
 
 const DEFAULT_CAPACITY = 10000;
 
+function recountPresent(occ: VenueOccupancy): void {
+  // Rule 20 / AUTOMATED_ROOM_HUMAN_TRUTH: bots never inflate human occupancy.
+  occ.present = occ.members.filter((m) => m.active && m.role !== "bot").length;
+  occ.peakPresent = Math.max(occ.peakPresent, occ.present);
+}
+
+
 export function getVenueModerationPolicy(venueSlug: string): VenueModerationPolicy {
   if (!moderationRegistry.has(venueSlug)) {
     moderationRegistry.set(venueSlug, {
@@ -121,6 +129,7 @@ export function joinAudience(venueSlug: string, member: {
     existing.groupId = member.groupId ?? existing.groupId ?? null;
     existing.avatarUrl = member.avatarUrl ?? existing.avatarUrl ?? null;
     existing.viewpoint = member.viewpoint ?? existing.viewpoint;
+    recountPresent(occ);
     return occ;
   }
   occ.members.push({
@@ -132,8 +141,7 @@ export function joinAudience(venueSlug: string, member: {
     viewpoint: member.viewpoint ?? { yaw: 0, pitch: 0, updatedAt: Date.now() },
     captureEnabled: member.captureEnabled ?? false,
   });
-  occ.present = occ.members.filter((m) => m.active).length;
-  occ.peakPresent = Math.max(occ.peakPresent, occ.present);
+  recountPresent(occ);
   return occ;
 }
 
@@ -143,12 +151,35 @@ export function leaveAudience(venueSlug: string, userId: string): VenueOccupancy
   if (member) {
     member.active = false;
   }
-  occ.present = occ.members.filter((m) => m.active).length;
+  recountPresent(occ);
   return occ;
+}
+
+/** Hard remove for authorized kick — membership + seat freed. Not a platform ban. */
+export function kickAudienceMember(venueSlug: string, userId: string): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const member = occ.members.find((m) => m.userId === userId);
+  if (member?.seatId) {
+    releasePrioritySeat(venueSlug, member.seatId);
+  }
+  occ.members = occ.members.filter((m) => m.userId !== userId);
+  recountPresent(occ);
+  return occ;
+}
+
+export function getHumanAudienceCount(venueSlug: string): number {
+  const occ = getVenueOccupancy(venueSlug);
+  return occ.members.filter((m) => m.active && m.role !== "bot").length;
+}
+
+export function getAutomatedParticipantCount(venueSlug: string): number {
+  const occ = getVenueOccupancy(venueSlug);
+  return occ.members.filter((m) => m.active && m.role === "bot").length;
 }
 
 export function getAudienceSnapshot(venueSlug: string) {
   const occ = getVenueOccupancy(venueSlug);
+  recountPresent(occ);
   const moderation = getVenueModerationPolicy(venueSlug);
   return {
     venueSlug: occ.venueSlug,
@@ -372,6 +403,13 @@ export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy 
   let seeded = 0;
   for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
     const botId = `bot-${venueSlug}-${i + 1}`;
+/**
+ * LEGACY / AUTOMATED TMI PARTICIPANT seed — decorative sit-ins for venue fill.
+ * Classification: AUTOMATED_TMI_PARTICIPANT (not human).
+ * Must NEVER inflate human occupancy/viewer metrics (recountPresent excludes role=bot).
+ * Must NEVER impersonate humans in Home panels or tip/vote/reaction human tallies.
+ * Fan personal rooms must not call this (enforced at go-live route).
+ */
     if (existing.has(botId)) continue;
     joinAudience(venueSlug, {
       userId: botId,
@@ -393,6 +431,7 @@ export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy 
         m.displayName = `${m.displayName}|${BOT_EMOJIS[i % BOT_EMOJIS.length] ?? '🎧'}`;
       }
     });
-  void seeded; // suppress unused warning
+  void seeded;
+  recountPresent(occ);
   return occ;
 }

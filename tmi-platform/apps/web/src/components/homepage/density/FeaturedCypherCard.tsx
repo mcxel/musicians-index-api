@@ -6,19 +6,21 @@ import HoverPreviewLayer from "@/components/homepage/density/HoverPreviewLayer";
 import type { DensityCypherCard } from "@/components/homepage/density/useHomeDensityData";
 
 interface FeaturedCypherCardProps {
-  cypher?: DensityCypherCard;
+  cypher?: DensityCypherCard | null;
 }
 
-const FALLBACK_CYPHER: DensityCypherCard = {
-  title: "Neon District Open Mic Cypher",
-  subtitle: "12 genres live · multilingual lane · crowd clip vault enabled",
-  queue: "47",
-  wait: "3m",
-  status: "Open Queue",
-};
-
 export default function FeaturedCypherCard({ cypher }: FeaturedCypherCardProps) {
-  const current = cypher ?? FALLBACK_CYPHER;
+  if (!cypher) {
+    return (
+      <article className="group relative rounded-xl border border-cyan-300/35 bg-gradient-to-br from-cyan-500/15 via-black/65 to-black/75 p-4">
+        <span className="rounded border border-cyan-300/45 bg-cyan-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-cyan-100">Featured Cypher</span>
+        <p className="mt-3 text-[11px] uppercase tracking-[0.1em] text-zinc-400">No cypher room open right now</p>
+        <Link href="/cypher" className="mt-3 inline-block rounded-md border border-cyan-300/45 bg-cyan-500/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 hover:border-cyan-100">Browse Cyphers</Link>
+      </article>
+    );
+  }
+
+  const current = cypher;
 
   return (
     <article className="group relative rounded-xl border border-cyan-300/35 bg-gradient-to-br from-cyan-500/15 via-black/65 to-black/75 p-4">

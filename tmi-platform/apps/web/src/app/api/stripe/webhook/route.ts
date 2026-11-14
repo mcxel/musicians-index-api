@@ -10,18 +10,34 @@ import { getStripe } from '@/lib/stripe/client';
 import { grantTipFromStripeSession } from '@/lib/tips/tipFulfillment';
 import { recordStripeEvent } from '@/lib/stripe/stripe-telemetry-store';
 import {
-  isStripeEventProcessed,
+  claimStripeWebhookEvent,
+  markStripeEventFailedRetryable,
   markStripeEventProcessed,
 } from '@/lib/stripe/webhookIdempotency';
+import { applyFinancialAdjustment, creditShopFromCheckoutSession } from '@/lib/commerce/economicPaymentLedger';
 import { fulfillPurchasedVenueSkin } from '@/lib/venue/VenueSkinCommerce';
 import { parseVenueSkinSku } from '@/lib/commerce/CommerceCatalogContract';
 import { enterGracePeriod, clearGracePeriod, expireGraceAndDowngrade } from '@/lib/stripe/billingGraceEngine';
+import { reconcilePayoutWebhookEvent } from '@/lib/booking/performerPayoutRailAuthority';
 
 /**
  * Canonical Stripe webhook — configure this URL in Stripe Dashboard:
  *   https://themusiciansindex.com/api/stripe/webhook
- * Legacy paths /api/webhooks/stripe and /api/finance/webhook/stripe require
- * signature verification but do not own fulfillment (see those route comments).
+ *
+ * Stripe-TEST-1 audit note (2026-10-04): this comment previously claimed two
+ * "legacy" paths — /api/webhooks/stripe and /api/finance/webhook/stripe —
+ * exist and own signature verification without fulfillment. Neither exists
+ * in this repo today. /api/webhooks/stripe/route.ts was real and was removed
+ * in commit bc19cd0677 (2026-03-29, an unrelated bulk scaffold-import commit);
+ * /api/finance/webhook/stripe has no creation or deletion history at all —
+ * it was never actually built. This route (apps/web/src/app/api/stripe/webhook)
+ * is the sole real Stripe webhook handler in the codebase; do not re-add a
+ * legacy ack-only shim without a real reason, and do not assume the Stripe
+ * Dashboard's TEST-mode endpoints point at the canonical domain above — a
+ * 2026-09-09 certification artifact (.cursor/artifacts/revenue-sub-staging-cert/)
+ * found three TEST-mode endpoints registered against ephemeral Vercel preview
+ * URLs instead; see that finding before assuming this URL is what Stripe is
+ * actually configured to call.
  */
 
 const stripe = getStripe();
@@ -100,8 +116,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // Durable idempotency on Stripe event.id (survives cold starts / multi-instance)
-  if (await isStripeEventProcessed(event.id)) {
+  // Receipt is not completion. A processed event is skipped. A received,
+  // processing, or failed-retryable event runs again. Credits are guarded
+  // by the economic payment identity, not by this event id.
+  const claim = await claimStripeWebhookEvent(event.id, event.type);
+  if (claim.action === 'skip') {
     return NextResponse.json({ received: true, cached: true });
   }
 
@@ -250,17 +269,6 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const order = await prisma.order.create({
-          data: {
-            buyerUserId: buyerId,
-            provider: 'STRIPE',
-            providerPaymentId: session.payment_intent as string,
-            amountCents: session.amount_total || 0,
-            currency: session.currency || 'usd',
-            status: 'PAID',
-          },
-        });
-
         const qty = Math.max(1, Number(metadata.quantity || 1));
         const tierName = metadata.tier || 'STANDARD';
         const sellerPriceCents = Math.max(
@@ -281,26 +289,93 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        for (let i = 0; i < qty; i++) {
-          await prisma.ticket.create({
+        // Phase 2 Ticket Trust: capacity-safe inventory BEFORE order/mint (TICKET-WEBHOOK-EVENTINVENTORY-CAPACITY-01).
+        const invKey = `${metadata.venueSlug || 'tmi-live-online'}::${eventRecord.id}::${tierName}`;
+        const capacityIfCreate = Math.max(qty, Number(ticketType.quantity || 500));
+        const {
+          incrementEventInventoryAtomic,
+          createProtectedObligation,
+          issueTicketCredential,
+          recordCommissionCollected,
+        } = await import('@/lib/ticketTrust');
+        const invResult = await incrementEventInventoryAtomic({
+          prisma,
+          key: invKey,
+          qty,
+          capacityIfCreate,
+        });
+        if (invResult === 'sold_out') {
+          console.error('[stripe/webhook] ticket_purchase inventory sold_out — refund required', {
+            sessionId: session.id,
+            invKey,
+            qty,
+          });
+          if (stripe && session.payment_intent) {
+            try {
+              await stripe.refunds.create({
+                payment_intent: session.payment_intent as string,
+                reason: 'requested_by_customer',
+                metadata: { reason: 'inventory_oversell_blocked', sessionId: session.id, invKey },
+              });
+            } catch (refundErr) {
+              console.error('[stripe/webhook] oversell refund FAILED', session.id, refundErr);
+            }
+          }
+        } else {
+          const order = await prisma.order.create({
             data: {
-              eventId: eventRecord.id,
-              ticketTypeId: ticketType.id,
-              orderId: order.id,
-              ownerUserId: buyerId,
-              tokenHash: `tk_purchase_${session.id}_${i}_${Date.now()}`,
+              buyerUserId: buyerId,
+              provider: 'STRIPE',
+              providerPaymentId: session.payment_intent as string,
+              amountCents: session.amount_total || 0,
+              currency: session.currency || 'usd',
+              status: 'PAID',
             },
           });
-        }
 
-        // Best-effort inventory counter (Rule 17 platform inventory).
-        const invKey = `${metadata.venueSlug || 'tmi-live-online'}::${eventRecord.id}::${tierName}`;
-        await prisma.eventInventory
-          .updateMany({
-            where: { key: invKey },
-            data: { issued: { increment: qty } },
-          })
-          .catch(() => null);
+          for (let i = 0; i < qty; i++) {
+            const ticket = await prisma.ticket.create({
+              data: {
+                eventId: eventRecord.id,
+                ticketTypeId: ticketType.id,
+                orderId: order.id,
+                ownerUserId: buyerId,
+                tokenHash: `pending_${session.id}_${i}_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              },
+            });
+            const cred = issueTicketCredential({
+              eventId: eventRecord.id,
+              ticketId: ticket.id,
+              holderUserId: buyerId,
+              actor: 'stripe.webhook.ticket_purchase',
+            });
+            await prisma.ticket
+              .update({
+                where: { id: ticket.id },
+                data: { tokenHash: cred.credentialId },
+              })
+              .catch(() => null);
+          }
+
+          // Order.status PAID = payment succeeded (compat). Settlement obligation is PAID_PROTECTED ≠ SETTLED.
+          createProtectedObligation({
+            orderId: order.id,
+            eventId: eventRecord.id,
+            paymentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+            stripeSessionId: session.id,
+            grossCents: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            actor: 'stripe.webhook.ticket_purchase',
+          });
+          const feeCents = Math.max(0, Number(metadata.platformFeeCents || 0));
+          if (feeCents > 0) {
+            recordCommissionCollected({
+              orderId: order.id,
+              amountCents: feeCents,
+              actor: 'stripe.webhook.ticket_purchase',
+            });
+          }
+        }
       }
 
       // ─── 2. BEAT LICENSE FULFILLMENT (SPLIT_PRESETS.beat) ─────────────
@@ -320,6 +395,9 @@ export async function POST(req: NextRequest) {
           licenseType: metadata.licenseType,
           amountCents: Number.isFinite(settlementCents) ? settlementCents : (session.amount_total || 0),
           auctionId: metadata.auctionId || null,
+          livemode: session.livemode === true,
+          stripeEventId: event.id,
+          paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null,
         });
       }
 
@@ -421,12 +499,25 @@ export async function POST(req: NextRequest) {
       }
 
       // ─── 2b. LOBBY WALL / WDP VISIBILITY BOOST ─────────────────────────
-      if (metadata.type === 'boost_lobby_wall' || metadata.type === 'wdp_submission_boost') {
+      if (
+        metadata.type === 'boost_lobby_wall' ||
+        metadata.type === 'boost_lobby_wall_299' ||
+        metadata.type === 'wdp_submission_boost'
+      ) {
         const { recordLobbyWallBoost } = await import('@/lib/lobby/LobbyWallBoostEngine');
         const roomId = metadata.roomId || 'unknown';
         const performerId = metadata.performerId || session.customer_email || 'unknown';
         const category = (metadata.category || 'all') as import('@/lib/lobby/liveLobbyWallLaw').LobbyWallCoreCategoryId | 'all';
-        const kind = metadata.type === 'wdp_submission_boost' ? 'wdp_submission' : 'lobby_wall';
+        const kind =
+          metadata.type === 'wdp_submission_boost'
+            ? 'wdp_submission'
+            : metadata.type === 'boost_lobby_wall_299'
+              ? 'lobby_wall_299'
+              : 'lobby_wall';
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
         recordLobbyWallBoost({
           roomId,
           performerId,
@@ -434,6 +525,7 @@ export async function POST(req: NextRequest) {
           kind,
           wdpEntryId: metadata.wdpEntryId || null,
           stripeSessionId: session.id,
+          paymentIntentId,
         });
         if (metadata.wdpEntryId) {
           const { applyWdpSubmissionBoost } = await import('@/lib/dance/WorldDancePartyRotationPool');
@@ -451,21 +543,40 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // ─── 2c. DISCOVERY BOOST (profile/show/booking exposure weight) ────
+      // ─── 2c. DISCOVERY BOOST (profile/show/booking/shuffle/lobby/yopho/radio exposure weight) ────
       if (metadata.type === 'discovery_boost') {
         const { recordDiscoveryBoost } = await import('@/lib/discovery/DiscoveryBoostEngine');
-        const tierRaw = metadata.tier || 'spark';
-        const tier = (['spark', 'pulse', 'wave', 'blast'].includes(tierRaw)
+        const tierRaw = metadata.tier || 'entry_299';
+        const tier = (['spark', 'entry_299', 'pulse', 'wave', 'blast'].includes(tierRaw)
           ? tierRaw
-          : 'spark') as 'spark' | 'pulse' | 'wave' | 'blast';
+          : 'entry_299') as 'spark' | 'entry_299' | 'pulse' | 'wave' | 'blast';
+        const target = (metadata.target || 'profile') as import('@/lib/discovery/DiscoveryBoostEngine').DiscoveryBoostTarget;
+        const ownerId = metadata.ownerId || session.customer_email || 'unknown';
+        const targetRefId = metadata.targetRefId || ownerId;
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
         recordDiscoveryBoost({
-          ownerId: metadata.ownerId || session.customer_email || 'unknown',
+          ownerId,
           ownerRole: metadata.ownerRole === 'venue' ? 'venue' : 'performer',
-          target: (metadata.target || 'profile') as import('@/lib/discovery/DiscoveryBoostEngine').DiscoveryBoostTarget,
-          targetRefId: metadata.targetRefId || metadata.ownerId || 'unknown',
+          target,
+          targetRefId,
           tier,
           stripeSessionId: session.id,
+          paymentIntentId,
         });
+        if (target === 'lobby_wall') {
+          const { recordLobbyWallBoost } = await import('@/lib/lobby/LobbyWallBoostEngine');
+          recordLobbyWallBoost({
+            roomId: targetRefId,
+            performerId: ownerId,
+            category: 'all',
+            kind: tier === 'entry_299' ? 'lobby_wall_299' : 'lobby_wall',
+            stripeSessionId: session.id,
+            paymentIntentId,
+          });
+        }
         recordStripeEvent('webhook_verified', {
           fingerprint: session.id,
           eventType: 'checkout.session.completed',
@@ -474,6 +585,35 @@ export async function POST(req: NextRequest) {
           amountCents: session.amount_total || 0,
           currency: session.currency || 'usd',
           type: 'discovery_boost',
+          simulated: false,
+        });
+      }
+
+      // ─── 2d. YOPHO SKIN ($0.99) & PROP PACK ($2.99) ENTITLEMENT FULFILLMENT ──
+      if (metadata.type === 'yopho_commerce' || metadata.type === 'yopho_skin' || metadata.type === 'yopho_prop_pack') {
+        const { grantDurableYoPhoEntitlement } = await import('@/lib/yopho/YoPhoSkinRegistry');
+        const userId = metadata.buyerId || metadata.userId || session.customer_email || 'unknown';
+        const itemId = metadata.itemId || metadata.skinId || metadata.propPackId || 'recording-studio-vip';
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
+        grantDurableYoPhoEntitlement({
+          userId,
+          itemId,
+          itemKind: metadata.type === 'yopho_prop_pack' || (session.amount_total || 0) >= 299 ? 'prop_pack_299' : 'skin_099',
+          priceCents: session.amount_total || 99,
+          stripeSessionId: session.id,
+          paymentIntentId,
+        });
+        recordStripeEvent('webhook_verified', {
+          fingerprint: session.id,
+          eventType: 'checkout.session.completed',
+          livemode: Boolean(session.livemode),
+          revenueStream: 'yopho',
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          type: metadata.type,
           simulated: false,
         });
       }
@@ -499,6 +639,9 @@ export async function POST(req: NextRequest) {
           toArtistUserId: artistUserId,
           amountCents: amount,
           roomId: metadata.roomId || null,
+          livemode: session.livemode === true,
+          stripeEventId: event.id,
+          paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null,
         });
 
         // Payout-aware tip alert — ledger already recorded; never suppress the tip.
@@ -627,6 +770,9 @@ export async function POST(req: NextRequest) {
         const { decrementArtistProductInventory } = await import(
           '@/lib/commerce/ArtistCommerceCatalog'
         );
+        const { grantArtistCommerceOwnership, isDurableOwnershipType } = await import(
+          '@/lib/commerce/ArtistCommerceOwnership'
+        );
         const inventoryOk = await decrementArtistProductInventory(metadata.productId, 1).catch(
           () => false,
         );
@@ -662,39 +808,35 @@ export async function POST(req: NextRequest) {
           }).catch(() => {});
         }
 
-        const connectDest = metadata.connectDestination || '';
-        const artistId = metadata.artistId || '';
-        const sellerShare = Math.max(0, parseInt(metadata.sellerShareCents || '0', 10) || 0);
-        if (artistId && sellerShare > 0 && !connectDest) {
+        // ─── 4B-i. BUYER OWNERSHIP (durable entitlement types only) ────────
+        // MERCH/SHOUTOUT/MEET_AND_GREET are correctly represented by the
+        // Order record alone (a to-be-fulfilled obligation, not owned
+        // access) — see ArtistCommerceOwnership.ts's header for the full
+        // rationale. Runs regardless of inventory/Connect outcome above:
+        // a paid, inventory-short order already downgrades to
+        // PAID_PENDING_FULFILLMENT and still deserves a real ownership
+        // record once payment cleared.
+        const ownershipProductType = metadata.productType || '';
+        if (metadata.orderId && isDurableOwnershipType(ownershipProductType)) {
           try {
-            let wallet = await prisma.wallet.findUnique({ where: { userId: artistId } });
-            if (!wallet) {
-              wallet = await prisma.wallet.create({ data: { userId: artistId } });
-            }
-            await prisma.wallet.update({
-              where: { id: wallet.id },
-              data: {
-                pendingBalance: { increment: sellerShare },
-                lifetimeEarnings: { increment: sellerShare },
-              },
+            await grantArtistCommerceOwnership({
+              buyerUserId: metadata.buyerId || '',
+              artistId: metadata.artistId || '',
+              productId: metadata.productId,
+              productType: ownershipProductType,
+              productTitle: metadata.productTitle || 'Untitled product',
+              orderId: metadata.orderId,
+              stripeSessionId: session.id,
+              stripePaymentId: paymentRef,
+              priceCentsPaid: session.amount_total || 0,
+              currency: session.currency || 'usd',
             });
-            await prisma.transaction.create({
-              data: {
-                walletId: wallet.id,
-                type: 'ARTIST_COMMERCE',
-                amount: sellerShare,
-                fee: Math.max(0, parseInt(metadata.platformFeeCents || '0', 10) || 0),
-                netAmount: sellerShare,
-                status: 'PENDING_PAYOUT',
-                stripeId: session.id,
-                referenceId: metadata.productId,
-                note: `artist_commerce:${metadata.productType || 'OTHER'}`,
-              },
-            }).catch(() => {});
-          } catch (walletErr) {
-            console.error('[webhook] artist_commerce wallet credit failed', walletErr);
+          } catch (ownershipErr) {
+            console.error('[webhook] artist_commerce ownership grant failed', ownershipErr);
           }
         }
+
+        await creditShopFromCheckoutSession(event, session);
       }
 
       // ─── 4. NFT — HONEST STUB (Rule 20) ─────────────────────────────────
@@ -771,53 +913,162 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // ─── 5B. ADVERTISER AD PURCHASE — HONEST STUB (Rule 20) ─────────────
-      // No AdCampaign/AdPlacement table exists yet. Record the payment so it
-      // is never silently lost (same pattern as NFT/STORE above) — an admin
-      // must manually create the real placement until that engine is built.
+      // ─── 5B. ADVERTISER AD PURCHASE — durable pending activation trail ──
+      // Payment is real. Slot/ref identity is persisted on Order. Ads are NOT
+      // auto-activated (creative review required). See AdPurchaseFulfillmentAuthority.
+      // Restored 2026-11-12 after independent verification found HONEST STUB regression.
       if (metadata.type === 'ad_purchase') {
+        const { buildAdPurchaseOrderPersistFields } = await import(
+          '@/lib/commerce/AdPurchaseFulfillmentAuthority'
+        );
         const buyerEmail = metadata.buyerEmail || metadata.userEmail || session.customer_email || '';
         const buyer = buyerEmail
           ? await prisma.user.findFirst({ where: { email: buyerEmail.toLowerCase() } })
           : null;
-        await prisma.order.create({
-          data: {
-            provider: 'STRIPE',
-            providerPaymentId: (session.payment_intent as string) || (session.subscription as string) || session.id,
-            amountCents: session.amount_total || 0,
-            currency: session.currency || 'usd',
-            status: 'PAID_PENDING_FULFILLMENT',
-            buyerUserId: buyer?.id ?? null,
+        const paymentRef =
+          (session.payment_intent as string) ||
+          (session.subscription as string) ||
+          session.id;
+        const durable = buildAdPurchaseOrderPersistFields({
+          type: metadata.type,
+          refId: metadata.refId,
+          buyerEmail,
+          userEmail: metadata.userEmail,
+          creativeUrl: metadata.creativeUrl,
+          startDate: metadata.startDate,
+          productName: metadata.productName,
+          zone: metadata.zone,
+          slotId: metadata.slotId || metadata.refId,
+        });
+        const adOrderData = {
+          provider: 'STRIPE' as const,
+          providerPaymentId: paymentRef,
+          amountCents: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          status: durable.status,
+          buyerUserId: buyer?.id ?? null,
+          orderKind: durable.orderKind,
+          refId: durable.refId,
+          fulfillmentMetadataJson: durable.fulfillmentMetadataJson,
+          adActivationStatus: durable.adActivationStatus,
+        };
+        // Stripe sequential retries: update existing payment row first; create only if absent.
+        // Concurrent duplicate delivery remains a pre-existing shared posture (not unique-constrained).
+        const updated = await prisma.order.updateMany({
+          where: {
+            OR: [
+              { providerPaymentId: paymentRef },
+              { providerPaymentId: session.id },
+            ],
           },
-        }).catch((err) => console.error('[webhook] ad_purchase Order create failed', err));
+          data: {
+            amountCents: adOrderData.amountCents,
+            currency: adOrderData.currency,
+            status: adOrderData.status,
+            buyerUserId: adOrderData.buyerUserId,
+            orderKind: adOrderData.orderKind,
+            refId: adOrderData.refId,
+            fulfillmentMetadataJson: adOrderData.fulfillmentMetadataJson,
+            adActivationStatus: adOrderData.adActivationStatus,
+            providerPaymentId: paymentRef,
+          },
+        }).catch(() => ({ count: 0 }));
+        if (updated.count === 0) {
+          await prisma.order.create({
+            data: adOrderData,
+          }).catch((err) => console.error('[webhook] ad_purchase Order create failed', err));
+        }
         console.warn(
-          `[Stripe Webhook] Ad purchase ${session.id} (ref: ${metadata.refId || 'unknown'}) recorded as ` +
-          `PAID_PENDING_FULFILLMENT — AdCampaign/AdPlacement table not implemented; an admin must manually ` +
-          `activate this placement. creativeUrl=${metadata.creativeUrl || 'n/a'} startDate=${metadata.startDate || 'n/a'}`,
+          `[Stripe Webhook] Ad purchase ${session.id} (ref: ${durable.refId || 'unknown'}) recorded as ` +
+          `${durable.status} / ${durable.adActivationStatus} — awaiting creative review; not auto-activated.`,
         );
       }
 
-      // ─── 6. PERFORMER SPONSORSHIP FULFILLMENT (Type A) ─────────────────
-      // A local business sponsoring a specific performer's profile — runs as
-      // a real Stripe subscription so the sponsorship renews monthly.
-      if (metadata.type === 'performer_sponsorship' && session.subscription) {
-        const sponsorUser = metadata.sponsorEmail
-          ? await prisma.user.findFirst({ where: { email: metadata.sponsorEmail.toLowerCase() } })
-          : null;
-        if (sponsorUser) {
+      // ─── 6. CREATOR SPONSORSHIP (fan + performer) ─────────────────────
+      // Local/major creator ladder ($25+). Distinct from platform-wide ads.
+      // Credits EconomicPayment CREATOR_SPONSORSHIP for cycle 1 (session id).
+      // Renewals credit on invoice.paid (invoice id). InstantPayout never called.
+      {
+        const { isCreatorSponsorshipMetadataType, profileKindFromSponsorshipMetadata } =
+          await import('@/lib/sponsors/CreatorSponsorshipCreditAuthority');
+        if (isCreatorSponsorshipMetadataType(metadata.type) && session.subscription && session.payment_status === 'paid') {
+          const sponsorUser = (metadata.sponsorEmail || metadata.buyerEmail)
+            ? await prisma.user.findFirst({
+                where: { email: (metadata.sponsorEmail || metadata.buyerEmail || '').toLowerCase() },
+              })
+            : null;
+          const profileKind = profileKindFromSponsorshipMetadata(metadata as Record<string, string | undefined>);
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-          await prisma.performerSponsorship.create({
-            data: {
-              sponsorUserId: sponsorUser.id,
-              performerSlug: metadata.performerSlug,
-              sponsorClass: metadata.sponsorClass || 'local',
-              tier: metadata.tier || 'solo',
-              monthlyPriceCents: sub.items.data[0]?.price?.unit_amount ?? session.amount_total ?? 0,
-              status: 'active',
+          const monthlyPriceCents =
+            sub.items.data[0]?.price?.unit_amount ?? session.amount_total ?? 0;
+
+          if (profileKind === 'PERFORMER' && sponsorUser && metadata.performerSlug) {
+            await prisma.performerSponsorship.create({
+              data: {
+                sponsorUserId: sponsorUser.id,
+                performerSlug: metadata.performerSlug,
+                sponsorClass: metadata.sponsorClass || 'local',
+                tier: metadata.tier || 'solo',
+                monthlyPriceCents,
+                status: 'active',
+                stripeSubscriptionId: session.subscription as string,
+                stripeCustomerId: session.customer as string,
+              },
+            }).catch((err) => console.error('[webhook] performer_sponsorship create failed', err));
+          }
+
+          if (profileKind === 'FAN' && (metadata.fanUserId || metadata.creatorUserId)) {
+            const { FanSponsorRegistry } = await import('@/lib/registries/FanSponsorRegistry');
+            await FanSponsorRegistry.create({
+              fanId: metadata.fanUserId || metadata.creatorUserId,
+              fanSlug: metadata.fanSlug || metadata.creatorSlug || metadata.fanUserId || metadata.creatorUserId,
+              fanDisplayName: metadata.fanDisplayName || metadata.creatorName || 'Fan',
+              sponsorId: sponsorUser?.id || metadata.sponsorUserId || 'unknown',
+              sponsorName: metadata.sponsorName || metadata.sponsorEmail || 'Sponsor',
+              packageId: metadata.packageId || 'local-basic',
+              sponsorClass: (metadata.sponsorClass === 'major' ? 'major' : 'local'),
+              monthlyAmountCents: monthlyPriceCents,
+              placementId: metadata.placementId || null,
               stripeSubscriptionId: session.subscription as string,
-              stripeCustomerId: session.customer as string,
-            },
-          }).catch((err) => console.error('[webhook] performer_sponsorship create failed', err));
+              startDate: new Date().toISOString(),
+              userId: metadata.fanUserId || metadata.creatorUserId,
+            }).catch((err) => console.error('[webhook] fan_sponsorship registry create failed', err));
+          }
+
+          const creatorUserId =
+            metadata.creatorUserId ||
+            metadata.fanUserId ||
+            metadata.performerUserId ||
+            null;
+          if (creatorUserId && monthlyPriceCents > 0) {
+            const creator = await prisma.user.findUnique({
+              where: { id: creatorUserId },
+              select: { id: true, tier: true },
+            });
+            if (creator) {
+              const { creditCreatorSponsorshipCycle } = await import(
+                '@/lib/commerce/economicPaymentLedger'
+              );
+              const paymentIntentId =
+                typeof session.payment_intent === 'string'
+                  ? session.payment_intent
+                  : session.payment_intent?.id ?? null;
+              await creditCreatorSponsorshipCycle({
+                economicPaymentId: session.id,
+                livemode: session.livemode === true,
+                creatorUserId: creator.id,
+                creatorTier: creator.tier,
+                grossCents: monthlyPriceCents,
+                paymentIntentId,
+                packageId: metadata.packageId || null,
+                committingEventId: event.id,
+                profileKind,
+                billingPeriodLabel: 'initial_checkout',
+              }).catch((err) =>
+                console.error('[webhook] creator_sponsorship cycle-1 credit failed', err),
+              );
+            }
+          }
         }
       }
 
@@ -825,8 +1076,12 @@ export async function POST(req: NextRequest) {
       // customer_email is Stripe-collected; fall back to metadata.userEmail
       // (set by the checkout route) so the grant never silently drops when
       // Stripe hasn't yet propagated the email on the session object.
+      // Creator sponsorships must not grant membership tiers.
       const grantEmail = session.customer_email || metadata.userEmail || '';
-      if (metadata.type !== 'performer_sponsorship' && session.mode === 'subscription' && grantEmail && session.subscription) {
+      const { isCreatorSponsorshipMetadataType: isCreatorSponsMeta } = await import(
+        '@/lib/sponsors/CreatorSponsorshipCreditAuthority'
+      );
+      if (!isCreatorSponsMeta(metadata.type) && session.mode === 'subscription' && grantEmail && session.subscription) {
         try {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           const priceId = sub.items.data[0]?.price?.id ?? '';
@@ -850,6 +1105,20 @@ export async function POST(req: NextRequest) {
           // Continue processing; subscription may not exist yet in test scenarios
         }
       }
+    }
+
+    // Delayed payment methods do not settle on checkout.session.completed.
+    // Credit only this later event, and only when Stripe marks the session paid.
+    if (event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await creditShopFromCheckoutSession(event, session);
+    }
+
+    // Failed async collection credits $0. The shop function ignores unpaid
+    // and async_payment_failed without writing a credit row.
+    if (event.type === 'checkout.session.async_payment_failed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await creditShopFromCheckoutSession(event, session);
     }
 
     // ─── SUBSCRIPTION LIFECYCLE EVENTS ────────────────────────────────────────
@@ -915,10 +1184,14 @@ export async function POST(req: NextRequest) {
           }).catch(() => {}));
         }
       } else {
+        // Non-membership subscription cancelled — mark creator sponsorships.
+        // Do not invent new credits after cancellation.
         await prisma.performerSponsorship.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: { status: 'cancelled', endsAt: new Date() },
         }).catch(() => {});
+        const { FanSponsorRegistry } = await import('@/lib/registries/FanSponsorRegistry');
+        await FanSponsorRegistry.markStatusBySubscription(sub.id, 'cancelled').catch(() => {});
       }
     }
 
@@ -933,14 +1206,55 @@ export async function POST(req: NextRequest) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = sub.items.data[0]?.price?.id ?? '';
         const periodEndTsInv = (sub as unknown as { current_period_end?: number }).current_period_end;
-        // Recovery path: a successful invoice — whether the first one or a
-        // dunning retry — clears any grace state before (re)granting the
-        // tier, so the entitlement and billing-status fields never disagree.
+        // Membership path: grantSubscriptionTier no-ops for non-tier priceIds.
         await clearGracePeriod(email);
         await grantSubscriptionTier(email, priceId, customerId, {
           subscriptionId: sub.id,
           currentPeriodEnd: periodEndTsInv ? new Date(periodEndTsInv * 1000) : null,
         });
+
+        // Creator sponsorship renewal: credit once per invoice id (idempotent).
+        const subMeta = (sub.metadata || {}) as Record<string, string>;
+        const invoiceMeta = subscriptionMetadataFromInvoice(invoice) || {};
+        const meta = { ...invoiceMeta, ...subMeta };
+        const { isCreatorSponsorshipMetadataType, profileKindFromSponsorshipMetadata } =
+          await import('@/lib/sponsors/CreatorSponsorshipCreditAuthority');
+        if (isCreatorSponsorshipMetadataType(meta.type)) {
+          const creatorUserId = meta.creatorUserId || meta.fanUserId || meta.performerUserId;
+          const grossCents =
+            invoice.amount_paid ??
+            sub.items.data[0]?.price?.unit_amount ??
+            0;
+          if (creatorUserId && grossCents > 0) {
+            const creator = await prisma.user.findUnique({
+              where: { id: creatorUserId },
+              select: { id: true, tier: true },
+            });
+            if (creator) {
+              const { creditCreatorSponsorshipCycle } = await import(
+                '@/lib/commerce/economicPaymentLedger'
+              );
+              const paymentIntentId =
+                typeof (invoice as unknown as { payment_intent?: string | { id?: string } }).payment_intent === 'string'
+                  ? (invoice as unknown as { payment_intent: string }).payment_intent
+                  : (invoice as unknown as { payment_intent?: { id?: string } }).payment_intent?.id ?? null;
+              await creditCreatorSponsorshipCycle({
+                economicPaymentId: invoice.id,
+                livemode: invoice.livemode === true,
+                creatorUserId: creator.id,
+                creatorTier: creator.tier,
+                grossCents,
+                paymentIntentId,
+                packageId: meta.packageId || null,
+                committingEventId: event.id,
+                profileKind: profileKindFromSponsorshipMetadata(meta),
+                billingPeriodLabel: `${invoice.period_start || ''}-${invoice.period_end || ''}`,
+              }).catch((err) =>
+                console.error('[webhook] creator_sponsorship renewal credit failed', err),
+              );
+            }
+          }
+        }
       }
     }
 
@@ -955,6 +1269,16 @@ export async function POST(req: NextRequest) {
       const invoice = event.data.object as Stripe.Invoice;
       const customer = await stripe.customers.retrieve(invoice.customer as string);
       const email = 'deleted' in customer ? null : customer.email;
+      const subscriptionId = subscriptionIdFromInvoice(invoice);
+      if (subscriptionId) {
+        // Mark sponsorship relations payment_failed — no creator credit on unpaid periods.
+        await prisma.performerSponsorship.updateMany({
+          where: { stripeSubscriptionId: subscriptionId },
+          data: { status: 'payment_failed' },
+        }).catch(() => {});
+        const { FanSponsorRegistry } = await import('@/lib/registries/FanSponsorRegistry');
+        await FanSponsorRegistry.markStatusBySubscription(subscriptionId, 'payment_failed').catch(() => {});
+      }
       if (email) {
         const { graceEndsAt } = await enterGracePeriod(email);
         waitUntil(sendEmail({
@@ -970,6 +1294,82 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ─── DISPUTES (Phase 2 Ticket Trust — persist + hold; no fake chargeback shield) ──
+    if (
+      event.type === 'charge.dispute.created' ||
+      event.type === 'charge.dispute.updated' ||
+      event.type === 'charge.dispute.closed'
+    ) {
+      const dispute = event.data.object as Stripe.Dispute;
+      const paymentIntentId =
+        typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
+      let orderId: string | null = null;
+      if (paymentIntentId) {
+        const order = await prisma.order.findFirst({
+          where: { providerPaymentId: paymentIntentId },
+          select: { id: true },
+        });
+        orderId = order?.id ?? null;
+      }
+      if (orderId) {
+        const { ingestStripeDispute } = await import('@/lib/ticketTrust');
+        const status =
+          event.type === 'charge.dispute.created'
+            ? 'CREATED'
+            : event.type === 'charge.dispute.closed'
+              ? 'CLOSED'
+              : 'UPDATED';
+        ingestStripeDispute({
+          stripeDisputeId: dispute.id,
+          orderId,
+          paymentId: paymentIntentId,
+          amountCents: dispute.amount ?? 0,
+          status,
+          reason: dispute.reason ?? null,
+          actor: `stripe.webhook.${event.type}`,
+        });
+      } else {
+        console.warn('[Stripe Webhook] dispute without matching Order', dispute.id, paymentIntentId);
+      }
+      const disputeLivemode = event.livemode === true;
+      if (event.type === 'charge.dispute.created') {
+        if (paymentIntentId) {
+          const { revokeDiscoveryBoostByPaymentRef } = await import('@/lib/discovery/DiscoveryBoostEngine');
+          const { revokeLobbyWallBoostByPaymentRef } = await import('@/lib/lobby/LobbyWallBoostEngine');
+          const { revokeDurableYoPhoEntitlementByPaymentRef } = await import('@/lib/yopho/YoPhoSkinRegistry');
+          revokeDiscoveryBoostByPaymentRef({ paymentIntentId });
+          revokeLobbyWallBoostByPaymentRef({ paymentIntentId });
+          revokeDurableYoPhoEntitlementByPaymentRef({ paymentIntentId });
+        }
+        await applyFinancialAdjustment({
+          externalId: dispute.id,
+          kind: 'DISPUTE',
+          grossCents: dispute.amount ?? 0,
+          paymentIntentId,
+          livemode: disputeLivemode,
+          stripeEventId: event.id,
+        });
+      } else if (event.type === 'charge.dispute.closed' && dispute.status === 'won') {
+        await applyFinancialAdjustment({
+          externalId: `dispute_won:${dispute.id}`,
+          kind: 'DISPUTE_WON',
+          grossCents: dispute.amount ?? 0,
+          paymentIntentId,
+          livemode: disputeLivemode,
+          stripeEventId: event.id,
+        });
+      } else if (event.type === 'charge.dispute.closed' && dispute.status === 'lost') {
+        await applyFinancialAdjustment({
+          externalId: `chargeback:${dispute.id}`,
+          kind: 'CHARGEBACK',
+          grossCents: dispute.amount ?? 0,
+          paymentIntentId,
+          livemode: disputeLivemode,
+          stripeEventId: event.id,
+        });
+      }
+    }
+
     // ─── CHARGE REFUND EVENTS ────────────────────────────────────────────────
     if (event.type === 'charge.refunded') {
       const charge = event.data.object as Stripe.Charge;
@@ -978,6 +1378,45 @@ export async function POST(req: NextRequest) {
         console.log(`[Stripe Webhook] Charge refunded for ${customerEmail}. Revoking tier.`);
         await revokeSubscriptionTier(customerEmail);
       }
+      // Ticket refund lifecycle: prefer authorizeAndApplyTicketRefund via admin/ops —
+      // do not invent ticket voids without order/ticket linkage here.
+      const pi =
+        typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+      if (pi) {
+        const { revokeDiscoveryBoostByPaymentRef } = await import('@/lib/discovery/DiscoveryBoostEngine');
+        const { revokeLobbyWallBoostByPaymentRef } = await import('@/lib/lobby/LobbyWallBoostEngine');
+        const { revokeDurableYoPhoEntitlementByPaymentRef } = await import('@/lib/yopho/YoPhoSkinRegistry');
+        revokeDiscoveryBoostByPaymentRef({ paymentIntentId: pi });
+        revokeLobbyWallBoostByPaymentRef({ paymentIntentId: pi });
+        revokeDurableYoPhoEntitlementByPaymentRef({ paymentIntentId: pi });
+
+        const order = await prisma.order.findFirst({ where: { providerPaymentId: pi } });
+        if (order) {
+          console.log(
+            `[Stripe Webhook] charge.refunded linked to order ${order.id} — ticket trust refund authority should be invoked by ops path`,
+          );
+        }
+      }
+      const refundLivemode = charge.livemode === true;
+      const refunds = charge.refunds?.data ?? [];
+      if (refunds.length === 0 && (charge.amount_refunded ?? 0) > 0) {
+        console.error('[Stripe Webhook] charge.refunded has amount_refunded but no refund id — no balance movement', charge.id);
+      }
+      for (const refund of refunds) {
+        await applyFinancialAdjustment({
+          externalId: refund.id,
+          kind: 'REFUND',
+          grossCents: refund.amount,
+          paymentIntentId: pi ?? null,
+          livemode: refundLivemode,
+          stripeEventId: event.id,
+        });
+      }
+    }
+
+    // P0-B5 Performer booking payout transfer events
+    if (event.type.startsWith('transfer.') || event.type.startsWith('payout.')) {
+      reconcilePayoutWebhookEvent(event as any);
     }
 
     // account.updated — sync Connect onboarded flag for InstantPayout
@@ -995,7 +1434,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error('[Stripe Webhook] Fulfillment failed:', err);
-    // IMPORTANT: Do NOT mark as processed on error — let Stripe retry
+    await markStripeEventFailedRetryable(event.id, err).catch(() => {});
     return NextResponse.json({ error: 'Fulfillment failed' }, { status: 500 });
   }
 }

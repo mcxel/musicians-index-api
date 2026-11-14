@@ -147,7 +147,18 @@ export default function AdvertiserBuyPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 9, fontWeight: 800, color: "#AA2DFF", letterSpacing: "0.3em", marginBottom: 8 }}>ADVERTISER</div>
           <h1 style={{ fontSize: "clamp(22px,4vw,34px)", fontWeight: 900, margin: "0 0 6px" }}>Buy Ad Placement</h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Choose a surface, set your budget, upload creative, and go live.</p>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>
+            Starting as low as $0.99 a day — activate the catalog entry offer, or browse Magazine placements.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+            <Link href="/advertising" style={{ padding: "8px 14px", borderRadius: 8, background: "#00FFFF", color: "#050510", fontWeight: 900, fontSize: 11, textDecoration: "none" }}>
+              $0.99/day entry catalog →
+            </Link>
+            <Link href="/magazine/advertise" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,45,170,0.45)", color: "#FF2DAA", fontWeight: 800, fontSize: 11, textDecoration: "none" }}>
+              Magazine marketplace →
+            </Link>
+          </div>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Custom budget flow below remains available for selected surfaces.</p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 28, alignItems: "start" }}>

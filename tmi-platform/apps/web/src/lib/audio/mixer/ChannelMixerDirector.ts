@@ -56,7 +56,13 @@ export interface MixerChannelState {
 
 export interface MixerOperatorAuth {
   userId: string;
-  role: "fan" | "performer" | "host" | "judge" | "admin" | "operator";
+  /**
+   * "system" (added 2026-09-24) is reserved for automated, non-human-operator
+   * competition-lifecycle events (e.g. WinnerStaysLifecycleEngine's
+   * win-fanfare music duck) that must move the shared PROGRAM bus without
+   * impersonating a specific human host/admin/operator's credentials.
+   */
+  role: "fan" | "performer" | "host" | "judge" | "admin" | "operator" | "system";
   isRoomOwner?: boolean;
 }
 
@@ -68,6 +74,8 @@ export interface CanonicalAudioOwner {
   setSoloFocus?(userId: string | null): void;
   getVolumeMap?(): Record<string, number>;
   getTrackIds?(): string[];
+  /** Real "music" channel gain (competition beat / backing track). Added 2026-09-24. */
+  setMusicGain?(gain: number, rampMs?: number): void;
 }
 
 export interface ChannelMixerSession {
@@ -109,7 +117,7 @@ function clampGain(v: number): { value: number; clamped: boolean } {
 function canProgram(auth: MixerOperatorAuth | null | undefined): boolean {
   if (!auth) return false;
   if (auth.isRoomOwner) return true;
-  return auth.role === "host" || auth.role === "admin" || auth.role === "operator";
+  return auth.role === "host" || auth.role === "admin" || auth.role === "operator" || auth.role === "system";
 }
 
 function defaultVirtualChannels(policy: ExperienceAudioPolicyProfile): MixerChannelState[] {
@@ -486,16 +494,48 @@ class ChannelMixerDirectorImpl {
       this.lastCode = "MIX-003";
       return { ok: false, code: "MIX-003", message: "channel not found" };
     }
-    // Solo is PERSONAL-only (listener local)
+    // Solo is PERSONAL-only. It isolates hear output; stored mute and gain stay.
     for (const c of this.channels.values()) {
       if (c.channelId === ch.channelId) {
         c.personalSolo = input.solo;
       } else if (input.solo) {
         c.personalSolo = false;
       }
+      const store = this.personalBusStore.get(c.channelId);
+      if (store) store.solo = c.personalSolo;
     }
     this.notify();
     return { ok: true, message: input.solo ? "solo" : "solo off", channel: { ...ch } };
+  }
+
+  /**
+   * Write listener output to the bound AudioOwner without changing stored
+   * personal gain, mute, or program gain. Used for monitor-master × source.
+   */
+  applyListenOutput(input: { channelId: string; effectiveGain: number }): ChannelMixerApplyResult {
+    const ch = this.channels.get(input.channelId);
+    if (!ch) {
+      this.lastCode = "MIX-003";
+      return { ok: false, code: "MIX-003", message: "channel not found" };
+    }
+    const { value } = clampGain(input.effectiveGain);
+    if (!this.audioOwner) {
+      this.lastCode = "MIX-001";
+      return { ok: false, code: "MIX-001", message: "audio owner unbound" };
+    }
+    if (ch.kind === "master") {
+      this.audioOwner.setMasterVolume(value);
+      return { ok: true, message: "listen master applied" };
+    }
+    if (ch.kind === "participant" && ch.participantId && this.audioOwner.setChannelGain) {
+      this.audioOwner.setChannelGain(ch.participantId, value);
+      return { ok: true, message: "listen channel applied" };
+    }
+    if (ch.kind === "music" && ch.hasRealSource && this.audioOwner.setMusicGain) {
+      this.audioOwner.setMusicGain(value);
+      return { ok: true, message: "listen music applied" };
+    }
+    return { ok: true, message: "no owner node for this channel" };
   }
 
   /**
@@ -766,7 +806,15 @@ class ChannelMixerDirectorImpl {
         this.audioOwner.setMute(ch.participantId, ch.personalMuted || gain <= 0.001);
       }
     }
-    // Crowd/ambience/music: only when hasRealSource — no fake injection
+    // Crowd/ambience: only when hasRealSource — no fake injection.
+    // Music: forwarded whenever a real source is attached (hasRealSource) —
+    // added 2026-09-24. Moving gain on an unattached node is inaudible and
+    // harmless, but gating on hasRealSource keeps this consistent with the
+    // existing crowd/ambience "no control implied before a real source
+    // exists" convention rather than a special case for music alone.
+    if (ch.kind === "music" && ch.hasRealSource && this.audioOwner.setMusicGain) {
+      this.audioOwner.setMusicGain(ch.personalMuted ? 0 : ch.personalGain);
+    }
   }
 
   private applyProgramToOwner(ch: MixerChannelState): void {
@@ -786,7 +834,11 @@ class ChannelMixerDirectorImpl {
         this.audioOwner.setMute(ch.participantId, ch.programMuted || gain <= 0.001);
       }
     }
-    // Crowd/ambience/music: only apply when real source marked — no fake injection
+    // Crowd/ambience: only apply when real source marked — no fake injection.
+    // Music: forwarded when a real source is attached — see applyPersonalToOwner.
+    if (ch.kind === "music" && ch.hasRealSource && this.audioOwner.setMusicGain) {
+      this.audioOwner.setMusicGain(ch.programMuted ? 0 : ch.programGain);
+    }
   }
 }
 

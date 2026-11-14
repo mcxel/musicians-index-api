@@ -7,7 +7,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     title: "Marcel - Founder and CEO",
     subtitle: "Executive oversight, revenue authority, and cross-system command.",
     leftRail: [
-      { id: "chain-command", title: "CHAIN COMMAND", widget: "chain-command", accent: "#AA2DFF" },
+      { id: "chain-command", title: "CHAIN COMMAND", widget: "chain-command", accent: "#AA2DFF", requiredPermission: "founder.override" },
       { id: "money-billing", title: "MONEY & BILLING", widget: "money-billing", accent: "#FFD700", requiredPermission: "revenue.manage" },
       { id: "bot-roster", title: "BOT ROSTER & SUMMON", widget: "bot-roster", accent: "#FF2DAA", flex: 1, requiredPermission: "automation.manage" },
       { id: "unified-inbox", title: "UNIFIED INBOX", widget: "unified-inbox", accent: "#00FFFF" },
@@ -20,6 +20,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
         widget: "overseer-monitor-wall",
         accent: "#00FFFF",
         flex: 1,
+        requiredPermission: "media.manage",
       },
     ],
     rightRail: [

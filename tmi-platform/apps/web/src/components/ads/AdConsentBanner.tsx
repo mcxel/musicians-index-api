@@ -41,8 +41,25 @@ export function readConsent(): AdConsentValue | null {
   return null;
 }
 
-export function loadAdSenseScript(): void {
+/**
+ * Loads the AdSense library. `consent` decides personalized vs
+ * non-personalized ads via Google's documented AdSense NPA flag
+ * (support.google.com/adsense/answer/9007336) — it must be set on
+ * window.adsbygoogle BEFORE the library script runs, so the flag is
+ * applied here, ahead of appending the script tag.
+ *
+ * Declining consent must never mean "don't load AdSense" — that's zero
+ * ads and zero revenue for every user who declines, not the "still get
+ * non-personalized ads" behavior the consent banner promises.
+ */
+export function loadAdSenseScript(consent: AdConsentValue = 'accepted'): void {
   if (typeof document === 'undefined') return;
+
+  const w = window as unknown as { adsbygoogle?: unknown[] & { requestNonPersonalizedAds?: number } };
+  w.adsbygoogle = w.adsbygoogle || ([] as unknown[] & { requestNonPersonalizedAds?: number });
+  (w.adsbygoogle as unknown[] & { requestNonPersonalizedAds?: number }).requestNonPersonalizedAds =
+    consent === 'declined' ? 1 : 0;
+
   if (document.getElementById('tmi-adsense-loader')) return;
   const client = getAdSensePublisherId();
   const s = document.createElement('script');
@@ -129,8 +146,10 @@ export default function AdConsentBanner() {
   useEffect(() => {
     if (isExcludedRoute) return;
     const existing = readConsent();
-    if (existing === 'accepted') {
-      loadAdSenseScript();
+    if (existing === 'accepted' || existing === 'declined') {
+      // Both choices load AdSense — declined just requests non-personalized
+      // ads (set inside loadAdSenseScript), never zero ads.
+      loadAdSenseScript(existing);
       return;
     }
     if (existing === null) {
@@ -144,9 +163,7 @@ export default function AdConsentBanner() {
     } catch {
       /* ignore */
     }
-    if (value === 'accepted') {
-      loadAdSenseScript();
-    }
+    loadAdSenseScript(value);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('tmi:ad-consent', { detail: value }));
     }
@@ -165,8 +182,10 @@ export default function AdConsentBanner() {
         left: 16,
         right: 16,
         bottom: 16,
-        zIndex: 99999,
+        zIndex: 99998,
+        width: 'min(540px, calc(100vw - 32px))',
         maxWidth: 540,
+        boxSizing: 'border-box',
         margin: '0 auto',
         padding: '16px 20px',
         borderRadius: 14,
@@ -181,8 +200,8 @@ export default function AdConsentBanner() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <strong style={{ color: '#00FFFF', fontSize: 14, letterSpacing: '0.04em' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+        <strong style={{ color: '#00FFFF', fontSize: 14, letterSpacing: '0.04em', flex: '1 1 200px', minWidth: 0 }}>
           TMI Privacy &amp; Advertising Preferences
         </strong>
         <span
@@ -200,13 +219,18 @@ export default function AdConsentBanner() {
       </div>
       <p style={{ margin: '0 0 14px 0', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
         We partner with Google AdSense and certified networks to fund free music broadcasts and artist rankings. Accept
-        to enable personalized ads. Decline serves non-personalized ads without tracking. You may update your
-        preferences at any time in our{' '}
+        to enable personalized ads where permitted. Decline keeps ads off for this browser until you change preferences.
+        Details:{' '}
         <a href="/disclosures" style={{ color: '#00FFFF', textDecoration: 'underline' }}>
           Disclosures
-        </a>.
+        </a>
+        {' · '}
+        <a href="/privacy" style={{ color: '#00FFFF', textDecoration: 'underline' }}>
+          Privacy
+        </a>
+        .
       </p>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
         <button
           type="button"
           id="tmi-cmp-accept-btn"
@@ -222,6 +246,9 @@ export default function AdConsentBanner() {
             fontSize: 12,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            flex: '1 1 140px',
+            minWidth: 140,
+            whiteSpace: 'nowrap',
           }}
         >
           Accept All Ads
@@ -241,6 +268,9 @@ export default function AdConsentBanner() {
             fontSize: 12,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            flex: '1 1 140px',
+            minWidth: 140,
+            whiteSpace: 'nowrap',
           }}
         >
           Decline Tracking

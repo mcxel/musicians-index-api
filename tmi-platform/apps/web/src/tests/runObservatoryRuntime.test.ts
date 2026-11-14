@@ -5,7 +5,10 @@ import {
   ANCHOR_NETWORK_CONTROLS_SOURCE,
 } from "../lib/admin/OverseerDeckBlueprintMap";
 
-function runObservatoryRuntimeTest() {
+function runObservatoryRuntimeTest(): {
+  allPassed: boolean;
+  results: Record<string, boolean>;
+} {
   const results: Record<string, boolean> = {};
 
   // 1. Canonical route declarations
@@ -44,15 +47,31 @@ function runObservatoryRuntimeTest() {
   results["all_blueprint_slots_well_formed"] = allSlotsValid;
 
   const allPassed = Object.values(results).every(Boolean);
+  return { allPassed, results };
+}
 
-  console.log("[OBSERVATORY_RUNTIME_TEST_ASSERT]", { allPassed, results });
+describe("Observatory / Overseer Runtime Certification", () => {
+  it("canonical overseer + observatory routes and blueprint slots admit", () => {
+    const report = runObservatoryRuntimeTest();
+    expect(report.results.overseer_deck_route_is_admin_overseer).toBe(true);
+    expect(report.results.observatory_route_is_admin_observatory).toBe(true);
+    expect(report.results.anchor_source_is_anchor_room_network).toBe(true);
+    expect(report.results.blueprint_slots_count_is_valid).toBe(true);
+    expect(report.results.all_blueprint_slots_well_formed).toBe(true);
+    expect(report.allPassed).toBe(true);
+  });
+});
 
-  if (!allPassed) {
-    const failed = Object.entries(results)
+if (typeof describe === "undefined") {
+  const report = runObservatoryRuntimeTest();
+  console.log("[OBSERVATORY_RUNTIME_TEST_ASSERT]", report);
+  if (!report.allPassed) {
+    const failed = Object.entries(report.results)
       .filter(([, v]) => !v)
       .map(([k]) => k);
-    throw new Error(`[OBSERVATORY_RUNTIME_TEST] FAILED: ${failed.join(", ")}`);
+    console.error(`[OBSERVATORY_RUNTIME_TEST] FAILED: ${failed.join(", ")}`);
+    process.exitCode = 1;
   }
 }
 
-runObservatoryRuntimeTest();
+export { runObservatoryRuntimeTest };

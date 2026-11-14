@@ -1,11 +1,16 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Html } from '@react-three/drei';
+import { useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, Environment, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
+import CanonicalVenueHouse from '@/components/venues/CanonicalVenueHouse';
+import {
+  getCanonicalVenueRecipe,
+  type CanonicalVenueRecipe,
+} from '@/lib/venues/CanonicalVenueRecipe';
 import * as THREE from 'three';
 import {
   AvatarSocketAttachment,
@@ -16,6 +21,24 @@ import {
   resolveCertifiedAvatarGlbUrl,
   type AvatarGlbSlotId,
 } from '@/lib/avatars/AvatarGlbRegistry';
+import {
+  clampShapeCoefficients,
+  type FaceIdentityShapeCoefficients,
+} from '@/lib/avatar/AvatarFaceIdentityContract';
+import type { AvatarMoodId } from '@/lib/avatars/AvatarMoodPresentation';
+import type { PhonemeGroup } from '@/lib/avatar/AvatarLipSyncDirectiveEngine';
+import {
+  composeIdentityMoodSpeech,
+  applyMorphWeightMapToInfluences,
+  resolveEyeColorHex,
+} from '@/lib/avatars/AvatarIdentityDeformationRuntime';
+import {
+  applyPreservedEyeTint,
+  applyPreservedHairTint,
+  applyPreservedSkinTint,
+  applySkinReadabilityTune,
+  cloneMaterialsOnAvatarRoot,
+} from '@/lib/avatars/AvatarMaterialPreservationAuthority';
 
 /**
  * Module-level Foundry GLB cache — load OUTSIDE R3F Canvas.
@@ -305,6 +328,27 @@ function applyFoundryExpression(root: THREE.Object3D, expression: AvatarExpressi
   });
 }
 
+function expressionWeights(expression: AvatarExpressionId): Record<string, number> {
+  if (expression === "smile") {
+    return {
+      mouthSmileLeft: 0.85,
+      mouthSmileRight: 0.85,
+      cheekSquintLeft: 0.25,
+      cheekSquintRight: 0.25,
+    };
+  }
+  if (expression === "hype") {
+    return {
+      jawOpen: 0.35,
+      eyeWideLeft: 0.45,
+      eyeWideRight: 0.45,
+      browOuterUpLeft: 0.4,
+      browOuterUpRight: 0.4,
+    };
+  }
+  return {};
+}
+
 function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
   root.updateMatrixWorld(true);
 
@@ -330,17 +374,8 @@ function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
       mesh.frustumCulled = false;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      // Ensure lit bobblehead reads on dark canister bg (Foundry mats can be near-black metal).
-      const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
-      for (const mat of mats) {
-        const m = mat as THREE.MeshStandardMaterial;
-        if (m && "metalness" in m) {
-          m.metalness = Math.min(m.metalness ?? 0.35, 0.45);
-          m.roughness = Math.max(m.roughness ?? 0.55, 0.45);
-          m.envMapIntensity = 0.85;
-          m.needsUpdate = true;
-        }
-      }
+      // Material metal/rough clamps moved to applySkinReadabilityTune (skin-only).
+      // Do not blanket-clamp cloth/gold wardrobe materials here.
       if (mesh.isSkinnedMesh && mesh.skeleton) {
         mesh.skeleton.update();
       }
@@ -368,28 +403,115 @@ function fitFoundryAvatarRoot(root: THREE.Object3D): THREE.Object3D {
 }
 
 /** Fitted Foundry mesh — expects scene already loaded outside the Canvas. */
+
+/** Apply identity + mood + lip-sync ARKit weights without wiping identity for expression alone. */
+function applyFoundryMorphWeights(root: THREE.Object3D, weights: Record<string, number>) {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.morphTargetDictionary || !mesh.morphTargetInfluences) return;
+    applyMorphWeightMapToInfluences(
+      mesh.morphTargetDictionary,
+      mesh.morphTargetInfluences,
+      weights,
+      'replace',
+    );
+  });
+}
+
+/** Eye / skin / hair tints — role-scoped; never blanket-overwrite wardrobe maps. */
+function applyFoundryEyeColor(root: THREE.Object3D, eyeHex?: string) {
+  applyPreservedEyeTint(root, eyeHex ? resolveEyeColorHex(eyeHex) : undefined);
+}
+
+function applyFoundrySkinTint(root: THREE.Object3D, skinHex?: string) {
+  applyPreservedSkinTint(root, skinHex);
+}
+
+function applyFoundryHairTint(root: THREE.Object3D, hairHex?: string) {
+  applyPreservedHairTint(root, hairHex);
+}
+
 function CertifiedAvatarGlbMesh({
   scene,
   expression = "neutral",
   onMorphCapability,
+  skinHex,
+  hairHex,
+  eyeColorHex,
+  headScaleX = 1,
+  headScaleY = 1,
+  identityShape = null,
+  mood = "REGULAR",
+  phoneme = null,
+  talking = false,
 }: {
   scene: THREE.Object3D;
   expression?: AvatarExpressionId;
   onMorphCapability?: (cap: FoundryMorphCapability) => void;
+  skinHex?: string;
+  hairHex?: string;
+  eyeColorHex?: string;
+  headScaleX?: number;
+  headScaleY?: number;
+  identityShape?: FaceIdentityShapeCoefficients | null;
+  mood?: AvatarMoodId;
+  phoneme?: PhonemeGroup | null;
+  talking?: boolean;
 }) {
-  const { root, capability } = useMemo(() => {
+  const { root, capability, fitBaseScale } = useMemo(() => {
     const cloned = cloneSkinned(scene) as THREE.Object3D;
+    // SkeletonUtils shares materials with the cached GLTF — clone mats before any tint.
+    cloneMaterialsOnAvatarRoot(cloned);
     const cap = sanitizeFoundryMorphAttributes(cloned);
-    return { root: fitFoundryAvatarRoot(cloned), capability: cap };
+    const fitted = fitFoundryAvatarRoot(cloned);
+    applySkinReadabilityTune(fitted);
+    return {
+      root: fitted,
+      capability: cap,
+      fitBaseScale: { x: fitted.scale.x, y: fitted.scale.y, z: fitted.scale.z },
+    };
   }, [scene]);
 
   useEffect(() => {
     onMorphCapability?.(capability);
   }, [capability, onMorphCapability]);
 
+  // FINAL FACE = identity deformation + mood/expression + lip sync (same ARKit mesh)
   useEffect(() => {
-    applyFoundryExpression(root, expression);
-  }, [root, expression]);
+    if (identityShape || talking) {
+      const composed = composeIdentityMoodSpeech({
+        identity: identityShape ?? clampShapeCoefficients({}),
+        mood,
+        phoneme,
+        talking,
+      });
+      applyFoundryMorphWeights(root, {
+        ...(identityShape ? {} : expressionWeights(expression)),
+        ...composed.weights,
+      });
+    } else {
+      applyFoundryExpression(root, expression);
+    }
+  }, [root, expression, identityShape, mood, phoneme, talking]);
+
+  useEffect(() => {
+    applyFoundrySkinTint(root, skinHex);
+  }, [root, skinHex]);
+
+  useEffect(() => {
+    applyFoundryHairTint(root, hairHex);
+  }, [root, hairHex]);
+
+  useEffect(() => {
+    applyFoundryEyeColor(root, eyeColorHex);
+  }, [root, eyeColorHex]);
+
+  // Absolute head scale from fit base — no per-effect multiply drift
+  useEffect(() => {
+    const sx = Math.min(1.25, Math.max(0.85, headScaleX));
+    const sy = Math.min(1.25, Math.max(0.85, headScaleY));
+    root.scale.set(fitBaseScale.x * sx, fitBaseScale.y * sy, fitBaseScale.z);
+  }, [root, fitBaseScale, headScaleX, headScaleY]);
 
   return <primitive object={root} />;
 }
@@ -419,33 +541,69 @@ function CanonicalAvatarNotBoundMarker() {
   );
 }
 
-function Seat({ position }: { position: [number, number, number] }) {
+function Seat({
+  position,
+  isOccupied = false,
+  seatIndex = 0,
+}: {
+  position: [number, number, number];
+  isOccupied?: boolean;
+  seatIndex?: number;
+}) {
+  const lightRef = useRef<THREE.PointLight>(null);
+  useFrame((state) => {
+    if (lightRef.current) {
+      const t = state.clock.getElapsedTime();
+      if (isOccupied) {
+        lightRef.current.intensity = 0.8 + Math.sin(t * 1.5 + seatIndex) * 0.2;
+      } else {
+        const flicker = Math.sin(t * 0.8 + seatIndex * 3.7);
+        lightRef.current.intensity = flicker > 0.85 ? 0.35 : 0.05;
+      }
+    }
+  });
+
   return (
     <group position={position}>
       {/* Metallic pedestal base */}
       <mesh position={[0, -0.4, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.3, 0.35, 0.1, 16]} />
-        <meshStandardMaterial color="#222" metalness={0.95} roughness={0.05} />
+        <meshStandardMaterial color="#1a1a24" metalness={0.92} roughness={0.12} />
       </mesh>
       {/* Support pole */}
       <mesh position={[0, -0.15, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.05, 0.05, 0.4, 12]} />
-        <meshStandardMaterial color="#666" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#444455" metalness={0.88} roughness={0.15} />
       </mesh>
-      {/* Velvet/Leather Seat Cushion */}
+      {/* Velvet/Leather Seat Cushion (Crimson theater velvet) */}
       <mesh position={[0, 0.1, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.42, 0.42, 0.15, 24]} />
-        <meshStandardMaterial color="#2d083e" roughness={0.65} metalness={0.2} />
+        <meshStandardMaterial color="#2d083e" roughness={0.65} metalness={0.18} />
       </mesh>
       {/* Curved Backrest */}
       <mesh position={[0, 0.45, -0.38]} rotation={[0.1, 0, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.7, 0.6, 0.15]} />
-        <meshStandardMaterial color="#2d083e" roughness={0.65} metalness={0.2} />
+        <meshStandardMaterial color="#2d083e" roughness={0.65} metalness={0.18} />
       </mesh>
+      {/* Seat status light / aisle indicator */}
+      <mesh position={[0, -0.34, 0.32]}>
+        <sphereGeometry args={[0.035, 12, 12]} />
+        <meshStandardMaterial
+          color={isOccupied ? "#00FFFF" : "#FF2DAA"}
+          emissive={isOccupied ? "#00FFFF" : "#FF2DAA"}
+          emissiveIntensity={isOccupied ? 1.2 : 0.25}
+        />
+      </mesh>
+      <pointLight
+        ref={lightRef}
+        position={[0, -0.2, 0.35]}
+        color={isOccupied ? "#00FFFF" : "#AA2DFF"}
+        intensity={isOccupied ? 0.8 : 0.05}
+        distance={1.5}
+      />
     </group>
   );
 }
-
 function Avatar({ active, position }: { active: boolean; position: [number, number, number] }) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -474,8 +632,6 @@ function Avatar({ active, position }: { active: boolean; position: [number, numb
 
   return (
     <group ref={groupRef} position={position}>
-      {/* 3D Seat structure */}
-      <Seat position={[0, -0.4, 0]} />
 
       {/* Main body (sit stance capsule) */}
       <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
@@ -563,7 +719,7 @@ const POSITIONS: [number, number, number][] = [
   [-4.8, 0, 0.8], [4.8, 0, 0.8], [-2.2, 0, 2.6], [2.2, 0, 2.6],
 ];
 
-export type AvatarCameraFocus = "face" | "body" | "feet";
+export type AvatarCameraFocus = "face" | "body" | "feet" | "upper";
 
 export type AvatarRigProps = {
   active?: boolean;
@@ -594,6 +750,9 @@ export type AvatarRigProps = {
    * When set, head sphere grows and cutout portraitUrl is ignored (spatial mesh only).
    */
   bobbleheadRatio?: number;
+  /** Face-scan shape fit — non-uniform head scale on SAME Avatar (default 1). */
+  headScaleX?: number;
+  headScaleY?: number;
   /**
    * Optional certified GLB from AvatarGlbRegistry. Only loads when
    * resolveCertifiedAvatarGlbUrl returns a path (certified=true). Procedural
@@ -608,6 +767,15 @@ export type AvatarRigProps = {
   certifiedOnly?: boolean;
   /** ARKit expression weights on certified Foundry mesh (neutral/smile/hype). */
   expression?: AvatarExpressionId;
+  /** Face-scan shape coefficients — drives visible identity morphs on SAME rig. */
+  identityShape?: FaceIdentityShapeCoefficients | null;
+  /** User-selected mood presentation (REGULAR/HAPPY/SAD/SILLY) — not emotion inference. */
+  mood?: AvatarMoodId;
+  /** Active lip-sync phoneme when speaking. */
+  phoneme?: PhonemeGroup | null;
+  talking?: boolean;
+  /** Iris material tint — appearance only. */
+  eyeColorHex?: string;
   /** Reports post-sanitize morph usability (smile may be corrupt on current GLB). */
   onMorphCapability?: (cap: FoundryMorphCapability) => void;
   /** Preloaded Foundry scene (loaded outside Canvas — required for reliable GLB mount). */
@@ -630,10 +798,17 @@ export function AvatarRig({
   bodyHeight = 50,
   bodyMass = 50,
   bobbleheadRatio,
+  headScaleX = 1,
+  headScaleY = 1,
   glbSlotId = null,
   glbUrl = null,
   certifiedOnly = false,
   expression = "neutral",
+  identityShape = null,
+  mood = "REGULAR",
+  phoneme = null,
+  talking = false,
+  eyeColorHex,
   onMorphCapability,
   foundryScene = null,
   foundryLoadError = null,
@@ -720,132 +895,112 @@ export function AvatarRig({
           scene={foundryScene}
           expression={expression}
           onMorphCapability={onMorphCapability}
+          skinHex={color}
+          hairHex={hairColor}
+          eyeColorHex={eyeColorHex}
+          headScaleX={headScaleX}
+          headScaleY={headScaleY}
+          identityShape={identityShape}
+          mood={mood}
+          phoneme={phoneme}
+          talking={talking}
         />
-      ) : resolvedGlb && foundryLoadError ? (
-        <Html center style={{ pointerEvents: "none", width: 180 }}>
-          <div
-            data-foundry-glb-error={foundryLoadError}
-            style={{
-              color: "#FF2DAA",
-              fontSize: 8,
-              fontWeight: 800,
-              letterSpacing: "0.06em",
-              textAlign: "center",
-              lineHeight: 1.35,
-            }}
-          >
-            FOUNDRY GLB ERROR
-            <div style={{ color: "rgba(255,255,255,0.45)", fontWeight: 600, marginTop: 4, fontSize: 7 }}>
-              {foundryLoadError}
-            </div>
-          </div>
-        </Html>
-      ) : resolvedGlb ? (
-        <Html center style={{ pointerEvents: "none" }}>
-          <div
-            data-foundry-glb-loading="1"
-            style={{ color: "#00FFFF", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em" }}
-          >
-            LOADING FOUNDRY GLB…
-          </div>
-        </Html>
-      ) : showUnboundMarker ? (
-        <CanonicalAvatarNotBoundMarker />
-      ) : showCapsuleFallback ? (
-        <>
-          {/* Body capsule — Primitive3D / 3D_MESH v0 (lobby/dev fallback only) */}
-          <mesh position={[0, isSeated ? 0.28 : 0.4, 0]} castShadow receiveShadow>
-            <capsuleGeometry args={[bodyCapsuleRadius, bodyCapsuleLen, 12, 24]} />
-            <meshStandardMaterial
-              color={bodyColor}
-              roughness={0.15}
-              metalness={0.85}
-              emissive={bodyColor}
-              emissiveIntensity={active ? 0.4 : 0.15}
-            />
-          </mesh>
-
-          {/* Head sphere — oversized when bobbleheadRatio set (spatial citizen, not cutout) */}
-          <mesh position={[0, headY, 0]} castShadow receiveShadow>
-            <sphereGeometry args={[headRadius, 28, 28]} />
-            <meshStandardMaterial
-              color={isBobblehead ? (color ?? headColor) : headColor}
-              roughness={0.35}
-              metalness={0.4}
-            />
-          </mesh>
-          {/* Hair cap disc for bobblehead bases */}
-          {isBobblehead && (
-            <mesh position={[0, headY + headRadius * 0.45, 0]} castShadow>
-              <sphereGeometry args={[headRadius * 0.92, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.45]} />
-              <meshStandardMaterial color={headColor} roughness={0.55} metalness={0.2} />
-            </mesh>
-          )}
-          {usePortraitPlate ? (
-            <Html position={[0, headY, headRadius + 0.01]} center transform distanceFactor={2.4} style={{ pointerEvents: 'none' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={portraitUrl}
-                alt=""
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid rgba(0,255,255,0.5)',
-                }}
-              />
-            </Html>
-          ) : (
-            <mesh
-              ref={visorRef}
-              position={[0, headY - headRadius * 0.15, headRadius * 0.75]}
-              rotation={[0.15, 0, 0]}
-              castShadow
-            >
-              <boxGeometry args={[headRadius * 1.25, headRadius * 0.28, headRadius * 0.35]} />
-              <meshStandardMaterial
-                color={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-                roughness={0.05}
-                metalness={0.95}
-                emissive={visorColor ?? (active ? '#00FFFF' : '#FF2DAA')}
-                emissiveIntensity={0.9}
-              />
-            </mesh>
-          )}
-        </>
       ) : null}
-
-      {showCrown && (
-        <mesh ref={crownRef} position={[0, headY + headRadius + 0.08, 0]} castShadow>
-          <torusGeometry args={[headRadius * 0.75, 0.04, 8, 16]} />
-          <meshStandardMaterial
-            color="#FFD700"
-            roughness={0.08}
-            metalness={0.95}
-            emissive="#FFD700"
-            emissiveIntensity={0.5}
-          />
-        </mesh>
-      )}
-
-      {filteredAttachments.map((att) => (
-        <AvatarSocketAttachment
-          key={`${att.id}-${att.socketId}`}
-          attachment={{
-            ...att,
-            active: !activePropId || att.id === activePropId || att.socketId !== 'socket_primary_hand',
-          }}
-        />
-      ))}
     </group>
   );
+}
+
+
+
+function SceneCensus() {
+  const { scene, gl, camera } = useThree();
+  const last = useRef("");
+  useFrame(() => {
+    let meshes = 0;
+    let skinned = 0;
+    const names: string[] = [];
+    scene.traverse((obj) => {
+      const mesh = obj as THREE.SkinnedMesh;
+      if (!mesh.isMesh) return;
+      meshes += 1;
+      if (mesh.isSkinnedMesh) {
+        skinned += 1;
+        if (names.length < 6 && mesh.name) names.push(mesh.name);
+      }
+    });
+    const p = camera.position;
+    const sig = `${scene.children.length}|${meshes}|${skinned}|${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+    if (sig === last.current) return;
+    last.current = sig;
+    const host = gl.domElement.closest("[data-avatar-viewer]");
+    if (!host) return;
+    host.setAttribute("data-scene-children", String(scene.children.length));
+    host.setAttribute("data-mesh-count", String(meshes));
+    host.setAttribute("data-skinned-count", String(skinned));
+    host.setAttribute("data-mesh-names", names.join("|"));
+    host.setAttribute("data-cam", `${p.x.toFixed(2)} ${p.y.toFixed(2)} ${p.z.toFixed(2)}`);
+  });
+  return null;
+}
+
+function SmoothCameraTravel({
+  focusCam,
+  fov,
+  reducedMotion,
+}: {
+  focusCam: { position: [number, number, number]; target: [number, number, number] };
+  fov: number;
+  reducedMotion: boolean;
+}) {
+  const { camera } = useThree();
+  const controls = useThree((s) => s.controls) as { target?: { set: (x: number, y: number, z: number) => void; x: number; y: number; z: number }; update?: () => void } | null;
+  const goalPos = useRef(new THREE.Vector3(...focusCam.position));
+  const goalTarget = useRef(new THREE.Vector3(...focusCam.target));
+  const goalFov = useRef(fov);
+
+  useEffect(() => {
+    goalPos.current.set(...focusCam.position);
+    goalTarget.current.set(...focusCam.target);
+    goalFov.current = fov;
+    if (reducedMotion) {
+      camera.position.copy(goalPos.current);
+      if (controls?.target) {
+        controls.target.set(goalTarget.current.x, goalTarget.current.y, goalTarget.current.z);
+        controls.update?.();
+      }
+      if ("fov" in camera) {
+        (camera as THREE.PerspectiveCamera).fov = goalFov.current;
+        camera.updateProjectionMatrix();
+      }
+    }
+  }, [focusCam.position[0], focusCam.position[1], focusCam.position[2], focusCam.target[0], focusCam.target[1], focusCam.target[2], fov, reducedMotion, camera, controls]);
+
+  useFrame((_, dt) => {
+    if (reducedMotion) return;
+    const alpha = Math.min(1, dt * 3.2);
+    camera.position.lerp(goalPos.current, alpha);
+    if ("fov" in camera) {
+      const persp = camera as THREE.PerspectiveCamera;
+      persp.fov += (goalFov.current - persp.fov) * alpha;
+      persp.updateProjectionMatrix();
+    }
+    if (controls?.target) {
+      const tx = controls.target.x + (goalTarget.current.x - controls.target.x) * alpha;
+      const ty = controls.target.y + (goalTarget.current.y - controls.target.y) * alpha;
+      const tz = controls.target.z + (goalTarget.current.z - controls.target.z) * alpha;
+      controls.target.set(tx, ty, tz);
+      controls.update?.();
+    }
+  });
+
+  return null;
 }
 
 const CAMERA_BY_FOCUS: Record<AvatarCameraFocus, { position: [number, number, number]; target: [number, number, number] }> = {
   face: { position: [0, 1.05, 1.45], target: [0, 1.05, 0] },
   body: { position: [0, 0.35, 2.55], target: [0, 0.45, 0] },
   feet: { position: [0.2, -0.4, 1.75], target: [0, -0.2, 0] },
+  upper: { position: [0, 0.75, 1.95], target: [0, 0.75, 0] },
 };
 
 export function AvatarViewer({
@@ -864,10 +1019,17 @@ export function AvatarViewer({
   bodyHeight,
   bodyMass,
   bobbleheadRatio,
+  headScaleX,
+  headScaleY,
   glbSlotId,
   glbUrl,
   certifiedOnly = false,
   expression = "neutral",
+  identityShape = null,
+  mood = "REGULAR",
+  phoneme = null,
+  talking = false,
+  eyeColorHex,
   onMorphCapability,
   enableOrbit = true,
   fill = false,
@@ -958,9 +1120,11 @@ export function AvatarViewer({
     <div
       data-avatar-viewer={resolvedGlb || "procedural"}
       data-foundry-loaded={foundryScene ? "1" : "0"}
+      data-foundry-glb-error={foundryLoadError || undefined}
+      data-foundry-glb-loading={!foundryScene && resolvedGlb && !foundryLoadError ? "1" : undefined}
       style={{
-        width: boxSize,
-        height: boxSize,
+        width: "100%",
+        height: fill ? 220 : boxSize,
         minHeight: fill ? 220 : undefined,
         position: "relative",
       }}
@@ -970,17 +1134,22 @@ export function AvatarViewer({
         fallbackLabel="Avatar 3D unavailable"
         shadows
         camera={{ position: seatedCam, fov: cameraFocus === "face" ? 32 : 40, near: 0.05, far: 40 }}
-        gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
-        style={{ background: "transparent", width: "100%", height: "100%" }}
-        resize={{ debounce: 0 }}
+        gl={{ powerPreference: "high-performance", antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        style={{
+          background: "transparent",
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+        }}
+        resize={{ debounce: { scroll: 50, resize: 16 } }}
       >
-        <Suspense fallback={null}>
-          <ambientLight intensity={1.15} />
-          <hemisphereLight intensity={0.6} groundColor="#12002b" color="#88ccff" />
-          <directionalLight position={[3, 6, 4]} intensity={2.0} color="#ffffff" castShadow />
-          <spotLight position={[5, 5, 5]} intensity={1.35} color="#fff" />
-
-          <AvatarRig
+        <SceneCensus />
+        <ambientLight intensity={0.55} />
+        <hemisphereLight intensity={0.4} groundColor="#1a1028" color="#c8d8ef" />
+        <directionalLight position={[3, 6, 4]} intensity={1.15} color="#ffffff" castShadow />
+        <directionalLight position={[-2.5, 2.5, -2]} intensity={0.35} color="#aaccff" />
+        <AvatarRig
             bobbleheadRatio={bobbleheadRatio}
             active={active}
             color={color}
@@ -995,70 +1164,161 @@ export function AvatarViewer({
             activePropId={activePropId}
             bodyHeight={bodyHeight}
             bodyMass={bodyMass}
+            headScaleX={headScaleX}
+            headScaleY={headScaleY}
             glbSlotId={glbSlotId}
             glbUrl={glbUrl}
             certifiedOnly={certifiedOnly}
             expression={expression}
+            identityShape={identityShape}
+            mood={mood}
+            phoneme={phoneme}
+            talking={talking}
+            eyeColorHex={eyeColorHex}
             onMorphCapability={onMorphCapability}
             foundryScene={foundryScene}
             foundryLoadError={foundryLoadError}
           />
-          <ContactShadows position={[0, -0.02, 0]} opacity={0.45} scale={8} blur={2.5} far={4} />
-
+          <SmoothCameraTravel
+            focusCam={focusCam}
+            fov={cameraFocus === "face" ? 32 : cameraFocus === "feet" ? 38 : cameraFocus === "upper" ? 35 : 40}
+            reducedMotion={typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches}
+          />
           {enableOrbit && (
             <OrbitControls
-              key={`${cameraFocus}-${glbSlotId ?? "none"}`}
+              makeDefault
+              key={glbSlotId ?? glbUrl ?? "avatar-orbit"}
               target={isSeated ? [0, 0.2, 0] : focusCam.target}
               enableZoom={true}
               enablePan={false}
               enableDamping={true}
-              dampingFactor={0.05}
+              dampingFactor={0.08}
               minDistance={1.4}
               maxDistance={4.5}
               minPolarAngle={cameraFocus === "feet" ? Math.PI / 2.4 : Math.PI / 3.4}
               maxPolarAngle={cameraFocus === "face" ? Math.PI / 1.7 : Math.PI / 1.45}
             />
           )}
-        </Suspense>
       </SafeReactThreeCanvas>
     </div>
   );
 }
 
-export default function AvatarLobbyCanvas({ activeCount = 5 }: { activeCount?: number }) {
-  const positions = POSITIONS.slice(0, Math.min(activeCount, POSITIONS.length));
+function VenueAuditoriumHouse() {
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.65 }}>
+    <group userData={{ tmiVenueLayer: "auditorium-house" }}>
+      {/* Elevated Stage Riser */}
+      <mesh position={[0, -0.22, -5.5]} receiveShadow castShadow>
+        <boxGeometry args={[16, 0.38, 5]} />
+        <meshStandardMaterial color="#140a20" roughness={0.18} metalness={0.35} />
+      </mesh>
+      {/* Stage edge neon trim */}
+      <mesh position={[0, -0.02, -3.0]}>
+        <boxGeometry args={[16.02, 0.04, 0.06]} />
+        <meshStandardMaterial color="#00FFFF" emissive="#00FFFF" emissiveIntensity={1.5} />
+      </mesh>
+
+      {/* Back Acoustic Wall */}
+      <mesh position={[0, 5, -8]} receiveShadow>
+        <boxGeometry args={[34, 12, 0.5]} />
+        <meshStandardMaterial color="#070410" roughness={0.88} metalness={0.1} />
+      </mesh>
+      {/* Left Wall */}
+      <mesh position={[-16, 5, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[24, 12, 0.5]} />
+        <meshStandardMaterial color="#06030c" roughness={0.9} metalness={0.08} />
+      </mesh>
+      {/* Right Wall */}
+      <mesh position={[16, 5, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[24, 12, 0.5]} />
+        <meshStandardMaterial color="#06030c" roughness={0.9} metalness={0.08} />
+      </mesh>
+
+      {/* Overhead Stage Ceiling Rigging Truss */}
+      <group position={[0, 8, -2]}>
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[28, 0.2, 0.2]} />
+          <meshStandardMaterial color="#1a1a28" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[-10, 0, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 3, 8]} />
+          <meshStandardMaterial color="#222233" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[10, 0, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 3, 8]} />
+          <meshStandardMaterial color="#222233" metalness={0.9} roughness={0.2} />
+        </mesh>
+      </group>
+
+      {/* Center Jumbotron Screen Frame */}
+      <group position={[0, 4.8, -7.7]}>
+        <mesh>
+          <boxGeometry args={[13, 5.2, 0.15]} />
+          <meshStandardMaterial color="#030208" metalness={0.85} roughness={0.25} />
+        </mesh>
+        {/* Screen Display Surface */}
+        <mesh position={[0, 0, 0.09]}>
+          <planeGeometry args={[12.4, 4.6]} />
+          <meshBasicMaterial color="#02020a" />
+        </mesh>
+        {/* Jumbotron Top Brand Bar */}
+        <mesh position={[0, 2.65, 0.1]}>
+          <boxGeometry args={[12.6, 0.18, 0.08]} />
+          <meshStandardMaterial color="#00FFFF" emissive="#00FFFF" emissiveIntensity={1.8} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export default function AvatarLobbyCanvas({
+  activeCount = 5,
+  venueType,
+  recipe,
+}: {
+  activeCount?: number;
+  venueType?: string;
+  recipe?: CanonicalVenueRecipe;
+}) {
+  const activeRecipe = useMemo(() => recipe ?? getCanonicalVenueRecipe(venueType), [recipe, venueType]);
+  const sockets = useMemo(() => activeRecipe.getSockets(), [activeRecipe]);
+  const safeActiveCount = Math.min(activeCount, sockets.length);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.75 }}>
       <SafeReactThreeCanvas
         faultContext="Avatar Lobby"
         fallbackLabel="Lobby 3D unavailable"
         shadows
-        camera={{ position: [0, 3.2, 9.5], fov: 42 }}
-        gl={{ powerPreference: 'high-performance', antialias: true, alpha: true }}
+        camera={{
+          position: activeRecipe.cameraPresets.discoveryPreview.position,
+          fov: activeRecipe.cameraPresets.discoveryPreview.fov,
+        }}
+        gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.35} />
-          <hemisphereLight intensity={0.4} groundColor="#0a0018" color="#66eeff" />
-          
-          {/* Animated spot stage beams */}
-          <MovingLights />
+          <ambientLight intensity={0.4} />
+          <hemisphereLight intensity={0.45} groundColor="#0a0018" color="#66eeff" />
+          <Environment preset="night" />
 
-          {/* Polished dark stage floor plane */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.41, 0]} receiveShadow>
-            <planeGeometry args={[30, 30]} />
-            <meshStandardMaterial color="#02020a" roughness={0.12} metalness={0.9} />
-          </mesh>
+          {/* Canonical Architectural Venue House: Walls, Floor, Risers, Stage, Truss, Jumbotron, Modular Seating */}
+          <CanonicalVenueHouse
+            recipe={activeRecipe}
+            activeOccupancyCount={safeActiveCount}
+            motionActive={true}
+          />
 
-          {positions.map((pos, i) => (
-            <Avatar key={i} active={i === 1} position={pos} />
+          {/* Real Participants in Designated Sockets: Never fake crowds (Rule 20) */}
+          {sockets.slice(0, safeActiveCount).map((sock, i) => (
+            <Avatar key={"avatar-" + sock.socketId} active={i === 1} position={sock.transform.position} />
           ))}
 
           <ContactShadows
             resolution={512}
-            scale={22}
-            blur={2.8}
+            scale={28}
+            blur={2.4}
             opacity={0.5}
-            far={12}
+            far={16}
             color="#AA2DFF"
           />
 
@@ -1066,14 +1326,14 @@ export default function AvatarLobbyCanvas({ activeCount = 5 }: { activeCount?: n
             enableZoom={false}
             enablePan={false}
             enableDamping={true}
-            dampingFactor={0.05}
+            dampingFactor={0.08}
             autoRotate
             autoRotateSpeed={0.3}
-            maxPolarAngle={Math.PI / 2.1}
+            maxPolarAngle={Math.PI / 2.05}
+            target={activeRecipe.cameraPresets.discoveryPreview.target}
           />
         </Suspense>
       </SafeReactThreeCanvas>
     </div>
   );
 }
-

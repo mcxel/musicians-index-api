@@ -1,0 +1,281 @@
+/**
+ * Homepage DiscoveryBus filters — Home family promotional mosaic surfaces.
+ * Real rooms only (Rule 20). Never fabricates tiles.
+ * Home1–Home5 bind the SAME DiscoveryBus via surface filters + independent clocks.
+ */
+
+import type { LiveDiscoveryCategory, LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
+
+export type HomepageDiscoverySurface =
+  | "home1_featured"
+  | "home1_orbit"
+  | "home1_2_billboard"
+  | "home2_magazine"
+  | "home3_mosaic"
+  | "home4_market"
+  | "home4_fan_lives"
+  | "home4_performer_lives"
+  | "home5_arena";
+
+/** Home 1 orbit — full live-discovery mix (Marcel lock — Gap 2). */
+const HOME1_ORBIT_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "live_now",
+  "fans_live",
+  "performers_live",
+  "battles",
+  "cyphers",
+  "challenges",
+  "fan_lobbies",
+  "lounges",
+  "listening",
+  "games",
+  "concerts",
+  "dance",
+  "comedy",
+  "djs",
+  "videos",
+  "worldwide",
+  "new_empty",
+]);
+
+/** Featured showcase — concerts / trending live / premieres mix. Not every room. */
+const HOME1_FEATURED_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "concerts",
+  "live_now",
+  "dance",
+  "djs",
+  "videos",
+  "listening",
+]);
+
+/** Global mosaic — social / lounges / fan lives / casual (exclude pure arena). */
+const HOME3_MOSAIC_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "fans_live",
+  "performers_live",
+  "fan_lobbies",
+  "lounges",
+  "listening",
+  "comedy",
+  "djs",
+  "live_now",
+  "dance",
+  "videos",
+  "new_empty",
+  "worldwide",
+  "concerts",
+]);
+
+/** Arena — battles, cyphers, challenges, competitions only. */
+const HOME5_ARENA_CATS: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "battles",
+  "cyphers",
+  "challenges",
+  "games",
+]);
+
+const HOME5_EXCLUDE: ReadonlySet<LiveDiscoveryCategory> = new Set([
+  "fan_lobbies",
+  "lounges",
+  "listening",
+  "comedy",
+]);
+
+function recordMatches(
+  record: LiveDiscoveryRecord,
+  allowed: ReadonlySet<LiveDiscoveryCategory>,
+): boolean {
+  if (allowed.has(record.category)) return true;
+  return record.categories.some((c) => allowed.has(c));
+}
+
+function scoreOrbit(r: LiveDiscoveryRecord): number {
+  let score = r.humanViewerCount * 10;
+  if (r.isLive && r.humanViewerCount > 0) score += 50;
+  if (r.isAnchor) score += 35;
+  if (r.category === "battles" || r.category === "cyphers" || r.category === "challenges") score += 20;
+  if (r.isNewEmpty) score += 8;
+  if (Date.now() - r.startedAt < 30 * 60 * 1000) score += 15;
+  return score;
+}
+
+function scoreFeatured(r: LiveDiscoveryRecord): number {
+  let score = r.humanViewerCount * 10;
+  if (r.category === "concerts") score += 40;
+  if (r.categories.includes("concerts")) score += 20;
+  if (r.category === "live_now") score += 15;
+  if (r.humanViewerCount >= 5) score += 25;
+  if (r.isNewEmpty) score -= 10;
+  if (r.posterUrl) score += 8;
+  if (r.previewUrl) score += 5;
+  return score;
+}
+
+function scoreMosaic(r: LiveDiscoveryRecord): number {
+  let score = r.humanViewerCount * 8 + (Date.now() - r.startedAt < 30 * 60 * 1000 ? 20 : 0);
+  if (r.category === "fan_lobbies" || r.category === "lounges") score += 18;
+  if (r.isNewEmpty) score += 12;
+  if (r.isAnchor) score += 30;
+  return score;
+}
+
+function scoreArena(r: LiveDiscoveryRecord): number {
+  let score = r.humanViewerCount * 12;
+  if (r.category === "battles") score += 50;
+  if (r.category === "cyphers") score += 45;
+  if (r.category === "challenges") score += 40;
+  if (r.category === "games") score += 30;
+  if (r.isAnchor) score += 30;
+  return score;
+}
+
+export function filterForHomepageSurface(
+  records: readonly LiveDiscoveryRecord[],
+  surface: HomepageDiscoverySurface,
+): LiveDiscoveryRecord[] {
+  const live = records.filter((r) => r.isLive);
+
+  if (surface === "home1_featured") {
+    const pool = live.filter((r) => recordMatches(r, HOME1_FEATURED_CATS));
+    return [...pool].sort((a, b) => scoreFeatured(b) - scoreFeatured(a)).slice(0, 12);
+  }
+
+  if (surface === "home1_orbit") {
+    const pool = live.filter((r) => recordMatches(r, HOME1_ORBIT_CATS));
+    return [...pool].sort((a, b) => scoreOrbit(b) - scoreOrbit(a));
+  }
+
+  if (surface === "home1_2_billboard") {
+    const pool = live.filter((r) => recordMatches(r, HOME1_ORBIT_CATS));
+    return [...pool].sort((a, b) => scoreOrbit(b) - scoreOrbit(a));
+  }
+
+  if (surface === "home2_magazine") {
+    const pool = live.filter((r) => recordMatches(r, HOME3_MOSAIC_CATS));
+    return [...pool].sort((a, b) => scoreMosaic(b) - scoreMosaic(a)).slice(0, 8);
+  }
+
+  if (surface === "home3_mosaic") {
+    const pool = live.filter((r) => {
+      if (HOME5_ARENA_CATS.has(r.category)) return false;
+      return recordMatches(r, HOME3_MOSAIC_CATS);
+    });
+    return [...pool].sort((a, b) => scoreMosaic(b) - scoreMosaic(a));
+  }
+
+  if (surface === "home4_market") {
+    const pool = live.filter((r) => recordMatches(r, HOME1_FEATURED_CATS));
+    return [...pool].sort((a, b) => scoreFeatured(b) - scoreFeatured(a)).slice(0, 8);
+  }
+
+  if (surface === "home4_fan_lives") {
+    const pool = live.filter((r) => r.category === "fans_live" || r.categories.includes("fans_live"));
+    return [...pool].sort((a, b) => scoreFeatured(b) - scoreFeatured(a));
+  }
+
+  if (surface === "home4_performer_lives") {
+    const pool = live.filter((r) => r.category === "performers_live" || r.categories.includes("performers_live"));
+    return [...pool].sort((a, b) => scoreFeatured(b) - scoreFeatured(a));
+  }
+
+  // home5_arena
+  const pool = live.filter((r) => {
+    if (HOME5_EXCLUDE.has(r.category)) return false;
+    return recordMatches(r, HOME5_ARENA_CATS);
+  });
+  return [...pool].sort((a, b) => scoreArena(b) - scoreArena(a));
+}
+
+/**
+ * Pick 3–4 rotating featured channel slots from the curated Home 1 pool.
+ * `rotationOffset` advances when idle rotation ticks.
+ */
+export function pickFeaturedChannelSlots(
+  records: readonly LiveDiscoveryRecord[],
+  slotCount = 3,
+  rotationOffsets: readonly number[] = [],
+): Array<LiveDiscoveryRecord | null> {
+  const pool = filterForHomepageSurface(records, "home1_featured");
+  const slots: Array<LiveDiscoveryRecord | null> = [];
+  const n = Math.min(Math.max(slotCount, 3), 4, pool.length);
+
+  const assigned = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const start = Math.abs(Math.trunc(rotationOffsets[i] ?? 0)) % pool.length;
+    const candidate = Array.from({ length: pool.length }, (_, step) => pool[(start + step) % pool.length]!)
+      .find((record) => !assigned.has(record.roomId));
+    if (!candidate) break;
+    slots.push(candidate);
+    assigned.add(candidate.roomId);
+  }
+
+  return slots;
+}
+
+export const HOMEPAGE_SURFACE_COPY: Record<
+  HomepageDiscoverySurface,
+  { title: string; emptyTitle: string; emptyHint: string; goLiveHref: string; accent: string }
+> = {
+  home1_featured: {
+    title: "FEATURED LIVE CHANNELS",
+    emptyTitle: "Waiting for featured live…",
+    emptyHint: "Go live publicly to appear in CH Featured.",
+    goLiveHref: "/live/go",
+    accent: "#00FFFF",
+  },
+  home1_orbit: {
+    title: "LIVE DISCOVERY ORBIT",
+    emptyTitle: "No live rooms in rotation",
+    emptyHint: "Battles, cyphers, lobbies, and live sessions appear here when published.",
+    goLiveHref: "/live/go",
+    accent: "#00FFFF",
+  },
+  home1_2_billboard: {
+    title: "BILLBOARD LIVE MOSAIC",
+    emptyTitle: "No live programs on the billboard wall",
+    emptyHint: "Public live sessions appear here when published to discovery.",
+    goLiveHref: "/live/go",
+    accent: "#FFD700",
+  },
+  home2_magazine: {
+    title: "MAGAZINE LIVE STRIP",
+    emptyTitle: "No live companion rooms",
+    emptyHint: "Public lives related to the magazine desk appear when live.",
+    goLiveHref: "/live/go",
+    accent: "#00FF88",
+  },
+  home3_mosaic: {
+    title: "LIVE WORLD MOSAIC",
+    emptyTitle: "Waiting for social lives…",
+    emptyHint: "Lounges, fan lives, and casual streams appear here when live.",
+    goLiveHref: "/live/go",
+    accent: "#00FF88",
+  },
+  home4_market: {
+    title: "MARKETPLACE LIVE WINDOW",
+    emptyTitle: "No live showcases in market",
+    emptyHint: "Public featured lives appear here when live.",
+    goLiveHref: "/live/go",
+    accent: "#AA2DFF",
+  },
+  home4_fan_lives: {
+    title: "FAN LIVES",
+    emptyTitle: "No Fans are live right now",
+    emptyHint: "Public Fan live sessions will appear here when they go live.",
+    goLiveHref: "/live/go",
+    accent: "#00FF88",
+  },
+  home4_performer_lives: {
+    title: "PERFORMER LIVES",
+    emptyTitle: "No Performers are live right now",
+    emptyHint: "Public Performer live sessions will appear here when they go live.",
+    goLiveHref: "/live/go",
+    accent: "#FFD700",
+  },
+  home5_arena: {
+    title: "ARENA LIVE WALL",
+    emptyTitle: "Waiting for next battle…",
+    emptyHint: "Battles, cyphers, and challenges appear here when live.",
+    goLiveHref: "/battles/lobby-wall",
+    accent: "#FF2DAA",
+  },
+};

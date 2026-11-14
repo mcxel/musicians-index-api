@@ -1,6 +1,6 @@
 export type ContributorLevel = "new-contributor" | "verified-contributor" | "trusted-editor" | "staff-editor";
 
-export type SubmissionStatus = "draft" | "submitted" | "approved" | "rejected";
+export type SubmissionStatus = "draft" | "submitted" | "approved" | "published" | "rejected";
 
 export interface ContributorAccount {
   contributorId: string;
@@ -22,6 +22,11 @@ export interface EditorialSubmission {
   sponsorSlug?: string;
   status: SubmissionStatus;
   rejectionReason?: string;
+  /** Set by MagazineRotationEngine once the magazine composition authority
+   * actually selects this submission into a built issue — never set by the
+   * writer or the editorial reviewer. Writer owns content; magazine owns placement. */
+  publishedArticleSlug?: string;
+  publishedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

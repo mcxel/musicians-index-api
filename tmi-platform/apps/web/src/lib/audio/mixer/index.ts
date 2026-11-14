@@ -7,6 +7,7 @@
 export * from "./MixerErrorCodes";
 export * from "./ExperienceAudioPolicy";
 export * from "./ChannelMixerDirector";
+export * from "./MonitorMixGraph";
 export * from "./CanonicalPerformanceGlueDirector";
 export * from "./FidelityIntelligenceDirector";
 export * from "./LiveRoomMixerBind";

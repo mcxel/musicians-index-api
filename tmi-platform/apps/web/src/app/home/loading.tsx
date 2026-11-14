@@ -1,18 +1,16 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import ClosedMagazineShell from "@/components/magazine/ClosedMagazineShell";
-
 export default function HomeLoading() {
-  const router = useRouter();
-  useEffect(() => {
-    // Fail-safe: if server render hasn't resolved in 2.5 s, force a retry.
-    const t = setTimeout(() => router.refresh(), 2500);
-    return () => clearTimeout(t);
-  }, [router]);
   return (
-    <main className="relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#06070d]">
-      <ClosedMagazineShell title="TMI Home Issue" subtitle="Initializing magazine shell..." />
+    <main
+      className="relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#06070d]"
+      aria-busy="true"
+      aria-label="Loading TMI home"
+    >
+      <div className="px-6 text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+          The Musician&apos;s Index
+        </p>
+        <p className="mt-3 text-sm text-white/50">Loading home…</p>
+      </div>
     </main>
   );
 }

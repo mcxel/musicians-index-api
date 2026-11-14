@@ -5,6 +5,7 @@ import FanHubSessionFallback from "@/components/auth/FanHubSessionFallback";
 import {
   classifyShellIdentity,
   hubPathForIdentity,
+  normalizeRoleToken,
 } from "@/lib/auth/sessionRole";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,20 @@ export default function FanHubPage() {
     redirect("/hub/performer");
   }
   if (identity === "OTHER") {
+    const r = normalizeRoleToken(roleCookie);
+    // Admin/staff oversight: middleware already authorized /hub/fan — mount Fan shell,
+    // do not bounce back to /admin (that was the broken persona-switch symptom).
+    if (r === "ADMIN" || r === "STAFF" || r === "SUPERADMIN") {
+      const userId = sessionUserId ?? store.get("tmi_user_id")?.value ?? "";
+      const displayName = store.get("tmi_display_name")?.value?.trim() || "Operator";
+      const session = {
+        identity: "FAN" as const,
+        rawRole: r,
+        userId,
+        displayName,
+      };
+      return <FanHubMount session={session} />;
+    }
     redirect(hubPathForIdentity("OTHER", roleCookie ?? ""));
   }
 

@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import type { InterviewSession, InterviewSessionStatus } from "@/lib/interview/WriterInterviewService";
+import CanonicalDualMonitorStack, {
+  type CanonicalMonitorPane,
+} from "@/components/monitors/CanonicalDualMonitorStack";
+import { resolveRoleMediaWorkspace } from "@/lib/monitors/RoleMediaWorkspaceAuthority";
 
 interface WriterInterviewStudioProps {
   writerId: string;
@@ -54,6 +58,7 @@ export default function WriterInterviewStudio({ writerId, onPublished }: WriterI
   const [error, setError] = useState<string | null>(null);
 
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workspace = useMemo(() => resolveRoleMediaWorkspace("WRITER"), []);
 
   const createSession = useCallback(async () => {
     if (!guestName.trim() || !title.trim()) {
@@ -205,61 +210,163 @@ export default function WriterInterviewStudio({ writerId, onPublished }: WriterI
         )}
       </div>
 
-      {/* Two-monitor layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "rgba(255,255,255,0.06)" }}>
-        {/* Writer monitor */}
-        <div style={{ padding: 16, background: "#0a0a14" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 10 }}>YOU — WRITER</div>
-          <div style={{
-            aspectRatio: "16/9", borderRadius: 10, background: "#0d0820",
-            border: `2px solid ${isRecording ? RED : "rgba(255,255,255,0.12)"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: isRecording ? `0 0 18px ${RED}44` : "none",
-            transition: "border-color 0.25s, box-shadow 0.25s",
-          }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ width: 52, height: 52, borderRadius: "50%", background: `${ACCENT}22`, border: `2px solid ${ACCENT}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: ACCENT, margin: "0 auto 8px" }}>W</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{cameraOff ? "Camera Off" : "Camera Ready"}</div>
-            </div>
-          </div>
-          {/* Mic/camera controls */}
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button type="button" onClick={() => setMicMuted(!micMuted)}
-              style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${micMuted ? RED : GREEN}44`, background: micMuted ? `${RED}18` : `${GREEN}10`, color: micMuted ? RED : GREEN, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-            >{micMuted ? "🎙 MIC OFF" : "🎤 MIC ON"}</button>
-            <button type="button" onClick={() => setCameraOff(!cameraOff)}
-              style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${cameraOff ? RED : CYAN}44`, background: cameraOff ? `${RED}18` : `${CYAN}10`, color: cameraOff ? RED : CYAN, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-            >{cameraOff ? "🚫 CAM OFF" : "🎥 CAM ON"}</button>
-          </div>
-        </div>
-
-        {/* Guest monitor */}
-        <div style={{ padding: 16, background: "#08080f" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 10 }}>GUEST — {session.guestName.toUpperCase()}</div>
-          <div style={{
-            aspectRatio: "16/9", borderRadius: 10, background: "#0d0820",
-            border: `2px solid ${s === "CONNECTED" || isRecording ? CYAN : "rgba(255,255,255,0.08)"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: (s === "CONNECTED" || isRecording) ? `0 0 14px ${CYAN}33` : "none",
-            transition: "border-color 0.25s, box-shadow 0.25s",
-          }}>
-            {s === "WAITING_FOR_GUEST" || s === "PREP" ? (
-              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
-                Waiting for guest to join…
-              </div>
-            ) : (
-              <div style={{ textAlign: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: `${CYAN}22`, border: `2px solid ${CYAN}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: CYAN, margin: "0 auto 8px" }}>{session.guestName.charAt(0).toUpperCase()}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{session.guestName}</div>
-              </div>
-            )}
-          </div>
-          {/* Consent indicator */}
-          <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: session.consentConfirmed ? `${GREEN}14` : "rgba(255,255,255,0.04)", border: `1px solid ${session.consentConfirmed ? GREEN : "rgba(255,255,255,0.1)"}40`, fontSize: 11, color: session.consentConfirmed ? GREEN : "rgba(255,255,255,0.3)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-            {session.consentConfirmed ? "✅ Recording consent confirmed" : "⚠️ Consent not yet confirmed"}
-          </div>
-        </div>
+      {/* Dual 16:9 Interview Studio — RoleMediaWorkspaceAuthority (WRITER = 2) */}
+      <div style={{ padding: 12, background: "#08080f" }} data-writer-monitors={workspace.monitorInstanceCount}>
+        <CanonicalDualMonitorStack
+          variant="chrome"
+          seriesLabel="WRITER INTERVIEW STUDIO"
+          minMonitorCount={workspace.monitorInstanceCount}
+          monitors={
+            [
+              {
+                id: "writer-self",
+                label: "YOU — WRITER",
+                children: (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#0d0820",
+                      border: `2px solid ${isRecording ? RED : "rgba(255,255,255,0.12)"}`,
+                      boxShadow: isRecording ? `0 0 18px ${RED}44` : "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "50%",
+                        background: `${ACCENT}22`,
+                        border: `2px solid ${ACCENT}44`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 20,
+                        fontWeight: 900,
+                        color: ACCENT,
+                        marginBottom: 8,
+                      }}
+                    >
+                      W
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                      {cameraOff ? "Camera Off" : "Camera Ready"}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => setMicMuted(!micMuted)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${micMuted ? RED : GREEN}44`,
+                          background: micMuted ? `${RED}18` : `${GREEN}10`,
+                          color: micMuted ? RED : GREEN,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {micMuted ? "🎙 MIC OFF" : "🎤 MIC ON"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCameraOff(!cameraOff)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${cameraOff ? RED : CYAN}44`,
+                          background: cameraOff ? `${RED}18` : `${CYAN}10`,
+                          color: cameraOff ? RED : CYAN,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {cameraOff ? "🚫 CAM OFF" : "🎥 CAM ON"}
+                      </button>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: "writer-guest",
+                label: `GUEST — ${session.guestName.toUpperCase()}`,
+                children: (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#0d0820",
+                      border: `2px solid ${
+                        s === "CONNECTED" || isRecording ? CYAN : "rgba(255,255,255,0.08)"
+                      }`,
+                      boxShadow:
+                        s === "CONNECTED" || isRecording ? `0 0 14px ${CYAN}33` : "none",
+                    }}
+                  >
+                    {s === "WAITING_FOR_GUEST" || s === "PREP" ? (
+                      <div style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
+                        Waiting for guest to join…
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: "50%",
+                            background: `${CYAN}22`,
+                            border: `2px solid ${CYAN}44`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 20,
+                            fontWeight: 900,
+                            color: CYAN,
+                            margin: "0 auto 8px",
+                          }}
+                        >
+                          {session.guestName.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                          {session.guestName}
+                        </div>
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        background: session.consentConfirmed ? `${GREEN}14` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${
+                          session.consentConfirmed ? GREEN : "rgba(255,255,255,0.1)"
+                        }40`,
+                        fontSize: 11,
+                        color: session.consentConfirmed ? GREEN : "rgba(255,255,255,0.3)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {session.consentConfirmed
+                        ? "✅ Recording consent confirmed"
+                        : "⚠️ Consent not yet confirmed"}
+                    </div>
+                  </div>
+                ),
+              },
+            ] satisfies CanonicalMonitorPane[]
+          }
+        />
       </div>
 
       {/* Control bar */}
@@ -329,7 +436,7 @@ export default function WriterInterviewStudio({ writerId, onPublished }: WriterI
   );
 }
 
-function actionBtn(color: string, disabled: boolean): React.CSSProperties {
+function actionBtn(color: string, disabled: boolean): CSSProperties {
   return {
     padding: "9px 18px",
     borderRadius: 8,

@@ -191,6 +191,53 @@ export const WRITER_CASH_PAYOUT = {
   cash: false,
 };
 
+/**
+ * Bounded Physical Page Law — issue ≠ one infinite vertical document.
+ * Page numbers come from IssueCompositionManifest / built slots only.
+ * Equal pages = equal structural geometry, not equal word counts (never fabricate filler).
+ * Long copy expands in place, then opens FULL_READER — never makes a page indefinitely taller.
+ */
+export const BOUNDED_PHYSICAL_PAGE_LAW = {
+  issueIsFinitePages: true,
+  verticalScrollOnlyInsideCurrentPage: true,
+  bottomDoesNotAutoLoadNextPage: true,
+  nextPageRequiresExplicitControl: true as const, // swipe / NEXT / numbered
+  pageNumbersFromManifestOnly: true,
+  equalPagesMeanEqualGeometryNotWordCount: true,
+  neverFabricateFiller: true,
+  longContentModes: ["COMPACT", "EXPANDED_IN_PLACE", "FULL_READER"] as const,
+  compactParagraphBudget: 2,
+} as const;
+
+/**
+ * Magazine ad modules — inventory hooks only. Fill via SponsorRegistry.getAdSlotForZone
+ * (Rule 12). Never a second ad system. Ads never alter ranks / composition order.
+ */
+export const MAGAZINE_AD_MODULE_SLOTS = {
+  AD_SLOT_TOP_INSET: "magazine-ad-slot-top-inset",
+  SPONSOR_SIDEBAR: "magazine-sponsor-sidebar",
+  AD_SLOT_MID_ARTICLE: "magazine-ad-slot-mid-article",
+  PARTNER_CALLOUT: "magazine-partner-callout",
+  AD_SLOT_SECTION_BREAK: "magazine-ad-slot-section-break",
+  SPONSOR_FEATURE_STRIP: "magazine-sponsor-feature-strip",
+  AD_SLOT_LOWER_PAGE: "magazine-ad-slot-lower-page",
+} as const;
+
+export type MagazineAdModuleSlot = keyof typeof MAGAZINE_AD_MODULE_SLOTS;
+
+export const MAGAZINE_AD_VISIBLE_LABELS = [
+  "ADVERTISEMENT",
+  "SPONSORED",
+  "TMI PARTNER",
+  "TMI DIRECT SPONSOR",
+  "PLATFORM",
+  "ADVERTISE",
+] as const;
+
+export function magazineAdZoneForModule(slot: MagazineAdModuleSlot): string {
+  return MAGAZINE_AD_MODULE_SLOTS[slot];
+}
+
 export function isMagazinePerformerEligible(p: MagazinePerformerEligibility): boolean {
   if (!p.slug.trim() || !p.name.trim()) return false;
   if (p.active === false) return false;
@@ -240,7 +287,10 @@ export function editorialSubmissionToStory(input: {
     performerSlug: input.artistSlug,
     category: input.category === "interview" ? "interview" : "news",
     blocks: paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", text: input.title }],
-    href: "/writers/dashboard",
+    // Same URL shape magazineReaderArticleUrl(slug) produces (can't import it
+    // here — MagazineReaderRoutes -> MagazineRotationEngine -> this file
+    // would be circular).
+    href: `/magazine/issue/current?article=${encodeURIComponent(input.submissionId)}`,
     source: "writer-submit",
   };
 }

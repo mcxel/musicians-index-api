@@ -2,6 +2,12 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AvatarCameraFocus } from "@/components/3d/AvatarLobbyCanvas";
+import type { PhonemeGroup } from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
+import { SPEAKING_HOLD_MS, SPEAKING_THRESHOLD } from "@/lib/audio/TMIAudioSafetyMixer";
+import { SoundSystemEngine } from "@/lib/sound/SoundSystemEngine";
+import { SOUND_THEMES, type SoundThemeId } from "@/lib/sound/SoundThemeRegistry";
+import { soundSettingsStore, useSoundSettingsStore } from "@/lib/sound/SoundSettingsStore";
+import { resolveAvatarVoicePreview } from "@/lib/avatars/AvatarVoicePreview";
 import RoleGate from "@/components/auth/RoleGate";
 import AvatarAccessoryGrid from "@/components/avatar/AvatarAccessoryGrid";
 import AvatarEyeSelector from "@/components/avatar/AvatarEyeSelector";
@@ -40,6 +46,7 @@ import AvatarPreviewParityControls from "@/components/avatars/AvatarPreviewParit
 import CanonicalQuickPanelContent from "@/components/workspace/universal/CanonicalQuickPanelContent";
 import { canCommitWearableToWorld, resolveWearableCapability } from "@/lib/avatars/AvatarWearableCapability";
 import type { CanonicalAvatarDraftState } from "@/lib/avatars/AvatarPreviewRuntime";
+import { avatarBehavioralDirector } from "@/lib/avatars/AvatarBehavioralDirector";
 
 export interface AvatarStudioExperienceProps {
   onSaveProfile?: (profile: CanonicalAvatarProfile) => void;
@@ -105,6 +112,10 @@ const FAN_FALLBACK = (
 
 export default function AvatarStudioExperience({ onClose, embedded = false }: AvatarStudioExperienceProps) {
   const [category, setCategory] = useState<StudioCategory>("scan");
+
+  useEffect(() => {
+    avatarBehavioralDirector.setContext("CREATION_CENTER");
+  }, []);
   const [profileName, setProfileName] = useState("");
   const [skin, setSkin] = useState(skinOptions[4]);
   const [hair, setHair] = useState(hairOptions[0]);
@@ -125,6 +136,75 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   const [showQuickParity, setShowQuickParity] = useState(false);
   const [lockedPreviewNote, setLockedPreviewNote] = useState<string | null>(null);
   const [savedLookNote, setSavedLookNote] = useState<string | null>(null);
+  const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
+  const [microphoneStarting, setMicrophoneStarting] = useState(false);
+  const [microphoneError, setMicrophoneError] = useState("");
+  const [microphoneLevel, setMicrophoneLevel] = useState(0);
+  const [voiceTalking, setVoiceTalking] = useState(false);
+  const microphoneStreamRef = useRef<MediaStream | null>(null);
+  const microphoneMonitorRef = useRef<ReturnType<typeof SoundSystemEngine.monitorMicrophone>>(null);
+  const lastVoiceActivityAtRef = useRef(0);
+  const avatarSoundTheme = useSoundSettingsStore((state) => state.activeTheme);
+
+  const stopMicrophonePreview = useCallback(() => {
+    microphoneMonitorRef.current?.disconnect();
+    microphoneMonitorRef.current = null;
+    microphoneStreamRef.current?.getTracks().forEach((track) => track.stop());
+    microphoneStreamRef.current = null;
+    setMicrophoneEnabled(false);
+    setMicrophoneLevel(0);
+    setVoiceTalking(false);
+  }, []);
+
+  const startMicrophonePreview = useCallback(async () => {
+    if (microphoneStarting || microphoneEnabled) return;
+    setMicrophoneStarting(true);
+    setMicrophoneError("");
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Microphone access is unavailable in this browser.");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+      const monitor = SoundSystemEngine.monitorMicrophone(stream);
+      if (!monitor) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error("Audio analysis is unavailable in this browser.");
+      }
+      microphoneStreamRef.current = stream;
+      microphoneMonitorRef.current = monitor;
+      setMicrophoneEnabled(true);
+    } catch (error) {
+      setMicrophoneError(error instanceof Error ? error.message : "Microphone permission was not granted.");
+      stopMicrophonePreview();
+    } finally {
+      setMicrophoneStarting(false);
+    }
+  }, [microphoneEnabled, microphoneStarting, stopMicrophonePreview]);
+
+  useEffect(() => () => {
+    microphoneMonitorRef.current?.disconnect();
+    microphoneStreamRef.current?.getTracks().forEach((track) => track.stop());
+    microphoneMonitorRef.current = null;
+    microphoneStreamRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!microphoneEnabled) return;
+    let timer: number | undefined;
+    const sampleMicrophone = () => {
+      const level = microphoneMonitorRef.current?.readLevel() ?? 0;
+      const now = Date.now();
+      if (level >= SPEAKING_THRESHOLD) lastVoiceActivityAtRef.current = now;
+      setMicrophoneLevel(level);
+      setVoiceTalking(now - lastVoiceActivityAtRef.current <= SPEAKING_HOLD_MS);
+      timer = window.setTimeout(sampleMicrophone, 80);
+    };
+    sampleMicrophone();
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [microphoneEnabled]);
 
   useEffect(() => {
     try {
@@ -275,6 +355,7 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   }, []);
 
   const cameraFocus = CATEGORIES.find((c) => c.id === category)?.focus ?? "body";
+  const voicePreview = resolveAvatarVoicePreview(microphoneLevel, voiceTalking);
 
   const persistPortrait = useCallback(async (dataUrl: string) => {
     setPortraitUrl(dataUrl);
@@ -465,6 +546,50 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
           </nav>
 
           <div className="tmi-avatar-studio-stage">
+            <div
+              data-testid="avatar-audio-motion-controls"
+              data-avatar-sound-theme={avatarSoundTheme}
+              data-avatar-voice-active={voiceTalking ? "true" : "false"}
+              style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}
+            >
+              <label style={{ display: "flex", alignItems: "center", gap: 6, color: "#bde7ff", fontSize: 11 }}>
+                Avatar sound pack
+                <select
+                  aria-label="Avatar sound pack"
+                  value={avatarSoundTheme}
+                  onChange={(event) => soundSettingsStore.setTheme(event.target.value as SoundThemeId)}
+                  style={{ maxWidth: 180, padding: "7px 9px", color: "#fff", background: "#151022", border: "1px solid #63428f", borderRadius: 6 }}
+                >
+                  {Object.values(SOUND_THEMES).map((theme) => (
+                    <option key={theme.id} value={theme.id}>{theme.icon} {theme.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="tmi-avatar-studio-chip"
+                data-testid="avatar-preview-sound-pack"
+                onClick={() => SoundSystemEngine.play("broadcast_start", avatarSoundTheme)}
+              >
+                Preview sound
+              </button>
+              <button
+                type="button"
+                className="tmi-avatar-studio-chip"
+                data-testid="avatar-preview-microphone-toggle"
+                aria-pressed={microphoneEnabled}
+                disabled={microphoneStarting}
+                onClick={() => microphoneEnabled ? stopMicrophonePreview() : void startMicrophonePreview()}
+              >
+                {microphoneStarting ? "Starting mic…" : microphoneEnabled ? "Turn mic off" : "Enable mic lip sync"}
+              </button>
+              {microphoneEnabled ? (
+                <span data-testid="avatar-microphone-level" aria-live="polite" style={{ color: voiceTalking ? "#00FF88" : "#9aa0aa", fontSize: 10 }}>
+                  {voiceTalking ? "Voice active" : "Mic on · listening locally"}
+                </span>
+              ) : null}
+              {microphoneError ? <span role="status" style={{ color: "#ff8aa8", fontSize: 10 }}>{microphoneError}</span> : null}
+            </div>
             <AvatarForgePreview3D
               hero
               cameraFocus={cameraFocus}
@@ -482,6 +607,8 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
               bodyMass={bodyMass}
               equippedCosmeticIds={equippedCosmeticIds}
               portraitUrl={portraitUrl ?? undefined}
+              talking={voicePreview.talking}
+              phoneme={voicePreview.phoneme}
             />
             <div
               style={{

@@ -22,6 +22,7 @@ import {
 } from "@/lib/live/StageLifecycleEngine";
 import { dispatchVenueToolsCommand } from "@/lib/venue/VenueToolsDirector";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
+import { canServeCurtainAd } from "@/lib/commerce/CanonicalPricingRegistry";
 import { reportVenueToolsModuleHealth } from "@/lib/venue/VenueToolsHealthRegistry";
 
 export type VenueCurtainDirectorState =
@@ -117,6 +118,16 @@ export function getActiveBreakClock(sessionId: string): VenueBreakClock | undefi
 
 /** Commercial inventory resolver — Rule 12 chain, honest NO_FILL intermission art. */
 export function resolveCommercialInventory(zone: string = "curtain-ad-rail"): CommercialInventoryResolution {
+  // Curtain ads NEVER interrupt active performance (OPEN / LIVE).
+  if (!canServeCurtainAd(_directorState)) {
+    return {
+      inventoryClass: "NO_FILL",
+      campaignId: "curtain-blocked-active-performance",
+      creativeUrl: "/images/tmi-intermission-placeholder.jpg",
+      advertiserName: "Intermission",
+      honestNoFill: true,
+    };
+  }
   const slot = getAdSlotForZone(zone);
   if (slot.type === "paid" && slot.sponsor) {
     return {

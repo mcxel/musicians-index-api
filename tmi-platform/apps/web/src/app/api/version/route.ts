@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CANONICAL_RELEASE_MANIFEST } from "@/lib/system/TmiReleaseMigrationAuthority";
 
 /**
  * Deployment identity for runtime-evidence probes (T1 certification gate).
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
         process.env.VERCEL_GIT_COMMIT_SHA && process.env.VERCEL_GIT_COMMIT_REF
           ? "vercel-system-env"
           : "fallback",
+      releaseManifest: CANONICAL_RELEASE_MANIFEST,
     },
     {
       headers: {

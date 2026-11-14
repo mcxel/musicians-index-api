@@ -3,6 +3,9 @@
 // then set the corresponding STRIPE_PRICE_* env var in Vercel.
 // All subscription tiers fall back to inline price_data so checkout works immediately
 // even without real price IDs — no Stripe configuration required to start collecting.
+// Placement / sync ledger: CanonicalPricingRegistry.ts (no second price table).
+
+import { sortOffersLowestPriceFirst } from "../commerce/PriceSortAuthority";
 
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
@@ -13,6 +16,7 @@ export const STRIPE_PRODUCTS = {
   // only, never used for new checkout.
   FAN_PRO_MONTHLY: {
     productId: "prod_fan_pro",
+    // TEST catalog (acct_1T0tag…): price_1UAj28…zQ4dTJv2. LIVE twin price_1TcJnF… is live-only.
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PRO ?? "price_1UAj28EAwH1Fjtu9zQ4dTJv2",
     name:      "TMI Fan — Pro",
     price:     499,  // $4.99/mo
@@ -71,6 +75,7 @@ export const STRIPE_PRODUCTS = {
   // ── Performer subscriptions ───────────────────────────────────────────────
   PERFORMER_PRO_MONTHLY: {
     productId: "prod_performer_pro",
+    // TEST catalog: price_1UAj28…eB1IOCcN ($2.99). LIVE twin price_1TcKDB… is live-only.
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PRO ?? "price_1UAj28EAwH1Fjtu9eB1IOCcN",
     name:      "TMI Performer — Pro",
     price:     299,  // $2.99/mo
@@ -89,7 +94,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_silver",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? "price_1TcK0dEAwH1Fjtu9MXK323Q7",
     name:      "TMI Performer — Silver",
-    price:     499,  // $4.99/mo
+    price:     1299, // $12.99/mo
     interval:  "month" as const,
     features:  ["Everything in Ruby","Fan club tools","Tipping enabled","Merch store access","Silver badge"],
   },
@@ -97,7 +102,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_gold",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
     name:      "TMI Performer — Gold",
-    price:     999,  // $9.99/mo
+    price:     1799, // $17.99/mo
     interval:  "month" as const,
     features:  ["Everything in Silver","Priority placement","Billboard rotation","Gold performer badge"],
   },
@@ -105,7 +110,7 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_performer_platinum",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
     name:      "TMI Performer — Platinum",
-    price:     1999, // $19.99/mo
+    price:     2299, // $22.99/mo
     interval:  "month" as const,
     features:  ["Everything in Gold","NFT minting rights","Unlimited uploads","Tour booking tools","Platinum badge"],
   },
@@ -262,6 +267,106 @@ export const STRIPE_PRODUCTS = {
     interval:  "month" as const,
   },
 
+  // ── Advertising entry — public ad honor: starting as low as $0.99 a day ─────
+  // REAL purchasable PLATFORM_AD day entry (one day of inventory). Not CPM/CPC teaser.
+  AD_ENTRY_DAY_099: {
+    productId: "prod_ad_entry_day",
+    priceId:   process.env.STRIPE_PRICE_AD_ENTRY_DAY_099 ?? "price_ad_entry_day_099",
+    name:      "Platform Ad — Starting Entry ($0.99/day)",
+    price:     99, // $0.99
+    interval:  "one_time" as const,
+  },
+
+  // ── Low-friction one-time ads ($2.99–$29.99) — PLATFORM_AD inventory ───────
+  // Volume path for self-serve placements. Counts against member ad allowance.
+  AD_MICRO_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_MICRO_SPOT ?? "price_ad_micro_spot",
+    name:      "Platform Ad — Micro Spot (24h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  AD_DAY_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_DAY_SPOT ?? "price_ad_day_spot",
+    name:      "Platform Ad — Day Spot",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  AD_WEEK_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_WEEK_SPOT ?? "price_ad_week_spot",
+    name:      "Platform Ad — Week Spot",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  AD_FEATURE_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_FEATURE_SPOT ?? "price_ad_feature_spot",
+    name:      "Platform Ad — Feature Spot",
+    price:     1499, // $14.99
+    interval:  "one_time" as const,
+  },
+  AD_PREMIUM_SPOT: {
+    productId: "prod_ad_low_friction",
+    priceId:   process.env.STRIPE_PRICE_AD_PREMIUM_SPOT ?? "price_ad_premium_spot",
+    name:      "Platform Ad — Premium Spot",
+    price:     2999, // $29.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_STRIP_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_STRIP_OT ?? "price_magazine_strip_ot",
+    name:      "Magazine Strip Ad (one-time)",
+    price:     499, // $4.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_HALF_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_HALF_OT ?? "price_magazine_half_ot",
+    name:      "Magazine Half-Page Ad (one-time)",
+    price:     1499, // $14.99
+    interval:  "one_time" as const,
+  },
+  MAGAZINE_FULL_OT: {
+    productId: "prod_ad_magazine_ot",
+    priceId:   process.env.STRIPE_PRICE_MAGAZINE_FULL_OT ?? "price_magazine_full_ot",
+    name:      "Magazine Full-Page Ad (one-time)",
+    price:     2999, // $29.99
+    interval:  "one_time" as const,
+  },
+
+  // ── Performance-native inventory (Jumbotron / Curtain / Ribbon) ───────────
+  // Does NOT count against member PLATFORM_AD allowance. Curtain never interrupts LIVE.
+  JUMBOTRON_FACE_DAY: {
+    productId: "prod_jumbotron_ad",
+    priceId:   process.env.STRIPE_PRICE_JUMBOTRON_FACE_DAY ?? "price_jumbotron_face_day",
+    name:      "Jumbotron Face — Day",
+    price:     999, // $9.99
+    interval:  "one_time" as const,
+  },
+  JUMBOTRON_INTERMISSION: {
+    productId: "prod_jumbotron_ad",
+    priceId:   process.env.STRIPE_PRICE_JUMBOTRON_INTERMISSION ?? "price_jumbotron_intermission",
+    name:      "Jumbotron Intermission Takeover",
+    price:     1999, // $19.99
+    interval:  "one_time" as const,
+  },
+  CURTAIN_INTERMISSION_SPOT: {
+    productId: "prod_curtain_ad",
+    priceId:   process.env.STRIPE_PRICE_CURTAIN_INTERMISSION ?? "price_curtain_intermission_spot",
+    name:      "Curtain Intermission Spot",
+    price:     1499, // $14.99 — intermission / closed curtain only
+    interval:  "one_time" as const,
+  },
+  RIBBON_SPONSOR_DAY: {
+    productId: "prod_ribbon_ad",
+    priceId:   process.env.STRIPE_PRICE_RIBBON_SPONSOR_DAY ?? "price_ribbon_sponsor_day",
+    name:      "Sponsor Ribbon — Day",
+    price:     799, // $7.99
+    interval:  "one_time" as const,
+  },
+
   // ── Artist upgrades ───────────────────────────────────────────────────────
   ARTIST_SPOTLIGHT: {
     productId: "prod_artist_spotlight",
@@ -388,6 +493,60 @@ export const STRIPE_PRODUCTS = {
     priceId:   process.env.STRIPE_PRICE_DISCOVERY_BOOST_BLAST ?? "price_discovery_boost_blast",
     name:      "TMI Discovery Boost — Blast (7 days)",
     price:     1999, // $19.99
+    interval:  "one_time" as const,
+  },
+
+  /**
+   * $2.99 (299 cents) Entry-Level 4-Hour Discovery Boosts across eligible sections
+   * (UniversalFourHourBoostPolicy §16718 — additive; never overwrites higher tiers).
+   */
+  VIDEO_SHUFFLE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_VIDEO_SHUFFLE_BOOST_299 ?? "price_video_shuffle_boost_299",
+    name:      "TMI Video Shuffle — $2.99 Entry Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  LOBBY_WALL_PROFILE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_LOBBY_WALL_PROFILE_BOOST_299 ?? "price_lobby_wall_profile_boost_299",
+    name:      "TMI Live Lobby Wall — $2.99 Profile/Video Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  PERFORMER_PROFILE_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_PERFORMER_PROFILE_BOOST_299 ?? "price_performer_profile_boost_299",
+    name:      "TMI Performer Profile Discovery — $2.99 Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  YOPHO_CARD_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_YOPHO_CARD_BOOST_299 ?? "price_yopho_card_boost_299",
+    name:      "TMI YoPho Card Discovery — $2.99 Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  STREAM_WIN_RADIO_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_STREAM_WIN_RADIO_BOOST_299 ?? "price_stream_win_radio_boost_299",
+    name:      "TMI Stream & Win Radio — $2.99 Rotation Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  SHOWS_RELEASES_BOOST_299: {
+    productId: "prod_discovery_boost_299",
+    priceId:   process.env.STRIPE_PRICE_SHOWS_RELEASES_BOOST_299 ?? "price_shows_releases_boost_299",
+    name:      "TMI Shows & Releases — $2.99 Event Boost (4h)",
+    price:     299, // $2.99
+    interval:  "one_time" as const,
+  },
+  YOPHO_PROP_PACK_299: {
+    productId: "prod_yopho_customization",
+    priceId:   process.env.STRIPE_PRICE_YOPHO_PROP_PACK_299 ?? "price_yopho_prop_pack_299",
+    name:      "YoPho Card Customization — Props, Borders & Frames Pack",
+    price:     299, // $2.99
     interval:  "one_time" as const,
   },
 
@@ -752,6 +911,67 @@ export function getAllSubscriptionProducts(accountType: SubscriptionAccountType)
   return SUBSCRIPTION_TIER_ORDER.map((tier) => ({ tier, ...getSubscriptionProduct(accountType, tier) }));
 }
 
+/**
+ * Membership + special SKUs sorted by real price ASC (lowest eligible first).
+ * FREE ($0) is prepended. Fan Family / Performer Band included when present.
+ * Display surfaces MUST use this (or PriceSortAuthority) — never hard-coded $ order.
+ */
+export function getSubscriptionOffersLowestFirst(accountType: SubscriptionAccountType): Array<{
+  id: string;
+  tier: SubscriptionTierKey | "FREE" | "FAMILY" | "BAND";
+  name: string;
+  priceCents: number;
+  priceId: string | null;
+  features: readonly string[];
+}> {
+  const paid = getAllSubscriptionProducts(accountType).map((p) => ({
+    id: `${accountType}-${p.tier}`,
+    tier: p.tier as SubscriptionTierKey | "FREE" | "FAMILY" | "BAND",
+    name: p.name,
+    priceCents: p.price,
+    priceId: p.priceId,
+    features: p.features,
+    eligible: true as boolean,
+  }));
+  if (accountType === "fan") {
+    const family = STRIPE_PRODUCTS.FAN_FAMILY_MONTHLY;
+    paid.push({
+      id: "fan-FAMILY",
+      tier: "FAMILY",
+      name: family.name,
+      priceCents: family.price,
+      priceId: family.priceId,
+      features: family.features,
+      eligible: true,
+    });
+  } else {
+    const band = STRIPE_PRODUCTS.PERFORMER_BAND_MONTHLY;
+    paid.push({
+      id: "performer-BAND",
+      tier: "BAND",
+      name: band.name,
+      priceCents: band.price,
+      priceId: band.priceId,
+      features: band.features,
+      eligible: true,
+    });
+  }
+  const sorted = sortOffersLowestPriceFirst(paid);
+  return [
+    {
+      id: `${accountType}-FREE`,
+      tier: "FREE",
+      name: accountType === "fan" ? "TMI Fan — Free" : "TMI Performer — Free",
+      priceCents: 0,
+      priceId: null,
+      features: accountType === "fan"
+        ? (["Read TMI magazine", "Browse profiles", "Watch public streams", "Create fan account"] as const)
+        : (["Performer profile", "Basic bio + links", "Submit to magazine", "Audience discovery"] as const),
+    },
+    ...sorted.map(({ eligible: _e, ...rest }) => rest),
+  ];
+}
+
 /** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
 export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey> = {
   tree: "MEDIA_PLAYER_CHASSIS_TREE",
@@ -803,6 +1023,32 @@ export function resolveFanCosmeticUsdCents(
 
 export function isRealPriceId(priceId: string): boolean {
   return /^price_1[A-Za-z0-9]{14,}$/.test(priceId);
+}
+
+/** One-time founder packs that currently resolve to a real Stripe Price ID. */
+export function getRealFoundingPacks(): Array<{
+  key: StripeProductKey;
+  name: string;
+  priceCents: number;
+  priceId: string;
+}> {
+  const keys: StripeProductKey[] = [
+    "FOUNDING_SUPPORTER",
+    "FOUNDING_CREATOR",
+    "FOUNDING_MEMBER",
+    "FOUNDING_DIAMOND",
+  ];
+  return keys
+    .map((key) => {
+      const prod = STRIPE_PRODUCTS[key];
+      return {
+        key,
+        name: prod.name,
+        priceCents: prod.price,
+        priceId: prod.priceId,
+      };
+    })
+    .filter((pack) => isRealPriceId(pack.priceId));
 }
 
 // Returns only the products that have real Stripe price IDs (safe to checkout)

@@ -4,17 +4,18 @@ import { editorialSubmissionEngine } from "@/lib/editorial-economy/EditorialSubm
 import { sourceValidationEngine } from "@/lib/editorial-economy/SourceValidationEngine";
 
 class ArticleReviewQueueEngine {
-  listQueue() {
-    return editorialSubmissionEngine.list().filter((submission) => submission.status === "submitted");
+  async listQueue() {
+    const all = await editorialSubmissionEngine.list();
+    return all.filter((submission) => submission.status === "submitted");
   }
 
-  approve(submissionId: string, reviewerId: string) {
-    const reviewerGate = contributorTrustGateEngine.canApprove(reviewerId);
+  async approve(submissionId: string, reviewerId: string) {
+    const reviewerGate = await contributorTrustGateEngine.canApprove(reviewerId);
     if (!reviewerGate.allowed) {
       return { ok: false as const, reason: reviewerGate.reason ?? "reviewer-blocked" };
     }
 
-    const submission = editorialSubmissionEngine.get(submissionId);
+    const submission = await editorialSubmissionEngine.get(submissionId);
     if (!submission) {
       return { ok: false as const, reason: "submission-not-found" };
     }
@@ -29,7 +30,7 @@ class ArticleReviewQueueEngine {
       return { ok: false as const, reason: safety.reason ?? "safety-validation-failed" };
     }
 
-    const next = editorialSubmissionEngine.update({
+    const next = await editorialSubmissionEngine.update({
       ...submission,
       status: "approved",
       rejectionReason: undefined,
@@ -38,18 +39,18 @@ class ArticleReviewQueueEngine {
     return { ok: true as const, submission: next };
   }
 
-  reject(submissionId: string, reviewerId: string, reason: string) {
-    const reviewerGate = contributorTrustGateEngine.canApprove(reviewerId);
+  async reject(submissionId: string, reviewerId: string, reason: string) {
+    const reviewerGate = await contributorTrustGateEngine.canApprove(reviewerId);
     if (!reviewerGate.allowed) {
       return { ok: false as const, reason: reviewerGate.reason ?? "reviewer-blocked" };
     }
 
-    const submission = editorialSubmissionEngine.get(submissionId);
+    const submission = await editorialSubmissionEngine.get(submissionId);
     if (!submission) {
       return { ok: false as const, reason: "submission-not-found" };
     }
 
-    const next = editorialSubmissionEngine.update({
+    const next = await editorialSubmissionEngine.update({
       ...submission,
       status: "rejected",
       rejectionReason: reason,

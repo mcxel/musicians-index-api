@@ -140,13 +140,19 @@ function runBezelRailCertification() {
     !bezelSrc.includes("new RTCPeerConnection") &&
     bezelSrc.includes("One canonical TMI session fans out");
 
-  // Gate 14: Top cluster layout convergence
+  // Gate 14: Top cluster layout convergence.
+  // CAST converged from a standalone trigger button (tmi-top-cluster-cast,
+  // valid when this gate was first written 2026-09-06) into a section/group
+  // label grouping real cast-action controls — data-tmi-cast-controls-group
+  // is the current, correct invariant; CAST is never a clickable button.
+  // The external-platform connection/status rail lives exclusively in
+  // LiveDistributionBezel and must never be duplicated inside this cluster.
   const mediaStackSrc = fs.readFileSync(
     path.join(__dirname, "../components/commandCenter/CommandCenterMediaStack.tsx"),
     "utf8",
   );
   results["top_cluster_layout_convergence"] =
-    mediaStackSrc.includes("tmi-top-cluster-cast") &&
+    mediaStackSrc.includes('data-tmi-cast-controls-group="1"') &&
     mediaStackSrc.includes("tmi-top-cluster-user-id") &&
     mediaStackSrc.includes("tmi-top-cluster-sponsors") &&
     mediaStackSrc.includes("tmi-top-cluster-sharescreen") &&
@@ -199,9 +205,23 @@ function runBezelRailCertification() {
 
   console.log(`\nTOTAL GATES: ${Object.keys(results).length} | PASSED: ${Object.values(results).filter(Boolean).length}`);
 
-  if (!allPassed) {
-    throw new Error("[SLICE_4_CERTIFICATION_FAILED] One or more certification gates failed.");
-  }
+  return { allPassed, results };
 }
 
-runBezelRailCertification();
+describe("Slice 4 P0.1 — Bezel Broadcast Destination Rail Certification", () => {
+  it("all 16 certification gates pass", () => {
+    const { allPassed, results } = runBezelRailCertification();
+    for (const [gate, passed] of Object.entries(results)) {
+      expect(passed).toBe(true);
+    }
+    expect(allPassed).toBe(true);
+  });
+});
+
+if (typeof describe === "undefined") {
+  const { allPassed } = runBezelRailCertification();
+  if (!allPassed) {
+    console.error("[SLICE_4_CERTIFICATION_FAILED] One or more certification gates failed.");
+    process.exitCode = 1;
+  }
+}

@@ -63,6 +63,8 @@ const MORE_COMMON: MobileQuickPanelButtonDef[] = [];
 
 export interface MobileQuickPanelCapabilitiesContext extends VenueToolsPolicyContext {
   role: MobileCommandCenterRole;
+  /** Real live room/session only — never synthetic hub-curtain IDs. */
+  roomId?: string | null;
 }
 
 export function getMobileQuickPanelCapabilities(
@@ -74,7 +76,9 @@ export function getMobileQuickPanelCapabilities(
 } {
   const policy = resolveVenueToolsPolicy({ role, ...ctx });
   const primary = role === "fan" ? [...LOWER_ROW_FAN] : [...LOWER_ROW_PERFORMER];
-  if (!isVenueToolsEnabled(policy)) {
+  const hasRealRoom = Boolean(ctx?.roomId);
+  // Venue Tools: real roomId + policy — same law as desktop MediaStack hubLiveRoomId gate.
+  if (!hasRealRoom || !isVenueToolsEnabled(policy)) {
     return {
       primary: primary.filter((item) => item.id !== "venue-tools"),
       more: MORE_COMMON,

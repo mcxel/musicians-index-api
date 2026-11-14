@@ -107,3 +107,51 @@ export interface DisplayTargetBinding {
   bus: "PROGRAM" | "PREVIEW";
   active: boolean;
 }
+
+export type MonitorPlacement =
+  | "FOCUS"
+  | "LEFT"
+  | "RIGHT"
+  | "TOP"
+  | "BOTTOM"
+  | "STACKED"
+  | "PIP"
+  | "DOCKED"
+  | "HIDDEN";
+
+export type PerformanceLayoutPreset =
+  | "STACKED"
+  | "DUAL_SIDE_BY_SIDE"
+  | "FOCUS_PRIMARY"
+  | "GRID"
+  | "PIP_CORNER";
+
+export type SurfaceAspectRatio = "16:9" | "4:3" | "1:1" | "9:16";
+
+export type SurfaceSourceType =
+  | "PERFORMER_FEED"
+  | "FAN_PRESENCE"
+  | "AUDIENCE_VIEW"
+  | "SELF_CAMERA"
+  | "BAND_MEMBER"
+  | "GUEST"
+  | "HOST"
+  | "BACKSTAGE"
+  | "AUX";
+
+export interface PlayerSurfaceAssignment {
+  monitorId: string;
+  slotIndex: number;
+  label: string;
+  sourceId: string;
+  sourceType: SurfaceSourceType;
+  streamUrl?: string;
+  aspectRatio: SurfaceAspectRatio;
+  placement: MonitorPlacement;
+  isPrimaryAudio: boolean;
+  isFocused: boolean;
+  isAuthorized: boolean;
+  canReorder: boolean;
+  canSwap: boolean;
+}
+

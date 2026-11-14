@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { resolveTierFromDb } from '@/lib/auth/resolveAuthoritativeTier';
+import {
+  entitlementEvidenceFromUser,
+  resolveTierFromDb,
+} from '@/lib/auth/resolveAuthoritativeTier';
 import { resolveSessionDisplayName } from '@/lib/auth/resolveSessionIdentity';
 import prisma from '@/lib/prisma';
 
@@ -64,6 +67,9 @@ export async function GET(req: NextRequest) {
         displayName: true,
         name: true,
         tier: true,
+        stripeSubscriptionId: true,
+        stripePriceId: true,
+        billingStatus: true,
         userProfile: { select: { displayName: true } },
       },
     });
@@ -74,7 +80,11 @@ export async function GET(req: NextRequest) {
       dbUser?.name ??
       null;
     if (dbUser) {
-      tier = resolveTierFromDb(dbUser.email ?? rawEmail, dbUser.tier);
+      tier = resolveTierFromDb(
+        dbUser.email ?? rawEmail,
+        dbUser.tier,
+        entitlementEvidenceFromUser(dbUser),
+      );
     }
   } catch {
     // Keep session fallback identity when DB is unavailable.

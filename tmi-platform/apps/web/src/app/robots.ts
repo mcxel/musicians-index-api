@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
     '/terms',
     '/contact',
     '/disclosures',
+    '/feedback',
     '/explore',
     '/shows',
     '/battles',

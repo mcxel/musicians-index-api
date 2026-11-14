@@ -9,6 +9,7 @@
  */
 
 import type { PreviewQuality } from "@/lib/lobby/LobbyPreviewRuntime";
+import { livingWallAllowsQualityOff } from "@/lib/lobby/livingLobbyWallLaw";
 import { getPerformanceGovernorSnapshot, getDevicePresentationTier } from "./PerformanceGovernor";
 import {
   LIVE_LOBBY_WALL_CONTRACT_ID,
@@ -37,12 +38,15 @@ function mapTierToPreviewQuality(
   isLive: boolean,
   presentationTier: ReturnType<typeof getPerformanceGovernorSnapshot>["presentationTier"],
 ): LiveLobbyWallPreviewQuality {
-  if (!visible || !isLive) return visible ? "thumb" : "off";
+  // Living Lobby Wall: visible + live never resolves to "off" (frozen).
+  if (livingWallAllowsQualityOff({ visible, isLive })) {
+    return visible ? "thumb" : "off";
+  }
   if (focused && presentationTier !== "minimal") {
     return presentationTier === "economy" ? "low" : "medium";
   }
   if (presentationTier === "minimal") return "thumb";
-  if (presentationTier === "economy") return "thumb";
+  if (presentationTier === "economy") return "low";
   return "low";
 }
 

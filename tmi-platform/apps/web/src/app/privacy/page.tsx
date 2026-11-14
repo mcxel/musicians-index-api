@@ -1,4 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy · The Musician's Index",
+  description: "Privacy policy, data collection, cookies and security terms for The Musician's Index.",
+  alternates: {
+    canonical: "https://themusiciansindex.com/privacy",
+  },
+};
 
 export default function PrivacyPage() {
   return (
@@ -35,7 +44,7 @@ export default function PrivacyPage() {
           },
           {
             title: "Cookies & Sessions",
-            body: "We use session cookies for authentication and preferences. We do not use third-party advertising cookies. You can clear cookies at any time through your browser settings.",
+            body: "We use session cookies for authentication and preferences. TMI also partners with Google AdSense and other certified advertising networks to help fund free access to the platform. These partners use cookies and similar technologies to serve ads and measure their performance, which may include personalized advertising based on your visits to this and other websites. You can review the categories of partners we work with and your choices, including opting out of personalized advertising, on our Advertising Disclosures page or through Google's Ads Settings. You can also clear or block cookies at any time through your browser settings.",
           },
           {
             title: "Your Rights",
@@ -46,14 +55,26 @@ export default function PrivacyPage() {
             body: "For privacy-related questions, contact BernoutGlobal LLC at berntmusic33@gmail.com or through our support portal.",
           },
         ].map((section) => (
-          <div key={section.title} style={{ marginBottom: 28 }}>
+          <div
+            key={section.title}
+            id={section.title === "Cookies & Sessions" ? "cookies" : undefined}
+            style={{
+              marginBottom: 28,
+              scrollMarginTop: 80,
+              padding: section.title === "Cookies & Sessions" ? "14px 18px" : undefined,
+              borderRadius: section.title === "Cookies & Sessions" ? 8 : undefined,
+              border: section.title === "Cookies & Sessions" ? "1px solid rgba(0,255,255,0.3)" : undefined,
+              background: section.title === "Cookies & Sessions" ? "rgba(0,255,255,0.04)" : undefined,
+            }}
+          >
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "#00FFFF", margin: "0 0 8px" }}>{section.title}</h2>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.7, margin: 0 }}>{section.body}</p>
           </div>
         ))}
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", gap: 12 }}>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link href="/support" style={{ fontSize: 11, color: "#00FFFF", textDecoration: "none" }}>Support Portal →</Link>
+          <Link href="/disclosures" style={{ fontSize: 11, color: "#00FFFF", textDecoration: "none" }}>Advertising Disclosures →</Link>
           <Link href="/community-guidelines" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Community Guidelines</Link>
         </div>
       </div>

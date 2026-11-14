@@ -1,0 +1,441 @@
+'use client';
+
+/**
+ * GoLiveRuntime — persistent live show wrapper.
+ *
+ * The show never stops. The runtime never unloads. Modes switch, nothing reloads.
+ *
+ * Mode A — FULL_VENUE: stage fills screen (audience, reactions, performers, effects)
+ * Mode B — DASHBOARD: venue shrinks to background; dashboard overlay slides in
+ * Mode C — canisters pop over the venue via CanisterDock (never a page nav)
+ *
+ * Control booth canisters (all draggable, all dockable via CanisterShell):
+ *   Lighting · Effects · Camera · Banner · Sponsor · Director
+ *
+ * Rule 21: this is a mode of the ONE Venue Runtime, not a separate system.
+ */
+
+import {
+  useState, useCallback, type ReactNode,
+} from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Link from 'next/link';
+import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
+import CanisterShell from '@/components/canisters/CanisterShell';
+import EventOwnerControls from '@/components/live/EventOwnerControls';
+import { AudiencePresenceProvider, useAudiencePresence } from '@/components/live/AudiencePresenceProvider';
+import EnergyMeterDisplay from '@/components/live/EnergyMeterDisplay';
+import FriendSeatFlow from '@/components/live/FriendSeatFlow';
+import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
+import VenueToolsToggleButton from '@/components/hud/VenueToolsToggleButton';
+import {
+  showBannerText as directorShowBanner,
+  clearBannerText as directorClearBanner,
+} from '@/lib/live/StageDirectorEngine';
+import RoomEnvironmentLayer from '@/components/live/RoomEnvironmentLayer';
+import { slugToVenueType, getVenueAsset, type VenueType } from '@/lib/venues/VenueAssetRegistry';
+import {
+  resolveGoLiveCertifiedVenuePackage,
+  type CertifiedVenuePackage,
+} from '@/lib/venues/CertifiedVenuePackage';
+
+// ─── Avatar Action Wheel wrapper (gets entityId from context) ──────────────────
+
+function AvatarActionWheelWrapper({ roomId }: { roomId: string }) {
+  const { entity } = useAudiencePresence();
+  if (!entity) return null;
+  return <AvatarActionWheel entityId={entity.userId} roomId={roomId} defaultOpen={false} />;
+}
+
+// ─── Mode types ───────────────────────────────────────────────────────────────
+
+type ViewMode = 'FULL_VENUE' | 'DASHBOARD' | 'BACKSTAGE';
+
+// ─── Control canister content (banner + owner — lighting/director → VENUE TOOLS) ─
+
+function BannerContent() {
+  const [bannerText, setBannerText] = useState('');
+  const [bannerColor, setBannerColor] = useState('#00E5FF');
+  const [active, setActive] = useState(false);
+
+  const QUICK = [
+    { text: '💸 SEND A TIP', color: '#FF2DAA' },
+    { text: '🛍️ MERCH AVAILABLE NOW', color: '#00E5FF' },
+    { text: '⭐ JOIN MY FAN CLUB', color: '#FFD700' },
+    { text: '🔥 BATTLE ME', color: '#FF6B35' },
+    { text: '📀 NEW TRACK DROPPING', color: '#AA2DFF' },
+  ];
+
+  const fire = (text: string, color: string) => {
+    setBannerText(text);
+    setBannerColor(color);
+    setActive(true);
+    directorShowBanner(text, color);
+  };
+
+  const clear = () => {
+    setActive(false);
+    setBannerText('');
+    directorClearBanner();
+  };
+
+  return (
+    <div style={{ padding: 14 }}>
+      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 8 }}>BANNER TEXT</div>
+      <input
+        value={bannerText}
+        onChange={e => setBannerText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && bannerText.trim()) fire(bannerText, bannerColor); }}
+        placeholder="Type message + press Enter…"
+        maxLength={80}
+        style={{
+          width: '100%', padding: '9px 12px', boxSizing: 'border-box',
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none', marginBottom: 8,
+        }}
+      />
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <button
+          onClick={() => bannerText.trim() && fire(bannerText, bannerColor)}
+          style={{ flex: 1, padding: '8px', background: '#00E5FF18', border: '1px solid #00E5FF44', borderRadius: 7, color: '#00E5FF', fontSize: 10, fontWeight: 900, cursor: 'pointer' }}
+        >
+          🔴 SHOW BANNER
+        </button>
+        {active && (
+          <button
+            onClick={clear}
+            style={{ padding: '8px 10px', background: 'rgba(255,32,32,0.12)', border: '1px solid rgba(255,32,32,0.3)', borderRadius: 7, color: '#FF4040', fontSize: 10, fontWeight: 900, cursor: 'pointer' }}
+          >
+            ✕ CLEAR
+          </button>
+        )}
+      </div>
+      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', marginBottom: 6, letterSpacing: '.1em' }}>QUICK BANNERS</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {QUICK.map(q => (
+          <button
+            key={q.text}
+            onClick={() => fire(q.text, q.color)}
+            style={{
+              padding: '7px 10px',
+              background: active && bannerText === q.text ? `${q.color}16` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${active && bannerText === q.text ? q.color : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 6, color: active && bannerText === q.text ? q.color : 'rgba(255,255,255,0.5)',
+              fontSize: 10, cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            {q.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Canister dock ────────────────────────────────────────────────────────────
+
+type DockItem = { id: string; icon: string; label: string; content: ReactNode };
+
+function CanisterDock({ accentColor, eventId, roomId }: { accentColor: string; eventId: string; roomId: string }) {
+  const DOCK_ITEMS: DockItem[] = [
+    {
+      id: 'banner', icon: '📢', label: 'Banner',
+      content: <BannerContent />,
+    },
+    {
+      id: 'owner', icon: '⚙️', label: 'Controls',
+      content: <EventOwnerControls eventId={eventId} inline />,
+    },
+  ];
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '6px 12px',
+      background: 'rgba(5,3,16,0.92)',
+      backdropFilter: 'blur(10px)',
+      borderTop: `1px solid ${accentColor}22`,
+    }}>
+      <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '.15em', marginRight: 4 }}>
+        CONTROL BOOTH
+      </span>
+      <VenueToolsToggleButton accent={accentColor} roomId={roomId} role="performer" policyContext={{ isGoLiveContext: true }} />
+      {DOCK_ITEMS.map(item => (
+        <CanisterShell
+          key={item.id}
+          type={item.id === 'banner' ? 'messaging' : item.id === 'owner' ? 'activity' : 'playlist'}
+          icon={item.icon}
+          label={item.label}
+          accentColor={accentColor}
+          expandedWidth={320}
+          expandedHeight={320}
+          disableFullscreen
+        >
+          {item.content}
+        </CanisterShell>
+      ))}
+    </div>
+  );
+}
+
+// ─── Dashboard overlay content (shown in DASHBOARD mode) ─────────────────────
+
+function DashboardOverlay({ onReturn, accentColor }: { onReturn: () => void; accentColor: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97, y: 10 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+      style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(5,3,16,0.98) 100%)',
+        backdropFilter: 'blur(24px)',
+        zIndex: 100,
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 20px',
+        borderBottom: `1px solid ${accentColor}22`,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: accentColor, letterSpacing: '.12em' }}>
+          PERFORMER DASHBOARD
+        </span>
+        <span style={{ fontSize: 8, color: 'rgba(0,255,136,0.7)', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: 4, padding: '2px 8px', fontWeight: 900 }}>
+          🔴 SHOW RUNNING
+        </span>
+        <button
+          onClick={onReturn}
+          style={{
+            marginLeft: 'auto',
+            padding: '7px 16px',
+            background: accentColor,
+            border: 'none', borderRadius: 8,
+            fontSize: 10, fontWeight: 900, color: '#050310',
+            cursor: 'pointer', letterSpacing: '.06em',
+            boxShadow: `0 0 16px ${accentColor}44`,
+          }}
+        >
+          ← RETURN TO VENUE
+        </button>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12, alignContent: 'start' }}>
+        {[
+          { icon: '📊', label: 'Analytics', href: '#', color: '#00E5FF' },
+          { icon: '💸', label: 'Tips Received', href: '#', color: '#FFD700' },
+          { icon: '📢', label: 'Announcements', href: '#', color: '#FF2DAA' },
+          { icon: '🎵', label: 'Setlist', href: '#', color: '#AA2DFF' },
+          { icon: '👥', label: 'Audience', href: '#', color: '#00FF88' },
+          { icon: '🤝', label: 'Sponsors', href: '#', color: '#FF6B35' },
+          { icon: '🛒', label: 'Merch Store', href: '#', color: '#C0A0FF' },
+          { icon: '💬', label: 'Messages', href: '#', color: accentColor },
+        ].map(item => (
+          <div key={item.label} style={{
+            background: `${item.color}08`,
+            border: `1px solid ${item.color}22`,
+            borderRadius: 12, padding: '16px',
+            cursor: 'pointer',
+          }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>{item.icon}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: item.color }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main persistent runtime ──────────────────────────────────────────────────
+
+interface GoLiveRuntimeProps {
+  roomId: string;
+  eventId?: string;
+  venueType?: VenueType;
+    eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'lounge' | 'slow-jams' | 'dance-party' | 'world-dance-party' | 'world-concert' | 'mini-concert' | 'release-party' | 'world-release' | 'mini-release';
+  accentColor?: string;
+  initialMode?: ViewMode;
+  instantEmptyStage?: boolean;
+  contained?: boolean;
+  /** When false, suppress hardcoded LIVE chrome (hub privacy path). */
+  showLiveChrome?: boolean;
+  /** Optional EventVenueEnvironment-resolved index override. */
+  venueIndex?: 0 | 1 | 2 | 3 | 4 | 5;
+  /** Step 4 Slice 2 — pre-resolved package; never silently swap venues. */
+  certifiedPackage?: CertifiedVenuePackage | null;
+  /** Opt into the existing room-resolved procedural world host. */
+  canonicalSpatialWorld?: boolean;
+}
+
+export default function GoLiveRuntime({
+  roomId,
+  eventId = roomId,
+  venueType: venueTypeProp,
+  eventType,
+  accentColor: accentColorProp,
+  initialMode = 'FULL_VENUE',
+  instantEmptyStage = false,
+  contained = false,
+  showLiveChrome = true,
+  venueIndex: venueIndexProp,
+  certifiedPackage: certifiedPackageProp = null,
+  canonicalSpatialWorld = false,
+}: GoLiveRuntimeProps) {
+  const certifiedPackage: CertifiedVenuePackage =
+    certifiedPackageProp ??
+    resolveGoLiveCertifiedVenuePackage({
+      venueId: venueTypeProp ?? null,
+      eventType: eventType ?? null,
+      category: eventType ?? null,
+    });
+  // Derive venueType from certified package first — refuse silent wrong venue.
+  const venueType: VenueType =
+    certifiedPackage.venueType ??
+    venueTypeProp ??
+    (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
+  const venueAsset = certifiedPackage.asset ?? getVenueAsset(venueType);
+  const accentColor = accentColorProp ?? venueAsset.accentColor;
+  const [viewMode, setViewMode] = useState<ViewMode>(initialMode);
+
+  const enterVenue   = useCallback(() => setViewMode('FULL_VENUE'), []);
+  const enterDash    = useCallback(() => setViewMode('DASHBOARD'), []);
+
+  const isVenueShrunk = viewMode !== 'FULL_VENUE';
+  const resolvedVenueIndex =
+    venueIndexProp ?? certifiedPackage.venueIndex ?? venueAsset.venueIndex ?? 1;
+  return (
+    <AudiencePresenceProvider>
+    <RoomEnvironmentLayer
+      venueType={venueType}
+      certifiedPackage={certifiedPackage}
+      mode="performer"
+      energyLevel={0.8}
+      style={{ height: contained ? "100%" : "100vh" }}
+    >
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    }}>
+
+      {/* ── Top bar — always visible ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 16px',
+        background: 'rgba(5,3,16,0.96)',
+        borderBottom: `1px solid ${accentColor}22`,
+        zIndex: 200, flexShrink: 0,
+      }}>
+        {showLiveChrome ? (
+        <span style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 8, fontWeight: 900, color: '#FF2020', letterSpacing: '.12em',
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', animation: 'grtBlink 1s step-end infinite' }} />
+          LIVE
+        </span>
+        ) : (
+        <span style={{
+          fontSize: 8, fontWeight: 900, color: '#00FFFF', letterSpacing: '.12em',
+        }}>
+          STAGE READY
+        </span>
+        )}
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)' }}>
+          Room {roomId}
+        </span>
+
+        {/* ── Friend Seating UI ── */}
+        <div style={{ marginLeft: 8 }}>
+          <FriendSeatFlow roomId={roomId} accentColor={accentColor} />
+        </div>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          {viewMode === 'FULL_VENUE' ? (
+            <button
+              onClick={enterDash}
+              style={{
+                padding: '6px 14px', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 8, fontSize: 9, fontWeight: 900,
+                color: 'rgba(255,255,255,0.65)', cursor: 'pointer', letterSpacing: '.06em',
+              }}
+            >
+              📊 DASHBOARD
+            </button>
+          ) : (
+            <button
+              onClick={enterVenue}
+              style={{
+                padding: '6px 14px', background: `${accentColor}18`,
+                border: `1px solid ${accentColor}44`,
+                borderRadius: 8, fontSize: 9, fontWeight: 900,
+                color: accentColor, cursor: 'pointer', letterSpacing: '.06em',
+                boxShadow: `0 0 12px ${accentColor}33`,
+              }}
+            >
+              🎭 RETURN TO VENUE
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Venue viewport — ALWAYS mounted, just opacity changes ── */}
+      <div style={{
+        flex: 1,
+        opacity: isVenueShrunk ? 0.3 : 1,
+        filter: isVenueShrunk ? 'blur(3px) scale(0.98)' : 'none',
+        transition: 'opacity 0.4s ease, filter 0.4s ease',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <UniversalVenueRenderer
+          roomId={roomId}
+          mode="performer"
+          canonicalSpatialWorld={canonicalSpatialWorld}
+          venueIndex={resolvedVenueIndex}
+          instantEmptyStage={instantEmptyStage}
+          eventType={eventType ?? null}
+          venueId={certifiedPackage.venueId}
+          certifiedPackage={certifiedPackage}
+        />
+        {/* Energy Meter HUD — top-right; Instant Go Live shifts left of Command Panel */}
+        <div style={{
+          position: 'absolute',
+          top: 12, right: instantEmptyStage ? 300 : 12,
+          zIndex: 30,
+          maxWidth: 260,
+        }}>
+          <EnergyMeterDisplay roomId={roomId} compact={false} />
+        </div>
+      </div>
+
+      {/* ── Dashboard overlay — slides over venue when active ── */}
+      <AnimatePresence>
+        {viewMode === 'DASHBOARD' && (
+          <DashboardOverlay onReturn={enterVenue} accentColor={accentColor} />
+        )}
+      </AnimatePresence>
+
+      {/* Audience Reaction Bar moved into VENUE TOOLS → Audience tab overlay
+          (VenueControlPanel) — was previously a permanently-visible strip
+          on the main runtime; reactions now live in the venue overlay HUD. */}
+
+      {/* ─── Avatar Action Wheel — floating control panel (bottom-right) ─── */}
+      <AvatarActionWheelWrapper roomId={roomId} />
+
+      {/* ── Canister Dock — ALWAYS visible at bottom ── */}
+      <CanisterDock accentColor={accentColor} eventId={eventId} roomId={roomId} />
+
+      <style>{`
+        @keyframes grtBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+      `}</style>
+    </div>
+    </RoomEnvironmentLayer>
+    </AudiencePresenceProvider>
+  );
+}

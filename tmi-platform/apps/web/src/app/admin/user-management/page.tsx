@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import AdminComplimentaryTierPanel from "@/components/admin/AdminComplimentaryTierPanel";
 import AdminAssignRolesPanel from "@/components/admin/AdminAssignRolesPanel";
+import AdminContributorLevelPanel from "@/components/admin/AdminContributorLevelPanel";
 
 export default async function UserManagementPage() {
   const auth = await getTmiAuth();
@@ -51,13 +52,13 @@ export default async function UserManagementPage() {
         </p>
       </div>
 
-      {/* Two-column layout */}
+      {/* Three-column layout */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 20,
-          maxWidth: 960,
+          maxWidth: 1400,
         }}
       >
         {/* Tier grants */}
@@ -90,6 +91,22 @@ export default async function UserManagementPage() {
             MULTI-ROLE ASSIGNMENT
           </div>
           <AdminAssignRolesPanel />
+        </div>
+
+        {/* Contributor level */}
+        <div>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              color: "#666",
+              marginBottom: 10,
+            }}
+          >
+            EDITORIAL CONTRIBUTOR LEVEL
+          </div>
+          <AdminContributorLevelPanel />
         </div>
       </div>
     </main>

@@ -1,0 +1,369 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { resolveTicketFee, TICKET_FEE_POLICY_ID } from "@/lib/tickets/TicketFeeResolver";
+import SeatClaimRail from "@/components/venues/SeatClaimRail";
+
+type SeatTier = "standard" | "premium" | "vip" | "sold";
+
+interface Seat {
+  id: string;
+  row: string;
+  number: number;
+  tier: SeatTier;
+  price: number;
+}
+
+const TIER_CONFIG: Record<SeatTier, { color: string; bg: string; label: string; price: number }> = {
+  vip:      { color: "#FFD700", bg: "rgba(255,215,0,0.18)",    label: "VIP",      price: 150 },
+  premium:  { color: "#00FFFF", bg: "rgba(0,255,255,0.15)",    label: "Premium",  price: 75  },
+  standard: { color: "#00FF88", bg: "rgba(0,255,136,0.12)",    label: "Standard", price: 35  },
+  sold:     { color: "#FF2DAA", bg: "rgba(255,45,170,0.15)",   label: "Sold",     price: 0   },
+};
+
+const VENUE_ID = "interactive-seating";
+const VENUE_SLUG = "interactive-seating";
+const EVENT_SLUG = "interactive-seating-event";
+
+function seatsFromConfig(config: {
+  zones: Array<{ id: string; label: string; capacity: number; priceCents: number; tier: string }>;
+  layout?: { sections?: Array<{ id: string; seats?: Array<{ id: string; row: string; number: number; status: string; price: number; tier: string }> }> };
+}): Seat[] {
+  const seats: Seat[] = [];
+  for (const section of config.layout?.sections ?? []) {
+    for (const s of section.seats ?? []) {
+      const tier: SeatTier =
+        s.status === "sold"
+          ? "sold"
+          : s.tier === "vip"
+            ? "vip"
+            : s.price >= 70
+              ? "premium"
+              : "standard";
+      seats.push({
+        id: s.id,
+        row: s.row,
+        number: s.number,
+        tier,
+        price: tier === "sold" ? 0 : s.price,
+      });
+    }
+  }
+  if (seats.length > 0) return seats;
+
+  // Build deterministic seats from zones (no Math.random — refresh-stable)
+  for (const z of config.zones) {
+    const rows = Math.min(12, Math.ceil(z.capacity / 16));
+    let n = 0;
+    for (let r = 0; r < rows; r++) {
+      const row = String.fromCharCode(65 + r);
+      const perRow = Math.min(16, z.capacity - n);
+      for (let c = 1; c <= perRow; c++) {
+        n += 1;
+        const tier: SeatTier = z.tier === "vip" ? "vip" : z.priceCents >= 7500 ? "premium" : "standard";
+        seats.push({
+          id: `${z.id}-${n}`,
+          row,
+          number: c,
+          tier,
+          price: z.priceCents / 100,
+        });
+      }
+    }
+  }
+  return seats;
+}
+
+export default function SeatingPage() {
+  const router = useRouter();
+  const [allSeats, setAllSeats] = useState<Seat[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [loadStatus, setLoadStatus] = useState("Loading seat map…");
+  const [userId, setUserId] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/venue/seat-map?venueId=${encodeURIComponent(VENUE_ID)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.config) {
+          setAllSeats(seatsFromConfig(data.config));
+          setLoadStatus(`Seat map loaded · ${data.config.updatedAt ?? ""}`);
+        } else {
+          setLoadStatus("No seat map");
+        }
+      } catch {
+        if (!cancelled) setLoadStatus("Failed to load seat map");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { user?: { id?: string } }) => {
+        if (!cancelled && d?.user?.id) setUserId(d.user.id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows = [...new Set(allSeats.map((s) => s.row))];
+
+  function toggleSeat(seat: Seat) {
+    if (seat.tier === "sold") return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(seat.id)) next.delete(seat.id);
+      else next.add(seat.id);
+      return next;
+    });
+  }
+
+  const selectedSeats = allSeats.filter((s) => selected.has(s.id));
+  const sellerSubtotal = selectedSeats.reduce((sum, s) => sum + s.price, 0);
+  const feePreview =
+    selectedSeats.length > 0
+      ? resolveTicketFee({ baseTicketPriceCents: Math.round(selectedSeats[0].price * 100) })
+      : null;
+  const buyerTotal =
+    selectedSeats.length > 0 && feePreview
+      ? selectedSeats.reduce((sum, s) => {
+          const f = resolveTicketFee({ baseTicketPriceCents: Math.round(s.price * 100) });
+          return sum + f.buyerTotalCentsPerTicket / 100;
+        }, 0)
+      : 0;
+
+  async function handleCheckout() {
+    if (selectedSeats.length === 0 || checkingOut) return;
+    setCheckingOut(true);
+    setCheckoutError("");
+    try {
+      // Persist sold seats before checkout so refresh keeps state
+      await fetch("/api/venue/seat-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueId: VENUE_ID,
+          action: "seat_states",
+          updates: selectedSeats.map((s) => ({ seatId: s.id, status: "sold" })),
+        }),
+      });
+
+      // price/tier below are informational only — the server always
+      // re-resolves the real, persisted seat-map price and rejects a
+      // tampered/stale value rather than trusting this echo (Rule 20).
+      const res = await fetch("/api/tickets/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueId: VENUE_ID,
+          seats: selectedSeats.map((s) => ({ id: s.id, tier: s.tier, price: s.price })),
+        }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string; code?: string };
+      if (data.url) {
+        router.push(data.url);
+        return;
+      }
+      if (data.code === "PRICE_CHANGED") {
+        setCheckoutError("Prices changed for one or more selected seats. Please review and try again.");
+      } else if (data.error === "seat_already_taken") {
+        setCheckoutError("One or more selected seats were just taken. Please choose different seats.");
+      } else if (data.code === "PRICE_NOT_CONFIGURED") {
+        setCheckoutError("One or more selected seats are no longer available. Please refresh and try again.");
+      } else {
+        setCheckoutError("Checkout failed. Please try again.");
+      }
+      console.error("[seating] checkout error:", data.error);
+      setCheckingOut(false);
+    } catch {
+      setCheckoutError("Checkout failed. Please try again.");
+      setCheckingOut(false);
+    }
+  }
+
+  return (
+    <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", paddingBottom: 120, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "18px 28px", display: "flex", alignItems: "center", gap: 12 }}>
+        <Link href="/hub/venue" style={{ fontSize: 11, color: "rgba(0,255,255,0.7)", textDecoration: "none" }}>← Venue Hub</Link>
+        <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
+        <Link href="/tickets" style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>Tickets</Link>
+      </div>
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 24px" }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.3em", color: "#22c55e", marginBottom: 8 }}>SEATING MAP</div>
+          <h1 style={{ fontSize: "clamp(22px,4vw,36px)", fontWeight: 900, margin: "0 0 6px" }}>Interactive Seat Selector</h1>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: 0 }}>{loadStatus}</p>
+        </div>
+
+        <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+          {(Object.entries(TIER_CONFIG) as [SeatTier, typeof TIER_CONFIG[SeatTier]][]).map(([tier, cfg]) => (
+            <div key={tier} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 18, height: 18, borderRadius: 4, background: cfg.bg, border: `1px solid ${cfg.color}60` }} />
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>{cfg.label}{tier !== "sold" ? ` — $${cfg.price}` : " — Taken"}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start" }}>
+          <div>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ display: "inline-block", padding: "10px 60px", background: "linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,215,0,0.06))", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, fontSize: 11, fontWeight: 800, color: "#FFD700", letterSpacing: "0.2em" }}>
+                ★ STAGE ★
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {rows.map((row) => {
+                const rowSeats = allSeats.filter((s) => s.row === row);
+                return (
+                  <div key={row} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 20, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", textAlign: "center", flexShrink: 0 }}>{row}</div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "nowrap", justifyContent: "center", flex: 1 }}>
+                      {rowSeats.map((seat) => {
+                        const cfg = TIER_CONFIG[seat.tier];
+                        const isSelected = selected.has(seat.id);
+                        return (
+                          <div
+                            key={seat.id}
+                            onClick={() => toggleSeat(seat)}
+                            onMouseEnter={() => setHoveredSeat(seat)}
+                            onMouseLeave={() => setHoveredSeat(null)}
+                            title={`Row ${seat.row} Seat ${seat.number} — ${cfg.label}${seat.tier !== "sold" ? ` $${seat.price}` : ""}`}
+                            style={{
+                              width: 22, height: 20, borderRadius: 4,
+                              background: isSelected ? cfg.color : cfg.bg,
+                              border: `1px solid ${isSelected ? cfg.color : cfg.color + "50"}`,
+                              cursor: seat.tier === "sold" ? "not-allowed" : "pointer",
+                              transition: "transform 120ms",
+                              flexShrink: 0,
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div style={{ width: 20, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", textAlign: "center", flexShrink: 0 }}>{row}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ position: "sticky", top: 24 }}>
+            <AnimatePresence>
+              {hoveredSeat && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "16px 16px", marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: TIER_CONFIG[hoveredSeat.tier].color, letterSpacing: "0.18em", marginBottom: 6 }}>
+                    {TIER_CONFIG[hoveredSeat.tier].label.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>Row {hoveredSeat.row} · Seat {hoveredSeat.number}</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#FFD700", marginTop: 4 }}>
+                    {hoveredSeat.tier === "sold" ? "Sold Out" : `$${hoveredSeat.price}`}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "20px 18px" }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: "#00FF88", letterSpacing: "0.2em", marginBottom: 14 }}>
+                SELECTED SEATS ({selectedSeats.length})
+              </div>
+
+              {selectedSeats.length === 0 ? (
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>
+                  Click seats to select them
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 200, overflowY: "auto" }}>
+                    {selectedSeats.map((seat) => (
+                      <div key={seat.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div>
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>Row {seat.row} · #{seat.number}</span>
+                          <span style={{ marginLeft: 8, fontSize: 9, color: TIER_CONFIG[seat.tier].color, fontWeight: 700 }}>{TIER_CONFIG[seat.tier].label}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: "#FFD700" }}>${seat.price}</span>
+                          <button onClick={() => toggleSeat(seat)} style={{ background: "none", border: "none", color: "#FF2DAA", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12, marginBottom: 14, fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Seller subtotal</span>
+                      <span>${sellerSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                      <span>TMI fees ({TICKET_FEE_POLICY_ID})</span>
+                      <span>${(buyerTotal - sellerSubtotal).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Buyer total</span>
+                      <span style={{ fontSize: 20, fontWeight: 900, color: "#00FF88" }}>${buyerTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => void handleCheckout()} disabled={checkingOut}
+                    style={{ display: "block", width: "100%", padding: "13px", background: checkingOut ? "rgba(0,255,136,0.5)" : "linear-gradient(135deg,#00FF88,#00FFFF)", color: "#050510", fontWeight: 800, fontSize: 13, borderRadius: 10, border: "none", cursor: checkingOut ? "not-allowed" : "pointer", textAlign: "center", letterSpacing: "0.06em" }}>
+                    {checkingOut ? "Redirecting to Stripe..." : `Checkout — $${buyerTotal.toFixed(2)} →`}
+                  </button>
+                  {checkoutError && (
+                    <div style={{ marginTop: 10, padding: "10px 12px", background: "rgba(255,45,170,0.1)", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 8, fontSize: 11, color: "#FF2DAA", textAlign: "center" }}>
+                      {checkoutError}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+              {userId ? (
+                <SeatClaimRail
+                  venueSlug={VENUE_SLUG}
+                  eventSlug={EVENT_SLUG}
+                  userId={userId}
+                  seats={selectedSeats.map((s) => ({
+                    seatId: s.id,
+                    row: s.row,
+                    seatNumber: s.number,
+                    zone: s.tier === "vip" ? "vip" : s.tier === "premium" ? "front" : "mid",
+                    price: s.price,
+                  }))}
+                  onClear={() => setSelected(new Set())}
+                />
+              ) : (
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+                  Sign in to use Seat Claim Rail (/api/tickets/claim-seat).
+                </p>
+              )}
+              <Link href="/tickets/create" style={{ padding: "10px 14px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 12, textDecoration: "none", textAlign: "center" }}>
+                🎟️ Create Tickets
+              </Link>
+              <Link href="/booking" style={{ padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "rgba(255,255,255,0.5)", fontWeight: 600, fontSize: 12, textDecoration: "none", textAlign: "center" }}>
+                Booking Calendar
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

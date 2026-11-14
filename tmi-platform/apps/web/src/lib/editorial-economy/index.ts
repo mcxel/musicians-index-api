@@ -1,4 +1,5 @@
 export * from "@/lib/editorial-economy/types";
+export * from "@/lib/editorial-economy/editorialPersistenceTruth";
 export * from "@/lib/editorial-economy/ContributorAccountEngine";
 export * from "@/lib/editorial-economy/ContributorTrustGateEngine";
 export * from "@/lib/editorial-economy/EditorialSubmissionEngine";

@@ -37,6 +37,7 @@ import { openCanonicalDeepStudio } from "@/lib/workspace/universal/openCanonical
 import type { UniversalWorkspaceId } from "@/lib/workspace/universal/types";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import YoPhoFanPortraitWorkspace from "@/components/yopho/YoPhoFanPortraitWorkspace";
+import YoPhoStudio from "@/components/yopho/YoPhoStudio";
 import VenueControlPanel from "@/components/hud/panels/VenueControlPanel";
 
 const AvatarViewer = dynamic(
@@ -664,9 +665,14 @@ export default function CanonicalQuickPanelContent({
   }
 
   if (workspaceId === "yopho") {
+    // Rule 26 + YoPho 2+1: Fan portrait stack vs Performer living studio — never cross-mount.
     const inner = (
-      <div style={{ padding: 4, maxHeight: 320, overflow: "auto" }}>
-        <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
+      <div style={{ padding: 4, maxHeight: 320, overflow: "auto" }} data-yopho-quick-panel-role={role}>
+        {role === "fan" ? (
+          <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
+        ) : (
+          <YoPhoStudio role="performer" userId={userId} displayName={displayName} />
+        )}
       </div>
     );
     if (embedded) return inner;

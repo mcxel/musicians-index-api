@@ -32,6 +32,7 @@ function normalizeSession(raw: LiveSession): LiveSession {
     viewerCount: Math.max(0, Number(raw.viewerCount) || 0),
     tipTotal: Math.max(0, Number(raw.tipTotal) || 0),
     privacy: raw.privacy ?? "PUBLIC",
+    audiencePrivacyMode: raw.audiencePrivacyMode ?? null,
     entryPriceUsd: raw.entryPriceUsd ?? null,
     accentColor: raw.accentColor ?? "#00FFFF",
     startedAt: Number(raw.startedAt) || Date.now(),

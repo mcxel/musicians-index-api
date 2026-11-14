@@ -2,8 +2,8 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
+import RoleHubAccountMenu from "@/components/navigation/RoleHubAccountMenu";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import ObservatoryVideoCallPanel from "@/components/admin/ObservatoryVideoCallPanel";
 
@@ -311,7 +311,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {sessionName ?? operatorPolicy.label}
               </span>
               <RoleSwitcherWidget accentColor="#00FFFF" buttonLabel="ADMIN · FAN · PERFORMER" />
-              <PersonaSwitcher currentRole={sessionRole} userId={sessionUserId} compact showAdd={false} />
+              <RoleHubAccountMenu accentColor="#FFD700" showInlineSignOut />
             </div>
           </div>
         </div>

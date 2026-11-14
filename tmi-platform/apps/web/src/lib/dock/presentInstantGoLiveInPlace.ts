@@ -2,12 +2,38 @@
  * Hub / dashboard Instant Go Live — stay in the current TMI shell.
  * ONE TAP: camera → Monitor A, venue → Monitor B, publish LiveSession.
  * Never router.push('/live/rooms/…') or '/live/lobby' for the broadcaster.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CANONICAL GO LIVE ENTRY + SESSION CONTINUITY LAW (Step 4 Slice 1 — locked)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ENTRY AUTHORITY (one):
+ *   triggerCanonicalGoLive()
+ *     → hub/dashboard shell: presentInstantGoLiveInPlace()
+ *     → elsewhere: PENDING_GO_LIVE_KEY + /hub/{role}?golive=1 → presentInstantGoLiveInPlace()
+ *   presentInstantGoLiveInPlace → executeInstantGoLive → POST /api/live/go
+ *     → GlobalLiveSessionRegistry (server) → DiscoveryBus / Lobby Wall
+ *
+ * DO NOT invent a second entry stack (no InstantGoLiveStage2 / GoLiveStudio2 /
+ * second WebRTC publish path). GoLiveStudio / InstantGoLiveLauncher / HUD
+ * GO_LIVE must call this authority or redirect into it.
+ *
+ * SESSION CONTINUITY:
+ *   - roomId / liveSessionId from registry publish is preserved across curtain,
+ *     HUD chrome, and monitor toggles — resume path reuses inPlace + publishedRoomId.
+ *   - isLivePublished is true ONLY after real POST /api/live/go success (Rule 20).
+ *   - Performer presence = WebRTC/camera; Fan presence = avatar — never blurred.
+ *
+ * RUNTIME (not entry): InstantGoLiveStage / GoLiveRuntime / UniversalVenueRenderer
+ * render the venue after the session exists — they do not mint a competing live id.
  */
 
 "use client";
 
 import { executeInstantGoLive, type InstantGoLiveResult } from "@/lib/dock/executeInstantGoLive";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
+import { pauseDiscoveryPoll } from "@/lib/discovery/DiscoveryPublisher";
+import { TelemetryTransportGovernor } from "@/lib/analytics/TelemetryTransportGovernor";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 import {
   mediaErrorToBootstrapCode,
@@ -214,6 +240,10 @@ export async function presentInstantGoLiveInPlace(opts?: {
   const publishSession = opts?.publishSession !== false;
   const privacy = opts?.privacy ?? "public";
   const boot = useGoLiveBootstrapStore.getState();
+
+  // Free same-origin sockets before session probe + publish (discovery GET hits /api/live/go).
+  TelemetryTransportGovernor.pause(25000);
+  pauseDiscoveryPoll(25000);
 
   // Real session truth — never assume authenticated:true
   let sessionAuthenticated = false;
