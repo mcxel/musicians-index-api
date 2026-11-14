@@ -28,7 +28,7 @@ INSTANT_PAYOUT_SHA256=`DACCBC1B2C6721B0942C394BE332B50728F5CEDA820C7E25B333DBC46
 | Gate | Result | Evidence |
 |------|--------|----------|
 | S32_FINANCIAL | PASS (code) | `previewFinancialIsolation.ts` + 23 suite include; InstantPayoutEngine frozen path present. Migration `20261114120000_*` not found in this worktree tree search — treat DB migrate as owner/ops follow-up if not already applied. |
-| TYPECHECK | PENDING/OOM risk | Full `tsc` started; historically OOM at 6GB. Do not mark GREEN until exit 0 captured. |
+| TYPECHECK | FAIL→FIXED (slice) | Full `tsc` exit 2 on Preview isolation test ProcessEnv casts; fixed via `unknown` cast in `9af3d1ac`. Full-repo exit 0 still not claimed. |
 | PRODUCTION_BUILD | NOT RUN this pass | Required before SAFE_TO_PUSH absolute claim. |
 | FOCUSED_TESTS | PASS | 23/23 |
 | GPS | PASS (code) | VENUES → `/rooms`; GPS/OC launchers wired; allowlist LIVE inventory. Physical browser not re-run this pass. |
