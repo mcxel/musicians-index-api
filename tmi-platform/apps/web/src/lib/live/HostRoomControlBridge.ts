@@ -41,6 +41,8 @@ import {
 } from "@/lib/voting/FanRubricVotingEngine";
 import { ArenaCameraEngine } from "@/lib/engine/ArenaCameraEngine";
 import type { VenueHudActionId } from "@/lib/live/ParticipationStateMachine";
+import { resolveBackstagePublish } from "@/lib/live/backstagePublishGate";
+import { claimStageAdmissionOnce } from "@/lib/live/eventResilienceLaw";
 
 export type HostControlCapability = {
   available: boolean;
@@ -85,6 +87,36 @@ export function executeHostControl(
   switch (actionId) {
     case "approve_next":
     case "bring_on_stage": {
+      const nextPeek = getQueueSnapshot(roomId).slots.find(
+        (s) => s.status === "waiting" || s.status === "next-up" || s.status === "staging",
+      );
+      if (!nextPeek) {
+        return { ok: false, message: "No one waiting in queue" };
+      }
+      const room = getLiveRoom(roomId);
+      const admissionAuthority =
+        room?.config.stageAdmissionAuthority ?? "HUMAN_HOST";
+      const guestAccepted = params?.guestAcceptedInvite !== false;
+      const guestConsent = params?.guestConsentToBroadcast !== false;
+      const mediaReady = params?.mediaReady !== false;
+      const publish = resolveBackstagePublish({
+        roomId,
+        participantId: nextPeek.performerId,
+        participationState: "READY",
+        guestAcceptedInvite: guestAccepted,
+        guestConsentToBroadcast: guestConsent,
+        mediaReady,
+        hostAuthorizedAdmission: true,
+        admissionAuthority,
+        automationAuthorized: admissionAuthority === "AUTHORIZED_AUTOMATION",
+      });
+      if (!publish.mayPublishToProgram) {
+        return { ok: false, message: publish.reason };
+      }
+      const claim = claimStageAdmissionOnce(roomId, nextPeek.performerId);
+      if (!claim.ok) {
+        return { ok: false, message: claim.reason };
+      }
       activateStage(roomId);
       const next = advanceQueue(roomId);
       if (!next) {

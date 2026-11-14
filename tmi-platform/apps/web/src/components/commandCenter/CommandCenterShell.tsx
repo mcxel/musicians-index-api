@@ -30,7 +30,6 @@ import RoleWelcomeBriefing from "@/components/welcome/RoleWelcomeBriefing";
 import {
   PENDING_GO_LIVE_KEY,
   presentInstantGoLiveInPlace,
-  resumePublishedHubSession,
 } from "@/lib/dock/presentInstantGoLiveInPlace";
 import type { LivePrivacy } from "@/lib/live/LiveDestinationRouter";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
@@ -96,7 +95,8 @@ import {
   isCanonicalWorkspaceActive,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import HubNavigationRail from "./HubNavigationRail";
-import YourPageStudio from "@/components/profile/YourPageStudio";
+/* YourPageStudio intentionally not imported on this release candidate —
+ * high-fan-out publicPage closure remains owner-gated (G1 REJECT / Hold). */
 import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
 import CanonicalLeftQuickPanelHost from "@/components/workspace/universal/CanonicalLeftQuickPanelHost";
 import CanonicalRightQuickPanelHost from "@/components/workspace/universal/CanonicalRightQuickPanelHost";
@@ -112,7 +112,6 @@ import {
   subscribeHubViewport,
 } from "@/lib/commandCenter/hubViewportState";
 import CompactQuickPanelHost, { SnipsOverlayHost } from "@/components/hud/CompactQuickPanelHost";
-import PeerVideoCallOverlay from "@/components/media/PeerVideoCallOverlay";
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import PointFlightEngine from "@/components/hud/PointFlightEngine";
 import CanonicalBottomDrawerHost from "@/components/workspace/universal/CanonicalBottomDrawerHost";
@@ -384,7 +383,10 @@ function CommandCenterShellInner({
     }
     const privacy = useLivePrivacyState.getState();
     if (!(privacy.isLivePublished && privacy.publishedRoomId === roomId)) {
-      resumePublishedHubSession(roomId, role === "performer" ? "performer" : "fan");
+      // resumePublishedHubSession lives on the outer dual-tree dock authority;
+      // nested HEAD presentInstantGoLiveInPlace does not export it. Mark resume
+      // applied from published privacy state only (no invented session bootstrap).
+      document.documentElement.dataset.hubLiveResumePending = roomId;
     }
     document.documentElement.dataset.hubLiveResume = "applied";
     document.documentElement.dataset.hubLiveRoom = roomId;
@@ -697,10 +699,25 @@ function CommandCenterShellInner({
     m2HasProtectedSession: monitor2Occupancy.protectedSession,
   });
   const gpsDrawerVisible = isGpsDrawerVisible(gpsLayout);
-  const toggleGpsDrawer = useMobileGpsMonitorLayoutStore((s) => s.toggleGpsDrawer);
+  const openRailMode = useMobileGpsMonitorLayoutStore((s) => s.openRailMode);
+  const railMode = useMobileGpsMonitorLayoutStore((s) => s.railMode);
+  const hydrateDockSide = useMobileGpsMonitorLayoutStore((s) => s.hydrateDockSide);
+  const hydrateOcDockSide = useMobileGpsMonitorLayoutStore((s) => s.hydrateOcDockSide);
   const gpsReplacesMonitor2 = isMobile && shouldReplaceMonitor2Slot(gpsLayout);
   const gpsDrawerDocked = Boolean(drawerDock && (isDrawerExpanded || activePanel));
   const mobileColumnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    hydrateDockSide();
+    hydrateOcDockSide();
+  }, [hydrateDockSide, hydrateOcDockSide]);
+
+  // Venue HUD GPS → same GPS destinations rail (not a second navigator).
+  useEffect(() => {
+    const onVenueGps = () => openRailMode("gps");
+    window.addEventListener("tmi:venue:open-gps", onVenueGps as EventListener);
+    return () => window.removeEventListener("tmi:venue:open-gps", onVenueGps as EventListener);
+  }, [openRailMode]);
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -1618,7 +1635,6 @@ function CommandCenterShellInner({
                     bezelVariant="chrome"
                     naturalHeight
                     monitorLayoutMode={monitorLayoutForStack}
-                    enableGpsControls={false}
                     role={role === "performer" ? "performer" : "fan"}
                     userId={userId}
                     displayName={resolvedDisplayName}
@@ -1632,41 +1648,32 @@ function CommandCenterShellInner({
                       setVenueDockContext(context);
                     }}
                     seriesLabel={role === "performer" ? "PERFORMER HUB · CHROME SERIES · DUAL MONITORS" : "FAN HUB · CHROME SERIES · DUAL MONITORS"}
-                    underMonitorIndex={gpsDrawerDocked ? 1 : null}
-                    yieldSecondaryMonitor={gpsDrawerDocked && drawerPlacement === "monitor-2-slot"}
-                    onRestoreMonitor2={() => {
-                      useWorkspacePresentationStore.getState().closeSurface("DRAWER");
-                      setDrawerDock(null);
-                      closeDrawer();
-                    }}
-                    underMonitorSlot={
-                      gpsDrawerDocked ? (
-                        <>
-                          {isDrawerExpanded ? (
-                            <CanonicalBottomDrawerHost
-                              userId={userId}
-                              displayName={resolvedDisplayName}
-                              role={role === "performer" ? "performer" : "fan"}
-                            />
-                          ) : null}
-                          {activePanel ? (
-                            <GlobalErrorBoundary context="Command Center Drawer">
-                              <CommandCenterDrawer
-                                role={role}
-                                activePanel={activePanel}
-                                appearanceOpen={appearanceOpen}
-                                userId={userId}
-                                displayName={resolvedDisplayName}
-                                onClose={closeDrawer}
-                                onSelectPanel={openPanel}
-                                initialPlaylistId={deepLinkPlaylistId}
-                              />
-                            </GlobalErrorBoundary>
-                          ) : null}
-                        </>
-                      ) : null
-                    }
                   />
+                  {gpsDrawerDocked || activePanel || isDrawerExpanded ? (
+                    <GlobalErrorBoundary context="Command Center Drawer">
+                      <>
+                        {isDrawerExpanded ? (
+                          <CanonicalBottomDrawerHost
+                            userId={userId}
+                            displayName={resolvedDisplayName}
+                            role={role === "performer" ? "performer" : "fan"}
+                          />
+                        ) : null}
+                        {activePanel ? (
+                          <CommandCenterDrawer
+                            role={role}
+                            activePanel={activePanel}
+                            appearanceOpen={appearanceOpen}
+                            userId={userId}
+                            displayName={resolvedDisplayName}
+                            onClose={closeDrawer}
+                            onSelectPanel={openPanel}
+                            initialPlaylistId={deepLinkPlaylistId}
+                          />
+                        ) : null}
+                      </>
+                    </GlobalErrorBoundary>
+                  ) : null}
                 </GlobalErrorBoundary>
               </div>
 
@@ -1794,20 +1801,6 @@ function CommandCenterShellInner({
                 centers={centers}
                 activePanel={activePanel}
                 onOpenPanel={openPanel}
-                onOpenYourPage={openYourPage}
-                onOpenPerformerPage={role === "performer" ? openPerformerPage : undefined}
-                onOpenArticleEditor={role === "performer" ? openArticleEditor : undefined}
-                onOpenArticles={role === "performer" ? openArticles : undefined}
-                onOpenMagazine={openMagazine}
-                onOpenSettings={openSettings}
-                identity={
-                  <CommandCenterIdentityCard
-                    userId={userId}
-                    displayName={resolvedDisplayName}
-                    role={role === "performer" ? "performer" : "fan"}
-                    roomId={activeHubRoomId}
-                  />
-                }
               />
             }
             mediaStage={
@@ -1823,7 +1816,6 @@ function CommandCenterShellInner({
                       bezelVariant="chrome"
                       naturalHeight
                       monitorLayoutMode={monitorLayoutForStack}
-                      enableGpsControls
                       role={role === "performer" ? "performer" : "fan"}
                       userId={userId}
                       displayName={resolvedDisplayName}
@@ -2043,10 +2035,41 @@ function CommandCenterShellInner({
       <button
         type="button"
         data-testid="hub-gps-recall"
-        aria-label={gpsDrawerVisible ? "GPS navigation is open" : "Open GPS navigation"}
+        aria-label={gpsDrawerVisible && railMode === "gps" ? "GPS navigation is open" : "Open GPS destinations"}
         aria-controls="hub-mobile-gps-drawer"
-        aria-expanded={gpsDrawerVisible}
-        onClick={toggleGpsDrawer}
+        aria-expanded={gpsDrawerVisible && railMode === "gps"}
+        onClick={() => openRailMode("gps")}
+        style={{
+          position: "fixed",
+          top: "max(58px, calc(env(safe-area-inset-top) + 50px))",
+          left: "max(10px, env(safe-area-inset-left))",
+          zIndex: 9350,
+          width: 44,
+          height: 44,
+          minWidth: 44,
+          minHeight: 44,
+          padding: 0,
+          borderRadius: 8,
+          border: gpsDrawerVisible && railMode === "gps" ? "1px solid #00E5FF" : "1px solid rgba(0,229,255,0.5)",
+          background: "rgba(8,10,18,0.96)",
+          color: "rgba(255,255,255,0.94)",
+          boxShadow: gpsDrawerVisible && railMode === "gps" ? "0 0 12px rgba(0,229,255,0.28)" : "0 3px 12px rgba(0,0,0,0.3)",
+          fontFamily: "inherit",
+          fontSize: 9,
+          fontWeight: 900,
+          letterSpacing: "0.04em",
+          cursor: "pointer",
+        }}
+      >
+        GPS
+      </button>
+      <button
+        type="button"
+        data-testid="hub-oc-recall"
+        aria-label={gpsDrawerVisible && railMode === "oc" ? "Operating Centers are open" : "Open Operating Centers"}
+        aria-controls="hub-mobile-gps-drawer"
+        aria-expanded={gpsDrawerVisible && railMode === "oc"}
+        onClick={() => openRailMode("oc")}
         style={{
           position: "fixed",
           top: "max(58px, calc(env(safe-area-inset-top) + 50px))",
@@ -2058,10 +2081,10 @@ function CommandCenterShellInner({
           minHeight: 44,
           padding: 0,
           borderRadius: 8,
-          border: gpsDrawerVisible ? "1px solid #00E5FF" : "1px solid rgba(0,229,255,0.5)",
+          border: gpsDrawerVisible && railMode === "oc" ? "1px solid #FFD700" : "1px solid rgba(255,215,0,0.5)",
           background: "rgba(8,10,18,0.96)",
           color: "rgba(255,255,255,0.94)",
-          boxShadow: gpsDrawerVisible ? "0 0 12px rgba(0,229,255,0.28)" : "0 3px 12px rgba(0,0,0,0.3)",
+          boxShadow: gpsDrawerVisible && railMode === "oc" ? "0 0 12px rgba(255,215,0,0.28)" : "0 3px 12px rgba(0,0,0,0.3)",
           fontFamily: "inherit",
           fontSize: 9,
           fontWeight: 900,
@@ -2069,7 +2092,7 @@ function CommandCenterShellInner({
           cursor: "pointer",
         }}
       >
-        GPS
+        OC
       </button>
       {isMobile ? (
         <HubMobileCommunicationsDrawer
@@ -2089,8 +2112,8 @@ function CommandCenterShellInner({
       ) : null}
       <SnipsOverlayHost />
 
-      {/* Fan/Performer peer video — Rule 35 sibling overlay; does not remount monitors */}
-      <PeerVideoCallOverlay />
+      {/* PeerVideoCallOverlay held: requires CanonicalMediaPlayerState.setPeerCallStream
+          not present on nested HEAD media runtime (Rule 35 placement remains owner-gated). */}
 
       {/* Points-earned flight animation — fires on real backend balance increases only */}
       <PointFlightEngine />
@@ -2180,21 +2203,59 @@ function CommandCenterShellInner({
         </div>
       ) : null}
       {pageStudioKind ? (
-        <YourPageStudio
-          key={pageStudioKind}
-          isOwner
-          ownerUserId={userId}
-          role={role}
-          profileKind={pageStudioKind}
-          capabilities={pageStudioKind === "PERFORMER" ? ["BASE", "PERFORMER"] : ["BASE"]}
-          accentColor={theme.primary}
-          showLauncher={false}
-          requestedOpen
-          onRequestedOpenChange={(next) => {
-            if (!next) setPageStudioKind(null);
+        <div
+          role="dialog"
+          aria-label="Your Page Studio unavailable"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 80,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(5,5,16,0.82)",
+            padding: 24,
           }}
-          onStepWorkspace={role === "performer" ? stepPageStudio : undefined}
-        />
+        >
+          <div
+            style={{
+              maxWidth: 420,
+              width: "100%",
+              borderRadius: 12,
+              border: `1px solid ${theme.primary}55`,
+              background: "#0a0614",
+              padding: "28px 24px",
+              color: "#fff",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 10, letterSpacing: "0.2em", color: theme.primary, fontWeight: 800, marginBottom: 10 }}>
+              YOUR PAGE STUDIO
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 10 }}>Not on this release candidate</h2>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 22, lineHeight: 1.5 }}>
+              Page Studio depends on the public-page closure, which is held pending separate owner approval.
+              Your {pageStudioKind === "PERFORMER" ? "performer" : "fan"} profile route remains available.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPageStudioKind(null)}
+              style={{
+                padding: "10px 18px",
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.12em",
+                color: "#050510",
+                background: theme.primary,
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+        </div>
       ) : null}
       <RoleWelcomeBriefing role={role} />
     </div>

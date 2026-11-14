@@ -1,0 +1,252 @@
+/**
+ * mobileGpsMonitorLayoutStore.ts — CONVERGENCE-ADDENDUM-2026-09-24-J
+ * (K = superseding implementation revision of J — one law, not two.)
+ *
+ * GPS navigator presentation state. Normal opening keeps both monitor slots intact.
+ */
+
+import { canonicalMonitorFromMixMonitor } from "@/lib/monitors/canonicalMonitorIdentity";
+import { create } from "zustand";
+
+export type MobileMonitorLayoutState =
+  | "DUAL_MONITORS_CLOSED"
+  | "DRAWER_REPLACES_MONITOR_2"
+  | "DUAL_MONITORS_DRAWER_BELOW";
+
+export type GpsDrawerDock = "under-a" | "under-b";
+
+/** Screen edge the GPS launcher docks to; the rail opens from the same edge. */
+export type GpsDockSide = "left" | "right";
+export const GPS_DOCK_SIDE_STORAGE_KEY = "tmi_gps_dock_side";
+export const GPS_DEFAULT_DOCK_SIDE: GpsDockSide = "left";
+
+/** The one rail has two modes: GPS (destinations/guide) and OC (operating centers). */
+export type GpsRailMode = "gps" | "oc";
+
+/** OC remembers its own edge separately; default RIGHT (GPS defaults LEFT). */
+export const OC_DOCK_SIDE_STORAGE_KEY = "tmi_oc_dock_side";
+export const OC_DEFAULT_DOCK_SIDE: GpsDockSide = "right";
+
+export function readStoredGpsDockSide(): GpsDockSide {
+  if (typeof window === "undefined") return GPS_DEFAULT_DOCK_SIDE;
+  try {
+    return window.localStorage.getItem(GPS_DOCK_SIDE_STORAGE_KEY) === "right" ? "right" : GPS_DEFAULT_DOCK_SIDE;
+  } catch {
+    return GPS_DEFAULT_DOCK_SIDE;
+  }
+}
+
+export function readStoredOcDockSide(): GpsDockSide {
+  if (typeof window === "undefined") return OC_DEFAULT_DOCK_SIDE;
+  try {
+    return window.localStorage.getItem(OC_DOCK_SIDE_STORAGE_KEY) === "left" ? "left" : OC_DEFAULT_DOCK_SIDE;
+  } catch {
+    return OC_DEFAULT_DOCK_SIDE;
+  }
+}
+
+/** Released launcher position → docked edge. Left half docks left, right half docks right. */
+export function resolveGpsDockSide(releaseX: number, viewportWidth: number): GpsDockSide {
+  return releaseX >= viewportWidth / 2 ? "right" : "left";
+}
+
+/** A press becomes a drag once it travels this far horizontally; a drag never opens the rail. */
+export const GPS_LAUNCHER_DRAG_THRESHOLD_PX = 10;
+
+/** GPS rail width: ~36% of the phone, floor 150px keeps labels + touch targets usable. */
+export const GPS_OVERLAY_WIDTH = "clamp(150px, 36vw, 300px)";
+/** Overlay width plus its edge inset and a gap. */
+export const GPS_OVERLAY_CLEARANCE = `calc(${GPS_OVERLAY_WIDTH} + 16px)`;
+
+interface MobileGpsMonitorLayoutStore {
+  layout: MobileMonitorLayoutState;
+  /** Which media player the active drawer sits under. */
+  drawerDock: GpsDrawerDock | null;
+  /** Extra downward shift for the compact rail, in pixels. */
+  railShiftY: number;
+  /** Preserve the independent GPS destination scroll position across dismissal. */
+  railScrollTop: number;
+  /** Shared drawer frame height. Every workspace uses this same size. */
+  drawerFrameHeight: number;
+  drawerFullscreen: boolean;
+  /** User pressed the Monitor 2 control. This is activation, not inferred occupancy. */
+  m2ExplicitlyActivated: boolean;
+  /** Ask the open GPS drawer to show its existing Coming Soon note. */
+  releaseNoteId: string | null;
+  dockSide: GpsDockSide;
+  /** Read the saved side once on the client. */
+  hydrateDockSide: () => void;
+  setDockSide: (side: GpsDockSide) => void;
+  /** Which content the one rail presents: GPS destinations or Operating Centers. */
+  railMode: GpsRailMode;
+  ocDockSide: GpsDockSide;
+  hydrateOcDockSide: () => void;
+  setOcDockSide: (side: GpsDockSide) => void;
+  /**
+   * Open the rail in a mode. Same mode while open → close (toggle).
+   * Other mode while open → same rail swaps content (no stacking).
+   */
+  openRailMode: (mode: GpsRailMode) => void;
+  setDrawerDock: (dock: GpsDrawerDock | null) => void;
+  setRailShiftY: (y: number) => void;
+  setRailScrollTop: (scrollTop: number) => void;
+  setDrawerFrameHeight: (height: number) => void;
+  setDrawerFullscreen: (fullscreen: boolean) => void;
+  setM2ExplicitlyActivated: (activated: boolean) => void;
+  /** Open the side drawer. Both monitors stay mounted. */
+  openGpsDrawer: () => void;
+  /** Close GPS entirely → dual monitors, no drawer. */
+  closeGpsDrawer: () => void;
+  /** Toggle the side drawer. Monitors are not restacked. */
+  toggleGpsDrawer: () => void;
+  /** Open the existing drawer and show one Coming Soon note. */
+  showReleaseNote: (id: string) => void;
+  clearReleaseNote: () => void;
+  /** Restore Monitor 2; drawer drops below into scroll bed. */
+  restoreMonitor2: () => void;
+  reset: () => void;
+}
+
+export const useMobileGpsMonitorLayoutStore = create<MobileGpsMonitorLayoutStore>((set, get) => ({
+  layout: "DUAL_MONITORS_CLOSED",
+  drawerDock: null,
+  railShiftY: 48,
+  railScrollTop: 0,
+  drawerFrameHeight: 280,
+  drawerFullscreen: false,
+  m2ExplicitlyActivated: false,
+  releaseNoteId: null,
+  dockSide: GPS_DEFAULT_DOCK_SIDE,
+  hydrateDockSide: () => set({ dockSide: readStoredGpsDockSide() }),
+  setDockSide: (dockSide) => {
+    set({ dockSide });
+    try {
+      window.localStorage.setItem(GPS_DOCK_SIDE_STORAGE_KEY, dockSide);
+    } catch {
+      // Storage unavailable: the side still applies for this visit.
+    }
+  },
+  railMode: "gps",
+  ocDockSide: OC_DEFAULT_DOCK_SIDE,
+  hydrateOcDockSide: () => set({ ocDockSide: readStoredOcDockSide() }),
+  setOcDockSide: (ocDockSide) => {
+    set({ ocDockSide });
+    try {
+      window.localStorage.setItem(OC_DOCK_SIDE_STORAGE_KEY, ocDockSide);
+    } catch {
+      // Storage unavailable: the side still applies for this visit.
+    }
+  },
+  openRailMode: (mode) => {
+    const { layout, railMode } = get();
+    const open = layout === "DRAWER_REPLACES_MONITOR_2" || layout === "DUAL_MONITORS_DRAWER_BELOW";
+    if (!open) {
+      set({ layout: "DUAL_MONITORS_DRAWER_BELOW", railMode: mode, releaseNoteId: null });
+    } else if (railMode === mode) {
+      // Tap the active launcher again → rail closes toward its current edge.
+      set({ layout: "DUAL_MONITORS_CLOSED", releaseNoteId: null });
+    } else {
+      // Same rail, replace content — never stack, never mirror.
+      set({ railMode: mode, releaseNoteId: null });
+    }
+  },
+  setDrawerDock: (drawerDock) => set({ drawerDock }),
+  setRailShiftY: (railShiftY) => set({ railShiftY: Math.max(0, Math.min(280, railShiftY)) }),
+  setRailScrollTop: (railScrollTop) => set({ railScrollTop: Math.max(0, railScrollTop) }),
+  setDrawerFrameHeight: (drawerFrameHeight) => set({ drawerFrameHeight: Math.max(200, Math.min(640, drawerFrameHeight)) }),
+  setDrawerFullscreen: (drawerFullscreen) => set({ drawerFullscreen }),
+  setM2ExplicitlyActivated: (m2ExplicitlyActivated) => set({ m2ExplicitlyActivated }),
+  openGpsDrawer: () => set({ layout: "DUAL_MONITORS_DRAWER_BELOW" }),
+  closeGpsDrawer: () => set({ layout: "DUAL_MONITORS_CLOSED", releaseNoteId: null }),
+  toggleGpsDrawer: () => {
+    const { layout } = get();
+    if (layout === "DUAL_MONITORS_CLOSED") {
+      set({ layout: "DUAL_MONITORS_DRAWER_BELOW" });
+    } else {
+      set({ layout: "DUAL_MONITORS_CLOSED", releaseNoteId: null });
+    }
+  },
+  showReleaseNote: (id: string) => set({ layout: "DUAL_MONITORS_DRAWER_BELOW", releaseNoteId: id }),
+  clearReleaseNote: () => set({ releaseNoteId: null }),
+  restoreMonitor2: () => {
+    if (get().layout === "DRAWER_REPLACES_MONITOR_2") {
+      set({ layout: "DUAL_MONITORS_DRAWER_BELOW" });
+    }
+  },
+  reset: () => set({
+    layout: "DUAL_MONITORS_CLOSED",
+    drawerDock: null,
+    railShiftY: 48,
+    railScrollTop: 0,
+    drawerFrameHeight: 280,
+    drawerFullscreen: false,
+    m2ExplicitlyActivated: false,
+    releaseNoteId: null,
+    dockSide: GPS_DEFAULT_DOCK_SIDE,
+    railMode: "gps",
+    ocDockSide: OC_DEFAULT_DOCK_SIDE,
+  }),
+}));
+
+export function isGpsDrawerVisible(layout: MobileMonitorLayoutState): boolean {
+  return layout === "DRAWER_REPLACES_MONITOR_2" || layout === "DUAL_MONITORS_DRAWER_BELOW";
+}
+
+/** When true, MediaStack should render primary-only so drawer owns Mon 2 footprint. */
+export function shouldReplaceMonitor2Slot(layout: MobileMonitorLayoutState): boolean {
+  return layout === "DRAWER_REPLACES_MONITOR_2";
+}
+
+export function isGpsLeftSwipe(deltaX: number, deltaY: number): boolean {
+  return deltaX <= -64 && Math.abs(deltaX) >= Math.abs(deltaY) * 1.5;
+}
+
+export type DrawerPlacement = "monitor-2-slot" | "below-monitor-2";
+
+/** One placement decision for every drawer. Rail position is not an input. */
+export function resolveDrawerPlacement(input: {
+  m2ExplicitlyActivated: boolean;
+  m2HasActivePresentation: boolean;
+  m2HasProtectedSession: boolean;
+}): DrawerPlacement {
+  const m2NeedsSlot =
+    input.m2ExplicitlyActivated || input.m2HasActivePresentation || input.m2HasProtectedSession;
+  return m2NeedsSlot ? "below-monitor-2" : "monitor-2-slot";
+}
+
+const ACTIVE_FRAME_SOURCES = new Set([
+  "VIDEO_PLAYBACK",
+  "SCREEN_SHARE",
+  "PERFORMER_FEED",
+  "VENUE_VIEW",
+  "MONITOR_FEED",
+  "SELF_CAMERA",
+]);
+
+const PROTECTED_FRAME_SOURCES = new Set(["SELF_CAMERA", "SCREEN_SHARE", "PERFORMER_FEED"]);
+
+const PROTECTED_PANEL_OCCUPANCY = new Set(["PINNED", "LIVE_EVENT_LOCKED", "SYSTEM_RESERVED"]);
+
+/** Legacy mixer token only. Canonical "M2" strings are not panel ids in Phase 1. */
+function panelBelongsToPresentedM2(monitorId: string): boolean {
+  if (monitorId !== "MONITOR_1" && monitorId !== "MONITOR_2") return false;
+  return canonicalMonitorFromMixMonitor(monitorId) === "M2";
+}
+
+export function describeMonitor2Occupancy(input: {
+  sourceB: string | null;
+  frameBSource: string | null;
+  panels: Array<{ monitorId: string; occupancy: string; sourceType: string; sourceId: string | null }>;
+}): { active: boolean; protectedSession: boolean } {
+  const frameActive = input.frameBSource != null && ACTIVE_FRAME_SOURCES.has(input.frameBSource);
+  const frameProtected = input.frameBSource != null && PROTECTED_FRAME_SOURCES.has(input.frameBSource);
+  const monitor2Panels = input.panels.filter((panel) => panelBelongsToPresentedM2(panel.monitorId));
+  const panelActive = monitor2Panels.some(
+    (panel) => panel.sourceId != null && panel.sourceType !== "EMPTY" && panel.occupancy !== "AVAILABLE",
+  );
+  const panelProtected = monitor2Panels.some((panel) => PROTECTED_PANEL_OCCUPANCY.has(panel.occupancy));
+  return {
+    active: frameActive || panelActive || Boolean(input.sourceB?.trim()),
+    protectedSession: frameProtected || panelProtected,
+  };
+}

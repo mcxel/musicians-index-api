@@ -8,6 +8,8 @@
 
 import { useEffect, useRef } from "react";
 import type { OperatingCenter } from "@/lib/drawers/operatingCenterRegistry";
+import { heldReleaseForCenter } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import type { CommandCenterPanelId } from "./commandCenterRegistry";
 
 export interface HubNavigationRailProps {
@@ -24,6 +26,7 @@ export default function HubNavigationRail({
   onOpenPanel,
 }: HubNavigationRailProps) {
   const controlsRef = useRef<HTMLDivElement>(null);
+  const showReleaseNote = useMobileGpsMonitorLayoutStore((s) => s.showReleaseNote);
 
   useEffect(() => {
     controlsRef.current?.scrollTo({ top: 0 });
@@ -80,7 +83,14 @@ export default function HubNavigationRail({
               data-testid={`hub-nav-${center.id}`}
               data-hub-nav-module={center.primaryModule}
               title={`${center.label} — ${center.info}`}
-              onClick={() => onOpenPanel(center.primaryModule)}
+              onClick={() => {
+                const held = heldReleaseForCenter(center.id);
+                if (held) {
+                  showReleaseNote(held.id);
+                  return;
+                }
+                onOpenPanel(center.primaryModule);
+              }}
               style={{
                 display: "flex",
                 flexDirection: "column",

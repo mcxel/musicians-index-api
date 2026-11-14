@@ -38,6 +38,15 @@ export type LiveRoomConfig = {
   votingEnabled: boolean;
   reactionsEnabled: boolean;
   recordingEnabled: boolean;
+  /**
+   * How other participants reach the stage (host Go Live stays instant).
+   * See venueEntryModeLaw.ts — one engine, four modes.
+   */
+  venueEntryMode?: "INSTANT_STAGE" | "HOST_APPROVAL" | "INVITED_DIRECT" | "QUEUE_SCHEDULED";
+  /** Who operates the event — automation changes operator, not which engine runs. */
+  eventOperatorMode?: "TMI_AUTOMATED" | "HUMAN_HOSTED" | "HYBRID";
+  /** Who may admit a ready guest onto the program composition. */
+  stageAdmissionAuthority?: "AUTHORIZED_AUTOMATION" | "HUMAN_HOST";
 };
 
 export type LiveRoom = {
@@ -77,6 +86,9 @@ const DEFAULT_CONFIG: Record<LiveRoomType, LiveRoomConfig> = {
     votingEnabled: false,
     reactionsEnabled: true,
     recordingEnabled: true,
+    venueEntryMode: "HOST_APPROVAL",
+    eventOperatorMode: "HUMAN_HOSTED",
+    stageAdmissionAuthority: "HUMAN_HOST",
   },
   venue: {
     maxCapacity: 2000,
@@ -85,6 +97,9 @@ const DEFAULT_CONFIG: Record<LiveRoomType, LiveRoomConfig> = {
     votingEnabled: false,
     reactionsEnabled: true,
     recordingEnabled: true,
+    venueEntryMode: "HOST_APPROVAL",
+    eventOperatorMode: "HUMAN_HOSTED",
+    stageAdmissionAuthority: "HUMAN_HOST",
   },
   cypher: {
     maxCapacity: 1000,
@@ -93,6 +108,9 @@ const DEFAULT_CONFIG: Record<LiveRoomType, LiveRoomConfig> = {
     votingEnabled: true,
     reactionsEnabled: true,
     recordingEnabled: false,
+    venueEntryMode: "QUEUE_SCHEDULED",
+    eventOperatorMode: "TMI_AUTOMATED",
+    stageAdmissionAuthority: "AUTHORIZED_AUTOMATION",
   },
   battle: {
     maxCapacity: 500,
@@ -101,6 +119,9 @@ const DEFAULT_CONFIG: Record<LiveRoomType, LiveRoomConfig> = {
     votingEnabled: true,
     reactionsEnabled: true,
     recordingEnabled: true,
+    venueEntryMode: "QUEUE_SCHEDULED",
+    eventOperatorMode: "HYBRID",
+    stageAdmissionAuthority: "HUMAN_HOST",
   },
   contest: {
     maxCapacity: 10000,
@@ -109,6 +130,9 @@ const DEFAULT_CONFIG: Record<LiveRoomType, LiveRoomConfig> = {
     votingEnabled: true,
     reactionsEnabled: true,
     recordingEnabled: true,
+    venueEntryMode: "QUEUE_SCHEDULED",
+    eventOperatorMode: "TMI_AUTOMATED",
+    stageAdmissionAuthority: "AUTHORIZED_AUTOMATION",
   },
 };
 

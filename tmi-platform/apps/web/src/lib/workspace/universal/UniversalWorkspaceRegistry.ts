@@ -75,7 +75,7 @@ export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWor
   },
   lobby: {
     id: "lobby",
-    label: "Lobby",
+    label: "Lobby Wall",
     accent: "#FFD700",
     defaultGeometry: { ...DEFAULT_FLOAT },
     minWidth: 400,

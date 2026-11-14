@@ -19,37 +19,42 @@ export interface GovernedIdleFallbackPolicy {
   allowOffFocusUrlPreview: boolean;
 }
 
+/**
+ * Living Lobby Wall: visible live tiles must keep moving.
+ * Raise URL-preview concurrency; never force costTier "static" for the wall
+ * (composed-motion remains the honest fallback when URL/WebRTC budget is full).
+ */
 function policyForTier(tier: ExperienceQualityTier): GovernedIdleFallbackPolicy {
   switch (tier) {
     case "minimal":
       return {
-        costTier: "static",
+        costTier: "motion",
         rotationIntervalMs: 28_000,
-        maxUrlVideoTiles: 0,
+        maxUrlVideoTiles: 4,
         allowMonitorVideoRotation: false,
-        allowOffFocusUrlPreview: false,
+        allowOffFocusUrlPreview: true,
       };
     case "economy":
       return {
         costTier: "motion",
         rotationIntervalMs: 20_000,
-        maxUrlVideoTiles: 0,
+        maxUrlVideoTiles: 6,
         allowMonitorVideoRotation: false,
-        allowOffFocusUrlPreview: false,
+        allowOffFocusUrlPreview: true,
       };
     case "balanced":
       return {
-        costTier: "motion",
+        costTier: "video",
         rotationIntervalMs: 14_000,
-        maxUrlVideoTiles: 1,
-        allowMonitorVideoRotation: false,
-        allowOffFocusUrlPreview: false,
+        maxUrlVideoTiles: 10,
+        allowMonitorVideoRotation: true,
+        allowOffFocusUrlPreview: true,
       };
     default:
       return {
         costTier: "video",
         rotationIntervalMs: 8_000,
-        maxUrlVideoTiles: 2,
+        maxUrlVideoTiles: 16,
         allowMonitorVideoRotation: true,
         allowOffFocusUrlPreview: true,
       };

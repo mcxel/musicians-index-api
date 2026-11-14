@@ -63,6 +63,11 @@ import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
 import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
+import {
+  framesToLobbyMonitorSlots,
+  resolveLobbyWallWatchTarget,
+} from "@/lib/lobby/lobbyWallMediaRouter";
+import { LOBBY_WALL_BUTTON_LABEL } from "@/lib/lobby/livingLobbyWallLaw";
 
 function lobbyRoomToUniversal(room: LobbyRoom): UniversalRoom {
   return {
@@ -1043,6 +1048,40 @@ export default function CommandCenterMediaStack({
     useCanonicalMediaPlayerRuntime.getState().assignSource(frameId, "AUDIENCE_VIEW");
   }, []);
 
+  /** Lobby Wall law: Player 1 first; preserve protected video calls. */
+  const routeLobbyWallWatch = useCallback(
+    (room: LobbyRoom, preferredFrameId?: FrameId) => {
+      const rid = room.id.trim();
+      if (!rid) return;
+      const frames = useCanonicalMediaPlayerRuntime.getState().frames;
+      const slots = framesToLobbyMonitorSlots(frames, {
+        roomOverrides: monitorRoomOverrides,
+        protectedFrameIds: (["a", "b", "c", "d", "e", "f", "g", "h"] as FrameId[]).filter(
+          (id) => {
+            const src = frames[id]?.source;
+            return src === "SELF_CAMERA" || src === "SCREEN_SHARE";
+          },
+        ),
+      });
+      const decision = resolveLobbyWallWatchTarget(slots, preferredFrameId);
+      if (!decision.success || !decision.frameId) {
+        setLobbyPanelFocusRoom(room);
+        return;
+      }
+      setLobbyPanelFocusRoom(room);
+      sendLobbyRoomToMonitor(rid, decision.frameId);
+      const href = room.href?.trim();
+      if (href && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("tmi:lobby-watch-exact", {
+            detail: { roomId: rid, href, frameId: decision.frameId },
+          }),
+        );
+      }
+    },
+    [monitorRoomOverrides, sendLobbyRoomToMonitor],
+  );
+
   useEffect(() => {
     const onLobbySendTo = (e: Event) => {
       const detail = (e as CustomEvent<{ roomId?: string; frameId?: FrameId }>).detail;
@@ -1605,11 +1644,11 @@ export default function CommandCenterMediaStack({
             {utilityBtn(
               detachedLobbyWallOpen,
               "#00FFFF",
-              "LOBBY WALL",
+              LOBBY_WALL_BUTTON_LABEL,
               () => toggleLobbyWallFromButton(),
               {
                 testId: "tmi-command-lobby-wall",
-                title: "Open Live Lobby Wall mosaic panel — does not replace monitors",
+                title: "Open living Lobby Wall mosaic — continuous moving previews, does not replace monitors",
                 icon: "🧱",
               },
             )}
@@ -2104,14 +2143,18 @@ export default function CommandCenterMediaStack({
             >
               <LiveLobbyWallHost
                 variant="embedded"
-                title="Live Lobby Wall"
+                title="Lobby Wall"
                 typeLabel="LIVE"
                 accentColor="#00FFFF"
                 viewerUserId={userId ?? null}
                 viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
                 defaultCategory={role === "performer" ? "lives" : "fan_avatar_lobbies"}
                 enableMobileRoam
-                onRoomJoin={(room) => setLobbyPanelFocusRoom(room)}
+                onRoomJoin={(room) => {
+                  // Instant watch into Player 1 (or next free if call protected).
+                  // JOIN STAGE remains a separate explicit action.
+                  routeLobbyWallWatch(room);
+                }}
               />
             </div>
             {lobbyPanelFocusRoom ? (
@@ -2150,16 +2193,7 @@ export default function CommandCenterMediaStack({
                   type="button"
                   data-testid="lobby-panel-watch"
                   onClick={() => {
-                    const href = lobbyPanelFocusRoom.href?.trim();
-                    if (href && typeof window !== "undefined") {
-                      window.dispatchEvent(
-                        new CustomEvent("tmi:lobby-watch-exact", {
-                          detail: { roomId: lobbyPanelFocusRoom.id, href },
-                        }),
-                      );
-                      // Keep workspace: route venue feed to Monitor A as WATCH default.
-                      sendLobbyRoomToMonitor(lobbyPanelFocusRoom.id, "a");
-                    }
+                    routeLobbyWallWatch(lobbyPanelFocusRoom);
                   }}
                   style={{
                     padding: "7px 12px",
