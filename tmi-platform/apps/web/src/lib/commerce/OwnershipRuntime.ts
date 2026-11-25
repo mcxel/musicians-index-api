@@ -20,7 +20,7 @@ export interface UserEntitlement {
   userId: string;
   skuId: string;
   title: string;
-  category: "cosmetic" | "skin" | "chassis" | "pass" | "reward";
+  category: "cosmetic" | "skin" | "chassis" | "pass" | "reward" | "beat" | "yoalbum";
   provenance: EntitlementProvenance;
   pricePaidCents: number;
   obtainedAt: number;
@@ -88,6 +88,52 @@ class OwnershipRuntimeImpl {
       }
     });
     return found;
+  }
+
+  /** Equip one cosmetic/skin; clear equipped flag on other items in same category. */
+  equipExclusive(userId: string, skuId: string): boolean {
+    const list = userEntitlements.get(userId) ?? [];
+    const target = list.find((e) => e.skuId === skuId);
+    if (!target) return false;
+    if (target.category !== "cosmetic" && target.category !== "skin") {
+      target.equipped = true;
+      return true;
+    }
+    for (const e of list) {
+      if (e.category === target.category) e.equipped = e.skuId === skuId;
+    }
+    return true;
+  }
+
+  unequipSku(userId: string, skuId: string): boolean {
+    const list = userEntitlements.get(userId) ?? [];
+    const e = list.find((x) => x.skuId === skuId);
+    if (!e) return false;
+    e.equipped = false;
+    return true;
+  }
+
+  getEquippedSkus(userId: string): string[] {
+    return (userEntitlements.get(userId) ?? []).filter((e) => e.equipped).map((e) => e.skuId);
+  }
+
+  /**
+   * Remove one entitlement from this process's cache (refund/chargeback revocation).
+   * The durable ownership row is the authority; this keeps the in-memory fallback in
+   * hasStoreItemAccess from granting a refunded item until restart (2026-11-18).
+   */
+  revokeEntitlement(userId: string, skuId: string): boolean {
+    const list = userEntitlements.get(userId);
+    if (!list) return false;
+    const next = list.filter((e) => e.skuId !== skuId);
+    if (next.length === list.length) return false;
+    userEntitlements.set(userId, next);
+    return true;
+  }
+
+  /** Test/harness only — never call from production purchase paths. */
+  clearUserEntitlementsForTest(userId: string): void {
+    userEntitlements.delete(userId);
   }
 }
 

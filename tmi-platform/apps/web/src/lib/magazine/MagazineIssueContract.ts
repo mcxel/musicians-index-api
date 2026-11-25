@@ -3,6 +3,8 @@
  * Types + laws only. Anti-Gravity studio / 31 templates remain LOCKED SPEC.
  */
 
+import type { ArticleCompositionSpec } from "./AdaptiveMagazineCompositionAuthority";
+
 export const MAGAZINE_LAYER = {
   CONTENT: "CONTENT",
   LAYOUT: "LAYOUT",
@@ -14,8 +16,19 @@ export type MagazineLayer = (typeof MAGAZINE_LAYER)[keyof typeof MAGAZINE_LAYER]
 
 export type MagazinePageClass = "PERFORMER" | "NEWS" | "RANDOM";
 
-/** Default issue rhythm. Never P,P,P or AD,AD,AD unless special-issue override. */
-export const DEFAULT_ISSUE_RHYTHM: readonly MagazinePageClass[] = ["PERFORMER", "NEWS", "RANDOM"];
+/** Issue rhythm (owner-locked 2026-10-31, supersedes the earlier one-R law):
+ * PERFORMER → NEWS → 2 OR 3 RANDOM PAGES → REPEAT. The Random run is broad
+ * editorial content (Happy Days, Community Convo, Fan content, YoPho,
+ * writer, game-hall, rankings, billboards, spreads, mosaics, events, sponsor/
+ * ad pages, …) — never a fourth top-level family and never a triple-ad run
+ * when alternative legitimate Random content exists. Consecutive Random pages
+ * avoid repeating the immediately-prior subtype where inventory allows. */
+export const DEFAULT_ISSUE_RHYTHM: readonly MagazinePageClass[] = [
+  "PERFORMER",
+  "NEWS",
+  "RANDOM",
+  "RANDOM",
+];
 
 export type RandomPageSubtype =
   | "SHOP"
@@ -41,6 +54,7 @@ export type RandomPageSubtype =
   | "FAN_YOPHO_MOSAIC"
   | "PERFORMER_YOPHO_MOSAIC"
   | "COMMUNITY_CORKBOARD"
+  | "COMMUNITY_GOSSIP"
   | "HAPPY_DAYS"
   | "STREAM_AND_WIN_DISCOVERY"
   | "VIDEO_SHUFFLE_DISCOVERY"
@@ -57,6 +71,16 @@ export const NON_LIVING_COMMUNITY_RANDOM: readonly RandomPageSubtype[] = [
   "FAN_YOPHO_MOSAIC",
   "PERFORMER_YOPHO_MOSAIC",
   "COMMUNITY_CORKBOARD",
+];
+
+/**
+ * §20984 — Community Gossip and Happy Days are both real, distinct, recurring
+ * issue departments and must never land in two consecutive RANDOM slots.
+ * Both departments remain in rotation; this only forbids the immediate pairing.
+ */
+export const GOSSIP_HAPPY_ADJACENCY_PAIR: readonly RandomPageSubtype[] = [
+  "COMMUNITY_GOSSIP",
+  "HAPPY_DAYS",
 ];
 
 export type MonetizationLayer =
@@ -101,6 +125,8 @@ export type EditorialStory = {
   blocks: MagazineStructuredBlock[];
   href: string;
   source: "magazine-issue-data" | "writer-submit";
+  /** Real attribution URLs from EditorialSubmission — never fabricated. */
+  sourceUrls?: string[];
 };
 
 export type MagazinePerformerEligibility = {
@@ -124,6 +150,9 @@ export type MagazinePerformerSlotSource = MagazinePerformerEligibility & {
   articleSubtitle?: string;
   heroColor?: string;
   merchHref?: string;
+  /** Real, from AdaptiveMagazineCompositionAuthority via the quarterly
+   * placement authority — never discarded (owner-locked, 2026-10-30). */
+  articleComposition?: ArticleCompositionSpec;
 };
 
 export type MagazineNewsSlotSource = {
@@ -134,6 +163,10 @@ export type MagazineNewsSlotSource = {
   heroColor?: string;
   preview?: string;
   author?: string;
+  /** Authorized article-linked image only — never stock substitutes. */
+  imageUrl?: string;
+  sourceUrl?: string;
+  sourceName?: string;
 };
 
 export type MagazineRandomSlotSource = {
@@ -145,6 +178,25 @@ export type MagazineRandomSlotSource = {
   deck?: string;
   monetizationLayer: MonetizationLayer;
   imageUrl?: string;
+};
+
+/**
+ * Contract only — no runtime wiring into MagazineRotationEngine yet
+ * (Writer Phase A, 2026-09-16). A real Writer Spread renderer and real
+ * eligibility gate (canonical identity + published Content + moderation)
+ * must exist before this source is ever selected into an actual issue.
+ * Follows the exact same flat-interface convention as
+ * MagazinePerformerSlotSource/MagazineNewsSlotSource/MagazineRandomSlotSource
+ * above — deliberately not a new engine.
+ */
+export type MagazineWriterSlotSource = {
+  id: string;
+  writerUserId: string;
+  writerSlug: string;
+  displayName: string;
+  href: string;
+  heroColor?: string;
+  preview?: string;
 };
 
 export type MagazineIssueSlot = {
@@ -163,6 +215,16 @@ export type MagazineIssueSlot = {
   liveHref?: string;
   merchHref?: string;
   isLive?: boolean;
+  /** Real Fan author User.id — FAN slots only; never a performerSlug. */
+  fanAuthorUserId?: string;
+  fanAuthorDisplayName?: string;
+  fanAuthorProfileRoute?: string;
+  /** Real, from AdaptiveMagazineCompositionAuthority — PERFORMER slots only
+   * (owner-locked, 2026-10-30: must travel through to the renderer). */
+  articleComposition?: ArticleCompositionSpec;
+  /** NEWS provenance — canonical external/source URL when known. */
+  sourceUrl?: string;
+  sourceName?: string;
 };
 
 export const MAGAZINE_XP_POLICY = {
@@ -192,10 +254,10 @@ export const WRITER_CASH_PAYOUT = {
 };
 
 /**
- * Bounded Physical Page Law — issue ≠ one infinite vertical document.
- * Page numbers come from IssueCompositionManifest / built slots only.
- * Equal pages = equal structural geometry, not equal word counts (never fabricate filler).
- * Long copy expands in place, then opens FULL_READER — never makes a page indefinitely taller.
+ * Bounded Physical Page Law — amended by §20955 Continuous Long-Form Sheet.
+ * Issue still has finite page *slots* (swipe/NEXT). Within a feature slot,
+ * the sheet height is CONTENT-DRIVEN — full writer body renders INLINE.
+ * FULL_READER article jump is forbidden for the primary Magazine experience.
  */
 export const BOUNDED_PHYSICAL_PAGE_LAW = {
   issueIsFinitePages: true,
@@ -205,8 +267,11 @@ export const BOUNDED_PHYSICAL_PAGE_LAW = {
   pageNumbersFromManifestOnly: true,
   equalPagesMeanEqualGeometryNotWordCount: true,
   neverFabricateFiller: true,
-  longContentModes: ["COMPACT", "EXPANDED_IN_PLACE", "FULL_READER"] as const,
-  compactParagraphBudget: 2,
+  /** §20955 — continuous inline feature; no jump to separate web article */
+  longContentModes: ["FULL_INLINE_ON_SHEET", "CONTENT_DRIVEN_HEIGHT"] as const,
+  articleJumpRequired: 0 as const,
+  fullArticleInline: true as const,
+  compactParagraphBudget: Number.POSITIVE_INFINITY,
 } as const;
 
 /**
@@ -270,6 +335,7 @@ export function editorialSubmissionToStory(input: {
   status: string;
   contributorId: string;
   artistSlug?: string;
+  sourceUrls?: string[];
 }): EditorialStory {
   const approved = input.status === "approved";
   const paragraphs = input.body
@@ -292,5 +358,6 @@ export function editorialSubmissionToStory(input: {
     // would be circular).
     href: `/magazine/issue/current?article=${encodeURIComponent(input.submissionId)}`,
     source: "writer-submit",
+    sourceUrls: input.sourceUrls?.length ? input.sourceUrls : undefined,
   };
 }

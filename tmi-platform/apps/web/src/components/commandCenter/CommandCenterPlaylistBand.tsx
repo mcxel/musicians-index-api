@@ -2,8 +2,15 @@
 
 /**
  * Persistent playlist library band — sits immediately below the cyan/gold dock boundary.
- * Compact by default; expands to full Playlist Canister when playlist drawer is active.
- * Single audio owner (PlaylistCanister) — playback continues across expand/collapse.
+ *
+ * Presentation rules (owner P0, 2026-11-21):
+ * - Full PLAYLIST LIBRARY mounts only when Playlist is the active destination.
+ * - When another drawer is open (Avatar, Memory, Stats, …), the band does not
+ *   occupy layout between the compact monitor and the drawer.
+ * - When bottom drawer owns playlist-studio, band shows continuity chrome only
+ *   (single PlaylistCanister mount preserved in the drawer).
+ * - Parked state keeps a hidden PlaylistCanister so playback can continue
+ *   without a second visible library stack.
  */
 
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
@@ -16,6 +23,8 @@ export interface CommandCenterPlaylistBandProps {
   userId: string;
   displayName: string;
   expanded: boolean;
+  /** True when Playlist is the focused panel / destination (not merely any drawer). */
+  playlistFocused?: boolean;
   initialPlaylistId?: string | null;
   onCollapse?: () => void;
 }
@@ -25,16 +34,55 @@ export default function CommandCenterPlaylistBand({
   userId,
   displayName,
   expanded,
+  playlistFocused = false,
   initialPlaylistId = null,
   onCollapse,
 }: CommandCenterPlaylistBandProps) {
   const theme = useTheme();
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const bottomDrawerOwnsPlaylist = drawerWorkspace === "playlist-studio";
+  const showLibrary = playlistFocused && !bottomDrawerOwnsPlaylist;
+
+  if (!showLibrary && !bottomDrawerOwnsPlaylist) {
+    /* Parked: preserve single audio owner without blocking drawer adjacency. */
+    return (
+      <section
+        data-playlist-library-band
+        data-playlist-presentation="parked"
+        data-playlist-expanded="false"
+        data-bottom-drawer-owns-playlist="false"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+          pointerEvents: "none",
+          visibility: "hidden",
+        }}
+      >
+        <PlaylistCanister
+          entityId={userId}
+          entityName={displayName}
+          isOwner
+          role={role === "performer" ? "performer" : "fan"}
+          accentColor={theme.primary}
+          initialPlaylistId={initialPlaylistId}
+          layout="compact"
+        />
+      </section>
+    );
+  }
 
   return (
     <section
       data-playlist-library-band
+      data-playlist-presentation={bottomDrawerOwnsPlaylist ? "continuity" : "library"}
       data-playlist-expanded={expanded ? "true" : "false"}
       data-bottom-drawer-owns-playlist={bottomDrawerOwnsPlaylist ? "true" : "false"}
       style={{
@@ -92,7 +140,6 @@ export default function CommandCenterPlaylistBand({
           ) : null}
         </div>
       ) : (
-        /* When bottom drawer is closed or displaying another tool, band mounts compact canister */
         <>
           <div
             style={{

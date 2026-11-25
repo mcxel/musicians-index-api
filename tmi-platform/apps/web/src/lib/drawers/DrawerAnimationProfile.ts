@@ -14,7 +14,12 @@ import type { ThemeTokens } from "@/lib/design/ThemeEngine";
  * Tall enough to claim unused space under the sheet (closer to dock / screen
  * bottom) while leaving a thin top chrome band — not full 100vh.
  */
-export const DRAWER_OPEN_HEIGHT = "min(94vh, 1080px)";
+/**
+ * §20995-E — WORK / under-dashboard drawers must fit the visible desktop
+ * workspace. Prior `min(94vh, 1080px)` opened below two tall monitors and
+ * looked "missing" until the user scrolled the full column.
+ */
+export const DRAWER_OPEN_HEIGHT = "min(52vh, 560px)";
 
 /** User/theme motion preference (maps from ThemeEngine.transitionStyle). */
 export type MotionProfilePreference = "Minimal" | "Standard" | "Cinematic";

@@ -8,6 +8,7 @@ export const INDEXABLE_STATIC_ROUTES = [
   "/home/3",
   "/home/4",
   "/home/5",
+  "/live/lobby-wall",
   "/magazine",
   "/magazine/issue/current",
   "/tickets",

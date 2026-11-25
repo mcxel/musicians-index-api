@@ -25,6 +25,11 @@ import type {
   SystemPowerState,
 } from "./MixerErrorCodes";
 import type { ExperienceType } from "@/lib/venue-hud/TMIExperienceHudRuntime";
+import {
+  mayPlayCrowdReactionInPerformerPersonal,
+  resolvePerformerCrowdMixPlan,
+  type PerformerCrowdMixPlan,
+} from "@/lib/audio/mixer/PerformerLiveMixCrowdPolicy";
 
 export type MixBus = "PERSONAL" | "PROGRAM";
 
@@ -201,6 +206,9 @@ class ChannelMixerDirectorImpl {
   /** Simulated second-listener PROGRAM store — PERSONAL never writes here */
   private programBusStore = new Map<string, { gain: number; muted: boolean }>();
   private personalBusStore = new Map<string, { gain: number; muted: boolean; solo: boolean }>();
+  /** Negative crowd (boo) must never enter performer PERSONAL monitor for Battle/Cypher/Song Challenge. */
+  private performerCrowdPlan: PerformerCrowdMixPlan | null = null;
+  private negativeCrowdPersonalMuted = false;
 
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
@@ -240,6 +248,11 @@ class ChannelMixerDirectorImpl {
     this.policy = resolveExperienceAudioProfile(input.experienceType, {
       battleOfBands: input.battleOfBands,
       rehearsal: input.rehearsal,
+    });
+
+    this.applyPerformerCrowdPolicy({
+      experienceType: input.experienceType,
+      positiveCrowdEnabled: true,
     });
 
     if (this.channels.size === 0) {
@@ -553,9 +566,16 @@ class ChannelMixerDirectorImpl {
     if (anySolo && !ch.personalSolo) return 0;
     if (ch.personalMuted) return 0;
 
-    // Crowd independent — zero crowd does not affect participants
+    // Crowd independent — zero crowd does not affect participants.
+    // Battle/Cypher/Song Challenge: negative crowd muted at PERSONAL route level.
     if (ch.kind === "crowd") {
-      return ch.personalGain * masterGain;
+      if (this.negativeCrowdPersonalMuted && this.performerCrowdPlan && !this.performerCrowdPlan.allowPositiveCrowdInPersonalMonitor) {
+        return 0;
+      }
+      const gain = this.performerCrowdPlan
+        ? Math.min(ch.personalGain, this.performerCrowdPlan.maxCrowdGain)
+        : ch.personalGain;
+      return gain * masterGain;
     }
     return ch.personalGain * masterGain;
   }
@@ -786,6 +806,100 @@ class ChannelMixerDirectorImpl {
       gain: ch.programGain,
       muted: ch.programMuted,
     });
+  }
+
+  /**
+   * Bind Performer LIVE MIX crowd plan into the PERSONAL audio route.
+   * When suppressBooInPersonalMonitor: force mute/cap on __crowd__ for PERSONAL only.
+   * PROGRAM bus unchanged. Enforcement OFF for adaptive crowd endings stays elsewhere.
+   */
+  applyPerformerCrowdPolicy(input: {
+    experienceType?: ExperienceType | string | null;
+    positiveCrowdEnabled?: boolean;
+  }): PerformerCrowdMixPlan {
+    const plan = resolvePerformerCrowdMixPlan({
+      experienceType: input.experienceType,
+      positiveCrowdEnabled: input.positiveCrowdEnabled !== false,
+    });
+    this.performerCrowdPlan = plan;
+    this.negativeCrowdPersonalMuted = plan.suppressBooInPersonalMonitor;
+    const crowd = this.channels.get(VIRTUAL_IDS.crowd);
+    if (crowd && plan.suppressBooInPersonalMonitor) {
+      // Route-level: PERSONAL hear path treats crowd as muted for negative / capped for positive.
+      if (!plan.allowPositiveCrowdInPersonalMonitor) {
+        crowd.personalMuted = true;
+        const store = this.personalBusStore.get(crowd.channelId) ?? {
+          gain: crowd.personalGain,
+          muted: true,
+          solo: false,
+        };
+        store.muted = true;
+        this.personalBusStore.set(crowd.channelId, store);
+      } else {
+        const capped = Math.min(crowd.personalGain, plan.maxCrowdGain);
+        crowd.personalGain = capped;
+        const store = this.personalBusStore.get(crowd.channelId) ?? {
+          gain: capped,
+          muted: false,
+          solo: false,
+        };
+        store.gain = capped;
+        this.personalBusStore.set(crowd.channelId, store);
+      }
+      this.applyPersonalToOwner(crowd);
+    }
+    this.notify();
+    return plan;
+  }
+
+  getPerformerCrowdPlan(): PerformerCrowdMixPlan | null {
+    return this.performerCrowdPlan ? { ...this.performerCrowdPlan } : null;
+  }
+
+  /** True when PERSONAL monitor must not play boo / negative crowd SFX. */
+  isNegativeCrowdMutedInPersonal(): boolean {
+    return this.negativeCrowdPersonalMuted;
+  }
+
+  /**
+   * Discrete per-listener crowd reaction gate on the PERSONAL monitor bus.
+   * For Cursor's discrete crowd SFX playback callsite: suppresses negative crowd
+   * reactions (BOO/GROAN/DISAPPOINTMENT) in the active performer's PERSONAL mix
+   * during Battle/Cypher/Song Challenge while leaving audience PERSONAL and PROGRAM
+   * mixes unaffected.
+   */
+  shouldPlayDiscreteCrowdReactionInPersonal(input: {
+    reactionFamily: string;
+    listenerIsActivePerformer: boolean;
+    experienceType?: ExperienceType | string | null;
+  }): {
+    allowInPersonalMonitor: boolean;
+    suppressedBoo: boolean;
+    effectivePersonalCrowdGain: number;
+    programBusUnaffected: true;
+  } {
+    const plan =
+      this.performerCrowdPlan ??
+      resolvePerformerCrowdMixPlan({
+        experienceType: input.experienceType,
+        positiveCrowdEnabled: true,
+      });
+    const effectivePersonalCrowdGain = this.getEffectivePersonalGain(VIRTUAL_IDS.crowd);
+    if (!input.listenerIsActivePerformer) {
+      return {
+        allowInPersonalMonitor: effectivePersonalCrowdGain > 0,
+        suppressedBoo: false,
+        effectivePersonalCrowdGain,
+        programBusUnaffected: true,
+      };
+    }
+    const allowed = mayPlayCrowdReactionInPerformerPersonal(input.reactionFamily, plan);
+    return {
+      allowInPersonalMonitor: allowed && effectivePersonalCrowdGain > 0,
+      suppressedBoo: !allowed,
+      effectivePersonalCrowdGain: allowed ? effectivePersonalCrowdGain : 0,
+      programBusUnaffected: true,
+    };
   }
 
   /** Listener-local hear path → bound AudioOwner (never touches programBusStore) */

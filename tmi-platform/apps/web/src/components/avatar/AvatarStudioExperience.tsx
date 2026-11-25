@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { AvatarCameraFocus } from "@/components/3d/AvatarLobbyCanvas";
 import type { PhonemeGroup } from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
 import { SPEAKING_HOLD_MS, SPEAKING_THRESHOLD } from "@/lib/audio/TMIAudioSafetyMixer";
@@ -14,14 +15,14 @@ import AvatarEyeSelector from "@/components/avatar/AvatarEyeSelector";
 import AvatarForgePreview3D from "@/components/avatar/AvatarForgePreview3D";
 import AvatarHairSelector from "@/components/avatar/AvatarHairSelector";
 import AvatarOutfitRail from "@/components/avatar/AvatarOutfitRail";
-import AvatarSaveRail from "@/components/avatar/AvatarSaveRail";
+import AvatarSaveRail, { type AvatarSaveRailStatus } from "@/components/avatar/AvatarSaveRail";
 import AvatarSkinSelector from "@/components/avatar/AvatarSkinSelector";
 import {
   equipItem,
   getStarterInventory,
-  syncInventoryToProfile,
   type AvatarInventoryItem,
 } from "@/lib/avatar/avatarInventoryEngine";
+import { resolveAvatarSaveUiFromResponse } from "@/lib/avatar/avatarSaveUiContract";
 import {
   FAN_COSMETIC_CATALOG,
   FORGE_OUTFIT_TO_SKU,
@@ -128,6 +129,9 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   const [bodyMass, setBodyMass] = useState(50);
   const [inventory, setInventory] = useState<AvatarInventoryItem[]>(() => getStarterInventory());
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<AvatarSaveRailStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveRequestSeqRef = useRef(0);
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState("");
   const [activePackId, setActivePackId] = useState<string | null>("street");
@@ -346,8 +350,9 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
         "tmi_avatar_phase2_saved_look",
         JSON.stringify(look),
       );
+      // Local draft only — never claim durable server persistence from localStorage.
       setSavedLookNote(
-        `Saved Look ${look.lookId} · cert=${look.certificationSnapshot.wearableCert}`,
+        `Local draft ${look.lookId} (not server-persisted) · cert=${look.certificationSnapshot.wearableCert}`,
       );
     } catch (err) {
       setSavedLookNote(err instanceof Error ? err.message : String(err));
@@ -360,8 +365,9 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   const persistPortrait = useCallback(async (dataUrl: string) => {
     setPortraitUrl(dataUrl);
     try { window.localStorage.setItem(FACE_SCAN_LS, dataUrl); } catch { /* skip */ }
+    let durableOk = false;
     try {
-      await fetch("/api/avatar/config", {
+      const res = await fetch("/api/avatar/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -371,12 +377,33 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
           isComplete: false,
         }),
       });
+      durableOk = res.ok;
     } catch {
-      /* local snapshot still holds */
+      durableOk = false;
     }
-    setScanNote("Photo stored on your avatar record. Likeness mapping to a rigged 3D mesh is not certified.");
+    setScanNote(
+      durableOk
+        ? "Photo stored on your avatar record. Likeness mapping to a rigged 3D mesh is not certified."
+        : "Local preview photo captured (server persistence unavailable). Likeness mapping to a rigged 3D mesh is not certified.",
+    );
     setCategory("body");
   }, []);
+
+  const editRevisionRef = useRef(0);
+  const internalSaveMutationRef = useRef(false);
+  const markDirtyEdit = useCallback(() => {
+    if (internalSaveMutationRef.current) {
+      internalSaveMutationRef.current = false;
+      return;
+    }
+    editRevisionRef.current += 1;
+    setSaveStatus((prev) => (prev === "saved" ? "idle" : prev));
+    setSavedAt(null);
+  }, []);
+
+  useEffect(() => {
+    markDirtyEdit();
+  }, [profileName, skin, hair, eyes, selectedAccessories, outfit, propName, bodyHeight, bodyMass, inventory, activePackId, markDirtyEdit]);
 
   const toggleAccessory = (accessory: string) => {
     setSelectedAccessories((prev) =>
@@ -398,20 +425,48 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
   };
 
   const handleSave = async () => {
+    const requestSeq = ++saveRequestSeqRef.current;
+    setSaveStatus("saving");
+    setSaveError(null);
+
     let nextInventory = inventory;
     const neonMic = inventory.find((item) => item.name === "Neon Mic Skin");
-    if (neonMic && propName === "Neon Mic") {
+    if (neonMic && propName === "Neon Mic" && !neonMic.equipped) {
       nextInventory = equipItem(inventory, neonMic.id ?? neonMic.itemId ?? "");
+      internalSaveMutationRef.current = true;
       setInventory(nextInventory);
     }
-    const sync = syncInventoryToProfile(nextInventory);
+    const requestEditRevision = editRevisionRef.current;
+
+    const failSave = (message: string) => {
+      if (requestSeq !== saveRequestSeqRef.current) return;
+      setSaveStatus("error");
+      setSaveError(message);
+      // Never set savedAt / Synced on failure (false-success ban).
+    };
+
     try {
-      await fetch("/api/avatar/inventory", {
+      const inventoryResponse = await fetch("/api/avatar/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ items: nextInventory }),
       });
+      let invPayload: { ok?: boolean; durable?: boolean; error?: string; detail?: string } | null = null;
+      try {
+        invPayload = await inventoryResponse.json();
+      } catch {
+        invPayload = null;
+      }
+      if (!inventoryResponse.ok || !invPayload || invPayload.ok !== true || invPayload.durable !== true) {
+        failSave(
+          invPayload?.detail ||
+            invPayload?.error ||
+            `Inventory persist failed (HTTP ${inventoryResponse.status})`,
+        );
+        return;
+      }
+
       const saveResponse = await fetch("/api/avatar/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -429,30 +484,61 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
           },
         }),
       });
-      if (saveResponse.ok) {
-        const payload = await saveResponse.json();
-        const ts = payload?.AvatarProfile?.updatedAt ?? sync.syncedAt;
-        setSavedAt(ts);
-      } else {
-        setSavedAt(sync.syncedAt);
+
+      let payload: {
+        ok?: boolean;
+        durable?: boolean;
+        error?: string;
+        detail?: string;
+        AvatarProfile?: { updatedAt?: string };
+      } | null = null;
+      try {
+        payload = await saveResponse.json();
+      } catch {
+        payload = null;
       }
-    } catch {
-      setSavedAt(sync.syncedAt);
-    }
-    patchCanonicalAvatarDraft({
-      displayName: profileName,
-      equippedCosmeticIds,
-    });
-    const commit = commitCanonicalDraftToFanWorld({
-      ownedCosmeticIds: [...ownedIds],
-      skinTone: skin,
-      hairStyle: hair,
-      outfitLabel: outfit,
-      bodyHeight,
-      bodyMass,
-    });
-    if (!commit.ok && commit.storeHref && typeof window !== "undefined") {
-      window.location.assign(commit.storeHref);
+
+      if (requestSeq !== saveRequestSeqRef.current) return;
+
+      const ui = resolveAvatarSaveUiFromResponse({
+        httpOk: saveResponse.ok,
+        status: saveResponse.status,
+        payload,
+      });
+      if (ui.status === "error") {
+        failSave(ui.error || "Avatar was not durably saved");
+        return;
+      }
+
+      // If the user edited any avatar field while the save request was in flight,
+      // do not display a stale "SAVED" status for the newer unsaved draft.
+      if (editRevisionRef.current !== requestEditRevision) {
+        setSaveStatus("idle");
+        setSavedAt(null);
+        return;
+      }
+
+      setSavedAt(ui.savedAt);
+      setSaveStatus("saved");
+      setSaveError(null);
+
+      patchCanonicalAvatarDraft({
+        displayName: profileName,
+        equippedCosmeticIds,
+      });
+      const commit = commitCanonicalDraftToFanWorld({
+        ownedCosmeticIds: [...ownedIds],
+        skinTone: skin,
+        hairStyle: hair,
+        outfitLabel: outfit,
+        bodyHeight,
+        bodyMass,
+      });
+      if (!commit.ok && commit.storeHref && typeof window !== "undefined") {
+        window.location.assign(commit.storeHref);
+      }
+    } catch (err) {
+      failSave(err instanceof Error ? err.message : "Avatar save request failed");
     }
   };
 
@@ -476,7 +562,9 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
     inventory,
     setInventory,
     onSave: handleSave,
+    saveStatus,
     savedAt,
+    saveError,
     pose,
     setPose,
   });
@@ -526,7 +614,24 @@ export default function AvatarStudioExperience({ onClose, embedded = false }: Av
             </button>
             {onClose ? (
               <button type="button" className="tmi-avatar-studio-chip" onClick={onClose}>Close</button>
-            ) : null}
+            ) : (
+              <>
+                <Link
+                  href="/avatar"
+                  className="tmi-avatar-studio-chip"
+                  style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center" }}
+                >
+                  ← Avatar Center
+                </Link>
+                <Link
+                  href="/avatar/showcase"
+                  className="tmi-avatar-studio-chip"
+                  style={{ textDecoration: "none", color: "#FFD700", display: "inline-flex", alignItems: "center" }}
+                >
+                  🌟 Showcase
+                </Link>
+              </>
+            )}
           </div>
         </header>
 
@@ -749,7 +854,9 @@ function renderCategoryPanel(p: {
   inventory: AvatarInventoryItem[];
   setInventory: React.Dispatch<React.SetStateAction<AvatarInventoryItem[]>>;
   onSave: () => void;
+  saveStatus: AvatarSaveRailStatus;
   savedAt: string | null;
+  saveError: string | null;
   pose: string;
   setPose: (v: string) => void;
 }) {
@@ -892,7 +999,14 @@ function renderCategoryPanel(p: {
         <div>
           <h3 className="tmi-avatar-studio-panel-title">Save</h3>
           <p className="tmi-avatar-studio-hint">Handle is identity. Loadout save writes skin/hair/eyes + equipped inventory.</p>
-          <AvatarSaveRail profileName={p.profileName} onNameChange={p.setProfileName} onSave={p.onSave} savedAt={p.savedAt} />
+          <AvatarSaveRail
+            profileName={p.profileName}
+            onNameChange={p.setProfileName}
+            onSave={p.onSave}
+            status={p.saveStatus}
+            savedAt={p.savedAt}
+            errorMessage={p.saveError}
+          />
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             {["Idle", "Sit", "Dance"].map((poseName) => (
               <button

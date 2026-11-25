@@ -2,7 +2,7 @@
 
 /**
  * SnipsSwipeOverlay — active swipe-up/down discovery (instant mode, not Video Shuffle).
- * References canonical sources only; private memories never enter.
+ * Newest-first public catalog; Sponsored Snip via SponsoredSnipInsertionAuthority.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,16 +12,55 @@ import {
   prevSnip,
   type SnipReference,
 } from "@/lib/discovery/SnipsDiscoveryRuntime";
+import {
+  decideSponsoredSnipInsertion,
+  recordOrganicSnipConsumed,
+  type SponsoredSnipCreative,
+} from "@/lib/discovery/SponsoredSnipInsertionAuthority";
+import SponsoredSnipCard from "@/components/discovery/SponsoredSnipCard";
 import { castPlaylistToMonitor } from "@/lib/playlists/PlaylistMonitorCast";
 import Link from "next/link";
+
+const SNIPS_RETURN_INDEX_KEY = "tmi_snips_return_index";
 
 export default function SnipsSwipeOverlay({ onClose }: { onClose: () => void }) {
   const pool = useMemo(() => buildSnipPool(), []);
   const [index, setIndex] = useState(0);
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [sponsored, setSponsored] = useState<SponsoredSnipCreative | null>(null);
+  const [eligibleCampaign, setEligibleCampaign] = useState<SponsoredSnipCreative | null>(null);
   const touchStartY = useRef<number | null>(null);
 
   const current = pool[index] ?? null;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SNIPS_RETURN_INDEX_KEY);
+      if (raw != null) {
+        const restored = Math.max(0, Math.min(Number(raw) || 0, Math.max(pool.length - 1, 0)));
+        setIndex(restored);
+        sessionStorage.removeItem(SNIPS_RETURN_INDEX_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [pool.length]);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/ads/sponsored-snip")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!alive) return;
+        setEligibleCampaign(data?.creative ?? null);
+      })
+      .catch(() => {
+        if (alive) setEligibleCampaign(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const playSnip = useCallback((snip: SnipReference) => {
     castPlaylistToMonitor({
@@ -36,16 +75,39 @@ export default function SnipsSwipeOverlay({ onClose }: { onClose: () => void }) 
   }, []);
 
   useEffect(() => {
-    if (current) playSnip(current);
-  }, [current, playSnip]);
+    if (current && !sponsored) playSnip(current);
+  }, [current, playSnip, sponsored]);
+
+  const trySponsoredAfterOrganic = useCallback(() => {
+    recordOrganicSnipConsumed();
+    const decision = decideSponsoredSnipInsertion({
+      hasAdConsent: true,
+      eligibleCampaign,
+    });
+    if (decision.action === "INSERT_SPONSORED_SNIP") {
+      setSponsored(decision.creative);
+      return true;
+    }
+    setSponsored(null);
+    return false;
+  }, [eligibleCampaign]);
 
   const goNext = () => {
+    if (sponsored) {
+      setSponsored(null);
+      return;
+    }
+    if (trySponsoredAfterOrganic()) return;
     const r = nextSnip(pool, index, recentIds);
     setIndex(r.index);
     setRecentIds(r.recentIds);
   };
 
   const goPrev = () => {
+    if (sponsored) {
+      setSponsored(null);
+      return;
+    }
     const r = prevSnip(pool, index);
     setIndex(r.index);
   };
@@ -68,6 +130,7 @@ export default function SnipsSwipeOverlay({ onClose }: { onClose: () => void }) 
     <div
       role="dialog"
       aria-label="Snips discovery"
+      data-testid="snips-swipe-overlay"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       style={{
@@ -116,9 +179,23 @@ export default function SnipsSwipeOverlay({ onClose }: { onClose: () => void }) 
         </button>
       </div>
 
-      {pool.length === 0 ? (
+      {sponsored ? (
+        <div style={{ width: "100%", maxWidth: 360, maxHeight: "70dvh" }}>
+          <SponsoredSnipCard
+            creative={sponsored}
+            onSkip={() => setSponsored(null)}
+            onCtaIntentionalClick={() => {
+              try {
+                sessionStorage.setItem(SNIPS_RETURN_INDEX_KEY, String(index));
+              } catch {
+                /* ignore */
+              }
+            }}
+          />
+        </div>
+      ) : pool.length === 0 ? (
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", textAlign: "center", maxWidth: 280 }}>
-          No public snips available yet. Performer intro videos will appear here when uploaded.
+          No public snips available yet. Published member Snips appear here newest-first.
         </div>
       ) : current ? (
         <div style={{ textAlign: "center", maxWidth: 360, width: "100%" }}>
@@ -151,7 +228,7 @@ export default function SnipsSwipeOverlay({ onClose }: { onClose: () => void }) 
             </Link>
           </div>
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 10 }}>
-            {index + 1} / {pool.length} · canonical reference only
+            {index + 1} / {pool.length} · newest first · permanent catalog
           </div>
         </div>
       ) : null}

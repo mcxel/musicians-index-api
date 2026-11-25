@@ -33,6 +33,8 @@ export interface EosArenaEventShellConfig {
   venueEnvironment?: "indoor" | "outdoor" | null;
   venueSkinId?: string | null;
   specialYearlyOutdoor?: boolean;
+  leftParticipant?: { id: string; displayName: string; imageUrl?: string | null } | null;
+  rightParticipant?: { id: string; displayName: string; imageUrl?: string | null } | null;
 }
 
 const CATEGORY_TO_EVENT: Partial<Record<ExperienceCategory, ArenaEventType>> = {
@@ -78,6 +80,8 @@ export default function EosArenaEventShell({ config }: EosArenaEventShellProps) 
           venueEnvironment={config.venueEnvironment}
           venueSkinId={config.venueSkinId}
           specialYearlyOutdoor={config.specialYearlyOutdoor}
+          leftParticipant={config.leftParticipant}
+          rightParticipant={config.rightParticipant}
         />
         <ExperienceWidgetLayer
           widgets={manifest.widgets}

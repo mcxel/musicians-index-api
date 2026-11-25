@@ -6,7 +6,8 @@
  *   TMI Store      = platform-global cosmetics / boosters / Media Players / coins
  *                   (same inventory regardless of active performer)
  *
- * Reuses StoreCanister, FAN_ITEMS / LOBBY_ITEMS, MEDIA_PLAYER_CHASSIS_REGISTRY
+ * Personal shelves read CreatorProductRegistry only (real saved rows).
+ * TMI Store reuses FAN_ITEMS / LOBBY_ITEMS and MEDIA_PLAYER_CHASSIS_REGISTRY
  * (SKIN_REGISTRY alias — Rule 19, no second store).
  * Rule 26: TMI Store cosmetics primarily Fan; no performer ticket invent (Rule 17).
  * Stage 2: durable ownership + Stripe OR points + equip.
@@ -15,16 +16,22 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
-import { StoreCanister } from "@/components/canisters/StoreCanister";
 import MediaPlayerChassisPreview from "@/components/media/MediaPlayerChassisPreview";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import {
+  formatCreatorProductPrice,
   listCreatorProducts,
+  sortCreatorProductsNewestFirst,
+  upsertCreatorProduct,
   type CreatorProduct,
 } from "@/lib/commerce/CreatorProductRegistry";
 import {
+  clearPerformerStorefrontLink,
+  COMMERCE_CONNECTOR_PROVIDERS,
+  getCommerceConnector,
   getPerformerStorefrontLink,
   resolveArtistBuyUrl,
+  type CommerceConnectorId,
 } from "@/lib/commerce/CommerceConnectorRegistry";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import {
@@ -53,21 +60,79 @@ import { getTmiPoints, spendTmiPoints } from "@/lib/progression/ProgressionEngin
 
 type ShopSection = "personal" | "tmi";
 
+/** Display-only names. A listed provider is not a connection and has no adapter. */
+const ADD_STORE_CATALOG = [
+  "Shopify",
+  "Bandcamp",
+  "Gumroad",
+  "WooCommerce",
+  "BigCommerce",
+  "Squarespace",
+  "Wix",
+  "Printful",
+  "Printify",
+  "Sellfy",
+  "Etsy",
+  "Eventbrite",
+  "Dice",
+  "AXS",
+  "Ticketmaster",
+  "Patreon",
+  "TikTok Shop",
+  "Instagram/Facebook Shop",
+  "Amazon Seller",
+  "eBay Seller",
+  "Square",
+  "Custom Store",
+] as const;
+
+function connectorLabel(id: string): string {
+  return getCommerceConnector(id as CommerceConnectorId)?.label ?? id;
+}
+
+function shelvesFor(products: readonly CreatorProduct[]): Array<{ id: string; label: string; products: CreatorProduct[] }> {
+  const groups = new Map<string, CreatorProduct[]>();
+  for (const product of products) {
+    const list = groups.get(product.connectorId) ?? [];
+    list.push(product);
+    groups.set(product.connectorId, list);
+  }
+  const rank = new Map(COMMERCE_CONNECTOR_PROVIDERS.map((provider, index) => [provider.id, index]));
+  return [...groups.keys()]
+    .sort((a, b) => {
+      const ra = rank.get(a as CommerceConnectorId) ?? 1000;
+      const rb = rank.get(b as CommerceConnectorId) ?? 1000;
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b);
+    })
+    .map((id) => ({
+      id,
+      label: connectorLabel(id),
+      products: sortCreatorProductsNewestFirst(groups.get(id) ?? []),
+    }))
+    .filter((shelf) => shelf.products.length > 0);
+}
+
 export interface ShopDrawerPanelProps {
   /** Session role — gates TMI cosmetic emphasis (Rule 26). */
   role: "fan" | "performer";
-  /** Fallback when no ACTIVE_PERFORMER (performer hub → self). */
+  /** Fallback when no ACTIVE_PERFORMER (performer hub → self). Ignored in contextual mode. */
   fallbackPerformerId?: string;
   accentColor?: string;
+  /** contextual = the performer currently in view. mixed = legacy personal + TMI store. */
+  inventoryMode?: "contextual" | "mixed";
 }
 
 export default function ShopDrawerPanel({
   role,
   fallbackPerformerId,
   accentColor = "#FF6B35",
+  inventoryMode = "mixed",
 }: ShopDrawerPanelProps) {
   const { activePerformer, resolvePerformerId } = useActivePerformer();
-  const performerId = resolvePerformerId(fallbackPerformerId);
+  const performerId = inventoryMode === "contextual"
+    ? (activePerformer?.id ?? null)
+    : resolvePerformerId(fallbackPerformerId);
   const name =
     activePerformer?.name ??
     (performerId ? getPerformerById(performerId)?.name : undefined) ??
@@ -77,6 +142,8 @@ export default function ShopDrawerPanel({
   const [section, setSection] = useState<ShopSection>("personal");
   const [products, setProducts] = useState<CreatorProduct[]>([]);
   const [storeUrl, setStoreUrl] = useState<string | null>(null);
+  const [storeFilter, setStoreFilter] = useState("all");
+  const managesStores = role === "performer" && inventoryMode !== "contextual";
   const [shopUserId, setShopUserId] = useState("local-user");
   const [pointsBalance, setPointsBalance] = useState(0);
   const [buyMsg, setBuyMsg] = useState<string | null>(null);
@@ -85,14 +152,27 @@ export default function ShopDrawerPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
+    setStoreFilter("all");
     if (!performerId) {
       setProducts([]);
       setStoreUrl(null);
       return;
     }
-    setProducts(listCreatorProducts(performerId));
+    const rows = listCreatorProducts(performerId).filter((product) =>
+      managesStores ? product.visibility !== "DRAFT" : product.visibility === "PUBLIC",
+    );
+    setProducts(rows);
     setStoreUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(performerId)));
-  }, [performerId]);
+  }, [performerId, managesStores]);
+
+  const shelves = useMemo(() => shelvesFor(products), [products]);
+  const visibleShelves = storeFilter === "all" ? shelves : shelves.filter((shelf) => shelf.id === storeFilter);
+
+  useEffect(() => {
+    if (storeFilter !== "all" && !shelves.some((shelf) => shelf.id === storeFilter)) {
+      setStoreFilter("all");
+    }
+  }, [shelves, storeFilter]);
 
   useEffect(() => {
     let active = true;
@@ -199,8 +279,42 @@ export default function ShopDrawerPanel({
     setBusyId(null);
   }
 
+  function hideProduct(product: CreatorProduct) {
+    if (!performerId) return;
+    upsertCreatorProduct({ ...product, visibility: "DRAFT" });
+    setProducts(listCreatorProducts(performerId).filter((row) => row.visibility !== "DRAFT"));
+  }
+
+  function disconnectStorefront() {
+    if (!performerId) return;
+    clearPerformerStorefrontLink(performerId);
+    setStoreUrl(null);
+  }
+
+  if (inventoryMode === "contextual" && !performerId) {
+    return (
+      <div data-shop-mode="contextual" data-shop-owner-id="" data-testid="performer-shop-drawer" style={{ padding: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: accentColor }}>PERFORMER SHOP</div>
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+          No performer is in view. Open a performer, then open Performer Shop.
+        </p>
+      </div>
+    );
+  }
+
+  if (inventoryMode === "contextual" && products.length === 0) {
+    return (
+      <div data-shop-mode="contextual" data-shop-owner-id={performerId ?? ""} data-testid="performer-shop-drawer" style={{ padding: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: accentColor }}>PERFORMER SHOP</div>
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+          This performer has no published items.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div data-shop-mode={inventoryMode} data-shop-owner-id={performerId ?? ""} data-testid="performer-shop-drawer" data-product-order="newest-to-oldest" data-fan-default-all="all" data-store-filter={storeFilter} style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12, overflowX: "hidden", overflowY: "auto", minWidth: 0, maxWidth: "100%" }}>
       <div>
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: accentColor }}>
           SHOP
@@ -212,10 +326,12 @@ export default function ShopDrawerPanel({
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(
-          [
-            { id: "personal" as const, label: "PERSONAL STORE" },
-            { id: "tmi" as const, label: "TMI STORE" },
-          ] as const
+          inventoryMode === "contextual"
+            ? ([{ id: "personal" as const, label: "PERFORMER SHOP" }] as const)
+            : ([
+                { id: "personal" as const, label: "PERSONAL STORE" },
+                { id: "tmi" as const, label: "TMI STORE" },
+              ] as const)
         ).map((s) => {
           const active = section === s.id;
           return (
@@ -255,32 +371,92 @@ export default function ShopDrawerPanel({
               body="Select a performer to load their connected commerce. Personal Store is empty until then."
             />
           ) : (
-            <>
+            <div data-shop-inventory-owner-id={performerId} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-                Connected commerce · <strong style={{ color: "#fff" }}>{name}</strong>
-                {products.length > 0 ? ` · ${products.length} product${products.length === 1 ? "" : "s"}` : ""}
+                {name}
+                {products.length > 0 ? ` · ${products.length} item${products.length === 1 ? "" : "s"}` : ""}
               </div>
-              {products.length === 0 && !storeUrl ? (
+              {shelves.length > 0 ? (
+                <div data-testid="shop-store-switcher" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <FilterChip
+                    active={storeFilter === "all"}
+                    accent={accentColor}
+                    label="ALL STORES"
+                    onClick={() => setStoreFilter("all")}
+                  />
+                  {shelves.map((shelf) => (
+                    <FilterChip
+                      key={shelf.id}
+                      active={storeFilter === shelf.id}
+                      accent={accentColor}
+                      label={shelf.label}
+                      onClick={() => setStoreFilter(shelf.id)}
+                    />
+                  ))}
+                </div>
+              ) : managesStores ? null : (
                 <Empty
                   accent={accentColor}
                   title="NO PERSONAL STORE ITEMS"
-                  body={`${name} has no linked products or storefront yet.`}
+                  body={`${name} has no published items from a linked store.`}
                 />
+              )}
+              {visibleShelves.map((shelf) => (
+                <section key={shelf.id} data-shop-shelf={shelf.id} data-shelf-count={shelf.products.length} style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: accentColor, marginBottom: 6 }}>
+                    {shelf.label}
+                  </div>
+                  <div
+                    data-shelf-scroll="horizontal"
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      overflowX: "auto",
+                      overflowY: "hidden",
+                      maxWidth: "100%",
+                      minWidth: 0,
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {shelf.products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        accent={accentColor}
+                        canHide={managesStores}
+                        onHide={() => hideProduct(product)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {managesStores && storeUrl ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <a href={storeUrl} target="_blank" rel="noreferrer" data-checkout-owner="EXTERNAL_PROVIDER" style={linkStyle(accentColor)}>
+                    Open storefront URL
+                  </a>
+                  <button type="button" onClick={disconnectStorefront} style={btnStyle("rgba(255,255,255,0.7)")}>
+                    DISCONNECT URL
+                  </button>
+                </div>
               ) : null}
-              {storeUrl ? (
-                <a href={storeUrl} target="_blank" rel="noreferrer" style={linkStyle(accentColor)}>
-                  Open artist storefront →
-                </a>
+              {managesStores ? (
+                <div data-testid="add-store-catalog">
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: accentColor }}>+ ADD STORE</div>
+                  <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {ADD_STORE_CATALOG.map((label) => (
+                      <li key={label} data-provider-connection="none" style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: "rgba(255,255,255,0.72)" }}>
+                        <span>{label}</span>
+                        <span style={{ color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em", fontSize: 9, fontWeight: 800 }}>COMING LATER</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={{ margin: "6px 0 0", fontSize: 10, color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>
+                    These names are not connections. No seller OAuth, catalog read, or order read is available for them.
+                  </p>
+                </div>
               ) : null}
-              <StoreCanister
-                entityId={performerId}
-                artistSlug={activePerformer?.slug ?? performerId}
-                entityName={name}
-                storeType="performer"
-                accentColor={accentColor}
-                maxItems={8}
-              />
-            </>
+            </div>
           )}
         </div>
       ) : (
@@ -421,6 +597,89 @@ export default function ShopDrawerPanel({
         </div>
       )}
     </div>
+  );
+}
+
+function FilterChip({
+  active,
+  accent,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  accent: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        fontSize: 8,
+        fontWeight: 900,
+        letterSpacing: "0.06em",
+        padding: "5px 9px",
+        borderRadius: 6,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        border: active ? `1px solid ${accent}` : "1px solid rgba(255,255,255,0.12)",
+        background: active ? `${accent}22` : "transparent",
+        color: active ? accent : "rgba(255,255,255,0.45)",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ProductCard({
+  product,
+  accent,
+  canHide,
+  onHide,
+}: {
+  product: CreatorProduct;
+  accent: string;
+  canHide: boolean;
+  onHide: () => void;
+}) {
+  const price = formatCreatorProductPrice(product);
+  const image = product.imageUrl && /^https?:\/\//i.test(product.imageUrl) ? product.imageUrl : null;
+  const buyUrl = product.buyUrl && /^https?:\/\//i.test(product.buyUrl) ? product.buyUrl : null;
+  return (
+    <article
+      data-product-id={product.id}
+      data-checkout-owner={buyUrl ? "EXTERNAL_PROVIDER" : "NONE"}
+      data-media={image ? (product.type === "SINGLE" || product.type === "ALBUM" || product.type === "VINYL" ? "artwork" : "2d-photo") : "none"}
+      style={{
+        flex: "0 0 148px",
+        width: 148,
+        borderRadius: 8,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(0,0,0,0.28)",
+        padding: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      {image ? (
+        <img src={image} alt={product.title} style={{ width: "100%", height: 88, objectFit: "cover", borderRadius: 6 }} />
+      ) : null}
+      <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", lineHeight: 1.3 }}>{product.title}</div>
+      {price ? <div style={{ fontSize: 11, fontWeight: 900, color: accent }}>{price}</div> : null}
+      {buyUrl ? (
+        <a href={buyUrl} target="_blank" rel="noreferrer" data-checkout-owner="EXTERNAL_PROVIDER" style={linkStyle(accent)}>
+          Buy on {connectorLabel(product.connectorId)}
+        </a>
+      ) : null}
+      {canHide ? (
+        <button type="button" onClick={onHide} style={btnStyle("rgba(255,255,255,0.55)")}>
+          HIDE
+        </button>
+      ) : null}
+    </article>
   );
 }
 

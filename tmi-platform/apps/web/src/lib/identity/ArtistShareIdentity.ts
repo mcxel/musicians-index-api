@@ -1,14 +1,13 @@
 /**
- * Artist & Fan Share Identity Engine — Marcel 1-Tap QR / Share Card Protocol.
+ * Artist & Fan Share Identity — one member, one public page, one identity card.
  *
- * Rules:
- *   1. Scanning or tapping a Fan or Performer QR immediately triggers a 1-tap Follow / Add Friend.
- *   2. For a Fan: lands on their YoPho Public Fan Card / Profile.
- *   3. For a Performer: lands on their Performer Profile, Magazine Article, and Store (Beats/Merch).
- *   4. Identity payload is canonical and permanent — derived from userId + verified slug/username.
+ * The QR encodes the identity card URL. It does not follow, friend, or open the Hub.
+ * FAN THEM is an explicit action on that card and uses the existing Follow record.
+ * Friendship stays a separate mutual request. Do not merge them here.
  */
 
-import { canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
+import { canonicalIdentityCardPath, canonicalPublicPath } from "@/lib/identity/PublicProfileRuntime";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 export function getShareBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_BASE_URL?.trim();
@@ -26,6 +25,7 @@ export interface UserShareIdentity {
   slug: string;
   yophoCardUrl: string;
   profileUrl: string;
+  cardUrl: string;
   performerArticleUrl?: string;
   storeUrl?: string;
   qrPayload: string;
@@ -39,27 +39,19 @@ export function buildUserShareIdentity(input: {
   displayName: string;
   avatarUrl?: string | null;
   slug?: string | null;
+  /** Real magazine article slug. Never the performer slug. */
+  articleSlug?: string | null;
 }): UserShareIdentity {
   const canonicalSlug = (input.slug ?? input.username).toLowerCase().replace(/[^a-z0-9_-]/g, "");
   const isPerformer = input.role === "performer" || input.role === "artist";
 
   const profileUrl = canonicalPublicPath(canonicalSlug);
-
+  const cardUrl = canonicalIdentityCardPath(canonicalSlug);
   const yophoCardUrl = `/yopho/card/${canonicalSlug}`;
-  const performerArticleUrl = isPerformer ? `/magazine/article/${canonicalSlug}` : undefined;
+  const articleSlug = input.articleSlug?.trim();
+  const performerArticleUrl = isPerformer && articleSlug ? magazineReaderArticleUrl(articleSlug) : undefined;
   const storeUrl = isPerformer ? `/commerce/store/${canonicalSlug}` : undefined;
-
-  const qrPayload = JSON.stringify({
-    v: 1,
-    action: "follow",
-    userId: input.userId,
-    role: input.role,
-    slug: canonicalSlug,
-    yophoCardUrl,
-    profileUrl,
-  });
-
-  const oneTapActionUrl = `/api/social/follow?targetUserId=${input.userId}&autoFollow=true`;
+  const cardAbsolute = `${getShareBaseUrl()}${cardUrl}`;
 
   return {
     userId: input.userId,
@@ -70,13 +62,11 @@ export function buildUserShareIdentity(input: {
     slug: canonicalSlug,
     yophoCardUrl,
     profileUrl,
+    cardUrl,
     performerArticleUrl,
     storeUrl,
-    // Fixed from a hardcoded production URL — was pointing every QR
-    // generated on preview/localhost at production regardless of where it
-    // was actually created.
-    qrPayload: `${getShareBaseUrl()}/share/${canonicalSlug}?action=follow&userId=${input.userId}`,
-    oneTapActionUrl,
+    qrPayload: cardAbsolute,
+    oneTapActionUrl: cardUrl,
   };
 }
 

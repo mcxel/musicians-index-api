@@ -20,6 +20,8 @@ import {
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import { gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import type { MobileCommandCenterRole, MobileQuickPanelActionId } from "./mobileCommandCenterCapabilities";
 import {
   incrementFunctionCaller,
@@ -85,9 +87,30 @@ export function runQuickToolAction(
     case "inventory":
       presentCanonicalWorkspace("inventory", "DRAWER");
       break;
-    case "lobbies":
-      ctx.togglePanel("lobbies", "bottom-left");
+    case "lobbies": {
+      // Desktop Hub law: LOBBIES expands lower DRAWER under monitors (not Mini overlay).
+      // Phone may still open Mini via CompactQuickPanelHost paths that call openPanel directly.
+      const isDesktop =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        !window.matchMedia("(max-width: 900px)").matches;
+      if (isDesktop) {
+        const { drawerWorkspace, isDrawerExpanded, closeSurface } =
+          useWorkspacePresentationStore.getState();
+        if (
+          (drawerWorkspace === "lobby" || drawerWorkspace === "live-destinations") &&
+          isDrawerExpanded
+        ) {
+          closeSurface("DRAWER");
+        } else {
+          presentCanonicalWorkspace("lobby", "DRAWER");
+        }
+        ctx.closePanel();
+      } else {
+        ctx.togglePanel("lobbies", "bottom-left");
+      }
       break;
+    }
     case "stream-win":
       if (ctx.activePanel === "stream-win" || isStreamWinActive()) {
         exitStreamWin();
@@ -102,6 +125,10 @@ export function runQuickToolAction(
       ctx.togglePanel("remote", "bottom-right");
       break;
     case "messages":
+      if (gpsDestinationState("messages") !== "LIVE") {
+        useMobileGpsMonitorLayoutStore.getState().showReleaseNote("messages");
+        break;
+      }
       openCanonicalWorkspaceQuick("messaging", "DRAWER");
       break;
     case "venue-tools":
@@ -133,11 +160,16 @@ export function runQuickToolAction(
     case "memory":
       ctx.onMemory?.();
       break;
-    case "cast":
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("tmi:cast-panel-toggle"));
+    case "cast": {
+      const { drawerWorkspace, isDrawerExpanded, closeSurface } =
+        useWorkspacePresentationStore.getState();
+      if (drawerWorkspace === "live-destinations" && isDrawerExpanded) {
+        closeSurface("DRAWER");
+      } else {
+        presentCanonicalWorkspace("live-destinations", "DRAWER");
       }
       break;
+    }
     case "user-id":
       ctx.togglePanel("user-id", "bottom-right");
       break;
@@ -153,7 +185,13 @@ export function isQuickToolActive(
     screenShareActive?: boolean;
   },
 ): boolean {
-  if (id === "lobbies") return ctx.activePanel === "lobbies";
+  if (id === "lobbies") {
+    const drawer = useWorkspacePresentationStore.getState().drawerWorkspace;
+    return ctx.activePanel === "lobbies" || drawer === "lobby";
+  }
+  if (id === "cast") {
+    return useWorkspacePresentationStore.getState().drawerWorkspace === "live-destinations";
+  }
   if (id === "stream-win") return ctx.activePanel === "stream-win" || isStreamWinActive();
   if (id === "remote") return ctx.activePanel === "remote";
   if (id === "yopho") return ctx.activePanel === "yopho";
@@ -161,7 +199,6 @@ export function isQuickToolActive(
     return useWorkspacePresentationStore.getState().drawerWorkspace === "avatar-quick";
   }
   if (id === "user-id") return ctx.activePanel === "user-id";
-  if (id === "cast") return false;
   if (id === "venue-tools") return ctx.activePanel === "venue";
   if (id === "share-screen") return Boolean(ctx.screenShareActive);
   return false;

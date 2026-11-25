@@ -12,7 +12,7 @@ export type StageState   = "pre-show" | "live" | "intermission" | "post-show";
 // "lounge" added 2026-08-12 — DestinationResolver.ts's LobbyWallKind already
 // routed to lounges (?mode=lounge on /live/rooms/[roomId]) before this session
 // could store/filter a session AS a lounge. Now first-class here too.
-export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby" | "dance-party" | "dance";
+export type StreamCategory = "cypher" | "battle" | "gauntlet" | "concert" | "challenge" | "live" | "game" | "session" | "lounge" | "fan-lobby" | "dance-party" | "dance";
 
 export interface AudienceCountrySlice {
   countryCode: string;
@@ -88,6 +88,22 @@ export interface LiveSession {
   venueEnvironment?: "indoor" | "outdoor" | null;
   /** Optional venue skin id paired with venueEnvironment (existing venueSkinEngine ids). */
   venueSkinId?: string | null;
+  /** Canonical account role for regular Go Live classification. */
+  hostRole?: "FAN" | "PERFORMER";
+  /** Optional multi-participant IDs (e.g. Battle [performerA, performerB], Gauntlet, Challenge, Cypher circle, Fan Lobby). */
+  participantIds?: string[];
+  /** Optional multi-participant display names matching participantIds. */
+  participantNames?: string[];
+  /** Whether the broadcaster/panel currently has active camera video on. */
+  isCameraOn?: boolean;
+  /** Optional canonical experience identifier (e.g. MONDAY_NIGHT_STAGE, WORLD_DANCE_PARTY). */
+  experienceId?: string;
+  /** Gauntlet winner-stays active state. */
+  winnerStays?: boolean;
+  /** Cypher non-winner-oriented circle state. */
+  nonWinnerOriented?: boolean;
+  /** Fan Avatar Lobby avatar/video capability flag. */
+  avatarCapable?: boolean;
 }
 
 export interface LivePingPayload {
@@ -109,7 +125,7 @@ function mirrorToLiveRegistry(session: LiveSession): void {
     userId: session.userId,
     displayName: session.displayName,
     genre: session.category,
-    role: "performer",
+    role: session.hostRole === "FAN" ? "fan" : "performer",
     avatarUrl: session.avatarUrl ?? undefined,
     viewerCount: session.viewerCount,
     roomId: session.roomId,
@@ -181,9 +197,18 @@ export interface GoLivePayload {
   performerTier?: LiveSession["performerTier"];
   venueEnvironment?: LiveSession["venueEnvironment"];
   venueSkinId?: LiveSession["venueSkinId"];
+  hostRole?: LiveSession["hostRole"];
+  participantIds?: string[];
+  participantNames?: string[];
+  isCameraOn?: boolean;
+  experienceId?: string;
+  winnerStays?: boolean;
+  nonWinnerOriented?: boolean;
+  avatarCapable?: boolean;
 }
 
 export function registerLiveSession(payload: GoLivePayload): LiveSession {
+  const isCameraOn = payload.isCameraOn ?? Boolean(payload.previewUrl);
   const session: LiveSession = {
     userId:        payload.userId,
     displayName:   payload.displayName,
@@ -192,7 +217,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     title:         payload.title,
     category:      payload.category,
     roomId:        payload.roomId,
-    previewUrl:    payload.previewUrl ?? null,
+    previewUrl:    isCameraOn ? (payload.previewUrl ?? null) : null,
     thumbnailUrl:  payload.thumbnailUrl ?? null,
     stageState:    "live",
     streamHealth:  "unknown",
@@ -214,6 +239,14 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     lastAudienceEntryAt: null,
     venueEnvironment: payload.venueEnvironment ?? null,
     venueSkinId: payload.venueSkinId ?? null,
+    hostRole: payload.hostRole,
+    participantIds: payload.participantIds?.length ? [...payload.participantIds] : [payload.userId],
+    participantNames: payload.participantNames?.length ? [...payload.participantNames] : [payload.displayName],
+    isCameraOn,
+    experienceId: payload.experienceId,
+    winnerStays: payload.winnerStays ?? (payload.category === "gauntlet" ? true : undefined),
+    nonWinnerOriented: payload.nonWinnerOriented ?? (payload.category === "cypher" ? true : undefined),
+    avatarCapable: payload.avatarCapable ?? (payload.category === "fan-lobby" ? true : undefined),
   };
 
   sessions.set(payload.userId, session);
@@ -223,7 +256,7 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     userId:      payload.userId,
     displayName: payload.displayName,
     genre:       payload.category,
-    role:        "performer",
+    role:        payload.hostRole === "FAN" ? "fan" : "performer",
     avatarUrl:   payload.avatarUrl,
     viewerCount: 0,
     roomId:      payload.roomId,
@@ -342,6 +375,24 @@ export function updateStageState(userId: string, state: StageState): void {
   if (s) { s.stageState = state; broadcast(); }
 }
 
+/**
+ * Update broadcaster camera state without ending the live session.
+ * Turning camera off clears previewUrl while keeping stageState === "live".
+ */
+export function updateLiveSessionCameraState(
+  userId: string,
+  isCameraOn: boolean,
+  previewUrl?: string | null,
+): LiveSession | null {
+  const s = sessions.get(userId);
+  if (!s) return null;
+  s.isCameraOn = isCameraOn;
+  s.previewUrl = isCameraOn ? (previewUrl !== undefined ? previewUrl : s.previewUrl) : null;
+  s.lastPingAt = Date.now();
+  broadcast();
+  return s;
+}
+
 export function registerAudienceEntry(payload: AudienceEntryPayload): LiveSession | null {
   const session = Array.from(sessions.values()).find((s) => s.roomId === payload.roomId);
   if (!session) return null;
@@ -393,6 +444,24 @@ export function getSessionByRoomId(roomId: string): LiveSession | null {
   return Array.from(sessions.values()).find((s) => s.roomId === roomId) ?? null;
 }
 
+export function updateLiveSessionPrivacy(
+  userId: string,
+  visibility: "public" | "private",
+): LiveSession | null {
+  const session = sessions.get(userId);
+  if (!session) return null;
+
+  session.audiencePrivacyMode = visibility;
+  session.privacy = visibility === "private"
+    ? "INVITE_ONLY"
+    : session.entryPriceUsd && session.entryPriceUsd > 0
+      ? "PAID_ENTRY"
+      : "PUBLIC";
+  session.lastPingAt = Date.now();
+  broadcast();
+  return session;
+}
+
 export function getActiveSessions(): LiveSession[] {
   const staleMs = 120_000; // evict sessions that haven't pinged in 2 min
   const now = Date.now();
@@ -425,7 +494,10 @@ export function getSessionCount(): number {
  * rows cannot inflate N. Seeds / anchors / /rooms/* routes never enter this path.
  */
 export function isPubliclyCountedLiveSession(session: LiveSession): boolean {
-  return session.privacy !== "INVITE_ONLY";
+  return session.privacy !== "INVITE_ONLY" &&
+    session.audiencePrivacyMode !== "private" &&
+    session.audiencePrivacyMode !== "invite" &&
+    session.audiencePrivacyMode !== "friends";
 }
 
 export function listPublicActiveRooms(source?: LiveSession[]): LiveSession[] {

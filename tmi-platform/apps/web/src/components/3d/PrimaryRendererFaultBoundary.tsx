@@ -5,6 +5,12 @@ import React, { Component, type ReactNode } from "react";
 interface Props {
   children: ReactNode;
   fallbackLabel?: string;
+  /**
+   * Identity for recovery after a child fault — does NOT remount this boundary.
+   * Only clears hasError when a prior fault is active (preserves WebGL canvas across
+   * Urban Cap ↔ Foundry base swaps that change the GLB URL).
+   */
+  resetKey?: string;
 }
 
 interface State {
@@ -33,7 +39,34 @@ export default class PrimaryRendererFaultBoundary extends Component<Props, State
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    const componentStack = errorInfo.componentStack || "";
+    const host =
+      typeof document !== "undefined" ? document.querySelector("[data-avatar-viewer]") : null;
+    if (host) {
+      host.setAttribute("data-primary-renderer-fault", (error?.message || "fault").slice(0, 220));
+      host.setAttribute("data-primary-renderer-stack", componentStack.slice(0, 600));
+    }
+    if (typeof window !== "undefined") {
+      (window as Window & { __TMI_PRIMARY_RENDERER_FAULT__?: unknown }).__TMI_PRIMARY_RENDERER_FAULT__ = {
+        message: error?.message,
+        name: error?.name,
+        componentStack,
+        capturedAt: new Date().toISOString(),
+      };
+    }
     console.warn("[PrimaryRendererFaultBoundary] Suppressed 3D renderer exception:", error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      const host =
+        typeof document !== "undefined" ? document.querySelector("[data-avatar-viewer]") : null;
+      if (host) {
+        host.removeAttribute("data-primary-renderer-fault");
+        host.removeAttribute("data-primary-renderer-stack");
+      }
+      this.setState({ hasError: false, errorMessage: "" });
+    }
   }
 
   render() {

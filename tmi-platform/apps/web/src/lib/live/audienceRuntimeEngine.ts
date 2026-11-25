@@ -167,6 +167,45 @@ export function kickAudienceMember(venueSlug: string, userId: string): VenueOccu
   return occ;
 }
 
+/**
+ * Durable presence reconcile (2026-11-19): `live_room_presence` is the source of truth for
+ * which HUMANS are in a room. This replaces this instance's human members with those rows
+ * (keeping local-only viewpoint/capture state); disclosed bots are untouched.
+ */
+export function reconcileDurableHumans(
+  venueSlug: string,
+  rows: ReadonlyArray<{
+    participantId: string;
+    displayName: string;
+    role: "fan" | "artist" | "host";
+    seatId: string | null;
+    groupId: string | null;
+    avatarUrl: string | null;
+    joinedAtMs: number;
+  }>,
+): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const prev = new Map(occ.members.map((m) => [m.userId, m] as const));
+  const humans: AudienceMember[] = rows.map((r) => {
+    const p = prev.get(r.participantId);
+    return {
+      userId: r.participantId,
+      displayName: r.displayName,
+      role: r.role,
+      joinedAt: r.joinedAtMs,
+      seatId: r.seatId,
+      active: true,
+      captureEnabled: p?.captureEnabled ?? false,
+      groupId: r.groupId,
+      avatarUrl: r.avatarUrl ?? p?.avatarUrl ?? null,
+      viewpoint: p?.viewpoint ?? { yaw: 0, pitch: 0, updatedAt: Date.now() },
+    };
+  });
+  occ.members = [...humans, ...occ.members.filter((m) => m.role === "bot")];
+  recountPresent(occ);
+  return occ;
+}
+
 export function getHumanAudienceCount(venueSlug: string): number {
   const occ = getVenueOccupancy(venueSlug);
   return occ.members.filter((m) => m.active && m.role !== "bot").length;
@@ -181,12 +220,18 @@ export function getAudienceSnapshot(venueSlug: string) {
   const occ = getVenueOccupancy(venueSlug);
   recountPresent(occ);
   const moderation = getVenueModerationPolicy(venueSlug);
+  const humanPresent = occ.present;
+  const automatedPresent = occ.members.filter((m) => m.active && m.role === "bot").length;
+  const capacity = Math.max(1, occ.capacity);
   return {
     venueSlug: occ.venueSlug,
-    present: occ.present,
+    present: humanPresent,
+    humanPresent,
+    automatedPresent,
     capacity: occ.capacity,
     peakPresent: occ.peakPresent,
-    occupancyPct: Math.round((occ.present / occ.capacity) * 100),
+    occupancyPct: Math.round((humanPresent / capacity) * 100),
+    // Humans first; bots disclosed via role — never presented as human occupancy.
     activeMembers: occ.members.filter((m) => m.active).slice(0, 100),
     moderation,
   };
@@ -397,12 +442,6 @@ const BOT_NAMES = [
 ];
 const BOT_EMOJIS = ['🎧', '🔥', '🎶', '✨', '🎤', '💫', '🪩', '👑', '🎵', '⭐'];
 
-export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy {
-  const occ = getVenueOccupancy(venueSlug);
-  const existing = new Set(occ.members.map((m) => m.userId));
-  let seeded = 0;
-  for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
-    const botId = `bot-${venueSlug}-${i + 1}`;
 /**
  * LEGACY / AUTOMATED TMI PARTICIPANT seed — decorative sit-ins for venue fill.
  * Classification: AUTOMATED_TMI_PARTICIPANT (not human).
@@ -410,6 +449,12 @@ export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy 
  * Must NEVER impersonate humans in Home panels or tip/vote/reaction human tallies.
  * Fan personal rooms must not call this (enforced at go-live route).
  */
+export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const existing = new Set(occ.members.map((m) => m.userId));
+  let seeded = 0;
+  for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
+    const botId = `bot-${venueSlug}-${i + 1}`;
     if (existing.has(botId)) continue;
     joinAudience(venueSlug, {
       userId: botId,

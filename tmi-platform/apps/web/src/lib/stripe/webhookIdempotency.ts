@@ -35,10 +35,13 @@ export async function claimStripeWebhookEvent(
     return { action: "skip" };
   }
   if (row) {
-    await prisma.stripeWebhookEvent.update({
-      where: { eventId },
+    const claimed = await prisma.stripeWebhookEvent.updateMany({
+      where: { eventId, status: { not: "PROCESSED" } },
       data: { status: "PROCESSING", processingError: null },
     });
+    if (claimed.count === 0) return { action: "skip" };
+  } else {
+    throw new Error("stripe_webhook_receipt_missing");
   }
   return { action: "run" };
 }
@@ -61,18 +64,18 @@ export async function isStripeEventProcessed(eventId: string): Promise<boolean> 
 }
 
 export async function markStripeEventProcessed(eventId: string, type: string): Promise<void> {
-  processedCache.add(eventId);
   await prisma.stripeWebhookEvent.update({
     where: { eventId },
     data: { type, status: "PROCESSED", processedAt: new Date(), processingError: null },
   });
+  processedCache.add(eventId);
 }
 
 export async function markStripeEventFailedRetryable(eventId: string, err: unknown): Promise<void> {
   processedCache.delete(eventId);
   const message = err instanceof Error ? err.message : "fulfillment_failed";
-  await prisma.stripeWebhookEvent.update({
-    where: { eventId },
+  await prisma.stripeWebhookEvent.updateMany({
+    where: { eventId, status: { not: "PROCESSED" } },
     data: {
       status: "FAILED_RETRYABLE",
       processingError: message.slice(0, 500),

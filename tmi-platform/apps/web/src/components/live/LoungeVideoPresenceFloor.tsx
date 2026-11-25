@@ -97,6 +97,8 @@ export default function LoungeVideoPresenceFloor({
       data-collision-certified={String(LOUNGE_VIDEO_PRESENCE_LAW.collisionMeshCertified)}
       data-locomotion-input="mouse,touch,keyboard"
       data-stream-reconnect-on-move="false"
+      data-world-stable-panel-scale="true"
+      data-viewer-distance-scale="false"
       data-voice-gain={locomotion.voiceGain.toFixed(2)}
       tabIndex={0}
       onClick={onFloor}
@@ -163,19 +165,21 @@ export default function LoungeVideoPresenceFloor({
         const panel = panels.find((p) => p.userId === m.userId);
         const xPct = panel ? 30 + ((panel.positionXyz[0] + 2) / 4) * 40 : 28 + (i % 4) * 16;
         const yPct = panel ? 28 + ((panel.positionXyz[2] + 2) / 4) * 36 : 30 + Math.floor(i / 4) * 18;
-        const scale = panel?.scale ?? 1;
+        // World-stable chassis size only — never viewer-distance scale (perspective is camera's job).
+        const worldScale = panel?.scale ?? 1;
         const chassis = (panel?.chassisSkinId ?? m.chassis ?? "tv").toUpperCase();
         return (
           <div
             key={m.userId}
             data-lounge-webrtc-panel={m.userId}
             data-chassis={chassis}
+            data-world-scale={worldScale}
             style={{
               position: "absolute",
               left: `${xPct}%`,
               top: `${yPct}%`,
-              width: 72 * scale,
-              height: 48 * scale,
+              width: 72 * worldScale,
+              height: 48 * worldScale,
               transform: "translate(-50%, -50%)",
               borderRadius: chassis === "PHONE" ? 10 : 4,
               border: "2px solid rgba(0,255,255,0.5)",

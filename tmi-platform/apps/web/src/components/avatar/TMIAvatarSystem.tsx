@@ -332,23 +332,49 @@ export default function TMIAvatarSystem({
     return userTier === "diamond";
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   async function handleSave() {
     setSaving(true);
+    setSaved(false);
+    setSaveError(null);
     try {
-      await fetch("/api/avatar/save", {
+      const response = await fetch("/api/avatar/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, config }),
+        credentials: "include",
+        body: JSON.stringify({
+          profile: {
+            displayName: userId,
+            skinTone: config.skinToneId,
+            hairStyle: config.hairStyleId,
+            eyeStyle: config.eyeColor,
+          },
+          loadout: {
+            outfit: config.outfitId,
+            accessory: config.accessoryId === "none" ? null : config.accessoryId,
+          },
+        }),
       });
+      let payload: { ok?: boolean; durable?: boolean; error?: string; detail?: string } | null = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+      if (!response.ok || !payload || payload.ok !== true || payload.durable !== true) {
+        setSaved(false);
+        setSaveError(payload?.detail || payload?.error || `Save failed (HTTP ${response.status})`);
+        return;
+      }
       onSave?.(config);
       setSaved(true);
       playChime(523, "sine", 0.3);
       setTimeout(() => playChime(659, "sine", 0.3), 180);
       setTimeout(() => playChime(784, "sine", 0.4), 360);
-    } catch {
-      /* API may not exist yet — config is saved locally */
-      onSave?.(config);
-      setSaved(true);
+    } catch (err) {
+      setSaved(false);
+      setSaveError(err instanceof Error ? err.message : "Avatar save request failed");
     } finally {
       setSaving(false);
     }
@@ -388,14 +414,23 @@ export default function TMIAvatarSystem({
           <button
             onClick={handleSave}
             disabled={saving}
+            data-testid="tmi-avatar-system-save"
+            data-save-status={saving ? "saving" : saved ? "saved" : saveError ? "error" : "idle"}
             className={`w-full py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
               saved
                 ? "bg-green-600 text-black"
-                : "bg-cyan-600 hover:bg-cyan-500 text-black"
+                : saveError
+                  ? "bg-rose-700 text-white"
+                  : "bg-cyan-600 hover:bg-cyan-500 text-black"
             }`}
           >
-            {saving ? "Saving..." : saved ? "✓ Saved" : "Save Avatar"}
+            {saving ? "Saving..." : saved ? "✓ Saved" : saveError ? "Retry Save" : "Save Avatar"}
           </button>
+          {saveError ? (
+            <p data-testid="tmi-avatar-system-save-error" className="text-[9px] text-rose-300">
+              {saveError}
+            </p>
+          ) : null}
         </div>
       </div>
 

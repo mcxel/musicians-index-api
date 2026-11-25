@@ -1,12 +1,16 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import SafeReactThreeCanvas from '@/components/3d/SafeReactThreeCanvas';
 import CanonicalVenueHouse from '@/components/venues/CanonicalVenueHouse';
+import VenueStageProgramSurface from '@/components/venue/VenueStageProgramSurface';
+import type { VenuePresentationExecutionSnapshot } from '@/lib/venue/VenuePresentationExecution';
+import type { ChromaRuntimeSnapshot } from '@/lib/venue/ChromaSegmentationRuntime';
 import {
   getCanonicalVenueRecipe,
   type CanonicalVenueRecipe,
@@ -16,6 +20,8 @@ import {
   AvatarSocketAttachment,
   type SocketAttachmentDef,
 } from '@/components/3d/AvatarSocketAttachment';
+import { FoundrySkinnedPartMount } from '@/components/3d/FoundrySkinnedPartMount';
+import { HeldPropMount, type HeldPropRenderState, type PostMixerStep } from '@/components/3d/HeldPropMount';
 import {
   FOUNDRY_AVATAR_AUTHORITY,
   resolveCertifiedAvatarGlbUrl,
@@ -37,8 +43,41 @@ import {
   applyPreservedHairTint,
   applyPreservedSkinTint,
   applySkinReadabilityTune,
+  applyStylizedRealSkinFinish,
+  attachProceduralEyeMarkers,
+  bringEmbeddedFaceFeaturesForward,
   cloneMaterialsOnAvatarRoot,
+  enhanceAuthoredFaceFeatureReadability,
+  enhanceProceduralBobbleheadSurface,
+  TMI_AVATAR_SKIN_STANDARD,
 } from '@/lib/avatars/AvatarMaterialPreservationAuthority';
+import {
+  applyLivingSkinPerspiration,
+  livingSkinDiagnostics,
+  readSweatFxPreference,
+  resolveLivingSkinActivity,
+  resolveLivingSkinQuality,
+  stepPerspirationIntensity,
+  syncOptionalSweatDroplets,
+  type SweatFxPreference,
+} from '@/lib/avatars/LivingSkinRuntime';
+import {
+  avatarBehavioralDirector,
+  type LivingReactionResult,
+} from '@/lib/avatars/AvatarBehavioralDirector';
+import {
+  bellySquashScale,
+  cheekSquashScale,
+  classifyAvatarBodyZone,
+  isShortTapGesture,
+  type AvatarBodyZone,
+} from '@/lib/avatars/AvatarTouchInteraction';
+import {
+  applySweatRoughnessBlend,
+  bindLivingSkinPbrPackage,
+  collectLivingSkinUvDiagnostics,
+  readLivingSkinUvIsolationMode,
+} from '@/lib/avatars/LivingSkinMaterialPackage';
 
 /**
  * Module-level Foundry GLB cache — load OUTSIDE R3F Canvas.
@@ -48,9 +87,14 @@ import {
  * timeout, SMILE stuck on "Probing…", and Playwright saw glb responses = [].
  * Fix: abortable fetch, evict on failure, cache resolved scene for instant remounts.
  */
+type FoundryGlbBundle = {
+  scene: THREE.Group;
+  animations: THREE.AnimationClip[];
+};
+
 type FoundryGlbCacheEntry =
-  | { status: "ready"; scene: THREE.Group }
-  | { status: "loading"; promise: Promise<THREE.Group>; abort: AbortController };
+  | { status: "ready"; bundle: FoundryGlbBundle }
+  | { status: "loading"; promise: Promise<FoundryGlbBundle>; abort: AbortController };
 
 const foundryGlbCache = new Map<string, FoundryGlbCacheEntry>();
 
@@ -86,7 +130,7 @@ function ensureFoundryGlbPreloadLink(url: string): void {
 async function fetchAndParseFoundryGlb(
   url: string,
   signal: AbortSignal,
-): Promise<THREE.Group> {
+): Promise<FoundryGlbBundle> {
   // Prefer relative publicPath so HTTP cache matches <link rel=preload href="/models/...">.
   // Absolute URLs previously bypassed the preload cache and competed for the
   // browser's 6-connection-per-host pool behind hub telemetry floods.
@@ -113,7 +157,7 @@ async function fetchAndParseFoundryGlb(
   const buf = await res.arrayBuffer();
   if (signal.aborted) throw new DOMException("Aborted", "AbortError");
   const loader = new GLTFLoader();
-  const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
+  const gltf = await new Promise<{ scene: THREE.Group; animations?: THREE.AnimationClip[] }>((resolve, reject) => {
     const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
     if (signal.aborted) {
       onAbort();
@@ -125,7 +169,7 @@ async function fetchAndParseFoundryGlb(
       "",
       (g) => {
         signal.removeEventListener("abort", onAbort);
-        resolve(g as { scene: THREE.Group });
+        resolve(g as { scene: THREE.Group; animations?: THREE.AnimationClip[] });
       },
       (err) => {
         signal.removeEventListener("abort", onAbort);
@@ -133,16 +177,17 @@ async function fetchAndParseFoundryGlb(
       },
     );
   });
-  return gltf.scene;
+  return { scene: gltf.scene, animations: gltf.animations ?? [] };
 }
 
 /**
  * Load certified Foundry GLB (fetch + parse). Safe to call from Canister before Canvas mounts.
  * Remounts after a successful load resolve synchronously from the ready scene cache.
+ * §20995-X: animations are retained with the scene (Idle/Walk/Dance were previously discarded).
  */
-export function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
+export function loadFoundryGlbBundle(url: string): Promise<FoundryGlbBundle> {
   const hit = foundryGlbCache.get(url);
-  if (hit?.status === "ready") return Promise.resolve(hit.scene);
+  if (hit?.status === "ready") return Promise.resolve(hit.bundle);
   if (hit?.status === "loading") return hit.promise;
 
   const abort = new AbortController();
@@ -157,11 +202,11 @@ export function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
       abort.signal.addEventListener("abort", onParentAbort);
       const timer = setTimeout(() => attemptAbort.abort(), FOUNDRY_FETCH_ATTEMPT_MS);
       try {
-        const scene = await fetchAndParseFoundryGlb(url, attemptAbort.signal);
+        const bundle = await fetchAndParseFoundryGlb(url, attemptAbort.signal);
         clearTimeout(timer);
         abort.signal.removeEventListener("abort", onParentAbort);
-        foundryGlbCache.set(url, { status: "ready", scene });
-        return scene;
+        foundryGlbCache.set(url, { status: "ready", bundle });
+        return bundle;
       } catch (err) {
         clearTimeout(timer);
         abort.signal.removeEventListener("abort", onParentAbort);
@@ -179,6 +224,11 @@ export function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
   return pending;
 }
 
+/** @deprecated Prefer loadFoundryGlbBundle — kept for call sites that only need the scene. */
+export function loadFoundryGlbScene(url: string): Promise<THREE.Group> {
+  return loadFoundryGlbBundle(url).then((b) => b.scene);
+}
+
 /** Kick off Foundry GLB fetch as early as binding resolves (before R3F Canvas). */
 export function preloadFoundryAvatarGlb(url: string | null | undefined): void {
   if (!url || typeof window === "undefined") return;
@@ -189,8 +239,18 @@ export function preloadFoundryAvatarGlb(url: string | null | undefined): void {
 
 /** Max mesh extent (meters) accepted for camera fit — Foundry LOD0 morph outliers are ~1e12. */
 const FOUNDRY_MESH_EXTENT_MAX_M = 8;
-/** Morph delta clamp — Foundry proof ARKit keys after eyeBlinkLeft explode (~2× cascade). */
-const FOUNDRY_MORPH_DELTA_MAX_M = 0.12;
+/**
+ * Facial / viseme morph delta clamp (meters). ARKit peaks stay well under ~0.04 m;
+ * exploding cascade outliers (~1e12) are zeroed. Do not raise this globally.
+ */
+const FOUNDRY_FACIAL_MORPH_DELTA_MAX_M = 0.12;
+/**
+ * Authorized full-body stature/mass shape keys legitimately reach ~0.20–0.33 m.
+ * Only applied when the morph target name matches BODY_MORPH_NAME_RE.
+ */
+const FOUNDRY_BODY_MORPH_DELTA_MAX_M = 0.45;
+const BODY_MORPH_NAME_RE =
+  /^(body_height_|body_mass_|body_weight_|archetype_)/i;
 
 export type AvatarExpressionId = "neutral" | "smile" | "hype";
 
@@ -248,16 +308,25 @@ function sanitizeFoundryMorphAttributes(root: THREE.Object3D): FoundryMorphCapab
     if (!morphPos?.length || !dict || !mesh.morphTargetInfluences) return;
     sawMorphMesh = true;
 
-    for (const attr of morphPos) {
+    const indexToName = new Map<number, string>();
+    for (const [name, idx] of Object.entries(dict)) {
+      if (typeof idx === "number") indexToName.set(idx, name);
+    }
+
+    morphPos.forEach((attr, morphIndex) => {
+      const name = indexToName.get(morphIndex) ?? "";
+      const maxDelta = BODY_MORPH_NAME_RE.test(name)
+        ? FOUNDRY_BODY_MORPH_DELTA_MAX_M
+        : FOUNDRY_FACIAL_MORPH_DELTA_MAX_M;
       const arr = attr.array as Float32Array;
       for (let i = 0; i < arr.length; i++) {
         const n = arr[i]!;
-        if (!Number.isFinite(n) || Math.abs(n) > FOUNDRY_MORPH_DELTA_MAX_M) {
+        if (!Number.isFinite(n) || Math.abs(n) > maxDelta) {
           arr[i] = 0;
         }
       }
       attr.needsUpdate = true;
-    }
+    });
 
     const usable = (names: readonly string[]) =>
       names.some((name) => {
@@ -433,6 +502,7 @@ function applyFoundryHairTint(root: THREE.Object3D, hairHex?: string) {
 
 function CertifiedAvatarGlbMesh({
   scene,
+  animations = [],
   expression = "neutral",
   onMorphCapability,
   skinHex,
@@ -444,8 +514,18 @@ function CertifiedAvatarGlbMesh({
   mood = "REGULAR",
   phoneme = null,
   talking = false,
+  speechArkitWeights = null,
+  isPlaying = false,
+  isSeated = false,
+  activeClip = "",
+  sweatFxPreference,
+  enableDirectTouch = true,
+  onDirectTouch,
+  partAttachments = [],
+  heldProp = null,
 }: {
   scene: THREE.Object3D;
+  animations?: THREE.AnimationClip[];
   expression?: AvatarExpressionId;
   onMorphCapability?: (cap: FoundryMorphCapability) => void;
   skinHex?: string;
@@ -457,46 +537,296 @@ function CertifiedAvatarGlbMesh({
   mood?: AvatarMoodId;
   phoneme?: PhonemeGroup | null;
   talking?: boolean;
+  /** Mini-Me manufactured 30fps ARKit speech weights — expression layer only (no id_*). */
+  speechArkitWeights?: Record<string, number> | null;
+  isPlaying?: boolean;
+  isSeated?: boolean;
+  activeClip?: string;
+  sweatFxPreference?: SweatFxPreference;
+  enableDirectTouch?: boolean;
+  onDirectTouch?: (result: LivingReactionResult & { zone: AvatarBodyZone }) => void;
+  partAttachments?: SocketAttachmentDef[];
+  /** Shared-room held prop (lighter, ...) on Hand_R. Null = empty hand. */
+  heldProp?: HeldPropRenderState | null;
 }) {
-  const { root, capability, fitBaseScale } = useMemo(() => {
+  const sweatIntensityRef = useRef(0);
+  const heldPropStepRef = useRef<PostMixerStep | null>(null);
+  const wasActiveRef = useRef(false);
+  const lastAppliedSweatRef = useRef(-1);
+  const pointerDownRef = useRef<{
+    x: number;
+    y: number;
+    t: number;
+    object: THREE.Object3D;
+    point: THREE.Vector3;
+  } | null>(null);
+  const squashRef = useRef<{
+    zone: "belly" | "cheek" | "nose";
+    startedAt: number;
+    durationMs: number;
+    baseScale: THREE.Vector3;
+    target: THREE.Object3D | null;
+  } | null>(null);
+  const sweatPref =
+    sweatFxPreference ??
+    (typeof window !== "undefined" ? readSweatFxPreference(window.localStorage) : "FULL");
+
+  const skinUvIsolation = readLivingSkinUvIsolationMode();
+  const { root, capability, fitBaseScale, surfaceDiagnostic, eyesAttached, uvDiag, faceTune } = useMemo(() => {
     const cloned = cloneSkinned(scene) as THREE.Object3D;
     // SkeletonUtils shares materials with the cached GLTF — clone mats before any tint.
     cloneMaterialsOnAvatarRoot(cloned);
     const cap = sanitizeFoundryMorphAttributes(cloned);
     const fitted = fitFoundryAvatarRoot(cloned);
+    // Living Skin PBR BEFORE legacy procedural fallback — fallback must not paint #C68642
+    // onto materials that are about to receive (or already have) albedo/normal/roughness maps.
+    // uvIsolation remounts when ?skinUv= changes (banding isolation harness).
+    bindLivingSkinPbrPackage(fitted, {
+      preferHighQuality: true,
+      uvIsolation: skinUvIsolation,
+    });
     applySkinReadabilityTune(fitted);
+    const surface = enhanceProceduralBobbleheadSurface(fitted);
+    const eyes = attachProceduralEyeMarkers(fitted);
+    const featuresForward = bringEmbeddedFaceFeaturesForward(fitted);
+    fitted.userData.tmiFaceFeaturesForward = featuresForward;
+    // Facial fidelity: authored eye/lip/teeth readability — never touches Living Skin mats.
+    const faceTune = enhanceAuthoredFaceFeatureReadability(fitted);
+    fitted.userData.tmiFaceFeatureTune = faceTune;
+    const uv = collectLivingSkinUvDiagnostics(fitted);
     return {
       root: fitted,
       capability: cap,
       fitBaseScale: { x: fitted.scale.x, y: fitted.scale.y, z: fitted.scale.z },
+      surfaceDiagnostic: surface.diagnostic,
+      eyesAttached: eyes,
+      uvDiag: uv,
+      faceTune,
     };
-  }, [scene]);
+  }, [scene, skinUvIsolation]);
+
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actionsRef = useRef<Record<string, THREE.AnimationAction>>({});
+
+  useEffect(() => {
+    if (!animations.length) {
+      mixerRef.current = null;
+      actionsRef.current = {};
+      return;
+    }
+    const mixer = new THREE.AnimationMixer(root);
+    const actions: Record<string, THREE.AnimationAction> = {};
+    for (const clip of animations) {
+      if (!clip?.name) continue;
+      actions[clip.name] = mixer.clipAction(clip);
+    }
+    mixerRef.current = mixer;
+    actionsRef.current = actions;
+    return () => {
+      mixer.stopAllAction();
+      mixerRef.current = null;
+      actionsRef.current = {};
+    };
+  }, [root, animations]);
+
+  useEffect(() => {
+    const actions = actionsRef.current;
+    const preferred =
+      activeClip && actions[activeClip]
+        ? activeClip
+        : isPlaying && actions.Dance
+          ? "Dance"
+          : isSeated && actions.SeatedIdle
+            ? "SeatedIdle"
+            : talking && actions.HoldProp_Talk
+              ? "HoldProp_Talk"
+              : actions.Idle
+                ? "Idle"
+                : Object.keys(actions)[0];
+    if (!preferred || !actions[preferred]) return;
+    for (const [name, action] of Object.entries(actions)) {
+      if (name === preferred) {
+        action.reset().fadeIn(0.25).play();
+      } else if (action.isRunning()) {
+        action.fadeOut(0.25);
+      }
+    }
+  }, [isPlaying, isSeated, talking, animations, activeClip]);
+
+  useFrame((_, delta) => {
+    mixerRef.current?.update(delta);
+    // Held-prop pose overlay must run after the mixer (it adjusts the mixed arm pose).
+    heldPropStepRef.current?.(delta);
+
+    // Soft belly/cheek indent spring-back (localized squash — not remount).
+    const squash = squashRef.current;
+    if (squash?.target) {
+      const life = (performance.now() - squash.startedAt) / squash.durationMs;
+      if (life >= 1) {
+        squash.target.scale.copy(squash.baseScale);
+        squashRef.current = null;
+      } else {
+        const mul =
+          squash.zone === "belly" ? bellySquashScale(life) : cheekSquashScale(life);
+        if (squash.zone === "belly") {
+          squash.target.scale.set(
+            squash.baseScale.x * (1 + (1 - mul) * 0.35),
+            squash.baseScale.y * mul,
+            squash.baseScale.z * (1 + (1 - mul) * 0.35),
+          );
+        } else {
+          squash.target.scale.set(
+            squash.baseScale.x * mul,
+            squash.baseScale.y,
+            squash.baseScale.z * (2 - mul),
+          );
+        }
+      }
+    }
+
+    const activity = resolveLivingSkinActivity({
+      isPlaying,
+      talking,
+      isSeated,
+      activeClip,
+    });
+    if (activity === "DANCING" || activity === "PERFORMING") {
+      wasActiveRef.current = true;
+    }
+    const quality = resolveLivingSkinQuality({
+      isMobile:
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || ""),
+      preferHigh: true,
+    });
+    const next = stepPerspirationIntensity(sweatIntensityRef.current, activity, delta, {
+      quality,
+      preference: sweatPref,
+      wasActiveRecently: wasActiveRef.current,
+    });
+    sweatIntensityRef.current = next;
+    if (activity === "IDLE" && next < 0.04) {
+      wasActiveRef.current = false;
+    }
+    // Avoid per-frame material churn — apply when intensity moves ~2%.
+    if (Math.abs(next - lastAppliedSweatRef.current) < 0.02 && lastAppliedSweatRef.current >= 0) {
+      return;
+    }
+    lastAppliedSweatRef.current = next;
+    applyLivingSkinPerspiration(root, next, {
+      quality,
+      preference: sweatPref,
+      stageLightBoost: isPlaying ? 0.35 : talking ? 0.12 : 0,
+    });
+    if (root.userData.tmiLivingSkinPbrBound) {
+      applySweatRoughnessBlend(root, next);
+    }
+    syncOptionalSweatDroplets(root, next, { quality, preference: sweatPref });
+  });
 
   useEffect(() => {
     onMorphCapability?.(capability);
   }, [capability, onMorphCapability]);
 
-  // FINAL FACE = identity deformation + mood/expression + lip sync (same ARKit mesh)
   useEffect(() => {
-    if (identityShape || talking) {
+    if (typeof document === "undefined") return;
+    const host = document.querySelector("[data-avatar-viewer]");
+    if (!host) return;
+    const living = livingSkinDiagnostics(root);
+    host.setAttribute("data-avatar-surface", surfaceDiagnostic.slice(0, 160));
+    host.setAttribute("data-avatar-realism", String(TMI_AVATAR_SKIN_STANDARD.realism));
+    host.setAttribute("data-avatar-realism-target", String(TMI_AVATAR_SKIN_STANDARD.realismPreferred));
+    host.setAttribute("data-avatar-skin-isolation", "skin-material-only");
+    host.setAttribute("data-living-skin", "1");
+    host.setAttribute("data-living-skin-state", living.state);
+    host.setAttribute("data-living-skin-intensity", living.intensity.toFixed(2));
+    host.setAttribute("data-sweat-fx", sweatPref);
+    host.setAttribute("data-procedural-eyes", String(eyesAttached));
+    host.setAttribute("data-face-features-forward", String(root.userData.tmiFaceFeaturesForward ?? 0));
+    host.setAttribute("data-face-anchor", root.userData.tmiFaceLocal ? "1" : "0");
+    host.setAttribute("data-face-offset-once", root.userData.tmiFaceOffsetOnce === 1 ? "1" : "0");
+    host.setAttribute("data-brows-placed", root.userData.tmiBrowsPlaced === 1 ? "1" : "0");
+    host.setAttribute("data-face-tune-eyes", String(faceTune?.eyes ?? 0));
+    host.setAttribute("data-face-tune-lips", String(faceTune?.lips ?? 0));
+    host.setAttribute("data-face-tune-teeth", String(faceTune?.teeth ?? 0));
+    host.setAttribute("data-arkit-smile", capability.smileUsable ? "1" : "0");
+    host.setAttribute("data-arkit-hype-facial", capability.hypeFacialUsable ? "1" : "0");
+    if (capability.reason) host.setAttribute("data-arkit-reason", capability.reason.slice(0, 160));
+    else host.removeAttribute("data-arkit-reason");
+    host.setAttribute("data-active-clip", activeClip || "");
+    host.setAttribute("data-foundry-clips", String(animations.length));
+    // UV-banding diagnostics — DOM host only (never R3F data-* props).
+    host.setAttribute("data-skin-uv-isolation", skinUvIsolation);
+    const sanitize = root.userData.tmiSkinUvSanitize as
+      | { texturesTouched?: number; maxRepeatSeen?: number }
+      | undefined;
+    if (sanitize) {
+      host.setAttribute("data-skin-uv-sanitize-touched", String(sanitize.texturesTouched ?? 0));
+      host.setAttribute("data-skin-uv-max-repeat", String(sanitize.maxRepeatSeen ?? 1));
+    }
+    const skin0 = uvDiag[0];
+    if (skin0) {
+      host.setAttribute(
+        "data-skin-uv-normal-repeat",
+        skin0.normalRepeat ? skin0.normalRepeat.map((n) => n.toFixed(2)).join(",") : "none",
+      );
+      host.setAttribute(
+        "data-skin-uv-normal-offset",
+        skin0.normalOffset ? skin0.normalOffset.map((n) => n.toFixed(2)).join(",") : "none",
+      );
+      host.setAttribute(
+        "data-skin-uv-normal-scale",
+        skin0.normalScale ? skin0.normalScale.map((n) => n.toFixed(2)).join(",") : "none",
+      );
+      host.setAttribute("data-skin-mat", skin0.mat.slice(0, 64));
+    }
+  }, [surfaceDiagnostic, eyesAttached, animations.length, activeClip, root, sweatPref, skinUvIsolation, uvDiag, faceTune, capability]);
+
+  // FINAL FACE = identity deformation + mood/expression + lip sync (same ARKit mesh)
+  // speechArkitWeights (Mini-Me vocal cues) merge as expression-layer only — never id_*.
+  useEffect(() => {
+    const speech = speechArkitWeights
+      ? Object.fromEntries(
+          Object.entries(speechArkitWeights).filter(([k]) => !k.startsWith("id_")),
+        )
+      : null;
+    if (identityShape || talking || speech) {
       const composed = composeIdentityMoodSpeech({
         identity: identityShape ?? clampShapeCoefficients({}),
         mood,
         phoneme,
-        talking,
+        talking: talking || Boolean(speech),
       });
       applyFoundryMorphWeights(root, {
         ...(identityShape ? {} : expressionWeights(expression)),
         ...composed.weights,
+        ...(speech ?? {}),
       });
     } else {
       applyFoundryExpression(root, expression);
     }
-  }, [root, expression, identityShape, mood, phoneme, talking]);
+  }, [root, expression, identityShape, mood, phoneme, talking, speechArkitWeights]);
 
   useEffect(() => {
+    // Bind Living Skin maps first; then tint/finish; then legacy enhance (no-ops on bound mats).
+    bindLivingSkinPbrPackage(root, {
+      skinHex,
+      preferHighQuality: true,
+      uvIsolation: skinUvIsolation,
+    });
     applyFoundrySkinTint(root, skinHex);
-  }, [root, skinHex]);
+    applyStylizedRealSkinFinish(root);
+    enhanceProceduralBobbleheadSurface(root, skinHex);
+    // Re-seed living skin dry baseline after tint/finish; intensity stays temporary.
+    applyLivingSkinPerspiration(root, sweatIntensityRef.current, {
+      preference: sweatPref,
+      quality: resolveLivingSkinQuality({ preferHigh: true }),
+    });
+    if (root.userData.tmiLivingSkinPbrBound) {
+      applySweatRoughnessBlend(root, sweatIntensityRef.current);
+    }
+    lastAppliedSweatRef.current = sweatIntensityRef.current;
+  }, [root, skinHex, sweatPref, skinUvIsolation]);
 
   useEffect(() => {
     applyFoundryHairTint(root, hairHex);
@@ -504,6 +834,19 @@ function CertifiedAvatarGlbMesh({
 
   useEffect(() => {
     applyFoundryEyeColor(root, eyeColorHex);
+    // Tint procedural iris markers when present
+    root.traverse((obj) => {
+      if (obj.name !== "TMI_ProceduralEye") return;
+      obj.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (mat?.name === "TMI_ProceduralEye_Iris" && eyeColorHex) {
+          mat.color.setStyle(resolveEyeColorHex(eyeColorHex));
+          mat.needsUpdate = true;
+        }
+      });
+    });
   }, [root, eyeColorHex]);
 
   // Absolute head scale from fit base — no per-effect multiply drift
@@ -513,7 +856,142 @@ function CertifiedAvatarGlbMesh({
     root.scale.set(fitBaseScale.x * sx, fitBaseScale.y * sy, fitBaseScale.z);
   }, [root, fitBaseScale, headScaleX, headScaleY]);
 
-  return <primitive object={root} />;
+  const applyLocalizedSquash = (zone: "belly" | "cheek" | "nose", hitObject: THREE.Object3D) => {
+    let target: THREE.Object3D | null = hitObject;
+    if (zone === "belly") {
+      target =
+        root.getObjectByName("Spine") ||
+        root.getObjectByName("spine") ||
+        root.getObjectByName("Hips") ||
+        hitObject;
+    } else {
+      target =
+        root.getObjectByName("Head") ||
+        root.getObjectByName("head") ||
+        root.getObjectByName("mixamorigHead") ||
+        hitObject;
+    }
+    if (!target) return;
+    squashRef.current = {
+      zone,
+      startedAt: performance.now(),
+      durationMs: 520,
+      baseScale: target.scale.clone(),
+      target,
+    };
+  };
+
+  const handlePointerDown = (e: {
+    stopPropagation: () => void;
+    clientX: number;
+    clientY: number;
+    object: THREE.Object3D;
+    point: THREE.Vector3;
+    button?: number;
+  }) => {
+    if (!enableDirectTouch) return;
+    if (typeof e.button === "number" && e.button !== 0) return;
+    e.stopPropagation();
+    pointerDownRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      t: Date.now(),
+      object: e.object,
+      point: e.point.clone(),
+    };
+  };
+
+  const handlePointerUp = (e: {
+    stopPropagation: () => void;
+    clientX: number;
+    clientY: number;
+    object: THREE.Object3D;
+    point: THREE.Vector3;
+  }) => {
+    if (!enableDirectTouch) return;
+    const down = pointerDownRef.current;
+    pointerDownRef.current = null;
+    if (!down) return;
+    // Drag = orbit / camera — do not poke.
+    if (
+      !isShortTapGesture({
+        downClientX: down.x,
+        downClientY: down.y,
+        upClientX: e.clientX,
+        upClientY: e.clientY,
+        downAtMs: down.t,
+        upAtMs: Date.now(),
+      })
+    ) {
+      return;
+    }
+    e.stopPropagation();
+    const zone = classifyAvatarBodyZone(down.object, down.point);
+    const result = avatarBehavioralDirector.poke(zone);
+    if (result.squashZone) {
+      applyLocalizedSquash(result.squashZone, down.object);
+    }
+    if (typeof document !== "undefined") {
+      const host = document.querySelector("[data-avatar-viewer]");
+      if (host) {
+        host.setAttribute("data-avatar-touch-zone", zone);
+        host.setAttribute("data-avatar-touch-tier", result.escalationTier || "");
+        host.setAttribute(
+          "data-avatar-touch-streak",
+          String(result.consecutivePokes ?? 0),
+        );
+        host.setAttribute("data-avatar-poke-button", "0");
+      }
+    }
+    if (result.recoveryMs > 0 || result.squashZone) {
+      onDirectTouch?.({ ...result, zone });
+    }
+  };
+
+  const foundryParts = useMemo(
+    () =>
+      partAttachments.filter(
+        (a): a is SocketAttachmentDef & { glbUrl: string } =>
+          Boolean(a.glbUrl && typeof a.glbUrl === "string" && a.glbUrl.endsWith(".glb")),
+      ),
+    [partAttachments],
+  );
+
+  // NEVER put HTML `data-*` attrs on R3F hosts — fiber applyProps treats dashes as
+  // nested Three paths (`data-foundry-part-count` → obj.data.foundry…), and
+  // `group.data` is undefined → TypeError reading 'foundry' (v3 mount abort).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const host = document.querySelector("[data-avatar-viewer]");
+    if (!host) return;
+    host.setAttribute("data-foundry-part-count", String(foundryParts.length));
+  }, [foundryParts.length]);
+
+  return (
+    <group
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => {
+        pointerDownRef.current = null;
+      }}
+      userData={{ tmiFoundryPartCount: foundryParts.length }}
+    >
+      <primitive object={root} />
+      {foundryParts.map((part) => (
+        <FoundrySkinnedPartMount
+          key={`${part.id}:${part.glbUrl}`}
+          hostRoot={root}
+          part={{
+            id: part.id,
+            glbUrl: part.glbUrl!,
+            socketId: part.socketId,
+            tintHex: hairHex ?? part.color,
+          }}
+        />
+      ))}
+      {heldProp ? <HeldPropMount hostRoot={root} heldProp={heldProp} postMixerRef={heldPropStepRef} /> : null}
+    </group>
+  );
 }
 
 /** Rule 28 fail-visible — never present capsule as finished when certifiedOnly. */
@@ -774,13 +1252,34 @@ export type AvatarRigProps = {
   /** Active lip-sync phoneme when speaking. */
   phoneme?: PhonemeGroup | null;
   talking?: boolean;
+  /** Mini-Me vocal-cue ARKit weights (expression layer; never id_* identity morphs). */
+  speechArkitWeights?: Record<string, number> | null;
   /** Iris material tint — appearance only. */
   eyeColorHex?: string;
   /** Reports post-sanitize morph usability (smile may be corrupt on current GLB). */
   onMorphCapability?: (cap: FoundryMorphCapability) => void;
   /** Preloaded Foundry scene (loaded outside Canvas — required for reliable GLB mount). */
   foundryScene?: THREE.Object3D | null;
+  /** Clips from the same Foundry GLB parse (Idle/Walk/Dance/…). */
+  foundryAnimations?: THREE.AnimationClip[];
   foundryLoadError?: string | null;
+  /**
+   * Showroom presentation. The parent turntable owns Y spin.
+   * Idle sway stays off so the pedestal rotation stays smooth.
+   */
+  showroomMode?: boolean;
+  /** GLB clip name. Idle, Walk, and SingDemo select those clips directly. */
+  activeClip?: string;
+  /**
+   * Living-skin sweat VFX preference. Temporary effect only — never saved into skin identity.
+   * Defaults to localStorage `tmi.avatar.sweatFx` (FULL | REDUCED | OFF).
+   */
+  sweatFxPreference?: SweatFxPreference;
+  /** Direct mesh raycast poke (no HTML poke button). Default true in Creation Center. */
+  enableDirectTouch?: boolean;
+  onDirectTouch?: (result: LivingReactionResult & { zone: AvatarBodyZone }) => void;
+  /** Shared-room held prop on the real hand bone (Foundry GLB rigs only). */
+  heldProp?: HeldPropRenderState | null;
 };
 
 export function AvatarRig({
@@ -808,10 +1307,18 @@ export function AvatarRig({
   mood = "REGULAR",
   phoneme = null,
   talking = false,
+  speechArkitWeights = null,
   eyeColorHex,
   onMorphCapability,
   foundryScene = null,
+  foundryAnimations = [],
   foundryLoadError = null,
+  showroomMode = false,
+  activeClip = "",
+  sweatFxPreference,
+  enableDirectTouch = true,
+  onDirectTouch,
+  heldProp = null,
 }: AvatarRigProps) {
   const groupRef = useRef<THREE.Group>(null);
   const visorRef = useRef<THREE.Mesh>(null);
@@ -840,14 +1347,19 @@ export function AvatarRig({
 
   useFrame((state) => {
     const elapsed = state.clock.getElapsedTime();
-    if (groupRef.current) {
+    if (groupRef.current && showroomMode) {
+      groupRef.current.position.y = resolvedGlb ? 0 : -0.4;
+      // Urban Cap Eye_L/Eye_R and Jaw translations are on +Z. The showroom
+      // camera also sits on +Z. Yaw stays 0 so the face meets the camera.
+      groupRef.current.rotation.set(0, 0, 0);
+    } else if (groupRef.current) {
       const baseY = resolvedGlb ? 0 : isSeated ? -0.55 : -0.4;
       const tempo = isPlaying && !isSeated ? 3.5 : 1.8;
       const amplitude = isPlaying && !isSeated ? 0.12 : isSeated ? 0.015 : 0.035;
       groupRef.current.position.y = baseY + Math.sin(elapsed * tempo) * amplitude;
 
       if (resolvedGlb && !isPlaying) {
-        // Idle turntable for Foundry full-body — keep upright (no sit lean on mesh).
+        // Idle sway only. Urban Cap faces +Z, which is where the preview camera sits.
         groupRef.current.rotation.x = 0;
         groupRef.current.rotation.z = 0;
         groupRef.current.rotation.y = Math.sin(elapsed * 0.35) * 0.15;
@@ -893,6 +1405,7 @@ export function AvatarRig({
       {resolvedGlb && foundryScene ? (
         <CertifiedAvatarGlbMesh
           scene={foundryScene}
+          animations={foundryAnimations}
           expression={expression}
           onMorphCapability={onMorphCapability}
           skinHex={color}
@@ -904,6 +1417,15 @@ export function AvatarRig({
           mood={mood}
           phoneme={phoneme}
           talking={talking}
+          speechArkitWeights={speechArkitWeights}
+          isPlaying={isPlaying}
+          isSeated={isSeated}
+          activeClip={activeClip}
+          sweatFxPreference={sweatFxPreference}
+          enableDirectTouch={enableDirectTouch}
+          onDirectTouch={onDirectTouch}
+          partAttachments={filteredAttachments}
+          heldProp={heldProp}
         />
       ) : null}
     </group>
@@ -996,12 +1518,106 @@ function SmoothCameraTravel({
   return null;
 }
 
+/** FACE / UPPER / FEET presets own the camera after OrbitControls, so a spun pedestal cannot leave the view on the back. */
+function PresetCameraLock({
+  active,
+  position,
+  target,
+  useFaceAnchor = false,
+  sideView = false,
+}: {
+  active: boolean;
+  position: [number, number, number];
+  target: [number, number, number];
+  useFaceAnchor?: boolean;
+  sideView?: boolean;
+}) {
+  const { camera, scene } = useThree();
+  useFrame(() => {
+    if (!active) return;
+    if (useFaceAnchor) {
+      const bones: { head: THREE.Object3D | null; eyes: THREE.Object3D[]; jaw: THREE.Object3D | null } = {
+        head: null,
+        eyes: [],
+        jaw: null,
+      };
+      scene.traverse((obj) => {
+        if (!(obj as THREE.Bone).isBone) return;
+        if (obj.name === "Head") bones.head = obj;
+        if (obj.name === "Eye_L" || obj.name === "Eye_R") bones.eyes.push(obj);
+        if (obj.name === "Jaw" || obj.name === "Lips") bones.jaw = obj;
+      });
+      if (bones.head && bones.eyes.length > 0) {
+        const eye = new THREE.Vector3();
+        for (const bone of bones.eyes) eye.add(bone.getWorldPosition(new THREE.Vector3()));
+        eye.multiplyScalar(1 / bones.eyes.length);
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(bones.head.getWorldQuaternion(new THREE.Quaternion()));
+        const down = new THREE.Vector3(0, -1, 0).applyQuaternion(bones.head.getWorldQuaternion(new THREE.Quaternion()));
+        const look = eye.clone().addScaledVector(down, 0.05);
+        const axis = sideView
+          ? new THREE.Vector3(1, 0, 0).applyQuaternion(bones.head.getWorldQuaternion(new THREE.Quaternion()))
+          : forward;
+        // Foundry v3 head sits ~1.4–1.5m after fit — slightly tighter FACE framing.
+        camera.position.copy(look).addScaledVector(axis, sideView ? 1.05 : 0.95);
+        camera.lookAt(look);
+        return;
+      }
+    }
+    camera.position.set(position[0], position[1], position[2]);
+    camera.lookAt(target[0], target[1], target[2]);
+  });
+  return null;
+}
+
+/** Presets assume fitFoundryAvatarRoot ≈ 1.65m (feet at y≈0, head ≈1.45–1.55). */
 const CAMERA_BY_FOCUS: Record<AvatarCameraFocus, { position: [number, number, number]; target: [number, number, number] }> = {
-  face: { position: [0, 1.05, 1.45], target: [0, 1.05, 0] },
-  body: { position: [0, 0.35, 2.55], target: [0, 0.45, 0] },
-  feet: { position: [0.2, -0.4, 1.75], target: [0, -0.2, 0] },
-  upper: { position: [0, 0.75, 1.95], target: [0, 0.75, 0] },
+  face: { position: [0, 1.42, 1.28], target: [0, 1.38, 0] },
+  body: { position: [0, 0.88, 2.85], target: [0, 0.82, 0] },
+  feet: { position: [0.2, -0.15, 1.85], target: [0, 0.05, 0] },
+  upper: { position: [0, 1.15, 1.95], target: [0, 1.1, 0] },
 };
+
+/** Procedural showroom plinth. The audience-seat cylinder is a different mesh. */
+function ShowroomTurntable({
+  spinning,
+  lockFacing,
+  children,
+}: {
+  spinning: boolean;
+  lockFacing: boolean;
+  children: ReactNode;
+}) {
+  const turnRef = useRef<THREE.Group>(null);
+  useFrame((_, delta) => {
+    if (!turnRef.current) return;
+    if (lockFacing) {
+      turnRef.current.rotation.y = 0;
+      return;
+    }
+    if (!spinning) return;
+    turnRef.current.rotation.y += delta * 0.55;
+  });
+  return (
+    <group position={[0, -0.02, 0]} userData={{ tmiShowroomPedestal: "procedural-mesh" }}>
+      <mesh position={[0, 0.07, 0]} receiveShadow castShadow>
+        <cylinderGeometry args={[0.78, 0.9, 0.14, 40]} />
+        <meshStandardMaterial color="#14081f" metalness={0.88} roughness={0.24} />
+      </mesh>
+      <mesh position={[0, 0.15, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.64, 0.012, 10, 48]} />
+        <meshStandardMaterial color="#00FFFF" emissive="#00FFFF" emissiveIntensity={0.85} metalness={0.45} roughness={0.28} />
+      </mesh>
+      <group ref={turnRef} position={[0, 0.16, 0]}>
+        <mesh position={[0, 0.035, 0]} receiveShadow>
+          <cylinderGeometry args={[0.5, 0.54, 0.07, 36]} />
+          <meshStandardMaterial color="#2a1248" metalness={0.72} roughness={0.32} />
+        </mesh>
+        <group position={[0, 0.08, 0]}>{children}</group>
+      </group>
+      <ContactShadows position={[0, 0.001, 0]} opacity={0.5} scale={2.6} blur={2.1} far={1.5} color="#050510" />
+    </group>
+  );
+}
 
 export function AvatarViewer({
   active = true,
@@ -1029,39 +1645,73 @@ export function AvatarViewer({
   mood = "REGULAR",
   phoneme = null,
   talking = false,
+  speechArkitWeights = null,
   eyeColorHex,
   onMorphCapability,
   enableOrbit = true,
   fill = false,
   cameraFocus = "body",
+  showroomMode = false,
+  activeClip = "",
+  cameraSide = false,
+  sweatFxPreference,
+  enableDirectTouch = true,
+  onDirectTouch,
+  heldProp = null,
+  /** Optional second GLB used only for AnimationClips (e.g. WDP dance pack). */
+  supplementalAnimationUrl = null,
 }: AvatarRigProps & {
   size?: number;
   enableOrbit?: boolean;
   fill?: boolean;
   cameraFocus?: AvatarCameraFocus;
+  showroomMode?: boolean;
+  cameraSide?: boolean;
+  supplementalAnimationUrl?: string | null;
 }) {
   const resolvedGlb =
     glbUrl ?? (glbSlotId ? resolveCertifiedAvatarGlbUrl(glbSlotId) : null);
   const [foundryScene, setFoundryScene] = useState<THREE.Object3D | null>(null);
+  const [baseAnimations, setBaseAnimations] = useState<THREE.AnimationClip[]>([]);
+  const [packAnimations, setPackAnimations] = useState<THREE.AnimationClip[]>([]);
+  const foundryAnimations = useMemo(() => {
+    if (!packAnimations.length) return baseAnimations;
+    const byName = new Map<string, THREE.AnimationClip>();
+    for (const clip of baseAnimations) {
+      if (clip?.name) byName.set(clip.name, clip);
+    }
+    for (const clip of packAnimations) {
+      if (clip?.name) byName.set(clip.name, clip);
+    }
+    return Array.from(byName.values());
+  }, [baseAnimations, packAnimations]);
   const [foundryLoadError, setFoundryLoadError] = useState<string | null>(null);
   const onMorphCapabilityRef = useRef(onMorphCapability);
   onMorphCapabilityRef.current = onMorphCapability;
+  const [showroomSpinning, setShowroomSpinning] = useState(true);
+  useEffect(() => {
+    if (!showroomMode) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setShowroomSpinning(false);
+  }, [showroomMode]);
 
   // Load OUTSIDE the R3F Canvas — Canvas-local GLTFLoader effects were hanging (no network).
   useEffect(() => {
     if (!resolvedGlb) {
       setFoundryScene(null);
+      setBaseAnimations([]);
       setFoundryLoadError(null);
       return;
     }
     let cancelled = false;
     setFoundryScene(null);
+    setBaseAnimations([]);
     setFoundryLoadError(null);
 
-    const mount = (scene: THREE.Group) => {
+    const mount = (bundle: FoundryGlbBundle) => {
       if (cancelled) return;
       setFoundryLoadError(null);
-      setFoundryScene(scene);
+      setFoundryScene(bundle.scene);
+      setBaseAnimations(bundle.animations);
     };
 
     const fail = (err: unknown) => {
@@ -1089,13 +1739,13 @@ export function AvatarViewer({
         reason: "Foundry GLB load timed out (60s) — SMILE unavailable until mesh loads",
       });
       // One hard retry after cache eviction (drawer remounts used to stick on hanging Promise).
-      void loadFoundryGlbScene(resolvedGlb).then(mount).catch(fail);
+      void loadFoundryGlbBundle(resolvedGlb).then(mount).catch(fail);
     }, 60_000);
 
-    loadFoundryGlbScene(resolvedGlb)
-      .then((scene) => {
+    loadFoundryGlbBundle(resolvedGlb)
+      .then((bundle) => {
         window.clearTimeout(overallTimer);
-        mount(scene);
+        mount(bundle);
       })
       .catch((err) => {
         window.clearTimeout(overallTimer);
@@ -1108,23 +1758,59 @@ export function AvatarViewer({
     };
   }, [resolvedGlb]);
 
+  // Supplemental clips only (dance pack) — never replaces the character mesh.
+  useEffect(() => {
+    if (!supplementalAnimationUrl) {
+      setPackAnimations([]);
+      return;
+    }
+    let cancelled = false;
+    setPackAnimations([]);
+    loadFoundryGlbBundle(supplementalAnimationUrl)
+      .then((bundle) => {
+        if (cancelled) return;
+        setPackAnimations(bundle.animations ?? []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPackAnimations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplementalAnimationUrl]);
+
   const cam = CAMERA_BY_FOCUS[cameraFocus] ?? CAMERA_BY_FOCUS.body;
-  const bodyCam = resolvedGlb
-    ? { position: [0, 0.82, 2.55] as [number, number, number], target: [0, 0.72, 0] as [number, number, number] }
-    : cam;
-  const focusCam = cameraFocus === "body" && resolvedGlb ? bodyCam : cam;
-  const seatedCam: [number, number, number] = isSeated ? [0, 0.15, 2.5] : focusCam.position;
-  const boxSize = fill ? "100%" : size;
+  // FULL / body framing for fitted Foundry (~1.65m) — feet-to-crown in frame.
+  const bodyPosition: [number, number, number] = [0, 0.9, 3.05];
+  const bodyTarget: [number, number, number] = [0, 0.82, 0];
+  const bodyCam = resolvedGlb ? { position: bodyPosition, target: bodyTarget } : cam;
+  const showroomPosition: [number, number, number] = [0, 0.95, 3.2];
+  const showroomTarget: [number, number, number] = [0, 0.82, 0];
+  const showroomCam = { position: showroomPosition, target: showroomTarget };
+  let focusCam = cam;
+  if (showroomMode && cameraFocus === "body") focusCam = showroomCam;
+  else if (!showroomMode && cameraFocus === "body" && resolvedGlb) focusCam = bodyCam;
+  const seatedPosition: [number, number, number] = [0, 0.15, 2.5];
+  const seatedCam: [number, number, number] = isSeated ? seatedPosition : focusCam.position;
+  const boxSize: number | string = fill ? "100%" : size;
 
   return (
     <div
       data-avatar-viewer={resolvedGlb || "procedural"}
+      data-showroom-mode={showroomMode ? "1" : "0"}
+      data-camera-focus={cameraFocus}
+      data-preset-camera-lock={showroomMode && cameraFocus !== "body" ? (cameraSide ? "side" : "front") : undefined}
+      data-camera-side={cameraSide ? "1" : "0"}
+      data-avatar-facing={resolvedGlb?.includes("bobblehead_urban_cap") ? "plus-z" : undefined}
+      data-showroom-pedestal={showroomMode ? "procedural-mesh" : undefined}
+      data-showroom-spinning={showroomMode ? (showroomSpinning ? "1" : "0") : undefined}
       data-foundry-loaded={foundryScene ? "1" : "0"}
       data-foundry-glb-error={foundryLoadError || undefined}
       data-foundry-glb-loading={!foundryScene && resolvedGlb && !foundryLoadError ? "1" : undefined}
       style={{
         width: "100%",
-        height: fill ? 220 : boxSize,
+        height: fill ? "100%" : boxSize,
         minHeight: fill ? 220 : undefined,
         position: "relative",
       }}
@@ -1132,6 +1818,7 @@ export function AvatarViewer({
       <SafeReactThreeCanvas
         faultContext="Avatar Viewer"
         fallbackLabel="Avatar 3D unavailable"
+        treeResetKey={resolvedGlb || "procedural"}
         shadows
         camera={{ position: seatedCam, fov: cameraFocus === "face" ? 32 : 40, near: 0.05, far: 40 }}
         gl={{ powerPreference: "high-performance", antialias: true, alpha: true, preserveDrawingBuffer: true }}
@@ -1145,10 +1832,61 @@ export function AvatarViewer({
         resize={{ debounce: { scroll: 50, resize: 16 } }}
       >
         <SceneCensus />
-        <ambientLight intensity={0.55} />
-        <hemisphereLight intensity={0.4} groundColor="#1a1028" color="#c8d8ef" />
-        <directionalLight position={[3, 6, 4]} intensity={1.15} color="#ffffff" castShadow />
-        <directionalLight position={[-2.5, 2.5, -2]} intensity={0.35} color="#aaccff" />
+        <ambientLight intensity={showroomMode ? 0.78 : 0.55} />
+        <hemisphereLight intensity={showroomMode ? 0.55 : 0.4} groundColor="#1a1028" color="#c8d8ef" />
+        <directionalLight position={[3, 6, 4]} intensity={showroomMode ? 1.35 : 1.15} color="#ffffff" castShadow />
+        <directionalLight position={[-2.5, 2.5, -2]} intensity={showroomMode ? 0.5 : 0.35} color="#aaccff" />
+        {showroomMode ? (
+          <spotLight position={[1.4, 2.4, 1.6]} angle={0.45} penumbra={0.6} intensity={1.55} color="#ffffff" castShadow />
+        ) : null}
+        {showroomMode ? (
+          <directionalLight position={[0.2, 1.55, 2.8]} intensity={1.5} color="#fff4ea" />
+        ) : null}
+        {showroomMode ? (
+          <directionalLight position={[-1.2, 2.2, 1.4]} intensity={0.55} color="#ffe8d6" />
+        ) : null}
+        {showroomMode ? (
+          <ShowroomTurntable spinning={showroomSpinning} lockFacing={cameraFocus !== "body"}>
+            <AvatarRig
+              bobbleheadRatio={bobbleheadRatio}
+              active={active}
+              color={color}
+              visorColor={visorColor}
+              crown={crown}
+              isPlaying={isPlaying}
+              isSeated={false}
+              portraitUrl={portraitUrl}
+              attachments={attachments}
+              hairColor={hairColor}
+              outfitTint={outfitTint}
+              activePropId={activePropId}
+              bodyHeight={bodyHeight}
+              bodyMass={bodyMass}
+              headScaleX={headScaleX}
+              headScaleY={headScaleY}
+              glbSlotId={glbSlotId}
+              glbUrl={glbUrl}
+              certifiedOnly={certifiedOnly}
+              expression={expression}
+              identityShape={identityShape}
+              mood={mood}
+              phoneme={phoneme}
+              talking={talking}
+              speechArkitWeights={speechArkitWeights}
+              eyeColorHex={eyeColorHex}
+              onMorphCapability={onMorphCapability}
+              foundryScene={foundryScene}
+              foundryAnimations={foundryAnimations}
+              foundryLoadError={foundryLoadError}
+              showroomMode
+              activeClip={activeClip}
+              sweatFxPreference={sweatFxPreference}
+              enableDirectTouch={enableDirectTouch}
+              onDirectTouch={onDirectTouch}
+              heldProp={heldProp}
+            />
+          </ShowroomTurntable>
+        ) : (
         <AvatarRig
             bobbleheadRatio={bobbleheadRatio}
             active={active}
@@ -1174,11 +1912,19 @@ export function AvatarViewer({
             mood={mood}
             phoneme={phoneme}
             talking={talking}
+            speechArkitWeights={speechArkitWeights}
             eyeColorHex={eyeColorHex}
             onMorphCapability={onMorphCapability}
             foundryScene={foundryScene}
+            foundryAnimations={foundryAnimations}
             foundryLoadError={foundryLoadError}
+            activeClip={activeClip}
+            sweatFxPreference={sweatFxPreference}
+            enableDirectTouch={enableDirectTouch}
+            onDirectTouch={onDirectTouch}
+            heldProp={heldProp}
           />
+        )}
           <SmoothCameraTravel
             focusCam={focusCam}
             fov={cameraFocus === "face" ? 32 : cameraFocus === "feet" ? 38 : cameraFocus === "upper" ? 35 : 40}
@@ -1188,18 +1934,53 @@ export function AvatarViewer({
             <OrbitControls
               makeDefault
               key={glbSlotId ?? glbUrl ?? "avatar-orbit"}
-              target={isSeated ? [0, 0.2, 0] : focusCam.target}
+              target={showroomMode && cameraFocus === "body" ? showroomCam.target : isSeated ? [0, 0.2, 0] : focusCam.target}
               enableZoom={true}
               enablePan={false}
+              autoRotate={false}
               enableDamping={true}
               dampingFactor={0.08}
-              minDistance={1.4}
-              maxDistance={4.5}
-              minPolarAngle={cameraFocus === "feet" ? Math.PI / 2.4 : Math.PI / 3.4}
-              maxPolarAngle={cameraFocus === "face" ? Math.PI / 1.7 : Math.PI / 1.45}
+              minDistance={cameraFocus === "face" ? 0.32 : showroomMode ? 1.8 : 1.4}
+              maxDistance={showroomMode ? 6 : 4.5}
+              minPolarAngle={showroomMode && cameraFocus === "body" ? Math.PI / 5 : cameraFocus === "feet" ? Math.PI / 2.4 : Math.PI / 3.4}
+              maxPolarAngle={showroomMode && cameraFocus === "body" ? Math.PI / 1.85 : cameraFocus === "face" ? Math.PI / 1.7 : Math.PI / 1.45}
             />
           )}
+          <PresetCameraLock
+            active={showroomMode && cameraFocus !== "body"}
+            position={focusCam.position}
+            target={focusCam.target}
+            useFaceAnchor={cameraFocus === "face"}
+            sideView={cameraSide}
+          />
       </SafeReactThreeCanvas>
+      {showroomMode ? (
+        <button
+          type="button"
+          data-testid="showroom-rotation-toggle"
+          aria-pressed={showroomSpinning}
+          onClick={() => setShowroomSpinning((on) => !on)}
+          style={{
+            position: "absolute",
+            zIndex: 6,
+            top: 8,
+            right: 8,
+            minHeight: 44,
+            minWidth: 44,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #00FFFF",
+            background: "rgba(5,5,16,0.82)",
+            color: "#00FFFF",
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            cursor: "pointer",
+          }}
+        >
+          {showroomSpinning ? "Pause rotation" : "Play rotation"}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -1275,24 +2056,71 @@ export default function AvatarLobbyCanvas({
   activeCount = 5,
   venueType,
   recipe,
+  worldId,
+  cameraPreset,
+  stagePresentation,
+  presentationSkinId = null,
+  audienceEntities,
+  /** hub-monitor = sole program surface (full opacity, no discovery autoRotate). */
+  presentationSurface = "discovery",
 }: {
   activeCount?: number;
   venueType?: string;
   recipe?: CanonicalVenueRecipe;
+  worldId?: string;
+  cameraPreset?: CanonicalVenueRecipe['cameraPresets']['discoveryPreview'];
+  stagePresentation?: {
+    execution: VenuePresentationExecutionSnapshot;
+    mediaStream?: MediaStream | null;
+    videoRef?: Ref<HTMLVideoElement>;
+    participants?: Array<{ id: string; displayName?: string | null; imageUrl?: string | null }>;
+    chromaRuntime?: ChromaRuntimeSnapshot | null;
+    /** Real per-participant remote media, keyed by stable participantId (see UniversalVenueRenderer). */
+    participantMediaStreams?: ReadonlyMap<string, MediaStream> | null;
+  } | null;
+  /** Certified equipped presentation. Null keeps the recipe materials. */
+  presentationSkinId?: string | null;
+  /** World-presence humans (and leftover proxies). When set, do not invent seats by count. */
+  audienceEntities?: Array<{
+    id: string;
+    worldX?: number;
+    worldY?: number;
+    worldZ?: number;
+  }>;
+  presentationSurface?: "discovery" | "hub-monitor";
 }) {
   const activeRecipe = useMemo(() => recipe ?? getCanonicalVenueRecipe(venueType), [recipe, venueType]);
+  const activeCamera = cameraPreset ?? activeRecipe.cameraPresets.discoveryPreview;
   const sockets = useMemo(() => activeRecipe.getSockets(), [activeRecipe]);
   const safeActiveCount = Math.min(activeCount, sockets.length);
+  const stage = activeRecipe.enclosure.stage;
+  const stagePresentationPosition: [number, number, number] = [
+    stage.centerPosition[0],
+    stage.centerPosition[1] + stage.height + 1.4,
+    stage.centerPosition[2] + stage.depth / 2 + 0.08,
+  ];
+  const isHubMonitor = presentationSurface === "hub-monitor";
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.75 }}>
+    <div
+      data-canonical-world-id={worldId}
+      data-canonical-recipe-id={activeRecipe.id}
+      data-presentation-surface={presentationSurface}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: "none",
+        opacity: isHubMonitor ? 1 : 0.75,
+      }}
+    >
       <SafeReactThreeCanvas
         faultContext="Avatar Lobby"
         fallbackLabel="Lobby 3D unavailable"
         shadows
         camera={{
-          position: activeRecipe.cameraPresets.discoveryPreview.position,
-          fov: activeRecipe.cameraPresets.discoveryPreview.fov,
+          position: activeCamera.position,
+          fov: activeCamera.fov,
         }}
         gl={{ powerPreference: "high-performance", antialias: true, alpha: true }}
       >
@@ -1306,12 +2134,48 @@ export default function AvatarLobbyCanvas({
             recipe={activeRecipe}
             activeOccupancyCount={safeActiveCount}
             motionActive={true}
+            programStream={stagePresentation?.mediaStream ?? null}
+            presentationSkinId={presentationSkinId}
           />
 
-          {/* Real Participants in Designated Sockets: Never fake crowds (Rule 20) */}
-          {sockets.slice(0, safeActiveCount).map((sock, i) => (
-            <Avatar key={"avatar-" + sock.socketId} active={i === 1} position={sock.transform.position} />
-          ))}
+          {stagePresentation ? (
+            <Html
+              position={stagePresentationPosition}
+              center
+              transform
+              distanceFactor={8}
+              style={{ width: 640, pointerEvents: "auto" }}
+            >
+              <div
+                data-canonical-stage-world={worldId}
+                data-canonical-stage-recipe={activeRecipe.id}
+                data-canonical-stage-position={stagePresentationPosition.join(",")}
+                style={{ width: "100%" }}
+              >
+                <VenueStageProgramSurface
+                  execution={stagePresentation.execution}
+                  mediaStream={stagePresentation.mediaStream}
+                  videoRef={stagePresentation.videoRef}
+                  participants={stagePresentation.participants}
+                  chromaRuntime={stagePresentation.chromaRuntime}
+                  participantMediaStreams={stagePresentation.participantMediaStreams}
+                />
+              </div>
+            </Html>
+          ) : null}
+
+          {/* Occupancy seats → world-presence transforms. Never remint by count. */}
+          {audienceEntities
+            ? audienceEntities.map((entity) => (
+                <Avatar
+                  key={entity.id}
+                  active={false}
+                  position={[entity.worldX ?? 0, entity.worldY ?? 0, entity.worldZ ?? 0]}
+                />
+              ))
+            : sockets.slice(0, safeActiveCount).map((sock, i) => (
+                <Avatar key={"avatar-" + sock.socketId} active={i === 1} position={sock.transform.position} />
+              ))}
 
           <ContactShadows
             resolution={512}
@@ -1327,10 +2191,11 @@ export default function AvatarLobbyCanvas({
             enablePan={false}
             enableDamping={true}
             dampingFactor={0.08}
-            autoRotate
+            autoRotate={!isHubMonitor}
             autoRotateSpeed={0.3}
+            minPolarAngle={Math.PI / 3.2}
             maxPolarAngle={Math.PI / 2.05}
-            target={activeRecipe.cameraPresets.discoveryPreview.target}
+            target={activeCamera.target}
           />
         </Suspense>
       </SafeReactThreeCanvas>

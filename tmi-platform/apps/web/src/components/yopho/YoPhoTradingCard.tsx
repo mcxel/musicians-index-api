@@ -26,6 +26,7 @@ import { downscaleImageFile } from "@/lib/yopho/downscaleImageFile";
 import {
   loadCardComposition,
   saveCardComposition,
+  withSyncedVisual,
   defaultMotionClip,
   YOPHO_MOTION_DURATIONS,
   YOPHO_MOTION_SOURCE_MAX_SEC,
@@ -49,13 +50,18 @@ import {
   publishYoPhoCard,
   type YoPhoNowPlaying,
 } from "@/lib/yopho/YoPhoCardRegistry";
-import { YOPHO_MAGIC_EFFECTS } from "@/lib/yopho/YoPhoMagicEffects";
 import {
   duplicateAsEdition,
   roleModuleHints,
-  toggleMagicEffect,
   type YoPhoRarityLabel,
 } from "@/lib/yopho/YoPhoCardDocument";
+import {
+  createDefaultVisual,
+  hydrateVisualFromMagicIds,
+  resolveVisual,
+  type YoPhoVisualState,
+} from "@/lib/yopho/YoPhoVisualRuntime";
+import YoPhoEffectsPanel from "@/components/yopho/YoPhoEffectsPanel";
 import {
   createYoPhoDraft,
   getCurrentEdition,
@@ -181,7 +187,7 @@ export default function YoPhoTradingCard({
   const subjectUrl = (imageUrl ?? performer?.profileImageUrl ?? "").trim();
 
   const [comp, setComp] = useState<YoPhoCardComposition>(() =>
-    loadCardComposition(role, userKey),
+    withSyncedVisual(loadCardComposition(role, userKey)),
   );
   const [editorTab, setEditorTab] = useState<EditorTab>("identity");
   const [bgStatus, setBgStatus] = useState<string | null>(null);
@@ -209,7 +215,19 @@ export default function YoPhoTradingCard({
   const [availability, setAvailability] = useState<YoPhoEditionAvailability>("Unlimited");
   const [maxSupplyInput, setMaxSupplyInput] = useState("");
   const [editionTick, setEditionTick] = useState(0);
-  const magicEffects = comp.magicEffects ?? [];
+  const visual: YoPhoVisualState = useMemo(
+    () =>
+      hydrateVisualFromMagicIds(
+        comp.magicEffects,
+        comp.visual ?? createDefaultVisual({ primaryFormat: comp.primaryFormat ?? "TRADING_CARD" }),
+      ),
+    [comp.magicEffects, comp.visual, comp.primaryFormat],
+  );
+  const magicEffects = visual.effects.filter((e) => e.enabled).map((e) => e.id);
+  const resolvedVisual = useMemo(
+    () => resolveVisual(visual, visual.primaryFormat, { playing: visual.motionPlaying }),
+    [visual],
+  );
   const footerPct = comp.brandingFooter?.heightPct ?? 0.1;
 
   const currentEdition = useMemo(
@@ -308,7 +326,11 @@ export default function YoPhoTradingCard({
   const canShareInteractive = Boolean(comp.cardId);
 
   function patch(partial: Partial<YoPhoCardComposition>) {
-    setComp((c) => ({ ...c, ...partial, updatedAt: new Date().toISOString() }));
+    setComp((c) => withSyncedVisual({ ...c, ...partial, updatedAt: new Date().toISOString() }));
+  }
+
+  function patchVisual(next: YoPhoVisualState) {
+    patch({ visual: next, primaryFormat: next.primaryFormat, magicEffects: next.effects.filter((e) => e.enabled).map((e) => e.id) });
   }
 
   function patchText(partial: Partial<YoPhoCardComposition["textOverlay"]>) {
@@ -843,7 +865,12 @@ export default function YoPhoTradingCard({
                 pointerEvents: "none",
               }}
             />
-            <YoPhoMagicEffectOverlay effects={magicEffects} />
+            <YoPhoMagicEffectOverlay
+              effects={magicEffects}
+              resolved={resolvedVisual}
+              lighting={resolvedVisual.lighting}
+              paused={!visual.motionPlaying}
+            />
             <div
               aria-hidden
               style={{
@@ -1529,37 +1556,11 @@ export default function YoPhoTradingCard({
                   </button>
                 ))}
               </div>
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00E5FF" }}>
-                UNDERLAY / FOREGROUND · INSTANT PREVIEW
-              </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
-                Rain, fog, neon, smoke — CSS overlays. No AI wait.
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {YOPHO_MAGIC_EFFECTS.map((fx) => {
-                  const on = magicEffects.includes(fx.id);
-                  return (
-                    <button
-                      key={fx.id}
-                      type="button"
-                      title={`${fx.slot} · ${fx.tagline}`}
-                      onClick={() =>
-                        patch({ magicEffects: toggleMagicEffect(magicEffects, fx.id) })
-                      }
-                      style={{
-                        ...chipStyle(on ? fx.accent : "rgba(255,255,255,0.4)"),
-                        background: on ? `${fx.accent}22` : "transparent",
-                      }}
-                    >
-                      {on ? "✓ " : ""}
-                      {fx.label}
-                      <span style={{ opacity: 0.55, marginLeft: 4 }}>
-                        {fx.slot === "underlay" ? "↓" : "↑"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <YoPhoEffectsPanel
+                visual={visual}
+                activeFormat={visual.primaryFormat}
+                onChange={patchVisual}
+              />
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
                 Protected footer (TMI × YoPho + QR) — dashed safe guide on preview. Not deletable.
               </div>

@@ -1,11 +1,13 @@
 /**
- * LobbyPreviewRuntime — Continuous Live Lobby Wall Standard (global).
+ * LobbyPreviewRuntime — Continuous Living Lobby Wall Standard (global).
  *
- * Contract:
+ * Contract (PERMANENT LIVING LOBBY WALL LAW):
  * - Tiles are preview windows into the SAME room (preview publisher, not duplicate production)
- * - Continuous motion when live; honest animated ready state when empty — never fake humans
+ * - Visible healthy live tiles ALWAYS move (webrtc-preview OR composed-motion) — never freeze
+ * - Do not intentionally pause visible live tiles to save bandwidth
+ * - Honest animated ready state when empty — never fake humans / never static LIVE photos
  * - Audio: all tiles muted by default; one focus audio max
- * - Adaptive quality + visibility subscribe/unsubscribe
+ * - Adaptive bitrate + low-res continuous previews; full interactive session only on entry
  * - PreviewDirector for active speaker/performer/gauntlet camera
  */
 

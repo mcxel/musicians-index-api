@@ -58,6 +58,7 @@ import {
   getCompetitionEventWindow,
   hashRoomId,
   runCompetitionRestartLoop,
+  resetRoomCompetitionWindow,
 } from "@/lib/live/CompetitionRestartLoop";
 
 export type { AnchorRoomFamily } from "@/lib/live/AnchorRoomCapacityMatrix";
@@ -192,6 +193,18 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     openCallRole: "performers",
   },
   {
+    roomId: "anchor-open-mic-cypher",
+    title: "Open Mic Cypher",
+    family: "cypher",
+    liveRoomType: "cypher",
+    discoveryCategory: "cyphers",
+    streamCategory: "cypher",
+    accentColor: "#00FFFF",
+    rotationPool: CYPHER_IDLE_ROTATION_POOL,
+    openCallNeeds: 3,
+    openCallRole: "performers",
+  },
+  {
     roomId: "anchor-song-challenge-lab",
     title: "Work Challenge Lab",
     family: "song_challenge",
@@ -256,6 +269,33 @@ export const ANCHOR_ROOM_DEFS: readonly AnchorRoomDef[] = [
     discoveryCategory: "lounges",
     streamCategory: "lounge",
     accentColor: "#7a5cff",
+  },
+  {
+    roomId: "anchor-science-lounge",
+    title: "Science Lounge",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#00E5FF",
+  },
+  {
+    roomId: "anchor-music-lounge",
+    title: "Music Lounge",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#AA2DFF",
+  },
+  {
+    roomId: "anchor-dating-lounge",
+    title: "Dating Lounge (21+)",
+    family: "conversation_lounge",
+    liveRoomType: "venue",
+    discoveryCategory: "lounges",
+    streamCategory: "lounge",
+    accentColor: "#FF2DAA",
   },
   {
     roomId: "anchor-world-dance-room",
@@ -437,10 +477,12 @@ function maybeRotateIdle(def: AnchorRoomDef, state: AnchorRuntimeState, now: num
   }
 
   // Empty window end → RESET → SHUFFLE → next 3 (or next style) → RECRUITING.
+  // This room only — reset its independent clock so peers are unaffected (Rule 38).
   runCompetitionRestartLoop({
     venueSlug: def.roomId,
     roomKind: familyRoomKind(def),
   });
+  resetRoomCompetitionWindow(def.roomId, now);
 
   const pool = def.rotationPool;
   if (pool?.length) {
@@ -456,8 +498,9 @@ function maybeRotateIdle(def: AnchorRoomDef, state: AnchorRuntimeState, now: num
     }
   }
 
-  state.windowIndex = window.index;
-  state.lastRotatedAtMs = window.startMs;
+  // Fresh independent window for THIS room only (index 0 after epoch reset).
+  state.windowIndex = 0;
+  state.lastRotatedAtMs = now;
 }
 
 export function getAnchorRuntimeState(roomId: string): AnchorRuntimeState | undefined {

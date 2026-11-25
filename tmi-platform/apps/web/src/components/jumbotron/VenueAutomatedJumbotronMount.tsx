@@ -97,6 +97,13 @@ interface VenueAutomatedJumbotronMountProps {
    */
   mirrorFeedToPlayerId?: string;
   className?: string;
+  /** From VenuePresentationFabric — indoor/outdoor → physical Jumbotron env. */
+  physicalEnvironmentHint?:
+    | "INDOOR_ARENA"
+    | "OUTDOOR_STADIUM"
+    | "PROSCENIUM_THEATER"
+    | "CLUB_SMALL_ROOM"
+    | "WORLD_DANCE_PARTY";
 }
 
 export function VenueAutomatedJumbotronMount({
@@ -107,6 +114,7 @@ export function VenueAutomatedJumbotronMount({
   cameraDirector,
   mirrorFeedToPlayerId,
   className = "",
+  physicalEnvironmentHint,
 }: VenueAutomatedJumbotronMountProps) {
   const experienceType = mapArenaEventToJumbotronExperience(eventType);
 
@@ -129,7 +137,8 @@ export function VenueAutomatedJumbotronMount({
       participantCount: 0, // honest empty until real presence wired
       crowdActivityScore: 0,
       venueEnvironment:
-        experienceType === "WORLD_DANCE_PARTY"
+        physicalEnvironmentHint ??
+        (experienceType === "WORLD_DANCE_PARTY"
           ? "WORLD_DANCE_PARTY"
           : experienceType === "AUDITORIUM" || experienceType === "MONDAY_NIGHT_STAGE"
             ? "PROSCENIUM_THEATER"
@@ -139,9 +148,9 @@ export function VenueAutomatedJumbotronMount({
                   experienceType === "FAN_LOBBY" ||
                   experienceType === "PERFORMER_LOBBY"
                 ? "CLUB_SMALL_ROOM"
-                : "INDOOR_ARENA",
+                : "INDOOR_ARENA"),
     });
-  }, [roomId, experienceType, venueId]);
+  }, [roomId, experienceType, venueId, physicalEnvironmentHint]);
 
   const [focused, setFocused] = useState(false);
   const [cam] = useState(() => cameraDirector ?? new AvatarCameraDirector());
@@ -558,6 +567,62 @@ export function VenueAutomatedJumbotronMount({
     syncFaces();
     const timer = window.setInterval(syncFaces, 750);
     return () => window.clearInterval(timer);
+  }, [experienceType, roomId, venueId]);
+
+  /**
+   * §10844–§10857 — Unified Jumbotron ad fabric (Direct → AdSense → empty).
+   * Only outside protected live program experiences. Challenge/Battle keep their own face plans.
+   */
+  useEffect(() => {
+    const performanceProtected =
+      experienceType === "BATTLE_ARENA" ||
+      experienceType === "CHALLENGE_ARENA" ||
+      experienceType === "CYPHER" ||
+      experienceType === "WORLD_CONCERT" ||
+      experienceType === "MONDAY_NIGHT_STAGE" ||
+      experienceType === "GAME_SHOW";
+    if (performanceProtected) return;
+
+    const faces = ["NORTH", "EAST", "SOUTH", "WEST"] as const;
+    let cancelled = false;
+
+    const pullFabric = async () => {
+      try {
+        const show = new JumbotronShowDirector(
+          venueId ?? `venue-${roomId}`,
+          `session:${roomId}`,
+        );
+        const decisions: Partial<
+          Record<(typeof faces)[number], { inventoryClass: string; campaignId?: string; performanceBlocked?: boolean }>
+        > = {};
+        await Promise.all(
+          faces.map(async (face, faceIndex) => {
+            const res = await fetch(
+              `/api/ads/jumbotron?roomId=${encodeURIComponent(roomId)}&venueId=${encodeURIComponent(venueId ?? `venue-${roomId}`)}&face=${face}&faceIndex=${faceIndex}&phase=IDLE`,
+            );
+            if (!res.ok) return;
+            const json = (await res.json()) as {
+              decision?: {
+                inventoryClass: string;
+                campaignId?: string;
+                performanceBlocked?: boolean;
+              };
+            };
+            if (json.decision) decisions[face] = json.decision;
+          }),
+        );
+        if (!cancelled) show.applyFabricFaceDecisions(decisions);
+      } catch {
+        /* fabric optional — never invent ads on failure */
+      }
+    };
+
+    void pullFabric();
+    const timer = window.setInterval(() => void pullFabric(), 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [experienceType, roomId, venueId]);
 
   // LOOK UP / DOUBLE-UP focus — aims camera at best face; no session restart

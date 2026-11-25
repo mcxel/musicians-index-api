@@ -58,10 +58,29 @@ export type AvatarInventory = {
   updatedAt: string;
 };
 
-const profileStore = new Map<string, AvatarProfile>();
-const loadoutStore = new Map<string, AvatarLoadout>();
-const nftRegistryStore = new Map<string, AvatarNFTRegistry>();
-const unlockLedgerStore = new Map<string, AvatarUnlockLedger>();
+const globalForAvatarPersistence = globalThis as unknown as {
+  __tmiAvatarProfileStore?: Map<string, AvatarProfile>;
+  __tmiAvatarLoadoutStore?: Map<string, AvatarLoadout>;
+  __tmiAvatarNftRegistryStore?: Map<string, AvatarNFTRegistry>;
+  __tmiAvatarUnlockLedgerStore?: Map<string, AvatarUnlockLedger>;
+  __tmiAvatarInventoryStore?: Map<string, AvatarInventory>;
+};
+
+const profileStore =
+  globalForAvatarPersistence.__tmiAvatarProfileStore ??
+  (globalForAvatarPersistence.__tmiAvatarProfileStore = new Map<string, AvatarProfile>());
+const loadoutStore =
+  globalForAvatarPersistence.__tmiAvatarLoadoutStore ??
+  (globalForAvatarPersistence.__tmiAvatarLoadoutStore = new Map<string, AvatarLoadout>());
+const nftRegistryStore =
+  globalForAvatarPersistence.__tmiAvatarNftRegistryStore ??
+  (globalForAvatarPersistence.__tmiAvatarNftRegistryStore = new Map<string, AvatarNFTRegistry>());
+const unlockLedgerStore =
+  globalForAvatarPersistence.__tmiAvatarUnlockLedgerStore ??
+  (globalForAvatarPersistence.__tmiAvatarUnlockLedgerStore = new Map<string, AvatarUnlockLedger>());
+const inventoryStore =
+  globalForAvatarPersistence.__tmiAvatarInventoryStore ??
+  (globalForAvatarPersistence.__tmiAvatarInventoryStore = new Map<string, AvatarInventory>());
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -81,6 +100,10 @@ const SLOT_CATEGORY_ALLOWLIST: Record<AvatarSlot, AvatarInventoryItem["category"
   aura: ["auras"],
   entrance: ["entrances"],
 };
+
+export function isAvatarSlot(value: unknown): value is AvatarSlot {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(SLOT_CATEGORY_ALLOWLIST, value);
+}
 
 /** Grant ownership of a catalog cosmetic — canonical CosmeticEntitlement persist path. */
 export async function grantAvatarCosmetic(
@@ -150,9 +173,41 @@ function defaultNftRegistry(userId: string): AvatarNFTRegistry {
   };
 }
 
-export function getAvatarProfile(userId: string): AvatarProfile {
+/** Test/ops helper — clears warm cache so the next read must hit Prisma (or defaults). */
+export function clearAvatarPersistenceWarmCache(userId?: string): void {
+  if (userId) {
+    profileStore.delete(userId);
+    loadoutStore.delete(userId);
+    inventoryStore.delete(userId);
+    nftRegistryStore.delete(userId);
+    unlockLedgerStore.delete(userId);
+    return;
+  }
+  profileStore.clear();
+  loadoutStore.clear();
+  inventoryStore.clear();
+  nftRegistryStore.clear();
+  unlockLedgerStore.clear();
+}
+
+export async function getAvatarProfile(userId: string): Promise<AvatarProfile> {
   const existing = profileStore.get(userId);
   if (existing) return existing;
+  {
+    const row = await prisma.avatarProfileRecord.findUnique({ where: { userId } });
+    if (row) {
+      const fromDb: AvatarProfile = {
+        userId: row.userId,
+        displayName: row.displayName,
+        skinTone: row.skinTone,
+        hairStyle: row.hairStyle,
+        eyeStyle: row.eyeStyle,
+        updatedAt: row.updatedAt.toISOString(),
+      };
+      profileStore.set(userId, fromDb);
+      return fromDb;
+    }
+  }
   const created = defaultProfile(userId);
   profileStore.set(userId, created);
   return created;
@@ -181,51 +236,80 @@ function toInventoryItem(row: AvatarInventoryItemRecord): AvatarInventoryItem {
   };
 }
 
-/** Real DB-backed inventory (Rule 20 — was a serverless-unsafe in-memory Map). Seeds starter items on first access. */
+/** Real DB-backed inventory. Seeds starter items on first access. */
 export async function getAvatarInventory(userId: string): Promise<AvatarInventory> {
-  const rows = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
-  if (rows.length > 0) {
-    return { userId, items: rows.map(toInventoryItem), updatedAt: nowIso() };
-  }
+  {
+    const rows = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
+    if (rows.length > 0) {
+      const inv = { userId, items: rows.map(toInventoryItem), updatedAt: nowIso() };
+      inventoryStore.set(userId, inv);
+      return inv;
+    }
 
-  const starters = getStarterInventory();
-  await prisma.avatarInventoryItemRecord.createMany({
-    data: starters.map((item) => ({
-      userId,
-      itemId: item.itemId,
-      type: item.type ?? null,
-      category: item.category ?? null,
-      name: item.name,
-      rarity: item.rarity ?? "free",
-      owned: item.owned ?? false,
-      equipped: item.equipped,
-      mintable: item.mintable ?? false,
-      tradeable: item.tradeable ?? false,
-      sponsorLocked: item.sponsorLocked ?? false,
-      tierLocked: item.tierLocked ?? false,
-      unlockRequirement: item.unlockRequirement ?? null,
-      xpRequired: item.xpRequired ?? null,
-      metadata: (item.metadata as object | undefined) ?? undefined,
-    })),
-    skipDuplicates: true,
-  });
-  const seeded = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
-  return { userId, items: seeded.map(toInventoryItem), updatedAt: nowIso() };
+    const starters = getStarterInventory();
+    await prisma.avatarInventoryItemRecord.createMany({
+      data: starters.map((item) => ({
+        userId,
+        itemId: item.itemId,
+        type: item.type ?? null,
+        category: item.category ?? null,
+        name: item.name,
+        rarity: item.rarity ?? "free",
+        owned: item.owned ?? false,
+        equipped: item.equipped,
+        mintable: item.mintable ?? false,
+        tradeable: item.tradeable ?? false,
+        sponsorLocked: item.sponsorLocked ?? false,
+        tierLocked: item.tierLocked ?? false,
+        unlockRequirement: item.unlockRequirement ?? null,
+        xpRequired: item.xpRequired ?? null,
+        metadata: (item.metadata as object | undefined) ?? undefined,
+      })),
+      skipDuplicates: true,
+    });
+    const seeded = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
+    const inv = { userId, items: seeded.map(toInventoryItem), updatedAt: nowIso() };
+    inventoryStore.set(userId, inv);
+    return inv;
+  }
 }
 
-export function getAvatarLoadout(userId: string): AvatarLoadout {
+function mergeLoadoutSlots(
+  userId: string,
+  slots: Partial<Record<AvatarSlot, string | null>> | Record<string, unknown>,
+): Record<AvatarSlot, string | null> {
+  const defaults = defaultLoadout(userId).slots;
+  const next = { ...defaults };
+  for (const key of Object.keys(defaults) as AvatarSlot[]) {
+    if (key in slots) {
+      const value = (slots as Record<string, unknown>)[key];
+      next[key] = value === null || typeof value === "string" ? (value as string | null) : defaults[key];
+    }
+  }
+  return next;
+}
+
+export async function getAvatarLoadout(userId: string): Promise<AvatarLoadout> {
   const existing = loadoutStore.get(userId);
   if (existing) {
-    // Backfill new Fan cosmetic slots without dropping prior loadout.
     const merged: AvatarLoadout = {
       ...existing,
-      slots: {
-        ...defaultLoadout(userId).slots,
-        ...existing.slots,
-      },
+      slots: mergeLoadoutSlots(userId, existing.slots),
     };
     loadoutStore.set(userId, merged);
     return merged;
+  }
+  {
+    const row = await prisma.avatarLoadoutRecord.findUnique({ where: { userId } });
+    if (row) {
+      const fromDb: AvatarLoadout = {
+        userId: row.userId,
+        slots: mergeLoadoutSlots(userId, (row.slots as Record<string, unknown>) ?? {}),
+        updatedAt: row.updatedAt.toISOString(),
+      };
+      loadoutStore.set(userId, fromDb);
+      return fromDb;
+    }
   }
   const created = defaultLoadout(userId);
   loadoutStore.set(userId, created);
@@ -285,22 +369,52 @@ export async function validateNFTMintEligibility(userId: string): Promise<boolea
   return equippedMintable.length > 0;
 }
 
-export function saveAvatarProfile(
+export async function saveAvatarProfile(
   userId: string,
   patch: Partial<Pick<AvatarProfile, "displayName" | "skinTone" | "hairStyle" | "eyeStyle">>,
-): AvatarProfile {
-  const current = getAvatarProfile(userId);
-  const next: AvatarProfile = {
-    ...current,
-    ...patch,
+): Promise<AvatarProfile> {
+  const result = await saveAvatarChanges(userId, { profile: patch });
+  return result.profile!;
+}
+
+export async function saveAvatarChanges(
+  userId: string,
+  changes: {
+    profile?: Partial<Pick<AvatarProfile, "displayName" | "skinTone" | "hairStyle" | "eyeStyle">>;
+    loadout?: Partial<Record<AvatarSlot, string | null>>;
+  },
+): Promise<{ profile?: AvatarProfile; loadout?: AvatarLoadout }> {
+  const currentProfile = changes.profile ? await getAvatarProfile(userId) : undefined;
+  const currentLoadout = changes.loadout ? await getAvatarLoadout(userId) : undefined;
+  const profile = currentProfile && { ...currentProfile, ...changes.profile, updatedAt: nowIso() };
+  const loadout = currentLoadout && {
+    ...currentLoadout,
+    slots: { ...currentLoadout.slots, ...changes.loadout },
     updatedAt: nowIso(),
   };
-  profileStore.set(userId, next);
-  return next;
+  await prisma.$transaction(async (tx) => {
+    if (profile) {
+      const { displayName, skinTone, hairStyle, eyeStyle } = profile;
+      const data = { displayName, skinTone, hairStyle, eyeStyle };
+      await tx.avatarProfileRecord.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+    }
+    if (loadout) {
+      await tx.avatarLoadoutRecord.upsert({
+        where: { userId },
+        create: { userId, slots: loadout.slots },
+        update: { slots: loadout.slots },
+      });
+    }
+  });
+  if (profile) profileStore.set(userId, profile);
+  if (loadout) loadoutStore.set(userId, loadout);
+  return { profile, loadout };
 }
 
 /** Replaces the user's full item set (matches prior Map.set replace-all semantics). */
 export async function saveAvatarInventory(userId: string, items: AvatarInventoryItem[]): Promise<AvatarInventory> {
+  const updated: AvatarInventory = { userId, items, updatedAt: nowIso() };
+  // Durable Prisma write is authoritative. Never report success from warm cache alone.
   await prisma.$transaction([
     prisma.avatarInventoryItemRecord.deleteMany({ where: { userId } }),
     prisma.avatarInventoryItemRecord.createMany({
@@ -324,7 +438,8 @@ export async function saveAvatarInventory(userId: string, items: AvatarInventory
       skipDuplicates: true,
     }),
   ]);
-  return { userId, items, updatedAt: nowIso() };
+  inventoryStore.set(userId, updated);
+  return updated;
 }
 
 export async function equipAvatarItem(userId: string, itemId: string, slot: AvatarSlot): Promise<AvatarLoadout> {
@@ -346,33 +461,33 @@ export async function equipAvatarItem(userId: string, itemId: string, slot: Avat
     if (isSameSlotCategory) return { ...item, equipped: false };
     return item;
   });
-  await saveAvatarInventory(userId, nextItems);
-
-  const currentLoadout = getAvatarLoadout(userId);
-  const nextLoadout: AvatarLoadout = {
-    ...currentLoadout,
-    slots: {
-      ...currentLoadout.slots,
-      [slot]: itemId,
-    },
-    updatedAt: nowIso(),
-  };
-  loadoutStore.set(userId, nextLoadout);
-  return nextLoadout;
+  const current = await getAvatarLoadout(userId);
+  const loadout = { ...current, slots: { ...current.slots, [slot]: itemId }, updatedAt: nowIso() };
+  await prisma.$transaction(async (tx) => {
+    for (const item of nextItems) {
+      const result = await tx.avatarInventoryItemRecord.updateMany({
+        where: { userId, itemId: resolveItemId(item) },
+        data: { equipped: item.equipped },
+      });
+      if (result.count !== 1) throw new Error("avatar_inventory_changed");
+    }
+    await tx.avatarLoadoutRecord.upsert({
+      where: { userId },
+      create: { userId, slots: loadout.slots },
+      update: { slots: loadout.slots },
+    });
+  });
+  inventoryStore.set(userId, { userId, items: nextItems, updatedAt: nowIso() });
+  loadoutStore.set(userId, loadout);
+  return loadout;
 }
 
-export function saveAvatarLoadout(userId: string, slotsPatch: Partial<Record<AvatarSlot, string | null>>): AvatarLoadout {
-  const current = getAvatarLoadout(userId);
-  const next: AvatarLoadout = {
-    ...current,
-    slots: {
-      ...current.slots,
-      ...slotsPatch,
-    },
-    updatedAt: nowIso(),
-  };
-  loadoutStore.set(userId, next);
-  return next;
+export async function saveAvatarLoadout(
+  userId: string,
+  slotsPatch: Partial<Record<AvatarSlot, string | null>>,
+): Promise<AvatarLoadout> {
+  const result = await saveAvatarChanges(userId, { loadout: slotsPatch });
+  return result.loadout!;
 }
 
 export async function mintAvatarForUser(userId: string, displayName: string): Promise<AvatarNFTRecord> {
@@ -400,10 +515,15 @@ export async function mintAvatarForUser(userId: string, displayName: string): Pr
 }
 
 export async function getAvatarPersistenceSnapshot(userId: string) {
+  const [AvatarProfile, AvatarInventory, AvatarLoadout] = await Promise.all([
+    getAvatarProfile(userId),
+    getAvatarInventory(userId),
+    getAvatarLoadout(userId),
+  ]);
   return {
-    AvatarProfile: getAvatarProfile(userId),
-    AvatarInventory: await getAvatarInventory(userId),
-    AvatarLoadout: getAvatarLoadout(userId),
+    AvatarProfile,
+    AvatarInventory,
+    AvatarLoadout,
     AvatarNFTRegistry: getAvatarNFTRegistry(userId),
     AvatarUnlockLedger: getAvatarUnlockLedger(userId),
   };

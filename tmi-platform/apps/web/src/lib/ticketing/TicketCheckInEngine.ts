@@ -1,11 +1,12 @@
 import { getTicket, burnTicket, verifyOwnership } from "@/lib/ticketing/TicketOwnershipEngine";
-import { atomicCheckIn as atomicCheckInCore } from "@/lib/tickets/AtomicCheckIn";
+
+/**
+ * In-memory / demo check-in helpers for admin UI.
+ * Durable DB atomic redeem lives in `@/lib/tickets/AtomicCheckIn` (server-only) —
+ * import that module from API routes, never from client pages.
+ */
 
 export type CheckInStatus = "not-checked-in" | "checked-in" | "already-used" | "invalid" | "denied";
-
-/** Re-export canonical atomic check-in for door / kiosk / scanner. */
-export const AtomicCheckIn = atomicCheckInCore;
-export { atomicCheckInCore as atomicCheckIn };
 
 export interface CheckInRecord {
   checkInId: string;

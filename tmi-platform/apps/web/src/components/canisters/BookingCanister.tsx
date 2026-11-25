@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
+import { quoteBookingCut, TMI_PLATFORM_CUT_PERCENT, TMI_SELLER_SIDE_PERCENT } from "@/lib/economy/PlatformCutAuthority";
+import DrawerCompositionLayout from "@/components/drawers/DrawerCompositionLayout";
 
 interface BookingRequest {
   id: string;
@@ -40,6 +42,8 @@ export function BookingCanister({
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
   const [offerAmount, setOfferAmount] = useState(2500);
+  const [eventDate, setEventDate] = useState("2026-11-20");
+  const [venueLocation, setVenueLocation] = useState("The Golden Stage, Chico CA");
   const [note, setNote] = useState("");
 
   const load = useCallback(async () => {
@@ -77,9 +81,12 @@ export function BookingCanister({
         credentials: "include",
         body: JSON.stringify({
           artistSlug: entityType === "performer" ? entityId : "unknown",
-          venueSlug: entityType === "venue" ? entityId : "unknown",
+          venueSlug: venueLocation || (entityType === "venue" ? entityId : "unknown"),
           offerAmount: offerAmount * 100,
           expectedRevenue: offerAmount * 300,
+          eventDate,
+          venueLocation,
+          commissionPercent: 18, // Owner locked canonical floor
           note,
         }),
       });
@@ -166,64 +173,136 @@ export function BookingCanister({
         </Link>
       </div>
 
-      {/* 3-Column Deck */}
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 260px", gap: 12 }}>
-        {/* Left Column: Request Offer Form */}
-        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, letterSpacing: "0.12em" }}>STAGE OFFER FORM</div>
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>OFFER AMOUNT ($)</div>
-          <input
-            type="number"
-            value={offerAmount}
-            min={100}
-            onChange={(e) => setOfferAmount(Number(e.target.value))}
-            style={{
-              width: "100%",
-              padding: "7px 10px",
-              borderRadius: 6,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#00FF88",
-              fontSize: 14,
-              fontWeight: 900,
-            }}
+      {/* 3-Column Deck — left form obeys §11335: text dialogue → instruments → actions (no manufactured preview). */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+        <div style={{ background: "rgba(10,5,25,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, letterSpacing: "0.12em", marginBottom: 8 }}>
+            STAGE OFFER & CONTRACT FORM
+          </div>
+          <DrawerCompositionLayout
+            moduleId="booking"
+            textDialogue={
+              <div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>STAGE RIDER & CONTRACT NOTE</div>
+                <textarea
+                  data-testid="input-booking-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                  placeholder="Stage rider requirements, expected crowd, tech needs..."
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    fontSize: 10,
+                    resize: "vertical",
+                    minHeight: 48,
+                  }}
+                />
+              </div>
+            }
+            instruments={
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>OFFER AMOUNT ($)</div>
+                <input
+                  type="number"
+                  data-testid="input-booking-offer-amount"
+                  value={offerAmount}
+                  min={100}
+                  onChange={(e) => setOfferAmount(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#00FF88",
+                    fontSize: 14,
+                    fontWeight: 900,
+                  }}
+                />
+                {(() => {
+                  const cut = quoteBookingCut(Math.round((Number(offerAmount) || 0) * 100));
+                  return (
+                    <>
+                      <div data-testid="booking-commission-badge" style={{ padding: "6px 8px", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.25)", borderRadius: 6, fontSize: 8, display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "rgba(255,255,255,0.6)" }}>TMI Platform Take ({TMI_PLATFORM_CUT_PERCENT}% Locked):</span>
+                        <span style={{ color: "#00FF88", fontWeight: 900 }}>${(cut.platformCutCents / 100).toFixed(2)}</span>
+                      </div>
+                      <div style={{ padding: "4px 8px", background: "rgba(255,255,255,0.03)", borderRadius: 6, fontSize: 8, display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "rgba(255,255,255,0.6)" }}>Performer-side before other costs ({TMI_SELLER_SIDE_PERCENT}%):</span>
+                        <span style={{ color: "#fff", fontWeight: 900 }}>${(cut.sellerSideCents / 100).toFixed(2)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>EVENT DATE</div>
+                <input
+                  type="date"
+                  data-testid="input-booking-date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    fontSize: 10,
+                  }}
+                />
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>VENUE / LOCATION</div>
+                <input
+                  type="text"
+                  data-testid="input-booking-venue"
+                  value={venueLocation}
+                  onChange={(e) => setVenueLocation(e.target.value)}
+                  placeholder="Venue Name, City, State"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    fontSize: 10,
+                  }}
+                />
+              </div>
+            }
+            actions={
+              <div>
+                <button
+                  type="button"
+                  data-testid="btn-dispatch-booking-offer"
+                  onClick={() => void submitRequest()}
+                  disabled={submitting}
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 900,
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: `linear-gradient(135deg, ${accentColor}, #00FFFF)`,
+                    color: "#000",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  {submitting ? "DISPATCHING..." : "DISPATCH BOOKING OFFER"}
+                </button>
+                {msg ? (
+                  <div style={{ fontSize: 9, color: msg.includes("error") || msg.includes("Could not") || msg.includes("Network") ? "#FF6B6B" : "#00FF88", marginTop: 4 }}>
+                    {msg}
+                  </div>
+                ) : null}
+              </div>
+            }
           />
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>CONTRACT NOTE & DATE</div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder="Stage rider requirements, dates, expected crowd size..."
-            style={{
-              width: "100%",
-              padding: "7px 10px",
-              borderRadius: 6,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-              fontSize: 10,
-              resize: "none",
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => void submitRequest()}
-            disabled={submitting}
-            style={{
-              fontSize: 9,
-              fontWeight: 900,
-              padding: "8px 12px",
-              borderRadius: 6,
-              border: "none",
-              background: `linear-gradient(135deg, ${accentColor}, #00FFFF)`,
-              color: "#000",
-              cursor: "pointer",
-              marginTop: 4,
-            }}
-          >
-            {submitting ? "DISPATCHING..." : "DISPATCH BOOKING OFFER"}
-          </button>
-          {msg ? <div style={{ fontSize: 9, color: msg.includes("error") || msg.includes("Could not") || msg.includes("Network") ? "#FF6B6B" : "#00FF88", marginTop: 4 }}>{msg}</div> : null}
         </div>
 
         {/* Center Column: Recent Booking Pipeline */}

@@ -1,21 +1,43 @@
-'use client';
-// ArtistBookingPanel.tsx — Book This Artist: calendar, pricing, request flow
-// Copilot wires: useArtistBooking(artistId), requestBooking(artistId, date, type)
-// Proof: calendar renders, pricing shows, Request Booking submits
-export function ArtistBookingPanel({ artistId }: { artistId: string }) {
+"use client";
+
+/**
+ * ArtistBookingPanel — VALID presentation wrapper only (§11180).
+ * Mounts BookingCanister with the selected performer identity.
+ * No independent booking engine / form / API.
+ */
+
+import React from "react";
+import { BookingCanister } from "@/components/canisters/BookingCanister";
+
+export interface ArtistBookingPanelProps {
+  /** Canonical performer slug or id — becomes BookingCanister entityId. */
+  artistId: string;
+  artistName?: string;
+  accentColor?: string;
+}
+
+export function ArtistBookingPanel({
+  artistId,
+  artistName,
+  accentColor = "#00D4FF",
+}: ArtistBookingPanelProps) {
   return (
-    <div className="tmi-booking-panel">
-      <div className="tmi-booking-panel__header">Book This Artist</div>
-      <div className="tmi-booking-panel__calendar" data-slot="booking-calendar">
-        {/* Copilot wires date picker */}
-      </div>
-      <div className="tmi-booking-panel__pricing" data-slot="pricing">
-        Starting at $— / session
-      </div>
-      <div className="tmi-booking-panel__types" data-slot="booking-types">
-        {/* Copilot maps booking types: Live, Cypher, Collab, Feature */}
-      </div>
-      <button className="tmi-btn-primary tmi-btn--full">Request Booking</button>
+    <div
+      data-testid="artist-booking-panel"
+      data-booking-performer={artistId}
+      data-booking-performer-name={artistName ?? ""}
+      style={{
+        width: "100%",
+        padding: "8px 0",
+      }}
+    >
+      <BookingCanister
+        key={artistId}
+        entityId={artistId}
+        entityType="performer"
+        showRequestForm={true}
+        accentColor={accentColor}
+      />
     </div>
   );
 }

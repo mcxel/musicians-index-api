@@ -24,7 +24,7 @@ type UnlockBody = {
  * Real entitlement for Fan cosmetics (Rule 20). Points path when Stripe not wired.
  */
 export async function POST(req: NextRequest) {
-  const auth = requireFanAvatarSession(req);
+  const auth = await requireFanAvatarSession(req);
   if ("error" in auth) return auth.error;
 
   const body = (await req.json().catch(() => ({}))) as UnlockBody;
@@ -103,8 +103,12 @@ export async function POST(req: NextRequest) {
   if (body.equip) {
     try {
       equippedLoadout = await equipAvatarItem(auth.user.id, itemId, def.equipSlot as AvatarSlot);
-    } catch {
-      equippedLoadout = null;
+    } catch (error) {
+      console.error("[api/avatar/unlock] equip failed after unlock:", error);
+      return NextResponse.json(
+        { ok: false, error: "equip_failed", itemId, unlocked: true },
+        { status: 503 },
+      );
     }
   }
 

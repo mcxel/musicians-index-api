@@ -244,21 +244,26 @@ export const YOPHO_SKIN_CATALOG: YoPhoSkin[] = [
   },
 ];
 
+/** Free starter skins — never settle as paid checkout products. */
+export const YOPHO_FREE_SKIN_IDS: readonly string[] = YOPHO_SKIN_CATALOG
+  .filter((s) => s.isFreeStarter === true || s.priceUsd <= 0)
+  .map((s) => s.id);
+
 // Helper to retrieve unlocked skins from localStorage / DB
 export function getUnlockedSkinIds(): string[] {
-  if (typeof window === 'undefined') return ['urban-loft-starter'];
+  if (typeof window === 'undefined') return [...YOPHO_FREE_SKIN_IDS];
   try {
     const saved = localStorage.getItem('tmi_unlocked_yopho_skins');
     if (saved) {
       const parsed = JSON.parse(saved) as string[];
-      if (Array.isArray(parsed) && parsed.includes('urban-loft-starter')) {
+      if (Array.isArray(parsed) && YOPHO_FREE_SKIN_IDS.every((id) => parsed.includes(id))) {
         return parsed;
       }
     }
   } catch {
     // fallback
   }
-  return ['urban-loft-starter'];
+  return [...YOPHO_FREE_SKIN_IDS];
 }
 
 // Unlock skin by ID
@@ -281,4 +286,213 @@ export function unlockSkinById(skinId: string): boolean {
     // failure
   }
   return false;
+}
+
+// ─── Durable Server-Side YoPho Entitlement Ledger ($0.99 Skins & $2.99 Prop Packs) ───
+
+export interface DurableYoPhoEntitlementRecord {
+  id: string;
+  userId: string;
+  itemId: string;
+  itemKind: 'skin_099' | 'prop_pack_299';
+  priceCents: number;
+  stripeSessionId: string;
+  paymentIntentId: string | null;
+  grantedAtMs: number;
+  status: 'ACTIVE' | 'REVOKED';
+}
+
+const durableYoPhoEntitlements = new Map<string, DurableYoPhoEntitlementRecord>();
+let yophoDurableHydrated = false;
+
+/** §P0 Emergency Shared-State Protection — see the matching comment in
+ *  DiscoveryBoostEngine.ts for the incident and rationale. Automatic,
+ *  unconditional test-mode isolation — never an opt-in env var. */
+function isTestRuntime(): boolean {
+  return process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID);
+}
+
+let cachedTestYoPhoLedgerDir: string | null = null;
+
+function assertIsolatedTestRuntimeOrThrow(fnName: string): void {
+  if (!isTestRuntime()) {
+    throw new Error(
+      `${fnName}() refused: no test environment detected (NODE_ENV!=="test" and JEST_WORKER_ID unset). ` +
+        'This function is destructive and must never run against the real durable ledger.',
+    );
+  }
+}
+
+function getNodeYoPhoFs(): {
+  fs: {
+    existsSync: (p: string) => boolean;
+    mkdirSync: (p: string, opts?: { recursive?: boolean }) => void;
+    readFileSync: (p: string, enc: string) => string;
+    writeFileSync: (p: string, data: string, enc: string) => void;
+    renameSync: (oldP: string, newP: string) => void;
+  };
+  ledgerFile: string;
+} | null {
+  if (typeof process === 'undefined' || !process.versions?.node) return null;
+  try {
+    // eslint-disable-next-line no-eval
+    const req = eval('require') as (mod: string) => any;
+    const fs = req('fs');
+    const path = req('path');
+    const os = req('os');
+    const baseDir = isTestRuntime()
+      ? (cachedTestYoPhoLedgerDir ??= path.join(os.tmpdir(), `tmi-test-revenue-${process.pid}`))
+      : process.env.TMI_DURABLE_REVENUE_DIR || path.join(os.tmpdir(), 'tmi-durable-revenue-v1');
+    if (!fs.existsSync(baseDir)) {
+      fs.mkdirSync(baseDir, { recursive: true });
+    }
+    return {
+      fs,
+      ledgerFile: path.join(baseDir, 'yopho-entitlements-ledger.json'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function hydrateYoPhoEntitlementsFromDurable(): void {
+  const io = getNodeYoPhoFs();
+  if (!io) return;
+  try {
+    if (!io.fs.existsSync(io.ledgerFile)) {
+      yophoDurableHydrated = true;
+      return;
+    }
+    const raw = io.fs.readFileSync(io.ledgerFile, 'utf8');
+    if (!raw.trim()) {
+      yophoDurableHydrated = true;
+      return;
+    }
+    const parsed = JSON.parse(raw) as { records?: DurableYoPhoEntitlementRecord[] };
+    if (Array.isArray(parsed.records)) {
+      for (const rec of parsed.records) {
+        if (rec && typeof rec.id === 'string') {
+          const existing = durableYoPhoEntitlements.get(rec.id);
+          if (!existing) {
+            durableYoPhoEntitlements.set(rec.id, rec);
+          } else if (rec.status === 'REVOKED') {
+            existing.status = 'REVOKED';
+          }
+        }
+      }
+    }
+    yophoDurableHydrated = true;
+  } catch {
+    // Non-fatal fallback
+  }
+}
+
+function flushYoPhoEntitlementsToDurable(): void {
+  const io = getNodeYoPhoFs();
+  if (!io) return;
+  try {
+    const payload = JSON.stringify(
+      {
+        version: 1,
+        updatedAtMs: Date.now(),
+        records: Array.from(durableYoPhoEntitlements.values()),
+      },
+      null,
+      2,
+    );
+    const tmpFile = `${io.ledgerFile}.tmp.${process.pid}.${Date.now()}`;
+    io.fs.writeFileSync(tmpFile, payload, 'utf8');
+    io.fs.renameSync(tmpFile, io.ledgerFile);
+  } catch {
+    // Non-fatal fallback
+  }
+}
+
+function ensureYoPhoHydrated(): void {
+  if (!yophoDurableHydrated) {
+    hydrateYoPhoEntitlementsFromDurable();
+  }
+}
+
+export function grantDurableYoPhoEntitlement(input: {
+  userId: string;
+  itemId: string;
+  itemKind?: 'skin_099' | 'prop_pack_299';
+  priceCents?: number;
+  stripeSessionId: string;
+  paymentIntentId?: string | null;
+  nowMs?: number;
+}): DurableYoPhoEntitlementRecord {
+  hydrateYoPhoEntitlementsFromDurable();
+
+  // Idempotency by stripeSessionId + itemId
+  for (const existing of durableYoPhoEntitlements.values()) {
+    if (existing.stripeSessionId === input.stripeSessionId && existing.itemId === input.itemId) {
+      if (input.paymentIntentId && !existing.paymentIntentId) {
+        existing.paymentIntentId = input.paymentIntentId;
+        flushYoPhoEntitlementsToDurable();
+      }
+      return existing;
+    }
+  }
+
+  const now = input.nowMs ?? Date.now();
+  const inferredKind: 'skin_099' | 'prop_pack_299' =
+    input.itemKind ??
+    (input.itemId.includes('prop') || input.priceCents === 299 ? 'prop_pack_299' : 'skin_099');
+  const record: DurableYoPhoEntitlementRecord = {
+    id: `yopho_ent_${input.userId}_${input.itemId}_${input.stripeSessionId}`,
+    userId: input.userId,
+    itemId: input.itemId,
+    itemKind: inferredKind,
+    priceCents: input.priceCents ?? (inferredKind === 'prop_pack_299' ? 299 : 99),
+    stripeSessionId: input.stripeSessionId,
+    paymentIntentId: input.paymentIntentId ?? null,
+    grantedAtMs: now,
+    status: 'ACTIVE',
+  };
+  durableYoPhoEntitlements.set(record.id, record);
+  flushYoPhoEntitlementsToDurable();
+  return record;
+}
+
+export function getDurableYoPhoEntitlementsForUser(userId: string): DurableYoPhoEntitlementRecord[] {
+  ensureYoPhoHydrated();
+  return Array.from(durableYoPhoEntitlements.values()).filter(
+    (r) => r.userId === userId && r.status === 'ACTIVE',
+  );
+}
+
+export function revokeDurableYoPhoEntitlementByPaymentRef(ref: {
+  stripeSessionId?: string | null;
+  paymentIntentId?: string | null;
+}): number {
+  hydrateYoPhoEntitlementsFromDurable();
+  let count = 0;
+  for (const rec of durableYoPhoEntitlements.values()) {
+    const matchSession = Boolean(ref.stripeSessionId && rec.stripeSessionId === ref.stripeSessionId);
+    const matchPi = Boolean(ref.paymentIntentId && rec.paymentIntentId === ref.paymentIntentId);
+    if ((matchSession || matchPi) && rec.status !== 'REVOKED') {
+      rec.status = 'REVOKED';
+      count += 1;
+    }
+  }
+  if (count > 0) {
+    flushYoPhoEntitlementsToDurable();
+  }
+  return count;
+}
+
+export function simulateYoPhoEntitlementServerRestartForTests(): void {
+  assertIsolatedTestRuntimeOrThrow('simulateYoPhoEntitlementServerRestartForTests');
+  durableYoPhoEntitlements.clear();
+  yophoDurableHydrated = false;
+  hydrateYoPhoEntitlementsFromDurable();
+}
+
+export function resetYoPhoEntitlementsForTests(): void {
+  assertIsolatedTestRuntimeOrThrow('resetYoPhoEntitlementsForTests');
+  durableYoPhoEntitlements.clear();
+  yophoDurableHydrated = true;
+  flushYoPhoEntitlementsToDurable();
 }

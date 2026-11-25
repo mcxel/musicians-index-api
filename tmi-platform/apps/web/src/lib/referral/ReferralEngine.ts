@@ -147,7 +147,14 @@ export function qualifyReferral(
     return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'No arrival record found' };
   }
   if (record.qualifiedAt !== null) {
-    return { qualified: true, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Already qualified' };
+    const totalQualified = records.filter((r) => r.qualifiedAt !== null).length;
+    const launch = isLaunchWindow(record.qualifiedAt);
+    let milestoneBonus = 0;
+    if (totalQualified >= MILESTONE_THRESHOLD && !records.some((r) => r.milestonePaid)) {
+      milestoneBonus = launch ? MILESTONE_BONUS * 2 : MILESTONE_BONUS;
+      record.milestonePaid = true;
+    }
+    return { qualified: true, pointsAwarded: 0, milestoneBonus, launchBonus: false, reason: 'Already qualified' };
   }
 
   // Revenue protection guardrail: staySeconds used to be trusted directly
@@ -183,6 +190,16 @@ export function qualifyReferral(
   }
 
   return { qualified: true, pointsAwarded: points, milestoneBonus, launchBonus: launch, reason: 'Qualified' };
+}
+
+export function rollbackReferralMilestonePaid(token: string, invitedId: string): boolean {
+  const link = resolveToken(token);
+  if (!link) return false;
+  const records = getOwnerRecords(link.ownerId);
+  const record = records.find((r) => r.token === token && r.invitedId === invitedId);
+  if (!record || !record.milestonePaid) return false;
+  record.milestonePaid = false;
+  return true;
 }
 
 export function getReferralStats(ownerId: string): ReferralStats {

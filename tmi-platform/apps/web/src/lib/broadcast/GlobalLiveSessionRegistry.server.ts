@@ -47,20 +47,32 @@ export async function ensureHydrated(): Promise<void> {
 }
 
 export async function getActiveSessionsDurable(): Promise<LiveSession[]> {
+  const started = Date.now();
+  const trace = (step: string, extra?: Record<string, string | number | boolean | null>) => {
+    if (process.env.NODE_ENV === "production") return;
+    console.info("[live-go-trace]", JSON.stringify({ step, ms: Date.now() - started, ...extra }));
+  };
+  trace("HYDRATE_START", { alreadyHydrated: hydratedFromDb });
   await ensureHydrated();
+  trace("HYDRATE_DONE", { hydrated: hydratedFromDb });
   // Merge durable → memory for multi-worker visibility, but not on every poll tick.
   // Unthrottled Prisma reads under hub DiscoveryPoll made GET ~5–30s and starved publish POST.
   const now = Date.now();
   if (now - lastDurableReconcileAt >= DURABLE_RECONCILE_MIN_MS) {
     lastDurableReconcileAt = now;
+    trace("RECONCILE_START");
     try {
       const durable = await loadPersistedLiveSessions();
       for (const session of durable) {
         upsertHydratedSession(session);
       }
+      trace("RECONCILE_DONE", { rows: durable.length });
     } catch (err) {
       console.error("[GlobalLiveSessionRegistry.server] reconcile failed", err);
+      trace("RECONCILE_FAILED");
     }
+  } else {
+    trace("RECONCILE_SKIPPED");
   }
   return getActiveSessions();
 }

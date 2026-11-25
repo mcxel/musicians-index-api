@@ -14,6 +14,35 @@ import { applyRubricPointPenalty } from "@/lib/voting/FanRubricVotingEngine";
 
 export const AI_MUSIC_CHALLENGE_BADGE = "AI MUSIC CHALLENGE";
 
+/** Provider-aware AI source — Suno is first, not the only forever provider. */
+export type AiSourceProviderId = "SUNO" | "UDIO" | "OTHER";
+
+/**
+ * Official Suno capability receipt (2026-10-31 research).
+ * A share link proves sharing. It does not prove TMI may stream-rip.
+ */
+export const SUNO_INTEGRATION = {
+  SHARE_LINK: "SUPPORTED",
+  OFFICIAL_EMBED: "SUPPORTED",
+  OFFICIAL_API_FOR_PLAYBACK: "NOT_FOUND",
+  TMI_NATIVE_PLAYBACK_FROM_SUNO_URL: "NOT_PROVEN",
+  AUTHORIZED_FILE_UPLOAD: "SUPPORTED",
+  STREAM_RIPPING: "FORBIDDEN",
+} as const;
+
+export function commercialRightsFromSunoUrl(): "UNKNOWN" {
+  return "UNKNOWN";
+}
+
+export function aiContestEntryDedupKey(input: {
+  sunoTrackId?: string | null;
+  mediaAssetId?: string | null;
+}): string | null {
+  if (input.sunoTrackId) return `suno:${input.sunoTrackId}`;
+  if (input.mediaAssetId) return `media:${input.mediaAssetId}`;
+  return null;
+}
+
 /** FanRubric / scoring point deduction when AI work is used in a human lane. */
 export const AI_CHEAT_RUBRIC_PENALTY = 2;
 

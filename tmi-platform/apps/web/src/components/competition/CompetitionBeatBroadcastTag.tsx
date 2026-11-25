@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { AttachedBeatRef } from "@/lib/competition/CompetitionBeatRoomEngine";
+import type { AttachedBeatRef } from "@/lib/competition/CompetitionBeatRoomStore";
 
 type Props = {
   attached: AttachedBeatRef | null;

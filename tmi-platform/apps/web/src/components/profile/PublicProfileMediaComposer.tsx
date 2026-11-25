@@ -10,6 +10,8 @@
 
 import { useRef, type CSSProperties } from "react";
 import Link from "next/link";
+import YoPhoLivingStage from "@/components/yopho/living/YoPhoLivingStage";
+import { getYoPhoLivingProject } from "@/lib/yopho/living/YoPhoLivingProjectStore";
 
 // ─── Block types ────────────────────────────────────────────────────────────
 
@@ -28,7 +30,8 @@ export type MediaBlockType =
   | "LIVE_PREVIEW"
   | "VENUE_PREVIEW"
   | "AVATAR_3D"
-  | "MERCH";
+  | "MERCH"
+  | "CONTENT";
 
 export type GalleryLayout =
   | "1-UP"
@@ -99,9 +102,18 @@ export interface MediaBlock {
   eventDate?: string;
   eventVenue?: string;
 
-  // YOPHO
+  // YOPHO — record id of the living project. The renderer loads that project; it does not copy it.
   yophoCardUrl?: string;
   yophoCreateHref?: string;
+  yophoProjectId?: string;
+
+  // CONTENT — canonical reference, not a copy. The block carries contentId
+  // so a caller CAN resolve the current authorized revision server-side;
+  // contentTitle/contentBody here are a same-request render convenience,
+  // never a cache a renderer should trust over a fresh Content fetch.
+  contentId?: string;
+  contentTitle?: string;
+  contentBody?: string;
 }
 
 export interface PublicProfileMediaComposerProps {
@@ -542,6 +554,17 @@ function LivePreviewBlock({ block, ac }: { block: MediaBlock; ac: string }) {
 }
 
 function YophoBlock({ block, ac }: { block: MediaBlock; ac: string }) {
+  const bound = block.yophoProjectId ? getYoPhoLivingProject(block.yophoProjectId) : null;
+  if (block.yophoProjectId && bound) {
+    return (
+      <div data-yopho-project-id={bound.projectId} style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${ac}33` }}>
+        <YoPhoLivingStage project={bound} compact playing={false} loop={bound.loopPlayback !== false} />
+      </div>
+    );
+  }
+  if (block.yophoProjectId && !bound) {
+    return <EmptySlot message="This YoPho card is not on this device yet." color={ac} />;
+  }
   if (!block.yophoCardUrl) {
     const createHref = block.yophoCreateHref ?? "/yopho";
     return <EmptySlot message="No YoPho card yet." cta="CREATE YOPHO CARD" href={createHref} color={ac} />;
@@ -729,6 +752,29 @@ function VenuePreviewBlock({ block, ac }: { block: MediaBlock; ac: string }) {
   return <EmptySlot message="No venue preview available." color={ac} />;
 }
 
+function ContentBlock({ block, ac }: { block: MediaBlock; ac: string }) {
+  if (!block.contentId || !block.contentBody) {
+    return <EmptySlot message="No writing yet." color={ac} />;
+  }
+  return (
+    <div
+      style={{
+        borderRadius: 14,
+        padding: "18px 20px",
+        background: "linear-gradient(135deg, rgba(16,10,30,0.9), rgba(5,5,16,0.95))",
+        border: `1px solid ${ac}33`,
+      }}
+    >
+      <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: ac, marginBottom: 8 }}>
+        {block.contentTitle ?? "WRITING"}
+      </div>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,0.88)" }}>
+        {block.contentBody}
+      </p>
+    </div>
+  );
+}
+
 // ─── Block router ─────────────────────────────────────────────────────────────
 
 function BlockRenderer({ block, ac }: { block: MediaBlock; ac: string }) {
@@ -763,6 +809,8 @@ function BlockRenderer({ block, ac }: { block: MediaBlock; ac: string }) {
       return <Avatar3DBlock block={block} ac={color} />;
     case "VENUE_PREVIEW":
       return <VenuePreviewBlock block={block} ac={color} />;
+    case "CONTENT":
+      return <ContentBlock block={block} ac={color} />;
     default:
       return null;
   }

@@ -10,7 +10,7 @@ import {
   primaryVenueHubRoute,
   VENUE_PROFESSIONAL_LABELS,
   type VenueProfessionalCapability,
-} from "@/lib/auth/VenueProfessionalCapabilities";
+} from "@/lib/auth/VenueProfessionalCapabilitiesCore";
 import { getProfileFieldLabels } from "@/lib/auth/profileFieldLabels";
 import SignupPolicyAcceptance, {
   AGE_REQUIRED_ERROR,
@@ -107,8 +107,12 @@ function SignupForm() {
       .catch(() => {});
 
     if (!vipToken) {
-      const saved = localStorage.getItem("tmi_invite_code") ?? "";
-      if (saved) setVipToken(saved);
+      try {
+        const saved = localStorage.getItem("tmi_invite_code") ?? "";
+        if (saved) setVipToken(saved);
+      } catch {
+        /* private/incognito storage can throw — invite is optional */
+      }
     }
 
     return () => { active = false; };
@@ -193,7 +197,11 @@ function SignupForm() {
         });
       }
 
-      localStorage.removeItem("tmi_invite_code");
+      try {
+        localStorage.removeItem("tmi_invite_code");
+      } catch {
+        /* private/incognito storage can throw */
+      }
       setStep("DONE");
     } catch {
       setError("Signup failed — please try again.");
@@ -221,6 +229,13 @@ function SignupForm() {
           {/* ── FORM ───────────────────────────────────────────────────── */}
           {step === "FORM" && (
             <motion.div key="form" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }}>
+              <form
+                noValidate
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSignup();
+                }}
+              >
 
               {/* Google */}
               <a
@@ -301,7 +316,9 @@ function SignupForm() {
                   return (
                     <div key={t.type}>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                        onPointerDown={(e) => e.preventDefault()}
                         onClick={() => setSelectedRole(t.type)}
                         style={{
                           display: "flex", alignItems: "center", gap: 12, width: "100%",
@@ -325,8 +342,8 @@ function SignupForm() {
                         {active && t.type === "PERFORMER" && (
                           <motion.div
                             key="subtypes"
-                            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                            style={{ overflow: "hidden", background: "rgba(255,45,170,0.06)", border: `1px solid ${t.color}40`, borderTop: "none", borderRadius: "0 0 8px 8px", padding: "12px 14px" }}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            style={{ background: "rgba(255,45,170,0.06)", border: `1px solid ${t.color}40`, borderTop: "none", borderRadius: "0 0 8px 8px", padding: "12px 14px" }}
                           >
                             <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)", marginBottom: 8, fontWeight: 700 }}>WHAT KIND OF PERFORMER? (SELECT ALL THAT APPLY)</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -335,6 +352,7 @@ function SignupForm() {
                                 return (
                                   <button
                                     key={pt} type="button"
+                                    onPointerDown={(e) => e.preventDefault()}
                                     onClick={() => setPerformerSubtypes(prev => chosen ? prev.filter(x => x !== pt) : [...prev, pt])}
                                     style={{
                                       padding: "7px 13px", borderRadius: 18, fontSize: 10, fontWeight: 700, cursor: "pointer",
@@ -356,8 +374,8 @@ function SignupForm() {
                         {active && t.type === "VENUE_PROFESSIONAL" && (
                           <motion.div
                             key="venue-pro"
-                            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                            style={{ overflow: "hidden", background: "rgba(255,149,0,0.06)", border: `1px solid ${t.color}40`, borderTop: "none", borderRadius: "0 0 8px 8px", padding: "12px 14px" }}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            style={{ background: "rgba(255,149,0,0.06)", border: `1px solid ${t.color}40`, borderTop: "none", borderRadius: "0 0 8px 8px", padding: "12px 14px" }}
                           >
                             <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)", marginBottom: 8, fontWeight: 700 }}>CAPABILITIES (SELECT ALL THAT APPLY)</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
@@ -427,8 +445,8 @@ function SignupForm() {
               )}
 
               <motion.button
+                type="submit"
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                onClick={handleSignup}
                 style={{ width: "100%", padding: "14px", fontSize: 12, fontWeight: 900, letterSpacing: "0.18em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 8, cursor: "pointer", marginBottom: 14 }}
               >
                 {sel.icon} CREATE {sel.label.toUpperCase()} ACCOUNT
@@ -440,6 +458,7 @@ function SignupForm() {
                 {" · "}
                 <Link href="/signup/teen" style={{ color: "rgba(255,255,255,0.3)" }}>Under 16?</Link>
               </div>
+              </form>
             </motion.div>
           )}
 
@@ -539,9 +558,7 @@ function SignupForm() {
                 >
                   {sel.icon} FINISH SETTING UP YOUR PROFILE →
                 </button>
-                <Link href="/dashboard" style={{ display: "block", padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", textAlign: "center" }}>
-                  SKIP — GO TO DASHBOARD
-                </Link>
+                {/* P0 Law: First-run setup is required; dashboard bypass removed */}
               </motion.div>
             </motion.div>
           )}

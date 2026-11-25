@@ -8,6 +8,7 @@ import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 import { magazineReaderArticleUrl } from '@/lib/magazine/MagazineReaderRoutes';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import { beginSharedFlight, singleFlightJson } from '@/lib/live/singleFlightPoll';
 
 export type DiscoveryRailType =
   | 'articles'
@@ -78,10 +79,18 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
     if (!enableLiveStatus || (type !== 'performers' && type !== 'liveRooms')) return;
 
     let cancelled = false;
+    const release = beginSharedFlight("live-go");
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        const data = await res.json() as { sessions?: LiveApiSession[] };
+        const data = await singleFlightJson("live-go", async (signal) => {
+          const res = await fetch("/api/live/go", { cache: "no-store", signal });
+          if (!res.ok) return null;
+          return (await res.json()) as { sessions?: LiveApiSession[] };
+        });
+        if (!data) {
+          if (!cancelled) setLivePerformers([]);
+          return;
+        }
         // Hydration Path: Session ID -> PerformerRegistry -> Full Identity
         const matched = (data.sessions ?? [])
           .map((s) => getPerformerById(s.userId))
@@ -97,7 +106,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
 
     void load();
     const id = setInterval(() => void load(), 10000);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => { cancelled = true; clearInterval(id); release(); };
   }, [enableLiveStatus, type]);
 
   // ── ARTICLES ───────────────────────────────────────────────────────────────

@@ -34,6 +34,7 @@ import {
 } from '@/lib/avatars/EmoteEngine';
 import { getEntity } from '@/lib/avatars/UnifiedAvatarRuntime';
 import { listPropManifests } from '@/lib/avatars/AvatarPropManifest';
+import { HELD_PROP_POLICIES, placeholderPropsEnabled } from '@/lib/live/props/RoomPropEventModel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -273,6 +274,36 @@ export default function AvatarActionWheel({ entityId, roomId, defaultOpen = fals
 
   const renderProps = () => {
     const certified = listPropManifests({ certified: true });
+    // Shared-room 3D held props (lighter, ...). One tap → same `tmi:prop:toggle` event the
+    // venue HUD dock fires → server-verified, synced to every viewer (useRoomHeldProps).
+    const held = roomId
+      ? Object.entries(HELD_PROP_POLICIES).filter(([, p]) => !p.placeholder || placeholderPropsEnabled())
+      : [];
+    if (held.length > 0) {
+      return (
+        <div style={S.grid}>
+          {held.map(([propId, p]) => (
+            <button
+              key={propId}
+              type="button"
+              data-held-prop-button={propId}
+              style={S.actionBtn(false)}
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('tmi:prop:toggle', { detail: { roomId, propId, active: true, entityId } }),
+                )
+              }
+            >
+              <span style={S.actionEmoji}>{p.icon}</span>
+              <span style={S.actionLabel}>
+                {p.label}
+                {p.placeholder ? ' (test model)' : ''}
+              </span>
+            </button>
+          ))}
+        </div>
+      );
+    }
     if (certified.length === 0) {
       return (
         <div style={S.emptyState}>
@@ -301,7 +332,7 @@ export default function AvatarActionWheel({ entityId, roomId, defaultOpen = fals
   const renderMusic = () => (
     <div style={S.linkRow}>
       <Link href="/playlist" style={S.linkBtn}>🎵 My Playlists</Link>
-      <Link href="/music/submit" style={S.linkBtn}>🎤 Submit Music</Link>
+      <Link href="/hub/performer?submissions=1" style={S.linkBtn}>🎤 Submit Music</Link>
       <Link href="/live/radio" style={S.linkBtn}>📻 TMI Radio</Link>
     </div>
   );

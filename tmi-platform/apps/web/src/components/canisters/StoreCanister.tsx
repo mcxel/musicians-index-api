@@ -83,12 +83,27 @@ export function StoreCanister({
     if (busy) return;
     setBuyingId(product.id);
     setError("");
+    // Return the fan to the exact artist context they were viewing —
+    // whatever page this canister is mounted on (drawer, live room, artist
+    // profile, article) — instead of the server's generic default
+    // (/payment-success or /store/creator). Server still validates this is
+    // a same-origin path before trusting it (commerce/checkout route.ts).
+    const returnPath =
+      typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
     void runCheckout(async () => {
       const res = await fetch("/api/commerce/checkout", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id }),
+        body: JSON.stringify({
+          productId: product.id,
+          ...(returnPath
+            ? {
+                successUrl: `${returnPath}${returnPath.includes("?") ? "&" : "?"}purchase=success&productId=${encodeURIComponent(product.id)}`,
+                cancelUrl: `${returnPath}${returnPath.includes("?") ? "&" : "?"}purchase=cancelled`,
+              }
+            : {}),
+        }),
       });
       const data = (await res.json()) as { url?: string; error?: string; code?: string };
       if (!res.ok || !data.url) {
@@ -201,6 +216,14 @@ export function StoreCanister({
                 gap: 6,
               }}
             >
+              {item.imageUrl && /^https?:\/\//i.test(item.imageUrl) ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.title}
+                  data-media="2d-photo"
+                  style={{ width: "100%", height: 88, objectFit: "cover", borderRadius: 6 }}
+                />
+              ) : null}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 16 }}>{ARTIST_COMMERCE_TYPE_ICONS[item.type] ?? "🛍️"}</span>
                 <span

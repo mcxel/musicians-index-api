@@ -1,8 +1,76 @@
 import { grantXP, XP_VALUES } from "@/lib/xp/xpEngine";
 import { getListenLoungeXp } from "@/lib/xp/XpActionRegistry";
+import { isQualifiedByPercentage } from "@/lib/music/PlayQualificationAuthority";
+import {
+  resolveSongCompletionReward,
+  verifyQualifiedSongCompletion,
+} from "@/lib/xp/SongCompletionRewardAuthority";
+import {
+  computeRollingParticipationScore,
+  formatStreamWinGraceWarning,
+  formatStreamWinProgressCopy,
+  resolveRemovalRiskWindow,
+  resolveStreamWinRotationState,
+  selectTemporaryParticipationRemovalPlacement,
+  shouldCancelPendingRemoval,
+  streamWinRotationWeight,
+  type QualifiedParticipationEvent,
+  type StreamWinRotationResolution,
+} from "@/lib/economy/StreamWinParticipationAuthority";
+import {
+  listenerCompletionRewardForSong,
+  placeAcceptedSongOnFabric,
+  resetStreamWinFabricForCertification,
+  routeListenerOnFabric,
+} from "@/lib/economy/StreamWinPlaylistFabricAuthority";
 
 export type FeedbackReaction = "hard" | "replay" | "original" | "skip";
 export type SongState = "active" | "decaying" | "expired";
+
+export interface StreamWinListenDetail {
+  durationSec?: number;
+  listenedSeconds?: number;
+  /** True only when canonical player evidence was server-revalidated. */
+  playbackVerified?: boolean;
+}
+
+export interface ArtistParticipationSnapshot {
+  artistId: string;
+  score: number;
+  rotation: StreamWinRotationResolution;
+  progressCopy: string;
+  graceRemainingMs: number | null;
+  graceWarning: string | null;
+  removalEligible: boolean;
+  pendingRemovalCancelled: boolean;
+  activeSongIds: string[];
+  lastEvent: QualifiedParticipationEvent | null;
+}
+
+export interface ListenAccountingResult {
+  ok: boolean;
+  qualified: boolean;
+  publicPlayIncremented: boolean;
+  xpAwarded: boolean;
+  xpAmount: number;
+  participationRecorded: boolean;
+  rotationExtended: boolean;
+  extendedTrackIds: string[];
+  completionRewardAwarded: number;
+  completionQualified: boolean;
+  listenerRollingScore: number;
+  listenerRotationState: StreamWinRotationResolution["state"] | null;
+  reason:
+    | "qualified_peer_listen"
+    | "duplicate_session"
+    | "self_farming_prevented"
+    | "premature_skip"
+    | "inactive_tab"
+    | "hourly_cap_reached"
+    | "skip_threshold_exceeded"
+    | "track_not_found"
+    | "track_expired";
+}
 
 export interface StreamWinSong {
   id: string;
@@ -19,6 +87,26 @@ export interface StreamWinSong {
   boostPoints: number;
   visibilityScore: number;
   lastActivityAt: number;
+  participationRemoved?: boolean;
+  /**
+   * Media-identity trace (owner correction, 2026-10-29): `id` (sw-*) is this
+   * rotation/economy record's OWN identity — STREAM_WIN_ENTRY_ID, never to
+   * be confused with canonical media identity. `submissionId` preserves the
+   * real upstream SubmissionEngine record (traced and threaded through this
+   * round). `mediaId` is the real canonical Song.id/Video.id — prepared here
+   * but genuinely unpopulated: SubmissionEngine's own Submission record is
+   * ITSELF an in-memory, non-canonical entity (confirmed — it never calls
+   * MediaRegistry.register()/prisma.song.create() to mint a real Song/Video
+   * row). No canonical media row exists anywhere in this chain today, so
+   * fabricating a mediaId here would violate Rule 20. This field exists so
+   * that WHENEVER that separate, larger gap (Submission -> canonical media)
+   * is closed, Stream & Win songs can carry real mediaId without another
+   * schema change — until then it stays honestly undefined, and no
+   * PlayReceipt may be reported for Stream & Win listens (STREAM_WIN_MEDIA_
+   * MAPPING = EXPLICITLY BLOCKED, not silently worked around).
+   */
+  submissionId?: string;
+  mediaId?: string;
 }
 
 export interface SongSubmitResult {
@@ -32,6 +120,86 @@ const songs: Map<string, StreamWinSong> = new Map();
 const artistSubmissions: Map<string, number> = new Map();
 // userId -> { xpThisHour, windowStart, skipCount, noSkipStreak }
 const userActivity: Map<string, { xpThisHour: number; windowStart: number; skipCount: number; noSkipStreak: number }> = new Map();
+const creditedSessions: Set<string> = new Set();
+const artistParticipationEvents: Map<string, QualifiedParticipationEvent[]> = new Map();
+const artistEnteredRiskAt: Map<string, number | null> = new Map();
+const artistLastParticipationRemovalAt: Map<string, number> = new Map();
+
+function emptyListenResult(reason: ListenAccountingResult["reason"], ok = true): ListenAccountingResult {
+  return {
+    ok,
+    qualified: false,
+    publicPlayIncremented: false,
+    xpAwarded: false,
+    xpAmount: 0,
+    participationRecorded: false,
+    rotationExtended: false,
+    extendedTrackIds: [],
+    completionRewardAwarded: 0,
+    completionQualified: false,
+    listenerRollingScore: 0,
+    listenerRotationState: null,
+    reason,
+  };
+}
+
+function artistActiveSongs(artistId: string): StreamWinSong[] {
+  return Array.from(songs.values()).filter((s) => s.artistId === artistId && s.state !== "expired" && !s.participationRemoved);
+}
+
+function snapshotArtist(artistId: string, nowMs = Date.now(), pendingRemovalCancelled = false): ArtistParticipationSnapshot {
+  const events = artistParticipationEvents.get(artistId) ?? [];
+  const score = computeRollingParticipationScore(events, nowMs);
+  const rotation = resolveStreamWinRotationState(score);
+  const entered = artistEnteredRiskAt.get(artistId) ?? null;
+  const window = resolveRemovalRiskWindow({ score, enteredRiskAtMs: entered, nowMs });
+  return {
+    artistId,
+    score,
+    rotation,
+    progressCopy: formatStreamWinProgressCopy(score),
+    graceRemainingMs: window.graceRemainingMs,
+    graceWarning: window.atRisk ? formatStreamWinGraceWarning(window.graceRemainingMs) : null,
+    removalEligible: window.removalEligible,
+    pendingRemovalCancelled,
+    activeSongIds: artistActiveSongs(artistId).map((s) => s.id),
+    lastEvent: events.length ? events[events.length - 1]! : null,
+  };
+}
+
+function applyParticipationLedger(
+  artistId: string,
+  points: number,
+  nowMs: number,
+  songRef?: { songId?: string; mediaId?: string },
+): ArtistParticipationSnapshot {
+  const events = artistParticipationEvents.get(artistId) ?? [];
+  if (points > 0) events.push({ points, atMs: nowMs, songId: songRef?.songId, mediaId: songRef?.mediaId });
+  artistParticipationEvents.set(artistId, events);
+  const score = computeRollingParticipationScore(events, nowMs);
+  const hadRisk = artistEnteredRiskAt.get(artistId) != null;
+  let cancelled = false;
+  if (shouldCancelPendingRemoval(score)) {
+    cancelled = hadRisk;
+    artistEnteredRiskAt.set(artistId, null);
+  } else if (score <= 99 && artistEnteredRiskAt.get(artistId) == null) {
+    artistEnteredRiskAt.set(artistId, nowMs);
+  }
+  const snap = snapshotArtist(artistId, nowMs, cancelled);
+  if (snap.removalEligible) {
+    // Temporary implementation default only — owner has not chosen which song.
+    const actives = artistActiveSongs(artistId);
+    const target = selectTemporaryParticipationRemovalPlacement(actives);
+    const last = artistLastParticipationRemovalAt.get(artistId) ?? 0;
+    if (target && last !== nowMs) {
+      target.participationRemoved = true;
+      target.state = "expired";
+      artistLastParticipationRemovalAt.set(artistId, nowMs);
+      artistEnteredRiskAt.set(artistId, nowMs);
+    }
+  }
+  return snapshotArtist(artistId, nowMs, cancelled);
+}
 
 const DECAY_IDLE_MS   = 5 * 60 * 1000;  // 5 min → decaying
 const EXPIRE_IDLE_MS  = 15 * 60 * 1000; // 15 min → expired
@@ -86,7 +254,16 @@ export const StreamAndWinEngine = {
     decayTimer = null;
   },
 
-  submitSong(params: { artistId: string; title: string; genre: string; audioUrl: string }): SongSubmitResult {
+  submitSong(params: {
+    artistId: string;
+    title: string;
+    genre: string;
+    audioUrl: string;
+    /** Real upstream Submission.id (SubmissionEngine) — distinct from this song's own sw-* id. */
+    submissionId?: string;
+    /** Real canonical Song.id/Video.id, when a caller genuinely has one. Never fabricated. */
+    mediaId?: string;
+  }): SongSubmitResult {
     const existing = Array.from(songs.values()).filter(
       s => s.artistId === params.artistId && s.state !== "expired"
     );
@@ -108,36 +285,122 @@ export const StreamAndWinEngine = {
       boostPoints: 0,
       visibilityScore: 0,
       lastActivityAt: Date.now(),
+      submissionId: params.submissionId,
+      mediaId: params.mediaId,
     };
     songs.set(id, song);
     artistSubmissions.set(params.artistId, (artistSubmissions.get(params.artistId) ?? 0) + 1);
+    placeAcceptedSongOnFabric({
+      genreLabel: params.genre,
+      songId: id,
+      ownerPerformerId: params.artistId,
+    });
     return { ok: true, song };
   },
 
-  recordListen(songId: string, userId: string, listenPct: number, isActive = true, role?: string | null): boolean {
+  recordListenDetailed(
+    songId: string,
+    userId: string,
+    listenPct: number,
+    isActive = true,
+    role?: string | null,
+    sessionId?: string,
+    detail?: StreamWinListenDetail,
+  ): ListenAccountingResult {
     const song = songs.get(songId);
-    if (!song || song.state === "expired") return false;
+    if (!song) return emptyListenResult("track_not_found", false);
+    if (song.state === "expired") return emptyListenResult("track_expired", false);
+    if (!isActive) return emptyListenResult("inactive_tab");
 
-    // Anti-cheat: hidden tab = no XP
-    if (!isActive) return false;
+    const dedupeKey = sessionId ? `${userId}:${songId}:${sessionId}` : null;
+    if (dedupeKey && creditedSessions.has(dedupeKey)) {
+      const snap = snapshotArtist(userId);
+      return { ...emptyListenResult("duplicate_session"), qualified: true, listenerRollingScore: snap.score, listenerRotationState: snap.rotation.state };
+    }
 
     const rec = getUserActivity(userId);
-    if (listenPct < 0.30) {
+    if (!isQualifiedByPercentage(listenPct)) {
       rec.skipCount += 1;
       rec.noSkipStreak = 0;
       userActivity.set(userId, rec);
-      return false;
+      return emptyListenResult("premature_skip");
     }
 
+    const isSelfListen = song.artistId === userId;
+    if (isSelfListen) return emptyListenResult("self_farming_prevented");
+
+    // Deduplication key stored
+    if (dedupeKey) {
+      creditedSessions.add(dedupeKey);
+      if (creditedSessions.size > 20000) {
+        const first = creditedSessions.values().next().value;
+        if (first) creditedSessions.delete(first);
+      }
+    }
+
+    // Distinct accounting: public play counter incremented
     song.listenCount += 1;
-    song.listenSeconds += Math.round(listenPct * 180); // assume avg 3min track
+    song.listenSeconds += Math.round(listenPct * 180);
     song.lastActivityAt = Date.now();
     song.state = "active";
     song.visibilityScore = recomputeScore(song);
 
     rec.noSkipStreak += 1;
-    tryGrantXP(userId, "stream_listen", role);
-    return true;
+    const baseAmount = getListenLoungeXp(role);
+    const xpGranted = tryGrantXP(userId, "stream_listen", role);
+
+    // Performer Fair Exchange: Listening to peer music extends the rotation of own submitted tracks
+    const extendedIds: string[] = [];
+    for (const peerSong of songs.values()) {
+      if (peerSong.artistId === userId && peerSong.state !== "expired") {
+        peerSong.lastActivityAt = Date.now();
+        peerSong.visibilityScore = recomputeScore(peerSong);
+        extendedIds.push(peerSong.id);
+      }
+    }
+
+    const durationSec = detail?.durationSec && detail.durationSec > 0 ? detail.durationSec : 180;
+    const listenedSeconds = detail?.listenedSeconds ?? listenPct * durationSec;
+    const completionGate = detail?.playbackVerified
+      ? verifyQualifiedSongCompletion({ listenedSeconds, durationSec, isSelfListen })
+      : { qualified: false, reason: "incomplete" as const };
+    let completionRewardAwarded = 0;
+    if (completionGate.qualified) {
+      const offered = resolveSongCompletionReward({ durationSec }).rewardPoints;
+      completionRewardAwarded = listenerCompletionRewardForSong({
+        listenerPerformerId: userId,
+        songOwnerId: song.artistId,
+        baseRewardPoints: offered,
+      });
+      if (completionRewardAwarded > 0) {
+        applyParticipationLedger(userId, completionRewardAwarded, Date.now(), {
+          songId: song.id,
+          mediaId: song.mediaId,
+        });
+      }
+    }
+    const listenerSnap = snapshotArtist(userId);
+
+    return {
+      ok: true,
+      qualified: true,
+      publicPlayIncremented: true,
+      xpAwarded: xpGranted,
+      xpAmount: xpGranted ? baseAmount : 0,
+      participationRecorded: true,
+      rotationExtended: extendedIds.length > 0,
+      extendedTrackIds: extendedIds,
+      completionRewardAwarded,
+      completionQualified: completionGate.qualified,
+      listenerRollingScore: listenerSnap.score,
+      listenerRotationState: listenerSnap.rotation.state,
+      reason: "qualified_peer_listen",
+    };
+  },
+
+  recordListen(songId: string, userId: string, listenPct: number, isActive = true, role?: string | null, sessionId?: string): boolean {
+    const res = this.recordListenDetailed(songId, userId, listenPct, isActive, role, sessionId);
+    return res.qualified && (res.publicPlayIncremented || res.xpAwarded);
   },
 
   recordReaction(songId: string, userId: string, reaction: FeedbackReaction, role?: string | null): boolean {
@@ -196,12 +459,60 @@ export const StreamAndWinEngine = {
 
   getActiveSongs(): StreamWinSong[] {
     return Array.from(songs.values())
-      .filter(s => s.state !== "expired")
+      .filter(s => s.state !== "expired" && !s.participationRemoved)
       .sort((a, b) => {
         if (a.state === "active" && b.state !== "active") return -1;
         if (b.state === "active" && a.state !== "active") return 1;
-        return b.visibilityScore - a.visibilityScore;
+        const weightA = streamWinRotationWeight(snapshotArtist(a.artistId).rotation.state);
+        const weightB = streamWinRotationWeight(snapshotArtist(b.artistId).rotation.state);
+        return (b.visibilityScore * weightB) - (a.visibilityScore * weightA);
       });
+  },
+
+  getArtistParticipation(artistId: string, nowMs = Date.now()): ArtistParticipationSnapshot {
+    return snapshotArtist(artistId, nowMs);
+  },
+
+  getSongByMediaId(mediaId: string): StreamWinSong | undefined {
+    return Array.from(songs.values()).find((s) => s.mediaId === mediaId || s.id === mediaId);
+  },
+
+  /** Controlled-time participation credit for recovery/removal certification. */
+  creditQualifiedParticipation(artistId: string, points: number, nowMs = Date.now(), songRef?: { songId?: string; mediaId?: string }): ArtistParticipationSnapshot {
+    return applyParticipationLedger(artistId, points, nowMs, songRef);
+  },
+
+  /** Certification-only reset. Does not exist as a product/runtime API. */
+  resetForCertification(): void {
+    songs.clear();
+    artistSubmissions.clear();
+    userActivity.clear();
+    creditedSessions.clear();
+    artistParticipationEvents.clear();
+    artistEnteredRiskAt.clear();
+    artistLastParticipationRemovalAt.clear();
+    resetStreamWinFabricForCertification();
+  },
+
+  getRoutedActiveSongs(listenerPerformerId: string | null, genreHint?: string | null): {
+    songs: StreamWinSong[];
+    route: ReturnType<typeof routeListenerOnFabric>;
+  } {
+    const route = routeListenerOnFabric({
+      genreLabel: genreHint,
+      listenerPerformerId,
+    });
+    const all = StreamAndWinEngine.getActiveSongs();
+    if (route.memberSongIds.length === 0) {
+      return { songs: all, route };
+    }
+    const allowed = new Set(route.memberSongIds);
+    const routed = all.filter((s) => allowed.has(s.id));
+    return { songs: routed.length > 0 ? routed : all, route };
+  },
+
+  getFabricRoute(listenerPerformerId: string | null, genreHint?: string | null) {
+    return routeListenerOnFabric({ genreLabel: genreHint, listenerPerformerId });
   },
 
   getSong(id: string): StreamWinSong | undefined {

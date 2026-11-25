@@ -13,8 +13,25 @@
  *   - Cypher EXCLUSION: COMPETITION_VOTE policyFamily must include `allowWinnerVote: true` for winner to be eligible
  *   - Result disclosure gated by resultPolicy
  *
- * Certification: L1 IMPLEMENTED (in-memory; wire Prisma for L2+)
+ * Persistence (2026-11-11): durable file store via CanonicalVoteDurableStore.
+ * Survives process restart. Prisma migration deferred (PRODUCTION_DB_MUTATIONS=NO).
+ *
+ * Certification: L2 DURABLE (file-backed) — not production DB certified.
  */
+
+import {
+  bumpRejectedDuplicate,
+  getRejectedDuplicateCount,
+  loadDurableVoteSnapshot,
+  saveDurableVoteSnapshot,
+  upsertAnalyticsRecord,
+  type QuickVoteAnalyticsRecord,
+} from "@/lib/voting/CanonicalVoteDurableStore";
+import {
+  computeUltimateScore,
+  type ChannelWeights,
+} from "@/lib/voting/UltimateScoreEngine";
+import type { LockedCriteriaRuleset } from "@/lib/voting/JudgingCriteriaRegistry";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,10 +54,17 @@ export interface VoteChoice {
   label: string;
 }
 
+export interface HostReportedLocalTally {
+  source: "HOST_REPORTED";
+  totals: { choiceId: string; count: number }[];
+  reportedBy: string;
+  reportedAt: number;
+}
+
 export interface VoteInteractionRecord {
   id: string;
   policyFamily: PolicyFamily;
-  /** experienceId = battleId / cypherId / challengeId / gauntletId */
+  /** experienceId = battleId / cypherId / challengeId / gauntletId / room quick-vote */
   experienceId: string;
   roomId: string;
   roundId?: string;
@@ -53,6 +77,12 @@ export interface VoteInteractionRecord {
   allowWinnerVote: boolean;
   status: VoteStatus;
   createdAt: number;
+  hostUserId?: string;
+  title?: string;
+  lockedCriteria?: LockedCriteriaRuleset;
+  hostReportedLocal?: HostReportedLocalTally;
+  channelWeights?: ChannelWeights;
+  mode?: "QUICK_VOTE" | "JUDGED_CONTEST" | "FULL_COMPETITION";
 }
 
 export interface VoteCast {
@@ -77,13 +107,57 @@ export type GetResultsResult =
       tally: { choiceId: string; label: string; count: number; percent: number }[];
       winner: string | null;
       totalVotes: number;
+      hostReportedLocal?: HostReportedLocalTally;
+      ultimateScore?: ReturnType<typeof computeUltimateScore>;
+      lockedCriteria?: LockedCriteriaRuleset;
     }
   | { ok: false; reason: string };
 
-// ─── In-memory store (swap for Prisma in production) ─────────────────────────
+// ─── Hot cache + durable hydrate ─────────────────────────────────────────────
 
 const interactions = new Map<string, VoteInteractionRecord>();
 const votes = new Map<string, VoteCast[]>(); // voteId → casts
+let hydrated = false;
+
+function hydrateFromDisk(): void {
+  if (hydrated) return;
+  hydrated = true;
+  if (typeof window !== "undefined") return;
+  const snap = loadDurableVoteSnapshot();
+  interactions.clear();
+  votes.clear();
+  for (const rec of snap.interactions) {
+    interactions.set(rec.id, rec);
+  }
+  for (const [voteId, casts] of Object.entries(snap.castsByVoteId)) {
+    votes.set(voteId, casts);
+  }
+}
+
+function persistToDisk(): void {
+  if (typeof window !== "undefined") return;
+  hydrateFromDisk();
+  saveDurableVoteSnapshot({
+    version: 1,
+    interactions: Array.from(interactions.values()),
+    castsByVoteId: Object.fromEntries(
+      Array.from(votes.entries()).map(([id, casts]) => [id, casts]),
+    ),
+    analytics: loadDurableVoteSnapshot().analytics,
+    updatedAt: Date.now(),
+  });
+}
+
+/** Test helper: wipe memory and optionally re-hydrate from current durable file. */
+export function __resetCanonicalVotingRuntimeForTests(options?: {
+  rehydrate?: boolean;
+}): void {
+  interactions.clear();
+  votes.clear();
+  hydrated = false;
+  if (options?.rehydrate) hydrateFromDisk();
+  else hydrated = true; // stay empty until explicit rehydrate
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,12 +166,18 @@ function now(): number {
 }
 
 function getCasts(voteId: string): VoteCast[] {
+  hydrateFromDisk();
   return votes.get(voteId) ?? [];
 }
 
 function isWindowOpen(record: VoteInteractionRecord): boolean {
   const t = now();
-  return t >= record.opensAt && t < record.closesAt;
+  return (
+    record.status !== "CLOSED" &&
+    record.status !== "RESULTS_PUBLISHED" &&
+    t >= record.opensAt &&
+    t < record.closesAt
+  );
 }
 
 function isBotId(userId: string): boolean {
@@ -134,26 +214,81 @@ function resolveWinner(
   const sorted = [...tally].sort((a, b) => b.count - a.count);
   const top = sorted[0];
   if (!top || top.count === 0) return null;
-  // No winner on a tie
   if (sorted.length > 1 && sorted[1]!.count === top.count) return null;
   return top.choiceId;
+}
+
+function buildUltimate(record: VoteInteractionRecord, casts: VoteCast[]) {
+  const online = record.choices.map((c) => ({
+    choiceId: c.id,
+    count: casts.filter((v) => v.choiceId === c.id).length,
+  }));
+  const local = record.hostReportedLocal?.totals ?? [];
+  return computeUltimateScore({
+    choiceIds: record.choices.map((c) => c.id),
+    online,
+    local,
+    judge: [],
+    weights: record.channelWeights ?? { online: 0.5, local: 0.3, judge: 0.2 },
+  });
+}
+
+function writeAnalytics(record: VoteInteractionRecord, casts: VoteCast[]): void {
+  const tally = computeTally(record, casts);
+  const closed =
+    record.status === "CLOSED" || record.status === "RESULTS_PUBLISHED";
+  const ultimate = closed ? buildUltimate(record, casts) : undefined;
+  const row: QuickVoteAnalyticsRecord = {
+    voteId: record.id,
+    experienceId: record.experienceId,
+    roomId: record.roomId,
+    hostUserId: record.hostUserId,
+    status: record.status,
+    choiceLabels: record.choices.map((c) => c.label),
+    totalBallots: casts.length,
+    uniqueVoters: new Set(casts.map((c) => c.userId)).size,
+    rejectedDuplicates: getRejectedDuplicateCount(record.id),
+    winnerChoiceId: closed ? resolveWinner(record, tally) : null,
+    openedAt: record.opensAt,
+    closedAt: closed ? Math.min(now(), record.closesAt) : null,
+    finalizedAt: record.status === "RESULTS_PUBLISHED" ? now() : null,
+    durationMs: closed ? Math.min(now(), record.closesAt) - record.opensAt : null,
+    onlineTally: tally.map((t) => ({ choiceId: t.choiceId, count: t.count })),
+    hostReportedLocal: record.hostReportedLocal,
+    ultimateScore: ultimate
+      ? {
+          onlineNormalized: ultimate.onlineNormalized,
+          localNormalized: ultimate.localNormalized,
+          judgeNormalized: ultimate.judgeNormalized,
+          combined: ultimate.combined,
+          weights: ultimate.weights,
+          winnerChoiceId: ultimate.winnerChoiceId,
+        }
+      : undefined,
+    criteriaVersionId: record.lockedCriteria?.rulesetId,
+  };
+  upsertAnalyticsRecord(row);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Create a vote interaction record.
+ * Create a vote interaction record (durable).
  */
 export function createVoteInteraction(
   input: Omit<VoteInteractionRecord, "status" | "createdAt">,
 ): VoteInteractionRecord {
+  hydrateFromDisk();
   const record: VoteInteractionRecord = {
     ...input,
     status: now() >= input.opensAt ? "OPEN" : "PENDING",
     createdAt: now(),
+    mode: input.mode ?? "QUICK_VOTE",
   };
   interactions.set(record.id, record);
   votes.set(record.id, []);
+  persistToDisk();
+  writeAnalytics(record, []);
   return record;
 }
 
@@ -166,10 +301,10 @@ export function submitVote(
   choiceId: string,
   idempotencyKey: string,
 ): SubmitVoteResult {
+  hydrateFromDisk();
   const record = interactions.get(voteId);
   if (!record) return { ok: false, reason: "VOTE_NOT_FOUND" };
 
-  // Enforce server-side time window
   if (!isWindowOpen(record)) {
     return {
       ok: false,
@@ -177,28 +312,27 @@ export function submitVote(
     };
   }
 
-  // Validate choice
   const validChoice = record.choices.find((c) => c.id === choiceId);
   if (!validChoice) return { ok: false, reason: "INVALID_CHOICE" };
 
   const casts = getCasts(voteId);
 
-  // Idempotency — same key means re-delivery, return ok
   if (casts.some((c) => c.idempotencyKey === idempotencyKey)) {
     return { ok: true, choiceId };
   }
 
-  // LOCK_ON_SUBMIT — no change allowed
   if (record.voteChangePolicy === "LOCK_ON_SUBMIT") {
     if (casts.some((c) => c.userId === userId)) {
+      bumpRejectedDuplicate(voteId);
+      writeAnalytics(record, casts);
       return { ok: false, reason: "ALREADY_VOTED_LOCKED" };
     }
   }
 
-  // CHANGE_UNTIL_CLOSE — update prior vote
-  const updatedCasts = record.voteChangePolicy === "CHANGE_UNTIL_CLOSE"
-    ? casts.filter((c) => c.userId !== userId)
-    : casts;
+  const updatedCasts =
+    record.voteChangePolicy === "CHANGE_UNTIL_CLOSE"
+      ? casts.filter((c) => c.userId !== userId)
+      : casts;
 
   const cast: VoteCast = {
     voteId,
@@ -209,7 +343,10 @@ export function submitVote(
     isSystemBot: isBotId(userId),
   };
 
-  votes.set(voteId, [...updatedCasts, cast]);
+  const next = [...updatedCasts, cast];
+  votes.set(voteId, next);
+  persistToDisk();
+  writeAnalytics(record, next);
   return { ok: true, choiceId };
 }
 
@@ -218,31 +355,38 @@ export function submitVote(
  */
 export function getVoteResults(
   voteId: string,
-  requestingUserId: string,
+  _requestingUserId: string,
+  options?: { asHost?: boolean },
 ): GetResultsResult {
+  hydrateFromDisk();
   const record = interactions.get(voteId);
   if (!record) return { ok: false, reason: "VOTE_NOT_FOUND" };
 
   const casts = getCasts(voteId);
-  const isClosed = now() >= record.closesAt || record.status === "CLOSED" || record.status === "RESULTS_PUBLISHED";
+  const isClosed =
+    now() >= record.closesAt ||
+    record.status === "CLOSED" ||
+    record.status === "RESULTS_PUBLISHED";
   const tally = computeTally(record, casts);
   const winner = isClosed ? resolveWinner(record, tally) : null;
+  const ultimate = isClosed ? buildUltimate(record, casts) : undefined;
 
-  // Disclosure logic
   let visible = false;
-  switch (record.resultPolicy) {
-    case "HIDDEN_UNTIL_CLOSE":
-    case "HOST_ONLY_UNTIL_REVEAL":
-    case "DELAYED_REVEAL":
-      visible = isClosed;
-      break;
-    case "WINNER_ONLY":
-    case "PERCENTAGES_AFTER_CLOSE":
-    case "FULL_BREAKDOWN_AFTER_CLOSE":
-      visible = isClosed;
-      break;
-    default:
-      visible = isClosed;
+  if (options?.asHost) {
+    visible = true;
+  } else {
+    switch (record.resultPolicy) {
+      case "HIDDEN_UNTIL_CLOSE":
+      case "HOST_ONLY_UNTIL_REVEAL":
+      case "DELAYED_REVEAL":
+      case "WINNER_ONLY":
+      case "PERCENTAGES_AFTER_CLOSE":
+      case "FULL_BREAKDOWN_AFTER_CLOSE":
+        visible = isClosed || record.status === "RESULTS_PUBLISHED";
+        break;
+      default:
+        visible = isClosed;
+    }
   }
 
   return {
@@ -253,33 +397,92 @@ export function getVoteResults(
     tally: visible ? tally : [],
     winner: visible ? winner : null,
     totalVotes: visible ? casts.length : 0,
+    hostReportedLocal: options?.asHost || visible ? record.hostReportedLocal : undefined,
+    ultimateScore: visible || options?.asHost ? ultimate : undefined,
+    lockedCriteria: record.lockedCriteria,
   };
 }
 
-/**
- * Close a vote interaction (admin / system close).
- */
 export function closeVoteInteraction(voteId: string): VoteInteractionRecord | null {
+  hydrateFromDisk();
   const record = interactions.get(voteId);
   if (!record) return null;
   record.status = "CLOSED";
+  record.closesAt = Math.min(record.closesAt, now());
+  persistToDisk();
+  writeAnalytics(record, getCasts(voteId));
   return record;
 }
 
-/**
- * Publish results (makes them visible regardless of resultPolicy timing).
- */
 export function publishVoteResults(voteId: string): VoteInteractionRecord | null {
+  hydrateFromDisk();
   const record = interactions.get(voteId);
   if (!record) return null;
+  if (record.status === "OPEN" || record.status === "PENDING") {
+    record.status = "CLOSED";
+    record.closesAt = Math.min(record.closesAt, now());
+  }
   record.status = "RESULTS_PUBLISHED";
+  persistToDisk();
+  writeAnalytics(record, getCasts(voteId));
   return record;
+}
+
+export function recordHostReportedLocalTally(
+  voteId: string,
+  reportedBy: string,
+  totals: { choiceId: string; count: number }[],
+): { ok: true; record: VoteInteractionRecord } | { ok: false; reason: string } {
+  hydrateFromDisk();
+  const record = interactions.get(voteId);
+  if (!record) return { ok: false, reason: "VOTE_NOT_FOUND" };
+  for (const t of totals) {
+    if (!record.choices.some((c) => c.id === t.choiceId)) {
+      return { ok: false, reason: "INVALID_CHOICE" };
+    }
+    if (!Number.isFinite(t.count) || t.count < 0) {
+      return { ok: false, reason: "INVALID_COUNT" };
+    }
+  }
+  record.hostReportedLocal = {
+    source: "HOST_REPORTED",
+    totals: totals.map((t) => ({ choiceId: t.choiceId, count: Math.floor(t.count) })),
+    reportedBy,
+    reportedAt: now(),
+  };
+  persistToDisk();
+  writeAnalytics(record, getCasts(voteId));
+  return { ok: true, record };
 }
 
 export function getVoteInteraction(voteId: string): VoteInteractionRecord | undefined {
+  hydrateFromDisk();
   return interactions.get(voteId);
 }
 
 export function listVoteInteractionsByExperience(experienceId: string): VoteInteractionRecord[] {
+  hydrateFromDisk();
   return Array.from(interactions.values()).filter((r) => r.experienceId === experienceId);
+}
+
+export function listVoteInteractionsByRoom(roomId: string): VoteInteractionRecord[] {
+  hydrateFromDisk();
+  return Array.from(interactions.values()).filter((r) => r.roomId === roomId);
+}
+
+/** Active open Quick Vote for a live room (HUD audience panel). */
+export function getActiveVoteForRoom(roomId: string): VoteInteractionRecord | undefined {
+  hydrateFromDisk();
+  const open = Array.from(interactions.values()).filter(
+    (r) =>
+      r.roomId === roomId &&
+      (r.status === "OPEN" || r.status === "PENDING") &&
+      isWindowOpen(r),
+  );
+  open.sort((a, b) => b.createdAt - a.createdAt);
+  return open[0];
+}
+
+export function isCanonicalVoteOpenForRoom(roomId: string): boolean {
+  return Boolean(getActiveVoteForRoom(roomId));
 }

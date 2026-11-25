@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import {
+  CREATOR_COMMERCE_PLATFORM_FEE_BPS,
   calculateCreatorCommerceSplit,
   describeCreatorCommerceFee,
   normalizeCommerceTier,
 } from "@/lib/commerce/RevenueSplitEngine";
 import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
+import { commitEconomicCreditTx, prismaUniqueText } from "@/lib/commerce/economicPaymentLedger";
+import { assertFulfillmentAllowed } from "@/lib/commerce/CheckoutSettlementAuthority";
 
 /**
  * Resolve a tip recipient slug/id to a real Prisma User.id.
@@ -71,6 +74,12 @@ export async function grantTipFromStripeSession(params: {
   toArtistUserId: string;
   amountCents: number;
   roomId?: string | null;
+  livemode: boolean;
+  stripeEventId?: string | null;
+  paymentIntentId?: string | null;
+  /** Required for new grants — webhook must prove settlement before credit. */
+  paymentStatus?: string | null;
+  settlementVerified?: boolean;
 }): Promise<{ tipId: string; reused: boolean; platformFee: number; artistShare: number }> {
   const existing = await prisma.tip.findFirst({
     where: { stripeId: params.stripeSessionId },
@@ -85,84 +94,135 @@ export async function grantTipFromStripeSession(params: {
     };
   }
 
+  const lifecycle = await assertFulfillmentAllowed({
+    checkoutSessionId: params.stripeSessionId,
+    paymentIntentId: params.paymentIntentId,
+  });
+  if (!lifecycle.ok) {
+    throw new Error(`Tip settlement blocked: ${lifecycle.reason}`);
+  }
+  if (params.settlementVerified !== true) {
+    throw new Error("Tip settlement blocked: SETTLEMENT_NOT_VERIFIED");
+  }
+  if (params.paymentStatus !== "paid") {
+    throw new Error(`Tip settlement blocked: PAYMENT_STATUS_${String(params.paymentStatus || "missing").toUpperCase()}`);
+  }
+  if (!Number.isFinite(params.amountCents) || params.amountCents <= 0) {
+    throw new Error("Tip settlement blocked: INVALID_AMOUNT");
+  }
+
   const sellerTier = await resolveSellerCommerceTier(params.toArtistUserId);
   const { artistShare, platformFee } = tipSplitCents(params.amountCents, sellerTier);
 
-  const tip = await prisma.tip.create({
-    data: {
-      fromUserId: params.fromUserId,
-      toArtistId: params.toArtistUserId,
-      roomId: params.roomId || null,
-      amount: params.amountCents,
-      artistShare,
-      platformFee,
-      status: "COMPLETED",
-      stripeId: params.stripeSessionId,
-    },
-  });
+  let tipId = "";
+  try {
+    tipId = await prisma.$transaction(async (tx) => {
+      await commitEconomicCreditTx(tx, {
+        checkoutSessionId: params.stripeSessionId,
+        transactionType: "TIP",
+        livemode: params.livemode,
+        userId: params.toArtistUserId,
+        bucket: "AVAILABLE",
+        status: "CREDITED",
+        priceCents: params.amountCents,
+        grossCents: params.amountCents,
+        platformFeeBps: CREATOR_COMMERCE_PLATFORM_FEE_BPS[sellerTier],
+        platformFeeCents: platformFee,
+        performerShareCents: artistShare,
+        sellerTier,
+        paymentIntentId: params.paymentIntentId ?? null,
+        productId: null,
+        committingEventId: params.stripeEventId ?? null,
+      });
+      const tip = await tx.tip.create({
+        data: {
+          fromUserId: params.fromUserId,
+          toArtistId: params.toArtistUserId,
+          roomId: params.roomId || null,
+          amount: params.amountCents,
+          artistShare,
+          platformFee,
+          status: "COMPLETED",
+          stripeId: params.stripeSessionId,
+        },
+      });
+      if (params.livemode) {
+        const wallet = await tx.wallet.findUnique({
+          where: { userId: params.toArtistUserId },
+          select: { id: true },
+        });
+        if (wallet) {
+          await tx.ledgerEntry.create({
+            data: {
+              userId: params.toArtistUserId,
+              type: "CREDIT",
+              amount: artistShare,
+              description: `Tip from fan · ${describeCreatorCommerceFee(sellerTier)}`,
+              relatedId: params.stripeSessionId,
+            },
+          });
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: params.amountCents,
+              netAmount: artistShare,
+              category: "CREDIT_TIP",
+              referenceId: params.stripeSessionId,
+              direction: "credit",
+              status: "COMPLETED",
+              livemode: true,
+            },
+          });
+          await tx.transaction.create({
+            data: {
+              walletId: wallet.id,
+              type: "TIP",
+              amount: params.amountCents,
+              fee: platformFee,
+              netAmount: artistShare,
+              status: "COMPLETED",
+              stripeId: params.stripeSessionId,
+              livemode: true,
+              referenceId: tip.id,
+              note: `Live tip · seller tier ${sellerTier}`,
+            },
+          });
+        }
+      }
+      return tip.id;
+    });
+  } catch (err) {
+    const targetText = prismaUniqueText(err);
+    if ((err as { code?: string })?.code === "P2002" && targetText.includes("economic")) {
+      const raced = await prisma.tip.findFirst({
+        where: { stripeId: params.stripeSessionId },
+        select: { id: true, artistShare: true, platformFee: true },
+      });
+      if (raced) {
+        return {
+          tipId: raced.id,
+          reused: true,
+          artistShare: raced.artistShare,
+          platformFee: raced.platformFee,
+        };
+      }
+    }
+    throw err;
+  }
 
-  await prisma.ledgerEntry.create({
-    data: {
+  if (params.livemode) {
+    const { queueInstantPayout } = await import("@/lib/commerce/InstantPayoutEngine");
+    await queueInstantPayout({
       userId: params.toArtistUserId,
-      type: "CREDIT",
-      amount: artistShare,
-      description: `Tip from fan · ${describeCreatorCommerceFee(sellerTier)}`,
-      relatedId: params.stripeSessionId,
-    },
-  });
+      source: "tip",
+      sourceTxId: params.stripeSessionId,
+      cleared: {
+        grossCollectedCents: params.amountCents,
+        platformFeeCents: platformFee,
+        artistShareCents: artistShare,
+      },
+    }).catch(() => null);
+  }
 
-  const wallet = await prisma.wallet.upsert({
-    where: { userId: params.toArtistUserId },
-    create: {
-      userId: params.toArtistUserId,
-      availableBalance: artistShare,
-      pendingBalance: 0,
-      lifetimeEarnings: artistShare,
-    },
-    update: {
-      availableBalance: { increment: artistShare },
-      lifetimeEarnings: { increment: artistShare },
-    },
-  });
-
-  await prisma.walletTransaction.create({
-    data: {
-      walletId: wallet.id,
-      amount: params.amountCents,
-      netAmount: artistShare,
-      category: "CREDIT_TIP",
-      referenceId: params.stripeSessionId,
-      direction: "credit",
-      status: "COMPLETED",
-    },
-  });
-
-  await prisma.transaction.create({
-    data: {
-      walletId: wallet.id,
-      type: "TIP",
-      amount: params.amountCents,
-      fee: platformFee,
-      netAmount: artistShare,
-      status: "COMPLETED",
-      stripeId: params.stripeSessionId,
-      referenceId: tip.id,
-      note: `Live tip · seller tier ${sellerTier}`,
-    },
-  });
-
-  // Instant payout on cleared Stripe funds — honest pending if Connect incomplete
-  const { queueInstantPayout } = await import("@/lib/commerce/InstantPayoutEngine");
-  await queueInstantPayout({
-    userId: params.toArtistUserId,
-    source: "tip",
-    sourceTxId: params.stripeSessionId,
-    cleared: {
-      grossCollectedCents: params.amountCents,
-      platformFeeCents: platformFee,
-      artistShareCents: artistShare,
-    },
-  }).catch(() => null);
-
-  return { tipId: tip.id, reused: false, artistShare, platformFee };
+  return { tipId, reused: false, artistShare, platformFee };
 }

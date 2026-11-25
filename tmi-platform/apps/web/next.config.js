@@ -42,6 +42,10 @@ const nextConfig = {
         buffer: false,
         events: false,
         string_decoder: false,
+        // Optional native binding — never install into the browser bundle.
+        // Real fix is keeping Prisma/pg server-only; this is a safety net.
+        "pg-native": false,
+        pg: false,
       };
     }
 
@@ -95,7 +99,9 @@ const nextConfig = {
       "font-src 'self' data: https:",
       "style-src 'self' 'unsafe-inline' https:",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-      "connect-src 'self' https: wss:",
+      // blob: required for THREE.GLTFLoader decoded texture fetches (Living Skin v3).
+      // Keep img-src/media-src/worker-src blob: as already configured — do not broaden to *.
+      "connect-src 'self' https: wss: blob:",
       "media-src 'self' blob: https:",
       "frame-src 'self' https:",
       "worker-src 'self' blob:",
@@ -121,6 +127,12 @@ const nextConfig = {
     }
 
     return [
+      {
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
       {
         source: '/sw.js',
         headers: [
@@ -148,8 +160,10 @@ const nextConfig = {
         destination: 'https://themusiciansindex.com/:path*',
         permanent: true,
       },
-      // ── Root → Home 1 Canonical Public Entry ──────────────────────────────
-      { source: '/', destination: '/home/1', permanent: true },
+      // ── Stream & Win Radio & Playlists Canonical Aliases ─────────────────
+      { source: '/playlists', destination: '/playlist', permanent: true },
+      { source: '/stream-and-win', destination: '/radio', permanent: true },
+      { source: '/locker', destination: '/media-locker', permanent: true },
 
       // ── Cookie Policy Canonical Alias ────────────────────────────────────
       { source: '/cookie-policy', destination: '/privacy#cookies', permanent: true },

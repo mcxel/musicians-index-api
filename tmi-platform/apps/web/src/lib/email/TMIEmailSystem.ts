@@ -307,7 +307,7 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
     html: baseHtml(`
       ${h1("Verify Your Email")}
       ${p("Click the button below to verify your email address. This link expires in 24 hours.")}
-      ${btn("Verify Email", `${BASE_URL}/auth/verify?token=${d.token}`)}
+      ${btn("Verify Email", String(d.verificationUrl ?? `${BASE_URL}/auth/verify-email/${encodeURIComponent(String(d.token ?? ""))}?email=${encodeURIComponent(email)}`))}
       ${p('<span style="font-size:11px;color:rgba(255,255,255,0.3);">If you didn\'t sign up, ignore this email.</span>')}
     `, email),
   }),

@@ -3,16 +3,19 @@
  *
  * One identity → equipped look → world. Not a second avatar runtime, not
  * LiveAvatarSync into every room (that remains OPEN). Does not invent occupancy
- * or peer avatars (Rule 20). GLB URL only when AvatarGlbRegistry is certified.
+ * or peer avatars (Rule 20). Certified viewport gate stays honest; promoted
+ * Foundry paths may fill glbUrl for local Fan World while certified=false.
  */
 
-import { getFanCosmetic } from "@/lib/avatars/FanCosmeticCatalog";
+import { getFanCosmetic } from "./FanCosmeticCatalog";
 import {
   DEFAULT_FAN_AVATAR_GLB_SLOT,
+  isAvatarGlbSlotId,
   resolveAvatarViewportBinding,
+  resolvePromotedAvatarGlbUrl,
   type AvatarBindingDiagnostic,
   type AvatarGlbSlotId,
-} from "@/lib/avatars/AvatarGlbRegistry";
+} from "./AvatarGlbRegistry";
 
 export const FAN_EQUIPPED_LOOK_EVENT = "tmi:avatar-changed";
 export const FAN_EQUIPPED_LOOK_STORAGE_KEY = "tmi_avatar_snapshot";
@@ -29,6 +32,12 @@ export type FanEquippedLook = {
   /** Fingerprint of THIS fan's equipped look — never a crowd/occupancy count. */
   loadoutId: string;
   updatedAt: string;
+  /** Bobblehead base registry id (e.g. bh-masculine-foundry) — mirrors persistBobbleheadBaseId. */
+  baseId?: string;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 export type ResolveFanEquippedLookInput = {
@@ -38,6 +47,11 @@ export type ResolveFanEquippedLookInput = {
   outfitLabel?: string;
   equippedCosmeticIds?: string[];
   glbSlotId?: AvatarGlbSlotId;
+  baseId?: string;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 let lastLook: FanEquippedLook | null = null;
@@ -62,21 +76,53 @@ export function fanEquippedLookId(
   return `fan-look:${glbSlotId}:${skus}`;
 }
 
+function hairStyleFromCosmetics(ids: string[], fallback?: string): string {
+  if (fallback?.trim()) return fallback.trim();
+  for (const id of ids) {
+    const def = getFanCosmetic(id);
+    if (def?.equipSlot === "hair" || def?.inventoryCategory === "hair") {
+      return def.label;
+    }
+  }
+  return "Bald";
+}
+
+function outfitLabelFromCosmetics(ids: string[], fallback?: string): string {
+  if (fallback?.trim()) return fallback.trim();
+  for (const id of ids) {
+    const def = getFanCosmetic(id);
+    if (def?.equipSlot === "outfit" || def?.inventoryCategory === "outfits") {
+      return def.label;
+    }
+  }
+  return "Street Fit";
+}
+
 export function resolveFanEquippedLook(input: ResolveFanEquippedLookInput = {}): FanEquippedLook {
   const equippedCosmeticIds = catalogCosmeticIds(input.equippedCosmeticIds);
-  const glbSlotId = input.glbSlotId ?? DEFAULT_FAN_AVATAR_GLB_SLOT;
+  const glbSlotId =
+    input.glbSlotId && isAvatarGlbSlotId(input.glbSlotId)
+      ? input.glbSlotId
+      : DEFAULT_FAN_AVATAR_GLB_SLOT;
   const viewport = resolveAvatarViewportBinding(glbSlotId);
+  // Certified URL preferred; promoted Foundry publicPath fills local Fan World when certified=false.
+  const glbUrl = viewport.glbUrl ?? resolvePromotedAvatarGlbUrl(glbSlotId);
   return {
     displayName: input.displayName?.trim() || "Fan avatar",
     skinTone: input.skinTone || "#c07848",
-    hairStyle: input.hairStyle || "Fade",
-    outfitLabel: input.outfitLabel || "Street Fit",
+    hairStyle: hairStyleFromCosmetics(equippedCosmeticIds, input.hairStyle),
+    outfitLabel: outfitLabelFromCosmetics(equippedCosmeticIds, input.outfitLabel),
     equippedCosmeticIds,
     glbSlotId: viewport.slotId,
     viewportDiagnostic: viewport.diagnostic,
-    glbUrl: viewport.glbUrl,
+    glbUrl,
     loadoutId: fanEquippedLookId(viewport.slotId, equippedCosmeticIds),
     updatedAt: new Date().toISOString(),
+    ...(input.baseId ? { baseId: input.baseId } : {}),
+    ...(input.hairColorHex ? { hairColorHex: input.hairColorHex } : {}),
+    ...(input.eyeColorHex ? { eyeColorHex: input.eyeColorHex } : {}),
+    ...(input.outfitTintHex ? { outfitTintHex: input.outfitTintHex } : {}),
+    ...(input.activePropId ? { activePropId: input.activePropId } : {}),
   };
 }
 
@@ -94,6 +140,10 @@ function readRawSnapshot(): SnapshotBlob {
   }
 }
 
+function coercePersistedGlbSlotId(raw: unknown): AvatarGlbSlotId | undefined {
+  return typeof raw === "string" && isAvatarGlbSlotId(raw) ? raw : undefined;
+}
+
 export function readPersistedFanEquippedLook(): FanEquippedLook | null {
   if (lastLook) return lastLook;
   const snap = readRawSnapshot();
@@ -104,7 +154,9 @@ export function readPersistedFanEquippedLook(): FanEquippedLook | null {
     !snap.displayName &&
     !snap.outfit &&
     ids.length === 0 &&
-    !snap.loadoutId
+    !snap.loadoutId &&
+    !snap.glbSlotId &&
+    !snap.baseId
   ) {
     return null;
   }
@@ -114,13 +166,12 @@ export function readPersistedFanEquippedLook(): FanEquippedLook | null {
     hairStyle: typeof snap.hair === "string" ? snap.hair : undefined,
     outfitLabel: typeof snap.outfit === "string" ? snap.outfit : undefined,
     equippedCosmeticIds: ids,
-    glbSlotId:
-      snap.glbSlotId === "bobblehead_v0" ||
-      snap.glbSlotId === "bobblehead_fan_urban" ||
-      snap.glbSlotId === "bobblehead_fan_athlete" ||
-      snap.glbSlotId === "face_scan_mesh_v1"
-        ? snap.glbSlotId
-        : undefined,
+    glbSlotId: coercePersistedGlbSlotId(snap.glbSlotId),
+    baseId: typeof snap.baseId === "string" ? snap.baseId : undefined,
+    hairColorHex: typeof snap.hairColorHex === "string" ? snap.hairColorHex : undefined,
+    eyeColorHex: typeof snap.eyeColorHex === "string" ? snap.eyeColorHex : undefined,
+    outfitTintHex: typeof snap.outfitTintHex === "string" ? snap.outfitTintHex : undefined,
+    activePropId: typeof snap.activePropId === "string" ? snap.activePropId : undefined,
   });
   return lastLook;
 }
@@ -143,6 +194,12 @@ export function publishFanEquippedLook(
     loadoutId: look.loadoutId,
     updatedAt: look.updatedAt,
   };
+  if (look.baseId) next.baseId = look.baseId;
+  if (look.hairColorHex) next.hairColorHex = look.hairColorHex;
+  if (look.eyeColorHex) next.eyeColorHex = look.eyeColorHex;
+  if (look.outfitTintHex) next.outfitTintHex = look.outfitTintHex;
+  if (look.activePropId) next.activePropId = look.activePropId;
+  else delete next.activePropId;
   if (typeof extras?.bodyHeight === "number") next.bodyHeight = extras.bodyHeight;
   if (typeof extras?.bodyMass === "number") next.bodyMass = extras.bodyMass;
   try {

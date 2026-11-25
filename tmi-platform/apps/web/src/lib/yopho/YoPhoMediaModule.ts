@@ -151,6 +151,23 @@ export function mediaModulesFromLegacyNowPlaying(
   ];
 }
 
+/**
+ * Resolves the PROVEN canonical Song.id for a module+resolved-track pair, or
+ * null when genuinely unproven — never audible.id (the module's own
+ * layout-slot id, `ymm_*`) and never a playlist id mistaken for a track id
+ * (owner's YoPho media-identity trace, 2026-10-29). See
+ * YoPhoCardMediaPlayer.tsx's startAudible() doc comment for the full
+ * per-type provenance trace this encodes.
+ */
+export function resolveYoPhoCanonicalMediaId(
+  mod: YoPhoMediaModule,
+  track?: { id: string } | null,
+): string | null {
+  if (track?.id) return track.id;
+  if (mod.type === "song" && mod.sourceId) return mod.sourceId;
+  return null;
+}
+
 export function firstPlayableMediaModule(
   modules: YoPhoMediaModule[] | null | undefined,
 ): YoPhoMediaModule | null {

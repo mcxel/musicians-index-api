@@ -2,17 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ThemeEngine } from "@/lib/design/ThemeEngine";
 import RoleSwitcherWidget from "@/components/navigation/RoleSwitcherWidget";
-
-const SHELL_THEMES: { id: string; color: string; label: string }[] = [
-  { id: "electric-ocean", color: "#00FFFF", label: "Cyan" },
-  { id: "inferno", color: "#FF2DAA", label: "Fuchsia" },
-  { id: "emerald-empire", color: "#00FF88", label: "Green" },
-  { id: "sunset-boulevard", color: "#FFD700", label: "Gold" },
-  { id: "neon-royal", color: "#AA2DFF", label: "Purple" },
-];
+import PersonalThemeStudioPanel from "@/components/shell/PersonalThemeStudioPanel";
 
 /**
  * Canonical Settings drawer — Shell Colors live here only (not Operating Centers rail).
@@ -24,16 +15,11 @@ export default function SettingsWorkspaceContent({
   userId?: string;
   displayName?: string;
 }) {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"profile" | "role" | "appearance" | "privacy" | "session">("profile");
-  const [activeTheme, setActiveTheme] = useState(() => ThemeEngine.getActiveId());
 
   const handleSignOut = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } finally {
-      router.push("/login");
-    }
+    const { canonicalLogout } = await import("@/lib/auth/canonicalLogout");
+    await canonicalLogout("/auth");
   };
 
   return (
@@ -85,31 +71,14 @@ export default function SettingsWorkspaceContent({
 
       {activeTab === "appearance" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#FFD700" }}>SHELL COLOR PREFERENCES</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {SHELL_THEMES.map(({ id, color, label }) => (
-              <button
-                key={id}
-                type="button"
-                title={label}
-                onClick={() => {
-                  ThemeEngine.apply(id);
-                  setActiveTheme(id);
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: color,
-                  border: `2px solid ${activeTheme === id ? "#fff" : "transparent"}`,
-                  cursor: "pointer",
-                }}
-              />
-            ))}
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#FFD700" }}>
+            PERSONAL UI THEME STUDIO
           </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
-            Active theme: {activeTheme} · saved on this device
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
+            Customize the whole workspace — background, drawers, monitors, HUD opacity, and buttons
+            independently. Live video and avatar textures are never recolored.
           </div>
+          <PersonalThemeStudioPanel />
         </div>
       )}
 
@@ -162,7 +131,7 @@ export default function SettingsWorkspaceContent({
             SIGN OUT
           </button>
           <Link
-            href="/account-recovery"
+            href="/account/deactivate"
             style={{
               display: "inline-block",
               padding: "8px 16px",
@@ -174,7 +143,7 @@ export default function SettingsWorkspaceContent({
               textDecoration: "none",
             }}
           >
-            DEACTIVATE / DELETE ACCOUNT
+            CLOSE ACCOUNT
           </Link>
         </div>
       )}

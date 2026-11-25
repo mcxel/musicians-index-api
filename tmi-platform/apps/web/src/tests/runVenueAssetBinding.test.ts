@@ -5,6 +5,8 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { createHash } from "node:crypto";
+import { VENUE_CONTRACT_REGISTRY } from "../lib/venues/VenueAssetContract";
 import {
   PRODUCTION_VENUE_GLB_COUNT,
   REGULAR_GO_LIVE_VENUE_IDS,
@@ -46,12 +48,19 @@ export async function runVenueAssetBindingTest(): Promise<{
     resolveCertifiedVenuePackage("battle").venueId === "battle" &&
     resolveGoLiveCertifiedVenuePackage({ eventType: "live-show" }).venueId === "concert";
 
-  // B. certified geometry IDs resolve to the correct physical asset (none PRODUCTION yet)
+  // B. PRODUCTION contract GLBs must exist + match sha256; none may claim CERTIFIED_GEOMETRY yet
   results["B_no_false_production_geometry"] =
-    PRODUCTION_VENUE_GLB_COUNT === 0 &&
-    SCENE_FACTORY_AUDIT.productionGlbCount === 0 &&
-    packages.every((p) => p.geometryAsset.status !== "PRODUCTION") &&
-    packages.every((p) => p.capabilities.HAS_REAL_GEOMETRY === false) &&
+    PRODUCTION_VENUE_GLB_COUNT === SCENE_FACTORY_AUDIT.productionGlbCount &&
+    PRODUCTION_VENUE_GLB_COUNT >= 2 &&
+    packages.every((p) => p.capabilities.HAS_REAL_GEOMETRY === (p.geometryAsset.status === "PRODUCTION")) &&
+    packages.every((p) => {
+      const contract = VENUE_CONTRACT_REGISTRY.get(p.venueId as Parameters<typeof VENUE_CONTRACT_REGISTRY.get>[0]);
+      return [contract?.visualGlb, contract?.collisionGlb].every((asset) => {
+        if (asset?.status !== "PRODUCTION") return true;
+        const file = path.join(WEB_ROOT, "public", asset.path.replace(/^\//, ""));
+        return fs.existsSync(file) && createHash("sha256").update(fs.readFileSync(file)).digest("hex") === asset.sha256;
+      });
+    }) &&
     packages.every((p) => p.renderMode !== "CERTIFIED_GEOMETRY");
 
   // C. missing / unknown never silently resolves to unrelated venue
@@ -74,16 +83,21 @@ export async function runVenueAssetBindingTest(): Promise<{
     !("isLive" in (battle as object)) &&
     battle.seatingLayoutId === null;
 
-  // E. performer stage anchor resolves where required (logical media surface)
+  // E. performer media remains LOGICAL surface; HAS_STAGE_ANCHOR follows contract spawn ingest
   results["E_stage_mount_logical"] =
     packages
       .filter((p) => p.renderMode !== "UNAVAILABLE")
-      .every(
-        (p) =>
+      .every((p) => {
+        const contract = VENUE_CONTRACT_REGISTRY.get(
+          p.venueId as Parameters<typeof VENUE_CONTRACT_REGISTRY.get>[0],
+        );
+        const spawns = contract?.spawnAnchors?.length ?? 0;
+        return (
           p.stageMount?.kind === "LOGICAL_MEDIA_SURFACE" &&
           Boolean(p.stageMount.surfaceId) &&
-          p.capabilities.HAS_STAGE_ANCHOR === false,
-      );
+          p.capabilities.HAS_STAGE_ANCHOR === spawns > 0
+        );
+      });
 
   // F. Jumbotron mount only where declared (ledWalls)
   results["F_jumbotron_only_when_declared"] =
@@ -95,16 +109,21 @@ export async function runVenueAssetBindingTest(): Promise<{
       );
     });
 
-  // G. capability flags match evidence
+  // G. capability flags match evidence (HAS_SEATING true only when contract seats ingested)
   results["G_flags_match_evidence"] =
-    packages.every(
-      (p) =>
-        p.capabilities.HAS_REAL_GEOMETRY === false &&
-        p.capabilities.HAS_SEATING === false &&
+    packages.every((p) => {
+      const contract = VENUE_CONTRACT_REGISTRY.get(
+        p.venueId as Parameters<typeof VENUE_CONTRACT_REGISTRY.get>[0],
+      );
+      const seats = contract?.seatAnchors?.length ?? 0;
+      return (
+        p.capabilities.HAS_REAL_GEOMETRY === (p.geometryAsset.status === "PRODUCTION") &&
+        p.capabilities.HAS_SEATING === seats > 0 &&
         p.capabilities.HAS_FREE_ROAM === false &&
-        p.capabilities.HAS_COLLISION === false &&
-        p.capabilities.VR_READY === false,
-    ) &&
+        p.capabilities.HAS_COLLISION === (contract?.collisionGlb?.status === "PRODUCTION") &&
+        p.capabilities.VR_READY === false
+      );
+    }) &&
     VERIFIED_ROOM_AMBIENT_VIDEOS.size === 8 &&
     [...VERIFIED_ROOM_AMBIENT_VIDEOS].every((u) => ambientExistsOnDisk(u));
 
@@ -133,7 +152,7 @@ export async function runVenueAssetBindingTest(): Promise<{
     venueId: livePkg.venueId,
   });
   results["H2_hub_monitor_binds_package"] =
-    hubPlayer.includes("resolveGoLiveCertifiedVenuePackage") &&
+    hubPlayer.includes("resolveRoomCertifiedVenuePackage") &&
     hubPlayer.includes("certifiedPackage") &&
     hubPlayer.includes("data-certified-venue-id") &&
     hubPlayer.includes("data-venue-render-mode") &&

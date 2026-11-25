@@ -15,6 +15,14 @@ export function isDurablePlayableMediaUrl(url: string | null | undefined): url i
   if (trimmed === "#") return false;
   if (trimmed.startsWith("blob:")) return false;
   if (trimmed.includes(SIMULATED_CDN)) return false;
+  try {
+    const host = new URL(trimmed).hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "suno.com" || host === "suno.ai" || host.endsWith(".suno.com") || host.endsWith(".suno.ai")) {
+      return false;
+    }
+  } catch {
+    /* keep checking other durable shapes */
+  }
   return (
     trimmed.startsWith("https://") ||
     trimmed.startsWith("http://") ||

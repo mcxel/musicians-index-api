@@ -7,6 +7,7 @@
 // DO NOT flip hasCanonical3DWorld in VenueAssetRegistry until CERTIFIED.
 
 import type { VenueType } from "./VenueAssetRegistry";
+import mnsArchV2Anchors from "./data/mondayNightStageArchV2Anchors.json";
 
 // ─── Primitive geometry types ────────────────────────────────────────────────
 
@@ -93,13 +94,51 @@ export interface VenueAssetContract {
 
 export const VENUE_CONTRACT_REGISTRY = new Map<VenueType, VenueAssetContract>();
 
-// Monday Night Stage — first venue to certify. All geometry missing: expected.
+// Monday Night Stage — JOB-VENUE-MNS-ARCH-V2 world/collision promoted to public/.
+// Anchors ingested from editable-nodes + spatial-zones (96 seats, spawns, screens, zones).
+// Navmesh still MISSING (grid cert exists in manufacturing; no navmesh GLB promoted).
+// certificationStatus stays PENDING_REVIEW until physical 18-step gate + browser load PASS.
+// DO NOT flip hasCanonical3DWorld / CERTIFIED here.
 VENUE_CONTRACT_REGISTRY.set("monday-night-stage", {
   venueId: "monday-night-stage",
+  version: 3,
+  visualGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/monday-night-stage-arch-v2-world.glb",
+    sha256: "d1a9aead982302bf3890de8f1b59173af81b690b3e6bc26ef35ee4d8320f43ed",
+  },
+  collisionGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/monday-night-stage-arch-v2-collision.glb",
+    sha256: "ca7388fdca878961c0d1d130f79f6f8f9682e643b0f667c5c43dea9bfffaba69",
+  },
+  navmeshGlb: { status: "MISSING" },
+  worldScaleMeters: 1,
+  spawnAnchors: mnsArchV2Anchors.spawnAnchors as SpawnAnchor[],
+  seatAnchors: mnsArchV2Anchors.seatAnchors as SeatAnchor[],
+  cameraAnchors: mnsArchV2Anchors.cameraAnchors as CameraAnchor[],
+  screenAnchors: mnsArchV2Anchors.screenAnchors as ScreenAnchor[],
+  interactionZones: mnsArchV2Anchors.interactionZones as InteractionZone[],
+  certificationStatus: "PENDING_REVIEW",
+});
+
+// Reference Auditorium v1 — Foundry JOB-VENUE-REF-AUDITORIUM-001 (ESTIMATED dims).
+// Manufactured GLBs promoted to public/. DRAFT until multi-angle physical + UVR bind + seat ingest.
+// DO NOT flip hasCanonical3DWorld / CERTIFIED until owner visual gate + runtime cert.
+VENUE_CONTRACT_REGISTRY.set("reference-auditorium-v1", {
+  venueId: "reference-auditorium-v1",
   version: 1,
-  visualGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
-  collisionGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
-  navmeshGlb: { status: "DEV_FIXTURE_DO_NOT_CERTIFY", path: "../../../../packages/assets/fixtures/dev-avatar-placeholder.glb" },
+  visualGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/reference-auditorium-v1-world.glb",
+    sha256: "43f352f5478572418960b80f45b08f5bdcbc9a1ba198a33351909fb2bd1d2dbe",
+  },
+  collisionGlb: {
+    status: "PRODUCTION",
+    path: "/models/venues/reference-auditorium-v1-collision.glb",
+    sha256: "7225f93783fe4753cbc5b8f02387c28640011efb1a0c8b90cad7cba7888196cd",
+  },
+  navmeshGlb: { status: "MISSING" },
   worldScaleMeters: 1,
   spawnAnchors: [],
   seatAnchors: [],

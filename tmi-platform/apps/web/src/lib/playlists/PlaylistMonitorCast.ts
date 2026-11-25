@@ -21,6 +21,19 @@ export interface PlaylistCastPayload {
   videoUrl?: string | null;
   /** Defaults to Monitor A (stage). */
   targetMonitorId?: PlaylistCastTargetMonitor;
+  /**
+   * Real canonical Song.id/Video.id, when the caller has proven one exists
+   * (owner's Video Shuffle media-identity trace, 2026-10-29) — distinct from
+   * trackId, which is often a presentation-layer/prefixed/synthetic id (e.g.
+   * VideoShuffleModeRuntime's `approved-${v.id}`). Omitted (never fabricated)
+   * when the cast item has no canonical media backing it (performer intro
+   * clips, in-memory MediaEngine assets, venue ambient loops). A future
+   * qualified-play receipt integration must read THIS field, never trackId,
+   * as mediaId.
+   */
+  canonicalMediaId?: string;
+  /** Real creatorId (uploaderId) backing canonicalMediaId, when known. */
+  creatorId?: string;
 }
 
 export type PlaylistNowPlayingPayload = PlaylistCastPayload & {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getTierColor, type PerformerIdentity } from "@/lib/performers/PerformerRegistry";
 import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
@@ -10,17 +10,40 @@ import PublicProfileMediaComposer, { type MediaBlock } from "@/components/profil
 import IdentityPlate, { type ProfileRoleType } from "@/components/profile/IdentityPlate";
 import ProfileCustomizer from "@/components/profile/ProfileCustomizer";
 import ProfileMediaPlayerShowcase from "@/components/profile/ProfileMediaPlayerShowcase";
-import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
+import ProfileSoundtrackPlayer from "@/components/profile/ProfileSoundtrackPlayer";
+import PersonalWritingWall from "@/components/profile/PersonalWritingWall";
+import ProfileHeroBanner from "@/components/profile/ProfileHeroBanner";
+import GroupMemberRoster from "@/components/profile/GroupMemberRoster";
+import ProfileShareModal from "@/components/profile/ProfileShareModal";
+import { ArtistBookingPanel } from "@/components/profile/ArtistBookingPanel";
+import { DEFAULT_PUBLIC_PROFILE_CONFIG, type PublicProfileConfig, type GroupProfileMetadata } from "@/lib/profile/PublicProfileStyleEngine";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
+import { usePageWritingContent, toContentMediaBlocks } from "@/hooks/usePageWritingContent";
+import { TMI_CANVAS_MAX_WIDTH_PX } from "@/lib/magazine/TmiSurfaceParityEngine";
+import type { PublicPageDocument } from "@/lib/publicPage/publicPageDocument";
+import type { DocumentPreviewPresentation } from "@/lib/publicPage/presentPublicPageDocument";
+import { previewDraftDocument } from "@/lib/publicPage/editPublicPageDraft";
+import PublicPageDraftPreview from "@/components/profile/PublicPageDraftPreview";
+import PublicPagePublishedView from "@/components/profile/PublicPagePublishedView";
+import PublicPageViewerStrip from "@/components/profile/PublicPageViewerStrip";
+import FanThemButton from "@/components/identity/FanThemButton";
 
 export interface PerformerPublicPageProps {
   performer: PerformerIdentity;
   /** True when the authenticated viewer owns this profile. */
   isOwner?: boolean;
+  /** Authenticated owner id from the server session. Not a client-selected owner. */
+  ownerUserId?: string;
+  /** Account id for FAN THEM. Present for visitors. Not an editing grant. */
+  profileUserId?: string;
   /** Current saved profile config (server-read). Defaults to canonical defaults. */
   profileConfig?: PublicProfileConfig;
   /** Style pack ids the owner currently owns. */
   ownedStylePacks?: string[];
+  /** Owner-only in-memory draft. The live /p route does not pass this. */
+  draftDocument?: PublicPageDocument | null;
+  /** Read-only published document. Visitors never receive an owner draft here. */
+  publishedPresentation?: DocumentPreviewPresentation | null;
 }
 
 const TABS = ["FEATURED", "ABOUT", "MUSIC", "EVENTS", "MAGAZINE", "MERCH"] as const;
@@ -145,9 +168,27 @@ function derivePlateRole(category: string): ProfileRoleType {
   return "PERFORMER";
 }
 
-export default function PerformerPublicPage({ performer: p, isOwner = false, profileConfig, ownedStylePacks = [] }: PerformerPublicPageProps) {
+export default function PerformerPublicPage({ performer: p, isOwner = false, ownerUserId, profileUserId, profileConfig, ownedStylePacks = [], draftDocument = null, publishedPresentation = null }: PerformerPublicPageProps) {
   const [tab, setTab] = useState<Tab>("FEATURED");
-  const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("edit") === "1";
+    }
+    return false;
+  });
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  /** In-place BookingCanister host — never navigate to the Kinetic Radar booking page. */
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [ownerDraft, setOwnerDraft] = useState<PublicPageDocument | null>(draftDocument);
+  const bookingArtistId = p.slug || p.id;
+
+  useEffect(() => {
+    setBookingOpen(false);
+  }, [bookingArtistId]);
+
+  const draftPreview = previewDraftDocument(ownerDraft, ["BASE"]);
+  const draftHero = draftPreview.mode === "DOCUMENT_PREVIEW" ? draftPreview.hero : null;
+  const draftMode = draftPreview.mode === "DOCUMENT_PREVIEW";
   const ac = getTierColor(p.tier);
   const plateRole = derivePlateRole(p.category);
 
@@ -156,6 +197,68 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
     isOwner ? (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG) : undefined
   );
   const activeCfg = isOwner ? liveConfig : (profileConfig ?? DEFAULT_PUBLIC_PROFILE_CONFIG);
+
+  // PAGE_WRITING now backed by canonical Content — personalWritings JSON was
+  // structurally proven to have no persistence destination (see
+  // ContentService.ts / schema.prisma). The four hardcoded
+  // DEFAULT_PUBLIC_PROFILE_CONFIG.personalWritings samples are placeholder
+  // copy only and must never render as if the owner authored them.
+  const {
+    writings: pageWritings,
+    loading: pageWritingsLoading,
+    handleUpdate: handlePageWritingUpdate,
+  } = usePageWritingContent(
+    isOwner ? { mode: "owner" } : { mode: "public", slug: p.slug },
+  );
+
+  const isGroup = p.lineupType === "band" || p.lineupType === "group" || Boolean(activeCfg.groupMetadata);
+  const effectiveGroupMetadata: GroupProfileMetadata | undefined =
+    activeCfg.groupMetadata ??
+    (isGroup
+      ? {
+          groupName: p.name,
+          formationYear: "2024",
+          genre: p.category,
+          originCity: p.city,
+          originCountry: p.countryName,
+          members: [
+            { id: "m1", name: "Jordan Cole", role: "Lead Vocals & Synth", publicProfileSlug: "jordan-cole", avatarUrl: "/tmi-curated/mag-20.jpg" },
+            { id: "m2", name: "Elena Cruz", role: "Bass & Backing Vocals", avatarUrl: "/tmi-curated/mag-28.jpg" },
+            { id: "m3", name: "Darius Vance", role: "Drums & Live Percussion", avatarUrl: "/tmi-curated/mag-35.jpg" },
+            { id: "m4", name: "Samira Kai", role: "Lead Guitar & Production", avatarUrl: "/tmi-curated/mag-50.jpg" },
+          ],
+          tourDates: [
+            { id: "t1", date: "OCT 12", city: "Chicago, IL", venue: "Metro Hall", ticketUrl: "/tickets/night-signals-chicago" },
+            { id: "t2", date: "OCT 19", city: "Detroit, MI", venue: "The Majestic", ticketUrl: "/tickets/night-signals-detroit" },
+            { id: "t3", date: "NOV 02", city: "Toronto, ON", venue: "Danforth Music Hall", ticketUrl: "/tickets/night-signals-toronto" },
+          ],
+        }
+      : undefined);
+
+  if (publishedPresentation?.mode === "DOCUMENT_PREVIEW") {
+    return (
+      <main data-testid="personal-public-page" style={{ minHeight: "100vh", width: "100%", background: "#050510", color: "#fff" }}>
+        <PublicPageViewerStrip />
+        <div data-testid="personal-page-actions" style={{ position: "fixed", top: 12, right: 12, zIndex: 40, display: "flex", gap: 8 }}>
+          <Link href={`/messages/new?recipientId=${encodeURIComponent(p.slug)}&name=${encodeURIComponent(p.name)}`} style={ctaStyle(ac)}>MESSAGE</Link>
+          {!isOwner && profileUserId ? <FanThemButton targetUserId={profileUserId} returnPath={`/p/${encodeURIComponent(p.slug)}`} accent={ac} /> : null}
+          <button type="button" data-testid="share-profile-btn" onClick={() => setShareModalOpen(true)} style={ctaStyle(ac)}>SHARE</button>
+        </div>
+        <div data-testid="personal-canvas-frame" style={{ width: "100%", maxWidth: "none" }}>
+          <PublicPagePublishedView presentation={publishedPresentation} ownerUserId={ownerUserId ?? profileUserId} />
+        </div>
+        <ProfileShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          profileName={p.name}
+          username={p.slug}
+          role={isGroup ? "BAND" : "PERFORMER"}
+          accentColor={ac}
+          heroImageUrl={activeCfg.hero?.imageUrl ?? p.profileImageUrl}
+        />
+      </main>
+    );
+  }
 
   return (
     <main
@@ -182,67 +285,107 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
         <Link href="/explore" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>← EXPLORE</Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>/</span>
         <span style={{ color: ac }}>{p.name}</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <Link
+            href={`/explore?profile=${p.slug}`}
+            style={{
+              color: "#00FFFF",
+              textDecoration: "none",
+              fontSize: 9,
+              fontWeight: 800,
+              background: "rgba(0,255,255,0.08)",
+              border: "1px solid rgba(0,255,255,0.2)",
+              padding: "4px 8px",
+              borderRadius: 4,
+            }}
+          >
+            EXPLORE SWIPE MODE ‹ ›
+          </Link>
+        </div>
       </div>
 
-      {/* Hero stage — full-width MotionPoster with identity overlay */}
-      <div style={{ position: "relative", height: "clamp(340px, 52vw, 560px)", overflow: "hidden" }}>
-        <MotionPosterPlayer
-          isLive={p.isLive}
-          liveRoomRoute={p.liveRoomRoute}
-          introVideoUrl={p.introVideoUrl}
-          motionPosterUrl={p.motionPosterUrl}
-          staticImageUrl={p.profileImageUrl}
-          alt={p.name}
-          audienceCount={p.audienceCount}
-          showLiveOverlay
-          style={{ position: "absolute", inset: 0 }}
-          height="100%"
-          width="100%"
-        />
-        {/* Scrim so text is readable */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 25%, rgba(5,3,16,0.92) 100%)" }} />
+      <div
+        data-testid="profile-opening"
+        data-opening={publishedPresentation?.canvas?.opening ?? "KEEP"}
+        style={publishedPresentation?.canvas?.opening === "COMPACT" ? { maxHeight: 220, overflow: "hidden" } : undefined}
+      >
+      <ProfileHeroBanner
+        hero={
+          draftHero
+            ? {
+                enabled: true,
+                variant: "WIDE_CINEMATIC",
+                headline: draftHero.headline,
+                showNowPlaying: false,
+                showLiveIndicator: false,
+                showBio: false,
+              }
+            : activeCfg.hero
+        }
+        profileName={p.name}
+        username={p.slug}
+        roleType={isGroup ? "GROUP" : "PERFORMER"}
+        tier={p.tier}
+        accentColor={activeCfg.accentColor}
+        isLive={p.isLive}
+        liveRoomRoute={p.liveRoomRoute}
+        rank={p.rank}
+        location={`${p.city}, ${p.countryName} ${p.flag}`}
+        isOwner={isOwner}
+        onEditHero={() => setCustomizerOpen(true)}
+        onShare={() => setShareModalOpen(true)}
+        nowPlayingTrack={draftMode ? undefined : (activeCfg.soundtrack?.enabled ? activeCfg.soundtrack.title : undefined)}
+        thoughtOfTheDay={draftMode ? undefined : (activeCfg.statusMessage ?? activeCfg.personalWritings?.find((w) => w.type === "THOUGHT_OF_DAY")?.body)}
+      />
+      </div>
 
-        {/* Identity + actions floating at the bottom */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 28px" }}>
-          <div style={{ marginBottom: 12 }}>
+      {/* Identity + Action bar container */}
+      <div style={{ maxWidth: TMI_CANVAS_MAX_WIDTH_PX, margin: "0 auto", padding: "18px 24px 10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <IdentityPlate
               roleType={plateRole}
               tier={p.tier}
               accentColor={ac}
               isLive={p.isLive}
             />
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-            {p.isLive && (
-              <span style={{ background: "#E63000", color: "#fff", fontSize: 8, fontWeight: 900, padding: "3px 10px", letterSpacing: "0.12em", borderRadius: 4 }}>
-                🔴 LIVE NOW · {p.audienceCount.toLocaleString()} WATCHING
-              </span>
-            )}
-            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: "0.1em" }}>
-              #{p.rank} · {p.category.toUpperCase()}
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
+              {p.fanCount.toLocaleString()} fans · {p.likes.toLocaleString()} likes
             </span>
           </div>
 
-          <h1 style={{ margin: "0 0 4px", fontSize: "clamp(28px, 5vw, 56px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.01em" }}>
-            {p.name}
-          </h1>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 18 }}>
-            {p.city}, {p.countryName} {p.flag} · {p.fanCount.toLocaleString()} fans
-          </div>
-
-          {/* Action bar */}
+          {/* Action buttons */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {p.isLive ? (
               <Link href={p.liveRoomRoute} style={ctaStyle("#E63000", true)}>🔴 WATCH LIVE</Link>
             ) : null}
             {!isOwner && (
-              <Link href={`/messages/new?recipientSlug=${encodeURIComponent(p.slug)}&name=${encodeURIComponent(p.name)}`} style={ctaStyle(ac)}>
+              <Link href={`/messages/new?recipientId=${encodeURIComponent(p.slug)}&name=${encodeURIComponent(p.name)}`} style={ctaStyle(ac)}>
                 MESSAGE
               </Link>
             )}
             {!isOwner && <Link href={`/tips?to=${encodeURIComponent(p.slug)}`} style={ctaStyle("#FFD700")}>TIP</Link>}
-            {!isOwner && <Link href={`/booking?performer=${encodeURIComponent(p.slug)}`} style={ctaStyle("#00FF88")}>BOOK</Link>}
+            {!isOwner && (
+              <button
+                type="button"
+                data-testid="public-book-cta"
+                data-booking-performer={bookingArtistId}
+                onClick={() => setBookingOpen((v) => !v)}
+                style={ctaStyle("#00FF88")}
+              >
+                {bookingOpen ? "CLOSE BOOKING" : "BOOK"}
+              </button>
+            )}
+            {!isOwner && profileUserId ? <FanThemButton targetUserId={profileUserId} returnPath={`/p/${encodeURIComponent(p.slug)}`} accent={ac} /> : null}
             <Link href={`/yopho/card/${encodeURIComponent(p.slug)}`} style={ctaStyle("#00FFFF")}>YOPHO</Link>
+            <button
+              type="button"
+              data-testid="share-profile-btn"
+              onClick={() => setShareModalOpen(true)}
+              style={ctaStyle(ac)}
+            >
+              🚀 SHARE PAGE
+            </button>
             {isOwner && (
               <button
                 type="button"
@@ -256,10 +399,63 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
         </div>
       </div>
 
+      {!isOwner && bookingOpen ? (
+        <div
+          data-testid="public-booking-panel-host"
+          data-booking-performer={bookingArtistId}
+          style={{
+            maxWidth: TMI_CANVAS_MAX_WIDTH_PX,
+            margin: "0 auto",
+            padding: "0 16px 16px",
+            width: "100%",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FF88" }}>
+              BOOK {p.name.toUpperCase()}
+            </span>
+            <button
+              type="button"
+              data-testid="public-booking-close"
+              onClick={() => setBookingOpen(false)}
+              style={{
+                ...ctaStyle("rgba(255,255,255,0.45)"),
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              CLOSE · STAY ON PROFILE
+            </button>
+          </div>
+          <ArtistBookingPanel
+            key={bookingArtistId}
+            artistId={bookingArtistId}
+            artistName={p.name}
+            accentColor="#00FF88"
+          />
+        </div>
+      ) : null}
+
+      {/* Profile Share Modal (Profile Share Law) */}
+      <ProfileShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        profileName={p.name}
+        username={p.slug}
+        role={isGroup ? "BAND" : "PERFORMER"}
+        accentColor={ac}
+        heroImageUrl={activeCfg.hero?.imageUrl ?? p.profileImageUrl}
+        personalQuote={draftMode ? undefined : activeCfg.personalWritings?.find((w) => w.type === "HAPPY_DAY_QUOTE")?.body}
+        nowPlayingTrack={draftMode ? undefined : (activeCfg.soundtrack?.enabled ? activeCfg.soundtrack.title : undefined)}
+      />
+
       {/* Owner customizer overlay */}
       {isOwner && customizerOpen && (
         <ProfileCustomizer
           config={activeCfg}
+          profileName={p.name}
+          profileSlug={p.slug}
+          profileRole="PERFORMER"
           ownedPackIds={ownedStylePacks}
           accountTier={p.tier}
           onSave={async (next) => { await save(next); }}
@@ -270,40 +466,154 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
       )}
 
       {/* Section tab bar */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            style={{
-              padding: "14px 20px",
-              background: "none",
-              border: "none",
-              borderBottom: tab === t ? `2px solid ${ac}` : "2px solid transparent",
-              color: tab === t ? ac : "rgba(255,255,255,0.4)",
-              fontSize: 10,
-              fontWeight: 900,
-              cursor: "pointer",
-              letterSpacing: "0.1em",
-              whiteSpace: "nowrap",
-              fontFamily: "inherit",
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const isMusicEnabled =
+          !activeCfg.visibleModules ||
+          activeCfg.visibleModules.includes("FEATURED_TRACK") ||
+          activeCfg.visibleModules.includes("PLAYLIST");
+        const filteredTabs = TABS.filter((t) => t !== "MUSIC" || isMusicEnabled);
+
+        return (
+          <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>
+            {filteredTabs.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                style={{
+                  padding: "14px 20px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: tab === t ? `2px solid ${ac}` : "2px solid transparent",
+                  color: tab === t ? ac : "rgba(255,255,255,0.4)",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  letterSpacing: "0.1em",
+                  whiteSpace: "nowrap",
+                  fontFamily: "inherit",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Tab content */}
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "28px 20px 96px" }}>
+      <div style={{ maxWidth: TMI_CANVAS_MAX_WIDTH_PX, margin: "0 auto", padding: "28px 20px 96px" }}>
+
+        {publishedPresentation?.mode === "DOCUMENT_PREVIEW" ? (
+          <PublicPagePublishedView presentation={publishedPresentation} ownerUserId={ownerUserId ?? profileUserId} />
+        ) : ownerDraft ? (
+          <PublicPageDraftPreview
+            document={ownerDraft}
+            authorizedCapabilities={["BASE"]}
+            onDocumentChange={setOwnerDraft}
+          />
+        ) : null}
+
+        {/* ── PROFILE SOUNDTRACK (MySpace Music Law) ── */}
+        {ownerDraft ? null : (
+        <ProfileSoundtrackPlayer
+          soundtrack={activeCfg.soundtrack}
+          ownerName={p.name}
+          ownerSlug={p.slug}
+          accentColor={ac}
+          isOwner={isOwner}
+          onEditSoundtrack={() => setCustomizerOpen(true)}
+        />
+        )}
+
+        {/* ── WORDS & PERSONAL JOURNAL (owner editing surface only — public
+             rendering of this same canonical Content now goes through
+             PublicProfileMediaComposer's CONTENT block below, the one
+             canonical public-render path, per the composition-reference
+             closure of the Content foundation slice) ── */}
+        {isOwner && !pageWritingsLoading && (
+          // PersonalWritingWall seeds its internal state from `writings`
+          // only on first mount and never re-syncs a later prop change —
+          // gating on the fetch's loading state (rather than passing [] and
+          // letting the real data arrive post-mount) ensures its FIRST
+          // render already has the real, canonical data.
+          <PersonalWritingWall
+            writings={pageWritings}
+            accentColor={ac}
+            isOwner={isOwner}
+            onUpdateWritings={(next) => {
+              void handlePageWritingUpdate(next);
+            }}
+          />
+        )}
+
+        {/* ── GROUP / BAND ROSTER (Group/Band Profile Law) ── */}
+        {effectiveGroupMetadata && (
+          <GroupMemberRoster
+            metadata={effectiveGroupMetadata}
+            accentColor={ac}
+            isOwner={isOwner}
+            onEditRoster={() => setCustomizerOpen(true)}
+          />
+        )}
+
+        {/* ── MAGAZINE FEATURE TEASER (Strict Separation Law) ── */}
+        {p.articleIds && p.articleIds.length > 0 && (
+          <section
+            data-testid="performer-magazine-feature-teaser"
+            style={{
+              margin: "0 0 28px 0",
+              background: "linear-gradient(135deg, rgba(255,215,0,0.06), rgba(170,45,255,0.06))",
+              border: "1px solid rgba(255,215,0,0.25)",
+              borderRadius: 12,
+              padding: "18px 24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 16,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#FFD700", marginBottom: 6 }}>
+                ★ FEATURED IN TMI MAGAZINE
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 4 }}>
+                {p.name} Talks Cyphers, Fans, and the Power of Sound
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+                Read the full cover-story editorial and backstage interview in TMI Magazine Issue 1.
+              </div>
+            </div>
+            <Link
+              href={`/magazine/issue/current?article=${encodeURIComponent(p.articleIds[0])}`}
+              style={{
+                background: "#FFD700",
+                color: "#050510",
+                padding: "9px 20px",
+                borderRadius: 8,
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.1em",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                flexShrink: 0,
+              }}
+            >
+              <span>OPEN MAGAZINE SPREAD</span>
+              <span>→</span>
+            </Link>
+          </section>
+        )}
 
         {/* ── FEATURED (media composer) ── */}
         {tab === "FEATURED" && (
           <>
             <ProfileMediaPlayerShowcase ownerSlug={p.slug} accentColor={ac} />
             <PublicProfileMediaComposer
-              blocks={derivePerformerBlocks(p, ac)}
+              blocks={[...derivePerformerBlocks(p, ac), ...toContentMediaBlocks(pageWritings)]}
               accentColor={ac}
               role="performer"
               ownerSlug={p.slug}
@@ -376,9 +686,19 @@ export default function PerformerPublicPage({ performer: p, isOwner = false, pro
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, margin: "0 0 12px" }}>
                   Available for shows, features, and collaborations.
                 </p>
-                <Link href={`/booking?performer=${encodeURIComponent(p.slug)}`} style={{ ...ctaStyle("#00FF88", true), display: "block", textAlign: "center" }}>
-                  BOOK THIS ARTIST
-                </Link>
+                {!isOwner ? (
+                  <button
+                    type="button"
+                    data-testid="public-book-sidebar-cta"
+                    data-booking-performer={bookingArtistId}
+                    onClick={() => setBookingOpen(true)}
+                    style={{ ...ctaStyle("#00FF88", true), display: "block", width: "100%", textAlign: "center", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    BOOK THIS ARTIST
+                  </button>
+                ) : (
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: 0 }}>Your public booking panel is visible to visitors.</p>
+                )}
               </div>
 
               <ArtistIdShareStrip userId={p.slug} displayName={p.name} role="performer" artistSlug={p.slug} />

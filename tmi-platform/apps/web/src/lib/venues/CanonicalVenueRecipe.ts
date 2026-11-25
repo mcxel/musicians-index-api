@@ -13,6 +13,10 @@
  * - Single source of truth shared between /rooms discovery preview and exact live rooms.
  */
 
+import { resolveCertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+import { slugToVenueType, type VenueType } from "@/lib/venues/VenueAssetRegistry";
+import type { CertifiedVenuePackage } from "@/lib/venues/CertifiedVenuePackage";
+
 export type VenueStyle = 'THEATER' | 'ARENA' | 'CLUB' | 'LOUNGE' | 'VIP' | 'STANDING';
 
 export type SeatingFamily =
@@ -143,6 +147,60 @@ export interface CanonicalVenueRecipe {
     curvedRake: boolean;
   };
   getSockets(): VenueOccupancySocket[];
+}
+
+export interface CanonicalRoomVenueInput {
+  roomId: string;
+  sessionId?: string | null;
+  experienceType?: string | null;
+  venueType?: string | null;
+}
+
+export interface CanonicalRoomVenueResolution {
+  roomId: string;
+  sessionId: string;
+  venueType: VenueType;
+  recipe: CanonicalVenueRecipe;
+  worldId: string;
+  cameraPreset: CanonicalVenueRecipe["cameraPresets"]["audiencePerspective"];
+  assetSlot: {
+    certifiedPackage: CertifiedVenuePackage;
+    certifiedGeometryEligible: boolean;
+  };
+  activeGeometry: "PROCEDURAL";
+  certifiedPackageEligible: boolean;
+}
+
+/** Resolve an exact room/session to the shared recipe and its spatial camera. */
+export function resolveCanonicalRoomVenue(
+  input: CanonicalRoomVenueInput,
+): CanonicalRoomVenueResolution {
+  const roomId = input.roomId.trim();
+  const sessionId = input.sessionId?.trim() || `session:${roomId}`;
+  const venueKey = input.venueType?.trim();
+  const experienceType = input.experienceType?.trim();
+  const genericExperienceTypes = new Set(["general", "concert", "live", "venue", "broadcast"]);
+  const recipeKey =
+    venueKey ||
+    (experienceType && !genericExperienceTypes.has(experienceType.toLowerCase())
+      ? experienceType
+      : roomId);
+  const venueType = slugToVenueType(venueKey || recipeKey);
+  const recipe = getCanonicalVenueRecipe(recipeKey);
+  const certifiedPackage = resolveCertifiedVenuePackage(venueType);
+  const certifiedGeometryEligible = certifiedPackage.renderMode === "CERTIFIED_GEOMETRY";
+
+  return {
+    roomId,
+    sessionId,
+    venueType,
+    recipe,
+    worldId: `${roomId}::${sessionId}::${recipe.id}`,
+    cameraPreset: recipe.cameraPresets.audiencePerspective,
+    assetSlot: { certifiedPackage, certifiedGeometryEligible },
+    activeGeometry: "PROCEDURAL",
+    certifiedPackageEligible: certifiedGeometryEligible,
+  };
 }
 
 /**
@@ -595,20 +653,137 @@ export const VIP_LOUNGE_RECIPE: CanonicalVenueRecipe = {
 };
 
 /**
+ * Regular Go Live venue — theater house, not Monday Night Stage / Battle / Cypher / Dance / Fan Lobby.
+ * Smallest extension of the theater enclosure with a distinct recipe identity.
+ */
+export const REGULAR_LIVE_RECIPE: CanonicalVenueRecipe = {
+  id: "regular-live",
+  name: "Regular Live Venue",
+  style: "THEATER",
+  seatingFamily: "THEATER_VELVET",
+  enclosure: {
+    dimensions: { width: 26, depth: 30, height: 11 },
+    walls: {
+      rearDepth: -9.0,
+      rearHeight: 11,
+      sideWidth: 24,
+      sideAngleRad: 0,
+      acousticPanelCount: 6,
+    },
+    ceiling: {
+      hasRoof: true,
+      trussElevation: 8.0,
+    },
+    stage: {
+      width: 14,
+      depth: 5.8,
+      height: 0.75,
+      apronTrimColor: "#FFD700",
+      centerPosition: [0, -0.1, -5.2],
+    },
+    risers: {
+      tierCount: 4,
+      elevationStep: 0.36,
+      depthStep: 1.7,
+      startZ: 0.2,
+    },
+    aisles: {
+      centerWidth: 1.15,
+      hasFloorBeacons: true,
+      beaconColor: "#FFD700",
+    },
+  },
+  productionRig: {
+    hasLightingTruss: true,
+    trussElevation: 8.0,
+    spotlights: [
+      { position: [-6.5, 7.8, -1], color: "#FFD700", intensity: 2.0, target: [0, 0.4, -5.2] },
+      { position: [6.5, 7.8, -1], color: "#00FFFF", intensity: 2.0, target: [0, 0.4, -5.2] },
+      { position: [0, 8.0, 2], color: "#FF2DAA", intensity: 1.4, target: [0, 0.4, -5.2] },
+    ],
+    hasLineArraySpeakers: true,
+    speakerPositions: [
+      [-8.0, 5.0, -3.6],
+      [8.0, 5.0, -3.6],
+    ],
+  },
+  displayKit: {
+    jumbotron: {
+      enabled: true,
+      architecture: "WALL_HANGING",
+      dimensions: { width: 12, height: 4.8, depth: 0.22 },
+      position: [0, 5.0, -8.7],
+      brandColor: "#FFD700",
+    },
+    dualSideScreens: {
+      enabled: true,
+      dimensions: { width: 3.4, height: 2.2 },
+      leftPosition: [-10.2, 3.6, -5.6],
+      rightPosition: [10.2, 3.6, -5.6],
+    },
+  },
+  materials: {
+    wall: { color: "#070410", roughness: 0.86, metalness: 0.14 },
+    floor: { color: "#08050f", roughness: 0.18, metalness: 0.5 },
+    stageDeck: { color: "#161018", roughness: 0.24, metalness: 0.3 },
+    seatCushion: { color: "#2a1238", roughness: 0.62, metalness: 0.16 },
+    seatFrame: { color: "#1a1a24", roughness: 0.16, metalness: 0.9 },
+    riserStep: { color: "#0a0714", roughness: 0.74, metalness: 0.2 },
+    neonAccent: "#FFD700",
+    secondaryAccent: "#00FFFF",
+  },
+  cameraPresets: {
+    discoveryPreview: { position: [0, 3.0, 9.0], target: [0, 0.5, -2], fov: 44 },
+    audiencePerspective: { position: [0, 1.35, 4.2], target: [0, 1.0, -5.2], fov: 50 },
+    stagePerspective: { position: [0, 1.15, -4.8], target: [0, 1.0, 3.0], fov: 54 },
+  },
+  seatingConfig: {
+    rows: 4,
+    seatsPerRow: 10,
+    rowSpacingZ: 1.7,
+    seatSpacingX: 0.85,
+    aisleEvery: 5,
+    startZ: 0.55,
+    startElevation: -0.1,
+    elevationStep: 0.36,
+    curvedRake: true,
+  },
+  getSockets() {
+    return generateRecipeSockets(this.seatingConfig);
+  },
+};
+
+/**
  * Resolves canonical venue recipe by identifier, type, or slug.
+ * Regular Go Live must not fall into Battle / Cypher / MNS / Dance / Fan Lobby.
  */
 export function getCanonicalVenueRecipe(venueTypeOrId?: string | null): CanonicalVenueRecipe {
-  if (!venueTypeOrId) return MONDAY_NIGHT_STAGE_RECIPE;
+  if (!venueTypeOrId) return REGULAR_LIVE_RECIPE;
   const key = venueTypeOrId.toLowerCase().trim();
 
-  if (key.includes('battle') || key.includes('arena') || key.includes('stadium')) {
+  if (key.includes("monday-night") || key.includes("monday-stage") || key === "mns" || key === "theater") {
+    return MONDAY_NIGHT_STAGE_RECIPE;
+  }
+  if (key.includes("battle") || key.includes("arena") || key.includes("stadium")) {
     return TMI_ARENA_RECIPE;
   }
-  if (key.includes('club') || key.includes('cypher') || key.includes('dance')) {
+  if (key.includes("club") || key.includes("cypher") || key.includes("dance")) {
     return NEON_CLUB_RECIPE;
   }
-  if (key.includes('vip') || key.includes('lounge') || key.includes('gold')) {
+  if (key.includes("vip") || key.includes("lounge") || key.includes("gold")) {
     return VIP_LOUNGE_RECIPE;
   }
-  return MONDAY_NIGHT_STAGE_RECIPE;
+  if (
+    key.includes("regular") ||
+    key.includes("go-live") ||
+    key.includes("room-hub") ||
+    key === "live" ||
+    key === "concert" ||
+    key === "general" ||
+    key === "broadcast" ||
+    key === "venue"
+  ) {
+    return REGULAR_LIVE_RECIPE;
+  }
+  return REGULAR_LIVE_RECIPE;
 }

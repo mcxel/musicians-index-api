@@ -18,18 +18,21 @@ export interface AccountCommandMenuProps {
   accentColor?: string;
   compact?: boolean;
   trigger?: ReactNode;
+  fallbackRole?: string;
 }
 
 export default function AccountCommandMenu({
   displayName = "Account",
   avatarUrl,
   compact = true,
+  fallbackRole,
 }: AccountCommandMenuProps) {
   return (
     <UniversalAccountIdentityControl
       fallbackDisplayName={displayName}
       fallbackAvatarUrl={avatarUrl}
       compact={compact}
+      fallbackRole={fallbackRole}
     />
   );
 }

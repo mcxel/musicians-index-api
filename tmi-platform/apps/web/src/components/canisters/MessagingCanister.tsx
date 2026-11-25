@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import { senderBubbleStyles, senderColorFor } from "@/lib/messaging/senderColor";
 import { peerThreadParticipant } from "@/lib/messaging/threadPeerParticipant";
+import { useContentTranslationView } from "@/lib/translation/useContentTranslationView";
 import AgePolicyGateModal, {
   clearMessagingPendingIntent,
   gateModeFromCode,
   loadMessagingPendingIntent,
   saveMessagingPendingIntent,
 } from "@/components/messaging/AgePolicyGateModal";
+import type { CommunityWallNote } from "@/lib/communityWall/CommunityWallContracts";
+import {
+  destinationFullPageHref,
+  destinationLabel,
+  publishExplicitMagazineContribution,
+  type MagazinePublishDestination,
+} from "@/lib/communityWall/MessagingCanisterMagazinePublishAuthority";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -255,11 +264,15 @@ function ConversationRow({
   isActive: boolean;
   onClick: () => void;
 }) {
-  const color = roleColor(thread.role);
+  const isGroup = thread.kind === "group" || thread.kind === "band" || thread.participants.length > 2;
+  const isRoom = thread.kind === "room" || thread.kind === "community";
+  const color = isGroup ? "#AA2DFF" : isRoom ? "#FFD700" : roleColor(thread.role);
   const other = thread.participants.find((p) => p.displayName === thread.name) ?? thread.participants[0];
   return (
     <button
       onClick={onClick}
+      data-testid={`thread-row-${thread.threadId}`}
+      data-thread-kind={thread.kind}
       style={{
         display: "flex",
         alignItems: "center",
@@ -275,12 +288,29 @@ function ConversationRow({
         transition: "all 0.15s",
       }}
     >
-      <AvatarThumb avatarUrl={other?.avatarUrl} accent={color} size={36} />
+      <AvatarThumb
+        avatarUrl={isGroup ? undefined : other?.avatarUrl}
+        emojiFallback={isGroup ? "👥" : isRoom ? "🔴" : "💬"}
+        accent={color}
+        size={36}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {thread.name}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {thread.name}
+            </span>
+            {isGroup && (
+              <span style={{ fontSize: 8, fontWeight: 900, background: "rgba(170,45,255,0.25)", color: "#AA2DFF", padding: "1px 5px", borderRadius: 4, letterSpacing: "0.08em" }}>
+                GROUP
+              </span>
+            )}
+            {isRoom && (
+              <span style={{ fontSize: 8, fontWeight: 900, background: "rgba(255,215,0,0.25)", color: "#FFD700", padding: "1px 5px", borderRadius: 4, letterSpacing: "0.08em" }}>
+                ROOM
+              </span>
+            )}
+          </div>
           <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>{fmt(thread.lastMessageAt)}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginTop: 2 }}>
@@ -308,7 +338,7 @@ function PlaylistShareBubble({ msg }: { msg: ThreadMessage }) {
       <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#AA2DFF", marginBottom: 4 }}>
         PLAYLIST SHARE
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 6 }}>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 6, userSelect: "text", WebkitUserSelect: "text" }}>
         {msg.body}
       </div>
       <a
@@ -342,7 +372,7 @@ function VideoInviteBubble({
       <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#00FFFF", marginBottom: 4 }}>
         📹 VIDEO CHAT INVITE
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 8 }}>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#F4F7FF", wordBreak: "break-word", marginBottom: 8, userSelect: "text", WebkitUserSelect: "text" }}>
         {msg.body}
       </div>
       {msg.callId ? (
@@ -405,7 +435,7 @@ function SharedMediaGrid({ messages }: { messages: ThreadMessage[] }) {
             <span style={{ fontSize: 10, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color }}>
               {msg.senderName}
             </span>
-            <span style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", userSelect: "text", WebkitUserSelect: "text" }}>
               {msg.body || "Shared"}
             </span>
             <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{fmt(msg.createdAt)}</span>
@@ -413,6 +443,44 @@ function SharedMediaGrid({ messages }: { messages: ThreadMessage[] }) {
         );
       })}
     </div>
+  );
+}
+
+function ThreadMessageText({ msg }: { msg: ThreadMessage }) {
+  const t = useContentTranslationView({
+    contentId: msg.messageId,
+    originalText: msg.body,
+    surface: "MESSAGING",
+    fieldKind: "BODY",
+  });
+  const [hover, setHover] = useState(false);
+  return (
+    <span onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ display: "block" }}>
+      <span dir={t.showingTranslation ? t.textDirection : "ltr"} style={{ display: "block" }}>
+        {t.displayText}
+      </span>
+      {t.canTranslate && (hover || t.showingTranslation) && (
+        <button
+          type="button"
+          onClick={() => (t.showingTranslation ? t.showOriginal() : void t.translate())}
+          disabled={t.status === "LOADING"}
+          data-testid={`dm-translate-${msg.messageId}`}
+          style={{
+            marginTop: 3,
+            fontSize: 8,
+            fontWeight: 700,
+            padding: "1px 6px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.5)",
+            cursor: "pointer",
+          }}
+        >
+          {t.status === "LOADING" ? "…" : t.showingTranslation ? "Show original" : "Translate"}
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -458,13 +526,13 @@ function MessageBubble({
                 style={{ maxWidth: "100%", borderRadius: 8, marginBottom: 6, display: "block" }}
               />
             ) : null}
-            <div style={{ fontSize: 13, lineHeight: 1.45, color: bubble.color, wordBreak: "break-word" }}>
+            <div style={{ fontSize: 13, lineHeight: 1.45, color: bubble.color, wordBreak: "break-word", userSelect: "text", WebkitUserSelect: "text" }}>
               {looksLikeUrl(msg.body) && msg.type !== "image" ? (
                 <a href={msg.body.trim()} target="_blank" rel="noreferrer" style={{ color: color, textDecoration: "underline" }}>
                   {msg.body}
                 </a>
               ) : (
-                msg.body
+                <ThreadMessageText msg={msg} />
               )}
             </div>
           </>
@@ -484,6 +552,17 @@ export interface MessagingCanisterProps {
   recipientName?: string;
   height?: number | string;
   compact?: boolean;
+  initialFilter?: "all" | "direct" | "group" | "room";
+  returnToGroupUrl?: string;
+  returnToGroupName?: string;
+  /**
+   * §20979 — show magazine destination strip (Gossip / Happy Days).
+   * Ordinary SEND never publishes. Explicit PUBLISH TO … required.
+   */
+  enableMagazinePublish?: boolean;
+  /** Pre-point destination when opened from Gossip / Happy Days page. */
+  magazineContextDestination?: MagazinePublishDestination | null;
+  onMagazinePublished?: (note: CommunityWallNote, destination: MagazinePublishDestination) => void;
 }
 
 export default function MessagingCanister({
@@ -491,9 +570,16 @@ export default function MessagingCanister({
   recipientName,
   height = 480,
   compact = false,
+  initialFilter = "all",
+  returnToGroupUrl,
+  returnToGroupName,
+  enableMagazinePublish = false,
+  magazineContextDestination = null,
+  onMagazinePublished,
 }: MessagingCanisterProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [threadFilter, setThreadFilter] = useState<"all" | "direct" | "group" | "room">(initialFilter);
   const [activeTab, setActiveTab] = useState<"chat" | "media">("chat");
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [input, setInput] = useState("");
@@ -503,6 +589,10 @@ export default function MessagingCanister({
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [magazineDestination, setMagazineDestination] = useState<MagazinePublishDestination | null>(
+    magazineContextDestination ?? null,
+  );
+  const [publishNotice, setPublishNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
   const [gateCode, setGateCode] = useState<string | undefined>();
@@ -510,6 +600,11 @@ export default function MessagingCanister({
   const [callNote, setCallNote] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const magazinePublishEnabled = enableMagazinePublish || Boolean(magazineContextDestination);
+
+  useEffect(() => {
+    setMagazineDestination(magazineContextDestination ?? null);
+  }, [magazineContextDestination]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -602,6 +697,27 @@ export default function MessagingCanister({
     return { type: "text", body: text.trim() };
   }
 
+
+  /**
+   * Only these codes are actually age/policy/eligibility gates that warrant the
+   * full-screen AgePolicyGateModal. Every other error code (RECIPIENT_NOT_FOUND,
+   * SELF_MESSAGE, RATE_LIMITED handled elsewhere, MISSING_FIELDS, SEND_FAILED, etc.)
+   * must stay an inline `error` banner — gateModeFromCode() always returns a mode
+   * even for codes it doesn't recognize, so it can't be used to decide *whether*
+   * to gate, only *how* to render the gate once you've already decided to.
+   */
+  function isGateWorthyCode(code?: string): boolean {
+    return (
+      code === "AGE_VERIFICATION_REQUIRED" ||
+      code === "POLICY_ACCEPTANCE_REQUIRED" ||
+      code === "AGE_POLICY_RESTRICTED" ||
+      code === "BLOCKED" ||
+      code === "ACCOUNT_RESTRICTED" ||
+      code === "RECIPIENT_MESSAGES_DISABLED" ||
+      code === "RECIPIENT_AGE_UNVERIFIED" ||
+      code === "RATE_LIMITED"
+    );
+  }
 
   function openGate(code?: string, msg?: string, intent?: { recipientId: string; recipientName?: string; body?: string }) {
     if (intent) {
@@ -702,7 +818,7 @@ export default function MessagingCanister({
           });
         } else {
           setError(result.error ?? "Could not start conversation. Please try again.");
-          if (result.code) openGate(result.code, result.error);
+          if (isGateWorthyCode(result.code)) openGate(result.code, result.error);
         }
       } else {
         const to = newTo.trim();
@@ -727,11 +843,47 @@ export default function MessagingCanister({
           openGate(result.code, result.error, { recipientId: to, recipientName: to, body: payload.body });
         } else {
           setError(result.error ?? "Could not start conversation. Recipient not found.");
-          if (result.code) openGate(result.code, result.error);
+          if (isGateWorthyCode(result.code)) openGate(result.code, result.error);
         }
       }
     } catch {
       setError("Network error. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  /**
+   * §20979 — magazine publish is NEVER the same path as DM send.
+   * Requires explicit destination + explicitPublishIntent: true.
+   */
+  function handleMagazinePublish() {
+    const text = input.trim();
+    if (!text || sending) return;
+    if (!magazineDestination) {
+      setError("WHERE SHOULD THIS APPEAR? Choose Community Gossip or Happy Days.");
+      return;
+    }
+    setError(null);
+    setPublishNotice(null);
+    setSending(true);
+    try {
+      const result = publishExplicitMagazineContribution({
+        destination: magazineDestination,
+        body: text,
+        authorLabel: "You",
+        explicitPublishIntent: true,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setInput("");
+      setAttachUrl("");
+      setPublishNotice(
+        `Published to ${destinationLabel(magazineDestination)}. Open ${destinationFullPageHref(magazineDestination)}`,
+      );
+      onMagazinePublished?.(result.note, magazineDestination);
     } finally {
       setSending(false);
     }
@@ -778,8 +930,8 @@ export default function MessagingCanister({
 
       const inviteBody =
         callData.call.status === "offline" || callData.calleeOnline === false
-          ? `📹 Video chat invite — ${peer.displayName} appears offline. Open Observatory video when available.`
-          : `📹 Video chat invite — join Observatory video chat now.`;
+          ? `📹 Video chat invite — ${peer.displayName} appears offline. Accept from this thread when they are available.`
+          : `📹 Video chat invite — tap Join when ready.`;
 
       if (activeThreadId) {
         await sendToThread(activeThreadId, inviteBody, {
@@ -795,10 +947,14 @@ export default function MessagingCanister({
         if (tidResult.threadId) setActiveThreadId(tidResult.threadId);
       }
 
+      window.dispatchEvent(
+        new CustomEvent("tmi:peer-call-outgoing", { detail: { callId: callData.call.callId } }),
+      );
+
       setCallNote(
         callData.calleeOnline === false
           ? "Invite sent. Callee offline — honest waiting state."
-          : "Invite sent. Use OBS VIDEO panel to connect when they accept.",
+          : "Invite sent. Video panel opens when they accept.",
       );
     } catch {
       setError("Could not send video invite.");
@@ -816,7 +972,7 @@ export default function MessagingCanister({
       body: JSON.stringify({ action: "update", callId, status: "accepted" }),
     });
     if (res.ok) {
-      setCallNote("Accepted — open OBS VIDEO (bottom-right) to see the call.");
+      setCallNote("Accepted — connecting video…");
       window.dispatchEvent(new CustomEvent("tmi:observatory-call-accept", { detail: { callId } }));
     } else {
       setCallNote("Could not join — call may have ended.");
@@ -841,7 +997,12 @@ export default function MessagingCanister({
   };
 
   return (
-    <div style={panelStyle}>
+    <div
+      style={panelStyle}
+      data-drawer-composition-exception="messaging"
+      data-live-preview-binding="DRAWER_LIVE_PREVIEW_BINDING_LAW_v1"
+      data-testid="messaging-canister"
+    >
       {showSidebar && (
         <div
           style={{
@@ -852,9 +1013,53 @@ export default function MessagingCanister({
             flexShrink: 0,
           }}
         >
-          <div style={{ padding: "12px 12px 8px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)" }}>
-              MESSAGES
+          <div style={{ padding: "12px 12px 6px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)" }}>
+                MESSAGES
+              </div>
+              {returnToGroupUrl && (
+                <a
+                  href={returnToGroupUrl}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.1em",
+                    color: "#00FFFF",
+                    textDecoration: "none",
+                  }}
+                >
+                  ← {returnToGroupName ?? "GROUP"}
+                </a>
+              )}
+            </div>
+            {/* Filter Tabs: All, Direct, Groups, Rooms */}
+            <div style={{ display: "flex", gap: 3, background: "rgba(255,255,255,0.04)", padding: 2, borderRadius: 6 }}>
+              {[
+                { id: "all", label: "All" },
+                { id: "direct", label: "Direct" },
+                { id: "group", label: "Groups" },
+                { id: "room", label: "Rooms" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setThreadFilter(tab.id as any)}
+                  data-testid={`messages-tab-${tab.id}`}
+                  style={{
+                    flex: 1,
+                    padding: "4px 2px",
+                    fontSize: 8,
+                    fontWeight: 800,
+                    borderRadius: 4,
+                    background: threadFilter === tab.id ? "rgba(0,255,255,0.2)" : "transparent",
+                    color: threadFilter === tab.id ? "#00FFFF" : "rgba(255,255,255,0.5)",
+                    border: `1px solid ${threadFilter === tab.id ? "rgba(0,255,255,0.4)" : "transparent"}`,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
@@ -870,14 +1075,23 @@ export default function MessagingCanister({
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {threads.map((t) => (
-                <ConversationRow
-                  key={t.threadId}
-                  thread={t}
-                  isActive={t.threadId === activeThreadId}
-                  onClick={() => setActiveThreadId(t.threadId)}
-                />
-              ))}
+              {threads
+                .filter((t) => {
+                  const isGroup = t.kind === "group" || t.kind === "band" || t.participants.length > 2;
+                  const isRoom = t.kind === "room" || t.kind === "community";
+                  if (threadFilter === "direct") return !isGroup && !isRoom;
+                  if (threadFilter === "group") return isGroup;
+                  if (threadFilter === "room") return isRoom;
+                  return true;
+                })
+                .map((t) => (
+                  <ConversationRow
+                    key={t.threadId}
+                    thread={t}
+                    isActive={t.threadId === activeThreadId}
+                    onClick={() => setActiveThreadId(t.threadId)}
+                  />
+                ))}
             </div>
           </div>
         </div>
@@ -1096,6 +1310,70 @@ export default function MessagingCanister({
                 {callNote}
               </div>
             )}
+            {publishNotice && (
+              <div
+                data-testid="magazine-publish-notice"
+                style={{ fontSize: 10, color: "#86efac", marginBottom: 6, padding: "4px 8px", borderRadius: 6, background: "rgba(134,239,172,0.1)" }}
+              >
+                {publishNotice}
+              </div>
+            )}
+            {magazinePublishEnabled && (
+              <div
+                data-testid="magazine-publish-destination"
+                data-global-community="0"
+                style={{
+                  marginBottom: 8,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,215,0,0.28)",
+                  background: "rgba(255,215,0,0.06)",
+                }}
+              >
+                <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", marginBottom: 6 }}>
+                  WHERE SHOULD THIS APPEAR? · MAGAZINE ONLY · NOT AUTO FROM DM
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {(
+                    [
+                      { id: null as MagazinePublishDestination | null, label: "PRIVATE MESSAGE ONLY" },
+                      { id: "COMMUNITY_GOSSIP" as const, label: "COMMUNITY GOSSIP" },
+                      { id: "HAPPY_DAYS" as const, label: "HAPPY DAYS" },
+                    ] as const
+                  ).map((opt) => {
+                    const active = magazineDestination === opt.id;
+                    return (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        aria-pressed={active}
+                        data-testid={
+                          opt.id === null
+                            ? "mag-dest-private"
+                            : opt.id === "HAPPY_DAYS"
+                              ? "mag-dest-happy-days"
+                              : "mag-dest-community-gossip"
+                        }
+                        onClick={() => setMagazineDestination(opt.id)}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          border: active ? "1px solid #FFD700" : "1px solid rgba(255,255,255,0.18)",
+                          background: active ? "rgba(255,215,0,0.2)" : "transparent",
+                          color: active ? "#FFD700" : "rgba(255,255,255,0.65)",
+                          fontSize: 8,
+                          fontWeight: 900,
+                          letterSpacing: "0.08em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <input
               value={attachUrl}
               onChange={(e) => setAttachUrl(e.target.value)}
@@ -1114,7 +1392,7 @@ export default function MessagingCanister({
                 boxSizing: "border-box",
               }}
             />
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1125,13 +1403,16 @@ export default function MessagingCanister({
                   }
                 }}
                 placeholder={
-                  activeThreadId || recipientId
-                    ? `Message ${activeName}…`
-                    : "Write a message to start a thread…"
+                  magazineDestination
+                    ? `Write for ${destinationLabel(magazineDestination)}… (use PUBLISH — SEND stays private)`
+                    : activeThreadId || recipientId
+                      ? `Message ${activeName}…`
+                      : "Write a message to start a thread…"
                 }
                 rows={2}
                 style={{
                   flex: 1,
+                  minWidth: 160,
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.10)",
                   borderRadius: 10,
@@ -1147,6 +1428,7 @@ export default function MessagingCanister({
                 type="button"
                 onClick={() => void handleSend()}
                 disabled={(!input.trim() && !attachUrl.trim()) || sending}
+                data-testid="messaging-send-private"
                 style={{
                   padding: "8px 16px",
                   fontSize: 9,
@@ -1166,6 +1448,31 @@ export default function MessagingCanister({
               >
                 {sending ? "…" : activeThreadId || recipientId ? "SEND" : "START"}
               </button>
+              {magazinePublishEnabled && magazineDestination ? (
+                <button
+                  type="button"
+                  onClick={handleMagazinePublish}
+                  disabled={!input.trim() || sending}
+                  data-testid="messaging-publish-magazine"
+                  style={{
+                    padding: "8px 12px",
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,215,0,0.55)",
+                    flexShrink: 0,
+                    color: input.trim() && !sending ? "#050510" : "rgba(255,255,255,0.25)",
+                    background:
+                      input.trim() && !sending
+                        ? "linear-gradient(135deg,#FFD700,#FF8A00)"
+                        : "rgba(255,255,255,0.06)",
+                    cursor: input.trim() && !sending ? "pointer" : "default",
+                  }}
+                >
+                  PUBLISH TO {destinationLabel(magazineDestination)}
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -1180,4 +1487,18 @@ export default function MessagingCanister({
       />
     </div>
   );
+}
+
+/** Customer shells use this. The raw canister stays for frozen live-room mounts. */
+export function GatedMessagingCanister(props: MessagingCanisterProps) {
+  if (gpsDestinationState("messages") !== "LIVE") {
+    const item = gpsDestinationById("messages");
+    return (
+      <div data-testid="gated-messages-soon" style={{ padding: 16, fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.12em", color: "#fff" }}>COMING SOON</div>
+        <p style={{ margin: "8px 0 0" }}>{item?.building ?? "We're building member messaging."}</p>
+      </div>
+    );
+  }
+  return <MessagingCanister {...props} />;
 }

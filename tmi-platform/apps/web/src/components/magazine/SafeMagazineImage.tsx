@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 
-const CANONICAL_MAGAZINE_FALLBACK =
-  "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80";
+/** Platform placeholder only — never Unsplash/stock presented as performer photography. */
+const CANONICAL_MAGAZINE_FALLBACK = "/images/tmi-placeholder.jpg";
 
 export interface SafeMagazineImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackSrc?: string;

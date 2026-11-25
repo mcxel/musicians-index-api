@@ -42,6 +42,7 @@ async function fetchRotationPool(): Promise<StreamWinTrackItem[]> {
         audioUrl: string;
       }>;
     };
+    // Order is already participation-weighted by StreamAndWinEngine.getActiveSongs.
     return (data.songs ?? []).map((s) => ({
       id: s.id,
       title: s.title,

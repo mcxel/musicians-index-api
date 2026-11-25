@@ -78,6 +78,17 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
 
   useEffect(() => {
     if (!decision.allowed || !slot || pushed.current) return;
+    // The `pushed` ref only guards against double-push within one mount.
+    // On a remount (Strict Mode dev cycle, route-cache restore, HMR) the ref
+    // resets to false while the physical <ins> (injected via
+    // dangerouslySetInnerHTML below) can already be filled from the prior
+    // mount — pushing again then throws Google's own "already have ads"
+    // error. Check the real DOM node's own fill-status attribute too.
+    const ins = containerRef.current?.querySelector('ins.adsbygoogle');
+    if (ins?.getAttribute('data-adsbygoogle-status')) {
+      pushed.current = true;
+      return;
+    }
     pushed.current = true;
     try {
       type AdsByGoogle = { push: (v: Record<string, unknown>) => void };

@@ -28,6 +28,8 @@ export interface CanonicalQuickToolsStripProps {
   onShare?: () => void;
   onMemory?: () => void;
   screenShareActive?: boolean;
+  /** WORK utility column: wrap tools into a compact grid beside Monitor 1. */
+  layout?: "row" | "work-side";
 }
 
 export default function CanonicalQuickToolsStrip({
@@ -37,7 +39,9 @@ export default function CanonicalQuickToolsStrip({
   onShare,
   onMemory,
   screenShareActive = false,
+  layout = "row",
 }: CanonicalQuickToolsStripProps) {
+  const workSide = layout === "work-side";
   const router = useRouter();
   const hubRoomId = useGoLiveTransition((s) => s.inPlace?.roomId ?? null);
   const isLivePublished = useLivePrivacyState((s) => s.isLivePublished);
@@ -89,15 +93,19 @@ export default function CanonicalQuickToolsStrip({
     <div
       data-canonical-quick-tools-strip
       data-role={role}
+      data-tools-layout={layout}
       style={{
         flexShrink: 0,
-        borderTop: "1px solid rgba(0,255,255,0.12)",
-        background: "rgba(3,3,14,0.92)",
+        borderTop: workSide ? "none" : "1px solid rgba(0,255,255,0.12)",
+        background: workSide ? "transparent" : "rgba(3,3,14,0.92)",
         display: "flex",
+        flexWrap: workSide ? "wrap" : "nowrap",
         gap: 6,
-        overflowX: "auto",
-        padding: "8px 12px",
+        overflowX: workSide ? "visible" : "auto",
+        overflowY: workSide ? "auto" : "visible",
+        padding: workSide ? 10 : "8px 12px",
         scrollbarWidth: "none",
+        alignContent: workSide ? "flex-start" : undefined,
       }}
     >
       {primary
@@ -109,15 +117,26 @@ export default function CanonicalQuickToolsStrip({
 
 const btnStyle = (active: boolean, accent = "#00FFFF"): React.CSSProperties => ({
   flexShrink: 0,
-  padding: "6px 10px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 5,
+  minHeight: 40,
+  padding: "8px 14px",
   borderRadius: 8,
-  background: active ? `${accent}22` : "rgba(255,255,255,0.04)",
-  border: `1px solid ${active ? accent : "rgba(255,255,255,0.12)"}`,
-  color: active ? accent : "rgba(255,255,255,0.88)",
-  fontSize: 9,
+  background: active
+    ? `linear-gradient(180deg, ${accent}55 0%, ${accent}22 55%, #0a0e16 100%)`
+    : "linear-gradient(180deg, #3a4254 0%, #1a1f2c 55%, #0e1218 100%)",
+  border: `1px solid ${active ? accent : "rgba(190,210,235,0.28)"}`,
+  color: active ? "#fff" : "rgba(255,255,255,0.88)",
+  fontSize: 10,
   fontWeight: 900,
-  letterSpacing: "0.06em",
+  letterSpacing: "0.08em",
   cursor: "pointer",
   fontFamily: "inherit",
   whiteSpace: "nowrap",
+  boxShadow: active
+    ? `0 0 12px ${accent}44, inset 0 1px 0 rgba(255,255,255,0.28)`
+    : "inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4)",
+  textTransform: "uppercase",
 });

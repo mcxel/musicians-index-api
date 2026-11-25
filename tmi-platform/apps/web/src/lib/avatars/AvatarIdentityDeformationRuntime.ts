@@ -11,23 +11,29 @@ import {
   type AvatarFaceIdentityProfile,
   type FaceIdentityShapeCoefficients,
   type FeatureConfidenceScores,
-} from "@/lib/avatar/AvatarFaceIdentityContract";
+} from "../avatar/AvatarFaceIdentityContract";
 import {
   composeFacialPresentation,
   type FacialCompositionResult,
   type ArkitWeightMap,
-} from "@/lib/avatars/AvatarFacialComposition";
-import type { AvatarMoodId } from "@/lib/avatars/AvatarMoodPresentation";
-import type { PhonemeGroup } from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
+} from "./AvatarFacialComposition";
+import type { AvatarMoodId } from "./AvatarMoodPresentation";
+import type { PhonemeGroup } from "../avatar/AvatarLipSyncDirectiveEngine";
 import {
   BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY,
   readPersistedFaceIdentityProfile,
   persistFaceIdentityProfile,
-} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+} from "./BobbleheadRuntimeCharacter";
 import { shapeCoefficientsToRigMorph } from "@/lib/engines/runtime/FaceScanIdentityEngine";
+import {
+  DEFAULT_MINI_ME_HEAD_SCALE,
+  buildMiniMePreview,
+} from "@/lib/avatars/MiniMeCreationContracts";
 
 export const CANONICAL_AVATAR_RIG_SLOT = "bobblehead_v0" as const;
 export const CANONICAL_AVATAR_SKELETON_LAW = "SINGLE_26_BONE_ARKIT52_COMPAT" as const;
+/** Mini-Me Creation Center head scale — same contract as FaceIdentityGeometry (not a second skeleton). */
+export const MINI_ME_IDENTITY_HEAD_SCALE = DEFAULT_MINI_ME_HEAD_SCALE;
 
 export type AvatarPresentationDestination =
   | "CREATION_CENTER"
@@ -58,6 +64,18 @@ export type CanonicalAvatarIdentityBinding = {
   persistenceKey: typeof BOBBLEHEAD_FACE_IDENTITY_STORAGE_KEY;
   approved: boolean;
 };
+
+/** Creation Center Mini-Me preview — id_* geometry path; does not invent morph targets. */
+export function miniMeIdentityPreviewFromShape(
+  shape: Partial<FaceIdentityShapeCoefficients>,
+  confidence?: FeatureConfidenceScores | null,
+) {
+  return buildMiniMePreview({
+    shape,
+    confidence,
+    headToBodyScale: DEFAULT_MINI_ME_HEAD_SCALE,
+  });
+}
 
 /** Map identity shape → bounded ARKit morph baseline (does not invent a second face). */
 export function shapeToIdentityMorphWeights(

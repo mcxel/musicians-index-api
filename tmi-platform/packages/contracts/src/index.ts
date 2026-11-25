@@ -56,3 +56,5 @@ export type PromoSlot = {
   creative: PromoCreative;
   impressionKey: string; // telemetry key
 };
+
+export * from "./booking-convergence";

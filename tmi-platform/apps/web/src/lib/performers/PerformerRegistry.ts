@@ -197,6 +197,68 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     articleIds: ['dj-kraze-spotlight'],
   },
   {
+    id: 'ricardo-parker',
+    slug: 'ricardo-parker',
+    name: 'Ricardo Parker',
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29): no ownerId,
+    // hardcoded round-number xp/fanCount/likes — classic placeholder
+    // scaffolding, never a claimed real performer. Excluded from ranking.
+    isSeed: true,
+    profileImageUrl: '/tmi-curated/mag-20.jpg',
+    coverImageUrl: '/tmi-curated/mag-28.jpg',
+    city: 'Atlanta, GA', countryName: 'United States', flag: '🇺🇸',
+    category: 'Hip-Hop', tier: 'Diamond', rank: 4, xp: 88200, lineupType: 'solo',
+    fanCount: 24500, likes: 38900,
+    isLive: false, audienceCount: 0, timeLive: '',
+    roomId: 'room-ricardo-parker',
+    achievementIds: ['diamond-tier', 'cypher-champion', 'top-100'],
+    profileRoute: '/p/ricardo-parker',
+    liveRoomRoute: '/live/rooms/room-ricardo-parker',
+    articleIds: ['ricardo-parker'],
+    bio: 'Formidable cypher anchor and solo hip-hop powerhouse. Known for razor-sharp freestyles and high-voltage Monday Stage residencies.',
+    songs: [
+      {
+        title: 'Monday Stage Cypher',
+        durationSec: 198,
+        audioUrl: '/sounds/magazine/page-turn.mp3',
+        coverUrl: '/tmi-curated/mag-20.jpg',
+      },
+    ],
+  },
+  {
+    id: 'the-night-signals',
+    slug: 'the-night-signals',
+    name: 'The Night Signals',
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29) — see ricardo-parker.
+    isSeed: true,
+    profileImageUrl: '/tmi-curated/mag-20.jpg',
+    coverImageUrl: '/tmi-curated/mag-35.jpg',
+    city: 'Chicago, IL', countryName: 'United States', flag: '🇺🇸',
+    category: 'Indie', tier: 'Platinum', rank: 5, xp: 72100, lineupType: 'band',
+    fanCount: 18450, likes: 29800,
+    isLive: false, audienceCount: 0, timeLive: '',
+    roomId: 'room-the-night-signals',
+    achievementIds: ['platinum-tier', 'top-100'],
+    profileRoute: '/p/the-night-signals',
+    liveRoomRoute: '/live/rooms/room-the-night-signals',
+    articleIds: ['the-night-signals'],
+    bio: 'Atmospheric four-piece indie-synth band from Chicago. Driving basslines, analog synthesizers, and soaring vocal harmonies.',
+    songs: [
+      {
+        title: 'Signal in the Static',
+        durationSec: 234,
+        audioUrl: '/sounds/magazine/pages-turning.mp3',
+        coverUrl: '/tmi-curated/mag-20.jpg',
+      },
+      {
+        title: 'Midnight Transmission',
+        durationSec: 208,
+        audioUrl: '/sounds/magazine/page-turn.mp3',
+        coverUrl: '/tmi-curated/mag-28.jpg',
+      },
+    ],
+  },
+  {
     id: 'bar-god',
     slug: 'bar-god',
     name: 'Bar God vs Nova',
@@ -328,6 +390,8 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'flex-king',
     slug: 'flex-king',
     name: 'Flex King Dance',
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29) — see ricardo-parker.
+    isSeed: true,
     profileImageUrl: '/images/tmi-placeholder.jpg',
     coverImageUrl: '/tmi-curated/mag-35.jpg',
     city: 'Toronto, CA', countryName: 'Canada', flag: '🇨🇦',
@@ -342,9 +406,13 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
   },
   {
     // Magazine Issue 1 performer — "Lyric Stone's Debut Album: Track by Track"
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29): no ownerId,
+    // hardcoded round-number xp/fanCount/likes. The magazine feature itself
+    // stays real/published — only ranking eligibility is affected here.
     id: 'lyric-stone',
     slug: 'lyric-stone',
     name: 'Lyric Stone',
+    isSeed: true,
     profileImageUrl: '/artists/artist-08.jpg',
     coverImageUrl: '/tmi-curated/mag-35.jpg',
     bio: 'R&B/Soul artist and pianist based in Atlanta. Her debut album "Obsidian Water" is a 12-track journey through heartbreak, healing, and hard-won joy.',
@@ -360,9 +428,11 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
   },
   {
     // Magazine Issue 1 performer — "Zuri Bloom Is the Future of Afrobeats"
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29) — see lyric-stone.
     id: 'zuri-bloom',
     slug: 'zuri-bloom',
     name: 'Zuri Bloom',
+    isSeed: true,
     profileImageUrl: '/artists/artist-09.jpg',
     coverImageUrl: '/tmi-curated/mag-50.jpg',
     bio: '24-year-old Afrobeats/Amapiano/Pop artist bridging Lagos and Los Angeles. Her grandmother sang Yoruba lullabies that live in every note she writes.',
@@ -378,9 +448,11 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
   },
   {
     // Magazine Issue 1 performer — "Krypt: No Label, No Limit"
+    // Legacy demo/placeholder content (owner ruling, 2026-10-29) — see lyric-stone.
     id: 'krypt',
     slug: 'krypt',
     name: 'Krypt',
+    isSeed: true,
     profileImageUrl: '/artists/artist-10.jpg',
     coverImageUrl: '/tmi-curated/mag-58.jpg',
     bio: 'Drill rapper who turned down three major label deals to own 100% of his masters. Earns $22,000/month from the platform before a single show.',

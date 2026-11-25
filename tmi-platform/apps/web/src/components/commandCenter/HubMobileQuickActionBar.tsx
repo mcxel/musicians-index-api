@@ -2,22 +2,28 @@
 
 /**
  * HubMobileQuickActionBar — primary mobile grammar (reference: Lobbies phone veiw.mp4).
- * ONE drawer at a time: Messages · Room · People · Community · Lobbies · Cast/Media.
- * Does not replace canonical authorities — routes into MessagingCanister, HubCommunicationsRail,
- * MiniLiveLobbyWallRuntime, and workspace presenters.
+ * Messages · Room · People · Community · Cast/Media.
+ * The 44px GPS trigger lives on the Command Bed header so it stays above the monitors.
  */
 
 import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
-import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
+import {
+  isGpsDrawerVisible,
+  useMobileGpsMonitorLayoutStore,
+} from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 import type { HubCommunicationsTab } from "./HubCommunicationsRail";
 
 export type HubMobileQuickActionId =
+  | "gps"
+  | "oc"
+  | "teleprompter"
   | "messages"
   | "room"
   | "people"
   | "community"
   | "lobbies"
   | "cast"
+  | "promote"
   | "media";
 
 export interface HubMobileQuickActionBarProps {
@@ -29,12 +35,17 @@ export interface HubMobileQuickActionBarProps {
 }
 
 const ACTIONS: { id: HubMobileQuickActionId; label: string; commsTab?: HubCommunicationsTab }[] = [
+  { id: "gps", label: "GPS" },
+  { id: "oc", label: "OC" },
+  { id: "teleprompter", label: "PROMPTER" },
+  // SUBMISSIONS is GPS Rail only — not Command Bed / quick-action strip
   { id: "messages", label: "MESSAGES", commsTab: "messages" },
   { id: "room", label: "ROOM", commsTab: "room" },
   { id: "people", label: "PEOPLE", commsTab: "people" },
   { id: "community", label: "COMMUNITY", commsTab: "community" },
   { id: "lobbies", label: "LOBBIES" },
   { id: "cast", label: "CAST" },
+  { id: "promote", label: "PROMOTE" },
   { id: "media", label: "MEDIA" },
 ];
 
@@ -62,9 +73,29 @@ export default function HubMobileQuickActionBar({
   activeCommsTab = null,
 }: HubMobileQuickActionBarProps) {
   const accent = role === "performer" ? "#FFD700" : "#00FF88";
-  const lobbiesOpen = useCompactQuickPanelStore((s) => s.activePanel === "lobbies");
+  const gpsLayout = useMobileGpsMonitorLayoutStore((s) => s.layout);
+  const railMode = useMobileGpsMonitorLayoutStore((s) => s.railMode);
+  const openRailMode = useMobileGpsMonitorLayoutStore((s) => s.openRailMode);
+  const gpsOpen = isGpsDrawerVisible(gpsLayout) && railMode === "gps";
+  const ocOpen = isGpsDrawerVisible(gpsLayout) && railMode === "oc";
 
   const handleAction = (id: HubMobileQuickActionId, commsTab?: HubCommunicationsTab) => {
+    // GPS + OC share one drawer authority (Shell hub-gps-recall / hub-oc-recall).
+    // Do not route OC to an unrelated workspace drawer — that was a launch P0 dead-path.
+    if (id === "gps") {
+      openRailMode("gps");
+      return;
+    }
+    if (id === "oc") {
+      openRailMode("oc");
+      return;
+    }
+    if (id === "teleprompter") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tmi:open-teleprompter"));
+      }
+      return;
+    }
     if (commsTab) {
       onOpenCommunications(commsTab);
       return;
@@ -79,8 +110,17 @@ export default function HubMobileQuickActionBar({
       }
       return;
     }
+    if (id === "promote") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tmi:hub-promote-toggle"));
+      }
+      return;
+    }
     if (id === "media") {
-      presentCanonicalWorkspace("share-studio", "DRAWER");
+      if (typeof window !== "undefined") {
+        window.location.href = "/media-locker";
+      }
+      return;
     }
   };
 
@@ -88,12 +128,15 @@ export default function HubMobileQuickActionBar({
     <div
       data-hub-mobile-quick-action-bar="1"
       data-shell-role={role}
+      data-gps-open={gpsOpen ? "1" : "0"}
+      data-oc-open={ocOpen ? "1" : "0"}
       style={{
         flexShrink: 0,
         borderTop: `1px solid ${accent}33`,
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         background: "rgba(4,6,14,0.96)",
         padding: "6px 10px",
+        paddingBottom: "max(6px, env(safe-area-inset-bottom))",
       }}
     >
       <div
@@ -106,18 +149,45 @@ export default function HubMobileQuickActionBar({
         }}
       >
         {ACTIONS.map((action) => {
+          if (action.id === "lobbies") return null;
           if (action.id === "cast" && !hasLiveFeed) return null;
           const active =
-            action.id === "lobbies"
-              ? lobbiesOpen
-              : action.commsTab != null && activeCommsTab === action.commsTab;
+            action.id === "gps"
+              ? gpsOpen
+              : action.id === "oc"
+                ? ocOpen
+                : action.commsTab != null && activeCommsTab === action.commsTab;
+          const isGps = action.id === "gps";
+          const isOc = action.id === "oc";
           return (
             <button
               key={action.id}
               type="button"
               data-testid={`hub-mobile-action-${action.id}`}
+              aria-label={
+                isGps ? "Open GPS navigation" : isOc ? "Open Operating Centers" : undefined
+              }
+              aria-pressed={isGps ? gpsOpen : isOc ? ocOpen : undefined}
               onClick={() => handleAction(action.id, action.commsTab)}
-              style={btnStyle(active, accent)}
+              style={{
+                ...btnStyle(active, isGps ? "#00E5FF" : accent),
+                ...(isGps
+                  ? {
+                      flex: "0 0 44px",
+                      width: 44,
+                      height: 44,
+                      minWidth: 44,
+                      minHeight: 44,
+                      padding: 0,
+                      fontSize: 9,
+                      letterSpacing: "0.04em",
+                      border: active
+                        ? "1px solid #00E5FF"
+                        : "1px solid rgba(0,229,255,0.45)",
+                      boxShadow: active ? "0 0 12px rgba(0,229,255,0.35)" : undefined,
+                    }
+                  : {}),
+              }}
             >
               {action.label}
             </button>

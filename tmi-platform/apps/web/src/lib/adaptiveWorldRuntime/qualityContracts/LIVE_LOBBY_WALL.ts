@@ -21,13 +21,24 @@ export const LIVE_LOBBY_WALL_NON_DEGRADABLE_P0 = [
 
 export type LiveLobbyWallPreviewQuality = "off" | "thumb" | "low" | "medium";
 
+/**
+ * Living Lobby Wall: more simultaneous low-bitrate movers on-device.
+ * Full-quality interactive sessions still happen only after room entry.
+ */
 export function maxVisibleLowPreviewsForDevice(tier: DevicePresentationTier): number {
-  if (tier === "low") return 2;
-  if (tier === "medium") return 4;
-  return 6;
+  if (tier === "low") return 6;
+  if (tier === "medium") return 10;
+  return 16;
 }
 
-/** Singleton Daily receive-only bind — matches LobbyPreviewBindRuntime. */
+/**
+ * Focused tile may take the interactive Daily receive bind.
+ * Other visible live tiles keep moving via URL preview / composed-motion —
+ * never freeze to a static LIVE photo.
+ */
 export const LIVE_LOBBY_WALL_MAX_WEBRTC_BINDS = 1;
 
 export const LIVE_LOBBY_WALL_MAX_MEDIUM_QUALITY_TILES = 1;
+
+/** Permanent product law — visible healthy live tiles move continuously. */
+export const LIVE_LOBBY_WALL_VISIBLE_TILES_MUST_MOVE = true;

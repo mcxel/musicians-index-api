@@ -3,9 +3,9 @@
  * schemaVersion is mandatory; old local snapshots migrate via migrateAvatarLook().
  */
 
-import { AVATAR_RIG_VERSION, MOTION_PACKAGE_VERSION } from "@/lib/avatars/AvatarRigSpec";
-import type { AvatarBindingDiagnostic, AvatarGlbSlotId } from "@/lib/avatars/AvatarGlbRegistry";
-import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import { AVATAR_RIG_VERSION, MOTION_PACKAGE_VERSION } from "./AvatarRigSpec";
+import type { AvatarBindingDiagnostic, AvatarGlbSlotId } from "./AvatarGlbRegistry";
+import type { AvatarPreviewAction } from "./AvatarPreviewActions";
 
 export const AVATAR_LOOK_SCHEMA_VERSION = 1 as const;
 
@@ -40,6 +40,16 @@ export type AvatarLook = {
   lastPreviewAction: AvatarPreviewAction;
   certificationSnapshot: AvatarCertificationSnapshot;
   savedAt: string;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  /** Multi-zone material tints when asset exposes named zones (§11638). */
+  zoneTintMap?: Record<string, string>;
+  activePropId?: string;
+  /** Optional weather suitability tags for Venue Quick Fits (§11906). */
+  weatherTags?: Array<"HOT" | "WARM" | "COOL" | "COLD" | "RAIN" | "SNOW">;
+  /** Playable personality style — does not alter facial identity (§11697). */
+  personalityStyle?: string;
 };
 
 export type LegacySavedLookV0 = {

@@ -6,6 +6,7 @@
 
 import {
   calculateLodQuality,
+  getSpatialPanel,
   registerSpatialPanel,
   unregisterSpatialPanel,
   updatePanelTransformWithoutReconnect,
@@ -35,7 +36,8 @@ export const PERFORMER_LOBBY_VIDEO_PRESENCE_LAW = {
   joinCreatesPanel: true,
   leaveRemovesPanelAndUnsubscribes: true,
   nearLargerPanelStrongerVoice: true,
-  farSmallerPanel: true,
+  /** Apparent far-smaller size is camera perspective only — not shared panel.scale. */
+  farSmallerPanel: "camera_perspective_only" as const,
   personalSpaceCollision: true,
   chassisSkinDoesNotRestartWebrtc: true,
   personalMediaRouterLaw: PERSONAL_MEDIA_LAW,
@@ -134,14 +136,19 @@ export function applyPerformerPanelSkin(
   return { streamReconnected: false, panel: result.panel };
 }
 
+/**
+ * Viewer-local proximity only: voice gain + subscription LOD.
+ * Never mutates shared panel.scale — physical dimensions stay world-stable;
+ * apparent size comes from 3D camera perspective, not local viewer distance.
+ */
 export function applyPerformerProximity(
   panelId: string,
   distanceMeters: number,
 ): { scale: number; voiceGain: number; lod: SpatialVideoPanel["lodQuality"]; streamReconnected: false } {
+  const panel = getSpatialPanel(panelId);
   const lod = calculateLodQuality(distanceMeters);
-  const scale = Math.max(0.4, Math.min(1.75, 1.4 - distanceMeters * 0.04));
   const voiceGain = Math.max(0, Math.min(1, 1 - distanceMeters / 16));
-  updatePanelTransformWithoutReconnect(panelId, { scale });
+  const scale = panel?.scale ?? 1;
   return { scale, voiceGain, lod, streamReconnected: false };
 }
 

@@ -8,7 +8,6 @@
  * Never mounts Fan Lobby ownership / Avatar Studio for performers.
  */
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useEffect, useRef, type CSSProperties } from "react";
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
@@ -17,16 +16,19 @@ import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import FanAvatarCanister from "@/components/avatar/FanAvatarCanister";
 import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
 import NotificationCanister from "@/components/canisters/NotificationCanister";
 import QueueCanister from "@/components/canisters/QueueCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { gpsDestinationById, gpsDestinationState } from "@/lib/commandCenter/gpsReleaseAllowlist";
 import SubmissionsCanister from "@/components/canisters/SubmissionsCanister";
 import ScoresCanister from "@/components/canisters/ScoresCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
-import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
 import { defaultRoomAuthority } from "@/lib/lobby/FanLobbyPresence";
+import { presentMyAvatarLobbyInMonitor } from "@/lib/avatars/presentMyAvatarLobbyInMonitor";
+import { useFanAvatarLobbyStore } from "@/lib/avatars/FanAvatarLobbyStore";
 import { animationForDrawerModule } from "@/lib/drawers/UniversalDrawerRegistry";
 import { drawerStateStore, useDrawerState, type AnalyticsPeriod, ANALYTICS_PERIOD_LABELS } from "@/lib/drawers/drawerStateStore";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
@@ -37,6 +39,8 @@ import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazin
 import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
 import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
+import FanTicketsDrawerPanel from "@/components/drawers/FanTicketsDrawerPanel";
+import FanFavoritesDrawerPanel from "@/components/drawers/FanFavoritesDrawerPanel";
 import AchievementCenterDrawer from "@/components/drawers/AchievementCenterDrawer";
 import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCenterDrawer";
 import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
@@ -58,12 +62,6 @@ import { useTheme } from "@/lib/design/ThemeEngine";
 import { resolveFanWorldEntry } from "@/lib/live/canonicalWorldViewport";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
-
-const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
-  ssr: false,
-  loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
-});
-
 
 function SlotLoading({ label }: { label: string }) {
   return (
@@ -262,6 +260,92 @@ function SponsorsStubFan() {
         </Link>
       </div>
     </RoleGate>
+  );
+}
+
+/** WORK drawer for My Avatar Lobby — controls only; world stays in monitor. */
+function MyAvatarLobbyWorkPanel({
+  userId,
+  displayName,
+  roomId,
+}: {
+  userId: string;
+  displayName: string;
+  roomId: string;
+}) {
+  const session = useFanAvatarLobbyStore((s) => s.lobbySessionState);
+  const publication = useFanAvatarLobbyStore((s) => s.publicationState);
+  const activeRoomId = useFanAvatarLobbyStore((s) => s.activeRoomId) ?? roomId;
+
+  useEffect(() => {
+    presentMyAvatarLobbyInMonitor({ userId, displayName, preferredFrame: "a" });
+  }, [userId, displayName]);
+
+  const openOverlay = (overlay: "store" | "inventory") => {
+    window.dispatchEvent(
+      new CustomEvent("tmi:avatar-lobby:open-overlay", { detail: { overlay } }),
+    );
+  };
+
+  return (
+    <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }} data-testid="my-avatar-lobby-work-panel">
+      <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF" }}>
+        MY AVATAR LOBBY · WORK CONTROLS
+      </div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
+        World runs in Monitor A. This drawer does not remount the 3D room.
+        Session: <strong style={{ color: "#FFD700" }}>{session}</strong>
+        {" · "}
+        {publication === "PUBLIC" ? "🔴 LIVE" : "PRIVATE"}
+        {" · "}
+        {activeRoomId}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {(
+          [
+            ["OPEN STORE", () => openOverlay("store")],
+            ["INVENTORY", () => openOverlay("inventory")],
+            [
+              publication === "PUBLIC" ? "STOP LIVE" : "GO LIVE",
+              () => {
+                if (publication === "PUBLIC") useFanAvatarLobbyStore.getState().goPrivate();
+                else void useFanAvatarLobbyStore.getState().goPublic();
+              },
+            ],
+            [
+              "REMOUNT IN MONITOR",
+              () => presentMyAvatarLobbyInMonitor({ userId, displayName, preferredFrame: "a", forcePreferred: true }),
+            ],
+          ] as const
+        ).map(([label, fn]) => (
+          <button
+            key={label}
+            type="button"
+            onClick={fn}
+            style={{
+              background: "rgba(0,255,255,0.08)",
+              border: "1px solid rgba(0,255,255,0.45)",
+              color: "#00FFFF",
+              borderRadius: 6,
+              padding: "8px 12px",
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              cursor: "pointer",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <RoomControlsDrawerPanel
+        userId={userId}
+        roomId={activeRoomId}
+        roomType="FAN_LOBBY"
+        authority={defaultRoomAuthority("FAN_LOBBY", userId)}
+        accentColor="#00FFFF"
+      />
+    </div>
   );
 }
 
@@ -502,14 +586,22 @@ export default function CommandCenterDrawer({
             </div>
           }
         >
-          <div style={{ height: "min(42vh, 460px)", minHeight: 300 }}>
-            <FanLobbyVenue
-              roomId={roomId}
-              userName={displayName}
-              initialSkinId={DEFAULT_FAN_LOBBY_SKIN_ID}
-              roomType="FAN_LOBBY"
-              embedded
-            />
+          {/* WORK drawer controls only — 3D world stays in the media monitor. */}
+          <MyAvatarLobbyWorkPanel userId={userId} displayName={displayName} roomId={roomId} />
+        </RoleGate>
+      ) : null}
+
+      {activePanel === "avatar" && role === "fan" ? (
+        <RoleGate
+          allow={["FAN", "ADMIN", "STAFF"]}
+          fallback={
+            <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+              Avatar Creation Center is Fan-only (Rule 26).
+            </div>
+          }
+        >
+          <div data-avatar-drawer-mount="creation-center-legacy" style={{ width: "100%", minWidth: 0, padding: 8 }}>
+            <FanAvatarCanister userId={userId} displayName={displayName} role="FAN" />
           </div>
         </RoleGate>
       ) : null}
@@ -668,12 +760,12 @@ export default function CommandCenterDrawer({
         </div>
       ) : null}
 
-      {activePanel === "booking" && role === "performer" ? (
+      {activePanel === "booking" ? (
         <div style={{ padding: 12 }} key={`booking-${contextPerformerId ?? userId}`}>
           <BookingCanister
             entityId={contextPerformerId ?? userId}
             entityType="performer"
-            showRequestForm={false}
+            showRequestForm={true}
             accentColor="#00FF88"
           />
         </div>
@@ -759,9 +851,17 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "messaging" ? (
+        gpsDestinationState("messages") !== "LIVE" ? (
+          <div data-testid="drawer-messages-soon" style={{ padding: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.12em", color: "#fff" }}>COMING SOON</div>
+            <p style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+              {gpsDestinationById("messages")?.building}
+            </p>
+          </div>
+        ) : (
         <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.45 }}>
-            Community messaging is always on — start a thread anytime. Threads load from your real inbox.
+            Threads load from your real inbox.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <Link href="/friends" style={toolLink(theme.secondary)}>
@@ -773,6 +873,7 @@ export default function CommandCenterDrawer({
           </div>
           <MessagingCanister height={360} />
         </div>
+        )
       ) : null}
 
       {activePanel === "submissions" ? (
@@ -813,45 +914,17 @@ export default function CommandCenterDrawer({
         </RoleGate>
       ) : null}
 
-      {/* ── Fan-only: Tickets & Orders ────────────────────────────────────── */}
+      {/* ── Fan-only: Tickets & Orders — /api/tickets/mine ─────────────────── */}
       {activePanel === "tickets" && role === "fan" ? (
         <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
-          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#00D4FF" }}>
-              TICKETS & ORDERS
-            </div>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
-              No tickets or orders yet. Tickets purchased from venues and promoters will appear here.
-              Ticket inventory is managed by Venues and Promoters only (Rule 17).
-            </p>
-            <Link href="/fan/tickets" style={toolLink("#00D4FF")}>
-              My Tickets →
-            </Link>
-            <Link href="/events" style={toolLink("rgba(0,212,255,0.6)")}>
-              Browse Events →
-            </Link>
-          </div>
+          <FanTicketsDrawerPanel accentColor="#00D4FF" />
         </RoleGate>
       ) : null}
 
-      {/* ── Fan-only: Favorites ───────────────────────────────────────────── */}
+      {/* ── Fan-only: Favorites — Follow / Fan Them (not likes/playlist) ──── */}
       {activePanel === "favorites" && role === "fan" ? (
         <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
-          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
-              FAVORITES
-            </div>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
-              No favorites saved yet. Tap the heart or bookmark icon on any artist, song, battle, or concert to
-              save it here.
-            </p>
-            <Link href="/fan/favorites" style={toolLink("#FF2DAA")}>
-              View All Favorites →
-            </Link>
-            <Link href="/performers" style={toolLink("rgba(255,45,170,0.6)")}>
-              Discover Artists →
-            </Link>
-          </div>
+          <FanFavoritesDrawerPanel userId={userId} accentColor="#FF2DAA" />
         </RoleGate>
       ) : null}
 

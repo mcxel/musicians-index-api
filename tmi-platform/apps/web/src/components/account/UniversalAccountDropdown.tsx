@@ -13,11 +13,18 @@ import {
   resolveAccountShellCapabilities,
   resolveAccountHubDestination,
 } from "@/lib/account/resolveAccountShellCapabilities";
-import { selfPublicPath } from "@/lib/identity/PublicProfileRuntime";
 import {
   performPersonaSwitch,
   type PersonaSwitchRole,
 } from "@/lib/auth/performPersonaSwitch";
+import {
+  accountProfileTarget,
+  presentCartCount,
+  SHARED_ACCOUNT_BILLING,
+  SHARED_ACCOUNT_CART,
+  SHARED_ACCOUNT_SETTINGS,
+} from "@/lib/account/sharedAccountMenu";
+import { resolveViewMyPage } from "@/lib/identity/PublicProfileRuntime";
 
 export interface UniversalAccountDropdownProps {
   identity: ActiveProfileIdentity;
@@ -59,6 +66,7 @@ const rowStyle: CSSProperties = {
   gap: 8,
 };
 
+
 export default function UniversalAccountDropdown({
   identity,
   open,
@@ -74,11 +82,29 @@ export default function UniversalAccountDropdown({
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [provisioningProfile, setProvisioningProfile] = useState<string | null>(null);
   const [companionOffers, setCompanionOffers] = useState<Record<"FAN" | "PERFORMER", CompanionOffer> | null>(null);
+  const [cartCount, setCartCount] = useState<number | null>(null);
 
   const caps = resolveAccountShellCapabilities({
     ownedRoles: identity.ownedRoles,
     activeRole: identity.activeRole,
   });
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setCartCount(null);
+    fetch("/api/cart", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { authenticated?: boolean; itemCount?: unknown } | null) => {
+        if (active) setCartCount(presentCartCount(body));
+      })
+      .catch(() => {
+        if (active) setCartCount(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -135,10 +161,11 @@ export default function UniversalAccountDropdown({
 
   if (!open) return null;
 
-  const publicPath = selfPublicPath({
-    userId: identity.accountUserId,
+  const profilePath = accountProfileTarget(identity.activeRole);
+  const viewMyPage = resolveViewMyPage({
     role: identity.activeRole,
-    username: identity.publicHandle ?? null,
+    userId: identity.accountUserId,
+    username: identity.publicHandle,
   });
 
   const handleRoleHubClick = async (targetRole: PersonaSwitchRole) => {
@@ -440,7 +467,8 @@ export default function UniversalAccountDropdown({
         </div>
       )}
 
-      {/* Contextual Tier Upgrade Link */}
+      {/* Upgrade pricing CTA suppressed for admin/staff triad authority — governance accounts never receive purchase/upgrade nudges. */}
+      {!caps.isAdmin && (caps.activeModeLabel === "FAN" || caps.activeModeLabel === "PERFORMER") ? (
       <div style={{ padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <Link
           href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"}
@@ -463,23 +491,42 @@ export default function UniversalAccountDropdown({
           {caps.activeModeLabel === "PERFORMER" ? "★ UPGRADE PERFORMER PROFILE" : "★ UPGRADE FAN PROFILE"}
         </Link>
       </div>
+      ) : null}
       <div style={{ padding: "6px 8px" }}>
         {caps.activeModeLabel === "FAN" ? (
           <Link href="/avatar/studio" onClick={onClose} data-testid="tmi-menu-digital-self" style={rowStyle}>
             Digital Self · Avatar
           </Link>
         ) : null}
-        <Link href={publicPath} onClick={onClose} data-testid="tmi-menu-view-profile" style={rowStyle}>
-          View Profile
+        <Link
+          href={viewMyPage.publicPath}
+          onClick={onClose}
+          data-testid="tmi-menu-view-my-page"
+          data-view-my-page={viewMyPage.publicPath}
+          style={rowStyle}
+        >
+          View My Page
+        </Link>
+        <Link href={profilePath} onClick={onClose} data-testid="tmi-menu-profile" data-profile-target={profilePath} style={rowStyle}>
+          Profile
+        </Link>
+        <Link
+          href={SHARED_ACCOUNT_CART}
+          onClick={onClose}
+          data-testid="tmi-menu-cart"
+          data-cart-count={cartCount === null ? "unavailable" : String(cartCount)}
+          style={rowStyle}
+        >
+          {cartCount === null ? "Cart" : `Cart · ${cartCount}`}
+        </Link>
+        <Link href={SHARED_ACCOUNT_BILLING} onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
+          Billing
+        </Link>
+        <Link href={SHARED_ACCOUNT_SETTINGS} onClick={onClose} data-testid="tmi-menu-settings" style={rowStyle}>
+          Settings
         </Link>
         <Link href="/notifications" onClick={onClose} data-testid="tmi-menu-notifications" style={rowStyle}>
           Notifications
-        </Link>
-        <Link href="/settings?section=privacy" onClick={onClose} data-testid="tmi-menu-settings-privacy" style={rowStyle}>
-          ACCOUNT · Settings & Privacy
-        </Link>
-        <Link href={caps.activeModeLabel === "PERFORMER" ? "/pricing?role=performer" : "/pricing?role=fan"} onClick={onClose} data-testid="tmi-menu-billing" style={rowStyle}>
-          Subscription & Billing
         </Link>
         <Link href="/help" onClick={onClose} data-testid="tmi-menu-help" style={rowStyle}>
           Help & Support

@@ -23,13 +23,15 @@ import { setVenueEnergy } from "@/lib/venue/VenueStateEngine";
 import { getSceneDefinition } from "@/lib/venue/VenueToolsRegistry";
 import { applyVenueCurtainCue, type VenueCurtainCueAction } from "@/lib/venue/VenueCurtainDirector";
 import { reportVenueToolsModuleHealth } from "@/lib/venue/VenueToolsHealthRegistry";
+import { isStageEffectAllowedForTier } from "@/lib/venue/VenueProductionTierPolicy";
+import type { UserTier } from "@/lib/auth/UserStore";
 
 export type VenueToolsCommand =
   | { type: "VENUE_LIGHTING_SET"; venueId: string; presetId: string }
   | { type: "VENUE_MOOD_SET"; venueId: string; preset: LightingPreset; lock?: boolean }
   | { type: "VENUE_DIMMER_SET"; venueId: string; level: number }
   | { type: "VENUE_SCENE_APPLY"; venueId: string; sceneId: string }
-  | { type: "VENUE_FX_TRIGGER"; effect: StageEffect; intensity?: number }
+  | { type: "VENUE_FX_TRIGGER"; effect: StageEffect; intensity?: number; performerTier?: UserTier }
   | { type: "VENUE_FX_CLEAR" }
   | { type: "VENUE_CAMERA_SET"; angle: CameraAngle }
   | { type: "VENUE_ENERGY_SET"; venueId: string; level: number }
@@ -91,9 +93,22 @@ export function dispatchVenueToolsCommand(cmd: VenueToolsCommand): VenueToolsCom
         reportVenueToolsModuleHealth("MOOD", "OK", { lastCommand: cmd.type });
         return { ok: true, command: cmd.type };
       }
-      case "VENUE_FX_TRIGGER":
+      case "VENUE_FX_TRIGGER": {
+        // §13186 — when performerTier supplied, enforce TierPermissionEngine custom_stage_effects
+        if (
+          cmd.performerTier != null &&
+          !isStageEffectAllowedForTier(cmd.performerTier, cmd.effect)
+        ) {
+          return {
+            ok: false,
+            command: cmd.type,
+            error: `TIER_EFFECT_DENIED:${cmd.effect}:${cmd.performerTier}`,
+          };
+        }
         triggerEffect(cmd.effect, cmd.intensity ?? 1);
+        reportVenueToolsModuleHealth("FX", "OK", { lastCommand: cmd.type });
         return { ok: true, command: cmd.type };
+      }
       case "VENUE_FX_CLEAR":
         clearEffect();
         return { ok: true, command: cmd.type };
@@ -150,8 +165,15 @@ export function venueApplyScene(venueId: string, sceneId: string): VenueToolsCom
   return dispatchVenueToolsCommand({ type: "VENUE_SCENE_APPLY", venueId, sceneId });
 }
 
-export function venueTriggerFx(effect: StageEffect): VenueToolsCommandResult {
-  return dispatchVenueToolsCommand({ type: "VENUE_FX_TRIGGER", effect });
+export function venueTriggerFx(
+  effect: StageEffect,
+  performerTier?: UserTier,
+): VenueToolsCommandResult {
+  return dispatchVenueToolsCommand({
+    type: "VENUE_FX_TRIGGER",
+    effect,
+    performerTier,
+  });
 }
 
 export function venueSetCamera(angle: CameraAngle): VenueToolsCommandResult {

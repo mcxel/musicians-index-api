@@ -35,11 +35,15 @@ export const COMPETITION_RESTART_SEQUENCE: readonly CompetitionRestartPhase[] = 
 ] as const;
 
 /**
- * Canonical automated event window (UTC instants — not device-local clock).
- * Stagger: hash(roomId) → 15 one-minute slots so rooms do not share one expiry.
+ * Canonical automated event window duration per room instance.
+ * Rule 38: each room owns an independent clock — never a shared global UTC fabric.
  */
 export const COMPETITION_EVENT_WINDOW_MS = 15 * 60 * 1000;
+/** @deprecated Shared stagger fabric retired — kept for call-site compatibility only. */
 export const COMPETITION_STAGGER_SLOTS = 15;
+
+/** Per-room epoch: window 0 starts when the room first asks for a window (or after reset). */
+const roomWindowEpochMs = new Map<string, number>();
 
 export function hashRoomId(roomId: string): number {
   let h = 2166136261;
@@ -50,9 +54,17 @@ export function hashRoomId(roomId: string): number {
   return h >>> 0;
 }
 
-export function competitionStaggerOffsetMs(roomId: string): number {
-  const slotMs = COMPETITION_EVENT_WINDOW_MS / COMPETITION_STAGGER_SLOTS;
-  return (hashRoomId(roomId) % COMPETITION_STAGGER_SLOTS) * slotMs;
+/**
+ * @deprecated No longer used for scheduling. Rooms no longer share staggered global slots.
+ * Returns 0 so legacy callers that add this offset do not invent a shared fabric.
+ */
+export function competitionStaggerOffsetMs(_roomId: string): number {
+  return 0;
+}
+
+/** Start (or restart) this room's independent event clock at nowMs. */
+export function resetRoomCompetitionWindow(roomId: string, nowMs: number = Date.now()): void {
+  roomWindowEpochMs.set(roomId, nowMs);
 }
 
 export type CompetitionEventWindow = {
@@ -63,19 +75,27 @@ export type CompetitionEventWindow = {
   remainingMs: number;
 };
 
+/**
+ * Independent per-room window. Completing/rotating one room never advances another room's index.
+ */
 export function getCompetitionEventWindow(
   roomId: string,
   nowMs: number = Date.now(),
 ): CompetitionEventWindow {
-  const offsetMs = competitionStaggerOffsetMs(roomId);
-  const index = Math.floor((nowMs - offsetMs) / COMPETITION_EVENT_WINDOW_MS);
-  const startMs = index * COMPETITION_EVENT_WINDOW_MS + offsetMs;
+  let epoch = roomWindowEpochMs.get(roomId);
+  if (epoch == null) {
+    epoch = nowMs;
+    roomWindowEpochMs.set(roomId, epoch);
+  }
+  const elapsed = Math.max(0, nowMs - epoch);
+  const index = Math.floor(elapsed / COMPETITION_EVENT_WINDOW_MS);
+  const startMs = epoch + index * COMPETITION_EVENT_WINDOW_MS;
   const endMs = startMs + COMPETITION_EVENT_WINDOW_MS;
   return {
     index,
     startMs,
     endMs,
-    offsetMs,
+    offsetMs: 0,
     remainingMs: Math.max(0, endMs - nowMs),
   };
 }

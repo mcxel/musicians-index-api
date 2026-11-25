@@ -13,6 +13,11 @@
  *   5. Controls without a working command are never rendered.
  */
 
+/**
+ * Experience vocabulary for Venue HUD resolution.
+ * Aliases (MONDAY_NIGHT_STAGE, DIRTY_DOZENS, …) map onto existing
+ * ParticipationRoomKind families — do NOT invent a second HUD per show.
+ */
 export type ExperienceType =
   | "BATTLE"
   | "WORLD_CONCERT"
@@ -23,12 +28,28 @@ export type ExperienceType =
   | "GAME_SHOW"
   | "STREAM_AND_WIN_RADIO"
   | "LOUNGE"
-  | "LISTENING_PARTY";
+  | "LISTENING_PARTY"
+  // §12038–§12081 aliases → same HUD family + ParticipationStateMachine kinds
+  | "MONDAY_NIGHT_STAGE"
+  | "DIRTY_DOZENS"
+  | "DANCE_OFF"
+  | "DEAL_OR_FEUD"
+  | "CIRCLE_SQUARES"
+  | "NAME_THAT_TUNE"
+  | "SONG_CHALLENGE"
+  | "REHEARSAL"
+  | "WORLD_DANCE_PARTY"
+  | "MINI_CONCERT"
+  | "MINI_RELEASE"
+  | "MINI_BATTLE"
+  | "MINI_CYPHER"
+  | "MINI_CHALLENGE"
+  | "MINI_DANCE_PARTY";
 
 export type HudFamily = "VENUE_HUD" | "LOUNGE_HUD";
 
 export function resolveCanonicalHudFamily(experienceType: ExperienceType): HudFamily {
-  if (experienceType === "LOUNGE") {
+  if (experienceType === "LOUNGE" || experienceType === "LISTENING_PARTY") {
     return "LOUNGE_HUD";
   }
   return "VENUE_HUD";
@@ -47,10 +68,36 @@ export type HudPresentationState =
   | "LIVE_DIMMED"
   | "CLEAN_STAGE"
   | "PANEL_OPEN"
+  | "WORK"
   | "INTERMISSION"
   | "ENDING"
   | "ENDED"
   | "ERROR";
+
+/**
+ * Owner Venue-HUD law: the HUD is a RETRACTABLE control system wrapped around a
+ * persistent live world — not a dashboard on top of a video.
+ *   SHOW (LIVE_VISIBLE/CLEAN_STAGE)  ⇄  EDGE PANEL (PANEL_OPEN)  ⇄  WORK (WORK).
+ * Presentation transitions NEVER remount media/world/competition state.
+ */
+export const PRESENTATION_TRANSITION_WORLD_REMOUNT = 0 as const;
+export const HUD_COORDINATE_SPACE = "MONITOR_BOUNDS" as const;
+
+export function resolveHudVisibility(
+  state: HudPresentationState,
+  keepOn: boolean,
+  event: "activity" | "idle" | "recall" | "toggle" | "open-work" | "back-to-show",
+): HudPresentationState {
+  // WORK ⇄ SHOW transitions — presentation only, session/media untouched.
+  if (event === "open-work") return "WORK";
+  if (event === "back-to-show") return "LIVE_VISIBLE";
+  if (state === "WORK") return state; // Work Mode stays put until explicitly closed
+  if (event === "recall") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : state;
+  if (event === "toggle") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : "CLEAN_STAGE";
+  if (keepOn || state === "PRE_LIVE") return state === "CLEAN_STAGE" && keepOn ? "LIVE_VISIBLE" : state;
+  if (event === "activity") return state === "CLEAN_STAGE" ? "LIVE_VISIBLE" : state;
+  return state === "LIVE_VISIBLE" ? "CLEAN_STAGE" : state;
+}
 
 export type BroadcastState =
   | "IDLE"

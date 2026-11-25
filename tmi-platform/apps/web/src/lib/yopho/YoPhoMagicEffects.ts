@@ -10,7 +10,8 @@ export type YoPhoMagicEffectId =
   | "neon_glow"
   | "smoke"
   | "confetti"
-  | "light_leak";
+  | "light_leak"
+  | "particles";
 
 export type YoPhoMagicEffectSlot = "underlay" | "foreground";
 
@@ -72,6 +73,13 @@ export const YOPHO_MAGIC_EFFECTS: YoPhoMagicEffectPreset[] = [
     tagline: "Film edge flare",
     slot: "underlay",
     accent: "#FFD700",
+  },
+  {
+    id: "particles",
+    label: "Particles",
+    tagline: "Fine spark dust",
+    slot: "foreground",
+    accent: "#00FFFF",
   },
 ];
 

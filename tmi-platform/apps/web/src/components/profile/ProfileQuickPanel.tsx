@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { useTmiSession } from "@/hooks/SessionContext";
+import { resolveViewMyPage } from "@/lib/identity/PublicProfileRuntime";
 
 interface ProfileQuickPanelProps {
   /** Current user's id (Fan or Performer) — same identity used everywhere else in the Hub. */
@@ -33,7 +34,7 @@ interface ProfileQuickPanelProps {
   open: boolean;
   onClose: () => void;
   /** Session role — gates Avatar/Inventory (Fan-only, Rule 26) vs Performer actions. */
-  role?: "fan" | "performer";
+  role?: string;
   /** Called when user taps "Avatar" — parent opens avatar canister (Fan only) */
   onOpenAvatar?: () => void;
   /** Called when user taps "Inventory" — parent opens inventory canister (Fan only) */
@@ -50,9 +51,9 @@ interface ProfileQuickPanelProps {
  * always lands you in owner/self-view mode with the real CUSTOMIZE PAGE
  * control from ProfileCustomizer).
  */
-function resolveCanonicalPublicProfilePath(userId: string): string {
-  if (!userId) return "/p/member";
-  return `/p/${userId.startsWith("usr_") ? userId : `usr_${userId.slice(0, 8)}`}`;
+function ownerPublicResolution(userId: string, role?: string) {
+  // Missing role stays MEMBER — never invent FAN over WRITER.
+  return resolveViewMyPage({ role: role || "MEMBER", userId });
 }
 
 const C = {
@@ -89,7 +90,7 @@ export default function ProfileQuickPanel({
 }: ProfileQuickPanelProps) {
   const router = useRouter();
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
-  const { userName } = useTmiSession();
+  const { userName, tier } = useTmiSession();
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Dismiss on Escape key
@@ -136,20 +137,20 @@ export default function ProfileQuickPanel({
   if (!open) return null;
 
   const displayName = userName || fanId || "Fan";
-  const tier = "FREE"; // TODO: wire real tier from session when available
   const initial = displayName.charAt(0).toUpperCase();
+  const shownTier = tier?.trim() ? tier.trim().toUpperCase() : null;
 
   const actions = [
     {
       icon: "✏️",
       label: "Edit Public Profile",
-      sub: role === "performer" ? "EPK, media, bio, layout" : "Customize your page",
+      sub: role?.toLowerCase() === "performer" ? "EPK, media, bio, layout" : "Customize your page",
       // Canonical editor chain: /p/[username] → PerformerPublicPage/FanPublicPage
       // (self-view, isOwner=true) → CUSTOMIZE PAGE → ProfileCustomizer/AiProfileDesignerModal.
       // No parallel editor — this only launches the existing real chain.
-      onClick: () => go(resolveCanonicalPublicProfilePath(fanId)),
+      onClick: () => go(ownerPublicResolution(fanId, role).editorPath),
     },
-    ...(role === "fan"
+    ...(role?.toLowerCase() === "fan"
       ? [
           {
             icon: "🎨",
@@ -280,18 +281,20 @@ export default function ProfileQuickPanel({
             <div style={{ fontSize: 15, fontWeight: 900, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {displayName}
             </div>
-            <div style={{
-              display: "inline-block",
-              marginTop: 3,
-              fontSize: 9, fontWeight: 900,
-              letterSpacing: "0.1em",
-              color: tierColor(tier),
-              border: `1px solid ${tierColor(tier)}`,
-              borderRadius: 4,
-              padding: "2px 7px",
-            }}>
-              {tier}
-            </div>
+            {shownTier ? (
+              <div style={{
+                display: "inline-block",
+                marginTop: 3,
+                fontSize: 9, fontWeight: 900,
+                letterSpacing: "0.1em",
+                color: tierColor(shownTier),
+                border: `1px solid ${tierColor(shownTier)}`,
+                borderRadius: 4,
+                padding: "2px 7px",
+              }}>
+                {shownTier}
+              </div>
+            ) : null}
           </div>
 
           {/* Close button */}
@@ -368,7 +371,7 @@ export default function ProfileQuickPanel({
         </div>
 
         {/* ── Upgrade CTA (if FREE tier) ── */}
-        {tier === "FREE" && (
+        {shownTier === "FREE" && (
           <div style={{ padding: "0 14px 8px" }}>
             <button
               onClick={() => go("/upgrade")}

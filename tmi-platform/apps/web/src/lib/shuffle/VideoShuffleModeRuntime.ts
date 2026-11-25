@@ -21,6 +21,19 @@ export interface ShuffleVideoItem {
   genre: string;
   performerSlug?: string;
   coverUrl?: string;
+  /**
+   * Real canonical Video.id (media-identity trace, 2026-10-29) — set ONLY
+   * for items from fetchApprovedBroadcastPool(), the one pool genuinely
+   * backed by a Prisma Video row (via MediaRegistry.getApprovedForLiveBroadcast()).
+   * Never fabricated for the performer/MediaEngine/venue-ambient pools below,
+   * which are not canonical media rows. `id` itself stays a prefixed/derived
+   * presentation id (e.g. `approved-${v.id}`) for backward-compatible
+   * dedup/display — canonicalMediaId is the field any future receipt
+   * integration must read.
+   */
+  canonicalMediaId?: string;
+  /** Real creatorId (Video.uploaderId) backing canonicalMediaId, when known. */
+  creatorId?: string;
 }
 
 const SHUFFLE_EVENT = "tmi:video-shuffle:state";
@@ -34,7 +47,7 @@ function emitState(state: VideoShuffleState, item?: ShuffleVideoItem | null) {
   );
 }
 
-function buildPerformerPool(): ShuffleVideoItem[] {
+export function buildPerformerPool(): ShuffleVideoItem[] {
   return PERFORMER_REGISTRY.filter((p) => Boolean(p.introVideoUrl || p.motionPosterUrl)).map(
     (p) => ({
       id: `shuffle-${p.slug}`,
@@ -48,7 +61,7 @@ function buildPerformerPool(): ShuffleVideoItem[] {
   );
 }
 
-function buildMediaEnginePool(): ShuffleVideoItem[] {
+export function buildMediaEnginePool(): ShuffleVideoItem[] {
   return MediaEngine.getByType("video").map((m) => ({
     id: `shuffle-media-${m.id}`,
     title: m.title,
@@ -60,7 +73,7 @@ function buildMediaEnginePool(): ShuffleVideoItem[] {
 }
 
 /** Canonical venue ambient loops — always available for QP retest when user uploads are empty. */
-function buildVenueAmbientPool(): ShuffleVideoItem[] {
+export function buildVenueAmbientPool(): ShuffleVideoItem[] {
   const seen = new Set<string>();
   const out: ShuffleVideoItem[] = [];
   for (const type of getAllVenueTypes()) {
@@ -80,29 +93,42 @@ function buildVenueAmbientPool(): ShuffleVideoItem[] {
   return out;
 }
 
+export interface ApprovedBroadcastVideo {
+  id: string;
+  title: string;
+  ownerId: string;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+}
+
+/**
+ * Pure mapping, extracted for direct unit testing (owner's Video Shuffle
+ * media-identity trace, 2026-10-29): `v.id`/`v.ownerId` come straight from
+ * MediaRegistry.getApprovedForLiveBroadcast(), which is a real
+ * prisma.video.findMany() query — see api/media/approved-broadcast/route.ts
+ * and MediaRegistry.ts's mapVideoToMedia(). canonicalMediaId/creatorId
+ * preserve that real identity UNPREFIXED, distinct from the derived/
+ * presentation `id` (`approved-${v.id}`) used for display/dedup.
+ */
+export function mapApprovedVideoToShuffleItem(v: ApprovedBroadcastVideo): ShuffleVideoItem {
+  return {
+    id: `approved-${v.id}`,
+    title: v.title,
+    artist: v.ownerId,
+    videoUrl: v.videoUrl,
+    genre: "Approved",
+    coverUrl: v.thumbnailUrl ?? undefined,
+    canonicalMediaId: v.id,
+    creatorId: v.ownerId,
+  };
+}
+
 async function fetchApprovedBroadcastPool(): Promise<ShuffleVideoItem[]> {
   try {
     const res = await fetch("/api/media/approved-broadcast", { cache: "no-store" });
     if (!res.ok) return [];
-    const data = (await res.json()) as {
-      videos?: Array<{
-        id: string;
-        title: string;
-        ownerId: string;
-        videoUrl: string;
-        thumbnailUrl: string | null;
-      }>;
-    };
-    return (data.videos ?? [])
-      .filter((v) => Boolean(v.videoUrl))
-      .map((v) => ({
-        id: `approved-${v.id}`,
-        title: v.title,
-        artist: v.ownerId,
-        videoUrl: v.videoUrl,
-        genre: "Approved",
-        coverUrl: v.thumbnailUrl ?? undefined,
-      }));
+    const data = (await res.json()) as { videos?: ApprovedBroadcastVideo[] };
+    return (data.videos ?? []).filter((v) => Boolean(v.videoUrl)).map(mapApprovedVideoToShuffleItem);
   } catch {
     return [];
   }
@@ -146,6 +172,11 @@ function castItem(item: ShuffleVideoItem): void {
     coverUrl: item.coverUrl ?? null,
     videoUrl: item.videoUrl,
     targetMonitorId: "mon-a" as const,
+    // Threaded through, never fabricated — undefined for the 3 non-canonical
+    // pools (performer/MediaEngine/venue-ambient); real Video.id/uploaderId
+    // for the approved-broadcast pool. See ShuffleVideoItem/PlaylistCastPayload.
+    canonicalMediaId: item.canonicalMediaId,
+    creatorId: item.creatorId,
   };
   castPlaylistToMonitor(payload);
   publishPlaylistNowPlaying({ ...payload, isPlaying: true });

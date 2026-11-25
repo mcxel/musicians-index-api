@@ -1,6 +1,6 @@
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import { permanentRedirect } from "next/navigation";
-import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 import PerformerCanvasMaster from "@/components/performer/PerformerCanvasMaster";
 import type { PerformerCanvasData } from "@/components/performer/PerformerCanvasMaster";

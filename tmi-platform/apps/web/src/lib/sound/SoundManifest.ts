@@ -35,6 +35,10 @@ export const SOUND_MANIFEST: SoundManifestEntry[] = [
   { id: 'crowd_cheering_1',        file: '/sounds/crowd/crowd-cheering-1.mp3',        category: 'crowd', trigger: 'general cheer variant 1',           volume: 0.6,  loop: false },
   { id: 'crowd_cheers_2',          file: '/sounds/crowd/crowd-cheers-2.mp3',          category: 'crowd', trigger: 'general cheer variant 2',           volume: 0.6,  loop: false },
   { id: 'crowd_disappointment',    file: '/sounds/crowd/crowd-disappointment.mp3',    category: 'crowd', trigger: 'battle/game-show wrong answer or loss', volume: 0.55, loop: false },
+  // Promoted from Sounds Pack (dragon-studio / freesound) — reuse, do not invent replacements (§17753)
+  { id: 'crowd_booing',            file: '/sounds/crowd/crowd-booing.mp3',            category: 'crowd', trigger: 'MNS / audience BOO reaction (aggregate)', volume: 0.6,  loop: false },
+  { id: 'crowd_boo_1',             file: '/sounds/crowd/crowd-boo-1.mp3',             category: 'crowd', trigger: 'individual/small BOO reaction variant 1', volume: 0.55, loop: false },
+  { id: 'crowd_boo_2',             file: '/sounds/crowd/crowd-boo-2.mp3',             category: 'crowd', trigger: 'individual/small BOO reaction variant 2', volume: 0.55, loop: false },
   { id: 'crowd_cheering_stadium',  file: '/sounds/crowd/crowd-cheering-stadium.mp3',  category: 'crowd', trigger: 'performer_enters_stage (concert/arena)', volume: 0.7,  loop: false },
   { id: 'crowd_cheering_2',        file: '/sounds/crowd/crowd-cheering-2.mp3',        category: 'crowd', trigger: 'general cheer variant 3',           volume: 0.6,  loop: false },
 

@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeEngine, THEME_CATALOG, type ThemeTokens } from '@/lib/design/ThemeEngine';
 import { VisualSettingsPanel } from './AmbientVisualizer';
 import { useVisualSettings, type PerformanceQuality } from '@/lib/experience/VisualSettingsStore';
+import PersonalThemeStudioPanel from '@/components/shell/PersonalThemeStudioPanel';
 
 interface ThemeEditorPanelProps {
   accentColor?: string;
@@ -104,6 +105,9 @@ export default function ThemeEditorPanel({ accentColor }: ThemeEditorPanelProps)
       {/* Tab: Themes */}
       {tab === 'themes' && (
         <div>
+          <div style={{ marginBottom: 18, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <PersonalThemeStudioPanel />
+          </div>
           {/* Active theme summary */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 16,

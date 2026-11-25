@@ -68,6 +68,7 @@ export type UniversalWorkspaceId =
   | "sponsors"
   | "notifications"
   | "achievement-center"
+  | "championship-history"
   | "live-destinations"
   | "room-controls"
   | "submissions"
@@ -77,6 +78,9 @@ export type UniversalWorkspaceId =
   | "championship-center"
   | "settings"
   | "bio-magazine"
+  | "notes"
+  | "tickets"
+  | "favorites"
   // Compact quick-HUD variants — route to LEFT_PANEL / RIGHT_PANEL, never DRAWER
   | "avatar-quick"
   | "inventory-quick"

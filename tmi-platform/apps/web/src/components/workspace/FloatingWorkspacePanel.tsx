@@ -1,3 +1,6 @@
+"use client";
+
+import { NotesWorkspace } from "@/components/workspaces/NotesWorkspace";
 /**
  * FloatingWorkspacePanel — Pass 8.x holographic overlay (blueprint North Star).
  *
@@ -6,7 +9,7 @@
  * Open: ~170ms scale 98→100%, fade, slide up 20px. Close: ~150ms reverse. No bounce.
  */
 
-"use client";
+
 
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -329,6 +332,8 @@ function ModuleBody({
           isOwner
         />
       );
+    case "notes":
+      return <NotesWorkspace />;
     default:
       return null;
   }

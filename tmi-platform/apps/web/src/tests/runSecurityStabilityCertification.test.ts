@@ -41,7 +41,7 @@ function run(): { admit: boolean; slices: SliceResult[] } {
   const sliceBDefault: SliceResult = {
     id: "SecurityStability.SliceB.ConciergeDefaultOff",
     pass: includeWorkspacesDefault === false,
-    evidence: "AdminConcierge includeWorkspaces defaults false — partner pills not in normal admin sessions",
+    evidence: "partnerWorkspaceSwitcherAllowed() defaults false — partner pills not in normal admin sessions",
   };
 
   const slices = [sliceA, sliceA403, sliceB, sliceBDefault];
@@ -71,7 +71,7 @@ describe("Security Stability Certification — Slices A+B", () => {
     expect(securityStabilitySliceB_partnerSwitcherOffByDefault()).toBe(true);
   });
 
-  it("Slice B (Default): AdminConcierge includeWorkspaces defaults to false", () => {
+  it("Slice B (Default): partner workspace switcher defaults to false", () => {
     expect(partnerWorkspaceSwitcherAllowed()).toBe(false);
   });
 

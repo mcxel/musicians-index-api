@@ -63,7 +63,9 @@
     "scripts/**/*.ts",
     "tests/**/*.ts",
     ".next/types/**/*.ts",
-    ".next-header-shell-cert/types/**/*.ts"
+    ".next-header-shell-cert/types/**/*.ts",
+    ".next-home3-runtime-check/types/**/*.ts",
+    ".next-props-proof/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -80,6 +82,7 @@
     "events/**",
     "infrastructure/**",
     "runtime/**",
-    "stimulation/**"
+    "stimulation/**",
+    "src/tests/runAntigravityModerationHeartFireAndRecovery.test.ts"
   ]
 }

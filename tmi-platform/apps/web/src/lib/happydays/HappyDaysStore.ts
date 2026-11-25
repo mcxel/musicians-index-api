@@ -7,6 +7,7 @@ import type {
   HappyDaysSubmission,
   HappyDaysMagazineEntry,
   HappyDaysAttribution,
+  HappyDaysDestination,
 } from "./HappyDaysContracts";
 import { logHappyDaysEvent, HAPPY_DAYS_EVENT } from "./HappyDaysObservatoryEvents";
 
@@ -46,7 +47,7 @@ class HappyDaysRegistrySingleton {
     userId: string;
     displayName: string;
     attributionPreference: HappyDaysAttribution;
-    destination: "private" | "friends" | "magazine";
+    destination: HappyDaysDestination;
     attachedTrack?: { title: string; artist: string; id?: string; url?: string };
     attachedMedia?: { type: "yopho" | "image" | "snip"; url: string; id?: string };
   }): HappyDaysSubmission {
@@ -63,8 +64,9 @@ class HappyDaysRegistrySingleton {
       attachedTrack: data.attachedTrack,
       attachedMedia: data.attachedMedia,
       consentStatus: "granted",
-      // Submissions for magazine auto-approved in development/community pool with basic sanity
-      moderationState: data.destination === "magazine" ? "approved" : "pending",
+      // Magazine approval stays on the magazine destination only.
+      // A public-page post is visible to its owner page and never enters the magazine pool.
+      moderationState: data.destination === "magazine" || data.destination === "public_page" ? "approved" : "pending",
       submittedAt: Date.now(),
       publishedAt: data.destination === "magazine" ? Date.now() : undefined,
     };

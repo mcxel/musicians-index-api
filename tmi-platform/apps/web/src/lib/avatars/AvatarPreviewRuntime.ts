@@ -9,12 +9,19 @@
 import {
   bobbleheadRuntimeToRigProps,
   resolveBobbleheadRuntimeCharacter,
-} from "@/lib/avatars/BobbleheadRuntimeCharacter";
+} from "./BobbleheadRuntimeCharacter";
 import {
   DEFAULT_FAN_AVATAR_GLB_SLOT,
   resolveAvatarViewportBinding,
+  resolvePromotedAvatarGlbUrl,
+  type AvatarGlbSlotId,
   type AvatarViewportBinding,
-} from "@/lib/avatars/AvatarGlbRegistry";
+} from "./AvatarGlbRegistry";
+import { getBobbleheadBaseById } from "./BobbleheadBaseRegistry";
+import {
+  resolveFoundryV3GlbUrl,
+  resolveFoundryV3SlotId,
+} from "./AvatarFoundryV3Bases";
 import {
   FACIAL_PREVIEW_ACTIONS,
   MOTION_PACKAGE_PREVIEW_ACTIONS,
@@ -23,16 +30,16 @@ import {
   resolveProductionMotionPath,
   type AvatarFitValidationAction,
   type AvatarPreviewAction,
-} from "@/lib/avatars/AvatarPreviewActions";
-import type { AvatarLook } from "@/lib/avatars/AvatarLook";
-import { defaultMotionPersonality, AVATAR_LOOK_SCHEMA_VERSION } from "@/lib/avatars/AvatarLook";
+} from "./AvatarPreviewActions";
+import type { AvatarLook } from "./AvatarLook";
+import { defaultMotionPersonality, AVATAR_LOOK_SCHEMA_VERSION } from "./AvatarLook";
 import {
   evaluateFoundryWearableCert,
   resolveWearableCapability,
-} from "@/lib/avatars/AvatarWearableCapability";
-import { AVATAR_RIG_VERSION, MOTION_PACKAGE_VERSION } from "@/lib/avatars/AvatarRigSpec";
-import type { AvatarRigProps } from "@/components/3d/AvatarLobbyCanvas";
-import { patchCanonicalAvatarDraft } from "@/lib/avatars/CanonicalAvatarDraft";
+} from "./AvatarWearableCapability";
+import { AVATAR_RIG_VERSION, MOTION_PACKAGE_VERSION } from "./AvatarRigSpec";
+import type { AvatarRigProps } from "../../components/3d/AvatarLobbyCanvas";
+import { patchCanonicalAvatarDraft } from "./CanonicalAvatarDraft";
 
 /** Single ownership marker — tests assert Studio/Quick bind this module family only. */
 export const AVATAR_PREVIEW_RUNTIME_OWNER =
@@ -305,6 +312,10 @@ export type CanonicalAvatarDraftState = {
   environmentId: AvatarPreviewEnvironmentId;
   fidelity: AvatarPreviewFidelity;
   panelTargetId: AvatarPresentationPanelTargetId | null;
+  hairColorHex?: string;
+  eyeColorHex?: string;
+  outfitTintHex?: string;
+  activePropId?: string;
 };
 
 export type JumbotronPresentationPreview = {
@@ -387,14 +398,78 @@ export function resolvePresentationPanelFromDraft(
   };
 }
 
+/**
+ * Map a Bobblehead baseId → AvatarGlbSlotId (Save/Equip + preview share this authority).
+ * Urban Cap → bobblehead_fan_urban; free presentation bases → Foundry v3 slot by gender;
+ * unknown → DEFAULT_FAN_AVATAR_GLB_SLOT. Never invents a slot id.
+ */
+export function resolveAvatarGlbSlotIdForBase(
+  draftBaseId: string | undefined | null,
+): AvatarGlbSlotId {
+  const baseId = draftBaseId && getBobbleheadBaseById(draftBaseId)?.id;
+  if (!baseId) return DEFAULT_FAN_AVATAR_GLB_SLOT;
+  if (baseId === "bh-urban-cap-male") return "bobblehead_fan_urban";
+  const base = getBobbleheadBaseById(baseId);
+  if (base) return resolveFoundryV3SlotId(base.gender);
+  return DEFAULT_FAN_AVATAR_GLB_SLOT;
+}
+
+/**
+ * Prefer Foundry Living Skin v3 promoted GLB when draft.baseId maps to a free presentation base.
+ * Urban Cap keeps its dedicated certified mesh. Legacy bobblehead_v0 remains fail-closed fallback.
+ * Never overwrite a resolved v3 URL with certified bobblehead_v0.
+ */
+function resolvePreviewGlbBinding(
+  draftBaseId: string | undefined,
+  characterBaseId: string,
+): {
+  slotId: string;
+  viewportSlotId: AvatarGlbSlotId;
+  glbUrl: string | undefined;
+  certifiedOnly: boolean;
+} {
+  const baseId =
+    (draftBaseId && getBobbleheadBaseById(draftBaseId)?.id) || characterBaseId;
+  if (baseId === "bh-urban-cap-male") {
+    return {
+      slotId: "bobblehead_fan_urban",
+      viewportSlotId: "bobblehead_fan_urban",
+      glbUrl: "/models/avatars/bobblehead_urban_cap_v1.glb",
+      certifiedOnly: true,
+    };
+  }
+  const base = getBobbleheadBaseById(baseId);
+  if (base) {
+    const slotId = resolveFoundryV3SlotId(base.gender);
+    const glbUrl =
+      resolvePromotedAvatarGlbUrl(slotId) ?? resolveFoundryV3GlbUrl(base.gender);
+    return {
+      slotId,
+      viewportSlotId: slotId,
+      glbUrl: glbUrl ?? undefined,
+      certifiedOnly: false,
+    };
+  }
+  return {
+    slotId: DEFAULT_FAN_AVATAR_GLB_SLOT,
+    viewportSlotId: DEFAULT_FAN_AVATAR_GLB_SLOT,
+    glbUrl: "/models/avatars/bobblehead_v0.glb",
+    certifiedOnly: true,
+  };
+}
+
 export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPreviewResolution {
   const environment = getPreviewEnvironment(draft.environmentId);
   assertLoungeEnvironmentDoesNotEnableAvatarOccupancy(environment);
-  const viewport = resolveAvatarViewportBinding(DEFAULT_FAN_AVATAR_GLB_SLOT);
+  // Living Skin v3 routing: free presentation bases → Foundry v3 GLB (promoted).
+  // Urban Cap keeps its dedicated certified mesh. Legacy bobblehead_v0 remains fallback
+  // only when no promoted/dedicated URL resolves — do not overwrite v3 with v0.
+  const character = resolveBobbleheadRuntimeCharacter(draft.baseId);
+  const previewGlb = resolvePreviewGlbBinding(draft.baseId, character.baseId);
+  const viewport = resolveAvatarViewportBinding(previewGlb.viewportSlotId);
   const motion = dispatchProductionPreviewMotion(draft.previewAction, viewport);
   const actionGate = motion.gate;
   const productionPath = motion.productionPath;
-  const character = resolveBobbleheadRuntimeCharacter(draft.baseId);
   const seated =
     actionGate.allowed && (productionPath === "SIT" || productionPath === "DEEP_SIT");
   const playing =
@@ -404,7 +479,6 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
       productionPath === "DANCE" ||
       productionPath === "DANCE_RANGE_TEST" ||
       productionPath === "WAVE");
-  const bound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
   const fidelity = resolveEffectivePreviewFidelity(draft);
   const rigBase = bobbleheadRuntimeToRigProps(character, {
     isSeated: seated,
@@ -412,14 +486,19 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
     extraAccessoryIds: draft.equippedCosmeticIds,
     skinT: draft.skinT,
   });
-  const rigProps = bound
-    ? {
-        ...rigBase,
-        glbSlotId: viewport.slotId,
-        glbUrl: viewport.glbUrl,
-        certifiedOnly: true as const,
-      }
-    : rigBase;
+  const rigBaseWithTints = {
+    ...rigBase,
+    ...(draft.hairColorHex ? { hairColor: draft.hairColorHex } : {}),
+    ...(draft.eyeColorHex ? { eyeColorHex: draft.eyeColorHex } : {}),
+    ...(draft.outfitTintHex ? { outfitTint: draft.outfitTintHex } : {}),
+    ...(draft.activePropId ? { activePropId: draft.activePropId } : {}),
+  };
+  const rigProps: AvatarRigProps & { bobbleheadRatio: number } = {
+    ...rigBaseWithTints,
+    glbSlotId: previewGlb.slotId as AvatarRigProps["glbSlotId"],
+    glbUrl: previewGlb.glbUrl ?? rigBaseWithTints.glbUrl ?? viewport.glbUrl ?? undefined,
+    certifiedOnly: previewGlb.certifiedOnly,
+  };
   return {
     draft,
     viewport,
@@ -431,7 +510,7 @@ export function resolveAvatarPreview(draft: CanonicalAvatarDraftState): AvatarPr
     presentation: resolvePresentationPanelFromDraft(draft),
     rigProps,
     editorMannequin:
-      (!bound && environment.editorMannequinAllowed) ||
+      (!previewGlb.glbUrl && environment.editorMannequinAllowed) ||
       isGroupCamEditorOnly(draft.panelTargetId),
   };
 }
@@ -552,6 +631,10 @@ export function createAvatarLookFromDraft(
     lastPreviewAction: draft.previewAction,
     certificationSnapshot: certificationSnapshotFromPreview(draft.equippedCosmeticIds),
     savedAt: new Date().toISOString(),
+    hairColorHex: draft.hairColorHex,
+    eyeColorHex: draft.eyeColorHex,
+    outfitTintHex: draft.outfitTintHex,
+    activePropId: draft.activePropId,
   };
 }
 
@@ -568,6 +651,10 @@ export function applyAvatarLookToDraft(
     displayName: look.displayName,
     equippedCosmeticIds: [...look.equippedCosmeticIds],
     previewAction: look.lastPreviewAction,
+    hairColorHex: look.hairColorHex,
+    eyeColorHex: look.eyeColorHex,
+    outfitTintHex: look.outfitTintHex,
+    activePropId: look.activePropId,
   });
 }
 

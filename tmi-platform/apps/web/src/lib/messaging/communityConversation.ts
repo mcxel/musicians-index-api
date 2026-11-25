@@ -12,11 +12,22 @@ const COMMUNITY_KIND = "community";
 export const COMMUNITY_CONVERSATION_ID = "community-platform-wide";
 
 export async function getOrCreateCommunityConversation(): Promise<string> {
-  const conversation = await prisma.conversation.upsert({
-    where: { id: COMMUNITY_CONVERSATION_ID },
-    create: { id: COMMUNITY_CONVERSATION_ID, kind: COMMUNITY_KIND, participantIds: [] },
-    update: {},
-    select: { id: true },
-  });
-  return conversation.id;
+  try {
+    const conversation = await prisma.conversation.upsert({
+      where: { id: COMMUNITY_CONVERSATION_ID },
+      create: { id: COMMUNITY_CONVERSATION_ID, kind: COMMUNITY_KIND, participantIds: [] },
+      update: {},
+      select: { id: true },
+    });
+    return conversation.id;
+  } catch (err) {
+    // Two concurrent first-callers (e.g. the feed's poll GET and a POST landing
+    // at the same moment) can both miss the row and race the CREATE branch of
+    // upsert — Postgres's unique constraint then rejects the loser. The row now
+    // exists either way, so just read it back rather than treating this as fatal.
+    if ((err as { code?: string })?.code === "P2002") {
+      return COMMUNITY_CONVERSATION_ID;
+    }
+    throw err;
+  }
 }

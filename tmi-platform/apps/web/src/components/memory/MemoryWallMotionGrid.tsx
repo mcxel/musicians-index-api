@@ -48,38 +48,52 @@ export default function MemoryWallMotionGrid({
 }: MemoryWallMotionGridProps) {
   const reduceMotion = useReducedMotion();
   const [items, setItems] = useState<CollectibleMemoryRecord[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "empty" | "timeout" | "unauthorized" | "error">("loading");
   const [filter, setFilter] = useState<FilterKind>("ALL");
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoadState("loading");
     try {
       const params = new URLSearchParams({ albums: "0" });
       if (ownerId) params.set("ownerId", ownerId);
       const res = await fetch(`/api/memory/collectibles?${params}`, {
         credentials: "include",
+        signal,
       });
+      if (res.status === 401 || res.status === 403) {
+        setItems([]);
+        setLoadState("unauthorized");
+        return;
+      }
       if (!res.ok) {
         setItems([]);
-        setError(true);
+        setLoadState("error");
         return;
       }
       const data = (await res.json()) as { collectibles?: CollectibleMemoryRecord[] };
-      setItems((data.collectibles ?? []).slice(0, take));
-    } catch {
+      const list = (data.collectibles ?? []).slice(0, take);
+      setItems(list);
+      setLoadState(list.length === 0 ? "empty" : "ready");
+    } catch (err: unknown) {
       setItems([]);
-      setError(true);
-    } finally {
-      setLoading(false);
+      const aborted =
+        signal?.aborted ||
+        (err instanceof DOMException && err.name === "AbortError");
+      setLoadState(aborted ? "timeout" : "error");
     }
   }, [ownerId, take]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+    void load(controller.signal).finally(() => window.clearTimeout(timeoutId));
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [load, retryTick]);
 
   const filtered = useMemo(() => {
     if (!items) return [];
@@ -168,7 +182,7 @@ export default function MemoryWallMotionGrid({
         ))}
       </div>
 
-      {loading && (
+      {loadState === "loading" && (
         <div
           style={{
             textAlign: "center",
@@ -181,7 +195,7 @@ export default function MemoryWallMotionGrid({
         </div>
       )}
 
-      {!loading && error && (
+      {loadState === "unauthorized" && (
         <div
           style={{
             textAlign: "center",
@@ -190,10 +204,23 @@ export default function MemoryWallMotionGrid({
             fontSize: 12,
           }}
         >
-          Unable to load memories.{" "}
+          Sign in to view your Memory Wall.
+        </div>
+      )}
+
+      {(loadState === "timeout" || loadState === "error") && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "36px 16px",
+            color: "rgba(255,255,255,0.4)",
+            fontSize: 12,
+          }}
+        >
+          {loadState === "timeout" ? "Memory request timed out." : "Unable to load memories."}{" "}
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => setRetryTick((n) => n + 1)}
             style={{
               background: "none",
               border: "none",
@@ -208,7 +235,7 @@ export default function MemoryWallMotionGrid({
         </div>
       )}
 
-      {!loading && !error && filtered.length === 0 && (
+      {(loadState === "empty" || loadState === "ready") && filtered.length === 0 && (
         <div
           style={{
             textAlign: "center",
@@ -223,7 +250,7 @@ export default function MemoryWallMotionGrid({
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {loadState === "ready" && filtered.length > 0 && (
         <motion.div
           style={{
             display: "grid",

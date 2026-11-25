@@ -4520,6 +4520,33 @@ model AvatarInventoryItemRecord {
   @@map("avatar_inventory_items")
 }
 
+// Durable backing for avatarPersistence AvatarProfile + AvatarLoadout
+// (globalThis Maps alone do not survive serverless cold starts).
+// Migration 20261123120000_avatar_profile_loadout_durability — additive;
+// PRODUCTION_DB_MUTATIONS gated. Distinct from AvatarSavedLook (named looks).
+model AvatarProfileRecord {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  displayName String   @map("display_name")
+  skinTone    String   @map("skin_tone")
+  hairStyle   String   @map("hair_style")
+  eyeStyle    String   @map("eye_style")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("avatar_profile_records")
+}
+
+model AvatarLoadoutRecord {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  slots     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("avatar_loadout_records")
+}
+
 model BattleScorecard {
   id        String   @id @default(cuid())
   battleId  String   @map("battle_id")
@@ -5051,3 +5078,137 @@ model JukeboxEntry {
   @@index([creatorId])
   @@map("jukebox_entries")
 }
+
+// -- Live challenger queue (Claude 2026-11-18) ----------------------------------
+// Migration 20261118100000_live_challenger_queue — NOT APPLIED, owner approval required.
+// Accessed via raw SQL in lib/live/backstage/ChallengerQueueService.ts (advisory lock per room).
+// The partial unique index "one active entry per room+user" lives only in the migration SQL.
+
+model LiveChallengerQueueEntry {
+  id            String    @id
+  roomId        String    @map("room_id")
+  sessionKey    String    @map("session_key")
+  userId        String    @map("user_id")
+  seq           BigInt
+  status        String
+  ready         Boolean   @default(true)
+  away          Boolean   @default(false)
+  cameraConsent Boolean   @default(false) @map("camera_consent")
+  calledAt      DateTime? @map("called_at") @db.Timestamptz(6)
+  callDeadline  DateTime? @map("call_deadline") @db.Timestamptz(6)
+  endReason     String?   @map("end_reason")
+  turnStartedAt     DateTime? @map("turn_started_at") @db.Timestamptz(6)
+  turnBaselineMs    Int?      @map("turn_baseline_ms")
+  turnExtensionMs   Int       @default(0) @map("turn_extension_ms")
+  extensionsGranted Int       @default(0) @map("extensions_granted")
+  crowdNegativeSince DateTime? @map("crowd_negative_since") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz(6)
+
+  @@unique([roomId, sessionKey, seq], map: "live_challenger_queue_seq_unique")
+  @@index([roomId, sessionKey, status, seq], map: "live_challenger_queue_room_order")
+  @@map("live_challenger_queue_entries")
+}
+
+model LiveChallengerRoundEvent {
+  eventId        String   @id @map("event_id")
+  roomId         String   @map("room_id")
+  source         String
+  outgoingUserId String?  @map("outgoing_user_id")
+  promotedUserId String?  @map("promoted_user_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("live_challenger_round_events")
+}
+
+model LiveDirectorOutcome {
+  id                String   @id
+  roomId            String   @map("room_id")
+  entryId           String   @map("entry_id")
+  userId            String   @map("user_id")
+  policyVersion     String   @map("policy_version")
+  directorMode      String   @map("director_mode")
+  endKind           String   @map("end_kind")
+  technical         Boolean  @default(false)
+  baselineMs        Int?     @map("baseline_ms")
+  actualMs          Int?     @map("actual_ms")
+  extensionsGranted Int      @default(0) @map("extensions_granted")
+  nextWaitMs        Int?     @map("next_wait_ms")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([roomId, createdAt], map: "live_director_outcomes_room")
+  @@map("live_director_outcomes")
+}
+
+model LiveGuestMediaConsent {
+  inviteId      String   @id @map("invite_id")
+  userId        String   @map("user_id")
+  cameraConsent Boolean  @default(false) @map("camera_consent")
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("live_guest_media_consent")
+}
+
+/// cypher_turn_seconds CHECK (30,45,60) lives in the migration SQL.
+model LiveRoomTurnConfig {
+  roomId            String   @map("room_id")
+  sessionKey        String   @map("session_key")
+  cypherTurnSeconds Int      @map("cypher_turn_seconds")
+  setBy             String   @map("set_by")
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([roomId, sessionKey])
+  @@map("live_room_turn_config")
+}
+
+/// polarity CHECK (-1,1) lives in the migration SQL.
+model LiveReactionEvent {
+  id        String   @id
+  roomId    String   @map("room_id")
+  userId    String   @map("user_id")
+  kind      String
+  polarity  Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([roomId, createdAt], map: "live_reaction_events_room_time")
+  @@map("live_reaction_events")
+}
+
+// -- Avatar Saved Looks + Venue Saved Designs (Claude 2026-11-18) --------------
+// Migration 20261118120000_avatar_saved_looks_and_venue_designs — NOT APPLIED, owner approval required.
+// Partial unique indexes (one active look / one published design, case-insensitive names) live in the SQL.
+
+model AvatarSavedLook {
+  id               String    @id
+  ownerUserId      String    @map("owner_user_id")
+  name             String
+  appearance       Json
+  loadout          Json
+  baseAssetId      String    @map("base_asset_id")
+  baseAssetVersion Int       @map("base_asset_version")
+  revision         Int       @default(1)
+  isActive         Boolean   @default(false) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@index([ownerUserId, updatedAt], map: "avatar_saved_looks_owner")
+  @@map("avatar_saved_looks")
+}
+
+model VenueSavedDesign {
+  id               String    @id
+  venueBlueprintId String    @map("venue_blueprint_id")
+  ownerUserId      String    @map("owner_user_id")
+  name             String
+  design           Json
+  revision         Int       @default(1)
+  isPublished      Boolean   @default(false) @map("is_published")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@map("venue_saved_designs")
+}
+

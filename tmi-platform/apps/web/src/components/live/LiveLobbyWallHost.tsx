@@ -8,29 +8,40 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import RoleGate from "@/components/auth/RoleGate";
 import LiveLobbyWallGrid, { type LobbyRoom } from "@/components/live/LiveLobbyWallGrid";
-import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
+
+const LobbyEntryFlow = dynamic(
+  () =>
+    import("@/components/room/UniversalLobbyEntry").then((m) => m.LobbyEntryFlow),
+  { ssr: false },
+);
 import { discoveryToLobbyRoom } from "@/lib/discovery/discoveryToLobbyRoom";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveLobbyDestination } from "@/lib/lobby/DestinationResolver";
 import {
-  LOBBY_WALL_CORE_CATEGORY_TABS,
-  advanceLobbyWallCategory,
+  LOBBY_WALL_CHANNEL_TABS,
+  advanceLobbyWallChannel,
   attachLobbyBoostFlags,
   canSearchFanAvatarLobbies,
   filterDiscoveryByWallCategory,
   filterFanAvatarLobbySearch,
+  filterWdpDiscoveryBySubtype,
   sortLobbyTilesByViewRank,
   type LobbyWallCoreCategoryId,
+  type WdpDiscoverySubtype,
 } from "@/lib/lobby/liveLobbyWallLaw";
 import { resolveParticipationEntry } from "@/lib/live/ParticipationStateMachine";
 import type { ShowsReleasePublicCard } from "@/lib/events/ScheduledEventRegistry";
 import { getWorldDancePartySchedule, getSlowJamsSchedule } from "@/lib/events/ScheduledEventRegistry";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { SLOW_JAM_MOTION } from "@/lib/live/ExperiencePersonality";
+import WdpChannelSubfilterRail from "@/components/lobby/WdpChannelSubfilterRail";
+
+const WDP_SUBTYPE_STORAGE_KEY = "tmi.lobbyWall.wdpSubtype.v1";
 
 function catalogCardToLobbyRoom(card: ShowsReleasePublicCard): LobbyRoom {
   return {
@@ -73,7 +84,7 @@ export default function LiveLobbyWallHost({
   viewerUserId = null,
   viewerRole: viewerRoleProp,
   onRoomJoin,
-  defaultCategory = "challenges",
+  defaultCategory = "all",
   showFanLobbySearch = true,
   enableMobileRoam = true,
 }: LiveLobbyWallHostProps) {
@@ -82,13 +93,29 @@ export default function LiveLobbyWallHost({
   const records = useDiscoveryBus(viewerUserId);
 
   const [activeCategory, setActiveCategory] = useState<LobbyWallCoreCategoryId>(defaultCategory);
+  const [wdpSubtype, setWdpSubtype] = useState<WdpDiscoverySubtype>("all_wdp");
   const [fanSearchQuery, setFanSearchQuery] = useState("");
   const [joinDecision, setJoinDecision] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(WDP_SUBTYPE_STORAGE_KEY);
+      if (
+        saved === "all_wdp" ||
+        saved === "mini" ||
+        saved === "world" ||
+        saved === "automated"
+      ) {
+        setWdpSubtype(saved);
+      }
+    } catch {
+      // Subfilter persistence is optional.
+    }
+  }, []);
   const [showCatalog, setShowCatalog] = useState<ShowsReleasePublicCard[]>([]);
   const [boostMap, setBoostMap] = useState<Map<string, { expiresAtMs: number; kind: "lobby_wall" | "wdp_submission" }>>(
     () => new Map(),
   );
-
   useEffect(() => {
     let cancelled = false;
     const loadBoosts = async () => {
@@ -132,10 +159,13 @@ export default function LiveLobbyWallHost({
     };
   }, [activeCategory]);
 
-  const categoryRecords = useMemo(
-    () => filterDiscoveryByWallCategory(records, activeCategory),
-    [records, activeCategory],
-  );
+  const categoryRecords = useMemo(() => {
+    const wallFiltered = filterDiscoveryByWallCategory(records, activeCategory);
+    if (activeCategory === "world_dance_party") {
+      return filterWdpDiscoveryBySubtype(wallFiltered, wdpSubtype);
+    }
+    return wallFiltered;
+  }, [records, activeCategory, wdpSubtype]);
 
   const fanSearchResults = useMemo(() => {
     if (!showFanLobbySearch || !canSearchFanAvatarLobbies(viewerRole)) return [];
@@ -157,19 +187,27 @@ export default function LiveLobbyWallHost({
       base = [...liveRooms, ...catalogRooms];
     } else {
       const mapped = displayRecords.map(discoveryToLobbyRoom);
-      if (activeCategory === "world_dance_party" && fanSearchResults.length === 0) {
+      if (
+        activeCategory === "world_dance_party" &&
+        fanSearchResults.length === 0 &&
+        (wdpSubtype === "all_wdp" || wdpSubtype === "automated")
+      ) {
         const wdp = getWorldDancePartySchedule();
+        // Scheduled/offline automated WDP stays discoverable but never fakes LIVE.
         const pinned: LobbyRoom = {
           id: "world-dance-party",
-          name: wdp.phase === "LIVE" ? "🌍 WORLD Dance Party" : "🌍 WORLD Dance Party — Friday",
+          name: wdp.phase === "LIVE" ? "🌍 AUTOMATED World Dance Party" : "🌍 AUTOMATED WDP — Friday",
           performerName: "DJ Record Ralph",
           hostUserId: "record-ralph",
           type: "dance",
           href: "/rooms/world-dance-party",
           viewerCount: 0,
           status: wdp.phase === "LIVE" ? "live" : wdp.phase === "SUBMIT_OPEN" ? "starting" : "recruiting",
-          genre: "Official · All-day Friday ET",
-          overlayLine: `🌍 WORLD · ${wdp.label}`,
+          genre: "TMI system-hosted · All-day Friday ET",
+          overlayLine:
+            wdp.phase === "LIVE"
+              ? `🌍 AUTOMATED · LIVE · ${wdp.label}`
+              : `🌍 AUTOMATED · ${wdp.label}`,
         };
         base = mapped.some((r) => r.id === pinned.id) ? mapped : [pinned, ...mapped];
       } else if (activeCategory === "lounges" && fanSearchResults.length === 0) {
@@ -207,7 +245,7 @@ export default function LiveLobbyWallHost({
       }
     }
     return sortLobbyTilesByViewRank(attachLobbyBoostFlags(base, boostMap));
-  }, [activeCategory, displayRecords, showCatalog, fanSearchResults.length, boostMap]);
+  }, [activeCategory, displayRecords, showCatalog, fanSearchResults.length, boostMap, wdpSubtype]);
 
   const handleRoomJoin = useCallback(
     (room: LobbyRoom) => {
@@ -310,7 +348,7 @@ export default function LiveLobbyWallHost({
   );
 
   const advanceCategory = useCallback((direction: "next" | "prev") => {
-    setActiveCategory((cur) => advanceLobbyWallCategory(cur, direction));
+    setActiveCategory((cur) => advanceLobbyWallChannel(cur, direction));
     setFanSearchQuery("");
   }, []);
 
@@ -319,7 +357,7 @@ export default function LiveLobbyWallHost({
   const categoryPills = fanSearchActive
     ? undefined
     : {
-        items: [...LOBBY_WALL_CORE_CATEGORY_TABS],
+        items: [...LOBBY_WALL_CHANNEL_TABS],
         activeId: activeCategory,
         onSelect: (id: string) => setActiveCategory(id as LobbyWallCoreCategoryId),
         onAdvance: advanceCategory,
@@ -331,8 +369,17 @@ export default function LiveLobbyWallHost({
       : activeCategory === "shows_and_releases"
         ? "Shows & Releases"
         : activeCategory === "world_dance_party"
-          ? "Dance Party Wall"
+          ? "WDP · WORLD DANCE PARTY"
           : title;
+
+  function selectWdpSubtype(subtype: WdpDiscoverySubtype) {
+    try {
+      sessionStorage.setItem(WDP_SUBTYPE_STORAGE_KEY, subtype);
+    } catch {
+      // Optional persistence.
+    }
+    setWdpSubtype(subtype);
+  }
 
   return (
     <>
@@ -383,26 +430,25 @@ export default function LiveLobbyWallHost({
       )}
 
       {activeCategory === "world_dance_party" && !fanSearchActive && (
-        <div style={{
-          display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
-          padding: variant === "quick" ? "0 4px 8px" : "0 0 10px",
-          borderBottom: "1px solid rgba(0,255,136,0.18)",
-          marginBottom: 10,
-        }}>
-          <span style={{
-            fontSize: 10, fontWeight: 900, letterSpacing: "0.08em",
-            color: "#00FF88", display: "flex", alignItems: "center", gap: 5,
+        <div
+          data-testid="lobby-wall-wdp-channel"
+          style={{
+            padding: variant === "quick" ? "0 4px 8px" : "0 0 10px",
+            borderBottom: "1px solid rgba(0,255,136,0.18)",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{
+            fontSize: 9, fontWeight: 900, letterSpacing: "0.1em",
+            color: "#00FF88", marginBottom: 6,
           }}>
-            🌍 <span>WORLD</span>
-            <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>Official · DJ Record Ralph · Every Friday</span>
-          </span>
-          <span style={{
-            fontSize: 10, fontWeight: 900, letterSpacing: "0.08em",
-            color: "#00FFFF", display: "flex", alignItems: "center", gap: 5,
-          }}>
-            ⭐ <span>MINI</span>
-            <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>User-created · Gold DJ+ · Start instantly</span>
-          </span>
+            WDP · ONE CHANNEL · MINI · WORLD · AUTOMATED
+          </div>
+          <WdpChannelSubfilterRail
+            activeSubtype={wdpSubtype}
+            onSelect={selectWdpSubtype}
+            compact={variant === "quick"}
+          />
         </div>
       )}
 

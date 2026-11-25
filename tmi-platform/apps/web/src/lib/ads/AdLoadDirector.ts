@@ -9,6 +9,8 @@ import {
   getAdSensePublisherId,
   getAdSenseSlotId,
   hasAnyAdSenseSlotConfigured,
+  isCertifiedCmpEnabled,
+  requireCertifiedCmpForBillableAds,
 } from "@/lib/ads/adConfig";
 import { resolveAdRailSlot } from "@/lib/ads/AdRailEngine";
 import { resolveRouteAdEligibility } from "@/lib/ads/RouteAdEligibilityResolver";
@@ -25,6 +27,8 @@ export type AdLoadDecision = {
   slotId: string;
   routeEligible: boolean;
   entitlement: ReturnType<typeof resolveAdEntitlement>;
+  /** Rule 20: fabricated AdConsentBanner __tcfapi stub is never "certified" */
+  certifiedCmp: boolean;
 };
 
 const NON_HUMAN_UA =
@@ -71,6 +75,7 @@ export function decideAdSenseLoad(input: {
 }): AdLoadDecision {
   const publisherId = getAdSensePublisherId();
   const slotId = input.slotKey ? getAdSenseSlotId(input.slotKey) : "";
+  const certifiedCmp = isCertifiedCmpEnabled();
   const route = resolveRouteAdEligibility(input.pathname);
   const entitlement = resolveAdEntitlement({
     pathname: input.pathname,
@@ -80,72 +85,57 @@ export function decideAdSenseLoad(input: {
     isLiveRoom: input.isLiveRoom ?? (!route.eligible && route.category === "PRIVATE_ROOM"),
   });
 
+  const deny = (reason: string, routeEligible = route.eligible): AdLoadDecision => ({
+    allowed: false,
+    reason,
+    publisherId,
+    slotId,
+    routeEligible,
+    entitlement,
+    certifiedCmp,
+  });
+
   const nonHuman =
     input.nonHuman === true ||
     (typeof window !== "undefined" && detectNonHumanClientTraffic());
 
   if (nonHuman || input.billableAds === false) {
-    return {
-      allowed: false,
-      reason: "nonHuman/billableAds=false — bots never generate billable AdSense traffic",
-      publisherId,
-      slotId,
-      routeEligible: route.eligible,
-      entitlement,
-    };
+    return deny("nonHuman/billableAds=false — bots never generate billable AdSense traffic");
+  }
+
+  // Fabricated TCF stub must never authorize billable EU/TCF monetization.
+  if (requireCertifiedCmpForBillableAds() && !certifiedCmp) {
+    return deny(
+      "Fabricated TCF stub — billable AdSense blocked until certified CMP (NEXT_PUBLIC_TMI_CERTIFIED_CMP=1)",
+    );
   }
 
   if (!hasAnyAdSenseSlotConfigured() && !slotId) {
-    return {
-      allowed: false,
-      reason: "No real AdSense slot IDs configured in ENV",
-      publisherId,
-      slotId,
-      routeEligible: route.eligible,
-      entitlement,
-    };
+    return deny("No real AdSense slot IDs configured in ENV");
   }
 
   if (!route.eligible) {
-    return {
-      allowed: false,
-      reason: route.reason,
-      publisherId,
-      slotId,
-      routeEligible: false,
-      entitlement,
-    };
+    return deny(route.reason, false);
   }
 
   if (!input.hasConsent) {
-    return {
-      allowed: false,
-      reason: "Ad consent not accepted",
-      publisherId,
-      slotId,
-      routeEligible: route.eligible,
-      entitlement,
-    };
+    return deny("Ad consent not accepted");
   }
 
   if (!isAdSenseAllowed(entitlement, input.hasConsent)) {
-    return {
-      allowed: false,
-      reason: `Entitlement ${entitlement} blocks AdSense`,
-      publisherId,
-      slotId,
-      routeEligible: route.eligible,
-      entitlement,
-    };
+    return deny(`Entitlement ${entitlement} blocks AdSense`);
   }
 
   return {
     allowed: true,
-    reason: "Route eligible + consent + entitlement allow AdSense unit",
+    reason: certifiedCmp
+      ? "Route eligible + consent + entitlement + certified CMP allow AdSense unit"
+      : "Route eligible + consent + entitlement allow AdSense unit (TCF stub not certified — ops gate)",
     publisherId,
     slotId,
     routeEligible: true,
     entitlement,
+    certifiedCmp,
   };
 }
 

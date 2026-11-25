@@ -68,6 +68,10 @@ export type XpActionKey =
   | 'intermission_cosmetic_equipped'
   | 'intermission_profile_viewed'
   | 'intermission_watched_full'
+  // ── Venue weather awareness (§11904) — once per transition, anti-farm ─────
+  | 'venue_weather_hot_adjust'
+  | 'venue_weather_rain_adjust'
+  | 'venue_weather_snow_adjust'
   // ── Playlist lounge listening (engagement lane — fans earn more) ───────────
   | 'listen_in_playlist_lounge_fan'
   | 'listen_in_playlist_lounge_performer'
@@ -156,6 +160,11 @@ export const XP_ACTIONS: XpAction[] = [
   { key: 'intermission_cosmetic_equipped', label: 'Equip cosmetic during break',   xp: 2,    category: 'social',      repeatable: true,  cooldownHours: 0 },
   { key: 'intermission_profile_viewed',    label: 'View profile during break',     xp: 1,    category: 'social',      repeatable: true,  cooldownHours: 0 },
   { key: 'intermission_watched_full',      label: 'Watch full intermission',       xp: 5,    category: 'consumption', repeatable: true,  cooldownHours: 0 },
+
+  // Venue weather Fit reaction — repeatable across events, but consumers must gate per transitionId (§11904)
+  { key: 'venue_weather_hot_adjust',  label: 'Adjust outfit for heat',  xp: 2, category: 'platform', repeatable: true, cooldownHours: 0.25 },
+  { key: 'venue_weather_rain_adjust', label: 'Adjust outfit for rain',  xp: 2, category: 'platform', repeatable: true, cooldownHours: 0.25 },
+  { key: 'venue_weather_snow_adjust', label: 'Adjust outfit for snow',  xp: 3, category: 'platform', repeatable: true, cooldownHours: 0.25 },
 
   // ── Playlist lounge listening (Rule 24 engagement lane — fan > performer) ──
   { key: 'listen_in_playlist_lounge_fan',       label: 'Listen in playlist lounge (fan)',       xp: 15, category: 'consumption', repeatable: true, cooldownHours: 0.5 },

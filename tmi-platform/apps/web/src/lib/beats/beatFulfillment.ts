@@ -5,13 +5,15 @@
 
 import { prisma } from "@/lib/prisma";
 import {
+  CREATOR_COMMERCE_PLATFORM_FEE_BPS,
   calculateRevenueSplitByPreset,
   creatorCommerceSplitConfig,
   describeCreatorCommerceFee,
   normalizeCommerceTier,
 } from "@/lib/commerce/RevenueSplitEngine";
+import { commitEconomicCreditTx, prismaUniqueText } from "@/lib/commerce/economicPaymentLedger";
 import { resolveSellerCommerceTier } from "@/lib/commerce/resolveSellerTier";
-import { claimBeatSlot } from "@/lib/beats/BeatInventoryEngine";
+import { claimBeatSlot } from "@/lib/beats/BeatInventoryCore";
 import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
 
 export const BEAT_SPLIT_PRESET = "beat" as const;
@@ -59,6 +61,9 @@ export async function grantBeatFromStripeSession(params: {
   licenseType: string;
   amountCents: number;
   auctionId?: string | null;
+  livemode: boolean;
+  stripeEventId?: string | null;
+  paymentIntentId?: string | null;
 }): Promise<{ licenseId: string; reused: boolean; producerCents: number; platformCents: number }> {
   const existing = await prisma.beatLicense.findFirst({
     where: { stripeId: params.stripeSessionId },
@@ -89,61 +94,86 @@ export async function grantBeatFromStripeSession(params: {
     sellerTier,
   );
 
-  const license = await prisma.beatLicense.create({
-    data: {
-      beatId: params.beatId,
-      buyerId,
-      type: params.licenseType,
-      price: params.amountCents,
-      stripeId: params.stripeSessionId,
-    },
-  });
-
-  // Producer credit = artist share only (platform withheld; big_ace = 0 on creator commerce)
-  if (beat.producerId) {
-    await prisma.ledgerEntry
-      .create({
+  let licenseId = "";
+  try {
+    licenseId = await prisma.$transaction(async (tx) => {
+      if (beat.producerId && producerCents > 0) {
+        await commitEconomicCreditTx(tx, {
+          checkoutSessionId: params.stripeSessionId,
+          transactionType: "BEAT",
+          livemode: params.livemode,
+          userId: beat.producerId,
+          bucket: "AVAILABLE",
+          status: "CREDITED",
+          priceCents: params.amountCents,
+          grossCents: params.amountCents,
+          platformFeeBps: CREATOR_COMMERCE_PLATFORM_FEE_BPS[tier],
+          platformFeeCents: platformCents,
+          performerShareCents: producerCents,
+          sellerTier: tier,
+          paymentIntentId: params.paymentIntentId ?? null,
+          productId: params.beatId,
+          committingEventId: params.stripeEventId ?? null,
+        });
+      }
+      const license = await tx.beatLicense.create({
         data: {
-          userId: beat.producerId,
-          type: "CREDIT",
-          amount: producerCents,
-          description: `Beat license sold: ${beat.title} (${params.licenseType}) · ${describeBeatFeeSplit(tier)} · producer ${producerCents}¢ / TMI fee ${platformCents}¢ (big_ace ${bigAceCents}¢)`,
-          relatedId: params.stripeSessionId,
+          beatId: params.beatId,
+          buyerId,
+          type: params.licenseType,
+          price: params.amountCents,
+          stripeId: params.stripeSessionId,
         },
-      })
-      .catch(() => {});
-
-    const wallet = await prisma.wallet
-      .upsert({
-        where: { userId: beat.producerId },
-        create: {
-          userId: beat.producerId,
-          availableBalance: producerCents,
-          pendingBalance: 0,
-          lifetimeEarnings: producerCents,
-        },
-        update: {
-          availableBalance: { increment: producerCents },
-          lifetimeEarnings: { increment: producerCents },
-        },
-      })
-      .catch(() => null);
-
-    if (wallet) {
-      await prisma.walletTransaction
-        .create({
-          data: {
-            walletId: wallet.id,
-            amount: params.amountCents,
-            netAmount: producerCents,
-            category: "CREDIT_BEAT_SALE",
-            referenceId: params.stripeSessionId,
-            direction: "credit",
-            status: "COMPLETED",
-          },
-        })
-        .catch(() => {});
+      });
+      if (params.livemode && beat.producerId && producerCents > 0) {
+        const wallet = await tx.wallet.findUnique({
+          where: { userId: beat.producerId },
+          select: { id: true },
+        });
+        if (wallet) {
+          await tx.ledgerEntry.create({
+            data: {
+              userId: beat.producerId,
+              type: "CREDIT",
+              amount: producerCents,
+              description: `Beat license sold: ${beat.title} (${params.licenseType}) · ${describeBeatFeeSplit(tier)} · producer ${producerCents}¢ / TMI fee ${platformCents}¢ (big_ace ${bigAceCents}¢)`,
+              relatedId: params.stripeSessionId,
+            },
+          });
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: params.amountCents,
+              netAmount: producerCents,
+              category: "CREDIT_BEAT_SALE",
+              referenceId: params.stripeSessionId,
+              direction: "credit",
+              status: "COMPLETED",
+              livemode: true,
+            },
+          });
+        }
+      }
+      return license.id;
+    });
+  } catch (err) {
+    const targetText = prismaUniqueText(err);
+    if ((err as { code?: string })?.code === "P2002" && targetText.includes("economic")) {
+      const raced = await prisma.beatLicense.findFirst({
+        where: { stripeId: params.stripeSessionId },
+        select: { id: true, price: true },
+      });
+      if (raced) {
+        const replay = splitBeatSaleCents(raced.price);
+        return {
+          licenseId: raced.id,
+          reused: true,
+          producerCents: replay.producerCents,
+          platformCents: replay.platformCents,
+        };
+      }
     }
+    throw err;
   }
 
   const normalized = params.licenseType.toLowerCase().replace(/-/g, "_");
@@ -167,7 +197,7 @@ export async function grantBeatFromStripeSession(params: {
   recordStripeEvent("webhook_verified", {
     fingerprint: params.stripeSessionId,
     eventType: "checkout.session.completed",
-    livemode: true,
+    livemode: params.livemode,
     revenueStream: "beats",
     amountCents: params.amountCents,
     currency: "usd",
@@ -183,7 +213,7 @@ export async function grantBeatFromStripeSession(params: {
   void split;
 
   // Instant payout on cleared Stripe beat sale — honest pending if Connect incomplete
-  if (beat.producerId) {
+  if (params.livemode && beat.producerId) {
     const { queueInstantPayout } = await import("@/lib/commerce/InstantPayoutEngine");
     await queueInstantPayout({
       userId: beat.producerId,
@@ -198,7 +228,7 @@ export async function grantBeatFromStripeSession(params: {
   }
 
   return {
-    licenseId: license.id,
+    licenseId,
     reused: false,
     producerCents,
     platformCents,

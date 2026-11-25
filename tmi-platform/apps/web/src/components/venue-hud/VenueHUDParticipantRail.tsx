@@ -10,11 +10,7 @@
  *   Portrait diameter: 38–42 px
  *   Vertical pitch:    44–47 px
  *
- * Normalized:
- *   right:  4.1%
- *   top:    25.7%
- *   height: 61.8%
- *   width:  4.3%
+ * §20990 flush RIGHT edge of MONITOR_BOUNDS (safe-area aware).
  *
  * Rules:
  *   - No fake participants (Rule 20)
@@ -28,6 +24,7 @@
  */
 
 import { motion } from "framer-motion";
+import { MONITOR_EDGE_FLUSH } from "@/lib/venue-hud/VenueHudSpatialCanon";
 
 export interface PresenceParticipant {
   id: string;
@@ -63,12 +60,14 @@ export default function VenueHUDParticipantRail({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 12 }}
       transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: 0.06 }}
+      data-testid="venue-hud-right-edge"
+      data-dock-edge="RIGHT"
       style={{
         position: "absolute",
-        right: "4.1%",
-        top: "25.7%",
-        width: 46,
-        maxHeight: "61.8%",
+        right: MONITOR_EDGE_FLUSH.right,
+        top: `calc(${MONITOR_EDGE_FLUSH.topBarHeightPx}px + ${MONITOR_EDGE_FLUSH.top} + 8px)`,
+        bottom: `calc(${MONITOR_EDGE_FLUSH.bottomDockMinPx}px + ${MONITOR_EDGE_FLUSH.bottom} + 8px)`,
+        width: MONITOR_EDGE_FLUSH.railWidthPx,
         overflowY: "auto",
         overflowX: "hidden",
         display: "flex",
@@ -76,12 +75,11 @@ export default function VenueHUDParticipantRail({
         alignItems: "center",
         gap: 5,
         padding: "8px 0",
-        borderRadius: 20,
-        background: "rgba(12,14,22,0.62)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.14)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.45)",
+        borderRadius: 0,
+        background: "rgba(8,10,18,0.5)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        borderLeft: "1px solid rgba(255,255,255,0.12)",
         zIndex: 95,
         pointerEvents: "auto",
         scrollbarWidth: "none",

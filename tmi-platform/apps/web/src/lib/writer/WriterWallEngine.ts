@@ -3,6 +3,13 @@
 //   1. auto — system pushes published TMI articles here
 //   2. upload — writer manually adds past work / portfolio
 //   3. assignment — editorial system records completed paid work
+//
+// PROVENANCE BOUNDARY (Writer Phase A, 2026-09-16): in-memory only (Map),
+// not Prisma-backed. `metrics.views`/`readTimeMinutes`/`paidAmount` are
+// unvalidated, caller-supplied — no canonical source feeds them. Harvest
+// target for its 3-source taxonomy; do NOT treat its data or metrics as
+// canonical truth. Real Content lives in ContentService.ts; real telemetry
+// lives in ContentTelemetryService.ts.
 
 import type { WriterWorkItem, WriterWorkKind } from "@/types/memory";
 

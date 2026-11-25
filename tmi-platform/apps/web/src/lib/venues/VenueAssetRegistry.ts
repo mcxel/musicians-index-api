@@ -51,6 +51,7 @@ export type VenueType =
   | "fan-lobby"
   | "lounge"
   | "monday-night-stage"
+  | "reference-auditorium-v1"
   | "slow-jams"
   | "world-dance-party"
   | "concert"
@@ -594,6 +595,32 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
       primaryHostId: "julius",
     },
     venueIndex: 2,
+  },
+
+  "reference-auditorium-v1": {
+    type: "reference-auditorium-v1",
+    label: "Reference Auditorium",
+    tagline: "Foundry reference theater — certification venue for HUD and seats.",
+    accentColor: "#00FFFF",
+    secondaryColor: "#FFD700",
+    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    bannerUrl: "/assets/banners/banner-monday-night.png",
+    geometry: {
+      hasElevatedStage: true,
+      seatTiers: 2,
+      displayCapacity: 800,
+      ledWalls: ["stage-back"],
+      sponsorZones: ["stage-apron", "side-rail"],
+      lightingRig: "theater-grid",
+      controlBooth: "balcony-center",
+      entranceTunnel: "rear-center",
+      hasVipSection: true,
+      audienceLayout: "theater-rows",
+    },
+    hosts: {
+      primaryHostId: "julius",
+    },
+    venueIndex: 0,
   },
 };
 

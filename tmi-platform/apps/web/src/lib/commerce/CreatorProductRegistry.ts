@@ -40,6 +40,18 @@ export interface CreatorProduct {
   /** Deep-link to buy / product page on artist store */
   buyUrl?: string;
   imageUrl?: string;
+  /**
+   * Source dates only. Never filled from the import clock.
+   * Music prefers releaseDate / publishedAt. Merch prefers availabilityDate
+   * or publicationDate. Tickets prefer saleDate. Absent means undated.
+   */
+  releaseDate?: string;
+  publishedAt?: string;
+  availabilityDate?: string;
+  publicationDate?: string;
+  saleDate?: string;
+  /** When TMI first stored the row. Fallback sort only — not a release date. */
+  tmiAddedAt?: string;
   updatedAt: string;
 }
 
@@ -75,6 +87,19 @@ function writeLocal(performerId: string, products: CreatorProduct[]): void {
   }
 }
 
+/** Published products across stored performer shops. Empty when none exist. */
+export function listPublishedMarketplaceProducts(): CreatorProduct[] {
+  if (typeof window === "undefined") return [];
+  const out: CreatorProduct[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(STORAGE_PREFIX)) continue;
+    const ownerPerformerId = key.slice(STORAGE_PREFIX.length);
+    out.push(...listCreatorProducts(ownerPerformerId).filter((p) => p.visibility === "PUBLIC"));
+  }
+  return out;
+}
+
 export function listCreatorProducts(ownerPerformerId: string): CreatorProduct[] {
   if (!ownerPerformerId) return [];
   const seeded = SEED_PRODUCTS.filter((p) => p.ownerPerformerId === ownerPerformerId);
@@ -103,6 +128,17 @@ export function getCreatorProductSyncStatus(
   return "empty";
 }
 
+function optionalIso(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || Number.isNaN(Date.parse(trimmed))) return undefined;
+  return trimmed;
+}
+
+function keepDate(next: unknown, prev: unknown): string | undefined {
+  return optionalIso(next) ?? optionalIso(prev);
+}
+
 export function upsertCreatorProduct(
   product: Omit<CreatorProduct, "updatedAt" | "id"> & { id?: string },
 ): CreatorProduct {
@@ -111,6 +147,7 @@ export function upsertCreatorProduct(
   const id =
     product.id ??
     `prod_${ownerPerformerId}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const prior = existing.find((p) => p.id === id);
   const record: CreatorProduct = {
     id,
     ownerPerformerId,
@@ -123,11 +160,76 @@ export function upsertCreatorProduct(
     visibility: product.visibility,
     buyUrl: product.buyUrl?.trim() || undefined,
     imageUrl: product.imageUrl?.trim() || undefined,
+    releaseDate: keepDate(product.releaseDate, prior?.releaseDate),
+    publishedAt: keepDate(product.publishedAt, prior?.publishedAt),
+    availabilityDate: keepDate(product.availabilityDate, prior?.availabilityDate),
+    publicationDate: keepDate(product.publicationDate, prior?.publicationDate),
+    saleDate: keepDate(product.saleDate, prior?.saleDate),
+    tmiAddedAt: keepDate(product.tmiAddedAt, prior?.tmiAddedAt),
     updatedAt: new Date().toISOString(),
   };
   const next = [...existing.filter((p) => p.id !== id), record];
   writeLocal(ownerPerformerId, next);
   return record;
+}
+
+/**
+ * Shelf product order. Source publication dates outrank TMI write time.
+ * Undated rows stay after dated rows. Product id breaks ties.
+ * Shelf order is not decided here.
+ */
+export type ProductOrderDateField =
+  | "releaseDate"
+  | "publishedAt"
+  | "availabilityDate"
+  | "publicationDate"
+  | "saleDate"
+  | "tmiAddedAt"
+  | "updatedAt"
+  | null;
+
+const SOURCE_DATE_FIELDS = [
+  "releaseDate",
+  "publishedAt",
+  "availabilityDate",
+  "publicationDate",
+  "saleDate",
+] as const;
+
+function sourceFieldsFor(type: CreatorProductType): readonly (typeof SOURCE_DATE_FIELDS)[number][] {
+  if (type === "MERCH" || type === "YOPHO") {
+    return ["availabilityDate", "publicationDate", "releaseDate", "publishedAt", "saleDate"];
+  }
+  if (type === "EXPERIENCE") {
+    return ["saleDate", "publicationDate", "availabilityDate", "releaseDate", "publishedAt"];
+  }
+  return ["releaseDate", "publishedAt", "publicationDate", "availabilityDate", "saleDate"];
+}
+
+export function resolveCreatorProductOrderDate(product: CreatorProduct): {
+  tier: 0 | 1 | 2;
+  time: number;
+  field: ProductOrderDateField;
+} {
+  for (const field of sourceFieldsFor(product.type)) {
+    const time = Date.parse(product[field] ?? "");
+    if (Number.isFinite(time)) return { tier: 0, time, field };
+  }
+  const added = Date.parse(product.tmiAddedAt ?? "");
+  if (Number.isFinite(added)) return { tier: 1, time: added, field: "tmiAddedAt" };
+  const written = Date.parse(product.updatedAt ?? "");
+  if (Number.isFinite(written)) return { tier: 1, time: written, field: "updatedAt" };
+  return { tier: 2, time: 0, field: null };
+}
+
+export function sortCreatorProductsNewestFirst(products: readonly CreatorProduct[]): CreatorProduct[] {
+  return [...products].sort((a, b) => {
+    const da = resolveCreatorProductOrderDate(a);
+    const db = resolveCreatorProductOrderDate(b);
+    if (da.tier !== db.tier) return da.tier - db.tier;
+    if (da.tier < 2 && da.time !== db.time) return db.time - da.time;
+    return a.id.localeCompare(b.id);
+  });
 }
 
 export function removeCreatorProduct(ownerPerformerId: string, productId: string): void {

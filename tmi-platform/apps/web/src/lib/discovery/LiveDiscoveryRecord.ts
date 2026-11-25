@@ -13,6 +13,7 @@ export type LiveDiscoveryVisibility =
 export type LiveDiscoveryCategory =
   | "live_now"
   | "battles"
+  | "gauntlets"
   | "cyphers"
   | "challenges"
   | "concerts"
@@ -21,6 +22,9 @@ export type LiveDiscoveryCategory =
   | "listening"
   | "dance"
   | "games"
+  | "events"
+  | "performers_live"
+  | "fans_live"
   | "comedy"
   | "djs"
   | "videos"
@@ -37,6 +41,14 @@ export type LiveDiscoveryJoinGate =
   | "paid";
 
 export type LiveDiscoveryPreviewMode = "poster" | "low_res" | "none";
+
+export type LobbyWallPanelLayoutKind =
+  | "SINGLE_BROADCASTER"
+  | "MULTI_PARTICIPANT_VS"
+  | "GAUNTLET_MATCHUP"
+  | "CHALLENGE_VS"
+  | "CYPHER_CIRCLE"
+  | "FAN_AVATAR_LOBBY";
 
 export interface LiveDiscoveryRecord {
   /** Stable discovery tile id (usually roomId) */
@@ -83,11 +95,38 @@ export interface LiveDiscoveryRecord {
   recruiting?: boolean;
   /** Mosaic / panel cast line (LIVE · … / LOOKING FOR · …). Never includes viewer counts. */
   castOverlay?: string;
+
+  /** Multi-participant panel metadata (PANEL ≠ SINGLE PARTICIPANT). */
+  participantIds?: string[];
+  participantNames?: string[];
+  /** Whether active camera video is on (false falls back to avatar/poster without ending live session). */
+  isCameraOn?: boolean;
+  /** Experience-aware panel layout mode. */
+  panelLayout?: LobbyWallPanelLayoutKind;
+  /** Gauntlet winner-stays active flag. */
+  winnerStays?: boolean;
+  /** Cypher non-winner-oriented flag (never fabricates a winner/prize/belt). */
+  nonWinnerOriented?: boolean;
+  /** Fan Avatar Lobby avatar/video capability flag. */
+  avatarCapable?: boolean;
+
+  /** Trust fields - written only by DiscoveryPublisher. */
+  isBotOnly: boolean;
+  isTest: boolean;
+  isRehearsal: boolean;
+  isLocalPreview: boolean;
+  isAdminOnly: boolean;
+  transportHealth: "HEALTHY" | "DEGRADED" | "UNHEALTHY" | "UNKNOWN";
+  requiresPaidEntry: boolean;
+  trustProvenance: "DiscoveryPublisher";
+  /** AUTOMATED inventory vs a human live session. Absent on older records. */
+  sourceType?: "AUTOMATED" | "HUMAN_CREATED";
 }
 
 export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, string> = {
   live_now: "LIVE NOW",
   battles: "Battles",
+  gauntlets: "Gauntlets",
   cyphers: "Cyphers",
   challenges: "Challenges",
   concerts: "Concerts",
@@ -96,6 +135,9 @@ export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, strin
   listening: "Listening",
   dance: "Dance",
   games: "Games",
+  events: "Events",
+  performers_live: "Performers Live",
+  fans_live: "Fans Live",
   comedy: "Comedy",
   djs: "DJs",
   videos: "Videos / Snips",
@@ -109,6 +151,7 @@ export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, strin
 export const LIVE_DISCOVERY_RAIL_ORDER: LiveDiscoveryCategory[] = [
   "live_now",
   "battles",
+  "gauntlets",
   "cyphers",
   "challenges",
   "concerts",
@@ -117,6 +160,9 @@ export const LIVE_DISCOVERY_RAIL_ORDER: LiveDiscoveryCategory[] = [
   "listening",
   "dance",
   "games",
+  "events",
+  "performers_live",
+  "fans_live",
   "comedy",
   "djs",
   "videos",
@@ -138,8 +184,9 @@ export function mapStreamCategoryToDiscovery(
 ): LiveDiscoveryCategory {
   const c = (category ?? "live").toLowerCase().replace(/_/g, "-");
   if (c === "battle" || c === "battles") return "battles";
+  if (c === "gauntlet" || c === "gauntlets") return "gauntlets";
   if (c === "cypher" || c === "cyphers") return "cyphers";
-  if (c === "challenge" || c === "challenges") return "challenges";
+  if (c === "challenge" || c === "challenges" || c === "song-challenge" || c === "song-challenges") return "challenges";
   if (
     c === "concert" ||
     c === "concerts" ||
@@ -152,12 +199,15 @@ export function mapStreamCategoryToDiscovery(
     c === "releases"
   )
     return "concerts";
-  if (c === "fan-lobby" || c === "fan_lobbies" || c === "fan-lobbies") return "fan_lobbies";
+  if (c === "fan-lobby" || c === "fan_lobbies" || c === "fan-lobbies" || c === "fan-avatar-lobby") return "fan_lobbies";
   if (c === "lounge" || c === "lounges" || c === "vip-lounge" || c === "rehearsal") return "lounges";
   if (c === "performer-lobby" || c === "performer_lobby" || c === "performer-lobbies") return "lounges";
   if (c === "listening" || c === "radio" || c === "stream-and-win") return "listening";
   if (c === "dance" || c === "dance-party" || c === "world-dance-party") return "dance";
-  if (c === "game" || c === "games" || c === "game-show" || c === "session") return "games";
+  if (c === "game" || c === "games" || c === "game-show" || c === "session" || c === "monday-night-stage") return "games";
+  if (c === "event" || c === "events" || c === "automated-event") return "events";
+  if (c === "performers-live" || c === "performers_live") return "performers_live";
+  if (c === "fans-live" || c === "fans_live") return "fans_live";
   if (c === "comedy") return "comedy";
   if (c === "dj" || c === "djs") return "djs";
   if (c === "video" || c === "videos" || c === "snip" || c === "snips") return "videos";

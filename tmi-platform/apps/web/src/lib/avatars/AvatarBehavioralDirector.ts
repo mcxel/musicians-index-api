@@ -11,11 +11,19 @@
  * - Reactions may only use original TMI semantic vocabulary
  */
 
-import { triggerExpression, type AvatarExpression } from "@/lib/avatars/ExpressionEngine";
+import { triggerExpression, type AvatarExpression } from "./ExpressionEngine";
 import {
   resolveProductionMotionPath,
   type AvatarPreviewAction,
-} from "@/lib/avatars/AvatarPreviewActions";
+} from "./AvatarPreviewActions";
+import {
+  createTouchEscalationState,
+  recoverTouchEscalation,
+  stepTouchEscalation,
+  type AvatarBodyZone,
+  type TouchEscalationState,
+  type TouchEscalationTier,
+} from "./AvatarTouchInteraction";
 
 /** Semantic reaction vocabulary — Animation Director picks certified clips/blends. */
 export type LivingAvatarReaction =
@@ -35,9 +43,29 @@ export type LivingAvatarReaction =
   | "STRETCH"
   | "HEAD_TILT"
   | "SHOULDER_SHRUG"
-  | "DANCE_IDLE";
+  | "DANCE_IDLE"
+  | "GIGGLE"
+  | "SQUIRM"
+  | "DODGE"
+  | "ARMS_CROSSED"
+  | "SIDE_EYE"
+  | "YAWN";
 
-export type AvatarHitZone = "head" | "face" | "shoulder" | "hand" | "torso" | "generic";
+/** @deprecated Prefer AvatarBodyZone — kept for call-site compat. */
+export type AvatarHitZone =
+  | AvatarBodyZone
+  | "face"
+  | "head"
+  | "shoulder"
+  | "hand"
+  | "torso"
+  | "generic";
+
+function normalizeHitZone(zone: AvatarHitZone): AvatarBodyZone {
+  if (zone === "face") return "cheek";
+  if (zone === "torso") return "belly";
+  return zone as AvatarBodyZone;
+}
 
 export type AvatarWorldContext =
   | "PROFILE"
@@ -87,6 +115,12 @@ const REACTION_TO_EXPRESSION: Partial<Record<LivingAvatarReaction, AvatarExpress
   HEAD_TILT: "silly",
   SHOULDER_SHRUG: "neutral",
   DANCE_IDLE: "excited",
+  GIGGLE: "laughing",
+  SQUIRM: "silly",
+  DODGE: "surprised",
+  ARMS_CROSSED: "focused",
+  SIDE_EYE: "silly",
+  YAWN: "neutral",
 };
 
 const REACTION_TO_MOTION: Partial<Record<LivingAvatarReaction, AvatarPreviewAction>> = {
@@ -96,15 +130,34 @@ const REACTION_TO_MOTION: Partial<Record<LivingAvatarReaction, AvatarPreviewActi
   LAUGH: "EMOTE",
   PLAYFUL: "EMOTE",
   EXCITED: "HYPE",
+  GIGGLE: "EMOTE",
+  SQUIRM: "EMOTE",
+  DODGE: "WAVE",
+  ARMS_CROSSED: "IDLE",
+  SIDE_EYE: "EMOTE",
+  YAWN: "IDLE",
 };
 
-const ZONE_DEFAULT_REACTION: Record<AvatarHitZone, LivingAvatarReaction> = {
+const ZONE_DEFAULT_REACTION: Record<AvatarBodyZone, LivingAvatarReaction> = {
   head: "HEAD_TILT",
-  face: "SURPRISED",
+  cheek: "GIGGLE",
+  nose: "SURPRISED",
+  forehead: "HEAD_TILT",
+  belly: "GIGGLE",
+  torso: "GIGGLE",
   shoulder: "SHOULDER_SHRUG",
+  arm: "SQUIRM",
   hand: "WAVE",
-  torso: "PLAYFUL",
+  leg: "SQUIRM",
+  foot: "SURPRISED",
   generic: "CURIOUS",
+};
+
+const TIER_REACTION: Record<TouchEscalationTier, LivingAvatarReaction> = {
+  TICKLED: "GIGGLE",
+  PLAYFUL: "SQUIRM",
+  DODGING: "DODGE",
+  FRUSTRATED: "ARMS_CROSSED",
 };
 
 export interface CrowdBehaviorState {
@@ -152,6 +205,11 @@ export interface LivingReactionResult {
   /** Milliseconds until the presenter must return to idle. 0 = no pose change. */
   recoveryMs: number;
   audioCue: "ooh" | "hey" | "laugh" | "surprise" | "ack" | null;
+  zone?: AvatarBodyZone;
+  escalationTier?: TouchEscalationTier;
+  consecutivePokes?: number;
+  /** Soft body squash target for mesh deformation (belly/cheek). */
+  squashZone?: "belly" | "cheek" | "nose" | null;
 }
 
 type ListenerCallback = (update: Record<string, unknown>) => void;
@@ -160,8 +218,9 @@ class AvatarBehavioralDirectorSingleton {
   private listeners: ListenerCallback[] = [];
   private prefs: AvatarBehaviorPreferences = { ...DEFAULT_PREFS };
   private lastReactionAt = 0;
-  private cooldownMs = 900;
+  private cooldownMs = 280;
   private context: AvatarWorldContext = "PROFILE";
+  private touchState: TouchEscalationState = createTouchEscalationState();
 
   getSnapshot(): Record<string, unknown> {
     return {
@@ -194,8 +253,18 @@ class AvatarBehavioralDirectorSingleton {
     this.prefs.favoriteEmotes = next;
   }
 
+  getTouchState(): TouchEscalationState {
+    this.touchState = recoverTouchEscalation(this.touchState);
+    return { ...this.touchState };
+  }
+
+  /**
+   * Direct mesh poke — zone from raycast. Escalates with streak.
+   * No HTML poke button. Cooldown is short so playful multi-tap works.
+   */
   poke(zone: AvatarHitZone = "generic", userId?: string, roomId?: string): LivingReactionResult {
     const now = Date.now();
+    this.touchState = recoverTouchEscalation(this.touchState, now);
     if (now - this.lastReactionAt < this.cooldownMs) {
       return {
         reaction: "RELAXED",
@@ -204,11 +273,47 @@ class AvatarBehavioralDirectorSingleton {
         cooldownMs: this.cooldownMs - (now - this.lastReactionAt),
         recoveryMs: 0,
         audioCue: null,
+        zone: normalizeHitZone(zone),
+        consecutivePokes: this.touchState.consecutivePokes,
+        squashZone: null,
       };
     }
     this.lastReactionAt = now;
-    const reaction = ZONE_DEFAULT_REACTION[zone];
-    return this.playReaction(reaction, userId, roomId);
+    const bodyZone = normalizeHitZone(zone);
+    this.touchState = stepTouchEscalation(this.touchState, bodyZone, now);
+    const tierReaction = TIER_REACTION[this.touchState.tier];
+    const zoneReaction = ZONE_DEFAULT_REACTION[bodyZone] ?? "CURIOUS";
+    const reaction =
+      this.touchState.tier === "TICKLED"
+        ? zoneReaction
+        : this.touchState.tier === "FRUSTRATED"
+          ? "ARMS_CROSSED"
+          : tierReaction;
+    const squashZone =
+      bodyZone === "belly" || bodyZone === "torso"
+        ? "belly"
+        : bodyZone === "cheek" || bodyZone === "nose"
+          ? bodyZone === "nose"
+            ? "nose"
+            : "cheek"
+          : null;
+    const result = this.playReaction(reaction, userId, roomId);
+    result.zone = bodyZone;
+    result.escalationTier = this.touchState.tier;
+    result.consecutivePokes = this.touchState.consecutivePokes;
+    result.squashZone = squashZone;
+    if (reaction === "GIGGLE" || reaction === "LAUGH" || reaction === "SQUIRM") {
+      result.audioCue = this.prefs.muteCharacterAudio ? null : "laugh";
+    }
+    this.emit({
+      type: "POKE",
+      zone: bodyZone,
+      tier: this.touchState.tier,
+      consecutivePokes: this.touchState.consecutivePokes,
+      squashZone,
+      ...result,
+    });
+    return result;
   }
 
   playReaction(
@@ -288,4 +393,4 @@ export const avatarBehavioralDirector = new AvatarBehavioralDirectorSingleton();
 /** Alias locked in Living Avatar addendum — same singleton, not a second engine. */
 export const AvatarBehaviorDirector = avatarBehavioralDirector;
 /** User-selected mood bridge — never inferred from biometrics. */
-export { applyAvatarMoodPresentation, type AvatarMoodId } from "@/lib/avatars/AvatarMoodPresentation";
+export { applyAvatarMoodPresentation, type AvatarMoodId } from "./AvatarMoodPresentation";

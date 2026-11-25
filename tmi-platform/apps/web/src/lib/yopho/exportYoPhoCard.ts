@@ -4,6 +4,7 @@
  */
 
 import { snapElement } from "@/lib/capture/CaptureEngine";
+import { exportSizeForFormat, type YoPhoFormat } from "./YoPhoFormatAuthority";
 
 export type YoPhoStillFormat = "image/png" | "image/jpeg" | "image/webp";
 
@@ -206,4 +207,102 @@ export async function exportYoPhoMotion(
       error: err instanceof Error ? err.message : "Motion export failed",
     };
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dual-format export (§5574, §5607) — ONE YoPho, BOTH geometries, reusable blobs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface YoPhoFormatRenderResult {
+  ok: boolean;
+  format: YoPhoFormat;
+  blob?: Blob;
+  mime: YoPhoStillFormat;
+  width: number;
+  height: number;
+  error?: string;
+}
+
+/**
+ * Render the visible YoPho element into a canonical-format still blob WITHOUT
+ * auto-downloading. The blob is a reusable derivative (§5604) — it can be saved
+ * to the creator media authority (§5605) or downloaded. Returns the canonical
+ * target pixel size for the format (§5561).
+ *
+ * NOTE: the source element is rendered at its current on-screen composition;
+ * the caller is responsible for presenting the document in the target format
+ * (YoPhoFormatAuthority.presentDocumentInFormat) before calling, so the render
+ * matches the intended geometry (no blind crop — §5576). This helper scales the
+ * captured pixels to the canonical export size.
+ */
+export async function renderYoPhoFormatBlob(
+  element: HTMLElement,
+  format: YoPhoFormat,
+  opts: { mime?: YoPhoStillFormat } = {},
+): Promise<YoPhoFormatRenderResult> {
+  const mime = opts.mime ?? "image/png";
+  const { width, height } = exportSizeForFormat(format);
+  try {
+    const snap = await snapElement(element, 2);
+    const res = await fetch(snap.dataUrl);
+    const img = await createImageBitmap(await res.blob());
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      img.close();
+      return { ok: false, format, mime, width, height, error: "Canvas unavailable" };
+    }
+    // Scale the captured composition to the canonical export rect.
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, width, height);
+    img.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, mime, mime === "image/jpeg" ? 0.92 : 0.95),
+    );
+    if (!blob) return { ok: false, format, mime, width, height, error: "Encode failed" };
+    return { ok: true, format, blob, mime, width, height };
+  } catch (err) {
+    return {
+      ok: false,
+      format,
+      mime,
+      width,
+      height,
+      error: err instanceof Error ? err.message : "Format render failed",
+    };
+  }
+}
+
+export interface YoPhoDualRenderResult {
+  ok: boolean;
+  tradingCard: YoPhoFormatRenderResult;
+  albumCover: YoPhoFormatRenderResult;
+  error?: string;
+}
+
+/**
+ * Render BOTH canonical geometries for one YoPho (§5574 dual-export). The two
+ * results are derivatives of the SAME YoPho identity (§5607) — not two cards.
+ * Callers provide the already-formatted elements for each geometry.
+ */
+export async function renderYoPhoDualFormatBlobs(input: {
+  tradingCardElement: HTMLElement;
+  albumCoverElement: HTMLElement;
+  mime?: YoPhoStillFormat;
+}): Promise<YoPhoDualRenderResult> {
+  const tradingCard = await renderYoPhoFormatBlob(input.tradingCardElement, "TRADING_CARD", {
+    mime: input.mime,
+  });
+  const albumCover = await renderYoPhoFormatBlob(input.albumCoverElement, "ALBUM_COVER", {
+    mime: input.mime,
+  });
+  return {
+    ok: tradingCard.ok && albumCover.ok,
+    tradingCard,
+    albumCover,
+    error: tradingCard.error ?? albumCover.error,
+  };
 }

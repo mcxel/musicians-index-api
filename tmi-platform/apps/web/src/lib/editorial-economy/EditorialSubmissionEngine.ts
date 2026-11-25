@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import type { EditorialSubmission as DbEditorialSubmission } from "@prisma/client";
 import { contributorTrustGateEngine } from "@/lib/editorial-economy/ContributorTrustGateEngine";
 import type { EditorialSubmission } from "@/lib/editorial-economy/types";
+import { notifyFollowersOfWriterPublication } from "@/lib/writer/WriterNotificationOrchestration";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 const TO_DB_CATEGORY: Record<EditorialSubmission["category"], DbEditorialSubmission["category"]> = {
   news: "NEWS",
@@ -140,7 +142,21 @@ class EditorialSubmissionEngine {
     });
 
     if (result.count === 1) {
-      return (await this.get(submissionId)) ?? null;
+      const published = (await this.get(submissionId)) ?? null;
+      // Real, qualifying publication event only — never on draft/revision/
+      // preview saves. contributorId is the canonical User.id (Writer
+      // Architecture Reconciliation, 2026-09-16), so no separate lookup
+      // is needed to resolve the follower graph.
+      if (published) {
+        void notifyFollowersOfWriterPublication({
+          writerUserId: published.contributorId,
+          title: published.title,
+          href: magazineReaderArticleUrl(articleSlug),
+        }).catch((err) => {
+          console.error("[EditorialSubmissionEngine] follower notification failed (non-fatal):", err);
+        });
+      }
+      return published;
     }
 
     // The conditional update matched nothing — either already published

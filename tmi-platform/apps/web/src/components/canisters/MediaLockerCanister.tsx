@@ -185,6 +185,36 @@ export default function MediaLockerCanister({
       label={role === "performer" ? "Content Studio (Media Locker)" : "My Media Locker"}
       summary={`${items.length} items`}
       accentColor={accentColor}
+      defaultOpen={role === "performer"}
+      headerAction={
+        role === "performer" ? (
+          <button
+            type="button"
+            data-testid="media-locker-header-upload"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            style={{
+              minHeight: 34,
+              padding: "7px 9px",
+              borderRadius: 6,
+              border: `1px solid ${accentColor}99`,
+              background: `${accentColor}1F`,
+              color: accentColor,
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.06em",
+              cursor: isUploading ? "not-allowed" : "pointer",
+              opacity: isUploading ? 0.65 : 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span>{isUploading ? "UPLOADING..." : "UPLOAD SONG / BEAT"}</span>
+            <span style={{ display: "block", fontSize: 8, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
+              MP3 / WAV
+            </span>
+          </button>
+        ) : null
+      }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {uploadError && (
@@ -312,12 +342,25 @@ export default function MediaLockerCanister({
                     >
                       ▶ PLAY
                     </button>
+                      type="button"
+                      data-testid="media-locker-upload"
                     <button
                       type="button"
                       onClick={() => {
                         if (!isDurablePlayableMediaUrl(item.url)) {
-                          setUploadError("Cannot queue a track with no playable source.");
+                      {isUploading
+                        ? "⏳ UPLOADING…"
+                        : activeTab === "songs"
+                          ? "⬆ UPLOAD SONG / BEAT"
+                          : activeTab === "videos"
+                            ? "⬆ UPLOAD VIDEO"
+                            : `⬆ UPLOAD NEW ${activeTab.toUpperCase().slice(0, -1)}`}
                           return;
+                    {activeTab === "songs" ? (
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", lineHeight: 1.4, textAlign: "center" }}>
+                        Accepted audio: MP3, WAV, OGG, M4A, AAC, FLAC, or WebM up to 100 MB.
+                      </div>
+                    ) : null}
                         }
                         addToPlaylist({
                           id: item.id,

@@ -43,6 +43,47 @@ export async function getOrCreateConversation(opts: {
   });
 }
 
+export async function getOrCreateGroupConversation(opts: {
+  creatorId: string;
+  participantIds: string[];
+  kind?: MessageKind;
+  title?: string;
+}) {
+  const uniqueIds = Array.from(new Set([opts.creatorId, ...opts.participantIds])).filter(Boolean);
+  if (uniqueIds.length < 2) {
+    throw new Error("Group conversation requires at least two participants");
+  }
+
+  // Enforce youth social guard for creator against each recipient
+  const otherIds = uniqueIds.filter((id) => id !== opts.creatorId);
+  for (const otherId of otherIds) {
+    await assertOneToOneSocialForUserIds(opts.creatorId, otherId);
+  }
+
+  // Look for existing conversation with exact same participant set
+  const candidates = await prisma.conversation.findMany({
+    where: {
+      participantIds: { hasEvery: uniqueIds },
+      isArchived: false,
+    },
+    take: 20,
+  });
+
+  const existing = candidates.find(
+    (c) =>
+      c.participantIds.length === uniqueIds.length &&
+      uniqueIds.every((id) => c.participantIds.includes(id)),
+  );
+  if (existing) return existing;
+
+  return prisma.conversation.create({
+    data: {
+      kind: opts.kind ?? "group",
+      participantIds: uniqueIds,
+    },
+  });
+}
+
 export async function getConversationForUser(conversationId: string, userId: string) {
   const convo = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -114,6 +155,17 @@ export async function softDeleteMessage(conversationId: string, messageId: strin
   const msg = await prisma.message.findFirst({
     where: { id: messageId, conversationId, senderId: userId },
   });
+  if (!msg) return false;
+  await prisma.message.update({
+    where: { id: messageId },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+  return true;
+}
+
+/** Moderator/self delete — caller must already be authorized (self, or ADMIN/STAFF). */
+export async function deleteMessageAsModerator(conversationId: string, messageId: string) {
+  const msg = await prisma.message.findFirst({ where: { id: messageId, conversationId } });
   if (!msg) return false;
   await prisma.message.update({
     where: { id: messageId },

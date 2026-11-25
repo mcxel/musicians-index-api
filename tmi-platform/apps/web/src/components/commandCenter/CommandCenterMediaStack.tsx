@@ -6,6 +6,7 @@ import {
   presentCanonicalWorkspace,
 } from "@/lib/workspace/universal/openCanonicalPresentation";
 import { useWorkspacePresentationStore } from "@/lib/workspace/universal/WorkspacePresentationRuntime";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
 /**
  * Command Center media stack — dual identical 16:9 vertical stack (prototype) → Quad → Octo.
  * Dual geometry via CanonicalDualMonitorStack (shared with Observatory).
@@ -63,6 +64,11 @@ import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
 import { resolveHubMonitorFeed } from "@/lib/monitors/HubMonitorFeedResolver";
 import { createPortal } from "react-dom";
 import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
+import {
+  framesToLobbyMonitorSlots,
+  resolveLobbyWallWatchTarget,
+} from "@/lib/lobby/lobbyWallMediaRouter";
+import { LOBBY_WALL_BUTTON_LABEL } from "@/lib/lobby/livingLobbyWallLaw";
 
 function lobbyRoomToUniversal(room: LobbyRoom): UniversalRoom {
   return {
@@ -331,6 +337,15 @@ interface CommandCenterMediaStackProps {
   onOpenLivingOs?: (context: { playerId: string; role: "fan" | "performer" }) => void;
   /** Canonical Venue Tools doorway re-presented by the shared Companion Dock. */
   onOpenVenueTools?: (context: { roomId?: string; isLoungeHost: boolean; readOnly: boolean }) => void;
+  /** Instant QR / identity strip — owned under Monitor 1. */
+  monitor1Accessory?: ReactNode;
+  /** Playlist library band — owned under Monitor 2 (not under Monitor 1). */
+  monitor2Accessory?: ReactNode;
+  /**
+   * WORK compact utility (dock tools + QR) beside Monitor 1 — presentation only.
+   * Ownership stays Monitor 1 = QR, Monitor 2 = playlist.
+   */
+  workSideUtility?: ReactNode;
 }
 
 function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
@@ -856,6 +871,9 @@ export default function CommandCenterMediaStack({
   onOpenYopho,
   onOpenLivingOs,
   onOpenVenueTools,
+  monitor1Accessory = null,
+  monitor2Accessory = null,
+  workSideUtility = null,
 }: CommandCenterMediaStackProps) {
   // Assign every render — cert must not depend on effect timing / StrictMode cleanup races.
   if (typeof window !== "undefined") {
@@ -936,6 +954,15 @@ export default function CommandCenterMediaStack({
   const castControlsRef = useRef<HTMLDivElement | null>(null);
   const drawerWorkspace = useWorkspacePresentationStore((s) => s.drawerWorkspace);
   const isDrawerExpanded = useWorkspacePresentationStore((s) => s.isDrawerExpanded);
+  const closeSurface = useWorkspacePresentationStore((s) => s.closeSurface);
+  const m2ExplicitlyActivated = useMobileGpsMonitorLayoutStore((s) => s.m2ExplicitlyActivated);
+  const setM2ExplicitlyActivated = useMobileGpsMonitorLayoutStore((s) => s.setM2ExplicitlyActivated);
+  const restoreMonitor2Layout = useMobileGpsMonitorLayoutStore((s) => s.restoreMonitor2);
+  /** Existing CanonicalDualMonitorStack WORK compact — reconnect, do not redesign. */
+  const workDrawerOpen = Boolean(drawerWorkspace && isDrawerExpanded);
+  const compactPrimary = workDrawerOpen;
+  /** Yield M2 from main workspace while drawer is open unless user explicitly keeps dual. */
+  const yieldSecondaryMonitor = workDrawerOpen && !m2ExplicitlyActivated;
 
   // ── Native browser fullscreen ─────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1042,6 +1069,40 @@ export default function CommandCenterMediaStack({
     setMonitorRoomOverrides((prev) => ({ ...prev, [frameId]: rid }));
     useCanonicalMediaPlayerRuntime.getState().assignSource(frameId, "AUDIENCE_VIEW");
   }, []);
+
+  /** Lobby Wall law: Player 1 first; preserve protected video calls. */
+  const routeLobbyWallWatch = useCallback(
+    (room: LobbyRoom, preferredFrameId?: FrameId) => {
+      const rid = room.id.trim();
+      if (!rid) return;
+      const frames = useCanonicalMediaPlayerRuntime.getState().frames;
+      const slots = framesToLobbyMonitorSlots(frames, {
+        roomOverrides: monitorRoomOverrides,
+        protectedFrameIds: (["a", "b", "c", "d", "e", "f", "g", "h"] as FrameId[]).filter(
+          (id) => {
+            const src = frames[id]?.source;
+            return src === "SELF_CAMERA" || src === "SCREEN_SHARE";
+          },
+        ),
+      });
+      const decision = resolveLobbyWallWatchTarget(slots, preferredFrameId);
+      if (!decision.success || !decision.frameId) {
+        setLobbyPanelFocusRoom(room);
+        return;
+      }
+      setLobbyPanelFocusRoom(room);
+      sendLobbyRoomToMonitor(rid, decision.frameId);
+      const href = room.href?.trim();
+      if (href && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("tmi:lobby-watch-exact", {
+            detail: { roomId: rid, href, frameId: decision.frameId },
+          }),
+        );
+      }
+    },
+    [monitorRoomOverrides, sendLobbyRoomToMonitor],
+  );
 
   useEffect(() => {
     const onLobbySendTo = (e: Event) => {
@@ -1605,11 +1666,11 @@ export default function CommandCenterMediaStack({
             {utilityBtn(
               detachedLobbyWallOpen,
               "#00FFFF",
-              "LOBBY WALL",
+              LOBBY_WALL_BUTTON_LABEL,
               () => toggleLobbyWallFromButton(),
               {
                 testId: "tmi-command-lobby-wall",
-                title: "Open Live Lobby Wall mosaic panel — does not replace monitors",
+                title: "Open living Lobby Wall mosaic — continuous moving previews, does not replace monitors",
                 icon: "🧱",
               },
             )}
@@ -1873,6 +1934,21 @@ export default function CommandCenterMediaStack({
               : 2
         }
         enableMediaRuntime
+        compactPrimary={compactPrimary}
+        yieldSecondaryMonitor={yieldSecondaryMonitor}
+        workSideUtility={workDrawerOpen ? workSideUtility : null}
+        monitorAccessoryByIndex={{
+          0: workDrawerOpen && workSideUtility ? null : monitor1Accessory,
+          1: monitor2Accessory,
+        }}
+        onRestorePrimaryMonitor={() => {
+          // Temporary WORK compact ends — user monitor preference (Monitors button) stays authoritative.
+          closeSurface("DRAWER");
+        }}
+        onRestoreMonitor2={() => {
+          setM2ExplicitlyActivated(true);
+          restoreMonitor2Layout();
+        }}
         onOpenLivingOs={({ playerId }) => onOpenLivingOs?.({ playerId, role })}
         monitors={[
           {
@@ -2104,14 +2180,18 @@ export default function CommandCenterMediaStack({
             >
               <LiveLobbyWallHost
                 variant="embedded"
-                title="Live Lobby Wall"
+                title="Lobby Wall"
                 typeLabel="LIVE"
                 accentColor="#00FFFF"
                 viewerUserId={userId ?? null}
                 viewerRole={role === "performer" ? "PERFORMER" : "FAN"}
                 defaultCategory={role === "performer" ? "lives" : "fan_avatar_lobbies"}
                 enableMobileRoam
-                onRoomJoin={(room) => setLobbyPanelFocusRoom(room)}
+                onRoomJoin={(room) => {
+                  // Instant watch into Player 1 (or next free if call protected).
+                  // JOIN STAGE remains a separate explicit action.
+                  routeLobbyWallWatch(room);
+                }}
               />
             </div>
             {lobbyPanelFocusRoom ? (
@@ -2150,16 +2230,7 @@ export default function CommandCenterMediaStack({
                   type="button"
                   data-testid="lobby-panel-watch"
                   onClick={() => {
-                    const href = lobbyPanelFocusRoom.href?.trim();
-                    if (href && typeof window !== "undefined") {
-                      window.dispatchEvent(
-                        new CustomEvent("tmi:lobby-watch-exact", {
-                          detail: { roomId: lobbyPanelFocusRoom.id, href },
-                        }),
-                      );
-                      // Keep workspace: route venue feed to Monitor A as WATCH default.
-                      sendLobbyRoomToMonitor(lobbyPanelFocusRoom.id, "a");
-                    }
+                    routeLobbyWallWatch(lobbyPanelFocusRoom);
                   }}
                   style={{
                     padding: "7px 12px",

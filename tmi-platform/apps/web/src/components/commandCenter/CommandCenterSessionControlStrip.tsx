@@ -3,7 +3,9 @@
 /**
  * CommandCenterSessionControlStrip — primary horizontal session controls.
  * Single-row horizontal touch-scroll bar on mobile & desktop (QP-10).
- * Locked 7 buttons: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | STREAM & WIN | GO LIVE
+ * Locked 7 buttons: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE
+ * Stream & Win listen path: LOBBIES → Lounges (not a Command Bed control).
+ * Submissions: GPS Rail only.
  */
 
 import React, { useEffect, useState } from "react";
@@ -27,11 +29,6 @@ import {
   exitVideoShuffle,
   isVideoShuffleActive,
 } from "@/lib/shuffle/VideoShuffleModeRuntime";
-import {
-  startStreamWin,
-  exitStreamWin,
-  isStreamWinActive,
-} from "@/lib/radio/StreamWinModeRuntime";
 import { registerShellButtonHealth } from "@/registries/shell/ButtonCommandRegistry";
 
 const GOLD = "#FFD700";
@@ -55,7 +52,6 @@ export default function CommandCenterSessionControlStrip({
   const [goLiveError, setGoLiveError] = useState("");
   const [mediaError, setMediaError] = useState("");
   const [shuffleActive, setShuffleActive] = useState(false);
-  const [streamWinActive, setStreamWinActive] = useState(false);
 
   const { activePanel, openPanel, closePanel } = useCompactQuickPanelStore();
   const { open: openWorkspace } = useFloatingWorkspace();
@@ -80,7 +76,6 @@ export default function CommandCenterSessionControlStrip({
 
   useEffect(() => {
     setShuffleActive(isVideoShuffleActive());
-    setStreamWinActive(isStreamWinActive());
   }, [activePanel]);
 
   const handleCamToggle = async () => {
@@ -131,19 +126,13 @@ export default function CommandCenterSessionControlStrip({
     else openPanel("snips", "bottom-right");
   };
 
-  const handleStreamWin = () => {
-    registerShellButtonHealth("shell.stream-win", "ok");
-    closePanel();
-    if (activePanel === "stream-win" || isStreamWinActive()) {
-      exitStreamWin();
-      setStreamWinActive(false);
+  const handleLobbies = () => {
+    registerShellButtonHealth("shell.lobbies", "ok");
+    if (activePanel === "lobbies") {
       closePanel();
-    } else {
-      void startStreamWin().then((started) => {
-        setStreamWinActive(Boolean(started));
-        if (started) openPanel("stream-win", "bottom-left");
-      });
+      return;
     }
+    openPanel("lobbies", "bottom-left");
   };
 
   const primaryStrip = getPrimarySessionStripForRole();
@@ -200,14 +189,14 @@ export default function CommandCenterSessionControlStrip({
             onClick={handleVideoShuffle}
           />
         );
-      case "stream-win":
+      case "lobbies":
         return (
           <SessionBtn
             key={id}
-            label="📻 STREAM & WIN"
-            accent={streamWinActive || activePanel === "stream-win" ? "#FFD700" : "rgba(255,255,255,0.85)"}
-            border={streamWinActive || activePanel === "stream-win" ? "#FFD700" : "rgba(255,255,255,0.18)"}
-            onClick={handleStreamWin}
+            label="🏟️ LOBBIES"
+            accent={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.85)"}
+            border={activePanel === "lobbies" ? GOLD : "rgba(255,255,255,0.18)"}
+            onClick={handleLobbies}
           />
         );
       case "go-live":

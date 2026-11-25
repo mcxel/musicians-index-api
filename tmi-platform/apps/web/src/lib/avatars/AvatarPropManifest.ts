@@ -21,7 +21,7 @@
  * Universal Prop Runtime directive — locked 2026-06-24.
  */
 
-import type { AvatarSocketId, AvatarClass } from '@/lib/avatars/AvatarSocketSystem';
+import type { AvatarSocketId, AvatarClass } from './AvatarSocketSystem';
 
 // ─── Light effect spec ────────────────────────────────────────────────────────
 

@@ -7,7 +7,14 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import type { CSSProperties, ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { DrawerSlotExpansionContext } from "@/lib/drawers/drawerExpansionContext";
+import { useMobileGpsMonitorLayoutStore } from "@/lib/commandCenter/mobileGpsMonitorLayoutStore";
+import {
+  INITIAL_DRAWER_PRESENTATION,
+  reduceDrawerPresentation,
+  type DrawerPresentationState,
+} from "@/lib/drawers/drawerPresentation";
 import {
   DRAWER_OPEN_HEIGHT,
   getDrawerAnimationProfile,
@@ -15,6 +22,9 @@ import {
   type DrawerAnimationId,
 } from "@/lib/drawers/DrawerAnimationProfile";
 import { useTheme } from "@/lib/design/ThemeEngine";
+import DrawerGuideDirector from "@/components/drawers/DrawerGuideDirector";
+import type { UniversalDrawerModuleId } from "@/lib/drawers/UniversalDrawerRegistry";
+import { DRAWER_COMPOSITION_LAW_ID } from "@/lib/drawers/DrawerCompositionLaw";
 
 export interface UniversalDrawerBaseProps {
   open: boolean;
@@ -33,6 +43,10 @@ export interface UniversalDrawerBaseProps {
   ariaLabel?: string;
   style?: CSSProperties;
   overlayHeight?: string;
+  /** Gate 13 — Drawer Guide coaching */
+  guideDrawerId?: UniversalDrawerModuleId;
+  guideUserId?: string;
+  guidePersona?: string;
 }
 
 export default function UniversalDrawerBase({
@@ -49,12 +63,76 @@ export default function UniversalDrawerBase({
   ariaLabel,
   style,
   overlayHeight = DRAWER_OPEN_HEIGHT,
+  guideDrawerId,
+  guideUserId,
+  guidePersona = "fan",
 }: UniversalDrawerBaseProps) {
   const theme = useTheme();
+  const inSlot = useContext(DrawerSlotExpansionContext);
+  const sharedPresentation = useMobileGpsMonitorLayoutStore((s) => s.drawerPresentation);
+  const applySharedPresentation = useMobileGpsMonitorLayoutStore((s) => s.applyDrawerPresentation);
+  const [localPresentation, setLocalPresentation] = useState<DrawerPresentationState>(INITIAL_DRAWER_PRESENTATION);
+  const presentation = inSlot ? sharedPresentation : localPresentation.presentation;
+  const applyPresentation = (action: "expand" | "fullscreen" | "restore" | "close" | "escape") => {
+    if (inSlot) {
+      const shouldClose = applySharedPresentation(action);
+      if (shouldClose) onClose();
+      return;
+    }
+    const next = reduceDrawerPresentation(localPresentation, action);
+    setLocalPresentation(next.state);
+    if (next.close) onClose();
+  };
   const profile = getDrawerAnimationProfile(animationId, theme);
   const accent = accentColor ?? theme.tertiary;
   const shellVariants =
-    mode === "overlay" ? overlayShellVariants(profile) : profile.shell;
+    presentation === "compact"
+      ? mode === "overlay"
+        ? overlayShellVariants(profile)
+        : profile.shell
+      : { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+  const underDashRef = useRef<HTMLDivElement | null>(null);
+
+  /** §20995-E desktop: bring under-dashboard drawers into the visible WORK band. */
+  useEffect(() => {
+    if (!open || mode !== "under_dashboard" || typeof window === "undefined") return;
+    const node = underDashRef.current;
+    if (!node) return;
+    const reduce =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+    });
+  }, [open, mode, animationId]);
+
+  const presentationStyle: CSSProperties =
+    presentation === "compact"
+      ? {}
+      : inSlot
+        ? { maxHeight: "none", height: "100%", minHeight: 0, flex: "1 1 auto" }
+        : presentation === "fullscreen"
+          ? {
+              position: "fixed",
+              inset: 0,
+              zIndex: 160,
+              width: "100%",
+              height: "100dvh",
+              maxHeight: "none",
+              minHeight: 0,
+              boxSizing: "border-box",
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }
+          : {
+              position: "fixed",
+              left: "max(8px, env(safe-area-inset-left))",
+              right: "max(8px, env(safe-area-inset-right))",
+              bottom: "max(8px, env(safe-area-inset-bottom))",
+              height: "min(88dvh, calc(100dvh - 72px))",
+              maxHeight: "none",
+              zIndex: 150,
+            };
 
   const shellLayout: CSSProperties =
     mode === "overlay"
@@ -69,39 +147,32 @@ export default function UniversalDrawerBase({
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          background: theme.bgSurface || "#050510",
-          borderTop: `1px solid ${accent}55`,
+          background: "var(--tmi-drawer-bg, " + (theme.bgSurface || "#050510") + ")",
+          borderTop: `1px solid var(--tmi-drawer-border, ${accent}55)`,
+          color: "var(--tmi-drawer-text, #fff)",
           boxShadow: `0 -24px 60px rgba(0,0,0,0.75), 0 0 24px ${theme.drawerGlow}22`,
           perspective: 900,
           transformOrigin: "bottom center",
+          ...presentationStyle,
           ...style,
         }
       : {
-          // under_dashboard: normal flow, below the monitor grid — the
-          // grid has its own fixed minHeight (CommandCenterShell) so this
-          // drawer expanding never resizes it; the page/container grows and
-          // scrolls instead (2026-08-05 blueprint: "Reserved Bottom Drawer
-          // Dock" — monitors + MasterControlDock never move or get
-          // covered). This previously used position:absolute to overlay the
-          // monitors instead, which fixed the original squash bug but
-          // covered the stage — no longer needed now that the parent no
-          // longer height-caps/clips (verify that's still true before
-          // reverting this to position:absolute again).
+          // under_dashboard: normal flow below monitors (§20995-E bounded height).
           position: "relative",
           width: "100%",
-          // Height from DrawerAnimationProfile shell animate. Parent clears
-          // dock paddingBottom while open so the sheet drops into that gap.
           minHeight: DRAWER_OPEN_HEIGHT,
-          // Pull into any leftover dock-clearance band under the sheet.
+          maxHeight: "calc(100vh - 140px)",
           marginBottom: 0,
           overflow: "hidden",
-          background: theme.bgSurface,
-          borderTop: `1px solid ${accent}55`,
+          background: "var(--tmi-drawer-bg, " + theme.bgSurface + ")",
+          borderTop: `1px solid var(--tmi-drawer-border, ${accent}55)`,
+          color: "var(--tmi-drawer-text, #fff)",
           boxShadow: `0 -16px 40px rgba(0,0,0,0.55), 0 0 24px ${theme.drawerGlow}22`,
           display: "flex",
           flexDirection: "column",
           perspective: 900,
           transformOrigin: "bottom center",
+          ...presentationStyle,
           ...style,
         };
 
@@ -109,6 +180,7 @@ export default function UniversalDrawerBase({
     <AnimatePresence initial={false}>
       {open ? (
         <motion.div
+          ref={underDashRef}
           key={`udb-${animationId}`}
           variants={shellVariants}
           initial="initial"
@@ -118,16 +190,21 @@ export default function UniversalDrawerBase({
           style={shellLayout}
           role={mode === "overlay" ? "dialog" : "region"}
           aria-label={ariaLabel ?? title}
+          data-drawer-composition-law={DRAWER_COMPOSITION_LAW_ID}
+          data-drawer-guide-id={guideDrawerId ?? ""}
+          data-drawer-presentation={presentation}
+          className="tmi-drawer-chrome"
         >
           <div
+            className="tmi-drawer-header-chrome"
             style={{
               flexShrink: 0,
               display: "flex",
               alignItems: "center",
               gap: 12,
               padding: mode === "overlay" ? "10px 16px" : "8px 14px",
-              background: "rgba(0,0,0,0.72)",
-              borderBottom: `1px solid ${theme.primary}33`,
+              background: "var(--tmi-drawer-header, rgba(0,0,0,0.72))",
+              borderBottom: `1px solid var(--tmi-drawer-border, ${theme.primary}33)`,
             }}
           >
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: accent }}>
@@ -137,10 +214,23 @@ export default function UniversalDrawerBase({
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{subtitle}</span>
             ) : null}
             {headerExtra}
+      {guideDrawerId ? (
+        <DrawerGuideDirector
+          drawerId={guideDrawerId}
+          open={open}
+          userId={guideUserId}
+          persona={guidePersona}
+          accentColor={accent}
+        />
+      ) : null}
             <div style={{ flex: 1 }} />
+            <button type="button" className="tmi-chrome-btn" data-tmi-chrome="btn" data-testid="tmi-drawer-size-expand" onClick={() => applyPresentation("expand")} style={{ minHeight: 44, minWidth: 44, borderRadius: 8, padding: "6px 10px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>EXPAND</button>
+            <button type="button" className="tmi-chrome-btn" data-tmi-chrome="btn" data-testid="tmi-drawer-size-fullscreen" onClick={() => applyPresentation("fullscreen")} style={{ minHeight: 44, minWidth: 44, borderRadius: 8, padding: "6px 10px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>FULL SCREEN</button>
+            <button type="button" className="tmi-chrome-btn" data-tmi-chrome="btn" data-testid="tmi-drawer-size-restore" onClick={() => applyPresentation("restore")} disabled={presentation === "compact"} style={{ minHeight: 44, minWidth: 44, borderRadius: 8, padding: "6px 10px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>RESTORE</button>
             <button
               type="button"
-              onClick={onClose}
+              data-testid="tmi-drawer-size-close"
+              onClick={() => applyPresentation("close")}
               style={{
                 background: "transparent",
                 border: "1px solid rgba(255,68,68,0.45)",

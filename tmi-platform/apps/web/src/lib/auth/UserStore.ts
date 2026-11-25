@@ -15,6 +15,10 @@ import { waitUntil } from '@vercel/functions';
 export type UserTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 export type UserRole = 'user' | 'admin' | 'staff' | 'fan' | 'artist' | 'performer' | 'sponsor' | 'advertiser' | 'venue' | 'writer' | 'promoter';
 
+function isUserTier(value: string): value is UserTier {
+  return ['FREE', 'PRO', 'RUBY', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'].includes(value);
+}
+
 export interface StoredUser {
   id: string;
   email: string;
@@ -35,7 +39,12 @@ type PrismaLike = {
     create: (args: object) => Promise<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }>;
     upsert: (args: object) => Promise<unknown>;
     findUnique: (args: object) => Promise<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date } | null>;
-    findMany: (args?: object) => Promise<Array<{ id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }>>;
+    // Only ever called with select:{id,email,passwordHash,name,role,tier} (the
+    // one real call site, loadFromDb() below) — typed to match that, not
+    // the fuller create/findUnique shape this hand-rolled interface uses
+    // elsewhere, since this minimal interface has no real select-based
+    // return-type narrowing.
+    findMany: (args?: object) => Promise<Array<{ id: string; email: string | null; passwordHash: string | null; name: string | null; role: string; tier: string }>>;
     count: () => Promise<number>;
   };
 };
@@ -68,19 +77,6 @@ const DB_TO_ROLE: Record<string, UserRole> = {
   VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
 };
 
-function mapDbRow(row: { id: string; email: string | null; passwordHash: string | null; displayName: string | null; tier: string; role: string; userRef: string | null; userCreatedAt: Date }): StoredUser {
-  return {
-    id: row.id,
-    email: row.email ?? '',
-    passwordHash: row.passwordHash ?? '',
-    displayName: row.displayName ?? (row.email ?? '').split('@')[0] ?? 'User',
-    tier: (row.tier as UserTier) ?? 'FREE',
-    role: DB_TO_ROLE[row.role.toUpperCase()] ?? 'user',
-    createdAt: row.userCreatedAt.getTime(),
-    ref: row.userRef ?? undefined,
-  };
-}
-
 async function loadFromDb(): Promise<void> {
   const client = getDb();
   if (!client || dbLoaded) return;
@@ -90,15 +86,26 @@ async function loadFromDb(): Promise<void> {
         id: true,
         email: true,
         passwordHash: true,
-        displayName: true,
-        tier: true,
+        name: true,
         role: true,
-        userRef: true,
-        userCreatedAt: true,
+        tier: true,
       },
     });
     rows.forEach((row) => {
-      if (row.email) STORE.set(row.email.toLowerCase(), mapDbRow(row as any));
+      const record = row;
+      if (!record.email) return;
+      if (!isUserTier(record.tier)) {
+        throw new Error('Unrecognized persisted user tier');
+      }
+      STORE.set(record.email.toLowerCase(), {
+        id: record.id,
+        email: record.email,
+        passwordHash: record.passwordHash ?? '',
+        displayName: record.name ?? record.email.split('@')[0] ?? 'User',
+        tier: record.tier,
+        role: DB_TO_ROLE[record.role.toUpperCase()] ?? 'user',
+        createdAt: Date.now(),
+      });
     });
     dbLoaded = true;
   } catch (err) {
@@ -120,42 +127,58 @@ const ROLE_TO_DB: Record<UserRole, string> = {
   user:       'USER',
 };
 
-async function persistUser(user: StoredUser): Promise<void> {
+async function persistUserStrict(user: StoredUser, persistTier = false): Promise<void> {
   const client = getDb();
   if (!client) return;
+  const dbRole = ROLE_TO_DB[user.role] ?? 'USER';
+  await client.user.upsert({
+    where: { email: user.email },
+    create: {
+      id: user.id,
+      email: user.email,
+      passwordHash: user.passwordHash,
+      displayName: user.displayName,
+      tier: user.tier,
+      role: dbRole,
+      userRef: user.ref ?? null,
+      userCreatedAt: new Date(user.createdAt),
+      termsAccepted: false,
+    },
+    update: {
+      passwordHash: user.passwordHash,
+      displayName: user.displayName,
+      ...(persistTier ? { tier: user.tier } : {}),
+      role: dbRole,
+    },
+  });
+}
+
+async function persistUser(user: StoredUser, persistTier = false): Promise<void> {
   try {
-    const dbRole = ROLE_TO_DB[user.role] ?? 'USER';
-    await client.user.upsert({
-      where: { email: user.email },
-      create: {
-        id: user.id,
-        email: user.email,
-        passwordHash: user.passwordHash,
-        displayName: user.displayName,
-        tier: user.tier,
-        role: dbRole,
-        userRef: user.ref ?? null,
-        userCreatedAt: new Date(user.createdAt),
-        // Never silently accept policies — OAuth / UserStore creates must
-        // complete /onboarding/communication-setup (or signup checkboxes).
-        termsAccepted: false,
-      },
-      update: {
-        passwordHash: user.passwordHash,
-        displayName: user.displayName,
-        tier: user.tier,
-        role: dbRole,
-        // Do not set termsAccepted on update — only policy-accept / register may.
-      },
-    });
+    await persistUserStrict(user, persistTier);
   } catch {
-    // Silently swallow DB errors — Map is the source of truth
+    // Silently swallow DB errors for non-entitlement background syncs
   }
 }
 
 // Pre-load DB users into Map on module init (non-blocking)
 // Exported so routes can await it before first read on cold start.
-export const dbReady: Promise<void> = loadFromDb();
+let dbReadyPromise: Promise<void> | null = null;
+
+/** Starts the store preload on first await. Importing this module does not query. */
+export function ensureUserStoreReady(): Promise<void> {
+  if (!dbReadyPromise) dbReadyPromise = loadFromDb();
+  return dbReadyPromise;
+}
+
+export const dbReady: PromiseLike<void> = {
+  then<TResult1 = void, TResult2 = never>(
+    onFulfilled?: ((value: void) => TResult1 | PromiseLike<TResult1>) | null,
+    onRejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return ensureUserStoreReady().then(onFulfilled, onRejected);
+  },
+};
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -180,6 +203,7 @@ const HARDCODED_ADMINS = new Set([
 
 // Diamond lifetime accounts
 const HARDCODED_DIAMOND = new Set([
+  'jimmyabrica87@gmail.com',
   't.muse82@icloud.com',
   'facethebully916@gmail.com',
   'suedejs2000@gmail.com',
@@ -334,16 +358,46 @@ export function updateUserRole(email: string, role: UserRole): boolean {
   return true;
 }
 
+import { bumpEntitlementEpoch } from '@/lib/stripe/billingGraceEngine';
+
 export function updateUserTier(email: string, tier: UserTier): boolean {
   const e = email.trim().toLowerCase();
+  bumpEntitlementEpoch(e);
   const user = STORE.get(e);
   if (!user) return false;
   // Never downgrade hardcoded founder/admin accounts
   if (resolveHardcodedTierRole(e)?.tier === 'DIAMOND') return false;
   user.tier = tier;
   STORE.set(e, user);
-  waitUntil(persistUser(user));
+  waitUntil(persistUser(user, true));
   return true;
+}
+
+/**
+ * Durable tier update: awaits database persistence before updating the warm
+ * cache so failed database writes never report false success or leave an
+ * uncommitted tier in the process-local store.
+ */
+export async function updateUserTierDurable(email: string, tier: UserTier): Promise<boolean> {
+  const e = email.trim().toLowerCase();
+  const user = STORE.get(e);
+  if (!user) return false;
+  if (resolveHardcodedTierRole(e)?.tier === 'DIAMOND') return false;
+  const candidate: StoredUser = { ...user, tier };
+  await persistUserStrict(candidate, true);
+  bumpEntitlementEpoch(e);
+  user.tier = tier;
+  STORE.set(e, user);
+  return true;
+}
+
+/** Synchronize an already-committed tier without scheduling another database write. */
+export function syncPersistedUserTier(email: string, tier: UserTier): void {
+  const e = email.trim().toLowerCase();
+  bumpEntitlementEpoch(e);
+  const user = STORE.get(e);
+  if (!user || resolveHardcodedTierRole(e)?.tier === 'DIAMOND') return;
+  user.tier = tier;
 }
 
 export function updateUserPassword(email: string, newPassword: string): boolean {

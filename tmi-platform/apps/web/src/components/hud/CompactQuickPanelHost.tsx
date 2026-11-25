@@ -4,6 +4,9 @@
  * CompactQuickPanelHost — mounts active floating quick panels (LOBBIES, STREAM & WIN lounge, AVATAR, etc.).
  * LOBBIES → LiveLobbyWallHost mosaic; stream-win → radio lounge panel (not lobby wall).
  * One panel at a time; preserves roomId / player / WebRTC (no router.push).
+ *
+ * R-LEG-08: all hooks run unconditionally before any conditional return
+ * (Rules of Hooks — desktop Lobby DRAWER redirect must not sit after early returns).
  */
 
 import React from "react";
@@ -19,6 +22,7 @@ import ExploreMatrixDiscoveryHost from "@/components/explore/ExploreMatrixDiscov
 import MiniLiveLobbyWallRuntime from "@/components/lobby/MiniLiveLobbyWallRuntime";
 import StreamWinMosaicPanel from "@/components/commandCenter/StreamWinMosaicPanel";
 import VenueToolsPanelHost from "@/components/hud/VenueToolsPanelHost";
+import { presentCanonicalWorkspace } from "@/lib/workspace/universal/openCanonicalPresentation";
 
 export interface CompactQuickPanelHostProps {
   userId: string;
@@ -61,6 +65,16 @@ export default function CompactQuickPanelHost({
       window.removeEventListener("tmi:quick-panel-close", onClose);
     };
   }, [storeClosePanel]);
+
+  // Desktop Hub: lobbies panel → lower DRAWER (not Mini overlay). Phone keeps Mini sheet.
+  // R-LEG-08: must run before any conditional return so hook count is stable across panels.
+  React.useEffect(() => {
+    if (activePanel !== "lobbies") return;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    if (window.matchMedia("(max-width: 900px)").matches) return;
+    presentCanonicalWorkspace("lobby", "DRAWER");
+    closePanel();
+  }, [activePanel, closePanel]);
 
   if (!activePanel) return null;
 
@@ -105,6 +119,11 @@ export default function CompactQuickPanelHost({
   }
 
   if (activePanel === "lobbies") {
+    const isDesktop =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      !window.matchMedia("(max-width: 900px)").matches;
+    if (isDesktop) return null;
     return (
       <MiniLiveLobbyWallRuntime
         role={role === "performer" ? "performer" : "fan"}

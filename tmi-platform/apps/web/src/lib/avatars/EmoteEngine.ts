@@ -11,8 +11,8 @@
  * Catalog SKUs live in FanCosmeticCatalog; this engine runs the runtime triggers.
  */
 
-import type { AvatarAnimationState } from '@/lib/avatars/UnifiedAvatarRuntime';
-import { updateEntityState, getEntity } from '@/lib/avatars/UnifiedAvatarRuntime';
+import type { AvatarAnimationState } from './UnifiedAvatarRuntime';
+import { updateEntityState, getEntity } from './UnifiedAvatarRuntime';
 import { roomEnergyEngine } from '@/lib/live/RoomEnergyEngine';
 import {
   getFanCosmetic,
@@ -20,7 +20,7 @@ import {
   listDanceEmotes,
   listGestureEmotes,
   type FanCosmeticDef,
-} from '@/lib/avatars/FanCosmeticCatalog';
+} from './FanCosmeticCatalog';
 
 // ─── Emote type ───────────────────────────────────────────────────────────────
 
@@ -225,9 +225,10 @@ export const EMOTE_SPECS: Record<AvatarEmote, EmoteSpec> = {
     soundKey: 'crowd_cheer_small',
   },
   glowstick: {
-    emote: 'glowstick', label: 'Glow Stick', emoji: '💡',
+    emote: 'glowstick', label: 'TMI Glow Stick', emoji: '💡',
     animState: 'dancing', kind: 'dance',
-    defaultDurationMs: 5000, energyBoost: 6, xpAward: 12,
+    // RAISE→CRACK→LIGHT→WAVE→REST ≈ 3.6s standing (§11531–§11532)
+    defaultDurationMs: 3600, energyBoost: 6, xpAward: 12,
   },
   headbang: {
     emote: 'headbang', label: 'Headbang', emoji: '🤘',
@@ -535,6 +536,83 @@ export function getDanceEmoteSpecList(): EmoteSpec[] {
 
 export function getGestureEmoteSpecList(): EmoteSpec[] {
   return getEmoteSpecList().filter((s) => s.kind === 'gesture');
+}
+
+/**
+ * JOB-WDP-LIGHT-DANCE-001 pack — public copy for isolated showroom preview.
+ * Source remains packages/assets/.../wdp_avatar_dance_pack_v1.glb.
+ * LIVE_ASSET_SWITCHES stays false; this is preview binding only (certified=false promotion pattern).
+ */
+export const WDP_DANCE_PACK_PUBLIC_URL =
+  "/models/avatars/motion/wdp_avatar_dance_pack_v1.glb" as const;
+
+/** FanCosmetic animationId → WDP AvatarRig/1.0 clip inside the dance pack. */
+export const FAN_DANCE_ANIMATION_TO_WDP_CLIP: Readonly<Record<string, string>> = {
+  dance_twostep: "Dance_TwoStep_v1",
+  dance_bounce: "Dance_Bounce_v1",
+  dance_wave: "Dance_Wave_v1",
+  dance_shuffle: "Dance_Shuffle_v1",
+  dance_hiphop: "Dance_Groove_v1",
+  dance_robot: "Dance_Robot_v1",
+  dance_disco: "Dance_Disco_v1",
+  dance_spin: "Dance_Spin_v1",
+  dance_hype: "Dance_HandsUp_v1",
+  dance_salsa: "Dance_Footwork_v1",
+  dance_country: "Dance_Footwork_v1",
+  dance_slow: "Dance_Signature_v1",
+  dance_headbang: "Dance_Battle_v1",
+};
+
+/**
+ * Marketplace / showroom clip binding.
+ * Prefer distinct WDP pack clips when animationId maps; otherwise shared Dance
+ * on the base GLB. Gestures without a matching GLB clip → UNAVAILABLE.
+ */
+export type ShowroomClipBinding =
+  | {
+      status: "BOUND_DISTINCT";
+      clip: string;
+      animationId: string;
+      packUrl: typeof WDP_DANCE_PACK_PUBLIC_URL;
+    }
+  | { status: "BOUND_SHARED_DANCE"; clip: "Dance"; animationId: string }
+  | { status: "BOUND_IDLE"; clip: "Idle"; animationId?: string }
+  | { status: "UNAVAILABLE"; clip: null; animationId?: string; reason: string };
+
+export function resolveShowroomBodyClip(input: {
+  emoteKind?: string | null;
+  animationId?: string | null;
+}): ShowroomClipBinding {
+  const kind = input.emoteKind ?? null;
+  const animationId = input.animationId ?? undefined;
+  if (kind === "dance") {
+    const mapped =
+      animationId && FAN_DANCE_ANIMATION_TO_WDP_CLIP[animationId]
+        ? FAN_DANCE_ANIMATION_TO_WDP_CLIP[animationId]
+        : null;
+    if (mapped) {
+      return {
+        status: "BOUND_DISTINCT",
+        clip: mapped,
+        animationId: animationId ?? "dance",
+        packUrl: WDP_DANCE_PACK_PUBLIC_URL,
+      };
+    }
+    return {
+      status: "BOUND_SHARED_DANCE",
+      clip: "Dance",
+      animationId: animationId ?? "dance",
+    };
+  }
+  if (kind === "gesture" || kind === "action") {
+    return {
+      status: "UNAVAILABLE",
+      clip: null,
+      animationId,
+      reason: `No GLB clip for ${animationId ?? kind} — preview unavailable (not a fake animation)`,
+    };
+  }
+  return { status: "BOUND_IDLE", clip: "Idle", animationId };
 }
 
 /** Catalog-backed helpers for Creation Center / store honesty. */

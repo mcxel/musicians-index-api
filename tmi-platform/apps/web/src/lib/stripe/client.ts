@@ -1,5 +1,6 @@
 // src/lib/stripe/client.ts
 import Stripe from 'stripe';
+import { allowStripeClientInCurrentRuntime } from '@/lib/security/previewFinancialIsolation';
 
 function isPlaceholderKey(key: string): boolean {
   const normalized = key.trim().toLowerCase();
@@ -18,6 +19,8 @@ export function getStripe(): Stripe | null {
   const key = raw.trim(); // guard against accidental whitespace in env var
   if (!key) return null;
   if (isPlaceholderKey(key)) return null;
+  // Preview + live key → refuse client (fail closed). Does not print the key.
+  if (!allowStripeClientInCurrentRuntime()) return null;
   return new Stripe(key, {
     apiVersion: "2026-02-25.clover",
     appInfo: { name: 'BerntoutGlobal XXL', version: '0.1.0' },

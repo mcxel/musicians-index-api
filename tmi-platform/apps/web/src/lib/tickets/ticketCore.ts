@@ -78,6 +78,11 @@ export type TicketRecord = {
   offerId?: string;
   checkedInAt?: string | null;
   checkedInBy?: string | null;
+  /**
+   * Immutable purchase-time economics for cancellation/refund accounting.
+   * Never rewrite from a later membership tier.
+   */
+  economicSnapshot?: import("@/lib/economy/TicketPurchaseEconomicSnapshot").TicketPurchaseEconomicSnapshot;
 };
 
 // In-memory L1 cache (24h TTL). Digital offer issuances also write through

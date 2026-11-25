@@ -5,6 +5,7 @@
  * Venue/Promoter inventory (Rule 17) — not reused for digital offer drafts.
  */
 
+import "server-only";
 import prisma from "@/lib/prisma";
 import { TICKET_FEE_POLICY_ID } from "@/lib/tickets/TicketFeeResolver";
 import type { DigitalTicketOffer, DigitalTicketStatus, DigitalTicketType } from "@/lib/tickets/DigitalTicketOfferEngine";
@@ -336,6 +337,25 @@ export async function dbGetIssuedTicket(ticketId: string): Promise<TicketRecord 
     ticketId,
   );
   return rows[0] ? mapIssuedRow(rows[0]) : null;
+}
+
+/**
+ * SECURITY (2026-09-23): real ticket-ownership check for paid room entry —
+ * does this specific user hold an issued digital ticket for this specific
+ * event? Existence-only (not gated on `redeemed`) since entering a live
+ * stream room is not a single-use physical gate scan. Used by the paid-entry
+ * room-access gate so ticketed access is actually enforced at the door, not
+ * just priced and sold.
+ */
+export async function dbHasIssuedTicketForEventOwner(eventId: string, ownerId: string): Promise<boolean> {
+  if (!eventId || !ownerId) return false;
+  await ensureDigitalTicketSchema();
+  const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+    `SELECT id FROM "DigitalIssuedTicket" WHERE "eventId" = $1 AND "ownerId" = $2 LIMIT 1`,
+    eventId,
+    ownerId,
+  );
+  return rows.length > 0;
 }
 
 /**

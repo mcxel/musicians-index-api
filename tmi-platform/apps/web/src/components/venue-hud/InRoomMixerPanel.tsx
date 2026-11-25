@@ -19,6 +19,9 @@ import {
 } from "@/lib/audio/mixer";
 import { CanonicalPerformanceGlueDirector, type PerformanceGlueMode } from "@/lib/audio/mixer";
 import type { ExperienceType } from "@/lib/venue-hud/TMIExperienceHudRuntime";
+import {
+  resolvePerformerCrowdMixPlan,
+} from "@/lib/audio/mixer/PerformerLiveMixCrowdPolicy";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -73,6 +76,10 @@ export default function InRoomMixerPanel({
       liveSessionId,
       experienceType,
     });
+    ChannelMixerDirector.applyPerformerCrowdPolicy({
+      experienceType,
+      positiveCrowdEnabled: true,
+    });
     return ChannelMixerDirector.subscribe(() => setTick((t) => t + 1));
   }, [roomId, liveSessionId, experienceType]);
 
@@ -89,6 +96,15 @@ export default function InRoomMixerPanel({
   const health = ChannelMixerDirector.getSystemHealth();
   const fidelity = ChannelMixerDirector.getFidelityHealth();
   const policy = ChannelMixerDirector.getPolicy();
+  const crowdMix = useMemo(
+    () =>
+      resolvePerformerCrowdMixPlan({
+        experienceType,
+        positiveCrowdEnabled: true,
+        preset: "BALANCED",
+      }),
+    [experienceType],
+  );
 
   const visibleChannels = useMemo(() => {
     return channels.filter((ch) => {
@@ -201,6 +217,14 @@ export default function InRoomMixerPanel({
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
             {policy.profileId} · {ChannelMixerDirector.getAudioOwnerBound() ? "AudioOwner bound" : "DEFAULT_ONLY graph"}
           </div>
+          {crowdMix.suppressBooInPersonalMonitor ? (
+            <div
+              data-testid="boo-suppressed-in-personal-mix"
+              style={{ fontSize: 8, color: GOLD, marginTop: 4, fontWeight: 700 }}
+            >
+              Boos muted in PERSONAL monitor · positive crowd max {Math.round(crowdMix.maxCrowdGain * 100)}%
+            </div>
+          ) : null}
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button

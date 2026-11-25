@@ -46,6 +46,9 @@ function stopKind(stream: MediaStream | null | undefined, kind: "video" | "audio
   });
 }
 
+let hubCameraPreviewRequest: Promise<{ ok: boolean; error?: string }> | null = null;
+let hubCameraPreviewGeneration = 0;
+
 export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
   cameraPreviewActive: false,
   micPreviewActive: false,
@@ -139,9 +142,38 @@ export const useLivePrivacyState = create<LivePrivacyState>((set, get) => ({
   },
 }));
 
-/** Request local camera/mic preview — explicit user action only. */
-export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: string }> {
+export function toggleExistingHubMediaTrack(kind: "audio" | "video", roomId: string): boolean {
   const state = useLivePrivacyState.getState();
+  if (state.isLivePublished && state.publishedRoomId !== roomId) return false;
+  const tracks = kind === "audio" ? state.previewStream?.getAudioTracks() : state.previewStream?.getVideoTracks();
+  if (!tracks?.some((track) => track.readyState === "live")) return false;
+  if (kind === "audio") state.setMicPreviewActive(!state.micPreviewActive);
+  else state.setCameraPreviewActive(!state.cameraPreviewActive);
+  state.syncPreviewTracks();
+  return true;
+}
+
+/** Request local camera/mic preview — explicit user action only. */
+export function requestHubCameraPreview(): Promise<{ ok: boolean; error?: string }> {
+  if (hubCameraPreviewRequest) return hubCameraPreviewRequest;
+  hubCameraPreviewRequest = requestHubCameraPreviewOnce().finally(() => {
+    hubCameraPreviewRequest = null;
+  });
+  return hubCameraPreviewRequest;
+}
+
+async function requestHubCameraPreviewOnce(): Promise<{ ok: boolean; error?: string }> {
+  const state = useLivePrivacyState.getState();
+  if (state.isLivePublished) {
+    const hasVideo = state.previewStream?.getVideoTracks().some((t) => t.readyState === "live") ?? false;
+    const hasAudio = state.previewStream?.getAudioTracks().some((t) => t.readyState === "live") ?? false;
+    if (!hasVideo && !hasAudio) {
+      return { ok: false, error: "Published camera/mic stream is unavailable; refusing a duplicate capture." };
+    }
+    // Reattach only. Keep the owner's current mute state unchanged.
+    state.syncPreviewTracks();
+    return { ok: true };
+  }
   if (state.previewStream) {
     const hasVideo = state.previewStream.getVideoTracks().some((t) => t.readyState === "live");
     const hasAudio = state.previewStream.getAudioTracks().some((t) => t.readyState === "live");
@@ -157,10 +189,15 @@ export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: 
   }
 
   try {
+    const generation = hubCameraPreviewGeneration;
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: true,
     });
+    if (generation !== hubCameraPreviewGeneration) {
+      stopStreamTracks(stream);
+      return { ok: false, error: "Camera/mic request was cancelled by session teardown." };
+    }
     useLivePrivacyState.getState().setPreviewStream(stream);
     useLivePrivacyState.getState().setCameraPreviewActive(true);
     useLivePrivacyState.getState().setMicPreviewActive(Boolean(stream.getAudioTracks()[0]));
@@ -179,6 +216,16 @@ export async function requestHubCameraPreview(): Promise<{ ok: boolean; error?: 
           : "Could not access camera/mic.",
     };
   }
+}
+
+/** Explicit End Live/logout only. Route or Stage unmount must never call this. */
+export function releasePublishedLiveMedia(): void {
+  hubCameraPreviewGeneration += 1;
+  const state = useLivePrivacyState.getState();
+  state.clearLivePublished();
+  state.setCameraPreviewActive(false);
+  state.setMicPreviewActive(false);
+  state.releasePreviewTracks();
 }
 
 export async function toggleHubMicPreview(): Promise<void> {

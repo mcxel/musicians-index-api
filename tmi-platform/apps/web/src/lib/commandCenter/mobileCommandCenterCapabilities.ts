@@ -94,6 +94,6 @@ export const MOBILE_PRIMARY_SESSION_IDS = [
   "camera",
   "snips",
   "video-shuffle",
-  "stream-win",
+  "lobbies",
   "go-live",
 ] as const;

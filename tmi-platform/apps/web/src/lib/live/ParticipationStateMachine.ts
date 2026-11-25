@@ -14,6 +14,12 @@ import {
   resolveExperiencePersonality,
   type ExperiencePersonality,
 } from "@/lib/live/ExperiencePersonality";
+import {
+  resolveJoinStageInitialState,
+  resolveVenueEntryPolicy,
+  type RoomJoinIntent,
+  type VenueEntryMode,
+} from "@/lib/live/venueEntryModeLaw";
 
 /** Canonical participation states — ONE shared machine for all room types. */
 export type ParticipationState =
@@ -248,6 +254,11 @@ export function resolveParticipationEntry(input: {
   personality?: ExperiencePersonality;
   cypherKing?: boolean;
   featureFlags?: readonly string[] | null;
+  /** WATCH stays audience; JOIN_STAGE applies venue entry mode. Default WATCH. */
+  joinIntent?: RoomJoinIntent;
+  venueEntryMode?: VenueEntryMode | string | null;
+  isPreauthorizedInvite?: boolean;
+  mediaReady?: boolean;
 }): ParticipationResolution {
   const role = normalizeParticipationRole(input.role);
   const ownership = input.ownership ?? "platform";
@@ -256,6 +267,7 @@ export function resolveParticipationEntry(input: {
   const votingOpen = Boolean(input.votingOpen);
   const queueEngineAvailable = input.queueEngineAvailable !== false;
   const hostControlsAvailable = input.hostControlsAvailable !== false;
+  const joinIntent: RoomJoinIntent = input.joinIntent ?? "WATCH";
   const personality =
     input.personality ??
     resolveExperiencePersonality({
@@ -272,6 +284,45 @@ export function resolveParticipationEntry(input: {
     entryMode = "HOST_CONTROL";
     initialState = "ACTIVE";
     claimFanSeat = false;
+  } else if (joinIntent === "WATCH") {
+    // ROOM ENTRY ≠ STAGE ADMISSION — performers watching enter as audience.
+    if (input.roomKind === "fan_lobby" && role === "FAN") {
+      entryMode = "FAN_AVATAR_LOBBY";
+      initialState = "SPECTATOR";
+      claimFanSeat = true;
+    } else if (input.roomKind === "lounge") {
+      entryMode = "LOUNGE_PANEL";
+      initialState = "SPECTATOR";
+      claimFanSeat = false;
+    } else if (role === "FAN") {
+      entryMode = "FAN_SEAT";
+      initialState = "SPECTATOR";
+      claimFanSeat = true;
+    } else {
+      entryMode = "SPECTATOR";
+      initialState = "SPECTATOR";
+      claimFanSeat = false;
+    }
+  } else if (joinIntent === "JOIN_STAGE") {
+    const policy = resolveVenueEntryPolicy({
+      venueEntryMode: input.venueEntryMode,
+      roomKind: input.roomKind,
+    });
+    initialState = resolveJoinStageInitialState({
+      venueEntryMode: policy.venueEntryMode,
+      isPreauthorizedInvite: input.isPreauthorizedInvite,
+      mediaReady: input.mediaReady,
+    });
+    if (policy.venueEntryMode === "QUEUE_SCHEDULED" || COMPETITION_KINDS.has(input.roomKind)) {
+      entryMode = "QUEUE";
+      claimFanSeat = false;
+    } else if (input.roomKind === "performer_lobby") {
+      entryMode = "PERFORMER_LOBBY";
+      claimFanSeat = false;
+    } else {
+      entryMode = "HOST_CONTROL";
+      claimFanSeat = false;
+    }
   } else if (COMPETITION_KINDS.has(input.roomKind) && isPerformerCapable(role)) {
     // Performer enters competition as queued participant watching — NOT fan audience seat
     entryMode = "QUEUE";

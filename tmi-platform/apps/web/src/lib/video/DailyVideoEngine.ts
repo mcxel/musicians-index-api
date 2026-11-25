@@ -9,6 +9,8 @@ export interface DailyRoom {
   name: string;
   url: string;
   created_at: number;
+  /** 'public' | 'private' as reported by Daily. */
+  privacy?: string;
   config: {
     exp?: number;
     max_participants?: number;
@@ -32,6 +34,8 @@ export async function createDailyRoom(options?: {
   name?: string;
   expiresInMinutes?: number;
   maxParticipants?: number;
+  /** 'private' = a valid meeting token is required to join. Defaults to 'public' (legacy behaviour). */
+  privacy?: 'public' | 'private';
 }): Promise<DailyRoom> {
   const apiKey = getApiKey();
   const expiry = options?.expiresInMinutes ?? 120;
@@ -48,7 +52,7 @@ export async function createDailyRoom(options?: {
         exp: Math.floor(Date.now() / 1000) + expiry * 60,
         max_participants: options?.maxParticipants ?? 50,
         enable_chat: true,
-        privacy: 'public',
+        privacy: options?.privacy ?? 'public',
         enable_knocking: false,
         start_video_off: false,
         start_audio_off: false,
@@ -72,6 +76,14 @@ export async function createMeetingToken(roomName: string, options?: {
   expiresInMinutes?: number;
   startVideoOff?: boolean;
   startAudioOff?: boolean;
+  /**
+   * Daily `permissions.canSend`: true = all, false = receive-only,
+   * or a subset of 'video' | 'audio' | 'screenVideo' | 'screenAudio'.
+   * Omitted = Daily default (legacy behaviour).
+   */
+  canSend?: boolean | Array<'video' | 'audio' | 'screenVideo' | 'screenAudio'>;
+  /** Kick the participant out when the token expires. */
+  ejectAtTokenExp?: boolean;
 }): Promise<DailyMeetingToken> {
   const apiKey = getApiKey();
   const expiry = options?.expiresInMinutes ?? 120;
@@ -91,6 +103,8 @@ export async function createMeetingToken(roomName: string, options?: {
         start_video_off: options?.startVideoOff ?? false,
         start_audio_off: options?.startAudioOff ?? false,
         exp: Math.floor(Date.now() / 1000) + expiry * 60,
+        ...(options?.canSend !== undefined ? { permissions: { canSend: options.canSend } } : {}),
+        ...(options?.ejectAtTokenExp ? { eject_at_token_exp: true } : {}),
       },
     }),
   });
@@ -123,4 +137,24 @@ export async function deleteDailyRoom(roomName: string): Promise<void> {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${apiKey}` },
   });
+}
+
+/**
+ * Eject participants by canonical TMI user id (DailyParticipant.user_id).
+ * `ban` prevents them rejoining that room with the same user_id.
+ */
+export async function ejectDailyParticipants(
+  roomName: string,
+  userIds: string[],
+  options?: { ban?: boolean },
+): Promise<{ ejectedIds: string[] }> {
+  if (userIds.length === 0) return { ejectedIds: [] };
+  const apiKey = getApiKey();
+  const res = await fetch(`${DAILY_API_BASE}/rooms/${encodeURIComponent(roomName)}/eject`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_ids: userIds.slice(0, 100), ...(options?.ban ? { ban: true } : {}) }),
+  });
+  if (!res.ok) throw new Error(`Daily.co eject failed: ${await res.text()}`);
+  return res.json();
 }

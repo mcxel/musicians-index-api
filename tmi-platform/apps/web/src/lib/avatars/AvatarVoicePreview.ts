@@ -1,4 +1,4 @@
-import type { PhonemeGroup } from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
+import type { PhonemeGroup } from "../avatar/AvatarLipSyncDirectiveEngine";
 
 export interface AvatarVoicePreviewState {
   talking: boolean;

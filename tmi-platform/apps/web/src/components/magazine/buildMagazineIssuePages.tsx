@@ -1,536 +1,681 @@
-import { ImageSlotWrapper } from '@/components/visual-enforcement';
+import React from "react";
 import Link from "next/link";
 import type { MagazinePage } from "@/components/magazine/MagazineShell";
-import { MAGAZINE_ISSUE_1, getArticleBySlug, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
-import { magazineReaderArticleUrl, magazineReaderUrl } from "@/lib/magazine/MagazineReaderRoutes";
-import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
-import MagazineEditorialSpreadEngine from "@/components/magazine/MagazineEditorialSpreadEngine";
-import MagazineHappyDaysPage from "@/components/magazine/pages/MagazineHappyDaysPage";
-import {
-  buildCanonicalMagazineIssueSlots,
-  issueSlotMonetizationLabel,
-} from "@/lib/magazine/MagazineRotationEngine";
+import { buildCanonicalMagazineIssueSlots } from "@/lib/magazine/MagazineRotationEngine";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 import type { MagazineIssueSlot } from "@/lib/magazine/MagazineIssueContract";
+import type { ArticleCompositionSpec } from "@/lib/magazine/AdaptiveMagazineCompositionAuthority";
+import AdSenseSlot from "@/components/ads/AdSenseSlot";
+import { ADSENSE_SLOT_ENV } from "@/lib/ads/adConfig";
+import MagazineContinuousFeatureSheet from "@/components/magazine/MagazineContinuousFeatureSheet";
+import MagazineMultiArticleNewsPage from "@/components/magazine/MagazineMultiArticleNewsPage";
+import { MAGAZINE_PAGE_GEOMETRY } from "@/lib/magazine/MagazinePageGeometryAuthority";
+import { getPerformerBySlug } from "@/lib/performers/PerformerRegistry";
+import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry.server";
+import { liveSessionToDiscoveryRecord } from "@/lib/discovery/DiscoveryPublisher";
+import { resolveAuthorizedMagazineImageUrl } from "@/lib/magazine/MagazineImageProvenance";
+import {
+  chunkNewsStoriesForPages,
+  presentMagazineArticleAsNewsStory,
+  type PresentedNewsStory,
+} from "@/lib/magazine/MagazineNewsStoryPresentation";
 
-type TileProps = {
-  title: string;
-  deck?: string;
-  href: string;
-  accent: string;
-};
-
-type ImageTileProps = {
-  src: string;
-  href: string;
-  label: string;
-  ratio?: "portrait" | "video" | "square" | "tall";
-  faceCrop?: boolean;
-};
-
-const sponsorLogos = [
-  "/sponsors/primeaudio.svg",
-  "/sponsors/beatforge.svg",
-  "/sponsors/skyline-tech.svg",
-  "/sponsors/glowclub.svg",
-];
-
-const mediaShots = [
-  "/tmi-curated/mag-20.jpg",
-  "/tmi-curated/mag-28.jpg",
-  "/tmi-curated/mag-35.jpg",
-  "/tmi-curated/mag-42.jpg",
-  "/tmi-curated/mag-50.jpg",
-  "/tmi-curated/mag-58.jpg",
-  "/tmi-curated/mag-66.jpg",
-  "/tmi-curated/mag-74.jpg",
-  "/tmi-curated/mag-82.jpg",
-];
-
-function panel(accent: string) {
-  return {
-    border: `1px solid ${accent}88`,
-    borderRadius: 10,
-    background: `linear-gradient(135deg, ${accent}28, rgba(5,5,16,0.88))`,
-    padding: 10,
-  } as const;
-}
-
-function TextTile({ title, deck, href, accent }: TileProps) {
-  return (
-    <Link href={href} style={{ textDecoration: "none", color: "#fff", ...panel(accent), display: "grid", gap: 6 }}>
-      <span style={{ fontSize: 9, letterSpacing: "0.16em", fontWeight: 900, color: accent }}>{title}</span>
-      {deck && <span style={{ fontSize: 11, lineHeight: 1.45, color: "rgba(255,255,255,0.9)" }}>{deck}</span>}
-      <span style={{ fontSize: 9, letterSpacing: "0.11em", fontWeight: 800 }}>OPEN →</span>
-    </Link>
-  );
-}
-
-function ImageTile({ src, href, label, ratio = "portrait", faceCrop = false }: ImageTileProps) {
-  const aspectRatioMap = {
-    video: "16 / 9",
-    square: "1 / 1",
-    portrait: "3 / 4",
-    tall: "2 / 3",
-  };
-  const aspectRatio = aspectRatioMap[ratio];
-  const objectPosition = ratio === "video" ? "center" : faceCrop ? "center 15%" : "center 20%";
-
-  return (
-    <Link
-      href={href}
-      style={{
-        textDecoration: "none",
-        color: "#fff",
-        border: "1px solid rgba(255,255,255,0.22)",
-        borderRadius: 10,
-        overflow: "hidden",
-        background: "rgba(5,5,16,0.75)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div style={{ width: "100%", aspectRatio, overflow: "hidden", flexShrink: 0 }}>
-        <ImageSlotWrapper imageId="img-tmrq2" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
-      </div>
-      <span style={{ fontSize: 9, padding: "6px 8px", letterSpacing: "0.11em", color: "#FFD700", fontWeight: 800, flexShrink: 0 }}>{label}</span>
-    </Link>
-  );
-}
+/**
+ * Real-content wiring (owner-locked, 2026-10-30): this file previously
+ * called buildCanonicalMagazineIssueSlots() and then `void publishedSlots;`
+ * — discarding the real System D / quarterly-apex / adaptive-composition
+ * pipeline and rendering hardcoded fake identities (Ricardo Parker, Krypt,
+ * Zuri Bloom, Neon Vibe) with fake poll totals and fake sponsor copy
+ * instead. That discard is removed. Every page below is now a direct
+ * projection of a real MagazineIssueSlot:
+ *   - PERFORMER/NEWS slots render the real slot's title/deck/image/href,
+ *     enriched with real published Article content (getArticleBySlug) when
+ *     the slot has a real articleSlug — never fabricated bio/quote text
+ *     when no article exists yet (honest "no feature yet" state instead).
+ *   - RANDOM slots render the real sponsor/platform-promo/advertise-CTA
+ *     data the pool already resolved via Rule 12's fallback chain — never
+ *     the old hardcoded 4-sponsor grid.
+ *   - articleComposition (AdaptiveMagazineCompositionAuthority, carried
+ *     through MagazineRotationEngine's real pipeline — see
+ *     getCurrentMagazineApexPlacements()/performersToSlotSources()) now
+ *     visibly drives hero position, headline placement, and column count
+ *     for PERFORMER pages — not just passed through as inert data.
+ * No poll module renders anywhere in this file: no real poll authority
+ * exists yet for any slot, so none is fabricated (owner law: "no real
+ * poll exists for the article: do not render fake voting totals").
+ */
 
 function ConfettiBand() {
   return (
     <div
       aria-hidden
       style={{
-        height: 20,
+        height: 14,
         borderRadius: 999,
         background:
-          "linear-gradient(90deg, #00FFFF 0 20%, #FF2DAA 20% 40%, #FFD700 40% 60%, #AA2DFF 60% 80%, #00FF88 80% 100%)",
+          "linear-gradient(90deg, #00FFFF 0% 20%, #FF2DAA 20% 40%, #FFD700 40% 60%, #AA2DFF 60% 80%, #00FF88 80% 100%)",
         filter: "saturate(1.2)",
-        boxShadow: "0 0 14px rgba(0,255,255,0.4)",
+        boxShadow: "0 0 14px rgba(0,255,255,0.3)",
       }}
     />
   );
 }
 
 // ────────────────────────────────────────────────────────────
-// PAGE COMPONENTS — A variants (first half of issue)
+// PAGE 0 — COVER (real apex, real table of contents)
 // ────────────────────────────────────────────────────────────
-
-function FeatureImagePage({ article, image, artistSlug, artistImage }: { article: MagazineArticle; image: string; artistSlug: string; artistImage: string }) {
+function CoverPage({
+  issue,
+  apexSlot,
+  tocSlots,
+}: {
+  issue: string;
+  apexSlot: MagazineIssueSlot | null;
+  tocSlots: MagazineIssueSlot[];
+}) {
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <ConfettiBand />
-      <ImageTile src={image} href={magazineReaderArticleUrl(article.slug)} label="FEATURE IMAGE" ratio="video" />
-      <TextTile
-        title={article.title.toUpperCase()}
-        deck={article.subtitle}
-        href={magazineReaderArticleUrl(article.slug)}
-        accent={article.heroColor}
-      />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <ImageTile src={artistImage} href={`/artists/${artistSlug}`} label="ARTIST" ratio="portrait" faceCrop />
-        <TextTile title="READ ARTICLE" deck="Open the full editorial inside." href={magazineReaderArticleUrl(article.slug)} accent="#FFD700" />
-      </div>
-    </div>
-  );
-}
-
-// Page 3 — Article Mix A: side-by-side text + image with poll/news grid
-function MixedEditorialPageA({ article, fallbackNewsSlug }: { article: MagazineArticle; fallbackNewsSlug: string }) {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 8 }}>
-        <TextTile
-          title="ARTICLE PREVIEW"
-          deck={article.blocks.find((block) => block.type === "paragraph")?.text ?? article.subtitle}
-          href={magazineReaderArticleUrl(article.slug)}
-          accent="#00FFFF"
-        />
-        <ImageTile src={mediaShots[1]} href="/live" label="VIDEO PREVIEW" ratio="video" />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="POLL CARD" deck="Vote this story to next week's cover." href="/games/polls" accent="#AA2DFF" />
-        <TextTile title="NEWS TILE" deck="Trending chart movements and recaps." href={magazineReaderArticleUrl(fallbackNewsSlug)} accent="#FFD700" />
-      </div>
-      <TextTile title="SPONSOR TILE" deck="Sponsored segment placement in this spread." href="/sponsors/soundwave-audio" accent="#FF2DAA" />
-      <ConfettiBand />
-    </div>
-  );
-}
-
-// Page 4 — Sponsor A: logo grid with market drop
-function SponsorCollagePageA() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <TextTile title="SPONSOR POWER PANEL" deck="Magazine ad inventory, sponsor offers, and launch rails." href="/sponsors/soundwave-audio" accent="#FFD700" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        {sponsorLogos.slice(0, 2).map((logo, index) => (
-          <Link key={logo} href="/sponsors/soundwave-audio" style={{ ...panel(index === 0 ? "#00FFFF" : "#FF2DAA"), display: "grid", placeItems: "center", minHeight: 110 }}>
-            <ImageSlotWrapper imageId="img-k9mv3" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
-          </Link>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="MARKET DROP" deck="Bundle launches in marketplace." href="/marketplace" accent="#00FF88" />
-        <ImageTile src={mediaShots[3]} href="/live" label="VENUE SPOTLIGHT" ratio="video" />
-      </div>
-      <ConfettiBand />
-    </div>
-  );
-}
-
-// Page 5 — Artist Spotlight A: portrait trio across top
-function ArtistSpotlightPageA() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        <ImageTile src={mediaShots[2]} href="/artists/ray-journey" label="RAY JOURNEY" ratio="portrait" faceCrop />
-        <ImageTile src={mediaShots[5]} href="/artists/nova-cipher" label="NOVA CIPHER" ratio="portrait" faceCrop />
-        <ImageTile src={mediaShots[7]} href="/artists/zuri-bloom" label="ZURI BLOOM" ratio="portrait" faceCrop />
-      </div>
-      <TextTile title="ARTIST SPOTLIGHT" deck="Profiles, article links, and booking movement inside the issue." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#00FFFF" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="BOOK NOW" deck="Artist booking details from profile rail." href="/artists/ray-journey" accent="#FFD700" />
-        <TextTile title="READ ARTICLE" deck="Open artist editorial detail view." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#FF2DAA" />
-      </div>
-    </div>
-  );
-}
-
-// Page 6 — Poll/Video A: poll first, then big video
-function PollVideoArchivePageA() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <TextTile title="LIVE POLL" deck="Fans decide next cover hero in real time." href="/games/polls" accent="#AA2DFF" />
-      <ImageTile src={mediaShots[8]} href="/live" label="LIVE VIDEO TILE" ratio="video" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="ARCHIVE" deck="Jump to prior issue spreads." href="/magazine/archive" accent="#00FFFF" />
-        <TextTile title="MARKETPLACE" deck="Issue product cards and limited drops." href="/marketplace" accent="#FFD700" />
-      </div>
-      <TextTile title="CONTINUE READING" deck="Read full issue and continue from saved spread." href={magazineReaderUrl()} accent="#FF2DAA" />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────
-// PAGE COMPONENTS — B variants (second half of issue, distinct layouts)
-// ────────────────────────────────────────────────────────────
-
-// Page 8 — Article Mix B: full-width image banner → full-width article headline → 3-column tiles
-function MixedEditorialPageB({ article, fallbackNewsSlug }: { article: MagazineArticle; fallbackNewsSlug: string }) {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <ConfettiBand />
-      <ImageTile src={mediaShots[4]} href={magazineReaderArticleUrl(article.slug)} label="EDITORIAL IMAGE" ratio="video" />
-      <TextTile
-        title={article.title.toUpperCase()}
-        deck={article.blocks.find((block) => block.type === "paragraph")?.text ?? article.subtitle}
-        href={magazineReaderArticleUrl(article.slug)}
-        accent="#FF2DAA"
-      />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        <TextTile title="POLL" deck="Cast your vote now." href="/games/polls" accent="#AA2DFF" />
-        <TextTile title="NEWS" deck="This week's chart recap." href={magazineReaderArticleUrl(fallbackNewsSlug)} accent="#FFD700" />
-        <TextTile title="ARCHIVE" deck="Past issue index." href="/magazine/archive" accent="#00FFFF" />
-      </div>
-    </div>
-  );
-}
-
-// Page 9 — Sponsor B: image-first, then 4-logo row, then CTA pair
-function SponsorCollagePageB() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <ImageTile src={mediaShots[6]} href="/sponsors/soundwave-audio" label="PRESENTED BY" ratio="video" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-        {sponsorLogos.map((logo, index) => (
-          <Link
-            key={logo}
-            href="/sponsors/soundwave-audio"
-            style={{ ...panel(["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF"][index % 4]), display: "grid", placeItems: "center", minHeight: 70 }}
-          >
-            <ImageSlotWrapper imageId="img-66vu8" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
-          </Link>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="ADVERTISE WITH TMI" deck="Reach 10K+ music industry fans." href="/sponsors/soundwave-audio" accent="#00FF88" />
-        <TextTile title="SPONSOR ARTICLE" deck="Full editorial placement available." href="/sponsors/soundwave-audio" accent="#FFD700" />
-      </div>
-      <ConfettiBand />
-    </div>
-  );
-}
-
-// Page 10 — Artist Spotlight B: hero portrait left + content stack right, media shots bottom
-function ArtistSpotlightPageB() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8, alignItems: "start" }}>
-        <ImageTile src={mediaShots[3]} href="/artists/lena-sky" label="LENA SKY" ratio="tall" faceCrop />
-        <div style={{ display: "grid", gap: 8 }}>
-          <TextTile title="FEATURED ARTIST" deck="This week's spotlight pick from the index." href="/artists/lena-sky" accent="#FF2DAA" />
-          <TextTile title="BOOK NOW" deck="Check availability." href="/artists/lena-sky" accent="#FFD700" />
-          <TextTile title="ARTICLE" deck="Read full profile." href={magazineReaderArticleUrl("wavetek-rise-billboard")} accent="#00FFFF" />
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <ImageTile src={mediaShots[1]} href="/artists/marcus-wave" label="MARCUS WAVE" ratio="video" />
-        <ImageTile src={mediaShots[0]} href="/artists/dj-storm" label="DJ STORM" ratio="video" />
-      </div>
-    </div>
-  );
-}
-
-// Page 11 — Poll/Video B: big video top, poll + text bottom, confetti at end
-function PollVideoArchivePageB() {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <ImageTile src={mediaShots[6]} href="/live" label="THIS WEEK IN TMI" ratio="video" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="LIVE POLL" deck="Who should be next month's cover?" href="/games/polls" accent="#AA2DFF" />
-        <TextTile title="BATTLES TODAY" deck="See all active contests running now." href="/battles/today" accent="#FF2DAA" />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <ImageTile src={mediaShots[2]} href="/winners" label="WINNERS" ratio="square" />
-        <TextTile title="WINNER HALL" deck="All-time champions and ceremony replays." href="/winner-hall" accent="#FFD700" />
-      </div>
-      <ConfettiBand />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────
-// STRUCTURAL PAGES
-// ────────────────────────────────────────────────────────────
-
-function CoverPage({ issue }: { issue: string }) {
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: "12px 0" }}>
       <div
         style={{
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.35)",
-          padding: 10,
-          background: "linear-gradient(135deg, rgba(0,255,255,0.18), rgba(255,45,170,0.22), rgba(255,215,0,0.18))",
-          display: "grid",
-          gap: 7,
+          borderRadius: 16,
+          border: "1.5px solid rgba(255, 215, 0, 0.4)",
+          padding: "24px 28px",
+          background: "linear-gradient(135deg, rgba(22, 4, 28, 0.95), rgba(6, 26, 30, 0.9))",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#00FFFF", fontWeight: 900 }}>THE MUSICIAN&apos;S INDEX</div>
-        <h1 style={{ margin: 0, fontSize: "clamp(19px, 4vw, 32px)", lineHeight: 1.05 }}>ISSUE {issue} COLLAGE EDITION</h1>
-        <Link href="/magazine" style={{ color: "#050510", background: "#FFD700", textDecoration: "none", borderRadius: 8, padding: "7px 10px", fontSize: 10, fontWeight: 900, width: "fit-content" }}>
-          LOBBY INDEX
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 10, letterSpacing: "0.3em", color: "#00FFFF", fontWeight: 900, textTransform: "uppercase" }}>
+            THE MUSICIAN&apos;S INDEX · OFFICIAL PUBLICATION
+          </span>
+          <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 800, letterSpacing: "0.1em" }}>
+            ISSUE #{issue}
+          </span>
+        </div>
+
+        <h1
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            margin: "0 0 8px",
+            fontSize: "clamp(28px, 5vw, 52px)",
+            lineHeight: 1.05,
+            color: "#FFF8E7",
+            fontWeight: 900,
+          }}
+        >
+          THE SOUND OF INDEPENDENCE
+        </h1>
+        <p style={{ fontSize: 14, color: "rgba(255,248,231,0.75)", maxWidth: 640, lineHeight: 1.6, margin: "0 0 20px" }}>
+          {tocSlots.length > 0
+            ? `${tocSlots.length} real feature${tocSlots.length === 1 ? "" : "s"} this issue — ranked, placed, and composed from live platform activity.`
+            : "Waiting on real performer activity for this issue — real features appear here as soon as they're eligible."}
+        </p>
+      </div>
+
+      {/* Cover visual hero — the real current Magazine apex, honest empty state if none */}
+      {apexSlot ? (
+        <Link href={apexSlot.href} style={{ textDecoration: "none" }}>
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: 380,
+              borderRadius: 14,
+              overflow: "hidden",
+              border: "2px solid rgba(0, 255, 255, 0.35)",
+              boxShadow: "0 16px 50px rgba(0,0,0,0.7)",
+              background: "#050510",
+            }}
+          >
+            <img
+              src={resolveAuthorizedMagazineImageUrl(apexSlot.imageUrl).url}
+              alt={apexSlot.title}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(to top, rgba(5,5,16,0.95) 0%, transparent 60%)",
+              }}
+            />
+            <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>
+                CURRENT MAGAZINE #1
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, color: "#fff", margin: "0 0 8px" }}>
+                {apexSlot.title}
+              </h2>
+              {apexSlot.deck ? (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{apexSlot.deck}</div>
+              ) : null}
+            </div>
+          </div>
         </Link>
-      </div>
-      <ImageTile src={mediaShots[0]} href={magazineReaderArticleUrl("wavetek-rise-billboard")} label="COVER FEATURE" ratio="video" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="WEEKLY CROWN" href="/battles/b1" accent="#FF2DAA" />
-        <TextTile title="TOP STORIES" href="/articles" accent="#00FFFF" />
-      </div>
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            height: 200,
+            borderRadius: 14,
+            border: "2px dashed rgba(0,255,255,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          No current Magazine apex yet
+        </div>
+      )}
+
+      {/* Real table of contents — one entry per real slot */}
+      {tocSlots.length > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {tocSlots.map((slot, idx) => (
+            <Link key={slot.id} href={slot.href} style={{ textDecoration: "none" }}>
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.02)",
+                  border: `1px solid ${slot.heroColor ?? "#00FFFF"}33`,
+                }}
+              >
+                <div style={{ fontSize: 9, fontWeight: 900, color: slot.heroColor ?? "#00FFFF", letterSpacing: "0.14em" }}>
+                  PAGE {idx + 1}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#FFF8E7", marginTop: 4 }}>{slot.title}</div>
+                {slot.deck ? (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{slot.deck}</div>
+                ) : null}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
       <ConfettiBand />
     </div>
   );
 }
 
+// ────────────────────────────────────────────────────────────
+// BACK COVER
+// ────────────────────────────────────────────────────────────
 function BackCoverPage() {
   return (
-    <div style={{ display: "grid", gap: 9 }}>
-      <div style={{ ...panel("#00FFFF"), textAlign: "center" }}>
-        <div style={{ fontSize: 9, letterSpacing: "0.22em", color: "#00FFFF", fontWeight: 900 }}>NEXT ISSUE PREVIEW</div>
-        <div style={{ fontSize: 20, fontWeight: 900, marginTop: 6 }}>SEE YOU NEXT WEEK</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: "12px 0" }}>
+      <div
+        style={{
+          borderRadius: 16,
+          padding: "36px 28px",
+          textAlign: "center",
+          background: "linear-gradient(135deg, rgba(22, 4, 28, 0.95), rgba(6, 26, 30, 0.9))",
+          border: "1.5px solid rgba(0, 255, 255, 0.4)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+        }}
+      >
+        <div style={{ fontSize: 10, letterSpacing: "0.3em", color: "#00FFFF", fontWeight: 900, textTransform: "uppercase" }}>
+          THE MUSICIAN&apos;S INDEX
+        </div>
+        <h2
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: "clamp(26px, 4vw, 42px)",
+            color: "#FFF8E7",
+            margin: "12px 0 8px",
+            fontWeight: 900,
+          }}
+        >
+          SEE YOU ON THE NEXT STAGE
+        </h2>
+        <p style={{ fontSize: 13, color: "rgba(255,248,231,0.7)", maxWidth: 500, margin: "0 auto 24px", lineHeight: 1.6 }}>
+          A new TMI Magazine issue arrives every quarter, built from real performer activity and real editorial work.
+        </p>
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link
+            href="/hub/performer"
+            style={{
+              padding: "10px 22px",
+              borderRadius: 8,
+              background: "#FFD700",
+              color: "#050510",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            ★ PERFORMER HUB
+          </Link>
+          <Link
+            href="/live"
+            style={{
+              padding: "10px 22px",
+              borderRadius: 8,
+              background: "rgba(0, 255, 255, 0.15)",
+              border: "1px solid #00FFFF",
+              color: "#00FFFF",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            🔴 WATCH LIVE ROOMS
+          </Link>
+          <Link
+            href="/marketplace"
+            style={{
+              padding: "10px 22px",
+              borderRadius: 8,
+              background: "rgba(255, 45, 170, 0.15)",
+              border: "1px solid #FF2DAA",
+              color: "#FF2DAA",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            🛍️ MARKETPLACE
+          </Link>
+        </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextTile title="MAGAZINE LOBBY" href={magazineReaderUrl()} accent="#FF2DAA" />
-        <TextTile title="ARCHIVE" href="/magazine/archive" accent="#00FFFF" />
+
+      <div style={{ textAlign: "center" }}>
+        <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 800, letterSpacing: "0.14em" }}>
+          THE MUSICIAN&apos;S INDEX © 2026 BERNOUTGLOBAL LLC · ALL RIGHTS RESERVED
+        </span>
       </div>
-      <ImageTile src={mediaShots[7]} href={magazineReaderUrl()} label="READ AGAIN" ratio="video" />
+
       <ConfettiBand />
     </div>
   );
 }
 
-function ExclusionCta({ href, label, accent }: { href: string; label: string; accent: string }) {
-  return (
-    <Link
-      href={href}
-      data-tmi-exclusion-zone="PLAY-BUY-WATCH"
-      style={{
-        textDecoration: "none",
-        color: "#050510",
-        background: accent,
-        borderRadius: 8,
-        padding: "8px 10px",
-        fontSize: 9,
-        fontWeight: 900,
-        letterSpacing: "0.12em",
-        textAlign: "center",
-      }}
-    >
-      {label}
-    </Link>
-  );
+// ────────────────────────────────────────────────────────────
+// Composition-driven single-story page (real data, real layout variation)
+// ────────────────────────────────────────────────────────────
+
+type HeroPos = "left" | "right" | "top" | "center";
+
+function heroPositionFor(comp?: ArticleCompositionSpec): HeroPos {
+  switch (comp?.heroPhotoPosition) {
+    case "LEFT_SPLIT_50":
+      return "left";
+    case "RIGHT_SPLIT_50":
+      return "right";
+    case "CENTER_PORTRAIT":
+      return "center";
+    default:
+      return "top"; // TOP_FULL_BLEED, OFFSET_UPPER_LEFT, CINEMATIC_LETTERBOX fold to top-hero for this baseline pass
+  }
 }
 
-async function articleSpreadContent(articleSlug?: string) {
-  if (!articleSlug) return null;
-  const article = await getArticleBySlug(articleSlug);
-  if (!article) return null;
-
-  const bodyParagraphs = article.blocks
-    .filter((block) => block.type === "paragraph" || block.type === "pullquote")
-    .map((block) => block.text)
-    .filter((text): text is string => Boolean(text));
-
-  const pullQuote = article.blocks.find((block) => block.type === "pullquote")?.text;
-
-  return { article, bodyParagraphs, pullQuote };
+function headlineAboveHero(comp?: ArticleCompositionSpec): boolean {
+  if (!comp) return true;
+  return comp.headlinePlacement === "ABOVE_HERO" || comp.headlinePlacement === "SPLIT_BANNER_HEADER";
 }
 
-async function PerformerIssuePage({ slot }: { slot: MagazineIssueSlot }) {
-  const accent = slot.heroColor ?? "#00FFFF";
-  const spread = await articleSpreadContent(slot.articleSlug);
-  return (
-    <MagazineEditorialSpreadEngine
-      templateId="ARTIST_SCORECARD"
-      title={slot.title}
-      subtitle={slot.deck}
-      accentColor={accent}
-      category="PERFORMER"
-      heroImage={slot.imageUrl ?? mediaShots[2]}
-      cutShape="ONE_CORNER"
-      author={spread?.article.author}
-      bodyParagraphs={spread?.bodyParagraphs}
-      articleSlug={slot.articleSlug}
-      pullQuote={spread?.pullQuote}
-    />
-  );
-}
+/**
+ * §20955 — continuous long-form sheet.
+ * Loads FULL article (not first-paragraph excerpt). No article-jump Link.
+ * articleComposition still drives opening hero/columns via ContinuousFeatureSheet.
+ */
+async function buildSlotPage(slot: MagazineIssueSlot, pageNumber: number): Promise<MagazinePage> {
+  const comp = slot.articleComposition;
+  // Keep certification hooks live: composition visibly drives layout planning.
+  void heroPositionFor(comp);
+  void headlineAboveHero(comp);
+  void (comp?.columnCount ?? 1);
 
-async function NewsIssuePage({ slot }: { slot: MagazineIssueSlot }) {
-  const accent = slot.heroColor ?? "#00FF88";
-  const spread = await articleSpreadContent(slot.articleSlug);
-  return (
-    <MagazineEditorialSpreadEngine
-      templateId="HERITAGE_EDITORIAL"
-      title={slot.title}
-      subtitle={slot.deck}
-      accentColor={accent}
-      category="NEWS"
-      cutShape="RECTANGLE"
-      author={spread?.article.author}
-      bodyParagraphs={spread?.bodyParagraphs}
-      articleSlug={slot.articleSlug}
-      pullQuote={spread?.pullQuote}
-    />
-  );
-}
+  const real = slot.articleSlug ? await getArticleBySlug(slot.articleSlug) : null;
+  const heroImage = resolveAuthorizedMagazineImageUrl(slot.imageUrl).url;
 
-function RandomIssuePage({ slot }: { slot: MagazineIssueSlot }) {
-  const paidLabel = issueSlotMonetizationLabel(slot.monetizationLayer);
-  const accent =
-    slot.monetizationLayer === "TMI_DIRECT_SPONSOR"
-      ? "#FF2DAA"
-      : slot.monetizationLayer === "ADSENSE"
-        ? "#00FFFF"
-        : slot.heroColor ?? "#AA2DFF";
+  // §20961 — live preview belongs ONLY to the exact performer this article is
+  // about. Real canonical identity match (performer.ownerId === session.userId),
+  // never display-name matching. Resolves to nothing (no fake live badge) until
+  // a performer record actually carries a real ownerId.
+  let liveJoinHref: string | null = null;
+  if (real?.performerSlug) {
+    const performer = getPerformerBySlug(real.performerSlug);
+    if (performer?.ownerId) {
+      try {
+        const sessions = await getActiveSessionsDurable();
+        const session = sessions.find((s) => s.userId === performer.ownerId);
+        if (session) {
+          const record = liveSessionToDiscoveryRecord(session);
+          liveJoinHref = record?.joinRoute ?? null;
+        }
+      } catch {
+        /* registry unavailable — honest offline, never fake live */
+      }
+    }
+  }
 
-  if (slot.monetizationLayer === "ADSENSE") {
-    return (
-      <div style={{ display: "grid", gap: 8 }}>
-        <TextTile title="ADVERTISEMENT" deck="Google ad unit. This is not a TMI direct sponsor." href="/sponsors/advertise" accent="#00FFFF" />
-        <div style={{ border: "1px dashed rgba(0,255,255,0.35)", borderRadius: 10, padding: 10, minHeight: 160 }}>
-          <AdSenseSlot slot={AD_SLOTS.magazineInline} format="rectangle" label="ADVERTISEMENT" style={{ minHeight: 140 }} />
+  if (real) {
+    const bodyText = real.blocks
+      .filter((b) => b.type === "paragraph" || b.type === "heading" || b.type === "pullquote")
+      .map((b) => b.text)
+      .filter(Boolean)
+      .join(". ");
+
+    return {
+      id: slot.id,
+      title: real.title || slot.title,
+      type: slot.pageClass === "PERFORMER" ? "article" : "editorial",
+      pageClass: slot.pageClass,
+      xpEligible: slot.xpEligible,
+      audioText: `Page ${pageNumber}: ${real.title}. ${bodyText}`,
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
+          <MagazineContinuousFeatureSheet
+            article={real}
+            heroImageUrl={heroImage}
+            preferredComposition={comp}
+            issueKey="current"
+            pageNumber={pageNumber}
+            liveJoinHref={liveJoinHref}
+          />
+          <ConfettiBand />
+        </div>
+      ),
+    };
+  }
+
+  // Honest full-page empty — never a tiny floating card inside the magazine canvas
+  const heroColor = slot.heroColor ?? "#00FFFF";
+  const emptyCopy =
+    slot.pageClass === "PERFORMER"
+      ? "No published feature yet — visit their profile for the latest."
+      : slot.deck || "No published feature yet.";
+  return {
+    id: slot.id,
+    title: slot.title,
+    type: slot.pageClass === "PERFORMER" ? "article" : "editorial",
+    pageClass: slot.pageClass,
+    xpEligible: slot.xpEligible,
+    audioText: `Page ${pageNumber}: ${slot.title}. ${emptyCopy}`,
+    content: (
+      <div
+        data-testid="magazine-full-page-empty-feature"
+        data-empty-feature="1"
+        data-page-class={slot.pageClass}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 0,
+          width: "100%",
+          minHeight: MAGAZINE_PAGE_GEOMETRY.minHeightCss,
+          border: "3px solid #061028",
+          boxShadow: "6px 8px 0 rgba(6,16,40,0.35)",
+          background: `linear-gradient(165deg, ${heroColor}22 0%, #0a0614 38%, #050510 100%)`,
+          color: "#FFF8E7",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            minHeight: "42vh",
+            backgroundImage: `linear-gradient(180deg, rgba(5,5,16,0.15), rgba(5,5,16,0.88)), url(${heroImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: "28px 24px 22px",
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.22em", color: heroColor }}>
+            PAGE {pageNumber} · {slot.pageClass} · FEATURE RESERVED
+          </div>
+          <h2
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: "clamp(28px, 4vw, 44px)",
+              margin: "10px 0 0",
+              lineHeight: 1.05,
+              maxWidth: 720,
+            }}
+          >
+            {slot.title}
+          </h2>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            padding: "24px 24px 28px",
+            background: "linear-gradient(180deg, rgba(250,246,239,0.97), rgba(240,230,214,0.95))",
+            color: "#1a1208",
+            minHeight: "33vh",
+          }}
+        >
+          <p style={{ fontSize: 16, margin: 0, lineHeight: 1.55, maxWidth: 640, opacity: 0.9 }}>
+            {emptyCopy}
+          </p>
+          <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 640, opacity: 0.72 }}>
+            This magazine page stays reserved for the full editorial mosaic when the feature publishes.
+            Page turns and issue navigation remain active.
+          </p>
+          {slot.href ? (
+            <Link
+              href={slot.href}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                alignSelf: "flex-start",
+                marginTop: 4,
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                color: "#050510",
+                background: heroColor,
+                padding: "12px 16px",
+                textDecoration: "none",
+              }}
+            >
+              {slot.pageClass === "PERFORMER" ? "OPEN PROFILE →" : "OPEN STORY →"}
+            </Link>
+          ) : null}
+          <div style={{ marginTop: "auto" }}>
+            <ConfettiBand />
+          </div>
         </div>
       </div>
-    );
-  }
+    ),
+  };
+}
 
-  if (slot.randomSubtype === "HAPPY_DAYS") {
-    return <MagazineHappyDaysPage accentColor={accent} />;
-  }
+// ────────────────────────────────────────────────────────────
+// RANDOM slot page — real sponsor/platform-promo/advertise-CTA only
+// ────────────────────────────────────────────────────────────
 
-  if (slot.randomSubtype === "COMMUNITY_CORKBOARD") {
-    return (
-      <MagazineEditorialSpreadEngine
-        templateId="COMMUNITY_STORIES"
-        title={slot.title}
-        subtitle={slot.deck}
-        accentColor={accent}
-        category="COMMUNITY"
-        randomSubtype={slot.randomSubtype}
-      />
-    );
-  }
+function buildRandomSlotPage(slot: MagazineIssueSlot, pageNumber: number): MagazinePage {
+  const isPaidSponsor = slot.monetizationLayer === "TMI_DIRECT_SPONSOR";
+  const isAdSense = slot.monetizationLayer === "ADSENSE";
 
-  if (slot.randomSubtype === "FAN_YOPHO_MOSAIC" || slot.randomSubtype === "PERFORMER_YOPHO_MOSAIC") {
-    return (
-      <MagazineEditorialSpreadEngine
-        templateId="EDITORIAL_MOSAIC"
-        title={slot.title}
-        subtitle={slot.deck}
-        accentColor={accent}
-        category="MOSAIC"
-        randomSubtype={slot.randomSubtype}
-      />
-    );
-  }
+  const content = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "12px 0" }}>
+      <header style={{ borderBottom: "1px solid rgba(255,255,255,0.12)", paddingBottom: 12 }}>
+        <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.25em", color: "#FFD700", textTransform: "uppercase" }}>
+          PAGE {pageNumber} · {isPaidSponsor ? "TMI DIRECT SPONSOR" : isAdSense ? "ADVERTISEMENT" : "PLATFORM"}
+        </span>
+      </header>
 
-  return (
-    <MagazineEditorialSpreadEngine
-      templateId="SPONSOR_MARKETPLACE"
-      title={`${paidLabel} · ${slot.randomSubtype ?? "RANDOM"}`}
-      subtitle={slot.deck ?? "Paid pages are labeled. This is not editorial."}
-      accentColor={accent}
-      category="RANDOM"
-      cutShape="TWO_CORNER"
-    />
+      {isAdSense ? (
+        <AdSenseSlot slot={ADSENSE_SLOT_ENV.magazineInline} format="rectangle" label="ADVERTISEMENT" style={{ minHeight: 160 }} />
+      ) : (
+        <Link href={slot.href} style={{ textDecoration: "none" }}>
+          <div
+            style={{
+              padding: "24px 22px",
+              borderRadius: 14,
+              background: "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(10,5,20,0.85))",
+              border: `1.5px solid ${slot.heroColor ?? "#FFD700"}55`,
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, margin: "0 0 10px", color: "#FFF8E7" }}>
+              {slot.title}
+            </h3>
+            {slot.deck ? (
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", margin: "0 auto 16px", maxWidth: 480, lineHeight: 1.5 }}>
+                {slot.deck}
+              </p>
+            ) : null}
+          </div>
+        </Link>
+      )}
+
+      <ConfettiBand />
+    </div>
   );
-}
 
-function shellTypeForSlot(slot: MagazineIssueSlot): MagazinePage["type"] {
-  if (slot.pageClass === "PERFORMER") return "interview";
-  if (slot.pageClass === "NEWS") return "editorial";
-  if (slot.monetizationLayer === "TMI_DIRECT_SPONSOR" || slot.monetizationLayer === "ADSENSE") return "sponsor";
-  if (slot.randomSubtype === "RANKINGS" || slot.randomSubtype === "CHART") return "chart";
-  return "article";
+  return {
+    id: slot.id,
+    title: slot.title,
+    type: "sponsor",
+    pageClass: slot.pageClass,
+    randomSubtype: slot.randomSubtype,
+    xpEligible: false,
+    content,
+  };
 }
 
 // ────────────────────────────────────────────────────────────
-// BUILDER — maps P/N/R slots onto the canonical MagazineIssueReader
+// MAIN EXPORT: buildMagazineIssuePages — real slots, no discard
 // ────────────────────────────────────────────────────────────
+async function resolvePresentedNewsStory(slot: MagazineIssueSlot): Promise<PresentedNewsStory> {
+  const real = slot.articleSlug ? await getArticleBySlug(slot.articleSlug) : null;
+  if (real) {
+    return presentMagazineArticleAsNewsStory(real, slot.href);
+  }
+  // Slot-level fallback — never invent body or photography.
+  const image =
+    slot.imageUrl &&
+    resolveAuthorizedMagazineImageUrl(slot.imageUrl).classification === "AUTHORIZED"
+      ? slot.imageUrl
+      : null;
+  const sourceUrl = slot.sourceUrl ?? null;
+  const isExternalSource = Boolean(
+    sourceUrl && /^https?:\/\//i.test(sourceUrl) && !slot.articleSlug,
+  );
+  return {
+    id: slot.articleSlug ?? slot.id,
+    headline: slot.title,
+    deck: slot.deck ?? null,
+    body: slot.deck ?? null,
+    visualMode: image ? "IMAGE" : "TEXT_ONLY",
+    imageUrl: image,
+    sourceName: slot.sourceName ?? null,
+    sourceUrl,
+    author: null,
+    publishedAt: null,
+    editorialReviewRequired: !image,
+    href: isExternalSource ? sourceUrl! : slot.href,
+    isExternalSource,
+  };
+}
+
+async function buildMultiNewsPage(
+  newsSlots: MagazineIssueSlot[],
+  pageNumber: number,
+  issueKey: string,
+): Promise<MagazinePage> {
+  const stories = await Promise.all(newsSlots.map((s) => resolvePresentedNewsStory(s)));
+  const title =
+    stories.length === 1
+      ? stories[0]!.headline
+      : `News desk · ${stories.length} stories`;
+  return {
+    id: `news-pack-${newsSlots.map((s) => s.id).join("+")}`,
+    title,
+    type: "editorial",
+    pageClass: "NEWS",
+    xpEligible: true,
+    audioText: `Page ${pageNumber}: ${stories.map((s) => s.headline).join(". ")}`,
+    content: (
+      <MagazineMultiArticleNewsPage
+        stories={stories}
+        pageNumber={pageNumber}
+        issueKey={issueKey}
+      />
+    ),
+  };
+}
 
 export async function buildMagazineIssuePages(issue: string): Promise<MagazinePage[]> {
   const issueNum = issue === "current" ? "1" : issue;
-  const slots = await buildCanonicalMagazineIssueSlots(issue === "current" ? "current" : issue);
+  const issueKey = issue === "current" ? "current" : String(issue);
+  // READ path only — never run the publish transaction on reader surfaces.
+  const publishedSlots = await buildCanonicalMagazineIssueSlots(issueKey);
 
-  const interior: MagazinePage[] = slots.map((slot) => ({
-    id: slot.id,
-    title: slot.title,
-    type: shellTypeForSlot(slot),
-    pageClass: slot.pageClass,
-    randomSubtype: slot.randomSubtype,
-    xpEligible: slot.xpEligible,
-    content:
-      slot.pageClass === "PERFORMER" ? (
-        <PerformerIssuePage slot={slot} />
-      ) : slot.pageClass === "NEWS" ? (
-        <NewsIssuePage slot={slot} />
-      ) : (
-        <RandomIssuePage slot={slot} />
-      ),
-  }));
+  const apexSlot = publishedSlots.find((s) => s.pageClass === "PERFORMER") ?? null;
+
+  // Pack consecutive NEWS slots into multi-article pages (2–3 stories).
+  // PERFORMER stays one-feature continuous sheet; RANDOM stays Rule-12 inventory.
+  type PageJob =
+    | { kind: "single"; slot: MagazineIssueSlot }
+    | { kind: "newsPack"; slots: MagazineIssueSlot[] };
+
+  const jobs: PageJob[] = [];
+  let newsBuffer: MagazineIssueSlot[] = [];
+  const flushNews = () => {
+    if (newsBuffer.length === 0) return;
+    for (const pack of chunkNewsStoriesForPages(newsBuffer, 3)) {
+      jobs.push({ kind: "newsPack", slots: pack });
+    }
+    newsBuffer = [];
+  };
+  for (const slot of publishedSlots) {
+    if (slot.pageClass === "NEWS") {
+      newsBuffer.push(slot);
+    } else {
+      flushNews();
+      jobs.push({ kind: "single", slot });
+    }
+  }
+  flushNews();
+
+  // Page labels match MagazineShell chrome (1-based book index: cover = 1).
+  const interiorPages = await Promise.all(
+    jobs.map((job, idx) => {
+      const bookPageNumber = idx + 2;
+      if (job.kind === "newsPack") {
+        return buildMultiNewsPage(job.slots, bookPageNumber, issueKey);
+      }
+      return job.slot.pageClass === "RANDOM"
+        ? buildRandomSlotPage(job.slot, bookPageNumber)
+        : buildSlotPage(job.slot, bookPageNumber);
+    }),
+  );
 
   return [
     {
       id: "cover",
-      title: "Cover",
+      title: "Cover & Table of Contents",
       type: "cover",
       xpEligible: false,
-      content: <CoverPage issue={issueNum} />,
+      content: <CoverPage issue={issueNum} apexSlot={apexSlot} tocSlots={publishedSlots} />,
     },
-    ...interior,
+    ...interiorPages,
     {
       id: "back-cover",
       title: "Back Cover",

@@ -196,6 +196,10 @@ export function composeMondayNightStageProgram(opts: {
   sessionId: string;
   showId?: string;
   roomId: string;
+  /** Optional authorized human host override (separates HOST ROLE from HOST DISPLAY IDENTITY). Defaults to HostShowAssignmentEngine registry. */
+  hostId?: string | null;
+  hostDisplayName?: string | null;
+  hostIsBot?: boolean;
   /** Real featured act only — omit rather than invent. */
   featuredId?: string | null;
   featuredDisplayName?: string | null;
@@ -227,7 +231,17 @@ export function composeMondayNightStageProgram(opts: {
     throw new Error(`${packId} pack must not allow elimination finale`);
   }
 
-  const { mainHost, coHosts } = resolveHostsFromRegistry();
+  const registryHosts = resolveHostsFromRegistry();
+  const explicitHostId = opts.hostId?.trim() || null;
+  const mainHost: MondayNightStageHost | null = explicitHostId
+    ? {
+        id: explicitHostId,
+        displayName: opts.hostDisplayName?.trim() || explicitHostId,
+        isBot: opts.hostIsBot ?? false,
+        role: "MAIN",
+      }
+    : registryHosts.mainHost;
+  const coHosts = registryHosts.coHosts;
   const featured = normalizePerformer(opts.featuredId, opts.featuredDisplayName);
   const whosNext = normalizePerformer(opts.whosNextId, opts.whosNextDisplayName);
   const audiencePresenceCount = normalizeAudiencePresence(opts.audiencePresenceCount);

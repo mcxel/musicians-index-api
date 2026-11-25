@@ -36,6 +36,11 @@ export interface PersistentMediaInteractionDockProps {
   onOpenModule?: (module: DockModuleId) => void;
   /** Hub mobile: quick actions live in HubMobileQuickActionBar — hide duplicate strip. */
   hideMobileQuickPanelBar?: boolean;
+  /**
+   * WORK compact utility column beside Monitor 1 — same tools/handlers,
+   * no mini-player (playlist stays under Monitor 2).
+   */
+  presentation?: "full" | "work-side";
 }
 
 function formatTime(seconds: number | undefined): string {
@@ -52,7 +57,9 @@ export default function PersistentMediaInteractionDock({
   onLobbyNav,
   onOpenModule,
   hideMobileQuickPanelBar = false,
+  presentation = "full",
 }: PersistentMediaInteractionDockProps) {
+  const workSide = presentation === "work-side";
   const theme = useTheme();
   const isPerformer = role === "performer";
   const commandRole = (): PlatformRole => (isPerformer ? "performer" : "fan");
@@ -146,6 +153,7 @@ export default function PersistentMediaInteractionDock({
 
       <div
         data-persistent-media-interaction-dock
+        data-dock-presentation={presentation}
         style={{
           flexShrink: 0,
           display: "flex",
@@ -153,8 +161,10 @@ export default function PersistentMediaInteractionDock({
           gap: 0,
           margin: "0 0 0",
           zIndex: 20,
+          height: workSide ? "100%" : undefined,
         }}
       >
+        {workSide ? null : (
         <div
           style={{
             background: "rgba(5, 5, 20, 0.94)",
@@ -353,8 +363,10 @@ export default function PersistentMediaInteractionDock({
             )}
           </div>
         </div>
+        )}
 
-        {/* Cyan / gold hard boundary — playlist library starts immediately below */}
+        {workSide ? null : (
+        /* Cyan / gold hard boundary — playlist library starts immediately below */
         <div
           style={{
             height: 3,
@@ -363,8 +375,32 @@ export default function PersistentMediaInteractionDock({
             boxShadow: "0 0 12px rgba(0,255,255,0.35)",
           }}
         />
+        )}
+        {workSide ? (
+          <div
+            data-work-side-tools="1"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              borderRadius: 12,
+              border: "1px solid rgba(0,255,255,0.28)",
+              background: "rgba(3,3,14,0.94)",
+              overflow: "auto",
+            }}
+          >
+            <CanonicalQuickToolsStrip
+              role={role}
+              screenShareActive={shareActive || Boolean(screenStream)}
+              onShareScreen={() => void cycleSharePress()}
+              onRecord={() => setIsCameraOpen(true)}
+              onShare={openShareStudio}
+              onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
+              layout="work-side"
+            />
+          </div>
+        ) : null}
       </div>
-      {isMobile && !hideMobileQuickPanelBar ? (
+      {isMobile && !hideMobileQuickPanelBar && !workSide ? (
         <MobileQuickPanelBar
           role={role}
           screenShareActive={shareActive || Boolean(screenStream)}
@@ -373,7 +409,7 @@ export default function PersistentMediaInteractionDock({
           onShare={openShareStudio}
           onMemory={() => presentCanonicalWorkspace("memory-wall", "DRAWER")}
         />
-      ) : !isMobile ? (
+      ) : !isMobile && !workSide ? (
         <CanonicalQuickToolsStrip
           role={role}
           screenShareActive={shareActive || Boolean(screenStream)}

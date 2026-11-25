@@ -4,9 +4,12 @@
  * Marketplace drawer — fan-facing, ACTIVE_PERFORMER context-aware.
  * Products for the active performer only (CreatorProductRegistry / storefront /
  * ListenVsOwn). Honest empty. No ticket invent (Rule 17).
+ * Global scope also surfaces the existing Flex 3D showroom (AvatarViewer) —
+ * stage-1 thumbnail list + stage-2 full inspect at /store/flex.
  */
 
 import { useEffect, useState, type CSSProperties } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
 import ListenVsOwnActions from "@/components/commerce/ListenVsOwnActions";
@@ -14,6 +17,7 @@ import {
   CREATOR_PRODUCT_TYPE_LABELS,
   formatCreatorProductPrice,
   listCreatorProducts,
+  listPublishedMarketplaceProducts,
   type CreatorProduct,
 } from "@/lib/commerce/CreatorProductRegistry";
 import {
@@ -28,12 +32,23 @@ import {
   getChampionVisualIdentity,
 } from "@/lib/championship/championVisualIdentity";
 
+const AvatarShowroomPreview = dynamic(
+  () =>
+    import("@/components/avatar/AvatarShowroomPreview").then(
+      (m) => m.AvatarShowroomPreview,
+    ),
+  { ssr: false },
+);
+
 export interface MarketplaceDrawerPanelProps {
   accentColor?: string;
+  /** global = TMI market across shops. performer = the active performer's products. */
+  scope?: "global" | "performer";
 }
 
 export default function MarketplaceDrawerPanel({
   accentColor = "#FF6B35",
+  scope = "performer",
 }: MarketplaceDrawerPanelProps) {
   const { activePerformer, activePerformerId } = useActivePerformer();
   const performerId = activePerformerId;
@@ -48,6 +63,12 @@ export default function MarketplaceDrawerPanel({
   const [listenUrl, setListenUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (scope === "global") {
+      setProducts(listPublishedMarketplaceProducts());
+      setBuyUrl(null);
+      setListenUrl(null);
+      return;
+    }
     if (!performerId) {
       setProducts([]);
       setBuyUrl(null);
@@ -57,7 +78,51 @@ export default function MarketplaceDrawerPanel({
     setProducts(listCreatorProducts(performerId));
     setBuyUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(performerId)));
     setListenUrl(resolvePrimaryListenProfileUrl(performerId));
-  }, [performerId]);
+  }, [performerId, scope]);
+
+  if (scope === "global") {
+    return (
+      <div data-testid="marketplace-drawer" data-marketplace-scope="global" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <Header accent={accentColor} />
+        <div
+          data-testid="marketplace-3d-showroom-stage"
+          style={{
+            borderRadius: 12,
+            border: `1px solid ${accentColor}55`,
+            background: "rgba(0,0,0,0.35)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: "8px 12px", fontSize: 10, fontWeight: 800, color: accentColor, letterSpacing: "0.08em" }}>
+            3D FLEX SHOWROOM · SAVED AVATAR PREVIEW
+          </div>
+          <AvatarShowroomPreview height={240} testId="marketplace-drawer-avatar-showroom" />
+          <div style={{ padding: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link href="/store/flex?wing=emotes" style={linkStyle(accentColor)}>
+              Inspect emotes in 3D →
+            </Link>
+            <Link href="/store/flex?wing=apparel" style={linkStyle(accentColor)}>
+              Try-on apparel →
+            </Link>
+          </div>
+        </div>
+        {products.length === 0 ? (
+          <Empty
+            accent={accentColor}
+            title="CREATOR MARKETPLACE LISTINGS EMPTY"
+            body="No published creator products yet. Avatar Flex Store above still uses real 3D previews."
+          />
+        ) : (
+          products.map((p) => (
+            <div key={p.id} data-product-id={p.id} data-product-owner-id={p.ownerPerformerId} style={{ fontSize: 12, color: "#fff" }}>
+              {p.title}
+              {formatCreatorProductPrice(p) ? ` · ${formatCreatorProductPrice(p)}` : ""}
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   if (!performerId) {
     return (

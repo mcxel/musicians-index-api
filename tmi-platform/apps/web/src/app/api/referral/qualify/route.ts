@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { registerArrival, qualifyReferral, resolveToken } from "@/lib/referral/ReferralEngine";
-import { getUserById, updateUserTier } from "@/lib/auth/UserStore";
+import {
+  registerArrival,
+  qualifyReferral,
+  resolveToken,
+  rollbackReferralMilestonePaid,
+} from "@/lib/referral/ReferralEngine";
+import { getUserById, updateUserTierDurable } from "@/lib/auth/UserStore";
 
 /**
  * POST /api/referral/qualify
@@ -44,13 +49,24 @@ export async function POST(req: NextRequest) {
     const actionCount = typeof body.actionCount === "number" ? body.actionCount : 0;
     const result = qualifyReferral(token, invitedId, staySeconds, actionCount);
 
-    // 5-referral milestone → grant owner 1 free Gold month
+    // 5-referral milestone → grant owner 1 free Gold month (must persist durably)
     if (result.qualified && result.milestoneBonus > 0) {
       const link = resolveToken(token);
       if (link) {
         const owner = getUserById(link.ownerId);
         if (owner) {
-          updateUserTier(owner.email, 'GOLD');
+          try {
+            await updateUserTierDurable(owner.email, 'GOLD');
+          } catch (error) {
+            if (typeof rollbackReferralMilestonePaid === "function") {
+              rollbackReferralMilestonePaid(token, invitedId);
+            }
+            console.error("[api/referral/qualify] durable milestone tier grant failed:", error);
+            return NextResponse.json(
+              { ok: false, error: "referral_milestone_persist_failed" },
+              { status: 503 },
+            );
+          }
         }
       }
     }

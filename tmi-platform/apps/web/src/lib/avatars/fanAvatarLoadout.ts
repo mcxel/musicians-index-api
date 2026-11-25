@@ -10,9 +10,11 @@ import {
   getFanCosmetic,
   getUnifiedFanCosmeticCatalog,
   type FanCosmeticDef,
-} from "@/lib/avatars/FanCosmeticCatalog";
+} from "./FanCosmeticCatalog";
+import { resolveFoundryHairGlbUrl } from "./FoundryManufacturedCosmetics";
+import { FREE_STARTER_KIT_IDS } from "./AvatarFreeStarterKit";
 import type { SocketAttachmentDef } from "@/components/3d/AvatarSocketAttachment";
-import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
+import type { AvatarInventoryItem } from "../avatar/avatarInventoryEngine";
 // type-only import — avoid runtime cycle with getStarterInventory()
 
 export function cosmeticIdsToAttachments(
@@ -22,18 +24,24 @@ export function cosmeticIdsToAttachments(
   const out: SocketAttachmentDef[] = [];
   const seen = new Set<string>();
   for (const id of ids) {
-    if (!id || id === "none" || seen.has(id)) continue;
+    if (!id || id === "none" || id === "hair_bald" || seen.has(id)) continue;
     const def = getFanCosmetic(id);
     if (!def) continue;
     seen.add(id);
+    const glbUrl =
+      def.glbUrl ??
+      (def.slot === "hair" || def.equipSlot === "hair"
+        ? resolveFoundryHairGlbUrl(def.id)
+        : null);
     out.push({
       id: def.id,
       socketId: def.socketId,
       icon: def.icon,
-      color: def.accent,
+      color: def.hairTint ?? def.accent,
       plateUrl: def.plateUrl,
       animKind: def.animKind,
       layerScale: def.layerScale,
+      glbUrl: glbUrl ?? null,
       active: !opts?.activePropId || id === opts.activePropId || def.slot !== "hand",
     });
   }
@@ -142,40 +150,17 @@ export function catalogItemToInventorySeed(def: FanCosmeticDef): AvatarInventory
   };
 }
 
-const SEED_IDS = [
-  "sparkler",
-  "jester_hat",
-  "sunglasses",
-  "mic",
-  "crown",
-  "candle",
-  "lighter",
-  "gold_chain",
-  "street_fit",
-  "arena_captain",
-  "royal_stage",
-  "jester_costume",
-  "cyber-jacket-neon",
-  "glow_stick",
-  "diamond-shades-vip",
-  "holographic-sneakers-gold",
-  "backwards_cap",
-  "street_beanie",
-  "neck_headphones",
-  "hair_fade_short",
-  "hair_buzz",
-  "glasses_black",
-  "tee_basic_black",
-  "pants_fit_black",
-  "kicks_white",
-  "emote_wave",
-  "emote_dance",
-  "heart_prop",
-  "inst_ukulele",
-];
+/**
+ * Free starter ownership seed (§11455 / §11476 / §11507).
+ * Premium Marketplace SKUs live in SHOWROOM_DISCOVERY_POOL_IDS — never auto-owned (§11427).
+ */
+const SEED_IDS = [...FREE_STARTER_KIT_IDS];
 
 export function fanCosmeticStarterItems(): AvatarInventoryItem[] {
   return getUnifiedFanCosmeticCatalog()
-    .filter((c) => SEED_IDS.includes(c.id))
+    // Fail closed: never seed paid Marketplace / discovery-only SKUs as owned.
+    .filter((c) => c.pointsCost === 0 || c.rarity === "free" || c.entitlement === "free")
     .map(catalogItemToInventorySeed);
 }
+
+export { SEED_IDS as FREE_STARTER_SEED_IDS };

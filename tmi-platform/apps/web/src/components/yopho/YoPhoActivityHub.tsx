@@ -20,6 +20,7 @@ import {
   listPublishedCardsLocal,
   type PublishedYoPhoCard,
 } from "@/lib/yopho/YoPhoCardRegistry";
+import type { YoPhoCardComposition } from "@/lib/yopho/YoPhoCardComposition";
 import {
   listCollectedEditions,
   listEditionsForCreator,
@@ -63,6 +64,10 @@ const MarketplaceDrawerPanel = dynamic(
 const YoReleaseShelf = dynamic(() => import("@/components/yopho/YoReleaseShelf"), {
   ssr: false,
   loading: () => <HubLoading label="Loading releases…" /> },
+);
+const YoPhoFormatFirstCreator = dynamic(
+  () => import("@/components/yopho/YoPhoFormatFirstCreator"),
+  { ssr: false, loading: () => <HubLoading label="Loading YoPho starter…" /> },
 );
 
 const FUCHSIA = "#FF2DAA";
@@ -320,6 +325,29 @@ function CreateCardWorkspace({
   slug?: string;
   canvasHref: string;
 }) {
+  // §5601 — never drop a creator into an unexplained blank designer. First-use
+  // (no saved card) → format-first starter. Existing creators go straight to the
+  // editor but keep a CHANGE LAYOUT control (§5581).
+  const [hasExistingCard, setHasExistingCard] = useState<boolean | null>(null);
+  const [starterOpen, setStarterOpen] = useState(false);
+  const [seed, setSeed] = useState<YoPhoCardComposition | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    try {
+      const cards = listPublishedCardsLocal();
+      if (active) setHasExistingCard(Array.isArray(cards) && cards.length > 0);
+    } catch {
+      if (active) setHasExistingCard(false);
+    }
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  // Show the starter on first use, or when CHANGE LAYOUT is pressed.
+  const showStarter = hasExistingCard === false || starterOpen;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <div style={{ padding: "8px 12px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -340,24 +368,64 @@ function CreateCardWorkspace({
         >
           Full canvas →
         </Link>
+        {hasExistingCard ? (
+          <button
+            type="button"
+            data-testid="yopho-change-layout"
+            onClick={() => setStarterOpen((v) => !v)}
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              color: GOLD,
+              border: `1px solid ${GOLD}55`,
+              borderRadius: 8,
+              padding: "10px 12px",
+              minHeight: 44,
+              background: "rgba(255,215,0,0.08)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {starterOpen ? "Back to editor" : "Change layout"}
+          </button>
+        ) : null}
       </div>
-      {hubRole === "fan" ? (
-        <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
-      ) : (
-        <YoPhoStudio role="performer" userId={userId} displayName={displayName} />
-      )}
-      <div style={{ padding: "0 8px 16px" }}>
-        <YoPhoTradingCard
-          role={hubRole}
-          displayName={displayName}
-          userKey={userId}
-          slug={slug}
-          compact
-          showEditor
-          showShare
-          showMoneyCtas={hubRole === "performer"}
-        />
-      </div>
+
+      {showStarter ? (
+        <div data-testid="yopho-format-first-gate" style={{ padding: "4px 12px 16px" }}>
+          <YoPhoFormatFirstCreator
+            ownerContent={{ displayName }}
+            onApply={(composition) => {
+              setSeed(composition);
+              setStarterOpen(false);
+              setHasExistingCard(true); // treat an applied starter as in-progress work
+            }}
+            onClose={hasExistingCard ? () => setStarterOpen(false) : undefined}
+          />
+        </div>
+      ) : null}
+
+      {!showStarter ? (
+        <>
+          {hubRole === "fan" ? (
+            <YoPhoFanPortraitWorkspace userId={userId} displayName={displayName} compact />
+          ) : (
+            <YoPhoStudio role="performer" userId={userId} displayName={displayName} />
+          )}
+          <div style={{ padding: "0 8px 16px" }}>
+            <YoPhoTradingCard
+              role={hubRole}
+              displayName={displayName}
+              userKey={userId}
+              slug={slug}
+              compact
+              showEditor
+              showShare
+              showMoneyCtas={hubRole === "performer"}
+            />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

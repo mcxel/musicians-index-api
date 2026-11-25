@@ -51,6 +51,11 @@ export function resolveSessionDisplayName(opts: {
 }): string {
   const email = normalizeEmail(opts.email);
   const fromDb = (opts.dbDisplayName ?? opts.dbName ?? "").trim();
+  const canonicalRosterName = displayNameForEmail(email);
+  const governanceShortNames = new Set(["jk", "jp", "bjm"]);
+  if (canonicalRosterName && governanceShortNames.has(fromDb.toLowerCase())) {
+    return canonicalRosterName;
+  }
   if (fromDb) {
     const handle = fromDb.includes("@") ? fromDb.split("@")[0]! : fromDb;
     // Block DB rows that were incorrectly seeded with Marcel's email handle
@@ -65,8 +70,7 @@ export function resolveSessionDisplayName(opts: {
     return fromDb;
   }
 
-  const fromRoster = displayNameForEmail(email);
-  if (fromRoster) return fromRoster;
+  if (canonicalRosterName) return canonicalRosterName;
 
   if (email) {
     const local = email.split("@")[0] ?? "";

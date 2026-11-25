@@ -10,7 +10,7 @@ import { isDurablePlayableMediaUrl } from "@/lib/media/durablePlayableUrl";
 export { VERCEL_SERVER_UPLOAD_MAX_BYTES };
 
 export type CanonicalMediaUploadResult =
-  | { ok: true; url: string; id: string }
+  | { ok: true; url: string; id: string; type?: "songs" | "videos" }
   | { ok: false; error: string; status: number };
 
 type BlobUploadCapability = {
@@ -44,6 +44,7 @@ async function persistBlobPathname(input: {
     ok?: boolean;
     url?: string;
     id?: string;
+    type?: "songs" | "videos";
     error?: string;
   };
   if (!res.ok || !data.url) {
@@ -56,7 +57,7 @@ async function persistBlobPathname(input: {
   if (!isDurablePlayableMediaUrl(data.url) || !data.id) {
     return { ok: false, error: "Upload did not return a playable library item.", status: 503 };
   }
-  return { ok: true, url: data.url, id: data.id };
+  return { ok: true, url: data.url, id: data.id, type: data.type };
 }
 
 export async function uploadCanonicalMediaFile(
@@ -124,6 +125,7 @@ export async function uploadCanonicalMediaFile(
     ok?: boolean;
     url?: string;
     id?: string;
+    type?: "songs" | "videos";
     error?: string;
   };
   if (!res.ok || !data.url) {
@@ -132,5 +134,5 @@ export async function uploadCanonicalMediaFile(
   if (!isDurablePlayableMediaUrl(data.url) || !data.id) {
     return { ok: false, error: "Upload did not return a playable library item.", status: 503 };
   }
-  return { ok: true, url: data.url, id: data.id };
+  return { ok: true, url: data.url, id: data.id, type: data.type };
 }

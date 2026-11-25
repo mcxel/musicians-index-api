@@ -1,56 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail, getUserById } from "@/lib/auth/UserStore";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 import { isFanAvatarOwnershipRole } from "@/lib/avatars/fanAvatarOwnership";
 
 export type FanAvatarUser = { id: string; displayName: string; role: string };
 
-function rejectNonFanOwnership(role: string): { error: NextResponse } | null {
-  if (isFanAvatarOwnershipRole(role)) return null;
-  return {
-    error: NextResponse.json(
-      { ok: false, error: "fan_avatar_ownership_required" },
-      { status: 403 },
-    ),
-  };
+/**
+ * Session authority for avatar gear, inventory, saved looks and credit-spending
+ * unlocks. Rule 26: ownership mutate/load is FAN (plus ADMIN/STAFF QA) — never PERFORMER.
+ *
+ * Identity comes ONLY from the verified session (getTmiAuth: signed identity
+ * cookie + canonical DB row, role read from the database).
+ *
+ * SECURITY (2026-11-18): this previously resolved the user from the
+ * client-settable tmi_user_email / tmi_session_id cookies, and with only a
+ * session cookie present it fabricated a user from the tmi_role cookie. Anyone
+ * could act as any Fan — read/overwrite their avatar and spend their fan credits.
+ * Raw identity cookies are now ignored entirely.
+ */
+export async function requireFanAvatarSession(
+  req: NextRequest,
+): Promise<{ user: FanAvatarUser } | { error: NextResponse }> {
+  void req; // identity never comes from the request object
+  const auth = await getTmiAuth();
+  if (!auth) {
+    return { error: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }) };
+  }
+  const role = String(auth.user.role ?? "USER").toUpperCase();
+  if (!isFanAvatarOwnershipRole(role)) {
+    return {
+      error: NextResponse.json({ ok: false, error: "fan_avatar_ownership_required" }, { status: 403 }),
+    };
+  }
+  return { user: { id: auth.user.id, displayName: auth.user.name || "Fan", role } };
 }
 
 /**
- * Session authority for avatar gear & inventory endpoints.
- * Resolves authenticated user via tmi_user_email or tmi_session_id cookies.
- * Rule 26: ownership mutate/load is FAN (plus ADMIN/STAFF QA) — never PERFORMER.
+ * Owner decision 2026-11-19: Performers (and Bands) may keep a PROFILE Mini-Me — saved appearance
+ * looks only (`/api/avatar/looks`). This does NOT grant avatar presence anywhere: Performers stay live
+ * video in Performer Lobbies and on stages (VideoPanelSpatialContract.presenceModeFor), and every other
+ * avatar route (gear, inventory, equip, config, load, credit unlocks) stays on requireFanAvatarSession.
  */
-export function requireFanAvatarSession(
+export async function requireProfileMiniMeSession(
   req: NextRequest,
-): { user: FanAvatarUser } | { error: NextResponse } {
-  const email = req.cookies.get("tmi_user_email")?.value ?? "";
-  const sessionId = req.cookies.get("tmi_session_id")?.value ?? "";
-  const sessionToken = req.cookies.get("tmi_session")?.value ?? "";
-
-  let user = email ? getUserByEmail(email) : null;
-  if (!user && sessionId) {
-    user = getUserById(sessionId);
+): Promise<{ user: FanAvatarUser } | { error: NextResponse }> {
+  void req;
+  const auth = await getTmiAuth();
+  if (!auth) return { error: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }) };
+  const role = String(auth.user.role ?? "USER").toUpperCase();
+  if (!isFanAvatarOwnershipRole(role) && role !== "PERFORMER" && role !== "BAND") {
+    return { error: NextResponse.json({ ok: false, error: "mini_me_profile_role_required" }, { status: 403 }) };
   }
-
-  if (!user && (sessionId || sessionToken)) {
-    // Session token exists — construct fallback user identity from cookies
-    const cookieRole = (req.cookies.get("tmi_role")?.value ?? "USER").toUpperCase();
-    const blocked = rejectNonFanOwnership(cookieRole);
-    if (blocked) return blocked;
-    return {
-      user: {
-        id: sessionId || "session-active-user",
-        displayName: email ? email.split("@")[0] : "Authenticated Member",
-        role: cookieRole,
-      },
-    };
-  }
-
-  if (!user) {
-    return { error: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  const role = (user.role ?? "USER").toUpperCase();
-  const blocked = rejectNonFanOwnership(role);
-  if (blocked) return blocked;
-  return { user: { id: user.id, displayName: user.displayName, role } };
+  return { user: { id: auth.user.id, displayName: auth.user.name || "Member", role } };
 }

@@ -15,6 +15,9 @@ import {
 
 export interface ProfileCustomizerProps {
   config: PublicProfileConfig;
+  profileName?: string;
+  profileSlug?: string;
+  profileRole?: string;
   ownedPackIds: string[];
   accountTier: string;
   onSave: (next: PublicProfileConfig) => Promise<void>;
@@ -112,6 +115,8 @@ export default function ProfileCustomizer({
 }: ProfileCustomizerProps) {
   const [cfg, setCfg] = useState<PublicProfileConfig>({ ...DEFAULT_PUBLIC_PROFILE_CONFIG, ...initialConfig });
   const [activeTab, setActiveTab] = useState<CTab>("LOOK");
+  const [showChangeLayout, setShowChangeLayout] = useState(false);
+  const [showColorPresets, setShowColorPresets] = useState(false);
   // saving is derived from saveStatus so the parent hook is the single source of truth
   const saving = saveStatus === "saving";
 
@@ -224,58 +229,139 @@ export default function ProfileCustomizer({
         {activeTab === "LOOK" && (
           <>
             {/* Accent color */}
+            {/* Accent color - compact swatch with picker */}
             <div style={sectionStyle}>
-              <div style={labelStyle}>ACCENT COLOR (FREE)</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                {ACCENT_PRESETS.map((hex) =>
-                  colorCircle(hex, cfg.accentColor === hex, () => patch("accentColor", hex))
-                )}
+              <div style={labelStyle}>ACCENT COLOR</div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      background: cfg.accentColor,
+                      border: "2px solid rgba(255,255,255,0.3)",
+                      boxShadow: `0 0 8px ${cfg.accentColor}66`,
+                    }}
+                  />
+                  <input
+                    type="color"
+                    data-testid="compact-accent-color-picker"
+                    aria-label="Accent Color"
+                    value={cfg.accentColor}
+                    onChange={(e) => patch("accentColor", e.target.value)}
+                    style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+                  />
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", fontFamily: "monospace" }}>
+                    {cfg.accentColor.toUpperCase()}
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  data-testid="toggle-color-presets"
+                  onClick={() => setShowColorPresets((p) => !p)}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 800,
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "transparent",
+                    color: "rgba(255,255,255,0.6)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showColorPresets ? "CLOSE" : "PRESETS"}
+                </button>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>CUSTOM</span>
-                <input
-                  type="color"
-                  value={cfg.accentColor}
-                  onChange={(e) => patch("accentColor", e.target.value)}
-                  style={{ width: 32, height: 32, padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
-                />
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontFamily: "monospace" }}>
-                  {cfg.accentColor.toUpperCase()}
-                </span>
-              </div>
+              {showColorPresets ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  {ACCENT_PRESETS.map((hex) =>
+                    colorCircle(hex, cfg.accentColor === hex, () => {
+                      patch("accentColor", hex);
+                      setShowColorPresets(false);
+                    })
+                  )}
+                </div>
+              ) : null}
             </div>
 
             {/* Layout */}
+            {/* Layout - compact after selection with CHANGE LAYOUT toggle */}
             <div style={sectionStyle}>
-              <div style={labelStyle}>LAYOUT (FREE)</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {(Object.keys(LAYOUT_LABELS) as ProfileLayout[]).map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => patch("layout", l)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 14px",
-                      borderRadius: 8,
-                      border: `1px solid ${cfg.layout === l ? cfg.accentColor + "88" : "rgba(255,255,255,0.08)"}`,
-                      background: cfg.layout === l ? `${cfg.accentColor}12` : "rgba(255,255,255,0.02)",
-                      color: cfg.layout === l ? cfg.accentColor : "rgba(255,255,255,0.55)",
-                      fontSize: 9,
-                      fontWeight: cfg.layout === l ? 900 : 600,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      textAlign: "left",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {LAYOUT_LABELS[l]}
-                    {cfg.layout === l && <span style={{ fontSize: 8 }}>✓</span>}
-                  </button>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={labelStyle}>LAYOUT</div>
+                <button
+                  type="button"
+                  data-testid="toggle-change-layout"
+                  onClick={() => setShowChangeLayout((open) => !open)}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.1em",
+                    padding: "4px 10px",
+                    borderRadius: 4,
+                    border: `1px solid ${showChangeLayout ? cfg.accentColor : "rgba(255,255,255,0.2)"}`, background: showChangeLayout ? `${cfg.accentColor}22` : "transparent",
+                    color: showChangeLayout ? cfg.accentColor : "rgba(255,255,255,0.7)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {showChangeLayout ? "DONE" : "CHANGE LAYOUT"}
+                </button>
               </div>
+
+              {!showChangeLayout ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: `1px solid ${cfg.accentColor}55`,
+                    background: `${cfg.accentColor}0f`,
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                  }}
+                >
+                  <span>{LAYOUT_LABELS[cfg.layout] ?? cfg.layout}</span>
+                  <span style={{ fontSize: 8, color: cfg.accentColor, fontWeight: 900 }}>CURRENT</span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {(Object.keys(LAYOUT_LABELS) as ProfileLayout[]).map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      data-testid={`layout-option-${l.toLowerCase()}`}
+                      onClick={() => {
+                        patch("layout", l);
+                        setShowChangeLayout(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        borderRadius: 8,
+                        border: `1px solid ${cfg.layout === l ? cfg.accentColor + "88" : "rgba(255,255,255,0.08)"}`, background: cfg.layout === l ? `${cfg.accentColor}12` : "rgba(255,255,255,0.02)",
+                        color: cfg.layout === l ? cfg.accentColor : "rgba(255,255,255,0.55)",
+                        fontSize: 9,
+                        fontWeight: cfg.layout === l ? 900 : 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        textAlign: "left",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {LAYOUT_LABELS[l]}
+                      {cfg.layout === l && <span style={{ fontSize: 8 }}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Style packs */}
@@ -354,7 +440,10 @@ export default function ProfileCustomizer({
         {/* ── CONTENT ──────────────────────────────────────────────────────── */}
         {activeTab === "CONTENT" && (
           <div style={sectionStyle}>
-            <div style={labelStyle}>VISIBLE MODULES (drag to reorder — coming soon)</div>
+            <div style={labelStyle}>SECTION LIBRARY (+ ADD / REMOVE FROM PAGE)</div>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
+              Add or remove structured modules from your Page. Adding mounts the section immediately on your canvas.
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {ALL_MODULES.map((mod) => {
                 const on = cfg.visibleModules.includes(mod);
@@ -367,38 +456,70 @@ export default function ProfileCustomizer({
                       justifyContent: "space-between",
                       padding: "10px 14px",
                       borderRadius: 8,
-                      border: `1px solid ${on ? cfg.accentColor + "44" : "rgba(255,255,255,0.06)"}`,
-                      background: on ? `${cfg.accentColor}08` : "transparent",
+                      border: `1px solid ${on ? cfg.accentColor + "55" : "rgba(255,255,255,0.08)"}`, background: on ? `${cfg.accentColor}0c` : "rgba(255,255,255,0.02)",
                     }}
                   >
-                    <span style={{ fontSize: 9, fontWeight: 700, color: on ? "#fff" : "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: on ? "#fff" : "rgba(255,255,255,0.5)", letterSpacing: "0.08em" }}>
                       {mod.replace(/_/g, " ")}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch(
-                          "visibleModules",
-                          on
-                            ? cfg.visibleModules.filter((m) => m !== mod)
-                            : [...cfg.visibleModules, mod],
-                        )
-                      }
-                      style={{
-                        fontSize: 8,
-                        fontWeight: 900,
-                        padding: "4px 10px",
-                        borderRadius: 4,
-                        border: `1px solid ${on ? cfg.accentColor + "55" : "rgba(255,255,255,0.12)"}`,
-                        background: "transparent",
-                        color: on ? cfg.accentColor : "rgba(255,255,255,0.35)",
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        letterSpacing: "0.1em",
-                      }}
-                    >
-                      {on ? "VISIBLE" : "HIDDEN"}
-                    </button>
+                    {on ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          data-testid={`module-on-page-${mod.toLowerCase()}`}
+                          style={{
+                            fontSize: 8,
+                            fontWeight: 900,
+                            padding: "3px 8px",
+                            borderRadius: 4,
+                            background: `${cfg.accentColor}25`,
+                            color: cfg.accentColor,
+                            letterSpacing: "0.06em",
+                            border: `1px solid ${cfg.accentColor}55`,
+                          }}
+                        >
+                          ✓ ON PAGE
+                        </span>
+                        <button
+                          type="button"
+                          data-testid={`module-remove-${mod.toLowerCase()}`}
+                          onClick={() => patch("visibleModules", cfg.visibleModules.filter((m) => m !== mod))}
+                          style={{
+                            fontSize: 8,
+                            fontWeight: 800,
+                            padding: "5px 10px",
+                            borderRadius: 5,
+                            border: "1px solid rgba(255,100,100,0.35)",
+                            background: "rgba(255,50,50,0.08)",
+                            color: "#FF8888",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            letterSpacing: "0.06em",
+                          }}
+                        >
+                          REMOVE FROM PAGE
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        data-testid={`module-add-${mod.toLowerCase()}`}
+                        onClick={() => patch("visibleModules", [...cfg.visibleModules, mod])}
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 900,
+                          padding: "6px 14px",
+                          borderRadius: 6,
+                          border: `1px solid ${cfg.accentColor}`,
+                          background: `${cfg.accentColor}22`,
+                          color: cfg.accentColor,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        + ADD TO PAGE
+                      </button>
+                    )}
                   </div>
                 );
               })}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   BUSINESS_PARTNER_CAPABILITY_LABELS,
   type BusinessPartnerCapability,
-} from "@/lib/auth/BusinessPartnerCapabilities";
+} from "@/lib/auth/BusinessPartnerCapabilitiesCore";
 import SignupPolicyAcceptance, {
   AGE_REQUIRED_ERROR,
   POLICY_ACCEPTANCE_ERROR,

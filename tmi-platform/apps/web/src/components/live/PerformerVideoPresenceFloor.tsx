@@ -19,6 +19,7 @@ import {
 import type { PerformerPanelSkinId } from "@/lib/live/PerformerLobbyPersonality";
 import { getPerformerGenreRoomTheme } from "@/lib/live/performerGenreRoomNetwork";
 import { listSpatialPanels } from "@/lib/venue-hud/SpatialVideoPresenceDirector";
+import { usePerformerBackstageStore } from "@/lib/live/PerformerBackstageEngine";
 
 export interface PerformerVideoPresenceMember {
   userId: string;
@@ -41,6 +42,18 @@ export default function PerformerVideoPresenceFloor({
   const localId = localUserId ?? "local-performer";
   const panelId = `performer-panel-${localId}`;
   const genreTheme = useMemo(() => getPerformerGenreRoomTheme(roomId), [roomId]);
+
+  const {
+    isProgramLive,
+    canBroadcast,
+    goLiveFromBackstage,
+    returnToBackstage,
+    getMicStatus,
+    setAudioBus,
+    toggleMute,
+  } = usePerformerBackstageStore();
+
+  const isAuthorizedBroadcaster = canBroadcast();
 
   useEffect(() => {
     joinPerformerVideoPanel({
@@ -104,6 +117,8 @@ export default function PerformerVideoPresenceFloor({
       data-collision-certified={String(PERFORMER_LOBBY_VIDEO_PRESENCE_LAW.collisionMeshCertified)}
       data-locomotion-input="mouse,touch,keyboard"
       data-stream-reconnect-on-move="false"
+      data-world-stable-panel-scale="true"
+      data-viewer-distance-scale="false"
       data-voice-gain={locomotion.voiceGain.toFixed(2)}
       tabIndex={0}
       onClick={onFloorClick}
@@ -167,20 +182,24 @@ export default function PerformerVideoPresenceFloor({
         const panel = panels.find((p) => p.userId === m.userId);
         const xPct = panel ? 26 + ((panel.positionXyz[0] + 2) / 4) * 44 : 24 + (i % 4) * 17;
         const yPct = panel ? 26 + ((panel.positionXyz[2] + 2) / 4) * 38 : 28 + Math.floor(i / 4) * 16;
-        const scale = panel?.scale ?? 1;
+        // World-stable chassis size only — never viewer-distance scale (perspective is camera's job).
+        const worldScale = panel?.scale ?? 1;
         const skin = m.panelSkin ?? "DEFAULT_MONITOR";
         const isLocal = m.userId === localUserId;
+        const micStatus = getMicStatus(m.userId);
         return (
           <div
             key={m.userId}
             data-performer-webrtc-panel={m.userId}
             data-panel-skin={skin}
+            data-mic-status={micStatus}
+            data-world-scale={worldScale}
             style={{
               position: "absolute",
               left: `${xPct}%`,
               top: `${yPct}%`,
-              width: 80 * scale,
-              height: 52 * scale,
+              width: 80 * worldScale,
+              height: 52 * worldScale,
               transform: "translate(-50%, -50%)",
               borderRadius: 6,
               border: isLocal ? "2px solid #FFD700" : "2px solid rgba(255,45,170,0.55)",
@@ -198,9 +217,130 @@ export default function PerformerVideoPresenceFloor({
             <span style={{ fontSize: 9, color: "#fff", fontWeight: 700 }}>
               {m.displayName.split("|")[0]?.slice(0, 12) ?? "Performer"}
             </span>
+            <span
+              style={{
+                fontSize: 6,
+                fontWeight: 900,
+                color:
+                  micStatus === "ON_AIR"
+                    ? "#FF2DAA"
+                    : micStatus === "PROGRAM_MIC"
+                      ? "#FFD700"
+                      : micStatus === "MUTED"
+                        ? "#FF4444"
+                        : "#00FFFF",
+                background: "rgba(0,0,0,0.7)",
+                padding: "1px 4px",
+                borderRadius: 2,
+                letterSpacing: "0.06em",
+              }}
+            >
+              {micStatus.replace(/_/g, " ")}
+            </span>
           </div>
         );
       })}
+
+      {/* Backstage Audio & Ensemble Live Control Bar */}
+      <div
+        data-backstage-control-bar
+        style={{
+          position: "absolute",
+          bottom: 8,
+          left: 8,
+          right: 8,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "6px 10px",
+          borderRadius: 6,
+          background: "rgba(5,5,16,0.92)",
+          border: "1px solid rgba(255,45,170,0.3)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, fontWeight: 800, color: "#FF2DAA", letterSpacing: "0.08em" }}>
+            BACKSTAGE CONTROL:
+          </span>
+          <button
+            type="button"
+            data-audio-bus-toggle
+            onClick={() => setAudioBus(localId, getMicStatus(localId) === "PROGRAM_MIC" ? "BACKSTAGE_ONLY" : "SIMULCAST")}
+            style={{
+              padding: "3px 8px",
+              borderRadius: 4,
+              border: "1px solid #1E1E45",
+              background: "#0D0D24",
+              color: "#00FFFF",
+              fontSize: 8,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            🎙️ AUDIO: {getMicStatus(localId)}
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleMute(localId)}
+            style={{
+              padding: "3px 8px",
+              borderRadius: 4,
+              border: "1px solid #1E1E45",
+              background: "#0D0D24",
+              color: "#fff",
+              fontSize: 8,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            MUTE
+          </button>
+        </div>
+
+        {isAuthorizedBroadcaster && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {!isProgramLive ? (
+              <button
+                type="button"
+                data-ensemble-go-live
+                onClick={() => goLiveFromBackstage("ENTIRE_GROUP", `${roomId}-stage`)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 4,
+                  background: "linear-gradient(90deg, #FF2DAA, #FF6B35)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                🚀 ENSEMBLE GO LIVE →
+              </button>
+            ) : (
+              <button
+                type="button"
+                data-return-to-backstage
+                onClick={returnToBackstage}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 4,
+                  background: "#FF4444",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                🛑 RETURN TO GREEN ROOM
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div
         data-performer-viewer-position="true"

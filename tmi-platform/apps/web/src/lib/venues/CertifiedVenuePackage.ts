@@ -12,7 +12,7 @@
  */
 
 import type { GlbAssetRef } from "@/lib/venues/VenueAssetContract";
-import { VENUE_CONTRACT_REGISTRY } from "@/lib/venues/VenueAssetContract";
+import { runContractPreflight, VENUE_CONTRACT_REGISTRY } from "@/lib/venues/VenueAssetContract";
 import {
   getVenueAsset,
   getAllVenueTypes,
@@ -220,6 +220,7 @@ function buildCapabilities(input: {
   hasVerifiedAmbient: boolean;
   ledWallCount: number;
   contractSeats: number;
+  contractSpawns: number;
   contractCollision: GlbAssetRef | null | undefined;
   contractNav: GlbAssetRef | null | undefined;
   contractVisual: GlbAssetRef | null | undefined;
@@ -230,12 +231,12 @@ function buildCapabilities(input: {
   return {
     HAS_REAL_GEOMETRY: visualProd,
     HAS_SEATING: input.contractSeats > 0,
-    HAS_FREE_ROAM: false, // no walkable navmesh evidence
+    HAS_FREE_ROAM: navProd, // walkable only when navmesh PRODUCTION exists
     HAS_COLLISION: collisionProd,
     HAS_JUMBOTRON: input.ledWallCount > 0, // registry-declared virtual LED only
-    HAS_STAGE_ANCHOR: false, // no measured Vec3 spawn/stage anchors
+    HAS_STAGE_ANCHOR: input.contractSpawns > 0,
     VR_READY: false,
-    // Ambient MP4 + CSS shell is mobile-safe; GLB venue worlds are not present.
+    // Ambient MP4 + CSS shell is mobile-safe; GLB worlds still need physical mobile FPS cert.
     MOBILE_SAFE: input.hasVerifiedAmbient || !visualProd,
   };
 }
@@ -278,6 +279,7 @@ export function resolveCertifiedVenuePackage(
     hasVerifiedAmbient: ambientVerified,
     ledWallCount: ledWalls.length,
     contractSeats: contract?.seatAnchors?.length ?? 0,
+    contractSpawns: contract?.spawnAnchors?.length ?? 0,
     contractCollision: contract?.collisionGlb ?? null,
     contractNav: contract?.navmeshGlb ?? null,
     contractVisual: visualGlb,
@@ -301,7 +303,9 @@ export function resolveCertifiedVenuePackage(
 
   if (hasRealGeometry) {
     classification = "A_REAL_MESH";
-    renderMode = "CERTIFIED_GEOMETRY";
+    const certified = contract?.certificationStatus === "CERTIFIED" && runContractPreflight(contract).length === 0;
+    renderMode = certified ? "CERTIFIED_GEOMETRY" : "DEGRADED_VIDEO";
+    if (!certified) evidence.push("geometry_available_but_venue_certification_incomplete");
   } else if (visualGlb.status === "DEV_FIXTURE_DO_NOT_CERTIFY") {
     classification = "E_LEGACY";
     renderMode = ambientVerified ? "DEGRADED_VIDEO" : "UNAVAILABLE";
@@ -373,6 +377,20 @@ export function resolveGoLiveCertifiedVenuePackage(input: {
     String(input.category ?? input.eventType ?? ""),
     "no_golive_venue_mapping",
   );
+}
+
+export function resolveRoomCertifiedVenuePackage(input: {
+  roomId: string;
+  scenePlan?: { roomId: string; eventType: string } | null;
+  inPlace?: { roomId?: string | null; category?: string | null } | null;
+}): CertifiedVenuePackage {
+  if (input.scenePlan?.roomId === input.roomId) {
+    return resolveGoLiveCertifiedVenuePackage({ eventType: input.scenePlan.eventType });
+  }
+  if (input.inPlace?.roomId === input.roomId && input.inPlace.category) {
+    return resolveGoLiveCertifiedVenuePackage({ category: input.inPlace.category });
+  }
+  return resolveGoLiveCertifiedVenuePackage({ venueId: input.roomId });
 }
 
 /** True when package may drive RoomEnvironmentLayer / UVR visuals. */

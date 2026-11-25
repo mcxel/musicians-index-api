@@ -15,6 +15,7 @@ import { getGenreRoomByRoomId, resolveGenreLobbyJoinHref } from "@/lib/live/Cano
 
 function categoryToLobbyType(category: LiveDiscoveryCategory): LobbyRoom["type"] {
   if (category === "battles") return "battle";
+  if (category === "gauntlets") return "gauntlet";
   if (category === "cyphers") return "cypher";
   if (category === "challenges") return "challenge";
   if (category === "games") return "game";
@@ -83,8 +84,9 @@ export function discoveryToLobbyRoom(r: LiveDiscoveryRecord): LobbyRoom {
     status: recruiting ? "recruiting" : r.isLive ? "live" : "starting",
     genre: genreDef?.label ?? r.featuredCategory?.replace(/_/g, " ") ?? LIVE_DISCOVERY_CATEGORY_LABELS[primary],
     countryCode: r.countryCode,
-    previewUrl: r.previewUrl,
+    previewUrl: r.isCameraOn === false ? null : r.previewUrl,
     overlayLine: r.castOverlay?.trim() || fallbackCastOverlay(r, type),
     calloutSlots: r.calloutSlots?.length ? [...r.calloutSlots] : undefined,
+    canonicalEventId: (r.experienceId ?? "").startsWith("ev-") ? r.experienceId : undefined,
   };
 }

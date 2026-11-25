@@ -21,3 +21,5 @@ export interface ArtistPublic {
   bio?: string;
   verified: boolean;
 }
+
+export * from "../../../../packages/contracts/src/booking-convergence";

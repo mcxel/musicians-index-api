@@ -7,6 +7,7 @@ import { winnerStaysLifecycleEngine } from "@/lib/competition/WinnerStaysLifecyc
 import { getTally } from "@/lib/competition/BattleVoteClosureEngine";
 import { getSession as getBattleRotationSession } from "@/lib/battles/BattleRotationEngine";
 import { isRubricVoteOpen } from "@/lib/voting/FanRubricVotingEngine";
+import { isCanonicalVoteOpenForRoom } from "@/lib/voting/CanonicalVotingRuntime";
 import { getLiveRoom } from "@/lib/live/LiveRoomEngine";
 
 export type VotingOpenSource =
@@ -14,6 +15,7 @@ export type VotingOpenSource =
   | "battle_rotation"
   | "battle_vote_tally"
   | "rubric_window"
+  | "canonical_quick_vote"
   | "live_room_config"
   | "prop"
   | "closed";
@@ -61,6 +63,10 @@ export function resolveVotingOpen(input: {
 
   if (isRubricVoteOpen(input.roomId, eventId) || isRubricVoteOpen(input.roomId, battleId)) {
     return { votingOpen: true, source: "rubric_window" };
+  }
+
+  if (isCanonicalVoteOpenForRoom(input.roomId)) {
+    return { votingOpen: true, source: "canonical_quick_vote" };
   }
 
   const live = getLiveRoom(input.roomId);

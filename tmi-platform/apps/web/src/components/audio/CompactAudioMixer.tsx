@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import MixTeleprompterControl from "@/components/teleprompter/MixTeleprompterControl";
 import {
   useCanonicalMediaPlayerRuntime,
   type FrameId,
@@ -18,6 +19,7 @@ import {
 } from "@/components/monitors/MonitorBezelFeedPicker";
 import { useViewportMode } from "@/hooks/useViewportMode";
 import { useAdaptiveVoltronStore } from "@/lib/monitors/AdaptiveVoltronPresentationDirector";
+import { canonicalMonitorFromMixMonitor } from "@/lib/monitors/canonicalMonitorIdentity";
 import { ChannelMixerDirector } from "@/lib/audio/mixer/ChannelMixerDirector";
 import {
   monitorMixController,
@@ -371,7 +373,7 @@ export default function CompactAudioMixer({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(["MONITOR_1", "MONITOR_2"] as const).map((monitorId) => {
                 const master = monitorMixController.monitorState(monitorId);
-                const label = monitorId === "MONITOR_1" ? "M1 MASTER" : "M2 MASTER";
+                const label = `${canonicalMonitorFromMixMonitor(monitorId)} MASTER`;
                 return (
                   <div key={monitorId} data-testid={`tmi-mix-master-${monitorId}`} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <button
@@ -540,6 +542,38 @@ export default function CompactAudioMixer({
             {ELIGIBLE_SOURCES.map((src) => (
               <FeedSendRow key={src.id} sourceId={src.id} label={src.label} />
             ))}
+          </div>
+
+          <div
+            style={{
+              height: 1,
+              background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.35), transparent)",
+              marginTop: 4,
+            }}
+          />
+
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
+            TOOL / SOURCE · TELEPROMPTER PRESENTATION
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 6,
+              padding: "6px 8px",
+              borderRadius: 6,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700" }}>TELEPROMPTER</div>
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                Presentation Modes &amp; Monitor Composition
+              </div>
+            </div>
+            <MixTeleprompterControl />
           </div>
         </div>
       ) : null}

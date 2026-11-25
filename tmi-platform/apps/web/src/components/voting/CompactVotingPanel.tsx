@@ -135,7 +135,8 @@ export default function CompactVotingPanel({
       setSubmitting(true);
 
       try {
-        const idempotencyKey = `${voteId}_${choiceId}_${Date.now()}`;
+        // Stable per-vote key so retries do not mint a second ballot under LOCK_ON_SUBMIT.
+        const idempotencyKey = `ballot_${voteId}`;
         const res = await fetch(`/api/votes/${voteId}/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,9 +168,11 @@ export default function CompactVotingPanel({
           } else {
             setPanelState("VOTED");
           }
+        } else if (data.reason === "ALREADY_VOTED_LOCKED") {
+          setPanelState("LOCKED");
         }
       } catch {
-        // Vote failed silently — user can retry
+        // Vote failed — leave OPEN so the user can retry once.
       } finally {
         setSubmitting(false);
       }

@@ -1,3 +1,4 @@
+import "server-only";
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -103,12 +104,13 @@ export default prisma;
 export function isPrismaTableMissingError(err: unknown, tableName?: string): boolean {
   if (!err || typeof err !== 'object') return false;
   const e = err as { code?: string; message?: string; meta?: { modelName?: string; table?: string } };
-  const isP2021 = e.code === 'P2021' || (typeof e.message === 'string' && e.message.includes('P2021'));
+  const isTableCode = e.code === 'P2021' || e.code === '42P01' || (typeof e.message === 'string' && e.message.includes('P2021'));
   const mentionsMissingTable = typeof e.message === 'string' && (
     e.message.includes('does not exist in the current database') ||
+    e.message.includes('does not exist') ||
     e.message.includes('TableDoesNotExist')
   );
-  if (isP2021 || mentionsMissingTable) {
+  if (isTableCode || mentionsMissingTable) {
     if (tableName) {
       const lower = tableName.toLowerCase();
       const inMsg = typeof e.message === 'string' && e.message.toLowerCase().includes(lower);

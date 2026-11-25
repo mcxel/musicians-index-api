@@ -136,3 +136,140 @@ export function resolveRoomVenueRuntime(input: {
 
   return buildUnavailable("fallback-default", "no_room_to_venue_mapping");
 }
+
+// ============================================================================
+// PERMANENT LAW: SHOW CONTINUITY DURING VENUE MAINTENANCE / REDESIGN
+// "TMI CAN RENOVATE THE BUILDING WITHOUT CANCELLING THE SHOW."
+// ============================================================================
+
+export type VenueEnvironmentAvailabilityState =
+  | "VENUE_AVAILABLE"
+  | "VENUE_MAINTENANCE"
+  | "VENUE_UPGRADING"
+  | "VENUE_UNAVAILABLE"
+  | "DEVICE_FALLBACK";
+
+export type PresentationModeAdapter =
+  | "PROJECTION_VIDEO_PANEL"
+  | "FULL_3D_VENUE"
+  | "MOBILE_LIGHTWEIGHT"
+  | "ACCESSIBILITY_REDUCED_RENDER";
+
+export const VENUE_INDEPENDENT_PROJECTION_LAWS = {
+  showStateSeparateFromVenueState: true,
+  projectionFallbackPermanent: true,
+  buildingRenovationWithoutShowCancellation: true,
+  duplicateSessionCreatedDuringFallback: false,
+  liveVenueHotRestoreStatus: "FUTURE / NOT YET IMPLEMENTED",
+} as const;
+
+export interface VenuePresentationFallbackResolution {
+  roomId: string;
+  sessionId: string;
+  venueState: VenueEnvironmentAvailabilityState;
+  presentationMode: PresentationModeAdapter;
+  showSurvives: boolean;
+  webrtcPreserved: boolean;
+  participantsPreserved: boolean;
+  timerScoreRoundPreserved: boolean;
+  chatPreserved: boolean;
+  reactionsPreserved: boolean;
+  votingPreserved: boolean;
+  tipsPreserved: boolean;
+  overlaysPreserved: boolean;
+  duplicateSessionCreated: false;
+  memberNotice: string | null;
+}
+
+/**
+ * Resolves presentation adapter mode while guaranteeing show continuity.
+ * When a venue is undergoing maintenance, upgrading, or is unavailable, the
+ * show continues in canonical high-impact projection / video-panel mode
+ * without dropping WebRTC, chat, timer, votes, or participants.
+ */
+export function resolveVenuePresentationMode(params: {
+  roomId: string;
+  sessionId?: string;
+  venueState?: VenueEnvironmentAvailabilityState;
+  isDeviceLowEnd?: boolean;
+  userPreference?: PresentationModeAdapter;
+}): VenuePresentationFallbackResolution {
+  const venueState = params.venueState ?? "VENUE_AVAILABLE";
+  const sessionId = params.sessionId ?? `session-${params.roomId}`;
+
+  const isFallbackRequired =
+    venueState === "VENUE_MAINTENANCE" ||
+    venueState === "VENUE_UPGRADING" ||
+    venueState === "VENUE_UNAVAILABLE" ||
+    venueState === "DEVICE_FALLBACK" ||
+    Boolean(params.isDeviceLowEnd);
+
+  const presentationMode: PresentationModeAdapter = isFallbackRequired
+    ? "PROJECTION_VIDEO_PANEL"
+    : (params.userPreference ?? "FULL_3D_VENUE");
+
+  let memberNotice: string | null = null;
+  if (venueState === "VENUE_MAINTENANCE") {
+    memberNotice = "Stage environment undergoing routine optimization. Show is streaming live in HD video-panel projection mode.";
+  } else if (venueState === "VENUE_UPGRADING") {
+    memberNotice = "Stage environment receiving visual enhancements. Show continues uninterrupted in projection mode.";
+  } else if (venueState === "DEVICE_FALLBACK") {
+    memberNotice = "Optimized lightweight projection mode active for your device.";
+  }
+
+  return {
+    roomId: params.roomId,
+    sessionId,
+    venueState,
+    presentationMode,
+    showSurvives: true,
+    webrtcPreserved: true,
+    participantsPreserved: true,
+    timerScoreRoundPreserved: true,
+    chatPreserved: true,
+    reactionsPreserved: true,
+    votingPreserved: true,
+    tipsPreserved: true,
+    overlaysPreserved: true,
+    duplicateSessionCreated: false,
+    memberNotice,
+  };
+}
+
+/**
+ * Participant promotion contract:
+ * Promotes a spectator to an authorized live performer/challenger without
+ * destroying or duplicating the authoritative live session.
+ */
+export interface ParticipantPromotionContract {
+  sessionId: string;
+  roomId: string;
+  userId: string;
+  fromRole: "SPECTATOR" | "AUDIENCE";
+  toRole: "PERFORMER" | "CHALLENGER" | "DANCER";
+  promotedAt: number;
+  assignedPanel: string;
+  mediaStreamId: string;
+  sameSessionPreserved: true;
+}
+
+export function promoteSpectatorToParticipant(params: {
+  sessionId: string;
+  roomId: string;
+  userId: string;
+  targetRole: "PERFORMER" | "CHALLENGER" | "DANCER";
+  assignedPanel: string;
+  mediaStreamId: string;
+}): ParticipantPromotionContract {
+  return {
+    sessionId: params.sessionId,
+    roomId: params.roomId,
+    userId: params.userId,
+    fromRole: "SPECTATOR",
+    toRole: params.targetRole,
+    promotedAt: Date.now(),
+    assignedPanel: params.assignedPanel,
+    mediaStreamId: params.mediaStreamId,
+    sameSessionPreserved: true,
+  };
+}

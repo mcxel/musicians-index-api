@@ -16,7 +16,8 @@ export type FloatingWorkspaceModuleId =
   | "music"
   | "avatar_inventory"
   | "quick_memories"
-  | "fan_lobby";
+  | "fan_lobby"
+  | "notes";
 
 export type FloatingWorkspaceRole = "FAN" | "PERFORMER" | "ADMIN" | "STAFF";
 
@@ -110,6 +111,12 @@ export const FLOATING_WORKSPACE_MODULE_CATALOG: Record<
     icon: "🎉",
     description: "Free-roam hangout with friends",
   },
+  notes: {
+    id: "notes",
+    label: "Notes",
+    icon: "📝",
+    description: "Personal notepad & stage pad",
+  },
 };
 
 /** FAN drawer modules (Rule 26 — avatar ownership allowed). */
@@ -125,6 +132,7 @@ export const FAN_FLOATING_MODULES: FloatingWorkspaceModuleId[] = [
   "schedule",
   "booking",
   "music",
+  "notes",
 ];
 
 /** PERFORMER modules — Venue Concierge + live analytics; NO avatar inventory. */
@@ -140,6 +148,7 @@ export const PERFORMER_FLOATING_MODULES: FloatingWorkspaceModuleId[] = [
   "schedule",
   "booking",
   "music",
+  "notes",
 ];
 
 /** Admin/staff see performer set plus fan inventory for support (ownership UI still RoleGate FAN). */

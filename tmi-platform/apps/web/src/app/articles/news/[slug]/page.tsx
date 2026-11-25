@@ -6,7 +6,7 @@ import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import { injectAds } from "@/lib/editorial/editorialAdInjector";
 import { categoryToSectionLabel } from "@/lib/editorial/editorialRoutingResolver";
 import { resolveTemplate } from "@/lib/editorial/editorialPageEngine";
-import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug } from "@/lib/magazine/getArticleBySlug";
 import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
 
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {

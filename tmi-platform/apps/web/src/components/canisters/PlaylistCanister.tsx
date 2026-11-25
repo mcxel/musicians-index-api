@@ -23,15 +23,20 @@ import {
   syncPlaylistQueue,
 } from "@/lib/playlists/commandCenterPlaybackBus";
 import { resolvePlaylistLibraryHeader } from "@/lib/playlists/playlistLibraryDisplayName";
-import {
-  fetchShareThreadOptions,
-  sharePlaylistToThread,
-  type MessageThreadOption,
-} from "@/lib/playlists/sharePlaylistToThread";
 import { useAudio } from "@/components/AudioProvider";
 import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
+import { officialSunoEmbedUrl, parseSunoShareUrl } from "@/lib/media/MediaIngestionService";
+import { classifySongRealm, songRealmCompetitionHref } from "@/lib/challenge/SongRealmAuthority";
 import SpatialAlbumReleaseViewport from "@/components/media/SpatialAlbumReleaseViewport";
 import AdRail from "@/components/monetization/AdRail";
+import MediaUrlImporter from "@/components/media/MediaUrlImporter";
+import MediaImportComposer from "@/components/media/MediaImportComposer";
+import MusicCollectionLibrary, {
+  type MusicCollectionCard,
+} from "@/components/media/MusicCollectionLibrary";
+import PlaylistSharePanel from "@/components/playlists/PlaylistSharePanel";
+import PlaylistArtworkPicker from "@/components/playlists/PlaylistArtworkPicker";
+import Link from "next/link";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
@@ -62,6 +67,8 @@ interface ApiPlaylistSummary {
   description?: string | null;
   coverUrl?: string | null;
   shareToken?: string | null;
+  isPublic?: boolean;
+  isMixtape?: boolean;
   _count?: { items: number };
 }
 
@@ -118,17 +125,21 @@ export function PlaylistCanister({
   const [tracks, setTracks] = useState<ApiSong[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [sunoEmbedUrl, setSunoEmbedUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [eqGains, setEqGains] = useState<number[]>(new Array(9).fill(50));
   const [shareOpen, setShareOpen] = useState(false);
-  const [threads, setThreads] = useState<MessageThreadOption[]>([]);
-  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [userLibrarySongs, setUserLibrarySongs] = useState<UserLibrarySong[]>([]);
   const [addingSongId, setAddingSongId] = useState("");
   const [addingSong, setAddingSong] = useState(false);
+  const [linkImportOpen, setLinkImportOpen] = useState(false);
+  const [addComposerOpen, setAddComposerOpen] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [artworkPickerOpen, setArtworkPickerOpen] = useState(false);
   const [playlistActionMsg, setPlaylistActionMsg] = useState<string | null>(null);
+  const [sessionUsername, setSessionUsername] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
@@ -138,8 +149,19 @@ export function PlaylistCanister({
   const [equippedChassisId, setEquippedChassisId] = useState<MediaPlayerChassisId>(FREE_DEFAULT_CHASSIS_ID);
   const [skinOwnedTick, setSkinOwnedTick] = useState(0);
   const [skinActionMsg, setSkinActionMsg] = useState<string | null>(null);
+  const [libraryView, setLibraryView] = useState<"playlists" | "library" | "yoAlbums">("playlists");
+  const [librarySongs, setLibrarySongs] = useState<ApiSong[]>([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const skinsSectionRef = useRef<HTMLDivElement | null>(null);
-  const { play: playGlobal, pause: pauseGlobal, seek: seekGlobal, setVolume: setVolumeGlobal, toggleMute: toggleMuteGlobal } = useAudio();
+  const {
+    pause: pauseGlobal,
+    seek: seekGlobal,
+    setVolume: setVolumeGlobal,
+    toggleMute: toggleMuteGlobal,
+    loadQueue: loadQueueGlobal,
+    addToPlaylist: addToQueueGlobal,
+  } = useAudio();
 
   const selectedPlaylist = useMemo(
     () => playlists.find((p) => p.id === selectedId) ?? null,
@@ -187,14 +209,24 @@ export function PlaylistCanister({
         }
 
         let profileName: string | null = sessionData.user?.name?.trim() ?? null;
+        let username: string | null = null;
         const profileRes = await fetch("/api/user/profile", { credentials: "include", cache: "no-store" });
         if (profileRes.ok) {
           const profileData = (await profileRes.json()) as {
-            profile?: { displayName?: string | null };
+            profile?: { displayName?: string | null; username?: string | null; handle?: string | null };
+            username?: string | null;
+            handle?: string | null;
           };
           profileName = profileData.profile?.displayName?.trim() ?? profileName;
+          username =
+            profileData.profile?.username?.trim() ||
+            profileData.profile?.handle?.trim() ||
+            profileData.username?.trim() ||
+            profileData.handle?.trim() ||
+            null;
         }
         if (!cancelled && profileName) setOwnerLabel(profileName);
+        if (!cancelled) setSessionUsername(username);
       } catch {
         /* keep prop fallback */
       }
@@ -226,6 +258,61 @@ export function PlaylistCanister({
       active = false;
     };
   }, [isOwner, entityId, skinOwnedTick]);
+
+  const loadLibrarySongs = useCallback(async () => {
+    setLoadingLibrary(true);
+    setLibraryError(null);
+    try {
+      const res = await fetch(`/api/media/library?ownerId=${encodeURIComponent(entityId)}&type=song`, { credentials: "include", cache: "no-store" });
+      if (!res.ok) throw new Error("library_unavailable");
+      const data = (await res.json()) as { ok?: boolean; assets?: Array<{ id: string; title: string; url?: string | null; genre?: string | null; metadata?: { coverUrl?: string | null } }> };
+      const songs: ApiSong[] = (data.assets ?? []).map((a) => ({
+        id: a.id,
+        title: a.title,
+        audioUrl: a.url ?? null,
+        coverUrl: a.metadata?.coverUrl ?? null,
+        genre: a.genre ?? null,
+        bpm: null,
+      }));
+      setLibrarySongs(songs);
+    } catch {
+      setLibraryError("Could not load your media library right now.");
+    } finally {
+      setLoadingLibrary(false);
+    }
+  }, [entityId]);
+
+  useEffect(() => {
+    void loadLibrarySongs();
+  }, [loadLibrarySongs]);
+
+  const playLibrarySong = useCallback(
+    (clickedIndex: number) => {
+      const song = librarySongs[clickedIndex];
+      const suno = parseSunoShareUrl(song?.audioUrl);
+      if (suno) {
+        setSunoEmbedUrl(suno.officialEmbedUrl);
+        return;
+      }
+      const asTracks = librarySongs
+        .map((item) => {
+          const url = resolveDurablePlayableSrc(item.audioUrl ?? null);
+          return url ? { id: item.id, title: item.title, artist: libraryHeader, duration: 0, url, artwork: item.coverUrl ?? undefined } : null;
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
+      void loadQueueGlobal(asTracks, clickedIndex);
+    },
+    [librarySongs, libraryHeader, loadQueueGlobal],
+  );
+
+  const addLibrarySongToQueue = useCallback(
+    (song: ApiSong) => {
+      const url = resolveDurablePlayableSrc(song.audioUrl ?? null);
+      if (!url) return;
+      addToQueueGlobal({ id: song.id, title: song.title, artist: libraryHeader, duration: 0, url, artwork: song.coverUrl ?? undefined });
+    },
+    [libraryHeader, addToQueueGlobal],
+  );
 
   const membershipTier = useMemo(() => normalizeMembershipTier(accountTier), [accountTier]);
 
@@ -301,15 +388,29 @@ export function PlaylistCanister({
       return;
     }
     if (isPlaying) {
-      void playGlobal({
-        id: activeTrack.id,
-        title: activeTrack.title,
-        artist: libraryHeader,
-        duration: 0,
-        url: playableUrl,
-      });
+      // Converge onto the canonical AudioProvider queue instead of only handing it one
+      // track at a time — other useAudio() consumers (TmiMusicMiniPlayer, RemoteQuickPanel)
+      // see this playlist as the real shared queue, not an empty/stale one.
+      // Playback context attaches atomically with this exact play command (owner
+      // correction 2026-10-29) — this IS a real saved user playlist
+      // (/api/user/playlists/:id/songs), not a bare DIRECT play, so discoverySource
+      // is PLAYLIST with the real playlistId, and mediaId is the real Song.id.
+      void loadQueueGlobal(
+        tracks
+          .map((song) => {
+            const url = resolveDurablePlayableSrc(song.audioUrl ?? null);
+            return url
+              ? { id: song.id, title: song.title, artist: libraryHeader, duration: 0, url, artwork: song.coverUrl ?? undefined }
+              : null;
+          })
+          .filter((t): t is NonNullable<typeof t> => t !== null),
+        currentTrackIndex,
+        activeTrack
+          ? { mediaId: activeTrack.id, mediaType: 'SONG', discoverySource: 'PLAYLIST', playlistId: selectedId ?? undefined }
+          : undefined,
+      );
     }
-  }, [isPlaying, playableUrl, activeTrack, libraryHeader, playGlobal]);
+  }, [isPlaying, playableUrl, activeTrack, libraryHeader, tracks, currentTrackIndex, loadQueueGlobal]);
 
   const togglePlayback = useCallback(() => {
     setIsPlaying((p) => {
@@ -504,8 +605,15 @@ export function PlaylistCanister({
     }
   };
 
-  const addSongToSelectedPlaylist = async () => {
-    if (!selectedId || !addingSongId) return;
+  const addSongToSelectedPlaylist = async (songIdOverride?: string) => {
+    const songId = songIdOverride ?? addingSongId;
+    if (!songId) return;
+    if (!selectedId) {
+      setAddingSongId(songId);
+      setLibraryView("playlists");
+      setPlaylistActionMsg("Choose a playlist, then add this library item. The song stays in your Library either way.");
+      return;
+    }
     setAddingSong(true);
     setPlaylistActionMsg(null);
     try {
@@ -513,14 +621,17 @@ export function PlaylistCanister({
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ songId: addingSongId }),
+        body: JSON.stringify({ songId }),
       });
       if (res.ok) {
-        const added = userLibrarySongs.find((s) => s.id === addingSongId);
+        const added =
+          userLibrarySongs.find((s) => s.id === songId) ??
+          librarySongs.find((s) => s.id === songId);
         await reloadSelectedTracks();
         await loadPlaylists();
+        await loadLibrarySongs();
         setAddingSongId("");
-        setPlaylistActionMsg(added ? `Added "${added.title}" to playlist.` : "Song added to playlist.");
+        setPlaylistActionMsg(added ? `Added "${added.title}" to this playlist. Still in your Library.` : "Song added to playlist. Still in your Library.");
       } else {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         setPlaylistActionMsg(err.error ?? "Could not add song to playlist.");
@@ -530,10 +641,14 @@ export function PlaylistCanister({
     }
   };
 
-  const addableLibrarySongs = useMemo(
-    () => userLibrarySongs.filter((s) => !tracks.some((t) => t.id === s.id)),
-    [userLibrarySongs, tracks],
-  );
+  const addableLibrarySongs = useMemo(() => {
+    const byId = new Map<string, UserLibrarySong>();
+    for (const s of userLibrarySongs) byId.set(s.id, s);
+    for (const s of librarySongs) {
+      if (!byId.has(s.id)) byId.set(s.id, { id: s.id, title: s.title, genre: s.genre, audioUrl: s.audioUrl });
+    }
+    return [...byId.values()].filter((s) => !tracks.some((t) => t.id === s.id));
+  }, [userLibrarySongs, librarySongs, tracks]);
 
   const skinsSection = isOwner ? (
     <div
@@ -623,28 +738,66 @@ export function PlaylistCanister({
     </div>
   ) : null;
 
-  const openShare = async () => {
-    setShareStatus(null);
-    setShareOpen(true);
-    const opts = await fetchShareThreadOptions();
-    setThreads(opts);
-  };
-
-  const sendShare = async (threadId: string) => {
-    if (!selectedId || !activeTrack) {
-      setShareStatus("Select a track first.");
+  const openShare = () => {
+    if (!selectedId) {
+      setPlaylistActionMsg("Select a playlist to share.");
       return;
     }
-    const selectedPlaylist = playlists.find((p) => p.id === selectedId);
-    const result = await sharePlaylistToThread({
-      threadId,
-      playlistId: selectedId,
-      playlistTitle: selectedPlaylist?.name ?? "Playlist",
-      trackId: activeTrack.id,
-      trackTitle: activeTrack.title,
+    setShareOpen(true);
+  };
+
+  const patchPlaylistMeta = async (patch: { coverUrl?: string; isPublic?: boolean; name?: string }) => {
+    if (!selectedId || !isOwner) return;
+    const res = await fetch(`/api/playlists/${selectedId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
     });
-    setShareStatus(result.ok ? "Shared to conversation." : result.error ?? "Share failed.");
-    if (result.ok) setTimeout(() => setShareOpen(false), 900);
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error ?? "Could not update playlist.");
+    }
+    await loadPlaylists();
+  };
+
+  const openArtworkPicker = (playlistId?: string) => {
+    if (!isOwner) return;
+    if (playlistId) setSelectedId(playlistId);
+    else if (!selectedId) {
+      setPlaylistActionMsg("Select a playlist to set cover art.");
+      return;
+    }
+    setArtworkPickerOpen(true);
+  };
+
+  const savePlaylistArtwork = async (coverUrl: string) => {
+    if (!selectedId || !isOwner) return;
+    setCoverBusy(true);
+    setPlaylistActionMsg(null);
+    try {
+      await patchPlaylistMeta({ coverUrl });
+      setPlaylistActionMsg("Playlist cover updated.");
+      setArtworkPickerOpen(false);
+    } catch (e) {
+      setPlaylistActionMsg(e instanceof Error ? e.message : "Cover update failed.");
+      throw e;
+    } finally {
+      setCoverBusy(false);
+    }
+  };
+
+  const saveSharedPlaylistToLibrary = async () => {
+    if (!selectedId) return;
+    const res = await fetch(`/api/playlists/${selectedId}/save`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string; playlist?: { id: string; name: string } };
+    if (!res.ok) throw new Error(data.error ?? "Could not save playlist.");
+    await loadPlaylists();
+    if (data.playlist?.id) setSelectedId(data.playlist.id);
+    setPlaylistActionMsg(data.playlist ? `Saved "${data.playlist.name}" to My Library.` : "Saved to My Library.");
   };
 
   const castSelected = () => {
@@ -674,19 +827,55 @@ export function PlaylistCanister({
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: accentColor }}>
             {libraryHeader}
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist || !newPlaylistName.trim()} style={actionBtn("#00FF88")}>
-              {creatingPlaylist ? "…" : "+ PLAYLIST"}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {isOwner ? (
+              <button type="button" data-testid="playlist-add-open-compact" onClick={() => setAddComposerOpen(true)} style={actionBtn("#00FF88")}>
+                + ADD
+              </button>
+            ) : null}
+            <button type="button" onClick={() => void openShare()} disabled={!selectedId} style={actionBtn("#00FFFF")}>
+              ↗ SHARE
             </button>
             <button type="button" onClick={() => sendPlaybackCommand("open-full")} style={actionBtn("#FFD700")}>
               EXPAND ⛶
             </button>
           </div>
         </div>
+        {isOwner && addComposerOpen ? (
+          <MediaImportComposer
+            role={role}
+            accentColor={accentColor}
+            playlists={playlists.map((p) => ({
+              id: p.id,
+              name: p.name,
+              trackCount: p._count?.items,
+              isMixtape: p.isMixtape,
+            }))}
+            libraryTracks={[...userLibrarySongs, ...librarySongs].filter(
+              (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i,
+            )}
+            defaultPlaylistId={selectedId}
+            onClose={() => setAddComposerOpen(false)}
+            onRefreshLibrary={() => {
+              void loadLibrarySongs();
+              void loadPlaylists();
+            }}
+            onRefreshPlaylists={() => void loadPlaylists()}
+            onCompleted={(result) => {
+              if (result.playlistId) setSelectedId(result.playlistId);
+              setPlaylistActionMsg(
+                result.destination === "single"
+                  ? "Saved as Single in Media Library."
+                  : `Saved to ${result.playlistName ?? result.destination}.`,
+              );
+              void reloadSelectedTracks();
+            }}
+          />
+        ) : null}
         {isOwner ? (
           <div style={{ display: "flex", gap: 6 }}>
             <input
@@ -854,14 +1043,23 @@ export function PlaylistCanister({
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 4, lineHeight: 1.4 }}>
               {userLibrarySongs.length === 0
                 ? role === "performer"
-                  ? "Upload songs in Media Locker, then add them to this playlist here."
-                  : "Upload songs to your library first, then add them to this playlist here."
+                  ? "Use UPLOAD FILE or PASTE LINK above, then add from your library here."
+                  : "Use 1 · UPLOAD FILE or 2 · PASTE LINK above, then 3 · ADD FROM YOUR LIBRARY."
                 : "All your uploaded songs are already in this playlist."}
             </div>
           )
         ) : null}
         {skinsSection}
-        {activeTrack && !playableUrl ? (
+        {activeTrack && !playableUrl && parseSunoShareUrl(activeTrack.audioUrl) ? (
+          <iframe
+            title="Suno official player"
+            src={officialSunoEmbedUrl(parseSunoShareUrl(activeTrack.audioUrl)!.trackId)}
+            width="100%"
+            height="140"
+            style={{ border: 0, borderRadius: 8 }}
+            allow="autoplay; encrypted-media; fullscreen"
+          />
+        ) : activeTrack && !playableUrl ? (
           <div style={{ fontSize: 9, color: "rgba(255,180,180,0.8)", padding: "4px 0" }}>
             No playable audio for this track.
           </div>
@@ -927,9 +1125,9 @@ export function PlaylistCanister({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" onClick={() => void openShare()} disabled={!activeTrack} style={actionBtn("#00FFFF")}>
-            ↗ SHARE
-          </button>
+              <button type="button" onClick={() => void openShare()} disabled={!selectedId} style={actionBtn("#00FFFF")}>
+                ↗ SHARE
+              </button>
           <button type="button" onClick={castSelected} disabled={!activeTrack} style={actionBtn("#FFD700")}>
             📺 CAST TO MONITOR
           </button>
@@ -1045,7 +1243,16 @@ export function PlaylistCanister({
               ⏭
             </button>
           </div>
-          {activeTrack && !playableUrl ? (
+          {activeTrack && !playableUrl && parseSunoShareUrl(activeTrack.audioUrl) ? (
+            <iframe
+              title="Suno official player"
+              src={officialSunoEmbedUrl(parseSunoShareUrl(activeTrack.audioUrl)!.trackId)}
+              width="100%"
+              height="140"
+              style={{ border: 0, borderRadius: 8, marginTop: 8 }}
+              allow="autoplay; encrypted-media; fullscreen"
+            />
+          ) : activeTrack && !playableUrl ? (
             <div style={{ fontSize: 9, color: "rgba(255,180,180,0.8)" }}>
               No playable audio for this track.
             </div>
@@ -1064,21 +1271,226 @@ export function PlaylistCanister({
             gap: 10,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
-              MY PLAYLISTS
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" onClick={() => void createPlaylist()} disabled={creatingPlaylist || !newPlaylistName.trim()} style={actionBtn("#00FF88")}>
-                {creatingPlaylist ? "…" : "+ ADD PLAYLIST"}
-              </button>
-              <button type="button" onClick={() => void openShare()} disabled={!activeTrack} style={actionBtn("#00FFFF")}>
+          {(libraryView === "playlists" || libraryView === "yoAlbums") && !loadingPlaylists ? (
+            <MusicCollectionLibrary
+              accentColor="#7DD3FC"
+              isOwner={isOwner}
+              selectedId={selectedId}
+              playlists={playlists
+                .filter((p) => !p.isMixtape)
+                .map(
+                  (p): MusicCollectionCard => ({
+                    id: p.id,
+                    title: p.name,
+                    kind: "playlist",
+                    coverUrl: p.coverUrl,
+                    trackCount: p._count?.items ?? 0,
+                    creatorLabel: publicOwnerName ?? undefined,
+                  }),
+                )}
+              albums={playlists
+                .filter((p) => p.isMixtape)
+                .map(
+                  (p): MusicCollectionCard => ({
+                    id: p.id,
+                    title: p.name,
+                    kind: "album",
+                    coverUrl: p.coverUrl,
+                    trackCount: p._count?.items ?? 0,
+                    creatorLabel: publicOwnerName ?? undefined,
+                  }),
+                )}
+              singles={librarySongs.map(
+                (s): MusicCollectionCard => ({
+                  id: s.id,
+                  title: s.title,
+                  kind: "single",
+                  coverUrl: s.coverUrl,
+                  trackCount: 1,
+                  creatorLabel: publicOwnerName ?? undefined,
+                }),
+              )}
+              onAdd={isOwner ? () => setAddComposerOpen(true) : undefined}
+              onSelect={(card) => {
+                if (card.kind === "single") {
+                  setLibraryView("library");
+                  const idx = librarySongs.findIndex((s) => s.id === card.id);
+                  if (idx >= 0) playLibrarySong(idx);
+                  return;
+                }
+                setLibraryView("playlists");
+                setSelectedId(card.id);
+              }}
+              onPlay={(card) => {
+                if (card.kind === "single") {
+                  const idx = librarySongs.findIndex((s) => s.id === card.id);
+                  if (idx >= 0) playLibrarySong(idx);
+                  return;
+                }
+                setSelectedId(card.id);
+                setIsPlaying(true);
+              }}
+              onShare={(card) => {
+                if (card.kind === "single") return;
+                setSelectedId(card.id);
+                openShare();
+              }}
+              onEditCover={
+                isOwner
+                  ? (card) => {
+                      if (card.kind === "single") return;
+                      openArtworkPicker(card.id);
+                    }
+                  : undefined
+              }
+              onAddTracks={
+                isOwner
+                  ? (card) => {
+                      setSelectedId(card.id);
+                      setAddComposerOpen(true);
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
+
+          {libraryView === "playlists" ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {isOwner ? (
+                <button
+                  type="button"
+                  data-testid="playlist-add-open"
+                  onClick={() => setAddComposerOpen(true)}
+                  style={actionBtn("#00FF88")}
+                >
+                  + ADD
+                </button>
+              ) : null}
+              <button
+                type="button"
+                data-testid="playlist-share-open"
+                onClick={() => void openShare()}
+                disabled={!selectedId}
+                style={actionBtn("#00FFFF")}
+              >
                 ↗ SHARE
               </button>
+              {!isOwner && selectedId ? (
+                <button
+                  type="button"
+                  data-testid="playlist-save-shared"
+                  onClick={() => {
+                    void saveSharedPlaylistToLibrary().catch((e: unknown) => {
+                      setPlaylistActionMsg(e instanceof Error ? e.message : "Could not save playlist.");
+                    });
+                  }}
+                  style={actionBtn("#FFD700")}
+                >
+                  SAVE TO LIBRARY
+                </button>
+              ) : null}
             </div>
           </div>
+          ) : null}
 
-          {isOwner ? (
+          {libraryView === "playlists" && isOwner && addComposerOpen ? (
+            <MediaImportComposer
+              role={role}
+              accentColor={accentColor}
+              playlists={playlists.map((p) => ({
+                id: p.id,
+                name: p.name,
+                trackCount: p._count?.items,
+                isMixtape: p.isMixtape,
+              }))}
+              libraryTracks={[...userLibrarySongs, ...librarySongs].filter(
+                (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i,
+              )}
+              defaultPlaylistId={selectedId}
+              onClose={() => setAddComposerOpen(false)}
+              onRefreshLibrary={() => {
+                void loadLibrarySongs();
+                void loadPlaylists();
+              }}
+              onRefreshPlaylists={() => void loadPlaylists()}
+              onCompleted={(result) => {
+                if (result.playlistId) setSelectedId(result.playlistId);
+                setPlaylistActionMsg(
+                  result.destination === "single"
+                    ? "Saved as Single in Media Library."
+                    : `Saved to ${result.playlistName ?? result.destination}.`,
+                );
+                void reloadSelectedTracks();
+                setShareOpen(Boolean(result.playlistId));
+              }}
+            />
+          ) : null}
+
+          {libraryView === "playlists" && isOwner && artworkPickerOpen && selectedId ? (
+            <div
+              data-testid="playlist-artwork-picker-host"
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 12000,
+                display: "grid",
+                placeItems: "center",
+                padding: 16,
+                background: "rgba(0,0,0,0.72)",
+              }}
+            >
+              <PlaylistArtworkPicker
+                accentColor={accentColor}
+                entitySlug={sessionUsername}
+                currentCoverUrl={selectedPlaylist?.coverUrl ?? null}
+                onClose={() => setArtworkPickerOpen(false)}
+                onSave={(url) => savePlaylistArtwork(url)}
+              />
+            </div>
+          ) : null}
+
+          {libraryView === "playlists" && isOwner && selectedId ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                data-testid="playlist-change-cover"
+                disabled={coverBusy}
+                onClick={() => openArtworkPicker()}
+                style={actionBtn("#FF2DAA")}
+              >
+                {coverBusy ? "…" : selectedPlaylist?.coverUrl ? "CHANGE COVER" : "ADD COVER"}
+              </button>
+              <input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="Or type a blank playlist name…"
+                onKeyDown={(e) => { if (e.key === "Enter") void createPlaylist(); }}
+                style={{
+                  flex: 1,
+                  minWidth: 120,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.35)",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void createPlaylist()}
+                disabled={creatingPlaylist || !newPlaylistName.trim()}
+                style={actionBtn("#AA2DFF")}
+              >
+                {creatingPlaylist ? "…" : "CREATE EMPTY"}
+              </button>
+            </div>
+          ) : null}
+
+          {libraryView === "playlists" && isOwner && !selectedId ? (
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="text"
@@ -1114,90 +1526,155 @@ export function PlaylistCanister({
             </div>
           ) : null}
 
-          {loadingPlaylists ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
-              Loading playlists…
+          {loadingPlaylists && (libraryView === "playlists" || libraryView === "yoAlbums") ? (
+            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, padding: "12px 0" }}>
+              Loading music library…
             </div>
-          ) : playlists.length === 0 ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "rgba(255,255,255,0.35)", fontSize: 11, textAlign: "center", padding: 24 }}>
-              <span style={{ fontSize: 24 }}>🎵</span>
-              No playlists yet. Create your first playlist.
+          ) : null}
+
+          {libraryView === "library" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
+                YOUR LIBRARY
+              </div>
+              {sunoEmbedUrl ? (
+                <iframe
+                  title="Suno official player"
+                  src={sunoEmbedUrl}
+                  width="100%"
+                  height="160"
+                  style={{ border: 0, borderRadius: 8 }}
+                  allow="autoplay; encrypted-media; fullscreen"
+                />
+              ) : null}
+              {loadingLibrary ? (
+                <div role="status" style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, padding: "24px 0", textAlign: "center" }}>
+                  Loading your media library…
+                </div>
+              ) : libraryError ? (
+                <div role="alert" style={{ color: "#ffb0b0", fontSize: 11, padding: "12px 0" }}>{libraryError}</div>
+              ) : librarySongs.length === 0 ? (
+                <div
+                  data-testid="library-empty"
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.35)", fontSize: 11, textAlign: "center", padding: 24 }}
+                >
+                  <span style={{ fontSize: 24 }}>🎵</span>
+                  No songs in your library yet. Upload audio, paste a URL, or add a Suno link — a playlist is not required.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {librarySongs.map((song, idx) => (
+                    <div
+                      key={song.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {song.title}
+                        </div>
+                        {song.genre ? <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{song.genre}</div> : null}
+                        {parseSunoShareUrl(song.audioUrl) ? (
+                          <div data-testid="suno-source-badge" style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#C4B5FD", marginTop: 3 }}>SUNO</div>
+                        ) : null}
+                      </div>
+                      <button type="button" onClick={() => playLibrarySong(idx)} disabled={!resolveDurablePlayableSrc(song.audioUrl) && !parseSunoShareUrl(song.audioUrl)} style={actionBtn(accentColor)}>
+                        ▶ PLAY
+                      </button>
+                      <button type="button" onClick={() => addLibrarySongToQueue(song)} disabled={!resolveDurablePlayableSrc(song.audioUrl)} style={actionBtn("#AA2DFF")}>
+                        + QUEUE
+                      </button>
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          data-testid="library-add-to-playlist"
+                          onClick={() => void addSongToSelectedPlaylist(song.id)}
+                          disabled={addingSong}
+                          style={actionBtn("#00FF88")}
+                        >
+                          ADD TO PLAYLIST
+                        </button>
+                      ) : null}
+                      {(() => {
+                        const realm = classifySongRealm({ audioUrl: song.audioUrl, genre: song.genre, madeWithAi: Boolean(parseSunoShareUrl(song.audioUrl) || song.genre === "suno") });
+                        const href = songRealmCompetitionHref(realm);
+                        return href ? (
+                          <Link href={href} style={{ ...actionBtn("#7C3AED"), textDecoration: "none" }}>
+                            {realm.realm === "AI" ? "AI CONTEST" : "SONG REALM"}
+                          </Link>
+                        ) : null;
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
+          ) : null}
+
+          {libraryView === "yoAlbums" ? (
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-                flex: 1,
-                overflowY: "auto",
-                paddingRight: 4,
-              }}
+              data-testid="yo-albums-tab"
+              style={{ display: "flex", flexDirection: "column", gap: 10, padding: 8 }}
             >
-              {playlists.map((card, idx) => {
-                const active = card.id === selectedId;
-                const accent = CARD_ACCENTS[idx % CARD_ACCENTS.length];
-                const count = card._count?.items ?? 0;
-                return (
-                  <div
+              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: accentColor }}>
+                ALBUM COLLECTIONS
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
+                Album collections reuse the playlist authority with mixtape flag. Commercial release publishing stays on Performer release tools — not fabricated here.
+              </div>
+              {isOwner ? (
+                <button type="button" data-testid="yo-albums-add" onClick={() => setAddComposerOpen(true)} style={actionBtn("#00FF88")}>
+                  + ADD TO ALBUM
+                </button>
+              ) : null}
+              {playlists.filter((p) => p.isMixtape).length === 0 ? (
+                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, textAlign: "center", padding: 16 }}>
+                  No album collections yet. Use ADD → Album destination.
+                </div>
+              ) : (
+                playlists.filter((p) => p.isMixtape).map((card) => (
+                  <button
                     key={card.id}
-                    onClick={() => setSelectedId(card.id)}
+                    type="button"
+                    onClick={() => {
+                      setLibraryView("playlists");
+                      setSelectedId(card.id);
+                    }}
                     style={{
-                      background: active ? `${accent}1f` : "rgba(255,255,255,0.03)",
-                      border: active ? `1.5px solid ${accent}` : "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 10,
+                      textAlign: "left",
                       padding: 10,
+                      borderRadius: 10,
+                      border: selectedId === card.id ? `1px solid ${accentColor}` : "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.03)",
+                      color: "#fff",
                       cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      gap: 6,
-                      transition: "all 0.15s ease",
+                      fontFamily: "inherit",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 8,
-                          background: `linear-gradient(135deg, ${accent}, #000)`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 18,
-                          flexShrink: 0,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {card.coverUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={card.coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          "📻"
-                        )}
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {card.name}
-                        </div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-                          {count} {count === 1 ? "track" : "tracks"}
-                        </div>
-                      </div>
+                    <div style={{ fontSize: 12, fontWeight: 800 }}>{card.name}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>
+                      {card._count?.items ?? 0} tracks · album collection
                     </div>
-                  </div>
-                );
-              })}
+                  </button>
+                ))
+              )}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* RIGHT COLUMN: Now Playing Tracklist + Equalizer */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Natural content height — a tracklist of 1 or 100 songs grows the drawer/page
+              instead of being trapped in a fixed-height nested scrollbox (no maxHeight/overflowY here). */}
           <div
             style={{
-              flex: 1,
               background: "rgba(10,5,25,0.6)",
               border: "1px solid rgba(170,45,255,0.3)",
               borderRadius: 12,
@@ -1205,8 +1682,6 @@ export function PlaylistCanister({
               display: "flex",
               flexDirection: "column",
               gap: 6,
-              maxHeight: 240,
-              overflowY: "auto",
             }}
           >
             <div style={{ fontSize: 9, fontWeight: 900, color: "#AA2DFF", letterSpacing: "0.12em" }}>
@@ -1252,10 +1727,81 @@ export function PlaylistCanister({
                 })}
               </div>
             )}
+            {isOwner && (selectedId || libraryView === "library") ? (
+              <div data-mm06-add-actions="1" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
+                  ADD TO LIBRARY{selectedId && libraryView === "playlists" ? " + THIS PLAYLIST" : " — NO PLAYLIST REQUIRED"}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  <Link
+                    href="/media/upload"
+                    data-testid="playlist-mm06-upload"
+                    style={{
+                      padding: "8px 12px",
+                      minHeight: 36,
+                      borderRadius: 8,
+                      border: "1px solid #00FFFF88",
+                      background: "rgba(0,255,255,0.12)",
+                      color: "#00FFFF",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.06em",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    1 · UPLOAD FILE
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="playlist-mm06-paste-link"
+                    onClick={() => setLinkImportOpen((v) => !v)}
+                    style={{
+                      padding: "8px 12px",
+                      minHeight: 36,
+                      borderRadius: 8,
+                      border: "1px solid #FFD70088",
+                      background: linkImportOpen ? "rgba(255,215,0,0.2)" : "rgba(255,215,0,0.1)",
+                      color: "#FFD700",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: "0.06em",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {linkImportOpen ? "CLOSE LINK PANEL" : "2 · PASTE LINK / SUNO"}
+                  </button>
+                </div>
+                {linkImportOpen ? (
+                  <div data-testid="playlist-mm06-link-panel" style={{ padding: 8, borderRadius: 8, border: "1px solid rgba(255,215,0,0.35)", background: "rgba(255,215,0,0.06)" }}>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", marginBottom: 6, lineHeight: 1.4 }}>
+                      Paste YouTube, SoundCloud, Spotify, or a Suno share link. Saves to your Library first. If a playlist is selected, it also gets a membership — not a second file.
+                    </div>
+                    <MediaUrlImporter
+                      compact
+                      defaultPlaylistId={libraryView === "playlists" ? selectedId ?? undefined : undefined}
+                      onImported={(track) => {
+                        setPlaylistActionMsg(`Saved "${track.title}"${track.addedToPlaylist ? " to library + this playlist" : " to your library"}.`);
+                        setLinkImportOpen(false);
+                        void loadLibrarySongs();
+                        void loadPlaylists();
+                        if (selectedId) void reloadSelectedTracks();
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(170,45,255,0.85)" }}>
+                  3 · ADD FROM YOUR LIBRARY (below)
+                </div>
+              </div>
+            ) : null}
             {isOwner && selectedId ? (
               addableLibrarySongs.length > 0 ? (
                 <div style={{ display: "flex", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <select
+                    data-mm06-library-select="1"
                     value={addingSongId}
                     onChange={(e) => setAddingSongId(e.target.value)}
                     style={{
@@ -1288,8 +1834,8 @@ export function PlaylistCanister({
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.45 }}>
                   {userLibrarySongs.length === 0
                     ? role === "performer"
-                      ? "Upload songs in Media Locker, then add them to this playlist here."
-                      : "Upload songs to your library first, then add them to this playlist here."
+                      ? "Use UPLOAD FILE or PASTE LINK above, then add from your library here."
+                      : "Use 1 · UPLOAD FILE or 2 · PASTE LINK above, then 3 · ADD FROM YOUR LIBRARY."
                     : "Every song in your library is already in this playlist."}
                 </div>
               )
@@ -1357,8 +1903,8 @@ export function PlaylistCanister({
 
       {skinsSection}
 
-      {/* Share Modal Overlay */}
-      {shareOpen ? (
+      {/* Share Modal Overlay — §20995-W1 */}
+      {shareOpen && selectedId ? (
         <div
           style={{
             position: "fixed",
@@ -1372,59 +1918,36 @@ export function PlaylistCanister({
           }}
           onClick={() => setShareOpen(false)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 360,
-              background: "#080518",
-              border: "1px solid #00FFFF",
-              borderRadius: 14,
-              padding: 18,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.1em", marginBottom: 6 }}>
-              SHARE PLAYLIST & TRACK
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>
-              Sends playlist payload into an active conversation thread.
-            </div>
-            {threads.length === 0 ? (
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>
-                No active conversations. Open Messages drawer to start a chat.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                {threads.map((t) => (
-                  <button
-                    key={t.threadId}
-                    type="button"
-                    onClick={() => void sendShare(t.threadId)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: "rgba(0,255,255,0.08)",
-                      border: "1px solid #00FFFF",
-                      color: "#fff",
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {shareStatus ? (
-              <div style={{ fontSize: 10, color: shareStatus.includes("Shared") ? "#00FF88" : "#FF0055", marginBottom: 10 }}>
-                {shareStatus}
-              </div>
-            ) : null}
-            <button type="button" onClick={() => setShareOpen(false)} style={actionBtn("rgba(255,255,255,0.4)")}>
-              CLOSE
-            </button>
+          <div onClick={(e) => e.stopPropagation()}>
+            <PlaylistSharePanel
+              playlistId={selectedId}
+              playlistTitle={selectedPlaylist?.name ?? "Playlist"}
+              isPublic={selectedPlaylist?.isPublic !== false}
+              trackId={activeTrack?.id}
+              trackTitle={activeTrack?.title}
+              portableItems={tracks.map((t) => {
+                const suno = parseSunoShareUrl(t.audioUrl);
+                return {
+                  mediaAssetId: t.id,
+                  title: t.title,
+                  sourceUrl: suno?.shareUrl ?? t.audioUrl ?? null,
+                  provider: suno ? "SUNO" : null,
+                  provenance: suno ? ("SUNO" as const) : ("NATIVE" as const),
+                  playbackKind: suno ? ("official_embed" as const) : ("native" as const),
+                };
+              })}
+              accentColor="#00FFFF"
+              canSaveToLibrary={!isOwner}
+              onSaveToLibrary={saveSharedPlaylistToLibrary}
+              onPrivacyChange={
+                isOwner
+                  ? async (next) => {
+                      await patchPlaylistMeta({ isPublic: next });
+                    }
+                  : undefined
+              }
+              onClose={() => setShareOpen(false)}
+            />
           </div>
         </div>
       ) : null}

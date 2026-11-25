@@ -10,7 +10,7 @@ import {
   primaryBusinessHubRoute,
   rolesFromBusinessCapabilities,
   type BusinessPartnerCapability,
-} from "@/lib/auth/BusinessPartnerCapabilities";
+} from "@/lib/auth/BusinessPartnerCapabilitiesCore";
 import {
   AGE_REQUIRED_ERROR,
   isSignupAgeEligible,

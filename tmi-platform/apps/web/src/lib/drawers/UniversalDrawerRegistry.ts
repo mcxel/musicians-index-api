@@ -17,6 +17,8 @@ import type { DrawerAnimationId } from "./DrawerAnimationProfile";
 
 export type UniversalDrawerModuleId =
   | "lobby"
+  /** Fan Avatar Creation Center (full drawer) — distinct from Fan Lobby Wall. */
+  | "avatar"
   | "yopho"
   | "playlist"
   | "memory"
@@ -93,6 +95,16 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     roles: ["fan"],
     primary: true,
     mediaBindPoint: "lobby_presence",
+  },
+  {
+    id: "avatar",
+    label: "AVATAR CREATION CENTER",
+    info: "Bases · Wardrobe · Emotes · Save Look",
+    accent: "#9B59FF",
+    animation: "orbit",
+    roles: ["fan"],
+    primary: true,
+    mediaBindPoint: "none",
   },
   {
     id: "yopho",
@@ -218,16 +230,9 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     primary: true,
     mediaBindPoint: "none",
   },
-  {
-    id: "marketplace",
-    label: "MARKETPLACE",
-    info: "Active artist products",
-    accent: "#FF6B35",
-    animation: "vinyl_flip",
-    roles: ["fan"],
-    primary: true,
-    mediaBindPoint: "none",
-  },
+  /* §20995-T: marketplace is a single shared module — Fan + Performer content
+   * branches inside CommandCenterDrawer (MarketplaceDrawerPanel). A prior
+   * fan-only duplicate (vinyl_flip) was removed so Map/filter stay consistent. */
   {
     id: "appearance",
     label: "SHELL COLORS",
@@ -437,6 +442,7 @@ export function modulesForRole(role: "fan" | "performer"): UniversalDrawerModule
 /** Fan under-drawer quick-swap chips (shell + module pattern). */
 export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "lobby",
+  "avatar",
   "yopho",
   "playlist",
   "memory",

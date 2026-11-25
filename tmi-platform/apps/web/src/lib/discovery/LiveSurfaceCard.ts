@@ -9,7 +9,7 @@
  */
 
 import type { LiveSession, StageState, StreamCategory, StreamHealth } from "@/lib/broadcast/globalLiveSessionStore";
-import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
+import type { LiveDiscoveryRecord, LobbyWallPanelLayoutKind } from "./LiveDiscoveryRecord";
 import { sanitizeWallHostLabel } from "@/lib/lobby/wallPublicIdentity";
 import {
   isPlaylistLoungeDiscovery,
@@ -32,6 +32,7 @@ export type LiveSurfaceState = (typeof LIVE_SURFACE_STATES)[number];
 export const LIVE_SURFACE_RUNTIME_TYPES = [
   "live",
   "battle",
+  "gauntlet",
   "cypher",
   "challenge",
   "concert",
@@ -75,6 +76,20 @@ export interface LiveSurfaceCard {
   subtitle: string;
   hostAccountId: string;
   performerIds: string[];
+  /** Multi-participant display names (e.g. Battle [Performer A, Performer B], Gauntlet, Challenge, Cypher circle). */
+  participantNames?: string[];
+  /** Whether active camera video is on (false falls back to avatar/poster without ending live session). */
+  isCameraOn?: boolean;
+  /** Authorized live video preview URL when camera is on. */
+  previewVideoUrl?: string | null;
+  /** Experience-aware panel layout mode (PANEL ≠ PARTICIPANT). */
+  panelLayout?: LobbyWallPanelLayoutKind;
+  /** Gauntlet winner-stays active flag. */
+  winnerStays?: boolean;
+  /** Cypher non-winner-oriented flag (never fabricates a winner/prize/belt). */
+  nonWinnerOriented?: boolean;
+  /** Fan Avatar Lobby avatar/video capability flag. */
+  avatarCapable?: boolean;
   state: LiveSurfaceState;
   audienceCount: number;
   queueLength?: number;
@@ -157,6 +172,7 @@ export function mapCategoryToRuntimeType(
 ): LiveSurfaceRuntimeType {
   const c = String(category ?? "live").toLowerCase().replace(/_/g, "-");
   if (c === "battle" || c === "battles" || c === "mini-battle") return "battle";
+  if (c === "gauntlet" || c === "gauntlets") return "gauntlet";
   if (c === "cypher" || c === "cyphers" || c === "mini-cypher") return "cypher";
   if (c === "challenge" || c === "challenges" || c === "mini-challenge") return "challenge";
   if (
@@ -209,7 +225,13 @@ function defaultJoinHref(roomId: string, category?: StreamCategory | string | nu
   ) {
     return resolvePlaylistLoungeJoinHref(roomId, { from: "live-lobby-wall" });
   }
-  return `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
+  const c = String(category ?? "").toLowerCase();
+  const encoded = encodeURIComponent(roomId);
+  if (c === "battle" || c === "battles") return `/rooms/battle/${encoded}`;
+  if (c === "gauntlet" || c === "gauntlets") return `/rooms/battle/gauntlet/${encoded}`;
+  if (c === "challenge" || c === "challenges") return `/challenges?roomId=${encoded}`;
+  if (c === "cypher" || c === "cyphers") return `/cypher?roomId=${encoded}`;
+  return `/live/rooms/${encoded}?from=live-lobby-wall`;
 }
 
 // ── Light discovery score (real signals only) ────────────────────────────────
@@ -278,21 +300,38 @@ export function projectLiveSessionToSurfaceCard(
     (typeof session.entryPriceUsd === "number" && session.entryPriceUsd > 0);
   const href = defaultJoinHref(roomId, session.category);
   const hostAccountId = (session.userId ?? "").trim();
+  const isCameraOn = session.isCameraOn ?? Boolean(session.previewUrl);
+  const previewVideoUrl = isCameraOn && session.previewUrl ? session.previewUrl : null;
+  const runtimeType = mapCategoryToRuntimeType(session.category);
 
   const card: LiveSurfaceCard = {
     eventId: roomId,
-    runtimeType: mapCategoryToRuntimeType(session.category),
+    runtimeType,
     roomId,
     title: (session.title || `${session.displayName || "Live"} — Live`).trim(),
     subtitle: sanitizeWallHostLabel(session.displayName || "Host", {
       hostUserId: hostAccountId,
     }),
     hostAccountId,
-    performerIds: hostAccountId ? [hostAccountId] : [],
+    performerIds: session.participantIds?.length
+      ? [...session.participantIds]
+      : hostAccountId
+        ? [hostAccountId]
+        : [],
+    participantNames: session.participantNames?.length
+      ? [...session.participantNames]
+      : session.displayName
+        ? [session.displayName]
+        : [],
+    isCameraOn,
+    previewVideoUrl,
+    winnerStays: session.winnerStays ?? (runtimeType === "gauntlet" ? true : undefined),
+    nonWinnerOriented: session.nonWinnerOriented ?? (runtimeType === "cypher" ? true : undefined),
+    avatarCapable: session.avatarCapable ?? (runtimeType === "fan_lobby" ? true : undefined),
     state,
     audienceCount: Math.max(0, Math.round(session.viewerCount ?? 0)),
     country,
-    previewMediaUrl: session.previewUrl ?? session.thumbnailUrl ?? session.avatarUrl ?? null,
+    previewMediaUrl: previewVideoUrl ?? session.thumbnailUrl ?? session.avatarUrl ?? null,
     joinAction: {
       href,
       kind: resolveJoinKind({ joinGate: paid ? "paid" : "none", isLive }),
@@ -321,23 +360,41 @@ export function projectDiscoveryRecordToSurfaceCard(
       ? record.countryCode.toUpperCase()
       : undefined;
   const href =
-    (record.joinRoute ?? "").trim() || defaultJoinHref(roomId);
+    (record.joinRoute ?? "").trim() || defaultJoinHref(roomId, record.category);
   const hostAccountId = (record.hostUserId ?? "").trim();
+  const isCameraOn = record.isCameraOn ?? Boolean(record.previewUrl);
+  const previewVideoUrl = isCameraOn && record.previewUrl ? record.previewUrl : null;
+  const runtimeType = mapCategoryToRuntimeType(record.category);
 
   const card: LiveSurfaceCard = {
     eventId: record.id || roomId,
-    runtimeType: mapCategoryToRuntimeType(record.category),
+    runtimeType,
     roomId,
     title: (record.title || "Live").trim(),
     subtitle: sanitizeWallHostLabel(record.statusLine || record.hostName || "Host", {
       hostUserId: hostAccountId,
     }),
     hostAccountId,
-    performerIds: hostAccountId ? [hostAccountId] : [],
+    performerIds: record.participantIds?.length
+      ? [...record.participantIds]
+      : hostAccountId
+        ? [hostAccountId]
+        : [],
+    participantNames: record.participantNames?.length
+      ? [...record.participantNames]
+      : record.hostName
+        ? [record.hostName]
+        : [],
+    isCameraOn,
+    previewVideoUrl,
+    panelLayout: record.panelLayout,
+    winnerStays: record.winnerStays ?? (runtimeType === "gauntlet" ? true : undefined),
+    nonWinnerOriented: record.nonWinnerOriented ?? (runtimeType === "cypher" ? true : undefined),
+    avatarCapable: record.avatarCapable ?? (runtimeType === "fan_lobby" ? true : undefined),
     state,
     audienceCount: Math.max(0, Math.round(record.humanViewerCount ?? 0)),
     country,
-    previewMediaUrl: record.previewUrl ?? record.posterUrl ?? null,
+    previewMediaUrl: record.posterUrl ?? previewVideoUrl ?? null,
     joinAction: {
       href,
       kind: resolveJoinKind({ joinGate: record.joinGate, isLive: record.isLive }),

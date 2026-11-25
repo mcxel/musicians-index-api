@@ -18,6 +18,7 @@ const ELIGIBLE_SOURCES: { id: Exclude<MediaSource, null>; label: string }[] = [
   { id: "PERFORMER_FEED", label: "PERFORMER FEED" },
   { id: "AUDIENCE_VIEW", label: "LIVE ROOM / AUDIENCE" },
   { id: "VENUE_VIEW", label: "VENUE" },
+  { id: "AVATAR_LOBBY", label: "MY AVATAR LOBBY" },
   { id: "SCREEN_SHARE", label: "SCREEN SHARE" },
   { id: "VIDEO_PLAYBACK", label: "MEDIA / PLAYLIST" },
 ];

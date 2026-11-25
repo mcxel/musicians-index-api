@@ -40,6 +40,43 @@ export async function sharePlaylistToThread(
   }
 }
 
+export interface PortablePlaylistItem {
+  mediaAssetId: string;
+  title: string;
+  sourceUrl?: string | null;
+  provider?: string | null;
+  provenance?: "SUNO" | "NATIVE" | "URL";
+  playbackKind?: "native" | "official_embed";
+}
+
+/** Membership + provenance only. Never packages provider-controlled audio binaries. */
+export function buildPortablePlaylistManifest(input: {
+  playlistId: string;
+  playlistTitle: string;
+  items: PortablePlaylistItem[];
+}) {
+  return {
+    kind: "tmi.playlist.portable.v1" as const,
+    playlistId: input.playlistId,
+    title: input.playlistTitle,
+    exportedAt: new Date().toISOString(),
+    rights: "MEMBERSHIP_REFERENCES_ONLY",
+    items: input.items,
+  };
+}
+
+export function downloadPortablePlaylistManifest(
+  manifest: ReturnType<typeof buildPortablePlaylistManifest>,
+): void {
+  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${manifest.title.replace(/[^\w-]+/g, "-").slice(0, 48) || "playlist"}.tmi-playlist.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export interface MessageThreadOption {
   threadId: string;
   name: string;

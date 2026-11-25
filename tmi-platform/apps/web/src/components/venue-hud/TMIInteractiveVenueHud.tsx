@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import {
   HudCommandBus,
   resolveHudCapabilities,
+  resolveHudVisibility,
   type BroadcastState,
   type ExperienceType,
   type HudPresentationState,
@@ -35,18 +36,32 @@ import {
 import type { ParticipationState, VenueHudActionId } from "@/lib/live/ParticipationStateMachine";
 import { directorTick } from "@/lib/live/BotQueueDirector";
 import {
+  closeQuickVoteFromHud,
   executeHostControl,
+  openQuickVoteFromHud,
   resolveHostControlCapabilities,
 } from "@/lib/live/HostRoomControlBridge";
 import { resolveVotingOpen } from "@/lib/live/ParticipationVotingBridge";
 import CompactVotingPanel from "@/components/voting/CompactVotingPanel";
 import VenueToolsToggleButton from "@/components/hud/VenueToolsToggleButton";
 import InRoomMixerPanel from "@/components/venue-hud/InRoomMixerPanel";
+import VenueHudPerimeterActionDock from "@/components/venue-hud/VenueHudPerimeterActionDock";
 import { ChannelMixerDirector } from "@/lib/audio/mixer";
 import { ensureMixerHealthRegistered } from "@/lib/audio/mixer";
 import { endInstantGoLiveSession } from "@/lib/dock/executeInstantGoLive";
+import { releasePerformerLiveWrite } from "@/lib/live/liveWritePresentation";
+import { clearEffect } from "@/lib/live/StageDirectorEngine";
 import { presentInstantGoLiveInPlace } from "@/lib/dock/presentInstantGoLiveInPlace";
-import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import { toggleExistingHubMediaTrack, useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import {
+  enterComposerMode,
+  submitComposer,
+  type HudComposerMode,
+} from "@/lib/venue-hud/HudComposerModeAuthority";
+import {
+  isHostResponseWindowOpen,
+  submitHostResponse,
+} from "@/lib/venue-hud/HostResponseRouter";
 import { useGoLiveTransition } from "@/lib/live/goLiveTransitionStore";
 
 const CYAN = "#00FFFF";
@@ -78,6 +93,13 @@ export interface TMIInteractiveVenueHudProps {
   isPreview?: boolean;
   /** e.g. "TEST: 250 / 1,000 OCCUPANCY" */
   testOccupancyLabel?: string | null;
+  /** Tip recipient for Fan dock — performer slug/id. */
+  tipArtistSlug?: string;
+  /** Real performer User.id for the Fan dock's FOLLOW control — honest unavailable when missing. */
+  performerUserId?: string;
+  performerName?: string;
+  liveSessionId?: string;
+  venueId?: string;
 }
 
 export default function TMIInteractiveVenueHud({
@@ -96,11 +118,16 @@ export default function TMIInteractiveVenueHud({
   isPreview = false,
   testOccupancyLabel = null,
   roomPresence = [],
+  tipArtistSlug,
+  performerUserId,
+  performerName,
+  liveSessionId,
+  venueId,
 }: TMIInteractiveVenueHudProps) {
   const [hudState, setHudState] = useState<HudPresentationState>("PRE_LIVE");
   const [broadcastState, setBroadcastState] = useState<BroadcastState>("IDLE");
-  const [micMuted, setMicMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
+  const micMuted = useLivePrivacyState((state) => !state.micPreviewActive);
+  const cameraOff = useLivePrivacyState((state) => !state.cameraPreviewActive);
   const [sessionSec, setSessionSec] = useState(0);
   const [reactionCount, setReactionCount] = useState(0);
   const [activeReactions, setActiveReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
@@ -109,15 +136,30 @@ export default function TMIInteractiveVenueHud({
   const [myQueuePos, setMyQueuePos] = useState<number | null>(null);
   const [localParticipation, setLocalParticipation] = useState<ParticipationState>(participationState);
   const [liveVotingOpen, setLiveVotingOpen] = useState(votingOpen);
+  const [activeVote, setActiveVote] = useState<{
+    id: string;
+    title?: string;
+    choices: { id: string; label: string }[];
+    opensAt: number;
+    closesAt: number;
+    allowWinnerVote: boolean;
+  } | null>(null);
   const [spotlightOn, setSpotlightOn] = useState(false);
   const [audienceAudioOn, setAudienceAudioOn] = useState(true);
   const [chatInput, setChatInput] = useState("");
+  // §20985-C/D — ONE composer, contextual destination. Mode set by the dock's
+  // contextual action (THROW IN AN IDEA / RESPOND TO HOST). Default CHAT.
+  const [composerMode, setComposerMode] = useState<HudComposerMode>("CHAT");
   const [consoleMicMuted, setConsoleMicMuted] = useState(false);
   const [consoleCameraOff, setConsoleCameraOff] = useState(false);
   const [consoleQuality, setConsoleQuality] = useState<GoLiveQuality>("720p");
   const [consoleMode, setConsoleMode] = useState<ExperienceMode>(experienceType as ExperienceMode);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [mixerFocusParticipantId, setMixerFocusParticipantId] = useState<string | null>(null);
+  /** Rule 40: pin disables inactivity fade; default fades rails after idle. */
+  const [keepHudOn, setKeepHudOn] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const HUD_IDLE_MS = 8000;
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,14 +170,64 @@ export default function TMIInteractiveVenueHud({
 
   const hostCaps = useMemo(() => resolveHostControlCapabilities(roomId), [roomId]);
 
+  const syncActiveVoteFromServer = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/votes?active=1&roomId=${encodeURIComponent(roomId)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        ok?: boolean;
+        record?: {
+          id: string;
+          title?: string;
+          choices: { id: string; label: string }[];
+          opensAt: number;
+          closesAt: number;
+          allowWinnerVote: boolean;
+        } | null;
+      };
+      if (data.ok && data.record) {
+        setActiveVote({
+          id: data.record.id,
+          title: data.record.title,
+          choices: data.record.choices,
+          opensAt: data.record.opensAt,
+          closesAt: data.record.closesAt,
+          allowWinnerVote: data.record.allowWinnerVote,
+        });
+        setLiveVotingOpen(true);
+      } else if (data.ok && !data.record) {
+        setActiveVote(null);
+      }
+    } catch {
+      // Keep last known vote state; local resolveVotingOpen still runs.
+    }
+  }, [roomId]);
+
   const syncVotingOpen = useCallback(() => {
     const resolved = resolveVotingOpen({
       roomId,
       battleId,
       propVotingOpen: votingOpen || undefined,
     });
-    setLiveVotingOpen(resolved.votingOpen);
-  }, [roomId, battleId, votingOpen]);
+    if (resolved.votingOpen) {
+      setLiveVotingOpen(true);
+    }
+    void syncActiveVoteFromServer().then(() => {
+      if (!resolved.votingOpen) {
+        // Server active Quick Vote may still keep the panel open.
+        const still = resolveVotingOpen({
+          roomId,
+          battleId,
+          propVotingOpen: votingOpen || undefined,
+        });
+        if (!still.votingOpen) {
+          // syncActiveVoteFromServer already set open=true if a record exists.
+        }
+      }
+    });
+  }, [roomId, battleId, votingOpen, syncActiveVoteFromServer]);
 
   const hudActions = useMemo(
     () =>
@@ -326,14 +418,20 @@ export default function TMIInteractiveVenueHud({
       }),
 
       HudCommandBus.register("TOGGLE_MIC", () => {
-        setMicMuted((m) => !m);
-        setStatusLine(micMuted ? "Microphone active" : "Microphone muted");
+        if (!capabilities.canMuteAudio || !toggleExistingHubMediaTrack("audio", roomId)) {
+          setStatusLine("Microphone unavailable for this session");
+          return false;
+        }
+        setStatusLine(useLivePrivacyState.getState().micPreviewActive ? "Microphone active" : "Microphone muted");
         return true;
       }),
 
       HudCommandBus.register("TOGGLE_CAMERA", () => {
-        setCameraOff((c) => !c);
-        setStatusLine(cameraOff ? "Camera active" : "Camera off");
+        if (!capabilities.canToggleCamera || !toggleExistingHubMediaTrack("video", roomId)) {
+          setStatusLine("Camera unavailable for this session");
+          return false;
+        }
+        setStatusLine(useLivePrivacyState.getState().cameraPreviewActive ? "Camera active" : "Camera off");
         return true;
       }),
 
@@ -404,20 +502,73 @@ export default function TMIInteractiveVenueHud({
       HudCommandBus.register("AUDIENCE_MUTE", () => runHostAction("audience_mute")),
       HudCommandBus.register("TOGGLE_QA", () => runHostAction("toggle_qa")),
       HudCommandBus.register("ALLOW_REACTIONS", () => runHostAction("allow_reactions")),
-      HudCommandBus.register("ALLOW_VOTING", () => runHostAction("allow_voting", { eventId: roomId })),
+      HudCommandBus.register("ALLOW_VOTING", async () => {
+        if (!isRoomOwner && role !== "host" && role !== "admin") {
+          setStatusLine("Host only");
+          return false;
+        }
+        const eventId = battleId ?? roomId;
+        const choices =
+          experienceType === "CYPHER"
+            ? [
+                { id: "fire", label: "Fire" },
+                { id: "love", label: "Love It" },
+              ]
+            : [
+                { id: "a", label: "Contestant A" },
+                { id: "b", label: "Contestant B" },
+              ];
+
+        if (liveVotingOpen || activeVote) {
+          runHostAction("allow_voting", {
+            eventId,
+            hostUserId: payloadUserId(),
+          });
+          const closed = await closeQuickVoteFromHud({
+            roomId,
+            voteId: activeVote?.id,
+            eventId,
+          });
+          setActiveVote(null);
+          setLiveVotingOpen(false);
+          setStatusLine(closed.message);
+          return closed.ok;
+        }
+
+        runHostAction("allow_voting", {
+          eventId,
+          hostUserId: payloadUserId(),
+          choices,
+        });
+        const opened = await openQuickVoteFromHud({
+          roomId,
+          eventId,
+          title: experienceType === "CYPHER" ? "React" : "Quick Vote",
+          choices,
+          allowWinnerVote: experienceType !== "CYPHER",
+        });
+        setStatusLine(opened.message);
+        if (opened.ok) {
+          setLiveVotingOpen(true);
+          await syncActiveVoteFromServer();
+        }
+        return opened.ok;
+      }),
       HudCommandBus.register("LOCK_ENTRY", () => runHostAction("lock_entry")),
 
       HudCommandBus.register("VOTE", () => {
-        if (!liveVotingOpen) {
+        if (!liveVotingOpen && !activeVote) {
           setStatusLine("Voting closed");
           return false;
         }
         if (typeof window !== "undefined") {
           window.dispatchEvent(
-            new CustomEvent("tmi:vote:focus", { detail: { roomId, battleId } }),
+            new CustomEvent("tmi:vote:focus", {
+              detail: { roomId, battleId, voteId: activeVote?.id },
+            }),
           );
         }
-        setStatusLine("Voting open — use rubric dock");
+        setStatusLine(activeVote ? "Voting open — cast your ballot" : "Voting open");
         return true;
       }),
 
@@ -440,6 +591,7 @@ export default function TMIInteractiveVenueHud({
       unsubs.forEach((unsub) => unsub());
     };
   }, [
+    capabilities,
     micMuted,
     cameraOff,
     onBroadcastStateChange,
@@ -449,7 +601,10 @@ export default function TMIInteractiveVenueHud({
     ownership,
     battleId,
     liveVotingOpen,
+    activeVote,
+    experienceType,
     syncQueueCount,
+    syncActiveVoteFromServer,
     runHostAction,
     spotlightOn,
     audienceAudioOn,
@@ -501,28 +656,134 @@ export default function TMIInteractiveVenueHud({
   };
 
   const handleEndLive = () => {
+    releasePerformerLiveWrite(isRoomOwner ? "host" : "performer");
+    clearEffect();
     void HudCommandBus.execute("END_LIVE");
   };
 
   const toggleCleanStage = () => {
-    setHudState((current) => (current === "CLEAN_STAGE" ? "LIVE_VISIBLE" : "CLEAN_STAGE"));
+    setHudState((current) => resolveHudVisibility(current, keepHudOn, "toggle"));
+  };
+
+  // §SHOW⇄WORK — Work Mode is a retractable translucent control surface over the
+  // SAME live venue. Opening/closing it changes ONLY presentation — never remounts
+  // media, WebRTC, seating, queue, voting, or competition state.
+  const openWorkMode = useCallback(() => {
+    setHudState((current) => resolveHudVisibility(current, keepHudOn, "open-work"));
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current); // Work stays until closed
+  }, [keepHudOn]);
+
+  const backToShow = useCallback(() => {
+    setHudState((current) => resolveHudVisibility(current, keepHudOn, "back-to-show"));
+    bumpHudActivity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keepHudOn]);
+
+  const recallHud = useCallback(() => {
+    setHudState((current) => resolveHudVisibility(current, keepHudOn, "recall"));
+  }, [keepHudOn]);
+
+  const bumpHudActivity = useCallback(() => {
+    setHudState((current) => resolveHudVisibility(current, keepHudOn, "activity"));
+    if (keepHudOn || hudState === "PRE_LIVE") return;
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      setHudState((current) => resolveHudVisibility(current, keepHudOn, "idle"));
+    }, HUD_IDLE_MS);
+  }, [keepHudOn, hudState, HUD_IDLE_MS]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setKeepHudOn(window.localStorage.getItem("tmi:keep-venue-hud-on") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (keepHudOn) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      setHudState((current) => resolveHudVisibility(current, true, "activity"));
+      return;
+    }
+    if (hudState === "LIVE_VISIBLE") bumpHudActivity();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [keepHudOn, hudState, bumpHudActivity]);
+
+  const toggleKeepHudOn = () => {
+    setKeepHudOn((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("tmi:keep-venue-hud-on", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   };
 
   const handleSendChat = () => {
     const msg = chatInput.trim();
     if (!msg) return;
-    // Emit chat event to room messaging — real rooms consume tmi:chat:send
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("tmi:chat:send", { detail: { roomId, message: msg } }));
-    }
+    routeComposerMessage(msg);
     setChatInput("");
     chatInputRef.current?.focus();
+  };
+
+  /**
+   * §20985-C/D route ONE composer message to its contextual destination.
+   * CHAT → room chat (tmi:chat:send). IDEA → Prompt Hat pool. HOST → host
+   * response queue. Never leaks host/idea text into Room Chat. Never remounts
+   * media or resets room/vote state.
+   */
+  const routeComposerMessage = (msg: string) => {
+    const state = enterComposerMode(composerMode, msg);
+    const r = submitComposer({ state, fanId: performerUserId ?? "local-user" });
+    if (!r.ok) return;
+    if (typeof window === "undefined") return;
+    if (r.destination === "ROOM_CHAT") {
+      window.dispatchEvent(new CustomEvent("tmi:chat:send", { detail: { roomId, message: msg } }));
+      return;
+    }
+    if (r.destination === "HOST_RESPONSE") {
+      if (isHostResponseWindowOpen(roomId, null)) {
+        submitHostResponse({
+          experienceId: roomId,
+          roundId: null,
+          participantId: performerUserId ?? "local-user",
+          text: msg,
+          viaMic: false,
+        });
+        setStatusLine("Response sent to host");
+      } else {
+        setStatusLine("No host question open — kept out of chat");
+      }
+      return;
+    }
+    if (r.destination === "IDEA_POOL") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:idea:submit", { detail: { roomId, text: msg, dimension: r.ideaDimension } }),
+      );
+      setStatusLine("Idea submitted");
+      return;
+    }
+    // GAME_ANSWER / PREDICTION → route to the active experience's answer rail.
+    window.dispatchEvent(new CustomEvent("tmi:composer:submit", { detail: { roomId, mode: composerMode, text: msg } }));
   };
 
   const isCleanStage = hudState === "CLEAN_STAGE";
 
   return (
     <div
+      data-testid="tmi-interactive-venue-hud"
+      data-keep-hud-on={keepHudOn ? "1" : "0"}
+      data-hud-state={hudState}
+      onPointerDown={bumpHudActivity}
+      onPointerMove={bumpHudActivity}
+      onKeyDown={bumpHudActivity}
       style={{
         position: "absolute",
         inset: 0,
@@ -553,6 +814,69 @@ export default function TMIInteractiveVenueHud({
 
       {/* PERMANENT HUD RECALL CONTROL ([ ◰ HUD ] / [ ◱ HIDE HUD ]) IN TOP-RIGHT EDGE */}
       <div style={{ position: "absolute", top: 12, right: 12, pointerEvents: "auto", zIndex: 120, display: "flex", gap: 8, alignItems: "center" }}>
+        {hudState !== "PRE_LIVE" ? (
+          <button
+            type="button"
+            data-testid="keep-venue-hud-on"
+            onClick={toggleKeepHudOn}
+            title={keepHudOn ? "HUD stays visible" : "HUD fades after inactivity"}
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: keepHudOn ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.2)",
+              background: keepHudOn ? "rgba(255,215,0,0.15)" : "rgba(0,0,0,0.55)",
+              color: keepHudOn ? GOLD : "rgba(255,255,255,0.7)",
+              cursor: "pointer",
+            }}
+          >
+            {keepHudOn ? "KEEP HUD ON" : "AUTO-HIDE"}
+          </button>
+        ) : null}
+        {/* §SHOW⇄WORK — enter Work Mode from Show Mode. Presentation-only; no remount. */}
+        {hudState !== "PRE_LIVE" && hudState !== "WORK" ? (
+          <button
+            type="button"
+            data-testid="hud-open-work"
+            onClick={openWorkMode}
+            title="Open Work Mode (controls over the live venue)"
+            style={{
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: `1px solid ${CYAN}`,
+              background: "rgba(0,255,255,0.12)",
+              color: CYAN,
+              cursor: "pointer",
+            }}
+          >
+            ⚙ WORK
+          </button>
+        ) : null}
+        {isCleanStage ? (
+          <button
+            type="button"
+            data-testid="hud-recall"
+            onClick={recallHud}
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: `1px solid ${CYAN}`,
+              background: "rgba(0,255,255,0.12)",
+              color: CYAN,
+              cursor: "pointer",
+            }}
+          >
+            ◰ HUD
+          </button>
+        ) : null}
         {(isRoomOwner || role === "performer") && hudState !== "PRE_LIVE" ? (
           <VenueToolsToggleButton
             accent={GREEN}
@@ -640,7 +964,7 @@ export default function TMIInteractiveVenueHud({
         compact={isCompactViewport}
       />
 
-      {/* PRE-LIVE CENTERED CONTROL CONSOLE (VenueControlConsole) */}
+      {/* PRE-LIVE full setup console (first entry, not yet live) */}
       <AnimatePresence>
       {hudState === "PRE_LIVE" && (
         <VenueControlConsole
@@ -662,6 +986,80 @@ export default function TMIInteractiveVenueHud({
           isConnecting={broadcastState === "CONNECTING"}
           onGoLive={handleGoLive}
         />
+      )}
+      </AnimatePresence>
+
+      {/* WORK MODE — retractable translucent control surface OVER the live venue.
+          Same session/media/seating underneath; BACK TO SHOW folds it back. */}
+      <AnimatePresence>
+      {hudState === "WORK" && (
+        <motion.div
+          key="work-mode"
+          data-testid="venue-hud-work-mode"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.22 }}
+          style={{
+            position: "absolute",
+            inset: "6% 8%",
+            borderRadius: 20,
+            border: `1px solid ${CYAN}55`,
+            background: "rgba(8,10,18,0.72)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            padding: 18,
+            overflowY: "auto",
+            pointerEvents: "auto",
+            zIndex: 130,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 900, color: CYAN, letterSpacing: "0.14em" }}>
+              WORK · CONTROLS
+            </div>
+            <button
+              type="button"
+              data-testid="work-back-to-show"
+              onClick={backToShow}
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.1em",
+                color: "#050510",
+                background: CYAN,
+                border: "none",
+                borderRadius: 10,
+                padding: "8px 14px",
+                cursor: "pointer",
+              }}
+            >
+              ▶ BACK TO SHOW
+            </button>
+          </div>
+          <VenueControlConsole
+            roomTitle={roomTitle}
+            experienceMode={consoleMode}
+            onExperienceModeChange={(m) => setConsoleMode(m)}
+            micMuted={consoleMicMuted}
+            cameraOff={consoleCameraOff}
+            quality={consoleQuality}
+            onToggleMic={() => {
+              setConsoleMicMuted((v) => !v);
+              void HudCommandBus.execute("TOGGLE_MIC");
+            }}
+            onToggleCamera={() => {
+              setConsoleCameraOff((v) => !v);
+              void HudCommandBus.execute("TOGGLE_CAMERA");
+            }}
+            onQualityChange={(q) => setConsoleQuality(q)}
+            isConnecting={broadcastState === "CONNECTING"}
+            onGoLive={handleGoLive}
+          />
+        </motion.div>
       )}
       </AnimatePresence>
       {/* LEGACY inline pre-live block — KEPT for backward compat, only shows when VenueControlConsole is not visible */}
@@ -1081,8 +1479,8 @@ export default function TMIInteractiveVenueHud({
             )}
           </motion.div>
 
-          {/* VOTING PANEL — floats above bottom dock when voting is open */}
-          {liveVotingOpen && (
+          {/* VOTING PANEL — floats above bottom dock when a real Quick Vote is open */}
+          {liveVotingOpen && activeVote && (
             <div
               style={{
                 position: "absolute",
@@ -1094,229 +1492,42 @@ export default function TMIInteractiveVenueHud({
               }}
             >
               <CompactVotingPanel
-                voteId={battleId ? `vote-battle-${battleId}` : `vote-room-${roomId}`}
-                title={experienceType === "CYPHER" ? "REACT" : "VOTE"}
-                choices={
-                  experienceType === "CYPHER"
-                    ? [
-                        { id: "fire", label: "\uD83D\uDD25 Fire" },
-                        { id: "love", label: "\u2764\uFE0F Love It" },
-                      ]
-                    : [
-                        { id: "a", label: "Contestant A" },
-                        { id: "b", label: "Contestant B" },
-                      ]
-                }
-                opensAt={Date.now()}
-                closesAt={Date.now() + 30_000}
-                allowWinnerVote={experienceType !== "CYPHER"}
+                voteId={activeVote.id}
+                title={activeVote.title ?? (experienceType === "CYPHER" ? "REACT" : "VOTE")}
+                choices={activeVote.choices}
+                opensAt={activeVote.opensAt}
+                closesAt={activeVote.closesAt}
+                allowWinnerVote={activeVote.allowWinnerVote}
                 onVoteCast={(choiceId) => setStatusLine(`Voted \u2713 \u00b7 ${choiceId}`)}
               />
             </div>
           )}
 
-          {/* BOTTOM DOCK — video-reference: x 52→1228, y 640→698, 8.7% from bottom */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: 0.10 }}
-            style={{
-              position: "absolute",
-              bottom: "4.7%",
-              left: "4.1%",
-              right: "4.1%",
-              minHeight: 52,
-              maxHeight: 70,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "0 12px",
-              borderRadius: 20,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(12,14,22,0.65)",
-              backdropFilter: "blur(22px)",
-              WebkitBackdropFilter: "blur(22px)",
-              boxShadow: "0 2px 16px rgba(0,0,0,0.4)",
-              pointerEvents: "auto",
+          {/* BOTTOM DOCK — Rule 40 perimeter: flush edge, visual trays expand UP */}
+          <VenueHudPerimeterActionDock
+            roomId={roomId}
+            role={
+              role === "performer" || role === "host" || role === "admin"
+                ? role
+                : "fan"
+            }
+            tipArtistSlug={tipArtistSlug}
+            performerUserId={performerUserId}
+            performerName={performerName}
+            liveSessionId={liveSessionId}
+            venueId={venueId ?? roomId}
+            performerId={isRoomOwner ? "host" : undefined}
+            onStatus={setStatusLine}
+            onToggleHud={toggleCleanStage}
+            onActivity={bumpHudActivity}
+            composerMode={composerMode}
+            onComposerModeChange={(m) => setComposerMode(m)}
+            onSendChat={(msg) => {
+              setChatInput(msg);
+              routeComposerMessage(msg);
+              setChatInput("");
             }}
-          >
-            {/* HUD family: AUDIO toggles same ChannelMixerDirector panel */}
-            <button
-              type="button"
-              title="Audio mixer"
-              onClick={() => setMixerOpen((v) => !v)}
-              style={{
-                ...iconChip(mixerOpen ? GOLD : CYAN),
-                flexShrink: 0,
-                padding: "6px 10px",
-              }}
-              data-testid="venue-hud-audio-btn"
-            >
-              🔊 AUDIO
-            </button>
-
-            {/* Canonical HUD INVENTORY entry */}
-            <button
-              type="button"
-              title="Open Inventory Workspace"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("tmi:open-workspace", { detail: { workspaceId: "inventory", surface: "DRAWER" } }));
-                }
-              }}
-              style={{
-                ...iconChip(FUCHSIA),
-                flexShrink: 0,
-                padding: "6px 10px",
-              }}
-              data-testid="tmi-hud-inventory-btn"
-            >
-              🎒 INVENTORY
-            </button>
-
-            {/* Canonical HUD CHAT / Unified Inbox entry */}
-            <button
-              type="button"
-              title="Open Chat & Messages Drawer"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("tmi:open-workspace", { detail: { workspaceId: "messages", surface: "DRAWER" } }));
-                }
-              }}
-              style={{
-                ...iconChip(CYAN),
-                flexShrink: 0,
-                padding: "6px 10px",
-              }}
-              data-testid="tmi-hud-chat-btn"
-            >
-              💬 CHAT
-            </button>
-
-            {/* Canonical HUD GPS entry */}
-            <button
-              type="button"
-              title="Open Venue GPS"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("tmi:venue:open-gps"));
-                }
-                setStatusLine("Opening Venue GPS...");
-              }}
-              style={{
-                ...iconChip(GOLD),
-                flexShrink: 0,
-                padding: "6px 10px",
-              }}
-              data-testid="tmi-hud-gps-btn"
-            >
-              🗺️ GPS
-            </button>
-
-            {/* Chat input — video-reference: x ~266–422, y ~647–695 */}
-            <input
-              ref={chatInputRef}
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSendChat(); }}
-              placeholder="Type comment..."
-              style={{
-                flex: 1,
-                minWidth: 80,
-                maxWidth: 200,
-                height: 34,
-                borderRadius: 17,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
-                color: "#fff",
-                fontSize: 11,
-                padding: "0 12px",
-                outline: "none",
-                fontFamily: "inherit",
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleSendChat}
-              disabled={!chatInput.trim()}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                border: `1px solid ${CYAN}44`,
-                background: chatInput.trim() ? `${CYAN}22` : "rgba(255,255,255,0.04)",
-                color: chatInput.trim() ? CYAN : "rgba(255,255,255,0.25)",
-                fontSize: 14,
-                cursor: chatInput.trim() ? "pointer" : "default",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s",
-                flexShrink: 0,
-              }}
-            >
-              ➤
-            </button>
-
-            {/* Circular leave/end — video-reference: center x~1198, y~672, diameter~43 */}
-            {capabilities.canEndLive ? (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={handleEndLive}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  border: `1px solid ${RED}`,
-                  background: `${RED}22`,
-                  color: RED,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: `0 0 12px ${RED}44`,
-                  flexShrink: 0,
-                }}
-                title="End broadcast"
-              >
-                ⏹
-              </motion.button>
-            ) : (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new CustomEvent("tmi:room:leave", { detail: { roomId } }));
-                  }
-                  setStatusLine("Leaving room...");
-                }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  border: `1px solid #F53E5C`,
-                  background: `#F53E5C22`,
-                  color: "#F53E5C",
-                  fontSize: 14,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: `0 0 12px #F53E5C44`,
-                  flexShrink: 0,
-                }}
-                title="Leave room"
-              >
-                🚪
-              </motion.button>
-            )}
-          </motion.div>
+          />
         </>
       )}
       </AnimatePresence>

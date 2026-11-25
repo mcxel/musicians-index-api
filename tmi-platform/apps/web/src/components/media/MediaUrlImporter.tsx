@@ -58,6 +58,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   tidal: "Tidal",
   bandcamp: "Bandcamp",
   tmi: "TMI Library",
+  suno: "Suno",
   external: "External Link",
 };
 
@@ -279,7 +280,7 @@ export default function MediaUrlImporter({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") void resolveUrl(); }}
-            placeholder="Paste YouTube, SoundCloud, Spotify, Bandcamp, or direct audio URL…"
+            placeholder="Paste YouTube, SoundCloud, Spotify, Suno, Bandcamp, or direct audio URL…"
             style={{ ...base, padding: "8px 10px" }}
             autoFocus={!compact}
           />
@@ -300,7 +301,7 @@ export default function MediaUrlImporter({
             {url && <button style={btn()} onClick={reset}>CLEAR</button>}
           </div>
           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", lineHeight: 1.6 }}>
-            Supported: YouTube · SoundCloud · Spotify · Apple Music · Tidal · Bandcamp · direct MP3/MP4 links
+            Supported: YouTube · SoundCloud · Spotify · Apple Music · Tidal · Bandcamp · Suno share links · direct MP3/MP4. Suno links stay as official embeds — TMI does not rip the stream.
           </div>
         </>
       )}
@@ -342,9 +343,14 @@ export default function MediaUrlImporter({
                 </div>
               )}
               <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: "#00FFFF", background: "rgba(0,255,255,0.08)", borderRadius: 4, padding: "2px 6px" }}>
+                <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", color: preview.provider === "suno" ? "#C4B5FD" : "#00FFFF", background: preview.provider === "suno" ? "rgba(124,58,237,0.18)" : "rgba(0,255,255,0.08)", borderRadius: 4, padding: "2px 6px" }}>
                   {PROVIDER_LABELS[preview.provider ?? "external"] ?? preview.provider}
                 </span>
+                {preview.provider === "suno" ? (
+                  <span style={{ fontSize: 8, color: "rgba(196,181,253,0.85)" }}>
+                    Official embed · not native TMI audio
+                  </span>
+                ) : null}
                 {preview.duration && (
                   <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>
                     {Math.floor(preview.duration / 60)}:{String(preview.duration % 60).padStart(2, "0")}

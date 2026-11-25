@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { shouldNoIndexRoute } from './src/lib/seo/SeoIndexingRules';
+import { isFanShellRole, isPerformerShellRole } from './src/lib/auth/sessionRole';
+import { businessHubRequiresAuthentication } from './src/lib/workspace/business/businessCapabilityGate';
 
 const ADMIN_PATHS = ['/admin', '/api/admin', '/contest/admin'];
 
@@ -148,7 +150,7 @@ function roleDashboardPath(role: string): string {
 }
 
 function resolvePrimaryPathForRoles(userRoles: string[]): string | null {
-  const precedence = ['PERFORMER', 'ARTIST', 'BAND', 'FAN', 'SPONSOR', 'ADVERTISER', 'VENUE', 'WRITER', 'PROMOTER', 'ADMIN', 'STAFF'];
+  const precedence = ['PERFORMER', 'ARTIST', 'BAND', 'FAN', 'USER', 'MEMBER', 'SPONSOR', 'ADVERTISER', 'VENUE', 'WRITER', 'PROMOTER', 'ADMIN', 'STAFF'];
   const match = precedence.find((role) => hasAnyRole(userRoles, [role]));
   if (match) return roleDashboardPath(match);
   return null;
@@ -172,6 +174,20 @@ function isQuarantined(pathname: string): boolean {
   return QUARANTINED_PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
+function applyCacheHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (
+    pathname.startsWith("/hub/") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/checkout")
+  ) {
+    response.headers.set("Cache-Control", "private, no-cache, no-store, max-age=0, must-revalidate");
+  } else if (!pathname.startsWith("/_next/") && !pathname.startsWith("/api/")) {
+    response.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  }
+  return response;
+}
+
 function applyCrawlHeaders(response: NextResponse, pathname: string): NextResponse {
   if (shouldNoIndexRoute(pathname)) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -186,6 +202,68 @@ function nextWithPathname(req: NextRequest, pathname: string): NextResponse {
   return NextResponse.next({
     request: { headers: requestHeaders },
   });
+}
+
+
+/**
+ * Resolves the public, client-facing origin behind reverse proxies (Cloudflare tunnels, etc.).
+ * Guarantees that internal listener origins (localhost:3101, 127.0.0.1:3101) never leak
+ * to the mobile browser / physical phone in redirect Location headers.
+ */
+function resolvePublicOrigin(req: NextRequest): string {
+  const rawForwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedHost = rawForwardedHost ? rawForwardedHost.split(',')[0].trim().replace(/[^a-zA-Z0-9.\-:]/g, '') : '';
+  const host = forwardedHost || req.headers.get('host') || req.nextUrl.host;
+
+  const rawForwardedProto = req.headers.get('x-forwarded-proto');
+  const forwardedProto = rawForwardedProto ? rawForwardedProto.split(',')[0].trim().toLowerCase() : '';
+  const proto = (forwardedProto === 'https' || forwardedProto === 'http')
+    ? forwardedProto
+    : (req.nextUrl.protocol ? req.nextUrl.protocol.replace(':', '') : 'http');
+
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return req.nextUrl.origin;
+}
+
+/**
+ * Builds a safe redirect response that:
+ * 1. Preserves relative internal redirect paths in the Location header (e.g. '/auth?next=...')
+ *    so the client never escapes its current origin.
+ * 2. Uses the public origin (from trusted forwarded headers) for the absolute fallback URL,
+ *    ensuring internal listener addresses (localhost:3101) are never leaked.
+ * 3. Prevents open redirects by rejecting external or protocol-relative targets ('//').
+ */
+function safeRedirect(
+  req: NextRequest,
+  destination: string | URL,
+  status: 301 | 302 | 307 | 308 = 307
+): NextResponse {
+  const publicOrigin = resolvePublicOrigin(req);
+  let targetUrl: URL;
+
+  if (typeof destination === 'string') {
+    if (destination.startsWith('/') && !destination.startsWith('//')) {
+      targetUrl = new URL(destination, publicOrigin);
+    } else {
+      try {
+        const parsed = new URL(destination, publicOrigin);
+        if (parsed.origin === publicOrigin) {
+          targetUrl = parsed;
+        } else {
+          targetUrl = new URL('/home/1', publicOrigin);
+        }
+      } catch {
+        targetUrl = new URL('/home/1', publicOrigin);
+      }
+    }
+  } else {
+    const relativePath = destination.pathname + destination.search + destination.hash;
+    targetUrl = new URL(relativePath, publicOrigin);
+  }
+
+  return NextResponse.redirect(targetUrl, status);
 }
 
 export function middleware(req: NextRequest) {
@@ -229,8 +307,11 @@ export function middleware(req: NextRequest) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
     if (sessionCookie) {
       const hub = resolvePrimaryPathForRoles(getUserRoles(req)) ?? '/hub/fan';
-      return NextResponse.redirect(new URL(hub, req.url), 307);
+      return applyCacheHeaders(safeRedirect(req, hub, 307), hub);
     }
+  }
+  if (pathname === '/') {
+    return applyCacheHeaders(safeRedirect(req, '/home/1', 307), pathname);
   }
   // ────────────────────────────────────────────────────────────────────────────
 
@@ -285,16 +366,16 @@ export function middleware(req: NextRequest) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const signin = new URL('/auth', req.url);
+      const signin = new URL('/auth', resolvePublicOrigin(req));
       signin.searchParams.set('next', pathname);
-      return NextResponse.redirect(signin, 307);
+      return safeRedirect(req, signin, 307);
     }
 
     if (!hasAdminAccess) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/home/1', req.url), 307);
+      return safeRedirect(req, '/home/1', 307);
     }
   }
 
@@ -307,16 +388,16 @@ export function middleware(req: NextRequest) {
   if (isFanOnlyPath) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
     if (!sessionCookie) {
-      const signin = new URL('/auth', req.url);
+      const signin = new URL('/auth', resolvePublicOrigin(req));
       signin.searchParams.set('next', pathname);
-      return NextResponse.redirect(signin, 307);
+      return safeRedirect(req, signin, 307);
     }
     const userRoles = getUserRoles(req);
     const isFan = hasAnyRole(userRoles, ['FAN']);
     const isAdminOrStaff = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
     if (!isFan && !isAdminOrStaff) {
       const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/hub/fan';
-      return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+      return safeRedirect(req, redirectPath, 307);
     }
   }
 
@@ -324,7 +405,7 @@ export function middleware(req: NextRequest) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
     if (sessionCookie) {
       const hub = resolvePrimaryPathForRoles(getUserRoles(req)) ?? '/hub/fan';
-      return NextResponse.redirect(new URL(hub, req.url), 307);
+      return safeRedirect(req, hub, 307);
     }
   }
 
@@ -342,27 +423,33 @@ export function middleware(req: NextRequest) {
     '/fan/dashboard': '/hub/fan',
   };
   if (LEGACY_REDIRECTS[pathname]) {
-    return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 307);
+    return safeRedirect(req, LEGACY_REDIRECTS[pathname], 307);
   }
 
   // Hub path multi-role routing: verify user has the role they're accessing
   const hubMatch = pathname.match(/^\/hub\/([a-z-]+)/);
   if (hubMatch) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
+    const requestedHub = hubMatch[1];
+    if (businessHubRequiresAuthentication(requestedHub) && !sessionCookie) {
+      const signin = new URL('/auth', resolvePublicOrigin(req));
+      signin.searchParams.set('next', pathname + (search || ''));
+      return applyCacheHeaders(safeRedirect(req, signin, 307), pathname);
+    }
     if (sessionCookie) {
-      const requestedRole = hubMatch[1]; // 'fan', 'performer', 'sponsor', etc.
+      const requestedRole = requestedHub; // 'fan', 'performer', 'sponsor', etc.
       const userRoles = getUserRoles(req);
 
       if (userRoles.length === 0) {
         // Safe redirect to onboarding for active sessions with no role cookies set yet.
         // DO NOT delete tmi_session here — clearing tmi_session while the user is
         // completing onboarding forces an invalid logout and sends them back to sign-in.
-        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
+        return safeRedirect(req, '/onboarding', 307);
       }
 
       // Map dashboard path to required roles
       const roleMap: Record<string, string[]> = {
-        'fan': ['FAN'],
+        'fan': ['FAN', 'USER', 'MEMBER'], // USER/MEMBER are the fan shell (sessionRole FAN_ROLES)
         'performer': ['PERFORMER', 'ARTIST', 'BAND'],
         'sponsor': ['SPONSOR'],
         'advertiser': ['ADVERTISER'],
@@ -375,7 +462,12 @@ export function middleware(req: NextRequest) {
       // Admin/staff can preview any hub for oversight/QA without holding that
       // role themselves — otherwise "Fan Page"/"Performer Page" from the
       // Overseer Deck just bounces an admin straight back to /admin.
-      const hasAccess = hasAnyRole(userRoles, allowedRoles) || hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
+      const shellAccess = requestedRole === 'fan'
+        ? userRoles.some((role) => isFanShellRole(role))
+        : requestedRole === 'performer'
+          ? userRoles.some((role) => isPerformerShellRole(role))
+          : hasAnyRole(userRoles, allowedRoles);
+      const hasAccess = shellAccess || hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
 
       if (!hasAccess) {
         const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/auth';
@@ -384,23 +476,17 @@ export function middleware(req: NextRequest) {
           return nextWithPathname(req, pathname);
         }
 
-        return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+        return safeRedirect(req, redirectPath, 307);
       }
     }
   }
 
   if (pathname === '/account/recovery') {
-    return NextResponse.redirect(
-      new URL('/support/account-recovery' + (search || ''), req.url),
-      307,
-    );
+    return safeRedirect(req, '/support/account-recovery' + (search || ''), 307);
   }
 
   if (pathname === '/auth/login') {
-    return NextResponse.redirect(
-      new URL('/auth/signin' + (search || ''), req.url),
-      301,
-    );
+    return safeRedirect(req, '/auth/signin' + (search || ''), 301);
   }
 
   if (pathname === '/contest/admin' || pathname.startsWith('/contest/admin/')) {
@@ -409,13 +495,13 @@ export function middleware(req: NextRequest) {
     const hasAdminAccess = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
 
     if (!sessionCookie) {
-      const signin = new URL('/auth/signin', req.url);
+      const signin = new URL('/auth/signin', resolvePublicOrigin(req));
       signin.searchParams.set('next', pathname);
-      return NextResponse.redirect(signin, 307);
+      return safeRedirect(req, signin, 307);
     }
 
     if (!hasAdminAccess) {
-      return NextResponse.redirect(new URL('/home/1', req.url), 307);
+      return safeRedirect(req, '/home/1', 307);
     }
   }
 
@@ -437,14 +523,14 @@ export function middleware(req: NextRequest) {
       const redirectPath = resolvePrimaryPathForRoles(userRoles);
       if (!redirectPath) {
         // Safe redirect to onboarding for active sessions with no roles yet
-        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
+        return safeRedirect(req, '/onboarding', 307);
       }
 
       const target = nextParam && !nextParam.startsWith('/auth') ? nextParam : redirectPath;
       if (target === pathname) {
         return nextWithPathname(req, pathname);
       }
-      return NextResponse.redirect(new URL(target, req.url), 307);
+      return safeRedirect(req, target, 307);
     }
   }
 
@@ -459,13 +545,13 @@ export function middleware(req: NextRequest) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Platform not yet public', code: 'PRIVATE_MODE' }, { status: 503 });
       }
-      return NextResponse.redirect(new URL('/coming-soon', req.url), 307);
+      return safeRedirect(req, '/coming-soon', 307);
     }
   }
   // ───────────────────────────────────────────────────────────────────────────
 
   if (matchesAny(pathname, AUTH_WHITELIST)) {
-    return withReferralCookies(applyCrawlHeaders(nextWithPathname(req, pathname), pathname));
+    return withReferralCookies(applyCacheHeaders(applyCrawlHeaders(nextWithPathname(req, pathname), pathname), pathname));
   }
 
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
@@ -483,17 +569,17 @@ export function middleware(req: NextRequest) {
         pathname === '/api/stripe/checkout' ||
         pathname.startsWith('/api/stripe/checkout/');
       if (isStripeCheckoutNav) {
-        const signin = new URL('/auth', req.url);
+        const signin = new URL('/auth', resolvePublicOrigin(req));
         signin.searchParams.set('next', pathname + (search || ''));
-        return NextResponse.redirect(signin, 307);
+        return safeRedirect(req, signin, 307);
       }
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const signin = new URL('/auth', req.url);
+      const signin = new URL('/auth', resolvePublicOrigin(req));
       // Preserve query (skin/cert/occ/roomId) so PREVIEW VENUE return does not flicker.
       signin.searchParams.set('next', pathname + (search || ''));
-      return NextResponse.redirect(signin, 307);
+      return applyCacheHeaders(safeRedirect(req, signin, 307), pathname);
     }
 
     // Venue Preview — performer / venue / admin only (Rule 26). Fans never land here.
@@ -516,7 +602,7 @@ export function middleware(req: NextRequest) {
         if (redirectPath === pathname) {
           return nextWithPathname(req, pathname);
         }
-        return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+        return safeRedirect(req, redirectPath, 307);
       }
     }
 
@@ -535,11 +621,11 @@ export function middleware(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }
 
-      return NextResponse.redirect(new URL('/home/1', req.url), 307);
+      return safeRedirect(req, '/home/1', 307);
     }
   }
 
-  return withReferralCookies(applyCrawlHeaders(nextWithPathname(req, pathname), pathname));
+  return withReferralCookies(applyCacheHeaders(applyCrawlHeaders(nextWithPathname(req, pathname), pathname), pathname));
 }
 
 export const config = {

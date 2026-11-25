@@ -8,8 +8,13 @@
  * Ownership = CosmeticEntitlement via avatarPersistence.grantAvatarCosmetic (no parallel ledger).
  */
 
-import type { AvatarSocketId } from "@/lib/avatars/AvatarSocketSystem";
-import { LOBBY_INVENTORY_PROPS, type LobbyPropDef } from "@/lib/lobby/LobbyPropRegistry";
+import type { CosmeticAvailability, WearLayer } from "@/lib/avatars/CosmeticVariantPolicy";
+import type { AvatarSocketId } from "./AvatarSocketSystem";
+import { LOBBY_INVENTORY_PROPS, type LobbyPropDef } from "../lobby/LobbyPropRegistry";
+import {
+  FOUNDRY_MANUFACTURED_COSMETIC_SEEDS,
+  resolveFoundryHairGlbUrl,
+} from "./FoundryManufacturedCosmetics";
 
 export type FanCosmeticRarity = "free" | "common" | "rare" | "epic" | "legendary";
 
@@ -146,7 +151,38 @@ export interface CosmeticEntitlement {
   owned: true;
 }
 
-export interface FanCosmeticDef {
+export type MaterialFamily =
+  | "cloth"
+  | "leather"
+  | "metal"
+  | "plastic"
+  | "glass"
+  | "neon"
+  | "hair"
+  | "skin"
+  | "wood"
+  | "rubber"
+  | "stone"
+  | "ceramic"
+  | "chrome"
+  | "gold"
+  | "silver"
+  | "satin"
+  | "velvet"
+  | "iridescent"
+  | "matte";
+
+export interface MaterialPhysicsSpec {
+  materialFamily?: MaterialFamily;
+  roughness?: number; // 0 (mirror/gloss) to 1 (pure matte)
+  metalness?: number; // 0 (dielectric) to 1 (metallic)
+  emissiveIntensity?: number; // 0 to 2 (neon glow)
+  clearcoat?: number; // 0 to 1 (lacquer/gloss finish)
+  transmission?: number; // 0 to 1 (glass/visor opacity)
+  envMapIntensity?: number; // environment reflection response
+}
+
+export interface FanCosmeticDef extends MaterialPhysicsSpec {
   id: string;
   label: string;
   icon: string;
@@ -192,6 +228,10 @@ export interface FanCosmeticDef {
   price?: FanCosmeticPrice;
   entitlement?: CosmeticEntitlementKind;
   season?: string;
+  /** Seasonal/holiday/event window + ownership type (CosmeticVariantPolicy). Availability never revokes ownership. */
+  availability?: CosmeticAvailability;
+  /** Wear layer for masks / full character heads / costumes (defaultLayerForSlot when absent). */
+  wearLayer?: WearLayer;
   compatibleAvatarRig?: "AvatarRig_v0" | "bobblehead_v0";
   collisionProfile?: string;
   /** 0–10 FPS budget weight; auras/action stricter (mass-fire throttle). */
@@ -226,15 +266,16 @@ export const MATERIAL_TINT_MASKS: Colorway[] = [
   { slug: "void_navy", label: "Void Navy", hex: "#0A0A40", cost: 50, rarity: "common" },
 ];
 
+/** Ordinary RGB on basic tee = FREE (§11428 / §11467). Premium prints/materials stay paid. */
 const TEE_COLORWAYS: Colorway[] = [
   { slug: "black", label: "Black", hex: "#111111", cost: 0, rarity: "free" },
-  { slug: "white", label: "White", hex: "#F0F0F0", cost: 50, rarity: "common" },
-  { slug: "cyan", label: "Cyan", hex: "#00FFFF", cost: 99, rarity: "common" },
-  { slug: "fuchsia", label: "Fuchsia", hex: "#FF2DAA", cost: 99, rarity: "common" },
+  { slug: "white", label: "White", hex: "#F0F0F0", cost: 0, rarity: "free" },
+  { slug: "cyan", label: "Cyan", hex: "#00FFFF", cost: 0, rarity: "free" },
+  { slug: "fuchsia", label: "Fuchsia", hex: "#FF2DAA", cost: 0, rarity: "free" },
+  { slug: "purple", label: "Purple", hex: "#AA2DFF", cost: 0, rarity: "free" },
+  { slug: "red", label: "Red", hex: "#CC2222", cost: 0, rarity: "free" },
+  { slug: "navy", label: "Navy", hex: "#0A0A40", cost: 0, rarity: "free" },
   { slug: "gold", label: "Gold", hex: "#FFD700", cost: 149, rarity: "rare" },
-  { slug: "purple", label: "Purple", hex: "#AA2DFF", cost: 99, rarity: "common" },
-  { slug: "red", label: "Red", hex: "#CC2222", cost: 99, rarity: "common" },
-  { slug: "navy", label: "Navy", hex: "#0A0A40", cost: 50, rarity: "common" },
   ...MATERIAL_TINT_MASKS.filter((m) => !["black", "white", "cyan", "fuchsia", "gold", "purple", "red", "navy"].includes(m.slug)),
 ];
 
@@ -249,7 +290,7 @@ const JACKET_COLORWAYS: Colorway[] = [
 
 const PANTS_COLORWAYS: Colorway[] = [
   { slug: "black", label: "Black", hex: "#0d0d12", cost: 0, rarity: "free" },
-  { slug: "denim", label: "Denim", hex: "#1e3a5f", cost: 80, rarity: "common" },
+  { slug: "denim", label: "Denim", hex: "#1e3a5f", cost: 0, rarity: "free" },
   { slug: "camo", label: "Camo", hex: "#2a3a22", cost: 120, rarity: "rare" },
   { slug: "neon", label: "Neon", hex: "#003322", cost: 150, rarity: "rare" },
   { slug: "gold_chrome", label: "Gold Chrome", hex: "#3a2a08", cost: 200, rarity: "epic" },
@@ -258,7 +299,7 @@ const PANTS_COLORWAYS: Colorway[] = [
 
 const SHOE_COLORWAYS: Colorway[] = [
   { slug: "white", label: "White", hex: "#EEEEEE", cost: 0, rarity: "free" },
-  { slug: "black", label: "Black", hex: "#111111", cost: 60, rarity: "common" },
+  { slug: "black", label: "Black", hex: "#111111", cost: 0, rarity: "free" },
   { slug: "gold", label: "Gold Holo", hex: "#FFD700", cost: 99, rarity: "common" },
   { slug: "cyan", label: "Cyan Glow", hex: "#00E5FF", cost: 120, rarity: "rare" },
   { slug: "fuchsia", label: "Fuchsia", hex: "#FF2DAA", cost: 120, rarity: "rare" },
@@ -308,6 +349,28 @@ function colorwaySku(
   tintKey: "bodyTint" | "accentOnly" = "bodyTint",
 ): FanCosmeticDef {
   const inheritedBodyTint = base.bodyTint;
+  const isGold = cw.slug.includes("gold");
+  const isNeon = cw.slug.includes("neon") || cw.slug.includes("cyan") || cw.slug.includes("fuchsia");
+  const isLeather = cw.slug.includes("leather");
+  const isMirror = cw.slug.includes("mirror");
+  const isDenim = cw.slug.includes("denim");
+
+  const matFamily: MaterialFamily = isGold
+    ? "gold"
+    : isNeon
+      ? "neon"
+      : isLeather
+        ? "leather"
+        : isMirror
+          ? "chrome"
+          : isDenim
+            ? "cloth"
+            : (base.materialFamily ?? "cloth");
+
+  const roughness = isMirror ? 0.05 : isGold ? 0.2 : isLeather ? 0.45 : isNeon ? 0.4 : (base.roughness ?? 0.7);
+  const metalness = isMirror ? 0.95 : isGold ? 0.9 : (base.metalness ?? 0.05);
+  const emissiveIntensity = isNeon ? 0.6 : (base.emissiveIntensity ?? 0);
+
   return {
     id: `${base.idBase}_${cw.slug}`,
     label: `${base.labelBase} · ${cw.label}`,
@@ -325,6 +388,11 @@ function colorwaySku(
     layerScale: base.layerScale,
     animKind: base.animKind,
     ambientDelta: base.ambientDelta,
+    materialFamily: matFamily,
+    roughness,
+    metalness,
+    emissiveIntensity,
+    clearcoat: isLeather || isMirror ? 0.8 : undefined,
     stripeProductId: null,
     usdCents: null,
     colorwayOf: base.idBase,
@@ -419,23 +487,58 @@ export function persistFanSkinT(t: number): void {
   }
 }
 
-const HAIR_STYLES: Array<{ id: string; label: string; icon: string; cost: number; rarity: FanCosmeticRarity; tint: string }> = [
-  { id: "hair_fade_short", label: "Short Fade", icon: "💇", cost: 0, rarity: "free", tint: "#111111" },
-  { id: "hair_afro", label: "Afro", icon: "🌀", cost: 120, rarity: "common", tint: "#1a0a00" },
-  { id: "hair_locs", label: "Locs", icon: "🪢", cost: 150, rarity: "common", tint: "#2a1500" },
-  { id: "hair_braids", label: "Braids", icon: "🎀", cost: 150, rarity: "common", tint: "#111111" },
-  { id: "hair_curls", label: "Curls", icon: "💫", cost: 100, rarity: "common", tint: "#3d2000" },
-  { id: "hair_buzz", label: "Buzz", icon: "✂️", cost: 0, rarity: "free", tint: "#0a0a0a" },
-  { id: "hair_ponytail", label: "Ponytail", icon: "🏇", cost: 80, rarity: "common", tint: "#6B3A2A" },
-  { id: "hair_mohawk", label: "Mohawk", icon: "🦅", cost: 200, rarity: "rare", tint: "#111111" },
-  { id: "hair_undercut", label: "Undercut", icon: "🔪", cost: 100, rarity: "common", tint: "#111111" },
-  { id: "hair_waves", label: "Waves", icon: "🌊", cost: 130, rarity: "common", tint: "#1a0a00" },
-  { id: "hair_blonde_bob", label: "Blonde Bob", icon: "👱", cost: 180, rarity: "rare", tint: "#D4A843" },
-  { id: "hair_neon_spikes", label: "Neon Spikes", icon: "⚡", cost: 250, rarity: "epic", tint: "#00FFFF" },
-  { id: "hair_fuchsia_bangs", label: "Fuchsia Bangs", icon: "💗", cost: 250, rarity: "epic", tint: "#FF2DAA" },
-  { id: "hair_silver", label: "Silver Flow", icon: "🩶", cost: 220, rarity: "rare", tint: "#B0B0C0" },
-  { id: "hair_dreads_long", label: "Long Dreads", icon: "🎸", cost: 160, rarity: "common", tint: "#2a1500" },
-  { id: "hair_topknot", label: "Top Knot", icon: "🥋", cost: 90, rarity: "common", tint: "#111111" },
+const HAIR_STYLES: Array<{
+  id: string;
+  label: string;
+  icon: string;
+  cost: number;
+  rarity: FanCosmeticRarity;
+  tint: string;
+  materialFamily?: MaterialFamily;
+  roughness?: number;
+  metalness?: number;
+  gloss?: number;
+  emissiveIntensity?: number;
+}> = [
+  // ── Free Universal Starter Hair Catalog (Free Identity Law) ──
+  { id: "hair_fade_short", label: "Short Fade", icon: "💇", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_taper_high", label: "High Taper Fade", icon: "✂️", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_fade_low", label: "Low Skin Fade", icon: "💇", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_buzz", label: "Buzz Cut", icon: "✂️", cost: 0, rarity: "free", tint: "#0a0a0a", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_bald", label: "Shaved / Clean Bald", icon: "🧑‍🦲", cost: 0, rarity: "free", tint: "transparent", materialFamily: "skin", roughness: 0.6, metalness: 0.05 },
+  { id: "hair_afro", label: "Afro Classic", icon: "🌀", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_afro_mini", label: "Mini Afro", icon: "🌀", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.9, metalness: 0.02 },
+  { id: "hair_flattop", label: "Flat Top", icon: "📐", cost: 0, rarity: "free", tint: "#0a0a0a", materialFamily: "hair", roughness: 0.85, metalness: 0.05 },
+  { id: "hair_crop_textured", label: "Textured Crop", icon: "✂️", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_locs", label: "Locs Classic", icon: "🪢", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_locs_short", label: "Short Locs", icon: "🪢", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_braids", label: "Box Braids", icon: "🎀", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_cornrows", label: "Cornrows", icon: "🌾", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_twists", label: "Two-Strand Twists", icon: "🪢", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_curls", label: "Defined Curls", icon: "💫", cost: 0, rarity: "free", tint: "#3d2000", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_coily_crown", label: "Coily Crown", icon: "👑", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.85, metalness: 0.02 },
+  { id: "hair_straight_classic", label: "Classic Straight", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#1a1a1a", materialFamily: "hair", roughness: 0.65, metalness: 0.05 },
+  { id: "hair_waves", label: "Deep Waves", icon: "🌊", cost: 0, rarity: "free", tint: "#1a0a00", materialFamily: "hair", roughness: 0.7, metalness: 0.08 },
+  { id: "hair_slick_back", label: "Slick Back", icon: "💈", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.5, metalness: 0.1 },
+  { id: "hair_side_part", label: "Side Part Classic", icon: "✂️", cost: 0, rarity: "free", tint: "#4a2800", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+  { id: "hair_ponytail", label: "High Ponytail", icon: "🏇", cost: 0, rarity: "free", tint: "#6B3A2A", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+  { id: "hair_bun_top", label: "Top Bun", icon: "🥯", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_bob_classic", label: "Classic Bob", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#2a1500", materialFamily: "hair", roughness: 0.65, metalness: 0.05 },
+  { id: "hair_pixie", label: "Pixie Cut", icon: "✨", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_mohawk", label: "Mohawk", icon: "🦅", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.8, metalness: 0.05 },
+  { id: "hair_undercut", label: "Undercut", icon: "🔪", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_topknot", label: "Top Knot", icon: "🥋", cost: 0, rarity: "free", tint: "#111111", materialFamily: "hair", roughness: 0.75, metalness: 0.05 },
+  { id: "hair_long_layers", label: "Long Layered", icon: "💇‍♀️", cost: 0, rarity: "free", tint: "#3d2000", materialFamily: "hair", roughness: 0.7, metalness: 0.05 },
+
+  // ── Paid Expression / Specialty Dyes & Cuts (Monetization Layer) ──
+  { id: "hair_blonde_bob", label: "Blonde Bob", icon: "👱", cost: 180, rarity: "rare", tint: "#D4A843", materialFamily: "hair", roughness: 0.65, metalness: 0.08 },
+  { id: "hair_neon_spikes", label: "Neon Spikes", icon: "⚡", cost: 250, rarity: "epic", tint: "#00FFFF", materialFamily: "neon", roughness: 0.35, metalness: 0.2, gloss: 0.9, emissiveIntensity: 0.75 },
+  { id: "hair_fuchsia_bangs", label: "Fuchsia Bangs", icon: "💗", cost: 250, rarity: "epic", tint: "#FF2DAA", materialFamily: "hair", roughness: 0.6, metalness: 0.15 },
+  { id: "hair_silver", label: "Silver Flow", icon: "🩶", cost: 220, rarity: "rare", tint: "#B0B0C0", materialFamily: "silver", roughness: 0.45, metalness: 0.4 },
+  { id: "hair_dreads_long", label: "Long Dreads with Beads", icon: "🎸", cost: 160, rarity: "common", tint: "#2a1500", materialFamily: "hair", roughness: 0.75, metalness: 0.1 },
+  { id: "hair_gold_chrome", label: "Gold Chrome Fade", icon: "👑", cost: 350, rarity: "legendary", tint: "#FFD700", materialFamily: "gold", roughness: 0.25, metalness: 0.9 },
+  { id: "hair_acid_green_crop", label: "Acid Green Crop", icon: "🧪", cost: 240, rarity: "epic", tint: "#B8FF00", materialFamily: "neon", roughness: 0.4, metalness: 0.2, emissiveIntensity: 0.7 },
+  { id: "hair_sunset_ombre", label: "Sunset Ombre Waves", icon: "🌅", cost: 380, rarity: "legendary", tint: "#FF6B9D", materialFamily: "iridescent", roughness: 0.5, metalness: 0.3 },
 ];
 
 const CORE_PROPS: FanCosmeticDef[] = [
@@ -544,20 +647,41 @@ const CORE_PROPS: FanCosmeticDef[] = [
   },
   {
     id: "glow_stick",
-    label: "Glow Stick",
+    label: "TMI Glow Stick",
     icon: "🪄",
     accent: "#00FF88",
     slot: "hand",
     socketId: "socket_primary_hand",
-    pointsCost: 100,
+    pointsCost: 0,
+    rarity: "free",
+    inventoryCategory: "props",
+    equipSlot: "prop",
+    certifiedGlb: false,
+    description:
+      "Free starter animated prop — crack → light → wave → rest (§11496/§11531). Ordinary color free.",
+    animKind: "glow_pulse",
+    ambientDelta: 0.22,
+    entitlement: "free",
+    stripeProductId: null,
+  },
+  {
+    id: "umbrella_festival",
+    label: "Festival Umbrella",
+    icon: "☂️",
+    accent: "#38BDF8",
+    slot: "hand",
+    socketId: "socket_primary_hand",
+    pointsCost: 180,
     rarity: "rare",
     inventoryCategory: "props",
     equipSlot: "prop",
     certifiedGlb: false,
-    description: "Neon glow pulse holdable",
-    animKind: "glow_pulse",
-    ambientDelta: 0.22,
+    description:
+      "Marketplace weather prop — hand-play or shelter-overhead mode at outdoor venues (§11881). GLB Foundry ASSET_GAP until certified.",
+    animKind: "hold_bob",
+    ambientDelta: 0.05,
     stripeProductId: null,
+    usdCents: null,
   },
   {
     id: "foam_finger",
@@ -934,7 +1058,7 @@ const GESTURE_EMOTES: FanCosmeticDef[] = [
   { id: "emote_flex", label: "Flex", icon: "💪", accent: "#FF6600", slot: "emote", socketId: "socket_chest", pointsCost: 80, rarity: "common", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Flex pose", emoteKind: "gesture", animationId: "anim_flex", durationMs: 3000, cooldownMs: 800, performanceCost: 1, capability: "ANIMATED", isNew: true, stripeProductId: null },
   { id: "emote_heart_hands", label: "Heart Hands", icon: "🫶", accent: "#FF2DAA", slot: "emote", socketId: "socket_chest", pointsCost: 60, rarity: "common", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Heart hands gesture", emoteKind: "gesture", animationId: "anim_heart_hands", durationMs: 3000, cooldownMs: 600, performanceCost: 1, capability: "ANIMATED", isNew: true, stripeProductId: null },
   { id: "emote_jump", label: "Jump", icon: "🦘", accent: "#00FFFF", slot: "emote", socketId: "socket_chest", pointsCost: 0, rarity: "free", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Jump gesture", emoteKind: "gesture", animationId: "anim_jump", durationMs: 2000, cooldownMs: 600, performanceCost: 2, capability: "ANIMATED", stripeProductId: null },
-  { id: "emote_heart", label: "Heart", icon: "❤️", accent: "#FF2DAA", slot: "emote", socketId: "socket_chest", pointsCost: 50, rarity: "common", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Heart gesture (body — not Action VFX)", emoteKind: "gesture", animationId: "anim_heart", durationMs: 3000, cooldownMs: 500, performanceCost: 1, capability: "ANIMATED", stripeProductId: null },
+  { id: "emote_heart", label: "Heart", icon: "❤️", accent: "#FF2DAA", slot: "emote", socketId: "socket_chest", pointsCost: 0, rarity: "free", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Free starter Heart action (§11486) — body gesture, not Action VFX", emoteKind: "gesture", animationId: "anim_heart", durationMs: 3000, cooldownMs: 500, performanceCost: 1, capability: "ANIMATED", entitlement: "free", stripeProductId: null },
   { id: "emote_encore", label: "Encore", icon: "🙌", accent: "#FFD700", slot: "emote", socketId: "socket_chest", pointsCost: 80, rarity: "common", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Encore cheer", emoteKind: "gesture", animationId: "anim_encore", durationMs: 5000, cooldownMs: 1000, performanceCost: 2, capability: "ANIMATED", stripeProductId: null },
   { id: "emote_cheer", label: "Cheer", icon: "📣", accent: "#00FF88", slot: "emote", socketId: "socket_chest", pointsCost: 60, rarity: "common", inventoryCategory: "gestures", equipSlot: "emote", certifiedGlb: false, description: "Cheer gesture", emoteKind: "gesture", animationId: "anim_cheer", durationMs: 4000, cooldownMs: 800, performanceCost: 1, capability: "ANIMATED", stripeProductId: null },
 ];
@@ -944,7 +1068,7 @@ const GESTURE_EMOTES: FanCosmeticDef[] = [
  * Distinct from Action Emotes (VFX cannons).
  */
 const DANCE_EMOTES: FanCosmeticDef[] = [
-  { id: "emote_dance", label: "Two-Step / Vibe", icon: "💃", accent: "#FF2DAA", slot: "emote", socketId: "socket_chest", pointsCost: 0, rarity: "free", inventoryCategory: "dances", equipSlot: "emote", certifiedGlb: false, description: "Starter vibe loop — procedural bounce on AvatarRig", emoteKind: "dance", animationId: "dance_twostep", durationMs: 6000, cooldownMs: 500, performanceCost: 2, capability: "ANIMATED", featured: true, stripeProductId: null },
+  { id: "emote_dance", label: "Two-Step / Vibe", icon: "💃", accent: "#FF2DAA", slot: "emote", socketId: "socket_chest", pointsCost: 0, rarity: "free", inventoryCategory: "dances", equipSlot: "emote", certifiedGlb: false, description: "Two-Step dance preview on the showroom mannequin", emoteKind: "dance", animationId: "dance_twostep", durationMs: 6000, cooldownMs: 500, performanceCost: 2, capability: "ANIMATED", featured: true, stripeProductId: null },
   { id: "emote_dance_bounce", label: "Bounce", icon: "🏀", accent: "#00FFFF", slot: "emote", socketId: "socket_chest", pointsCost: 80, rarity: "common", inventoryCategory: "dances", equipSlot: "emote", certifiedGlb: false, description: "Bounce loop — procedural", emoteKind: "dance", animationId: "dance_bounce", durationMs: 6000, cooldownMs: 500, performanceCost: 2, capability: "ANIMATED", isNew: true, stripeProductId: null },
   { id: "emote_dance_wave", label: "Wave Dance", icon: "🌊", accent: "#00E5FF", slot: "emote", socketId: "socket_chest", pointsCost: 120, rarity: "common", inventoryCategory: "dances", equipSlot: "emote", certifiedGlb: false, description: "Wave dance — AvatarRig stub", emoteKind: "dance", animationId: "dance_wave", durationMs: 6500, cooldownMs: 600, performanceCost: 2, capability: "ANIMATED", stripeProductId: null },
   { id: "emote_dance_shuffle", label: "Shuffle", icon: "👟", accent: "#FFD700", slot: "emote", socketId: "socket_chest", pointsCost: 150, rarity: "rare", inventoryCategory: "dances", equipSlot: "emote", certifiedGlb: false, description: "Shuffle — procedural foot bounce", emoteKind: "dance", animationId: "dance_shuffle", durationMs: 6500, cooldownMs: 600, performanceCost: 3, capability: "ANIMATED", stripeProductId: null },
@@ -1065,6 +1189,32 @@ const LEGACY_OUTFITS: FanCosmeticDef[] = [
     layerScale: 1.25,
     stripeProductId: null,
   },
+  /**
+   * §13666–§13688 Frog Onesie — face-exposed full-body onesie.
+   * Identity face + ARKit remain visible; bell is presentation metadata (see CostumeFaceExposedPolicy).
+   * certifiedGlb=false until Foundry mesh bound — contract is source-green.
+   */
+  {
+    id: "costume_frog_onesie_v1",
+    label: "Frog Onesie",
+    icon: "🐸",
+    accent: "#22CC55",
+    slot: "outfit",
+    socketId: "socket_chest",
+    pointsCost: 450,
+    rarity: "epic",
+    inventoryCategory: "outfits",
+    equipSlot: "outfit",
+    certifiedGlb: false,
+    description:
+      "Full-body frog onesie with hood and jingle bell — your real bobblehead face stays visible",
+    bodyTint: "#1a5c2e",
+    layerScale: 1.2,
+    usdCents: 799,
+    stripeProductId: null,
+    entitlement: "season",
+    season: "season_explore",
+  },
   {
     id: "holographic-sneakers-gold",
     label: "Gold Holographic Kicks",
@@ -1113,23 +1263,39 @@ const LEGACY_OUTFITS: FanCosmeticDef[] = [
 ];
 
 function buildHairCatalog(): FanCosmeticDef[] {
-  return HAIR_STYLES.map((h) => ({
-    id: h.id,
-    label: h.label,
-    icon: h.icon,
-    accent: h.tint,
-    slot: "hair" as const,
-    socketId: "socket_head" as const,
-    pointsCost: h.cost,
-    rarity: h.rarity,
-    inventoryCategory: "hair" as const,
-    equipSlot: "hair" as const,
-    certifiedGlb: false as const,
-    description: `Hairstyle · ${h.label} — AvatarRig hair tint`,
-    hairTint: h.tint,
-    layerScale: 1.05,
-    stripeProductId: null,
-  }));
+  return HAIR_STYLES.map((h) => {
+    const isBald = h.id === "hair_bald";
+    const foundryGlb = isBald ? null : resolveFoundryHairGlbUrl(h.id);
+    return {
+      id: h.id,
+      label: h.label,
+      icon: h.icon,
+      accent: h.tint,
+      slot: "hair" as const,
+      socketId: "socket_head" as const,
+      pointsCost: h.cost,
+      rarity: h.rarity,
+      inventoryCategory: "hair" as const,
+      equipSlot: "hair" as const,
+      // Bald is a certified clear style (no mesh). Other styles stay uncertified until runtime fit.
+      certifiedGlb: isBald,
+      // Legacy tint SKUs bind to manufactured Foundry hair GLBs when mapped;
+      // bald / unmapped styles stay tint-only (no fake mesh).
+      glbUrl: foundryGlb,
+      description: isBald
+        ? `Hairstyle · ${h.label} — clear scalp (no hair mesh)`
+        : foundryGlb
+          ? `Hairstyle · ${h.label} — Foundry AvatarRig/1.0 hair mesh + tint`
+          : `Hairstyle · ${h.label} — AvatarRig hair tint`,
+      hairTint: h.tint,
+      materialFamily: h.materialFamily ?? "hair",
+      roughness: h.roughness ?? 0.8,
+      metalness: h.metalness ?? 0.05,
+      emissiveIntensity: h.emissiveIntensity ?? (h.materialFamily === "neon" ? 0.75 : undefined),
+      layerScale: 1.05,
+      stripeProductId: null,
+    };
+  });
 }
 
 function buildGlassColorways(): FanCosmeticDef[] {
@@ -2093,9 +2259,22 @@ export function lobbyPropAsCosmetic(prop: LobbyPropDef): FanCosmeticDef {
   });
 }
 
+const FOUNDRY_MANUFACTURED_COSMETICS = FOUNDRY_MANUFACTURED_COSMETIC_SEEDS.map(normalizeFanCosmetic);
+const FOUNDRY_IDS = new Set(FOUNDRY_MANUFACTURED_COSMETICS.map((c) => c.id));
+
 export function getUnifiedFanCosmeticCatalog(opts?: { includeUnpublished?: boolean }): FanCosmeticDef[] {
-  const extras = LOBBY_INVENTORY_PROPS.filter((p) => !CORE_IDS.has(p.id)).map(lobbyPropAsCosmetic);
-  const all = [...FAN_COSMETIC_CATALOG, ...extras];
+  const extras = LOBBY_INVENTORY_PROPS.filter((p) => !CORE_IDS.has(p.id) && !FOUNDRY_IDS.has(p.id)).map(
+    lobbyPropAsCosmetic,
+  );
+  // Dedupe by id — Foundry/core/lobby merges must never emit duplicate React keys
+  // (ACC previously warned on sunglasses / glasses_* / emote_* / action_* from over-concat).
+  const seen = new Set<string>();
+  const all: FanCosmeticDef[] = [];
+  for (const item of [...FAN_COSMETIC_CATALOG, ...FOUNDRY_MANUFACTURED_COSMETICS, ...extras]) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    all.push(item);
+  }
   if (opts?.includeUnpublished) return all;
   return all.filter((c) => c.published !== false);
 }

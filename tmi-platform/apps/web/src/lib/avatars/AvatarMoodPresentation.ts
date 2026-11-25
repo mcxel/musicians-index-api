@@ -6,8 +6,8 @@
  * User-selected or legitimate game-event driven only.
  */
 
-import { triggerExpression, type AvatarExpression } from "@/lib/avatars/ExpressionEngine";
-import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import { triggerExpression, type AvatarExpression } from "./ExpressionEngine";
+import type { AvatarPreviewAction } from "./AvatarPreviewActions";
 /** Mirrors AvatarLobbyCanvas AvatarMoodFoundryExpression — avoid lib→3d import. */
 export type AvatarMoodFoundryExpression = "neutral" | "smile" | "hype";
 

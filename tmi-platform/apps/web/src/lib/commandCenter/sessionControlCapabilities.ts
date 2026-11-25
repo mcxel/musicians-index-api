@@ -1,6 +1,8 @@
 /**
  * Shared primary session strip — identical geometry for Fan + Performer (QP-10).
- * Primary control strip: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | STREAM & WIN | GO LIVE
+ * Canonical Command Bed: MIC ON | CAM ON | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE
+ * Stream & Win (listen) → LOBBIES → Lounges → Stream & Win panel (not a Command Bed control).
+ * Submissions → GPS Rail only (not Command Bed).
  * (VENUE TOOLS lives in media-stack toolbar on desktop + mobile quick panel bar — not here)
  */
 
@@ -12,7 +14,7 @@ export type SessionControlButtonId =
   | "camera"
   | "snips"
   | "video-shuffle"
-  | "stream-win"
+  | "lobbies"
   | "go-live";
 
 export interface SessionControlButtonDef {
@@ -20,14 +22,14 @@ export interface SessionControlButtonDef {
   label: string;
 }
 
-/** Locked primary row — MIC | CAM | CAMERA | SNIPS | VIDEO SHUFFLE | STREAM & WIN | GO LIVE */
+/** Locked primary row — MIC | CAM | CAMERA | SNIPS | VIDEO SHUFFLE | LOBBIES | GO LIVE */
 export const PRIMARY_SESSION_STRIP: SessionControlButtonDef[] = [
   { id: "mic", label: "🎙️ MIC ON" },
   { id: "cam", label: "📹 CAM ON" },
   { id: "camera", label: "📷 CAMERA" },
   { id: "snips", label: "📱 SNIPS" },
   { id: "video-shuffle", label: "🔀 VIDEO SHUFFLE" },
-  { id: "stream-win", label: "📻 STREAM & WIN" },
+  { id: "lobbies", label: "🏟️ LOBBIES" },
   { id: "go-live", label: "🔴 GO LIVE" },
 ];
 

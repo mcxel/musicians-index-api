@@ -10,6 +10,7 @@
  */
 
 import type { DancePartyState } from "@/lib/dance/WorldDancePartyRuntimeEngine";
+import { resolveWdpCanonicalPlayback, type WdpPlaybackStatus } from "@/lib/dance/wdpCanonicalPlayback";
 import { RECORD_RALPH_BOT_ID } from "@/lib/dance/WorldDancePartyRotationPool";
 import { assertPackAllowsComposition, getPresentationPack } from "./ExperiencePresentationDirector";
 import {
@@ -44,6 +45,9 @@ export type DancePartyTrack = {
   title: string;
   artistName: string;
   bpm?: number | null;
+  /** Present when rotation has a URL. Playback stays withheld until rights allow it. */
+  audioUrl: string | null;
+  playback: WdpPlaybackStatus;
 };
 
 export type DancePartyProgramComposition = {
@@ -146,6 +150,7 @@ function normalizeTrack(
         title?: string | null;
         artistName?: string | null;
         bpm?: number | null;
+        audioUrl?: string | null;
       }
     | null
     | undefined
@@ -155,11 +160,14 @@ function normalizeTrack(
   const title = track.title?.trim();
   const artistName = track.artistName?.trim();
   if (!trackId || !title) return null;
+  const playback = resolveWdpCanonicalPlayback(track.audioUrl);
   return {
     trackId,
     title,
     artistName: artistName || "Unknown artist",
     bpm: typeof track.bpm === "number" && Number.isFinite(track.bpm) ? track.bpm : null,
+    audioUrl: playback.audioUrl,
+    playback: playback.status,
   };
 }
 
@@ -188,6 +196,7 @@ export function composeDancePartyProgram(opts: {
     title?: string | null;
     artistName?: string | null;
     bpm?: number | null;
+    audioUrl?: string | null;
   } | null;
   /** Real floor occupancy only — null when unknown. */
   floorPresenceCount?: number | null;

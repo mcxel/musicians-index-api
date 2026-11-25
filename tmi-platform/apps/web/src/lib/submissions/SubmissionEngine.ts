@@ -10,6 +10,10 @@ import { awardXP } from '@/lib/profile/ProfileRewardsEngine';
 import { recordPlaylistShareEvent, buildPlaylistReferralUrl } from '@/lib/share/ShareTrackingEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 import { StreamAndWinEngine } from '@/lib/economy/StreamAndWinEngine';
+import {
+  classifyDeclaredGenre,
+  type MusicPrimaryGenreId,
+} from '@/lib/music/MusicGenreTaxonomy';
 
 export type SubmissionType = 'track' | 'video' | 'beat' | 'cypher' | 'battle' | 'comedy' | 'dance' | 'show';
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'live' | 'expired';
@@ -33,6 +37,12 @@ export interface Submission {
   status: SubmissionStatus;
   url: string;
   genre: string;
+  /** Canonical primary genre id when declared genre matches MusicGenreTaxonomy; null when unmatched/empty. */
+  primaryGenre: MusicPrimaryGenreId | null;
+  /** Canonical subgenre id when matched; null otherwise. */
+  subgenre: string | null;
+  /** True only when declared genre text resolved against the taxonomy. */
+  genreMatched: boolean;
   description: string;
   bpm: number | null;
   tags: string[];
@@ -82,7 +92,9 @@ export function createSubmission(input: SubmissionInput): SubmissionResult {
   }
 
   const id = genId();
-  const genre = sanitize(input.genre ?? 'General', 40);
+  // Honest empty genre — never fabricate "General" when the creator omitted one.
+  const genre = sanitize(input.genre ?? '', 40);
+  const classified = classifyDeclaredGenre(genre);
   const description = sanitize(input.description ?? '', 400);
   const tags = (input.tags ?? []).map((t) => sanitize(t, 30)).filter(Boolean).slice(0, 10);
 
@@ -102,6 +114,9 @@ export function createSubmission(input: SubmissionInput): SubmissionResult {
     status: 'pending',
     url,
     genre,
+    primaryGenre: classified.primaryGenre,
+    subgenre: classified.subgenre,
+    genreMatched: classified.matched,
     description,
     bpm: input.bpm != null && Number.isFinite(input.bpm) ? Math.round(input.bpm) : null,
     tags,
@@ -178,6 +193,40 @@ export function listSubmissions(filter?: {
   if (filter?.status) results = results.filter((s) => s.status === filter.status);
   results.sort((a, b) => b.createdAt - a.createdAt);
   return filter?.limit ? results.slice(0, filter.limit) : results;
+}
+
+/** Owner-or-submitter removal from the in-memory submission store. */
+export function removeSubmission(id: string, submitterId?: string): boolean {
+  const existing = submissionStore.get(id);
+  if (!existing) return false;
+  if (submitterId && existing.submitterId !== submitterId) return false;
+  return submissionStore.delete(id);
+}
+
+/** Replace mutable submission fields when the caller owns the submission. */
+export function replaceSubmission(
+  id: string,
+  submitterId: string,
+  patch: { title?: string; url?: string; genre?: string; bpm?: number },
+): Submission | null {
+  const existing = submissionStore.get(id);
+  if (!existing || existing.submitterId !== submitterId) return null;
+  const nextGenre = patch.genre !== undefined ? sanitize(patch.genre, 40) : existing.genre;
+  const classified =
+    patch.genre !== undefined ? classifyDeclaredGenre(nextGenre) : null;
+  const updated: Submission = {
+    ...existing,
+    title: patch.title ?? existing.title,
+    url: patch.url ?? existing.url,
+    genre: nextGenre,
+    primaryGenre: classified ? classified.primaryGenre : existing.primaryGenre,
+    subgenre: classified ? classified.subgenre : existing.subgenre,
+    genreMatched: classified ? classified.matched : existing.genreMatched,
+    bpm: patch.bpm ?? existing.bpm,
+    updatedAt: Date.now(),
+  };
+  submissionStore.set(id, updated);
+  return updated;
 }
 
 export function getSubmissionCount(): { total: number; pending: number; live: number } {

@@ -20,13 +20,18 @@ import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import {
   LOBBY_WALL_CORE_CATEGORY_TABS,
   filterDiscoveryByWallCategory,
+  filterWdpDiscoveryBySubtype,
   isFanAvatarLobbyRecord,
   isPerformerLobbyRecord,
   type LobbyWallCoreCategoryId,
+  type WdpDiscoverySubtype,
 } from "@/lib/lobby/liveLobbyWallLaw";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
 import { resolveInstantJoin, type InstantJoinDecision } from "@/lib/discovery/InstantJoinRuntime";
 import { useLivePrivacyState } from "@/lib/live/livePrivacyState";
+import WdpChannelSubfilterRail from "@/components/lobby/WdpChannelSubfilterRail";
+import { useCompactQuickPanelStore } from "@/lib/hud/compactQuickPanelStore";
+import { startStreamWin } from "@/lib/radio/StreamWinModeRuntime";
 
 export interface MiniLiveLobbyWallRuntimeProps {
   role: "fan" | "performer";
@@ -72,6 +77,7 @@ export default function MiniLiveLobbyWallRuntime({
     role === "fan" ? "fan_avatar_lobbies" : "lives";
   const [activeCategoryId, setActiveCategoryId] =
     useState<LobbyWallCoreCategoryId>(defaultCategory);
+  const [wdpSubtype, setWdpSubtype] = useState<WdpDiscoverySubtype>("all_wdp");
   const [selectedRecord, setSelectedRecord] = useState<LiveDiscoveryRecord | null>(null);
   // Canonical LobbyEntryFlow decision — keeps entry alive if the mini wall closes mid-join.
   const [joinDecision, setJoinDecision] = useState<InstantJoinDecision | null>(null);
@@ -111,8 +117,11 @@ export default function MiniLiveLobbyWallRuntime({
   // Filtered rooms from canonical discovery bus
   const activeRooms = useMemo(() => {
     const filtered = filterDiscoveryByWallCategory(allRecords, activeCategoryId);
+    if (activeCategoryId === "world_dance_party") {
+      return filterWdpDiscoveryBySubtype(filtered, wdpSubtype);
+    }
     return filtered;
-  }, [allRecords, activeCategoryId]);
+  }, [allRecords, activeCategoryId, wdpSubtype]);
 
   // Initial selection — prefer self tile when present
   useEffect(() => {
@@ -270,7 +279,7 @@ export default function MiniLiveLobbyWallRuntime({
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FF4444", display: "inline-block" }} />
                   <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.15em", color: "#FF2DAA" }}>
-                    LIVE LOBBY WALL · MOSAIC
+                    LIVE LOBBY DISCOVERY
                   </span>
                   <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
                     ({role})
@@ -308,6 +317,46 @@ export default function MiniLiveLobbyWallRuntime({
                   ✕
                 </button>
               </div>
+
+              {/* LOBBIES → Lounges → Stream & Win (listen/watch — not submissions) */}
+              {activeCategoryId === "lounges" ? (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    padding: "8px 12px",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    background: "rgba(0,20,40,0.45)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    data-testid="tmi-lounges-stream-win"
+                    onClick={() => {
+                      void startStreamWin().then((started) => {
+                        if (started) {
+                          useCompactQuickPanelStore.getState().openPanel("stream-win", "bottom-left");
+                          onClose();
+                        }
+                      });
+                    }}
+                    style={{
+                      flex: 1,
+                      minHeight: 40,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,215,0,0.45)",
+                      background: "linear-gradient(135deg, rgba(255,215,0,0.18), rgba(0,229,255,0.12))",
+                      color: "#FFD700",
+                      fontWeight: 900,
+                      fontSize: 11,
+                      letterSpacing: "0.08em",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📻 STREAM & WIN RADIO
+                  </button>
+                </div>
+              ) : null}
 
               {/* ── Horizontal Category Pills ────────────────────────────────────────── */}
               <div

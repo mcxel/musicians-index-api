@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { PublicProfileConfig } from "@/lib/profile/PublicProfileStyleEngine";
-import { DEFAULT_PUBLIC_PROFILE_CONFIG } from "@/lib/profile/PublicProfileStyleEngine";
+import {
+  DEFAULT_PUBLIC_PROFILE_CONFIG,
+  filterValidPublicProfileModules,
+} from "@/lib/profile/PublicProfileStyleEngine";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -22,7 +25,9 @@ function dbToConfig(db: Record<string, unknown>): PublicProfileConfig {
     animationIntensity: (db.animationIntensity as PublicProfileConfig["animationIntensity"]) ?? DEFAULT_PUBLIC_PROFILE_CONFIG.animationIntensity,
     layout: (db.layout as PublicProfileConfig["layout"]) ?? DEFAULT_PUBLIC_PROFILE_CONFIG.layout,
     font: DEFAULT_PUBLIC_PROFILE_CONFIG.font,
-    visibleModules: Array.isArray(db.visibleModules) ? db.visibleModules as string[] : DEFAULT_PUBLIC_PROFILE_CONFIG.visibleModules,
+    visibleModules: Array.isArray(db.visibleModules)
+      ? filterValidPublicProfileModules(db.visibleModules)
+      : DEFAULT_PUBLIC_PROFILE_CONFIG.visibleModules,
     statusMessage: typeof db.statusMessage === "string" ? db.statusMessage : null,
     pinnedItems: Array.isArray(db.pinnedItems) ? db.pinnedItems as string[] : [],
     published: typeof db.published === "boolean" ? db.published : true,

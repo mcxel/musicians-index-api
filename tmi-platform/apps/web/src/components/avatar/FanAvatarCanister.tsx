@@ -10,23 +10,34 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
 import {
   bindAvatarToSeat,
   startAvatarSeatBindingEngine,
   type AvatarSeatBinding,
 } from "@/lib/avatar/AvatarSeatBindingEngine";
 import {
-  DEFAULT_FAN_AVATAR_GLB_SLOT,
   FOUNDRY_AVATAR_AUTHORITY,
   resolveAvatarViewportBinding,
   type AvatarGlbSlotId,
 } from "@/lib/avatars/AvatarGlbRegistry";
+import {
+  hydrateCanonicalAvatarDraft,
+  subscribeCanonicalAvatarDraft,
+  type CanonicalAvatarDraftState,
+} from "@/lib/avatars/CanonicalAvatarDraft";
+import { resolveAvatarPreview } from "@/lib/avatars/AvatarPreviewRuntime";
 import {
   AvatarViewer,
   preloadFoundryAvatarGlb,
   type AvatarExpressionId,
   type FoundryMorphCapability,
 } from "@/components/3d/AvatarLobbyCanvas";
+import LivingAvatarStage from "@/components/avatar/LivingAvatarStage";
+import MiniMeCompanionSurface from "@/components/avatars/MiniMeCompanionSurface";
+import DrawerCompositionLayout from "@/components/drawers/DrawerCompositionLayout";
+import { DRAWER_LIVE_PREVIEW_BINDING_LAW_ID } from "@/lib/drawers/DrawerLivePreviewBindingLaw";
+
 
 export type CanisterExpression = AvatarExpressionId;
 
@@ -106,7 +117,7 @@ export default function FanAvatarCanister({
   roomId,
   seatId,
   tierColor = "#00FFFF",
-  glbSlotId = DEFAULT_FAN_AVATAR_GLB_SLOT,
+  glbSlotId,
   onSeatBound,
   className = "",
 }: FanAvatarCanisterProps) {
@@ -116,8 +127,17 @@ export default function FanAvatarCanister({
   );
   const [expression, setExpression] = useState<CanisterExpression>("neutral");
   const [morphCap, setMorphCap] = useState<FoundryMorphCapability | null>(null);
+  const [showStudio, setShowStudio] = useState(true);
+  const [draft, setDraft] = useState<CanonicalAvatarDraftState>(() => hydrateCanonicalAvatarDraft());
 
-  const viewport = useMemo(() => resolveAvatarViewportBinding(glbSlotId), [glbSlotId]);
+  useEffect(() => subscribeCanonicalAvatarDraft(setDraft), []);
+
+  const preview = useMemo(() => resolveAvatarPreview(draft), [draft]);
+  const viewport = useMemo(
+    () => (glbSlotId ? resolveAvatarViewportBinding(glbSlotId) : preview.viewport),
+    [glbSlotId, preview.viewport],
+  );
+  const skinColor = preview.rigProps?.color ?? "#C68642";
   const isBound = viewport.diagnostic === "OK" && Boolean(viewport.glbUrl);
   const motionOk = viewport.motionPackageSupported;
   // NEUTRAL always safe (all weights 0). SMILE only when post-sanitize deltas remain.
@@ -144,6 +164,34 @@ export default function FanAvatarCanister({
       onSeatBound?.(bound);
     }
   }, [userId, roomId, seatId, onSeatBound]);
+
+  if (isFanRole && showStudio) {
+    return (
+      <div data-testid="fan-avatar-studio" style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+        <button
+          type="button"
+          data-testid="fan-avatar-studio-back"
+          onClick={() => setShowStudio(false)}
+          style={{
+            minHeight: 44,
+            marginBottom: 8,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid rgba(0,255,255,0.45)",
+            background: "rgba(0,255,255,0.08)",
+            color: "#00FFFF",
+            fontWeight: 900,
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+          }}
+        >
+          AVATAR QUICK
+        </button>
+        <AvatarCreationCenter accentColor={tierColor} />
+      </div>
+    );
+  }
 
   if (!isFanRole) {
     return (
@@ -174,132 +222,165 @@ export default function FanAvatarCanister({
   return (
     <div
       data-fan-avatar-canister={userId}
+      data-avatar-base-id={draft.baseId}
+      data-avatar-resolved-glb={viewport.glbUrl ?? ""}
       data-avatar-binding={viewport.diagnostic}
-      className={`relative flex flex-col items-center justify-between p-4 rounded-2xl border bg-gradient-to-b from-[#0a0a1f] to-[#04040d] text-white overflow-hidden ${className}`}
+      data-live-preview-binding={DRAWER_LIVE_PREVIEW_BINDING_LAW_ID}
+      className={`relative flex flex-col p-4 rounded-2xl border bg-gradient-to-b from-[#0a0a1f] to-[#04040d] text-white overflow-hidden ${className}`}
       style={{
         borderColor: `${tierColor}44`,
         boxShadow: `0 0 20px ${tierColor}15`,
         minHeight: 280,
       }}
     >
-      <div className="w-full flex items-center justify-between z-10">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full ${isBound ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
-          />
-          <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400">
-            AVATAR CANISTER
-          </span>
-        </div>
-        <span
-          className="text-[8px] font-extrabold px-2 py-0.5 rounded border"
-          style={{
-            borderColor: isBound ? `${tierColor}55` : "#FF2DAA55",
-            color: isBound ? tierColor : "#FF2DAA",
-            background: isBound ? `${tierColor}10` : "#FF2DAA10",
-          }}
-        >
-          {isBound
-            ? faceScanActive
-              ? "FACE SCAN BOUND"
-              : "FOUNDRY BOUND"
-            : "ASSET MISSING"}
-        </span>
-      </div>
-
-      <div className="relative w-full flex items-center justify-center my-2" style={{ height: 220, minHeight: 220 }}>
-        {isBound && viewport.glbUrl ? (
-          <>
-            <AvatarViewer
-              active={true}
-              color={tierColor}
-              visorColor={tierColor}
-              crown={tierColor === "#FFD700"}
-              isPlaying={expression === "hype" && motionOk}
-              isSeated={false}
-              size={220}
-              glbSlotId={viewport.slotId}
-              glbUrl={viewport.glbUrl}
-              certifiedOnly
-              enableOrbit
-              cameraFocus="body"
-              expression={expression}
-              onMorphCapability={onMorphCapability}
-            />
-            <div
-              className="absolute inset-0 rounded-xl pointer-events-none"
-              style={{
-                border: `1px solid ${tierColor}30`,
-                background: `radial-gradient(ellipse at center, ${tierColor}10 0%, transparent 70%)`,
-              }}
-            />
-          </>
-        ) : (
-          <UnboundAvatarViewport
-            tierColor={tierColor}
-            diagnostic={viewport.diagnostic}
-            message={viewport.message}
-            missingArtifact={viewport.missingArtifact}
-          />
-        )}
-      </div>
-
-      <div className="flex flex-col items-center gap-1 z-10 mb-2 w-full">
-        <div className="flex items-center gap-1">
-          {(["neutral", "smile", "hype"] as const).map((expr) => {
-            const disabled =
-              !isBound ||
-              (expr === "smile" && (!facialDriverWired || !smileOk)) ||
-              (expr === "hype" && !motionOk);
-            const partialHype =
-              expr === "hype" && isBound && motionOk && !morphCap?.hypeFacialUsable;
-            return (
-              <button
-                key={expr}
-                type="button"
-                disabled={disabled}
-                title={
-                  disabled
-                    ? expressionHint ?? "Unavailable"
-                    : partialHype
-                      ? "Body motion bounce — jaw/eyeWide morphs unusable after sanitize"
-                      : `Set expression: ${expr}`
-                }
-                onClick={() => {
-                  if (!disabled) setExpression(expr);
+      <DrawerCompositionLayout
+        moduleId="avatar-quick"
+        previewCount={1}
+        preview={
+          <div>
+            <div className="w-full flex items-center justify-between z-10 mb-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${isBound ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
+                />
+                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400">
+                  AVATAR CANISTER
+                </span>
+              </div>
+              <span
+                className="text-[8px] font-extrabold px-2 py-0.5 rounded border"
+                style={{
+                  borderColor: isBound ? `${tierColor}55` : "#FF2DAA55",
+                  color: isBound ? tierColor : "#FF2DAA",
+                  background: isBound ? `${tierColor}10` : "#FF2DAA10",
                 }}
-                className={`text-[8px] font-black uppercase px-2.5 py-1 rounded transition-all ${
-                  disabled
-                    ? "bg-white/5 text-white/25 cursor-not-allowed opacity-60"
-                    : expression === expr
-                      ? "bg-cyan-400 text-black shadow-md"
-                      : "bg-white/5 text-white/50 hover:bg-white/10"
-                }`}
               >
-                {expr}
+                {isBound
+                  ? faceScanActive
+                    ? "FACE SCAN BOUND"
+                    : "FOUNDRY BOUND"
+                  : "ASSET MISSING"}
+              </span>
+            </div>
+            <div
+              data-live-preview-id="avatar-viewport"
+              className="relative w-full flex items-center justify-center"
+              style={{ height: 220, minHeight: 220 }}
+            >
+              {isBound && viewport.glbUrl ? (
+                <LivingAvatarStage accent={tierColor} compact>
+                  <AvatarViewer
+                    {...(preview.rigProps ?? {})}
+                    active={true}
+                    color={skinColor}
+                    hairColor={preview.rigProps?.hairColor}
+                    outfitTint={preview.rigProps?.outfitTint}
+                    visorColor={preview.rigProps?.visorColor}
+                    crown={false}
+                    isPlaying={expression === "hype" && motionOk}
+                    isSeated={false}
+                    size={220}
+                    glbSlotId={viewport.slotId}
+                    glbUrl={viewport.glbUrl ?? preview.rigProps?.glbUrl}
+                    certifiedOnly
+                    enableOrbit
+                    cameraFocus="body"
+                    expression={expression}
+                    onMorphCapability={onMorphCapability}
+                  />
+                </LivingAvatarStage>
+              ) : (
+                <UnboundAvatarViewport
+                  tierColor={tierColor}
+                  diagnostic={viewport.diagnostic}
+                  message={viewport.message}
+                  missingArtifact={viewport.missingArtifact}
+                />
+              )}
+            </div>
+          </div>
+        }
+        instruments={
+          <div className="flex flex-col items-center gap-1 w-full" data-live-preview-control="expression">
+            <div className="flex items-center gap-1">
+              {(["neutral", "smile", "hype"] as const).map((expr) => {
+                const disabled =
+                  !isBound ||
+                  (expr === "smile" && (!facialDriverWired || !smileOk)) ||
+                  (expr === "hype" && !motionOk);
+                const partialHype =
+                  expr === "hype" && isBound && motionOk && !morphCap?.hypeFacialUsable;
+                return (
+                  <button
+                    key={expr}
+                    type="button"
+                    disabled={disabled}
+                    title={
+                      disabled
+                        ? expressionHint ?? "Unavailable"
+                        : partialHype
+                          ? "Body motion bounce — jaw/eyeWide morphs unusable after sanitize"
+                          : `Set expression: ${expr}`
+                    }
+                    onClick={() => {
+                      if (!disabled) setExpression(expr);
+                    }}
+                    className={`text-[8px] font-black uppercase px-2.5 py-1 rounded transition-all ${
+                      disabled
+                        ? "bg-white/5 text-white/25 cursor-not-allowed opacity-60"
+                        : expression === expr
+                          ? "bg-cyan-400 text-black shadow-md"
+                          : "bg-white/5 text-white/50 hover:bg-white/10"
+                    }`}
+                  >
+                    {expr}
+                  </button>
+                );
+              })}
+            </div>
+            {expressionHint && (
+              <span className="text-[7px] text-amber-400/80 text-center px-2">{expressionHint}</span>
+            )}
+          </div>
+        }
+        actions={
+          <div className="w-full flex items-center justify-between pt-2 border-t border-white/10">
+            <div className="flex flex-col">
+              <span className="text-[8px] font-bold text-white/40 uppercase">SEAT BINDING</span>
+              <span className="text-[9px] font-black text-white">
+                {binding.seatId ? `Seat ${binding.seatId}` : "Unseated"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="fan-avatar-open-studio"
+                onClick={() => setShowStudio(true)}
+                className="text-[8px] font-black uppercase px-3 py-1.5 rounded-lg text-black bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 active:scale-95 transition shadow-sm cursor-pointer"
+              >
+                CUSTOMIZE IN STUDIO →
               </button>
-            );
-          })}
+              <Link
+                href="/avatar/studio"
+                title="Open Fullscreen Studio"
+                className="text-[8px] font-black uppercase p-1.5 rounded-lg text-white/50 hover:text-cyan-400 hover:bg-white/5 border border-white/10 transition"
+              >
+                ↗
+              </Link>
+            </div>
+          </div>
+        }
+      >
+        <div style={{ marginTop: 8, width: "100%" }}>
+          <MiniMeCompanionSurface
+            ownerUserId={userId}
+            companionId={`mini:${userId}`}
+            micSurface="MINI_ME_CANISTER"
+            speechSurface="MINI_ME_CANISTER"
+            showControls
+          />
         </div>
-        {expressionHint && (
-          <span className="text-[7px] text-amber-400/80 text-center px-2">{expressionHint}</span>
-        )}
-      </div>
-
-      <div className="w-full flex items-center justify-between z-10 pt-2 border-t border-white/10">
-        <div className="flex flex-col">
-          <span className="text-[8px] font-bold text-white/40 uppercase">SEAT BINDING</span>
-          <span className="text-[9px] font-black text-white">
-            {binding.seatId ? `Seat ${binding.seatId}` : "Unseated"}
-          </span>
-        </div>
-        <Link
-          href="/avatar/studio"
-          className="text-[8px] font-black uppercase px-3 py-1.5 rounded-lg text-black bg-gradient-to-r from-cyan-400 to-emerald-400"
-        >
-          Decorate / Customize →
-        </Link>
-      </div>
+      </DrawerCompositionLayout>
     </div>
   );
 }

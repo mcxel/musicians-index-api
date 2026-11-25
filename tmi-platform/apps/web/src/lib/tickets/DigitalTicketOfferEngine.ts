@@ -12,6 +12,12 @@ import {
   type TicketFeeResolution,
   type TicketSaleSplit,
 } from "@/lib/tickets/TicketFeeResolver";
+import { WORLD_CONCERT_TIER_RATE_POLICY_ID } from "@/lib/economy/WorldConcertTierRateAuthority";
+import { captureTicketPurchaseEconomics } from "@/lib/economy/TicketPurchaseEconomicSnapshot";
+import {
+  assertNewTicketSaleAllowed,
+  registerTicketEconomicSnapshot,
+} from "@/lib/ticketing/EventAssuranceAuthority";
 import { createTicket, redeemTicket } from "@/lib/tickets/ticketEngine";
 import { getTicketById, saveTicket, type TicketRecord } from "@/lib/tickets/ticketCore";
 import {
@@ -61,7 +67,8 @@ export type DigitalTicketOffer = {
   seatMapId: string | null;
   saleStart: string | null;
   saleEnd: string | null;
-  feePolicyId: typeof TICKET_FEE_POLICY_ID;
+  /** TicketFeeResolver SERVICE_FEE id OR World Concert tier-rate policy id — never flat-18 WC. */
+  feePolicyId: string;
   status: DigitalTicketStatus;
   venueBusinessRevenueCents: number;
   digitalPerformerRevenueCents: number;
@@ -139,11 +146,17 @@ export async function saveDigitalOfferDraft(input: {
 
   const id = existing?.id ?? input.id ?? createOfferId();
   const priceCents = Math.max(99, Math.round(input.priceCents));
+  const ticketType = input.ticketType ?? existing?.ticketType ?? "general";
+  // World Concert tags tier-rate policy (not flat 18%). Settlement math still TicketFeeResolver until Stripe-safe pass.
+  const feePolicyId =
+    ticketType === "world_concert" || ticketType === "concert"
+      ? WORLD_CONCERT_TIER_RATE_POLICY_ID
+      : (existing?.feePolicyId ?? TICKET_FEE_POLICY_ID);
   const offer: DigitalTicketOffer = {
     id,
     eventId: input.eventId.trim() || "event-unassigned",
     ownerId: input.ownerId,
-    ticketType: input.ticketType ?? existing?.ticketType ?? "general",
+    ticketType,
     title: input.title.trim() || "Digital Ticket",
     artworkAssetId: input.artworkAssetId ?? existing?.artworkAssetId ?? null,
     artworkUrl: input.artworkUrl ?? existing?.artworkUrl ?? null,
@@ -155,7 +168,7 @@ export async function saveDigitalOfferDraft(input: {
     seatMapId: input.seatMapId ?? existing?.seatMapId ?? null,
     saleStart: input.saleStart ?? existing?.saleStart ?? null,
     saleEnd: input.saleEnd ?? existing?.saleEnd ?? null,
-    feePolicyId: TICKET_FEE_POLICY_ID,
+    feePolicyId,
     status: input.status ?? existing?.status ?? "draft",
     venueBusinessRevenueCents: existing?.venueBusinessRevenueCents ?? 0,
     digitalPerformerRevenueCents: existing?.digitalPerformerRevenueCents ?? 0,
@@ -197,7 +210,10 @@ export async function publishDigitalOffer(
   const published: DigitalTicketOffer = {
     ...offer,
     status: "on_sale",
-    feePolicyId: TICKET_FEE_POLICY_ID,
+    feePolicyId:
+      offer.ticketType === "world_concert" || offer.ticketType === "concert"
+        ? WORLD_CONCERT_TIER_RATE_POLICY_ID
+        : offer.feePolicyId || TICKET_FEE_POLICY_ID,
     publishedAt: offer.publishedAt ?? nowIso(),
     updatedAt: nowIso(),
   };
@@ -223,9 +239,12 @@ export async function purchaseDigitalOffer(input: {
   buyerId: string;
   quantity?: number;
   testPurchase?: boolean;
+  /** Frozen into economic snapshot for World Concert — required for correct cancel reversal. */
+  performerTierAtPurchase?: string | null;
 }): Promise<DigitalPurchaseResult> {
   const offer = await getDigitalOffer(input.offerId);
   if (!offer) throw new Error("offer_not_found");
+  assertNewTicketSaleAllowed(offer.eventId);
   if (offer.status !== "on_sale" && offer.status !== "published" && !input.testPurchase) {
     throw new Error("offer_not_on_sale");
   }
@@ -268,6 +287,29 @@ export async function purchaseDigitalOffer(input: {
     venueLogo: offer.artworkUrl ?? undefined,
   });
 
+  const isWorldConcertOffer =
+    offer.ticketType === "world_concert" ||
+    offer.ticketType === "concert" ||
+    offer.feePolicyId === WORLD_CONCERT_TIER_RATE_POLICY_ID;
+
+  let economicSnapshot: TicketRecord["economicSnapshot"];
+  if (isWorldConcertOffer) {
+    economicSnapshot = captureTicketPurchaseEconomics({
+      transactionId: `dto_${ticket.id}`,
+      eventId: offer.eventId,
+      offerId: offer.id,
+      sellerId: offer.ownerId,
+      sellerRole: "PERFORMER",
+      eventFamily: "WORLD_CONCERT",
+      facePriceCents: offer.priceCents,
+      quantity,
+      performerTierAtPurchase: input.performerTierAtPurchase,
+      serviceFeeCents: fee.platformFeeCentsPerTicket * quantity,
+      taxCents: fee.taxCentsPerTicket * quantity,
+    });
+    registerTicketEconomicSnapshot(ticket.id, economicSnapshot);
+  }
+
   const enriched: TicketRecord = {
     ...ticket,
     artworkAssetId: offer.artworkAssetId,
@@ -275,6 +317,7 @@ export async function purchaseDigitalOffer(input: {
     feePolicyId: offer.feePolicyId,
     priceCents: offer.priceCents,
     offerId: offer.id,
+    economicSnapshot,
     branding: {
       ...ticket.branding,
       eventBranding: offer.title,
@@ -309,7 +352,7 @@ export async function attachDigitalOfferToEvent(input: {
     priceCents: input.priceCents,
     capacity: input.capacity ?? 500,
     artworkUrl: input.artworkUrl ?? null,
-    ticketType: "concert",
+    ticketType: "world_concert",
     status: "draft",
   });
 }

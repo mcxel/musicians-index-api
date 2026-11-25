@@ -5,14 +5,14 @@
  * Speech must NOT replace personal lip fullness / mouth width.
  */
 
-import type { FaceIdentityShapeCoefficients } from "@/lib/avatar/AvatarFaceIdentityContract";
-import type { AvatarMoodId } from "@/lib/avatars/AvatarMoodPresentation";
-import { getAvatarMoodSpec } from "@/lib/avatars/AvatarMoodPresentation";
+import type { FaceIdentityShapeCoefficients } from "../avatar/AvatarFaceIdentityContract";
+import type { AvatarMoodId } from "./AvatarMoodPresentation";
+import { getAvatarMoodSpec } from "./AvatarMoodPresentation";
 import {
   getPhonemeFrame,
   type PhonemeGroup,
   type LipSyncFrame,
-} from "@/lib/avatar/AvatarLipSyncDirectiveEngine";
+} from "../avatar/AvatarLipSyncDirectiveEngine";
 import { HostLipSyncEngine, type Viseme } from "@/lib/hosts/HostLipSyncEngine";
 
 export type ArkitWeightMap = Record<string, number>;

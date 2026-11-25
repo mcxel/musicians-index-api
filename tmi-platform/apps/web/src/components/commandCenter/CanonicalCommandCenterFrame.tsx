@@ -71,7 +71,11 @@ export default function CanonicalCommandCenterFrame({
             data-hub-navigation-lane
             style={{
               alignSelf: "flex-start",
-              height: "min(1260px, calc(100dvh + 420px))",
+              position: "sticky",
+              top: 96,
+              height: "calc(100dvh - 96px)",
+              maxHeight: "calc(100dvh - 96px)",
+              overflow: "hidden",
               minHeight: 0,
               flexShrink: 0,
             }}
@@ -85,21 +89,40 @@ export default function CanonicalCommandCenterFrame({
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
-            flex: 1,
+            width: "100%",
+            maxWidth: "100%",
+            flex: "1 1 0%",
           }}
         >
+          {/* MEDIA workspace — primary visual region (§20995) */}
           {mediaStage}
           {sessionStrip}
           {experienceStrip}
-          {mediaDock}
-          {quickTools}
-          {playlistBand}
-          {identityQrStrip}
-          {bottomDrawer}
+          {/* OPERATIONS / WORK — document-flow region BELOW monitors; never overlay */}
+          <div
+            data-hub-operations-work-region="1"
+            data-operations-deck="work"
+            style={{
+              flex: "0 0 auto",
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+              position: "relative",
+              zIndex: 2,
+            }}
+          >
+            {mediaDock}
+            {quickTools}
+            {playlistBand}
+            {identityQrStrip}
+            {bottomDrawer}
+            {/* Panel drawers share the same media-column anchor as the rolodex WORK host */}
+            {drawer}
+          </div>
         </div>
         {communicationsRail}
       </div>
-      {drawer}
       {monetization}
     </div>
   );

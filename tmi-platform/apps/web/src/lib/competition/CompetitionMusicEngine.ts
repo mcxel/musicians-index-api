@@ -10,7 +10,7 @@
  * Wires: Beat Registry → Room Creation → Playlist Engine → Battle/Cypher Runtime
  */
 
-import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
+import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryCore";
 
 // ─── Competition lanes ────────────────────────────────────────────────────────
 

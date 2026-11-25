@@ -108,6 +108,17 @@ const FOUNDER_PASSES: DiamondPassHolder[] = [
     role: "fan",
     active: true,
   },
+  {
+    email: "jimmyabrica87@gmail.com",
+    name: "Jimmy Abrica",
+    grantedBy: "Marcel Dickens — Founder Lifetime Grant",
+    grantedAt: new Date("2026-09-22"),
+    code: "DIAMOND-JIMMYABRICA-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
 ];
 
 let initialized = false;
@@ -130,12 +141,20 @@ export function initializeFounderDiamondPasses(): void {
   }
 }
 
+const PREAUTHORIZED_LIFETIME_DIAMOND_EMAILS = new Set([
+  "wright8732king@gmail.com",
+  "b.vigil8993@gmail.com",
+]);
 export function getFounderDiamondPasses(): DiamondPassHolder[] {
   return FOUNDER_PASSES;
 }
 
 export function isFounderDiamondEmail(email: string): boolean {
   return FOUNDER_PASSES.some(p => p.email.toLowerCase() === email.toLowerCase() && p.active);
+}
+
+export function isPreauthorizedLifetimeDiamondEmail(email: string): boolean {
+  return PREAUTHORIZED_LIFETIME_DIAMOND_EMAILS.has(email.trim().toLowerCase());
 }
 
 export function getFounderPassByEmail(email: string): DiamondPassHolder | null {

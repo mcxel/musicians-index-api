@@ -1,16 +1,15 @@
 "use client";
 
 /**
- * PerformerQrQuickStrip — Persistent Performer ID / QR Quick Access Strip.
+ * PerformerQrQuickStrip — Persistent Fan / Performer ID / QR Quick Access Strip.
  *
- * Placed immediately underneath the Media Player (Playlist Band) and above
+ * Placed immediately underneath Monitor 1 / media dock region and above
  * the reserved bottom drawer.
  *
- * Purpose:
- *   Fast real-world show use — when Marcel or an artist is at a live show,
- *   they can immediately present their Performer ID / QR, or swipe/cycle
- *   through performers, for fans to scan and land on the canonical Performer
- *   Station / profile.
+ * Instant stage mode (owner P0, 2026-11-21):
+ *   Press EXPAND / QR thumbnail → notify shell to hide attached monitors
+ *   locally (media/WebRTC stay mounted) → large scannable QR fills the stage
+ *   presentation → CLOSE / Escape restores prior monitor layout.
  *
  * Rules:
  *   - Real QR only (QRCodeCanvas via buildUserShareIdentity).
@@ -19,7 +18,7 @@
  *   - Desktop and mobile responsive.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   buildUserShareIdentity,
@@ -36,6 +35,13 @@ export interface PerformerQrQuickStripProps {
   role: "performer" | "fan";
   accentColor?: string;
   avatarUrl?: string | null;
+  /**
+   * Fired when instant QR stage display opens/closes so the shell can
+   * hide/restore attached monitors without remounting media.
+   */
+  onInstantDisplayChange?: (active: boolean) => void;
+  /** WORK utility column beside Monitor 1 — same QR authority, compact column. */
+  layout?: "strip" | "work-side";
 }
 
 export default function PerformerQrQuickStrip({
@@ -44,7 +50,10 @@ export default function PerformerQrQuickStrip({
   role,
   accentColor = "#00FFFF",
   avatarUrl = null,
+  onInstantDisplayChange,
+  layout = "strip",
 }: PerformerQrQuickStripProps) {
+  const workSide = layout === "work-side";
   const [selectedIndex, setSelectedIndex] = useState<number>(() => {
     if (role === "performer") {
       const idx = PERFORMER_REGISTRY.findIndex(
@@ -83,13 +92,43 @@ export default function PerformerQrQuickStrip({
     });
   }, [useOwnIdentity, activePerformer, userId, role, displayName, avatarUrl]);
 
-  const scanUrl = `${getShareBaseUrl()}${currentIdentity.profileUrl}`;
+  const scanUrl = `${getShareBaseUrl()}${currentIdentity.cardUrl}`;
   const codeLabel = useOwnIdentity
     ? role === "performer"
       ? "TMI ARTIST ID"
       : "TMI FAN ID"
     : `PERFORMER #${selectedIndex + 1}`;
   const displayedName = currentIdentity.displayName;
+
+  const openInstantQr = () => {
+    setFullscreen(true);
+  };
+
+  const closeInstantQr = () => {
+    setFullscreen(false);
+  };
+
+  useEffect(() => {
+    onInstantDisplayChange?.(fullscreen);
+  }, [fullscreen, onInstantDisplayChange]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
+
+  useEffect(() => {
+    return () => {
+      onInstantDisplayChange?.(false);
+    };
+  }, [onInstantDisplayChange]);
 
   const handleCopy = async () => {
     try {
@@ -135,31 +174,46 @@ export default function PerformerQrQuickStrip({
     <>
       <div
         data-performer-qr-quick-strip
+        data-qr-layout={layout}
+        data-instant-qr-active={fullscreen ? "true" : "false"}
         style={{
-          margin: "8px 12px",
-          padding: "10px 14px",
+          margin: workSide ? 0 : "8px 12px",
+          padding: workSide ? "12px 10px" : "10px 14px",
           borderRadius: 12,
           border: `1.5px solid ${accentColor}44`,
           background: "linear-gradient(135deg, rgba(10,5,20,0.95), rgba(5,5,16,0.98))",
           boxShadow: `0 4px 20px rgba(0,0,0,0.6), inset 0 0 16px ${accentColor}0a`,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
+          flexDirection: workSide ? "column" : "row",
+          alignItems: workSide ? "stretch" : "center",
+          justifyContent: workSide ? "flex-start" : "space-between",
+          gap: workSide ? 10 : 12,
+          flexWrap: workSide ? "nowrap" : "wrap",
           position: "relative",
           zIndex: 5,
+          flexShrink: 0,
         }}
       >
         {/* Left: Performer Identity & QR Preview */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          {/* QR thumbnail */}
-          <div
-            onClick={() => setFullscreen(true)}
-            title="Click to expand QR Code"
+        <div
+          style={{
+            display: "flex",
+            flexDirection: workSide ? "column" : "row",
+            alignItems: workSide ? "center" : "center",
+            gap: 10,
+            minWidth: 0,
+            textAlign: workSide ? "center" : undefined,
+          }}
+        >
+          {/* QR thumbnail — one-press instant stage display */}
+          <button
+            type="button"
+            onClick={openInstantQr}
+            title="Show my QR code — hides monitors locally"
+            data-instant-qr-trigger="thumbnail"
             style={{
               background: "#fff",
-              padding: 4,
+              padding: workSide ? 8 : 4,
               borderRadius: 8,
               boxShadow: `0 0 12px ${accentColor}44`,
               cursor: "pointer",
@@ -167,16 +221,40 @@ export default function PerformerQrQuickStrip({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              border: "none",
             }}
           >
             <QRCodeCanvas
               value={scanUrl}
-              size={52}
+              size={workSide ? 96 : 52}
               bgColor="#ffffff"
               fgColor="#0a0a0a"
               level="M"
             />
-          </div>
+          </button>
+          {workSide ? (
+            <button
+              type="button"
+              onClick={openInstantQr}
+              data-instant-qr-trigger="work-side-show"
+              title="Instant QR — monitors hide locally, livestream continues"
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,45,170,0.55)",
+                background: "rgba(255,45,170,0.14)",
+                color: "#FF2DAA",
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.1em",
+                cursor: "pointer",
+                textTransform: "uppercase",
+              }}
+            >
+              SHOW QR
+            </button>
+          ) : null}
 
           <div style={{ minWidth: 0 }}>
             <div
@@ -316,7 +394,9 @@ export default function PerformerQrQuickStrip({
 
           <button
             type="button"
-            onClick={() => setFullscreen(true)}
+            onClick={openInstantQr}
+            data-instant-qr-trigger="expand"
+            title="Instant QR — monitors hide locally, livestream continues"
             style={{
               padding: "5px 10px",
               borderRadius: 8,
@@ -335,18 +415,19 @@ export default function PerformerQrQuickStrip({
         </div>
       </div>
 
-      {/* Fullscreen Modal for live show stage presentation */}
+      {/* Instant stage QR — monitors yield via shell; media session stays mounted */}
       {fullscreen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Performer ID QR Code"
-          onClick={() => setFullscreen(false)}
+          aria-label={`${codeLabel} QR Code`}
+          data-instant-qr-stage="1"
+          onClick={closeInstantQr}
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 99999,
-            background: "rgba(2, 2, 10, 0.88)",
+            background: "rgba(2, 2, 10, 0.94)",
             backdropFilter: "blur(12px)",
             display: "flex",
             alignItems: "center",
@@ -357,17 +438,17 @@ export default function PerformerQrQuickStrip({
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              maxWidth: 380,
+              maxWidth: 440,
               width: "100%",
               borderRadius: 20,
               border: `2px solid ${accentColor}`,
               background: "linear-gradient(180deg, #12081a 0%, #06030c 100%)",
               boxShadow: `0 0 60px ${accentColor}33, 0 20px 60px rgba(0,0,0,0.9)`,
-              padding: "24px 20px",
+              padding: "28px 24px",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 14,
+              gap: 16,
               textAlign: "center",
             }}
           >
@@ -383,21 +464,21 @@ export default function PerformerQrQuickStrip({
               {codeLabel}
             </div>
 
-            <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#fff" }}>
               {displayedName}
             </div>
 
             <div
               style={{
                 background: "#fff",
-                padding: 16,
+                padding: 20,
                 borderRadius: 16,
-                boxShadow: `0 0 32px ${accentColor}44`,
+                boxShadow: `0 0 40px ${accentColor}55`,
               }}
             >
               <QRCodeCanvas
                 value={scanUrl}
-                size={220}
+                size={280}
                 bgColor="#ffffff"
                 fgColor="#0a0a0a"
                 level="Q"
@@ -425,7 +506,7 @@ export default function PerformerQrQuickStrip({
                 onClick={() => void handleCopy()}
                 style={{
                   flex: 1,
-                  padding: "10px",
+                  padding: "12px",
                   borderRadius: 10,
                   border: `1px solid ${accentColor}`,
                   background: copied ? `${accentColor}33` : "transparent",
@@ -439,10 +520,28 @@ export default function PerformerQrQuickStrip({
               </button>
               <button
                 type="button"
-                onClick={() => setFullscreen(false)}
+                onClick={() => void handleShare()}
                 style={{
                   flex: 1,
-                  padding: "10px",
+                  padding: "12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,215,0,0.5)",
+                  background: "rgba(255,215,0,0.12)",
+                  color: "#FFD700",
+                  fontWeight: 900,
+                  fontSize: 11,
+                  cursor: "pointer",
+                }}
+              >
+                SHARE
+              </button>
+              <button
+                type="button"
+                onClick={closeInstantQr}
+                data-instant-qr-restore="1"
+                style={{
+                  flex: 1,
+                  padding: "12px",
                   borderRadius: 10,
                   border: "1px solid rgba(255,255,255,0.2)",
                   background: "rgba(255,255,255,0.08)",
@@ -452,7 +551,7 @@ export default function PerformerQrQuickStrip({
                   cursor: "pointer",
                 }}
               >
-                CLOSE
+                RESTORE
               </button>
             </div>
           </div>

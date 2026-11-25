@@ -15,13 +15,13 @@ import {
 } from "@/lib/live/LiveDestinationRouter";
 import { resolveRoleEntry, type RoleEntry } from "@/lib/live/RoleEntryMap";
 import { roomIdFromJoinRoute } from "@/lib/live/canonicalWorldViewport";
-import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyGate";
+import { mapLivePrivacyToRegistry } from "@/lib/live/liveRoomPrivacyMap";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
 import {
   pauseDiscoveryPoll,
-  publishLiveRoom,
   unpublishLiveRoom,
   liveSessionToDiscoveryRecord,
+  toLiveDiscoveryRecord,
 } from "@/lib/discovery/DiscoveryPublisher";
 import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
 import { recordFunctionInvocation } from "@/registries/shell/FunctionHealthRegistry";
@@ -114,8 +114,18 @@ export async function executeInstantGoLive(opts?: {
     }
   }
 
-  const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
-  const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
+  const role = (opts?.role ?? dock.role ?? "FAN").toUpperCase();
+  // Publish must not wait on another /api/auth/session round trip.
+  // The POST authenticates from the cookie. A blocked session probe was
+  // keeping this function from ever calling fetch("/api/live/go").
+  const identity = publishSession
+    ? {
+        name: opts?.displayName?.trim() || "Member",
+        role,
+        userId: undefined as string | undefined,
+        authenticated: false,
+      }
+    : await resolveDisplayName(opts?.displayName ?? "Performer");
 
   // Hard-block only when we are not publishing and have no session.
   // For publishSession, POST /api/live/go is the authoritative auth check —
@@ -266,13 +276,14 @@ export async function executeInstantGoLive(opts?: {
           session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
         };
         published = true;
-        if (data.session) {
-          const rec = liveSessionToDiscoveryRecord(data.session);
-          if (rec) DiscoveryBus.upsert(rec);
-          else publishLiveRoom(discoveryInput);
-        } else {
-          publishLiveRoom(discoveryInput);
-        }
+        // One deterministic publish path: prefer the server's authoritative
+        // session when returned, else fall back to the client-known fields —
+        // either way the record lands via the same single upsert call, and
+        // DiscoveryBus's 4s poll (syncDiscoveryFromSessions) re-derives the
+        // real state from the server shortly after regardless.
+        const rec = (data.session ? liveSessionToDiscoveryRecord(data.session) : null)
+          ?? toLiveDiscoveryRecord(discoveryInput);
+        if (rec) DiscoveryBus.upsert(rec);
       } catch (err) {
         launchDockStore.setPhase("idle");
         recordFunctionInvocation("executeInstantGoLive", false);
@@ -420,11 +431,17 @@ export async function publishInstantGoLiveSession(opts: {
     const data = (await res.json().catch(() => ({}))) as {
       session?: import("@/lib/broadcast/globalLiveSessionStore").LiveSession;
     };
+    // Same canonical record-then-upsert shape as executeInstantGoLive, but
+    // preserving this function's stricter original rule: a session the
+    // server actually returned is never second-guessed with a fabricated
+    // fallback record — if its real privacy made it non-publishable, it
+    // stays unpublished. The client-known fallback is used only when no
+    // session object came back at all.
     if (data.session) {
       const rec = liveSessionToDiscoveryRecord(data.session);
       if (rec) DiscoveryBus.upsert(rec);
     } else if (!destination.flags.restrictedAudience) {
-      publishLiveRoom({
+      const rec = toLiveDiscoveryRecord({
         roomId: opts.roomId,
         title: `${identity.name} — Live`,
         hostName: identity.name,
@@ -433,6 +450,7 @@ export async function publishInstantGoLiveSession(opts: {
         accentColor: opts.accentColor ?? "#FF2DAA",
         joinRoute: `/hub/${(opts.role ?? "PERFORMER").toUpperCase() === "FAN" ? "fan" : "performer"}?watch=${encodeURIComponent(opts.roomId)}&from=live-lobby-wall`,
       });
+      if (rec) DiscoveryBus.upsert(rec);
     }
     return { ok: true, published: true, roomId: opts.roomId, href: `/live/rooms/${encodeURIComponent(opts.roomId)}` };
   } catch (err) {
@@ -446,7 +464,7 @@ export async function publishInstantGoLiveSession(opts: {
 
 /** End LiveSession → registry DELETE + DiscoveryBus unpublish (Lobby Wall / Home LIVE NOW). */
 export async function endInstantGoLiveSession(roomId?: string | null): Promise<void> {
-  const { useLivePrivacyState } = await import("@/lib/live/livePrivacyState");
+  const { useLivePrivacyState, releasePublishedLiveMedia } = await import("@/lib/live/livePrivacyState");
   const rid = roomId?.trim() || useLivePrivacyState.getState().publishedRoomId;
   try {
     await fetch("/api/live/go", { method: "DELETE", credentials: "include", cache: "no-store" });
@@ -454,7 +472,29 @@ export async function endInstantGoLiveSession(roomId?: string | null): Promise<v
     /* local unpublish still required */
   }
   if (rid) unpublishLiveRoom(rid);
-  useLivePrivacyState.getState().clearLivePublished();
+  releasePublishedLiveMedia();
+  // Clear hub in-place bind — otherwise BROADCAST ACTIVE / LIVE chrome can stick after END.
+  try {
+    const { useGoLiveTransition } = await import("@/lib/live/goLiveTransitionStore");
+    useGoLiveTransition.getState().releaseInPlace();
+    useGoLiveTransition.getState().clearWarp();
+  } catch {
+    /* transition store optional */
+  }
+  try {
+    const { useGoLiveBootstrapStore } = await import("@/lib/live/goLiveBootstrapStore");
+    useGoLiveBootstrapStore.getState().reset?.();
+  } catch {
+    /* bootstrap optional */
+  }
+  try {
+    const { useCanonicalMediaPlayerRuntime } = await import(
+      "@/lib/media/canonicalMediaPlayerRuntime"
+    );
+    useCanonicalMediaPlayerRuntime.getState().reset();
+  } catch {
+    /* media runtime optional */
+  }
   // Regular GO LIVE fabric canary teardown (no-op when flag off / no active canary).
   try {
     const { teardownRegularGoLiveCanary } = await import(

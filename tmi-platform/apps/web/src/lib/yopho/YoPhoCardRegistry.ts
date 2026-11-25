@@ -38,6 +38,7 @@ export interface PublishedYoPhoCard {
   customBgUrl: string | null;
   textOverlay: YoPhoTextOverlay;
   collageUrls: (string | null)[];
+  canvasLayers?: import("./YoPhoCardComposition").YoPhoCanvasLayer[];
   /** Optional attached playlist — enables Next Track on interactive card */
   playlistId?: string | null;
   /** Mood / moment title — who I am right now */
@@ -151,13 +152,16 @@ export function compositionToDraft(
     customBgUrl: comp.customBgUrl,
     textOverlay: comp.textOverlay,
     collageUrls: comp.collageUrls,
+    canvasLayers: comp.canvasLayers ?? [],
     playlistId: meta.playlistId ?? comp.playlistId ?? null,
     moodTitle: meta.moodTitle ?? null,
     momentTag: meta.momentTag ?? null,
     nowPlaying: audio,
     mediaModules,
     motion: meta.motion ?? comp.motion ?? defaultMotionClip(),
-    magicEffects: comp.magicEffects ?? [],
+    magicEffects: documentJson.visual
+      ? documentJson.visual.effects.filter((e) => e.enabled).map((e) => e.id)
+      : comp.magicEffects ?? [],
     documentJson,
     kind: documentJson.kind,
     isCanonical: documentJson.isCanonical,
@@ -270,6 +274,7 @@ export function draftCompositionFromPublished(card: PublishedYoPhoCard): YoPhoCa
     customBgUrl: card.customBgUrl,
     textOverlay: card.textOverlay,
     collageUrls: card.collageUrls,
+    canvasLayers: card.canvasLayers ?? [],
     cardId: card.cardId,
     playlistId: card.playlistId ?? null,
     mediaModules: resolveCardMediaModules({
@@ -278,7 +283,9 @@ export function draftCompositionFromPublished(card: PublishedYoPhoCard): YoPhoCa
       playlistId: card.playlistId,
     }),
     motion: card.motion ?? defaultMotionClip(),
-    magicEffects: card.magicEffects ?? [],
+    visual: card.documentJson?.visual ?? undefined,
+    magicEffects: card.magicEffects ?? card.documentJson?.visual?.effects.filter((e) => e.enabled).map((e) => e.id) ?? [],
+    primaryFormat: card.documentJson?.visual?.primaryFormat,
     isCanonical: card.isCanonical ?? false,
     editionTitle: card.editionTitle ?? null,
     kind: card.kind ?? base.kind,

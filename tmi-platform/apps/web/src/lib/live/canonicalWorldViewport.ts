@@ -848,6 +848,8 @@ export function hubMonitorUvrProps(
       ? (certifiedPackage.venueIndex as 0 | 1 | 2 | 3 | 4 | 5)
       : null;
 
+  const regularSpatial = !videoPanelZone;
+
   if (opts?.scenePlan) {
     const fromPlan = worldScenePlanToRenderProps(opts.scenePlan);
     return {
@@ -867,6 +869,8 @@ export function hubMonitorUvrProps(
       spatialMap: fromPlan.spatialMap,
       venueId: venueId ?? undefined,
       certifiedPackage,
+      canonicalSpatialWorld: regularSpatial,
+      eventType: regularSpatial ? "live" : undefined,
     };
   }
 
@@ -882,5 +886,7 @@ export function hubMonitorUvrProps(
     suppressAvatars: videoPanelZone || !zoneAllowsAvatars(vp.zone),
     venueId: venueId ?? undefined,
     certifiedPackage,
+    canonicalSpatialWorld: regularSpatial,
+    eventType: regularSpatial ? "live" : undefined,
   };
 }

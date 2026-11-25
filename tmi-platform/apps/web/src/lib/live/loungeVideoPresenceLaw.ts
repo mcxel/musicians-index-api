@@ -16,6 +16,7 @@ import {
 } from "@/lib/commerce/SponsorRegistry";
 import {
   calculateLodQuality,
+  getSpatialPanel,
   registerSpatialPanel,
   unregisterSpatialPanel,
   updatePanelTransformWithoutReconnect,
@@ -57,7 +58,8 @@ export const LOUNGE_VIDEO_PRESENCE_LAW = {
   joinCreatesPanel: true,
   leaveRemovesPanelAndUnsubscribes: true,
   nearLargerPanelStrongerVoice: true,
-  farSmallerPanel: true,
+  /** Apparent far-smaller size is camera perspective only — not shared panel.scale. */
+  farSmallerPanel: "camera_perspective_only" as const,
   personalSpaceCollision: true,
   playlistChassisDoesNotRestartStream: true,
   chassisSkinDoesNotRestartWebrtc: true,
@@ -269,14 +271,21 @@ export function applyLoungeChassisSkin(
   return { streamReconnected: false, panel: result.panel };
 }
 
+/**
+ * Viewer-local proximity only: voice gain + subscription LOD.
+ * Never mutates shared panel.scale — physical dimensions stay world-stable;
+ * apparent size is the 3D camera's job (SocialProximityPresentation for
+ * participant-to-participant area sizing; never viewer-distance geometry).
+ */
 export function applyLoungeProximity(
   panelId: string,
   distanceMeters: number,
 ): { scale: number; voiceGain: number; lod: SpatialVideoPanel["lodQuality"]; streamReconnected: false } {
+  const panel = getSpatialPanel(panelId);
   const lod = calculateLodQuality(distanceMeters);
-  const scale = Math.max(0.35, Math.min(1.6, 1.35 - distanceMeters * 0.045));
   const voiceGain = Math.max(0, Math.min(1, 1 - distanceMeters / 18));
-  updatePanelTransformWithoutReconnect(panelId, { scale });
+  // World-stable scale: return existing chassis/social scale; do not write viewer distance into shared geometry.
+  const scale = panel?.scale ?? 1;
   return { scale, voiceGain, lod, streamReconnected: false };
 }
 

@@ -1,5 +1,8 @@
 import prisma from '@/lib/prisma';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import {
+  isFounderDiamondEmail,
+  isPreauthorizedLifetimeDiamondEmail,
+} from '@/lib/promos/FounderDiamondPassEngine';
 import { resolveHardcodedTierRole, type UserTier } from '@/lib/auth/UserStore';
 import { tierForPriceId } from '@/lib/stripe/tierMapping';
 
@@ -17,13 +20,34 @@ export type PaidEntitlementEvidence = {
   billingStatus?: string | null;
   /** True when ADMIN_GRANT_TIER (or equivalent) authorized this paid tier. */
   complimentaryGrant?: boolean;
+  /** Database email ownership verification; required for preauthorized claims. */
+  emailVerified?: boolean;
 };
 
 /**
  * Verified paid entitlement = live Stripe subscription/price that maps to a
  * paid tier, or an explicit complimentary grant. Canceled billing is never
  * treated as verified. Does not call Stripe APIs.
+ *
+ * Canonical entitlement authority: paid-feature authorization decisions must
+ * always resolve through `resolveTierFromDb` / `computeAuthoritativeTier`
+ * backed by a fresh committed Prisma `User` read (`getTmiAuth`), never from
+ * the process-local `UserStore` warm cache.
  */
+export async function resolveAuthoritativeUserTierFromDb(email: string): Promise<UserTier> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return 'FREE';
+  const row = await prisma.user.findFirst({
+    where: { email: normalizedEmail },
+    select: TIER_ENTITLEMENT_SELECT,
+  });
+  if (!row) return 'FREE';
+  return resolveTierFromDb(
+    row.email ?? normalizedEmail,
+    row.tier,
+    entitlementEvidenceFromUser(row),
+  );
+}
 export function hasVerifiedPaidEntitlement(
   evidence: PaidEntitlementEvidence | null | undefined,
 ): boolean {
@@ -74,10 +98,11 @@ export function computeAuthoritativeTier(
 ): { tier: UserTier; needsFounderHeal: boolean; needsUnpaidTierHeal: boolean } {
   const normalized = dbTier?.toUpperCase();
   const isFounderEmail = Boolean(email) && isFounderDiamondEmail(email);
+  const isPreauthorizedEmail = Boolean(email) && isPreauthorizedLifetimeDiamondEmail(email);
+  const isVerifiedPreauthorization = isPreauthorizedEmail && entitlement?.emailVerified === true;
 
   let baseTier: UserTier = 'FREE';
   let needsFounderHeal = false;
-
   if (normalized === 'ADMIN') {
     // Legacy migration: ADMIN is a role, not a subscription tier. Executive
     // admins (e.g. founder accounts) receive DIAMOND tier; others revert to FREE.
@@ -88,6 +113,24 @@ export function computeAuthoritativeTier(
     baseTier = 'RUBY';
   } else if (normalized && VALID_TIERS.has(normalized as UserTier)) {
     baseTier = normalized as UserTier;
+  }
+
+  // A legacy DIAMOND_EMAILS entry or stale DB tier must not bypass email
+  // verification for an address explicitly marked as preauthorized-only.
+  if (isPreauthorizedEmail && !isVerifiedPreauthorization) {
+    return {
+      tier: 'FREE',
+      needsFounderHeal: false,
+      needsUnpaidTierHeal: baseTier !== 'FREE',
+    };
+  }
+
+  if (isVerifiedPreauthorization) {
+    return {
+      tier: 'DIAMOND',
+      needsFounderHeal: baseTier !== 'DIAMOND',
+      needsUnpaidTierHeal: false,
+    };
   }
 
   if (isFounderEmail && baseTier !== 'DIAMOND') {
@@ -143,17 +186,20 @@ export function resolveTierFromDb(
 export const TIER_ENTITLEMENT_SELECT = {
   tier: true,
   email: true,
+  emailVerified: true,
   stripeSubscriptionId: true,
   stripePriceId: true,
   billingStatus: true,
 } as const;
 
 export function entitlementEvidenceFromUser(user: {
+  emailVerified?: Date | string | null;
   stripeSubscriptionId?: string | null;
   stripePriceId?: string | null;
   billingStatus?: string | null;
 }): PaidEntitlementEvidence {
   return {
+    emailVerified: Boolean(user.emailVerified),
     stripeSubscriptionId: user.stripeSubscriptionId ?? null,
     stripePriceId: user.stripePriceId ?? null,
     billingStatus: user.billingStatus ?? null,

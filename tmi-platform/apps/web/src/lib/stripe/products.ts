@@ -542,6 +542,13 @@ export const STRIPE_PRODUCTS = {
     price:     299, // $2.99
     interval:  "one_time" as const,
   },
+  YOPHO_SKIN_099: {
+    productId: "prod_yopho_skin",
+    priceId:   process.env.STRIPE_PRICE_YOPHO_SKIN_099 ?? "price_yopho_skin_099",
+    name:      "YoPho Living Canvas Skin",
+    price:     99, // $0.99
+    interval:  "one_time" as const,
+  },
   YOPHO_PROP_PACK_299: {
     productId: "prod_yopho_customization",
     priceId:   process.env.STRIPE_PRICE_YOPHO_PROP_PACK_299 ?? "price_yopho_prop_pack_299",

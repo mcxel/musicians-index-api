@@ -59,7 +59,9 @@ export const RIG_SOCKET_MAP: Record<AvatarClass, Partial<Record<AvatarSocketId, 
     socket_primary_hand:   'Hand_R',
     socket_secondary_hand: 'Hand_L',
     socket_chest:          'Chest',
-    socket_back:           'Spine2',
+    // AvatarRig/1.0 uses Spine_02 (buildCanonicalRig.py). Keep Spine2 as a
+    // fallback alias only if a legacy mesh still exports that bone name.
+    socket_back:           'Spine_02',
     socket_head:           'Head',
     socket_face:           'Head',      // same bone, offset via transform
     socket_waist:          'Hips',
@@ -134,7 +136,22 @@ export function getSocketBoneName(
     const override = _customOverrides.get(avatarId);
     if (override?.overrides[socketId]) return override.overrides[socketId]!;
   }
-  return RIG_SOCKET_MAP[avatarClass]?.[socketId] ?? null;
+  const primary = RIG_SOCKET_MAP[avatarClass]?.[socketId] ?? null;
+  return primary;
+}
+
+/** Bone name candidates for lookup — AvatarRig/1.0 first, then legacy aliases. */
+export function resolveSocketBoneCandidates(
+  avatarClass: AvatarClass,
+  socketId: AvatarSocketId,
+  avatarId?: string,
+): string[] {
+  const primary = getSocketBoneName(avatarClass, socketId, avatarId);
+  if (!primary) return [];
+  if (avatarClass === "biped" && socketId === "socket_back") {
+    return primary === "Spine_02" ? ["Spine_02", "Spine2"] : [primary, "Spine_02"];
+  }
+  return [primary];
 }
 
 // ─── Avatar class inference ───────────────────────────────────────────────────

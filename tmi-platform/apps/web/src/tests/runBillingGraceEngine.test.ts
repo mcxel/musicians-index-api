@@ -156,6 +156,79 @@ async function runBillingGraceEngineTest() {
     results["unexpired_grace_reports_false"] = notYetResult === false;
     results["unexpired_grace_preserves_tier"] = afterNotYet.tier === "PRO";
     results["unexpired_grace_preserves_past_due_status"] = afterNotYet.billingStatus === "past_due";
+
+    // ── 6. Downgrade with canceledSubscriptionId when stored subscription is absent → no email-only downgrade ──
+    await resetFixture({
+      tier: "PRO",
+      billingStatus: "active",
+      stripeSubscriptionId: null,
+    });
+    await expireGraceAndDowngrade(FIXTURE_EMAIL, {
+      canceledSubscriptionId: "sub_unrelated_or_already_cleared",
+    });
+    const afterAbsentSub = await readFixture();
+    results["absent_stored_sub_does_not_email_only_downgrade"] = afterAbsentSub.tier === "PRO";
+
+    // ── 7. Real PostgreSQL concurrent same-subscription renewal vs. grace expiry ──
+    await resetFixture({
+      tier: "PRO",
+      billingStatus: "past_due",
+      billingGraceEndsAt: new Date(Date.now() - 1000),
+      stripeSubscriptionId: "sub_p0a4_same_sub_race",
+    });
+    // Worker B renews the same subscription in PostgreSQL before Worker A's expiry check runs/commits
+    await Promise.all([
+      (async () => {
+        await clearGracePeriod(FIXTURE_EMAIL);
+        await prisma.user.updateMany({
+          where: { email: FIXTURE_EMAIL },
+          data: {
+            tier: "PRO",
+            billingStatus: "active",
+            billingGraceEndsAt: null,
+            stripeSubscriptionId: "sub_p0a4_same_sub_race",
+            lastCanceledAt: null,
+          },
+        });
+      })(),
+    ]);
+    const staleExpirySameSub = await expireGraceIfDue(FIXTURE_EMAIL);
+    const afterSameSubConcurrent = await readFixture();
+    results["concurrent_same_sub_renewal_not_downgraded"] =
+      staleExpirySameSub === false &&
+      afterSameSubConcurrent.tier === "PRO" &&
+      afterSameSubConcurrent.billingStatus === "active" &&
+      afterSameSubConcurrent.stripeSubscriptionId === "sub_p0a4_same_sub_race";
+
+    // ── 8. Real PostgreSQL concurrent replacement-subscription renewal vs. grace expiry ──
+    await resetFixture({
+      tier: "PRO",
+      billingStatus: "past_due",
+      billingGraceEndsAt: new Date(Date.now() - 1000),
+      stripeSubscriptionId: "sub_p0a4_old_sub_race",
+    });
+    // Worker A reads stale past_due state for sub_p0a4_old_sub_race, then Worker B commits replacement sub_p0a4_replacement_sub_race
+    await prisma.user.updateMany({
+      where: { email: FIXTURE_EMAIL },
+      data: {
+        tier: "DIAMOND",
+        billingStatus: "active",
+        billingGraceEndsAt: null,
+        stripeSubscriptionId: "sub_p0a4_replacement_sub_race",
+        lastCanceledAt: null,
+      },
+    });
+    const staleExpiryReplacementSub = await expireGraceAndDowngrade(FIXTURE_EMAIL, {
+      canceledSubscriptionId: "sub_p0a4_old_sub_race",
+      requireExpiredPastDue: true,
+      observedSubscriptionId: "sub_p0a4_old_sub_race",
+    });
+    const afterReplacementSubConcurrent = await readFixture();
+    results["concurrent_replacement_sub_renewal_not_downgraded"] =
+      staleExpiryReplacementSub === false &&
+      afterReplacementSubConcurrent.tier === "DIAMOND" &&
+      afterReplacementSubConcurrent.billingStatus === "active" &&
+      afterReplacementSubConcurrent.stripeSubscriptionId === "sub_p0a4_replacement_sub_race";
   } finally {
     // Leave the fixture in a harmless, clearly-inert state rather than
     // deleting the row (isQA:true keeps it out of discovery/rankings/search).

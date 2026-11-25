@@ -18,7 +18,7 @@
  * No-White-Mesh Law: Every mesh resolves explicit PBR properties.
  */
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import {
@@ -27,6 +27,9 @@ import {
   VenueOccupancySocket,
 } from "@/lib/venues/CanonicalVenueRecipe";
 import { ModularSeat } from "./seating/ModularSeatingKits";
+import { attachMutedProgramElement } from "@/lib/venue/mutedProgramPicture";
+import { isPurchasedVenueSkinId } from "@/lib/venue/liveVenueSkinPolicy";
+import { VENUE_SKINS } from "@/lib/venue/venueSkinEngine";
 
 export interface CanonicalVenueHouseProps {
   recipe?: CanonicalVenueRecipe;
@@ -35,6 +38,10 @@ export interface CanonicalVenueHouseProps {
   jumbotronTitle?: string;
   jumbotronSubtitle?: string;
   motionActive?: boolean;
+  /** Existing stage MediaStream. This house does not capture. */
+  programStream?: MediaStream | null;
+  /** Equipped certified catalog skin. Null keeps the recipe materials. */
+  presentationSkinId?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,15 +189,39 @@ function ProductionRig({
 // 3. JUMBOTRON & HARDWARE DISPLAY SURFACES
 // ─────────────────────────────────────────────────────────────────────────────
 
+function useMutedPicture(stream: MediaStream | null | undefined): THREE.VideoTexture | null {
+  const [texture, setTexture] = useState<THREE.VideoTexture | null>(null);
+  useEffect(() => {
+    if (!stream || typeof document === "undefined") {
+      setTexture(null);
+      return;
+    }
+    const attached = attachMutedProgramElement(stream);
+    const tex = new THREE.VideoTexture(attached.video);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    setTexture(tex);
+    return () => {
+      attached.release();
+      tex.dispose();
+    };
+  }, [stream]);
+  return texture;
+}
+
 function VenueDisplays({
   recipe,
   jumbotronTitle,
   jumbotronSubtitle,
+  programStream = null,
+  skinTint = null,
 }: {
   recipe: CanonicalVenueRecipe;
   jumbotronTitle?: string;
   jumbotronSubtitle?: string;
+  programStream?: MediaStream | null;
+  skinTint?: string | null;
 }) {
+  const picture = useMutedPicture(programStream);
   const { displayKit, materials } = recipe;
 
   // Render 2D canvas texture for Jumbotron if title provided
@@ -245,9 +276,18 @@ function VenueDisplays({
   }, [recipe.name, jumbotronTitle, jumbotronSubtitle, materials]);
 
   const { jumbotron, dualSideScreens } = displayKit;
+  const trim = skinTint || materials.neonAccent;
 
   return (
-    <group userData={{ tmiComponent: "venue-displays" }}>
+    <group
+      userData={{
+        tmiComponent: "venue-displays",
+        tmiProgramAudio: "MUTED",
+        tmiProgramSource: picture ? "STAGE_MEDIA_STREAM" : "METADATA_ONLY",
+        tmiMetadataRetained: "1",
+        tmiDuplicateCapture: "0",
+      }}
+    >
       {/* Center Jumbotron Hardware Unit */}
       {jumbotron.enabled && (
         <group position={jumbotron.position}>
@@ -272,14 +312,20 @@ function VenueDisplays({
               ]}
             />
             <meshStandardMaterial
-              map={screenTexture ?? undefined}
-              color={screenTexture ? "#ffffff" : "#020108"}
-              emissive={materials.neonAccent}
-              emissiveIntensity={screenTexture ? 0.35 : 0.08}
+              map={(picture ?? screenTexture) ?? undefined}
+              color={picture || screenTexture ? "#ffffff" : "#020108"}
+              emissive={trim}
+              emissiveIntensity={picture || screenTexture ? 0.35 : 0.08}
               roughness={0.25}
               metalness={0.4}
             />
           </mesh>
+          {picture && screenTexture ? (
+            <mesh position={[0, -jumbotron.dimensions.height * 0.3, jumbotron.dimensions.depth / 2 + 0.05]}>
+              <planeGeometry args={[jumbotron.dimensions.width * 0.9, jumbotron.dimensions.height * 0.24]} />
+              <meshBasicMaterial map={screenTexture} toneMapped={false} />
+            </mesh>
+          ) : null}
 
           {/* Top Brand Trim Bar */}
           <mesh
@@ -291,8 +337,8 @@ function VenueDisplays({
           >
             <boxGeometry args={[jumbotron.dimensions.width * 0.98, 0.16, 0.08]} />
             <meshStandardMaterial
-              color={materials.neonAccent}
-              emissive={materials.neonAccent}
+              color={trim}
+              emissive={trim}
               emissiveIntensity={2.0}
             />
           </mesh>
@@ -331,13 +377,17 @@ function VenueDisplays({
                   dualSideScreens.dimensions.height * 0.9,
                 ]}
               />
-              <meshBasicMaterial color="#03020a" />
+              <meshBasicMaterial
+                map={picture ?? undefined}
+                color={picture ? "#ffffff" : "#03020a"}
+                toneMapped={false}
+              />
             </mesh>
             <mesh position={[0, dualSideScreens.dimensions.height / 2 + 0.05, 0.11]}>
               <boxGeometry args={[dualSideScreens.dimensions.width, 0.08, 0.04]} />
               <meshStandardMaterial
-                color={materials.neonAccent}
-                emissive={materials.neonAccent}
+                color={trim}
+                emissive={trim}
                 emissiveIntensity={1.5}
               />
             </mesh>
@@ -356,13 +406,17 @@ function VenueDisplays({
                   dualSideScreens.dimensions.height * 0.9,
                 ]}
               />
-              <meshBasicMaterial color="#03020a" />
+              <meshBasicMaterial
+                map={picture ?? undefined}
+                color={picture ? "#ffffff" : "#03020a"}
+                toneMapped={false}
+              />
             </mesh>
             <mesh position={[0, dualSideScreens.dimensions.height / 2 + 0.05, 0.11]}>
               <boxGeometry args={[dualSideScreens.dimensions.width, 0.08, 0.04]} />
               <meshStandardMaterial
-                color={materials.secondaryAccent}
-                emissive={materials.secondaryAccent}
+                color={skinTint || materials.secondaryAccent}
+                emissive={skinTint || materials.secondaryAccent}
                 emissiveIntensity={1.5}
               />
             </mesh>
@@ -384,7 +438,16 @@ export default function CanonicalVenueHouse({
   jumbotronTitle,
   jumbotronSubtitle,
   motionActive = true,
+  programStream = null,
+  presentationSkinId = null,
 }: CanonicalVenueHouseProps) {
+  const skinTint = useMemo(() => {
+    if (!presentationSkinId || !isPurchasedVenueSkinId(presentationSkinId)) return null;
+    const skin = VENUE_SKINS[presentationSkinId as keyof typeof VENUE_SKINS];
+    const status = skin?.certificationStatus ?? "DRAFT";
+    if (status !== "CERTIFIED" && status !== "PRODUCTION") return null;
+    return skin.colorPalette.accent;
+  }, [presentationSkinId]);
   const { enclosure, materials, seatingConfig } = recipe;
   const sockets = useMemo(() => recipe.getSockets(), [recipe]);
   const safeActiveCount = Math.min(activeOccupancyCount, sockets.length);
@@ -605,6 +668,8 @@ export default function CanonicalVenueHouse({
         recipe={recipe}
         jumbotronTitle={jumbotronTitle}
         jumbotronSubtitle={jumbotronSubtitle}
+        programStream={programStream}
+        skinTint={skinTint}
       />
 
       {/* ── 7. MODULAR SEATING KIT IN CERTIFIED OCCUPANCY SOCKETS ── */}

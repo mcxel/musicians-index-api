@@ -73,6 +73,11 @@ import {
   getActiveLoungeProgram,
   type LoungeProgramComposition,
 } from "@/lib/experiencePresentation/composeLoungeProgram";
+import {
+  planJukeboxBroadcast,
+  useScopedJukeboxNetworkStore,
+} from "@/lib/jukebox/JukeboxRoomBroadcastPolicy";
+import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
 
 const AVATAR_EMOJIS = ["🎧", "🔥", "🌊", "👑", "✨", "🎵", "🎶", "🎤"];
 
@@ -179,7 +184,19 @@ export default function FanLobbyVenue({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [jumbotronLookUp, setJumbotronLookUp] = useState(false);
+  const [physicalJukeboxOpen, setPhysicalJukeboxOpen] = useState(false);
   const joinedRef = useRef(false);
+
+  const {
+    lobbyJukeboxAudio,
+    loungeJukeboxAudio,
+    roomJukeboxVolume,
+    localRoomJukeboxMuted,
+    triggerScopedPlaybackAction,
+    enqueueAuthorizedTrack,
+    setScopeVolume,
+    setLocalRoomJukeboxMuted,
+  } = useScopedJukeboxNetworkStore();
 
   useEffect(() => {
     const onSkinChanged = (e: Event) => {
@@ -785,7 +802,175 @@ export default function FanLobbyVenue({
             }}
           />
         ) : null}
-        <LobbyEnvironmentToys state={"FREE_ROAM" as never} onUseToy={(toyId) => sync.triggerProp(toyMapsToProp(toyId))} />
+        <LobbyEnvironmentToys
+          state={"FREE_ROAM" as never}
+          onUseToy={(toyId) => {
+            sync.triggerProp(toyMapsToProp(toyId));
+            if (toyId === "jukebox" && roomType === "FAN_LOBBY") {
+              setPhysicalJukeboxOpen(true);
+              const activeLobbyTrack =
+                lobbyJukeboxAudio.queue[lobbyJukeboxAudio.activeTrackIndex] ??
+                lobbyJukeboxAudio.queue[0];
+              const plan = planJukeboxBroadcast({
+                roomKind: "FAN_AVATAR_SPACE",
+                role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                frameId: "b",
+                media: {
+                  mediaId: activeLobbyTrack?.mediaId ?? "tmi-jb-track-001",
+                  title: activeLobbyTrack?.title ?? "Lobby Jukebox",
+                  creator: activeLobbyTrack?.creator ?? null,
+                  artworkUrl: null,
+                  positionMs: lobbyJukeboxAudio.positionSec * 1000,
+                  playing: true,
+                },
+              });
+              if (plan.allowed) {
+                useCanonicalMediaPlayerRuntime.getState().assignSource(plan.frameId, "JUKEBOX");
+              }
+              setToast("📻 Physical 3D Jukebox opened · Shared Lobby Audio");
+            }
+          }}
+        />
+        {roomType === "FAN_LOBBY" && physicalJukeboxOpen ? (
+          <div
+            data-testid="lobby-physical-jukebox-drawer"
+            data-audio-scope="LOBBY_JUKEBOX_AUDIO"
+            data-entry-point="PHYSICAL_3D_JUKEBOX_PROP"
+            style={{
+              position: "absolute",
+              bottom: 84,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 48,
+              width: "min(380px, 92vw)",
+              background: "rgba(6,8,22,0.95)",
+              border: "1.5px solid #00FF88",
+              borderRadius: 14,
+              padding: 12,
+              boxShadow: "0 12px 36px rgba(0,0,0,0.7), 0 0 18px rgba(0,255,136,0.25)",
+              color: "#fff",
+              fontSize: 10,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontWeight: 900, color: "#00FF88", letterSpacing: "0.08em" }}>
+                📻 PHYSICAL 3D LOBBY JUKEBOX · LOBBY_JUKEBOX_AUDIO
+              </span>
+              <button
+                type="button"
+                onClick={() => setPhysicalJukeboxOpen(false)}
+                style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontWeight: 900 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>
+              Now Playing:{" "}
+              <strong style={{ color: "#00FFFF" }}>
+                {(lobbyJukeboxAudio.queue[lobbyJukeboxAudio.activeTrackIndex] ?? lobbyJukeboxAudio.queue[0])?.jukeboxCode}{" "}
+                {(lobbyJukeboxAudio.queue[lobbyJukeboxAudio.activeTrackIndex] ?? lobbyJukeboxAudio.queue[0])?.title}
+              </strong>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                data-testid="lobby-jukebox-play-pause"
+                onClick={() =>
+                  triggerScopedPlaybackAction({
+                    targetScope: "LOBBY_JUKEBOX_AUDIO",
+                    entryPoint: "PHYSICAL_3D_JUKEBOX_PROP",
+                    roomKind: "FAN_AVATAR_SPACE",
+                    role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                    isCallParticipant: false,
+                    action: "TOGGLE",
+                  })
+                }
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #00FF88",
+                  background: "rgba(0,255,136,0.18)",
+                  color: "#00FF88",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                {lobbyJukeboxAudio.playing ? "⏸ PAUSE LOBBY" : "▶ PLAY LOBBY"}
+              </button>
+              <button
+                type="button"
+                data-testid="lobby-jukebox-next"
+                onClick={() =>
+                  triggerScopedPlaybackAction({
+                    targetScope: "LOBBY_JUKEBOX_AUDIO",
+                    entryPoint: "PHYSICAL_3D_JUKEBOX_PROP",
+                    roomKind: "FAN_AVATAR_SPACE",
+                    role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                    isCallParticipant: false,
+                    action: "NEXT",
+                  })
+                }
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #00FFFF",
+                  background: "rgba(0,255,255,0.14)",
+                  color: "#00FFFF",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                ⏭ NEXT
+              </button>
+              <button
+                type="button"
+                data-testid="lobby-jukebox-queue-track"
+                onClick={() =>
+                  enqueueAuthorizedTrack({
+                    targetScope: "LOBBY_JUKEBOX_AUDIO",
+                    entryPoint: "PHYSICAL_3D_JUKEBOX_PROP",
+                    roomKind: "FAN_AVATAR_SPACE",
+                    role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                    isCallParticipant: false,
+                    title: `Lobby Pick #${lobbyJukeboxAudio.queue.length + 1}`,
+                    creator: userName,
+                  })
+                }
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #FFD700",
+                  background: "rgba(255,215,0,0.14)",
+                  color: "#FFD700",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                + QUEUE SONG
+              </button>
+              <button
+                type="button"
+                data-testid="lobby-jukebox-local-mute"
+                onClick={() => setLocalRoomJukeboxMuted(!localRoomJukeboxMuted)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {localRoomJukeboxMuted ? "🔇 LOCAL MUTED" : "🔊 LOCAL ON"}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {roomType === "PLAYLIST_LOUNGE" ? (
           <div
             data-lounge-group-view="true"
@@ -797,13 +982,103 @@ export default function FanLobbyVenue({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 10,
+              gap: 12,
               zIndex: 10,
             }}
           >
             <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF" }}>
               LOUNGE · VIDEO HANGOUT · NO AVATARS
             </span>
+            <div
+              data-testid="lounge-designated-jukebox-control"
+              data-audio-scope="LOUNGE_JUKEBOX_AUDIO"
+              data-entry-point="LOUNGE_DESIGNATED_JUKEBOX_CONTROL"
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(170,45,255,0.45)",
+                background: "rgba(10,8,24,0.9)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 8,
+                minWidth: 280,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#00FF88", letterSpacing: "0.08em" }}>
+                📻 LOUNGE DESIGNATED JUKEBOX · LOUNGE_JUKEBOX_AUDIO
+              </div>
+              <div style={{ fontSize: 10, color: "#fff", fontWeight: 800 }}>
+                {(loungeJukeboxAudio.queue[loungeJukeboxAudio.activeTrackIndex] ?? loungeJukeboxAudio.queue[0])?.jukeboxCode} ·{" "}
+                {(loungeJukeboxAudio.queue[loungeJukeboxAudio.activeTrackIndex] ?? loungeJukeboxAudio.queue[0])?.title}
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  data-testid="lounge-jukebox-play-pause"
+                  onClick={() =>
+                    triggerScopedPlaybackAction({
+                      targetScope: "LOUNGE_JUKEBOX_AUDIO",
+                      entryPoint: "LOUNGE_DESIGNATED_JUKEBOX_CONTROL",
+                      roomKind: "LOUNGE",
+                      role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                      isCallParticipant: false,
+                      action: "TOGGLE",
+                    })
+                  }
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #00FF88",
+                    background: "rgba(0,255,136,0.18)",
+                    color: "#00FF88",
+                    fontSize: 9,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {loungeJukeboxAudio.playing ? "⏸ PAUSE LOUNGE" : "▶ PLAY LOUNGE"}
+                </button>
+                <button
+                  type="button"
+                  data-testid="lounge-jukebox-next"
+                  onClick={() =>
+                    triggerScopedPlaybackAction({
+                      targetScope: "LOUNGE_JUKEBOX_AUDIO",
+                      entryPoint: "LOUNGE_DESIGNATED_JUKEBOX_CONTROL",
+                      roomKind: "LOUNGE",
+                      role: canSwitchSkin ? "HOST" : "AUTHORIZED_DJ",
+                      isCallParticipant: false,
+                      action: "NEXT",
+                    })
+                  }
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #00FFFF",
+                    background: "rgba(0,255,255,0.14)",
+                    color: "#00FFFF",
+                    fontSize: 9,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  ⏭ NEXT
+                </button>
+                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 8, color: "#AA2DFF" }}>
+                  VOL
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={roomJukeboxVolume}
+                    onChange={(e) => setScopeVolume("LOUNGE_JUKEBOX_AUDIO", Number(e.target.value))}
+                    style={{ width: 64, accentColor: "#AA2DFF" }}
+                  />
+                </label>
+              </div>
+            </div>
             <Link
               href={loungeSideRoomEntryHref(roomId, { from: "fan-avatar-lobby" })}
               style={{ fontSize: 12, fontWeight: 800, color: "#00FFFF" }}

@@ -9,7 +9,7 @@
  * Commerce is performer-only (Rule 26); no ticket inventory creation (Rule 17).
  */
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   getPerformerById,
@@ -23,7 +23,10 @@ import {
   getGallerySlotLabel,
   getPerformerGallerySlotCount,
 } from "@/lib/performers/performerGallerySlots";
-import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { findPerformerMagazineArticle, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { magazineReaderArticleUrl } from "@/lib/magazine/MagazineReaderRoutes";
+import ArticleSubmissionForm from "@/components/magazine/ArticleSubmissionForm";
+import { QRCodeSVG } from "qrcode.react";
 import CommerceConnectorPanel from "@/components/commerce/CommerceConnectorPanel";
 import ListenOwnTrackCard from "@/components/commerce/ListenOwnTrackCard";
 import {
@@ -33,6 +36,12 @@ import {
 import { listTitlesForHolder, listChampionshipTitles } from "@/lib/championship";
 import ChampionshipChallengeCard from "@/components/championship/ChampionshipChallengeCard";
 import { getChampionVisualIdentity, championCardStyle } from "@/lib/championship/championVisualIdentity";
+import {
+  applyPerformerBioVariantAction,
+  buildQuarterlyCheckInQuestionnaire,
+  generateGroundedBioVariantPack,
+  type PerformerBioPack,
+} from "@/lib/editorial/BioFeaturePackEngine";
 
 type TabId =
   | "profile"
@@ -184,6 +193,7 @@ export default function PerformerBioMagazineDrawer({
   );
   const [tier, setTier] = useState<PerformerTier | string>(registryPerformer?.tier ?? "FREE");
   const [tab, setTab] = useState<TabId>(initialTab && isTabId(initialTab) ? initialTab : "profile");
+  const [articleQrOrigin, setArticleQrOrigin] = useState<string | null>(null);
   const [stageName, setStageName] = useState(
     registryPerformer?.name ?? displayName ?? "",
   );
@@ -194,9 +204,16 @@ export default function PerformerBioMagazineDrawer({
     registryPerformer?.category ?? "",
   );
   const [bio, setBio] = useState(registryPerformer?.bio ?? "");
+  const bioEpochRef = useRef(0);
+  const bioDirtyRef = useRef(false);
+  const applyAuthoritativeBio = (value: string, epoch: number) => {
+    if (bioDirtyRef.current || bioEpochRef.current !== epoch) return;
+    setBio(value);
+  };
   const [songLinks, setSongLinks] = useState("");
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [statusMsg, setStatusMsg] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const [saving, setSaving] = useState(false);
   const [interviews, setInterviews] = useState<InterviewRow[]>([]);
   const [interviewsLoading, setInterviewsLoading] = useState(false);
@@ -206,6 +223,40 @@ export default function PerformerBioMagazineDrawer({
     registryPerformer ? `#${registryPerformer.rank}` : "—",
   );
 
+  // Living Article (CLAUDE.md Rule 36: ONE PERFORMER -> ONE LIVING ARTICLE).
+  // Independent load/save cycle from the Biography/Profile saveAll() below —
+  // this is a separate authoring surface, not the same save action.
+  const [articleTitle, setArticleTitle] = useState("");
+  const [articleSubtitle, setArticleSubtitle] = useState("");
+  const [articleBody, setArticleBody] = useState("");
+  const [articleHeroUrl, setArticleHeroUrl] = useState("");
+  const [articleStatus, setArticleStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED" | null>(null);
+  const [articleLoadState, setArticleLoadState] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [articleSaveState, setArticleSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const customHeroFileRef = useRef<HTMLInputElement>(null);
+
+  // Automatic Bio-Maker, 6-Variant Grounded Pack & Lighter Quarterly Check-In State
+  const [intakeMode, setIntakeMode] = useState<"onboarding_5q" | "quarterly_checkin">("onboarding_5q");
+  const [originStory, setOriginStory] = useState("");
+  const [soundIdentity, setSoundIdentity] = useState("");
+  const [currentProject, setCurrentProject] = useState("");
+  const [influencesOrProcess, setInfluencesOrProcess] = useState("");
+  const [nextMilestone, setNextMilestone] = useState("");
+  const [quarterlyWhatsNew, setQuarterlyWhatsNew] = useState("");
+  const [quarterlyWorkingOn, setQuarterlyWorkingOn] = useState("");
+  const [quarterlySoundChanged, setQuarterlySoundChanged] = useState("");
+  const [quarterlyExcitedAbout, setQuarterlyExcitedAbout] = useState("");
+  const [wildCardSeed, setWildCardSeed] = useState(0);
+  const [wildCardAnswer, setWildCardAnswer] = useState("");
+  const [bioPack, setBioPack] = useState<PerformerBioPack | null>(null);
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [editingVariantText, setEditingVariantText] = useState("");
+
+  const quarterlyQuestionnaire = useMemo(
+    () => buildQuarterlyCheckInQuestionnaire(wildCardSeed),
+    [wildCardSeed],
+  );
+
   const effectiveSlug = registryPerformer?.slug ?? sessionSlug;
   const slotCount = getPerformerGallerySlotCount(tier);
   const articleHref = `/articles/performer/${effectiveSlug}`;
@@ -213,6 +264,10 @@ export default function PerformerBioMagazineDrawer({
     () => MAGAZINE_ISSUE_1.filter((a) => a.performerSlug === effectiveSlug),
     [effectiveSlug],
   );
+  const magazineSpreadHref = useMemo(() => {
+    const article = findPerformerMagazineArticle(effectiveSlug);
+    return article ? magazineReaderArticleUrl(article.slug) : null;
+  }, [effectiveSlug]);
   const songs: PerformerSong[] = registryPerformer?.songs ?? [];
 
   useEffect(() => {
@@ -222,6 +277,11 @@ export default function PerformerBioMagazineDrawer({
   }, [initialTab]);
 
   useEffect(() => {
+    const queued = (window as Window & { __TMI_BIO_MAGAZINE_TAB__?: string }).__TMI_BIO_MAGAZINE_TAB__;
+    if (isTabId(queued)) {
+      setTab(queued);
+      delete (window as Window & { __TMI_BIO_MAGAZINE_TAB__?: string }).__TMI_BIO_MAGAZINE_TAB__;
+    }
     const onOpenTab = (event: Event) => {
       const detail = (event as CustomEvent<{ tab?: unknown }>).detail;
       const nextTab = detail?.tab;
@@ -232,13 +292,15 @@ export default function PerformerBioMagazineDrawer({
   }, []);
 
   useEffect(() => {
+    const epoch = bioEpochRef.current;
+    let active = true;
     if (registryPerformer) {
       setSessionSlug(registryPerformer.slug);
       setTier(registryPerformer.tier);
       setStageName(registryPerformer.name);
       setLocation(`${registryPerformer.city}, ${registryPerformer.countryName}`);
       setGenres(registryPerformer.category);
-      setBio(registryPerformer.bio ?? "");
+      applyAuthoritativeBio(registryPerformer.bio ?? "", epoch);
       setRankLabel(`#${registryPerformer.rank}`);
       const links = (registryPerformer.songs ?? [])
         .map((s) => s.audioUrl || s.title)
@@ -249,10 +311,19 @@ export default function PerformerBioMagazineDrawer({
       if (!draft[0] && registryPerformer.coverImageUrl) draft[0] = registryPerformer.coverImageUrl;
       if (!draft[0] && registryPerformer.profileImageUrl) draft[0] = registryPerformer.profileImageUrl;
       setGalleryUrls(draft);
-      return;
+      void fetch("/api/profile/self", { credentials: "include", cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { profile?: { bio?: string | null } } | null) => {
+          if (active && data?.profile) applyAuthoritativeBio(data.profile.bio ?? "", epoch);
+        })
+        .catch(() => {
+          // Keep the registry bio if the authoritative profile read is unavailable.
+        });
+      return () => {
+        active = false;
+      };
     }
 
-    let active = true;
     fetch("/api/profile/self", { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: {
@@ -270,7 +341,7 @@ export default function PerformerBioMagazineDrawer({
         const p = data.profile;
         const name = p.stageName || p.displayName || displayName || "Performer";
         setStageName(name);
-        setBio(p.bio ?? "");
+        applyAuthoritativeBio(p.bio ?? "", epoch);
         setGenres((p.genres ?? []).join(", "));
         if (p.tier) setTier(p.tier);
         const slugGuess =
@@ -293,6 +364,76 @@ export default function PerformerBioMagazineDrawer({
       active = false;
     };
   }, [registryPerformer, performerSlug, userId, displayName, slotCount]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/articles/performer-draft", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { article?: { title: string; subtitle: string | null; content: { body?: string; heroImageUrl?: string | null }; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" } | null } | null) => {
+        if (!active) return;
+        if (data?.article) {
+          setArticleTitle(data.article.title);
+          setArticleSubtitle(data.article.subtitle ?? "");
+          setArticleBody(data.article.content?.body ?? "");
+          setArticleHeroUrl(data.article.content?.heroImageUrl ?? "");
+          setArticleStatus(data.article.status);
+        }
+        setArticleLoadState("ready");
+      })
+      .catch(() => {
+        if (active) setArticleLoadState("unavailable");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const insertArticleSnippet = (prefix: string, placeholder: string, suffix = "") => {
+    setArticleBody((prev) => (prev ? `${prev}\n\n${prefix}${placeholder}${suffix}` : `${prefix}${placeholder}${suffix}`));
+  };
+
+  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === "string") {
+          setArticleHeroUrl(event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveArticle = useCallback(async () => {
+    if (!articleTitle.trim()) {
+      setArticleSaveState("failed");
+      return;
+    }
+    setArticleSaveState("saving");
+    try {
+      const res = await fetch("/api/articles/performer-draft", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: articleTitle,
+          subtitle: articleSubtitle,
+          body: articleBody,
+          heroImageUrl: articleHeroUrl || null,
+        }),
+      });
+      if (!res.ok) {
+        setArticleSaveState("failed");
+        return;
+      }
+      const data = (await res.json()) as { article?: { status: "DRAFT" | "PUBLISHED" | "ARCHIVED" } };
+      if (data.article) setArticleStatus(data.article.status);
+      setArticleSaveState("saved");
+    } catch {
+      setArticleSaveState("failed");
+    }
+  }, [articleTitle, articleSubtitle, articleBody, articleHeroUrl]);
 
   const loadInterviews = useCallback(async () => {
     setInterviewsLoading(true);
@@ -320,7 +461,8 @@ export default function PerformerBioMagazineDrawer({
 
   async function saveAll() {
     setSaving(true);
-    setStatusMsg("");
+    setSaveStatus("saving");
+    setStatusMsg("SAVING");
     writeGalleryDraft(effectiveSlug, galleryUrls);
 
     try {
@@ -341,14 +483,18 @@ export default function PerformerBioMagazineDrawer({
         }),
       });
       if (res.ok) {
-        setStatusMsg("Saved profile & bio. Gallery URLs kept as local draft until upload pipeline binds.");
+        bioDirtyRef.current = false;
+        setSaveStatus("saved");
+        setStatusMsg("SAVED");
       } else {
         writeGalleryDraft(effectiveSlug, galleryUrls);
-        setStatusMsg("API save failed — bio/gallery kept as local draft on this device.");
+        setSaveStatus("failed");
+        setStatusMsg("SAVE FAILED");
       }
     } catch {
       writeGalleryDraft(effectiveSlug, galleryUrls);
-      setStatusMsg("Offline — draft saved locally on this device.");
+      setSaveStatus("failed");
+      setStatusMsg("SAVE FAILED");
     } finally {
       setSaving(false);
     }
@@ -476,22 +622,856 @@ export default function PerformerBioMagazineDrawer({
         )}
 
         {tab === "biography" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label style={labelStyle}>BIOGRAPHY</label>
-            <textarea
-              style={{ ...fieldStyle, minHeight: 140, resize: "vertical", lineHeight: 1.45 }}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell your story…"
-            />
-            <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
-              Saves via /api/profile/update when signed in. Otherwise kept as a local draft note after Save.
-            </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>PRIMARY BIOGRAPHY (ACTIVE PUBLIC BIO)</label>
+              <textarea
+                data-testid="bio-magazine-text"
+                style={{ ...fieldStyle, minHeight: 110, resize: "vertical", lineHeight: 1.45 }}
+                value={bio}
+                onChange={(e) => {
+                  bioDirtyRef.current = true;
+                  bioEpochRef.current += 1;
+                  setBio(e.target.value);
+                }}
+                placeholder="Tell your story…"
+              />
+              <p style={{ margin: "4px 0 0", fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
+                Saves via /api/profile/update when signed in. Otherwise kept as a local draft note after Save.
+              </p>
+            </div>
+
+            {/* AUTOMATIC BIO-MAKER & 6-VARIANT FEATURE PACK STUDIO */}
+            <div
+              data-testid="bio-maker-pack-studio"
+              style={{
+                padding: 12,
+                borderRadius: 10,
+                border: `1px solid ${ac}44`,
+                background: "rgba(5, 5, 16, 0.72)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: ac }}>
+                    AUTOMATIC BIO-MAKER · 6-VARIANT GROUNDED PACK
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                    Zero invented facts · Grounded strictly in your answers · Approve 1–6 variants for controlled rotation
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    data-testid="bio-maker-mode-onboarding"
+                    onClick={() => setIntakeMode("onboarding_5q")}
+                    style={{
+                      padding: "5px 9px",
+                      borderRadius: 6,
+                      border: `1px solid ${intakeMode === "onboarding_5q" ? ac : "rgba(255,255,255,0.18)"}`,
+                      background: intakeMode === "onboarding_5q" ? `${ac}22` : "transparent",
+                      color: intakeMode === "onboarding_5q" ? ac : "rgba(255,255,255,0.65)",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    5-Q ONBOARDING
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="bio-maker-quarterly-checkin-toggle"
+                    onClick={() => setIntakeMode("quarterly_checkin")}
+                    style={{
+                      padding: "5px 9px",
+                      borderRadius: 6,
+                      border: `1px solid ${intakeMode === "quarterly_checkin" ? "#FFD700" : "rgba(255,255,255,0.18)"}`,
+                      background: intakeMode === "quarterly_checkin" ? "rgba(255,215,0,0.16)" : "transparent",
+                      color: intakeMode === "quarterly_checkin" ? "#FFD700" : "rgba(255,255,255,0.65)",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    QUARTERLY CHECK-IN
+                  </button>
+                </div>
+              </div>
+
+              {intakeMode === "onboarding_5q" ? (
+                <div data-testid="bio-maker-onboarding-questions" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <label style={labelStyle}>1. ORIGIN & FOUNDATION (How did your journey begin?)</label>
+                    <input
+                      data-testid="bio-fact-origin"
+                      style={fieldStyle}
+                      value={originStory}
+                      onChange={(e) => setOriginStory(e.target.value)}
+                      placeholder="e.g., Late-night basement sessions and local open mics"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>2. SONIC IDENTITY (How do you describe your sound?)</label>
+                    <input
+                      data-testid="bio-fact-sound"
+                      style={fieldStyle}
+                      value={soundIdentity}
+                      onChange={(e) => setSoundIdentity(e.target.value)}
+                      placeholder="e.g., Heavy 808 warmth blended with live brass arrangements"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>3. CURRENT WORK (What project or release are you focused on?)</label>
+                    <input
+                      data-testid="bio-fact-current-project"
+                      style={fieldStyle}
+                      value={currentProject}
+                      onChange={(e) => setCurrentProject(e.target.value)}
+                      placeholder="e.g., Recording the 'Midnight Index' EP"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>4. CREATIVE PROCESS & DISCIPLINE</label>
+                    <input
+                      data-testid="bio-fact-process"
+                      style={fieldStyle}
+                      value={influencesOrProcess}
+                      onChange={(e) => setInfluencesOrProcess(e.target.value)}
+                      placeholder="e.g., Analog tape tracking and live vocal takes"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>5. NEXT MILESTONE / GOAL</label>
+                    <input
+                      data-testid="bio-fact-milestone"
+                      style={fieldStyle}
+                      value={nextMilestone}
+                      onChange={(e) => setNextMilestone(e.target.value)}
+                      placeholder="e.g., Headlining the TMI Monday Night Stage"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div data-testid="bio-maker-quarterly-questions" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 10, color: "#FFD700", fontWeight: 700 }}>
+                    Lighter 3-Month Refresh — Updates your current era without re-answering your foundational origin story.
+                  </div>
+                  <div>
+                    <label style={labelStyle}>1. WHAT&apos;S NEW?</label>
+                    <input
+                      data-testid="bio-quarterly-whats-new"
+                      style={fieldStyle}
+                      value={quarterlyWhatsNew}
+                      onChange={(e) => setQuarterlyWhatsNew(e.target.value)}
+                      placeholder="What's new in your world since your last feature?"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>2. WHAT ARE YOU WORKING ON?</label>
+                    <input
+                      data-testid="bio-quarterly-working-on"
+                      style={fieldStyle}
+                      value={quarterlyWorkingOn}
+                      onChange={(e) => setQuarterlyWorkingOn(e.target.value)}
+                      placeholder="What are you actively working on right now?"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>3. HAS YOUR SOUND CHANGED?</label>
+                    <input
+                      data-testid="bio-quarterly-sound-changed"
+                      style={fieldStyle}
+                      value={quarterlySoundChanged}
+                      onChange={(e) => setQuarterlySoundChanged(e.target.value)}
+                      placeholder="Has your sound or creative approach evolved recently?"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>4. WHAT ARE YOU EXCITED ABOUT?</label>
+                    <input
+                      data-testid="bio-quarterly-excited-about"
+                      style={fieldStyle}
+                      value={quarterlyExcitedAbout}
+                      onChange={(e) => setQuarterlyExcitedAbout(e.target.value)}
+                      placeholder="What are you most excited about for the coming months?"
+                    />
+                  </div>
+                  <div
+                    style={{
+                      padding: 8,
+                      borderRadius: 8,
+                      border: "1px dashed rgba(255, 45, 170, 0.45)",
+                      background: "rgba(255, 45, 170, 0.06)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <label style={{ ...labelStyle, color: "#FF2DAA", marginBottom: 0 }}>
+                        5. {quarterlyQuestionnaire.wildCardQuestion.prompt.toUpperCase()}
+                      </label>
+                      <button
+                        type="button"
+                        data-testid="bio-wildcard-shuffle-btn"
+                        onClick={() => setWildCardSeed((s) => s + 1)}
+                        style={{
+                          padding: "2px 7px",
+                          borderRadius: 4,
+                          border: "1px solid rgba(255,45,170,0.45)",
+                          background: "transparent",
+                          color: "#FF2DAA",
+                          fontSize: 8,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        NEW WILD CARD ↻
+                      </button>
+                    </div>
+                    <input
+                      data-testid="bio-quarterly-wildcard-answer"
+                      style={fieldStyle}
+                      value={wildCardAnswer}
+                      onChange={(e) => setWildCardAnswer(e.target.value)}
+                      placeholder="Kept as a personal Q&A sidecar — never converted into fake biographical history"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  data-testid="bio-maker-generate-pack-btn"
+                  onClick={() => {
+                    const parsedGenres = genres
+                      .split(",")
+                      .map((g) => g.trim())
+                      .filter(Boolean);
+                    const generated = generateGroundedBioVariantPack({
+                      performerId: userId || effectiveSlug,
+                      slug: effectiveSlug,
+                      stageName: stageName || displayName || "Performer",
+                      role: "Performer",
+                      genres: parsedGenres.length > 0 ? parsedGenres : ["Independent"],
+                      location: location || undefined,
+                      originStory: originStory || undefined,
+                      soundIdentity: soundIdentity || undefined,
+                      currentProject: currentProject || undefined,
+                      influencesOrProcess: influencesOrProcess || undefined,
+                      nextMilestone: nextMilestone || undefined,
+                      quarterlyWhatsNew: quarterlyWhatsNew || undefined,
+                      quarterlyWorkingOn: quarterlyWorkingOn || undefined,
+                      quarterlySoundChanged: quarterlySoundChanged || undefined,
+                      quarterlyExcitedAbout: quarterlyExcitedAbout || undefined,
+                      wildCardQuestionId: quarterlyQuestionnaire.wildCardQuestion.id,
+                      wildCardQuestionPrompt: quarterlyQuestionnaire.wildCardQuestion.prompt,
+                      wildCardAnswer: wildCardAnswer || undefined,
+                    });
+                    setBioPack(generated);
+                    setEditingVariantId(null);
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: `1.5px solid ${ac}`,
+                    background: `${ac}22`,
+                    color: ac,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {bioPack ? "REGENERATE 6 GROUNDED BIO OPTIONS" : "GENERATE 6 GROUNDED BIO OPTIONS"}
+                </button>
+                {bioPack ? (
+                  <span data-testid="bio-pack-rotation-counter" style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
+                    Active Rotation Pool: <strong style={{ color: "#FFD700" }}>{bioPack.activeRotationVariantIds.length}</strong> / 6 approved
+                  </span>
+                ) : null}
+              </div>
+
+              {bioPack ? (
+                <div data-testid="bio-pack-variant-list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {bioPack.variants.map((variant, idx) => {
+                    const isEditing = editingVariantId === variant.variantId;
+                    const statusColor =
+                      variant.approvalStatus === "APPROVED"
+                        ? "#00FF88"
+                        : variant.approvalStatus === "REJECTED"
+                          ? "#FF6B6B"
+                          : "rgba(255,255,255,0.45)";
+                    return (
+                      <div
+                        key={variant.variantId}
+                        data-testid={`bio-variant-card-${idx}`}
+                        style={{
+                          padding: 10,
+                          borderRadius: 8,
+                          border: variant.isPrimary
+                            ? "1.5px solid #FFD700"
+                            : variant.approvalStatus === "APPROVED"
+                              ? "1px solid rgba(0,255,136,0.45)"
+                              : "1px solid rgba(255,255,255,0.12)",
+                          background: variant.isPrimary ? "rgba(255,215,0,0.06)" : "rgba(0,0,0,0.38)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: "0.08em" }}>
+                              #{idx + 1} · {variant.archetypeLabel.toUpperCase()}
+                            </span>
+                            {variant.isPrimary ? (
+                              <span
+                                data-testid={`bio-variant-primary-badge-${idx}`}
+                                style={{
+                                  fontSize: 8,
+                                  fontWeight: 900,
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                  background: "#FFD700",
+                                  color: "#050510",
+                                }}
+                              >
+                                PRIMARY BIO
+                              </span>
+                            ) : null}
+                            {variant.inActiveRotation && variant.approvalStatus === "APPROVED" ? (
+                              <span
+                                style={{
+                                  fontSize: 8,
+                                  fontWeight: 800,
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                  border: "1px solid rgba(0,255,255,0.45)",
+                                  color: "#00FFFF",
+                                }}
+                              >
+                                IN ROTATION
+                              </span>
+                            ) : null}
+                          </div>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: statusColor }}>
+                            {variant.approvalStatus}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{variant.headline}</div>
+
+                        {isEditing ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <textarea
+                              data-testid={`bio-variant-edit-textarea-${idx}`}
+                              style={{ ...fieldStyle, minHeight: 72 }}
+                              value={editingVariantText}
+                              onChange={(e) => setEditingVariantText(e.target.value)}
+                            />
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                type="button"
+                                data-testid={`bio-variant-save-edit-${idx}`}
+                                onClick={() => {
+                                  const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                    type: "EDIT",
+                                    variantId: variant.variantId,
+                                    newNarrativeText: editingVariantText,
+                                    autoApprove: true,
+                                  });
+                                  setBioPack(nextPack);
+                                  if (variant.isPrimary || nextPack.primaryVariantId === variant.variantId) {
+                                    bioDirtyRef.current = true;
+                                    bioEpochRef.current += 1;
+                                    setBio(editingVariantText.trim() || variant.narrativeText);
+                                  }
+                                  setEditingVariantId(null);
+                                }}
+                                style={{
+                                  padding: "4px 10px",
+                                  borderRadius: 6,
+                                  border: `1px solid ${ac}`,
+                                  background: ac,
+                                  color: "#050510",
+                                  fontSize: 9,
+                                  fontWeight: 900,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                SAVE &amp; APPROVE EDIT
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingVariantId(null)}
+                                style={{
+                                  padding: "4px 10px",
+                                  borderRadius: 6,
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                  background: "transparent",
+                                  color: "#fff",
+                                  fontSize: 9,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                CANCEL
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.82)", lineHeight: 1.45 }}>
+                            {variant.narrativeText}
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>
+                          Grounded facts: {variant.factTagsUsed.join(", ")} · {variant.wordCount} words
+                        </div>
+
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-approve-${idx}`}
+                            onClick={() => {
+                              const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                type: "APPROVE",
+                                variantId: variant.variantId,
+                                addToRotation: true,
+                              });
+                              setBioPack(nextPack);
+                              const primary = nextPack.variants.find((v) => v.variantId === nextPack.primaryVariantId);
+                              if (primary) {
+                                bioDirtyRef.current = true;
+                                bioEpochRef.current += 1;
+                                setBio(primary.narrativeText);
+                              }
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(0,255,136,0.5)",
+                              background: "rgba(0,255,136,0.12)",
+                              color: "#00FF88",
+                              fontSize: 9,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            APPROVE
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-edit-${idx}`}
+                            onClick={() => {
+                              setEditingVariantId(variant.variantId);
+                              setEditingVariantText(variant.narrativeText);
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,255,255,0.25)",
+                              background: "rgba(255,255,255,0.06)",
+                              color: "#fff",
+                              fontSize: 9,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            EDIT
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-reject-${idx}`}
+                            onClick={() => {
+                              const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                type: "REJECT",
+                                variantId: variant.variantId,
+                              });
+                              setBioPack(nextPack);
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,107,107,0.45)",
+                              background: "rgba(255,107,107,0.1)",
+                              color: "#FF6B6B",
+                              fontSize: 9,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            REJECT
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-primary-${idx}`}
+                            onClick={() => {
+                              const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                type: "MAKE_PRIMARY",
+                                variantId: variant.variantId,
+                              });
+                              setBioPack(nextPack);
+                              bioDirtyRef.current = true;
+                              bioEpochRef.current += 1;
+                              setBio(variant.narrativeText);
+                              if (!articleTitle.trim()) {
+                                setArticleTitle(variant.headline);
+                              }
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,215,0,0.6)",
+                              background: variant.isPrimary ? "#FFD700" : "rgba(255,215,0,0.12)",
+                              color: variant.isPrimary ? "#050510" : "#FFD700",
+                              fontSize: 9,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            MAKE PRIMARY
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-rotate-${idx}`}
+                            disabled={variant.approvalStatus !== "APPROVED"}
+                            onClick={() => {
+                              const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                type: "SET_ROTATION",
+                                variantId: variant.variantId,
+                                inRotation: !variant.inActiveRotation,
+                              });
+                              setBioPack(nextPack);
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(0,255,255,0.4)",
+                              background: variant.inActiveRotation ? "rgba(0,255,255,0.16)" : "transparent",
+                              color: variant.approvalStatus === "APPROVED" ? "#00FFFF" : "rgba(255,255,255,0.3)",
+                              fontSize: 9,
+                              fontWeight: 700,
+                              cursor: variant.approvalStatus === "APPROVED" ? "pointer" : "not-allowed",
+                            }}
+                          >
+                            {variant.inActiveRotation ? "IN ROTATION ✓" : "+ ROTATION"}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`bio-variant-favorite-${idx}`}
+                            onClick={() => {
+                              const nextPack = applyPerformerBioVariantAction(bioPack, {
+                                type: "FAVORITE",
+                                variantId: variant.variantId,
+                              });
+                              setBioPack(nextPack);
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,45,170,0.45)",
+                              background: variant.isFavorite ? "rgba(255,45,170,0.2)" : "transparent",
+                              color: "#FF2DAA",
+                              fontSize: 9,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {variant.isFavorite ? "★ FAVORITE" : "☆ FAVORITE"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           </div>
         )}
 
         {tab === "magazine" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* FIRST-ARTICLE INTERVIEW STARTER — seeds the living-article editor.
+                Shown only when no article exists yet; it composes into the
+                canonical editor below via onSeedDraft (one writer, one article). */}
+            {articleLoadState === "ready" && !articleTitle.trim() && !articleBody.trim() ? (
+              <div
+                data-testid="article-interview-starter"
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  border: `1px solid ${ac}33`,
+                  background: `${ac}0c`,
+                }}
+              >
+                <ArticleSubmissionForm
+                  role="performer"
+                  accountType="performer"
+                  tier={String(tier).toLowerCase() as "free" | "pro" | "RUBY" | "silver" | "gold" | "platinum" | "diamond"}
+                  onSeedDraft={(draft) => {
+                    setArticleTitle(draft.title);
+                    setArticleSubtitle(draft.subtitle ?? "");
+                    setArticleBody(draft.body);
+                  }}
+                />
+              </div>
+            ) : null}
+            <div
+              data-testid="living-article-editor"
+              style={{
+                padding: 12,
+                borderRadius: 10,
+                border: `1px solid ${ac}33`,
+                background: `${ac}0c`,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: ac }}>
+                YOUR LIVING ARTICLE — DRAFT
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+                {articleLoadState === "loading"
+                  ? "Loading your article…"
+                  : articleLoadState === "unavailable"
+                    ? "Couldn't reach your article draft. Retry Save once you're back online."
+                    : articleStatus === "PUBLISHED"
+                      ? "Published. Edits here save as a new draft and won't change the public article until publishing is available."
+                      : "This is one article that stays the same over time — saving updates it in place, it never creates a second one."}
+              </div>
+              <input
+                type="text"
+                data-testid="living-article-title"
+                placeholder="Title"
+                value={articleTitle}
+                onChange={(e) => setArticleTitle(e.target.value)}
+                disabled={articleLoadState === "loading"}
+                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 12, fontFamily: "inherit" }}
+              />
+              <input
+                type="text"
+                data-testid="living-article-subtitle"
+                placeholder="Subtitle (optional)"
+                value={articleSubtitle}
+                onChange={(e) => setArticleSubtitle(e.target.value)}
+                disabled={articleLoadState === "loading"}
+                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 12, fontFamily: "inherit" }}
+              />
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="text"
+                  data-testid="living-article-hero"
+                  placeholder="Hero image URL or upload custom below (optional)"
+                  value={articleHeroUrl}
+                  onChange={(e) => setArticleHeroUrl(e.target.value)}
+                  disabled={articleLoadState === "loading"}
+                  style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 12, fontFamily: "inherit" }}
+                />
+                <input
+                  type="file"
+                  ref={customHeroFileRef}
+                  accept="image/*"
+                  onChange={handleHeroFileUpload}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => customHeroFileRef.current?.click()}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${ac}88`,
+                    background: `${ac}15`,
+                    color: ac,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span>📷</span> UPLOAD PHOTO
+                </button>
+              </div>
+
+              {articleHeroUrl ? (
+                <div style={{ position: "relative", width: "100%", height: 120, borderRadius: 8, overflow: "hidden", border: `1px solid ${ac}44` }}>
+                  <img src={articleHeroUrl} alt="Article Hero" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <button
+                    type="button"
+                    onClick={() => setArticleHeroUrl("")}
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      background: "rgba(0,0,0,0.8)",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      color: "#fff",
+                      fontSize: 10,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                  >
+                    REMOVE
+                  </button>
+                </div>
+              ) : null}
+
+              {/* EDITORIAL TOOLSTRIP */}
+              <div
+                data-testid="living-article-toolstrip"
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: "0.1em", marginRight: 2 }}>
+                  TOOLS:
+                </span>
+                <button
+                  type="button"
+                  data-testid="tool-headline"
+                  onClick={() => insertArticleSnippet("## ", "Section Headline", "\n")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#fff",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Headline
+                </button>
+                <button
+                  type="button"
+                  data-testid="tool-callout"
+                  onClick={() => insertArticleSnippet("> \"", "Pull quote / featured highlight goes here...", "\"\n")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#00FFFF",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Quote
+                </button>
+                <button
+                  type="button"
+                  data-testid="tool-figure"
+                  onClick={() => insertArticleSnippet("![", "Figure Caption", "](https://themusiciansindex.com/yopho/hero.jpg)\n")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#FF2DAA",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Figure
+                </button>
+                <button
+                  type="button"
+                  data-testid="tool-divider"
+                  onClick={() => insertArticleSnippet("***\n", "")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#FFD700",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Divider
+                </button>
+                <button
+                  type="button"
+                  data-testid="tool-author-note"
+                  onClick={() => insertArticleSnippet("*Author's Note: ", "Exclusive statement from the artist...", "*\n")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Note
+                </button>
+                <button
+                  type="button"
+                  data-testid="tool-badge"
+                  onClick={() => insertArticleSnippet("[✦ VERIFIED PERFORMER DISPATCH]\n", "")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(0, 255, 255, 0.4)",
+                    background: "rgba(0, 255, 255, 0.12)",
+                    color: "#00FFFF",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✦ Dispatch
+                </button>
+              </div>
+
+              <textarea
+                data-testid="living-article-body"
+                placeholder="Write your article… use tools above to format headlines, quotes, notes, and figure breaks"
+                value={articleBody}
+                onChange={(e) => setArticleBody(e.target.value)}
+                disabled={articleLoadState === "loading"}
+                rows={8}
+                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 12, fontFamily: "inherit", resize: "vertical" }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button
+                  type="button"
+                  data-testid="living-article-save"
+                  onClick={() => void saveArticle()}
+                  disabled={articleSaveState === "saving" || articleLoadState === "loading"}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${ac}`, background: ac, color: "#050510", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  {articleSaveState === "saving" ? "SAVING…" : "SAVE"}
+                </button>
+                <span data-testid="living-article-save-status" style={{ fontSize: 10, color: articleSaveState === "failed" ? "#FF6B6B" : "rgba(255,255,255,0.4)" }}>
+                  {articleSaveState === "saved" ? "Saved" : articleSaveState === "failed" ? "Save failed — try again" : ""}
+                </span>
+              </div>
+            </div>
             <div
               style={{
                 padding: 12,
@@ -501,28 +1481,50 @@ export default function PerformerBioMagazineDrawer({
               }}
             >
               <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: ac, marginBottom: 6 }}>
-                ARTIST ARTICLE
+                MAGAZINE ARTICLE
               </div>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{stageName || "Performer"}</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
-                Preview route: {articleHref}
+                {magazineSpreadHref ? "Opens your magazine article spread." : "No magazine spread is published for this performer yet."}
               </div>
-              <Link
-                href={articleHref}
-                style={{
-                  display: "inline-block",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: `1px solid ${ac}`,
-                  color: ac,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  textDecoration: "none",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                OPEN ARTICLE PREVIEW →
-              </Link>
+              {magazineSpreadHref ? (
+                <Link
+                  href={magazineSpreadHref}
+                  data-testid="view-performer-spread"
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: `1px solid ${ac}`,
+                    color: ac,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    textDecoration: "none",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  VIEW ARTICLE
+                </Link>
+              ) : (
+                <span data-testid="view-performer-spread" style={{ fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,0.35)" }}>
+                  VIEW ARTICLE
+                </span>
+              )}
+              {magazineSpreadHref ? (
+                <button
+                  type="button"
+                  data-testid="show-article-qr"
+                  onClick={() => setArticleQrOrigin((current) => current ? null : window.location.origin)}
+                  style={{ marginLeft: 8, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.25)", background: "transparent", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  SHOW ARTICLE QR
+                </button>
+              ) : null}
+              {articleQrOrigin && magazineSpreadHref ? (
+                <div data-testid="article-qr-panel" style={{ marginTop: 12, background: "#fff", padding: 8, width: "fit-content", borderRadius: 8 }}>
+                  <QRCodeSVG value={`${articleQrOrigin}${magazineSpreadHref}`} size={180} bgColor="#ffffff" fgColor="#050510" level="M" />
+                </div>
+              ) : null}
             </div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
               Publish status:{" "}
@@ -533,7 +1535,7 @@ export default function PerformerBioMagazineDrawer({
             {magazineArticles.slice(0, 3).map((a) => (
               <Link
                 key={a.slug}
-                href={`/magazine/article/${a.slug}`}
+                href={magazineReaderArticleUrl(a.slug)}
                 style={{ fontSize: 11, color: "#FFD700", textDecoration: "none" }}
               >
                 {a.title} →
@@ -766,6 +1768,8 @@ export default function PerformerBioMagazineDrawer({
       >
         <button
           type="button"
+          data-testid="bio-magazine-save"
+          data-save-status={saving ? "saving" : saveStatus}
           disabled={saving}
           onClick={() => void saveAll()}
           style={{
@@ -783,6 +1787,25 @@ export default function PerformerBioMagazineDrawer({
         >
           {saving ? "SAVING…" : "SAVE"}
         </button>
+        {magazineSpreadHref ? (
+          <Link
+            href={magazineSpreadHref}
+            data-testid="view-performer-spread-footer"
+            style={{
+              padding: "9px 16px",
+              borderRadius: 8,
+              border: "1.5px solid rgba(0,255,255,0.65)",
+              background: "rgba(0,255,255,0.08)",
+              color: "#00FFFF",
+              fontWeight: 900,
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            VIEW ARTICLE
+          </Link>
+        ) : null}
         <Link
           href={articleHref}
           onClick={onPreview}
@@ -801,7 +1824,7 @@ export default function PerformerBioMagazineDrawer({
           PREVIEW ARTICLE
         </Link>
         {statusMsg ? (
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", flex: "1 1 160px" }}>{statusMsg}</span>
+          <span data-testid="bio-magazine-save-status" style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", flex: "1 1 160px" }}>{statusMsg}</span>
         ) : null}
       </div>
     </div>

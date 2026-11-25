@@ -7,7 +7,8 @@
  *   2. Dual Collision Solvers:
  *        a) World-space bounding box avoidance (prevents clipping through 3D walls/chairs/dance envelopes).
  *        b) Screen-space occlusion solver (prevents panel overlap & HUD occlusion).
- *   3. Proximity scaling with hysteresis (prevents scale jitter).
+ *   3. Physical panel scale is world-stable (chassis / SocialProximityPresentation).
+ *      Viewer-distance must NEVER rewrite shared panel.scale — apparent size is camera perspective.
  *   4. Subscription & LOD budgeting (Near/Hero = HD, Mid = SD, Far = Audio-only/Proxy).
  */
 

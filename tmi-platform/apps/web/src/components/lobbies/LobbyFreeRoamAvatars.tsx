@@ -32,6 +32,8 @@ import {
 } from "@/lib/avatars/BobbleheadRuntimeCharacter";
 import { FAN_EQUIPPED_LOOK_EVENT, readPersistedFanEquippedLook } from "@/lib/avatars/FanEquippedLookBridge";
 import { syncLobbyJamFromPresence } from "@/lib/lobby/FanLobbyJamAudio";
+import { useAdaptiveVoltronStore } from "@/lib/monitors/AdaptiveVoltronPresentationDirector";
+import { audioLevelToLipSyncState } from "@/lib/media/peerCallPanelAllocator";
 
 const AvatarViewer = dynamic(
   () => import("@/components/3d/AvatarLobbyCanvas").then((m) => m.AvatarViewer),
@@ -181,6 +183,24 @@ export function LobbyFreeRoamAvatars({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [loadoutIds, self.isSeated],
   );
+  const selfPresenceChoice = useAdaptiveVoltronStore((s) => s.selfPresenceChoice);
+  const floatingHeadPanelsVisibleInShow = useAdaptiveVoltronStore((s) => s.floatingHeadPanelsVisibleInShow);
+  const effectiveHideHeadPanel =
+    localHideHeadPanel ||
+    !floatingHeadPanelsVisibleInShow ||
+    selfPresenceChoice === "AVATAR_ONLY" ||
+    selfPresenceChoice === "AUDIO_ONLY";
+
+  const selfLipSync = useMemo(
+    () =>
+      audioLevelToLipSyncState({
+        audioLevel: self.isSpeaking ? 0.68 : 0,
+        isSpeaking: self.isSpeaking,
+        isMuted: self.micEnabled === false,
+      }),
+    [self.isSpeaking, self.micEnabled],
+  );
+
   const bobbleRig = useMemo(
     () =>
       bobbleheadRuntimeToRigProps(bobbleCharacter, {
@@ -295,14 +315,14 @@ export function LobbyFreeRoamAvatars({
             mode={resolveAvatarHeadMediaMode({
               isSelf: true,
               distancePct: 0,
-              localHidePanel: localHideHeadPanel,
+              localHidePanel: effectiveHideHeadPanel,
             })}
             videoTrack={
               peerMedia?.byUserId.get(self.userId)?.videoTrack ??
               self.localStream?.getVideoTracks()[0] ??
               null
             }
-            cameraEnabled={self.hasCameraOn}
+            cameraEnabled={self.hasCameraOn && selfPresenceChoice !== "AVATAR_ONLY" && selfPresenceChoice !== "AUDIO_ONLY"}
             micEnabled={self.micEnabled ?? true}
             isSpeaking={self.isSpeaking}
             isSelf
@@ -323,6 +343,8 @@ export function LobbyFreeRoamAvatars({
         >
           <AvatarViewer
             {...bobbleRig}
+            talking={selfLipSync.talking}
+            phoneme={selfLipSync.phoneme}
             color={bobbleRig.color ?? self.skinColor ?? "#AA2DFF"}
             outfitTint={bobbleRig.outfitTint ?? outfitTint}
             attachments={bobbleRig.attachments?.length ? bobbleRig.attachments : attachments}

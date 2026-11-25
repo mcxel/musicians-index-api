@@ -1,9 +1,12 @@
 "use client";
 
 /**
- * SubmissionsCanister — role-aware router (Rule 26).
- * Fan → FanSubmissionCanister (no BeatLocker).
- * Performer / Admin → BeatLocker + competition destinations.
+ * SubmissionsCanister — CANONICAL_WRAPPER (presentation router only).
+ * Business authority remains:
+ *   SubmissionManagementDrawer → SubmissionEngine → SubmissionEntitlementAuthority → JukeboxNumberAuthority
+ * Fan → FanSubmissionCanister (consume-only / no creator POST — §11186 C).
+ * Performer → PerformerSubmissionCanister (Stream&Win/Shuffle drawer + separate Beat Locker tab).
+ * Admin → AdminSubmissionPanel.
  */
 
 import FanSubmissionCanister from "@/components/canisters/FanSubmissionCanister";
@@ -27,6 +30,8 @@ interface SubmissionsCanisterProps {
   userId?: string;
   displayName?: string;
   accentColor?: string;
+  /** Stats → Submissions → Submit Beat */
+  initialPerformerTab?: "destinations" | "beat_locker";
   /** @deprecated fake seed callback removed — kept optional for call-site compat */
   onSubmitNew?: (entry: Partial<SubmissionEntry>) => void;
 }
@@ -36,6 +41,7 @@ export function SubmissionsCanister({
   userId = "",
   displayName = "Member",
   accentColor,
+  initialPerformerTab,
 }: SubmissionsCanisterProps) {
   if (role === "fan") {
     return (
@@ -56,6 +62,7 @@ export function SubmissionsCanister({
       userId={userId}
       displayName={displayName}
       accentColor={accentColor ?? "#FFD700"}
+      initialTab={initialPerformerTab}
     />
   );
 }

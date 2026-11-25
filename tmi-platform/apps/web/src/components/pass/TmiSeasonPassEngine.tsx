@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { SEASON_ONE_REWARDS, SEASON_ONE_META, type SeasonTrack, type SeasonOneReward } from '@/config/seasonOneRewards';
 
 // Mock XP for demo — replace with real user session data
-const DEMO_XP: Record<SeasonTrack, number> = { fan: 750, artist: 420 };
+const DEMO_XP: Record<SeasonTrack, number> = { fan: 750, artist: 420, shared: 0 };
 
 function playGuitarPluck(freq = 392) {
   try {

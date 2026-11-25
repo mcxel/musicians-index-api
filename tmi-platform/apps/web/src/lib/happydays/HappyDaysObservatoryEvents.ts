@@ -18,7 +18,7 @@ export type HappyDaysEventType = (typeof HAPPY_DAYS_EVENT)[keyof typeof HAPPY_DA
 
 export interface HappyDaysEventPayload {
   promptId?: string;
-  destination?: "private" | "friends" | "magazine";
+  destination?: "private" | "friends" | "magazine" | "public_page";
   role?: "fan" | "performer";
   hasTrackAttachment?: boolean;
   hasMediaAttachment?: boolean;

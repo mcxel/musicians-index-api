@@ -3,15 +3,15 @@
  * Derives from FanCosmeticCatalog + AvatarGlbRegistry — no fake neural Foundry.
  */
 
-import { getFanCosmetic, type FanCosmeticDef } from "@/lib/avatars/FanCosmeticCatalog";
-import type { AvatarSocketId } from "@/lib/avatars/AvatarSocketSystem";
-import type { AvatarPreviewAction } from "@/lib/avatars/AvatarPreviewActions";
+import { getFanCosmetic, type FanCosmeticDef } from "./FanCosmeticCatalog";
+import type { AvatarSocketId } from "./AvatarSocketSystem";
+import type { AvatarPreviewAction } from "./AvatarPreviewActions";
 import {
   DEFAULT_FAN_AVATAR_GLB_SLOT,
   FOUNDRY_AVATAR_AUTHORITY,
   getAvatarGlbSlot,
   resolveAvatarViewportBinding,
-} from "@/lib/avatars/AvatarGlbRegistry";
+} from "./AvatarGlbRegistry";
 
 export const FAN_COSMETIC_STORE_HREF = "/store/fan";
 
@@ -132,4 +132,27 @@ export function assertWearablesProductionCompatible(cosmeticIds: string[]): stri
     if (!cap || !cap.productionCompatible) blocked.push(id);
   }
   return blocked;
+}
+
+export type WearableSaveSplit = {
+  committable: string[];
+  locked: string[];
+  incompatible: string[];
+};
+
+/** Save may commit free and owned SKUs. Locked SKUs stay a preview and never navigate by themselves. */
+export function splitWearablesForSave(
+  cosmeticIds: readonly string[],
+  ownedIds: readonly string[] = [],
+): WearableSaveSplit {
+  const committable: string[] = [];
+  const locked: string[] = [];
+  const incompatible: string[] = [];
+  for (const id of cosmeticIds) {
+    const cap = resolveWearableCapability(id);
+    if (!cap || !cap.productionCompatible) incompatible.push(id);
+    else if (canCommitWearableToWorld(id, ownedIds)) committable.push(id);
+    else locked.push(id);
+  }
+  return { committable, locked, incompatible };
 }

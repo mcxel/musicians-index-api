@@ -14,8 +14,18 @@ export type MediaProvider =
   | "apple_music"
   | "tidal"
   | "bandcamp"
+  | "suno"
   | "tmi"
   | "external";
+
+export type MediaPlaybackKind = "native" | "official_embed" | "external_reference";
+
+export interface SunoShareRef {
+  provider: "suno";
+  trackId: string;
+  shareUrl: string;
+  officialEmbedUrl: string;
+}
 
 export type IngestionErrorCode =
   | "INVALID_URL"
@@ -34,7 +44,10 @@ export interface MediaMetadata {
   provider: MediaProvider;
   sourceUrl: string;             // canonical durable URL stored in DB
   providerTrackId: string | null;
+  /** Native TMI <audio> playback. Official embeds are not native playable. */
   isPlayable: boolean;
+  playbackKind: MediaPlaybackKind;
+  officialEmbedUrl: string | null;
 }
 
 export interface IngestionError {
@@ -60,9 +73,35 @@ const SPOTIFY_PATTERN    = /open\.spotify\.com\/(track|album|playlist)\/([A-Za-z
 const APPLE_PATTERN      = /music\.apple\.com\/[a-z]{2}\/(?:album|music-video|song)\/[^/]+\/(\d+)/;
 const TIDAL_PATTERN      = /tidal\.com\/(?:browse\/)?(?:track|album|playlist)\/(\d+)/;
 const BANDCAMP_PATTERN   = /[a-z0-9-]+\.bandcamp\.com\/track\/([^/?#]+)/;
+const SUNO_ID = "[A-Za-z0-9_-]{6,80}";
+const SUNO_PATH = new RegExp(
+  `https?://(?:www\\.)?(?:suno\\.com|suno\\.ai)/(?:song|s|embed)/(${SUNO_ID})`,
+  "i",
+);
 
-function detectProvider(url: string): { provider: MediaProvider; id: string | null } {
+/** Official hosted player page — wrap this iframe. Never rip cdn2.suno audio. */
+export function officialSunoEmbedUrl(trackId: string): string {
+  return `https://suno.com/embed/${encodeURIComponent(trackId)}`;
+}
+
+export function parseSunoShareUrl(raw: string | null | undefined): SunoShareRef | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const match = trimmed.match(SUNO_PATH);
+  if (!match?.[1]) return null;
+  const trackId = match[1];
+  return {
+    provider: "suno",
+    trackId,
+    shareUrl: `https://suno.com/song/${trackId}`,
+    officialEmbedUrl: officialSunoEmbedUrl(trackId),
+  };
+}
+
+export function detectMediaProvider(url: string): { provider: MediaProvider; id: string | null } {
   const u = url.trim();
+  const suno = parseSunoShareUrl(u);
+  if (suno) return { provider: "suno", id: suno.trackId };
 
   for (const pattern of YOUTUBE_PATTERNS) {
     const m = u.match(pattern);
@@ -169,7 +208,8 @@ export async function resolveMediaMetadata(rawUrl: string): Promise<IngestionRes
     return { ok: false, error: { code: "INVALID_URL", message: "Internal URLs are not permitted." } };
   }
 
-  const { provider, id } = detectProvider(url);
+  const { provider, id } = detectMediaProvider(url);
+  const suno = provider === "suno" ? parseSunoShareUrl(url) : null;
 
   // Try oEmbed for providers that support it
   const oembed = await fetchOEmbed(url, provider);
@@ -191,9 +231,11 @@ export async function resolveMediaMetadata(rawUrl: string): Promise<IngestionRes
     coverUrl: oembed?.thumbnail_url ?? null,
     duration: oembed?.duration ?? null,
     provider,
-    sourceUrl: url,
+    sourceUrl: suno?.shareUrl ?? url,
     providerTrackId: id,
-    isPlayable: provider !== "unsupported" as MediaProvider,
+    isPlayable: provider !== "suno",
+    playbackKind: suno ? "official_embed" : "native",
+    officialEmbedUrl: suno?.officialEmbedUrl ?? null,
   };
 
   return { ok: true, metadata };

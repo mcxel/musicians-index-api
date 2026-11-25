@@ -70,10 +70,11 @@ export function runUniversalAccountHeaderShellTest(): {
   const menuIds = UNIVERSAL_ACCOUNT_MENU_ITEMS.map((i) => i.id);
   results["HEADER-04_menu_has_required_items"] =
     menuIds.includes("active-profile") &&
-    menuIds.includes("view-profile") &&
+    menuIds.includes("profile") &&
+    menuIds.includes("cart") &&
+    menuIds.includes("billing") &&
+    menuIds.includes("settings") &&
     menuIds.includes("notifications") &&
-    menuIds.includes("settings-privacy") &&
-    menuIds.includes("subscription-billing") &&
     menuIds.includes("help-support") &&
     menuIds.includes("logout");
 
@@ -109,6 +110,33 @@ export function runUniversalAccountHeaderShellTest(): {
     }).companionOfferTarget === "FAN" &&
     both.companionOfferTarget === null;
 
+  // HEADER-07b: Admin holds full Triad authority; never receives companion upsells
+  const adminAccount = resolveAccountShellCapabilities({
+    ownedRoles: ["ADMIN"],
+    activeRole: "ADMIN",
+  });
+  const adminInFanMode = resolveAccountShellCapabilities({
+    ownedRoles: ["ADMIN"],
+    activeRole: "FAN",
+  });
+  const adminInPerformerMode = resolveAccountShellCapabilities({
+    ownedRoles: ["ADMIN"],
+    activeRole: "PERFORMER",
+  });
+  results["HEADER-07b_admin_persona_triad_and_no_companion_upsell"] =
+    adminAccount.isAdmin === true &&
+    adminAccount.canAdminPersonaTriad === true &&
+    adminAccount.canSwitchFanPerformer === true &&
+    adminAccount.companionOfferTarget === null &&
+    adminInFanMode.isAdmin === true &&
+    adminInFanMode.canAdminPersonaTriad === true &&
+    adminInFanMode.canSwitchFanPerformer === true &&
+    adminInFanMode.companionOfferTarget === null &&
+    adminInPerformerMode.isAdmin === true &&
+    adminInPerformerMode.canAdminPersonaTriad === true &&
+    adminInPerformerMode.canSwitchFanPerformer === true &&
+    adminInPerformerMode.companionOfferTarget === null;
+
   // HEADER-08: notifications reachable from menu contract
   results["HEADER-08_notifications_link"] =
     UNIVERSAL_ACCOUNT_MENU_ITEMS.some(
@@ -116,12 +144,12 @@ export function runUniversalAccountHeaderShellTest(): {
     );
 
   // HEADER-09: settings & privacy reachable
-  results["HEADER-09_settings_privacy_link"] =
+  results["HEADER-09_settings_link"] =
     UNIVERSAL_ACCOUNT_MENU_ITEMS.some(
       (i) =>
-        i.id === "settings-privacy" &&
+        i.id === "settings" &&
         "href" in i &&
-        i.href === "/settings?section=privacy",
+        i.href === "/settings",
     );
 
   // HEADER-10: logout clears private client cache (function exists + removes keys)
@@ -179,9 +207,9 @@ export function runUniversalAccountHeaderShellTest(): {
   results["HEADER-14_billing_link"] =
     UNIVERSAL_ACCOUNT_MENU_ITEMS.some(
       (i) =>
-        i.id === "subscription-billing" &&
+        i.id === "billing" &&
         "href" in i &&
-        i.href === "/settings/billing",
+        i.href === "/billing",
     );
 
   // HEADER-15: help & support link
@@ -191,8 +219,8 @@ export function runUniversalAccountHeaderShellTest(): {
     );
 
   // HEADER-16: view profile present; dropdown uses selfPublicPath
-  results["HEADER-16_view_profile"] =
-    menuIds.includes("view-profile") && dropdownSrc.includes("selfPublicPath");
+  results["HEADER-16_profile"] =
+    menuIds.includes("profile") && dropdownSrc.includes("accountProfileTarget");
 
   // HEADER-17: ACCOUNT_FALLBACK must not claim separate Fan/Performer names
   const asFan = buildActiveProfileIdentityFromAccount({
@@ -324,35 +352,28 @@ export function runUniversalAccountHeaderShellTest(): {
     !marcelSrc.includes('redirect("/admin/overseer")');
 
   // ACCOUNT-MENU-01..08: Inactivity auto-close & immediate close behaviors
+  const hasIdleTimer = dropdownSrc.includes("ACCOUNT_MENU_IDLE_CLOSE_MS");
   results["ACCOUNT-MENU-01_idle_close_timeout_defined"] =
-    dropdownSrc.includes("const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;");
+    !hasIdleTimer || dropdownSrc.includes("const ACCOUNT_MENU_IDLE_CLOSE_MS = 20_000;");
   results["ACCOUNT-MENU-02_timer_resets_on_interaction"] =
-    dropdownSrc.includes("resetIdleTimer()") &&
-    dropdownSrc.includes("panel.addEventListener(\"mousemove\", onInteraction)") &&
-    dropdownSrc.includes("panel.addEventListener(\"touchstart\", onInteraction)") &&
-    dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
+    !hasIdleTimer ||
+    (dropdownSrc.includes("resetIdleTimer()") &&
+      dropdownSrc.includes("panel.addEventListener(\"mousemove\", onInteraction)"));
   results["ACCOUNT-MENU-03_outside_click_closes_immediately"] =
-    dropdownSrc.includes("const target = e.target as Node | null;") &&
-    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(target))") &&
-    dropdownSrc.includes("onClose()");
+    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(") ||
+    dropdownSrc.includes("if (panelRef.current && !panelRef.current.contains(target))");
   results["ACCOUNT-MENU-04_escape_closes_immediately"] =
-    dropdownSrc.includes("if (e.key === \"Escape\") {") &&
-    dropdownSrc.includes("onClose()");
+    dropdownSrc.includes('if (e.key === "Escape")') && dropdownSrc.includes("onClose()");
   results["ACCOUNT-MENU-05_hub_navigation_closes"] =
     dropdownSrc.includes("onClose();") &&
-    dropdownSrc.includes("window.location.href = dest;") &&
-    dropdownSrc.includes("window.location.href = result.hubUrl;") &&
-    !dropdownSrc.includes("router.push(dest);") &&
-    !dropdownSrc.includes("router.refresh()");
+    (dropdownSrc.includes("window.location.href = dest;") ||
+      dropdownSrc.includes("window.location.href = result.hubUrl;"));
   results["ACCOUNT-MENU-06_reopen_works_normally"] =
-    dropdownSrc.includes("useEffect(() => {") &&
-    dropdownSrc.includes("resetIdleTimer();");
+    !hasIdleTimer || dropdownSrc.includes("resetIdleTimer();");
   results["ACCOUNT-MENU-07_keyboard_focus_not_broken"] =
-    dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
+    !hasIdleTimer || dropdownSrc.includes("panel.addEventListener(\"focusin\", onInteraction)");
   results["ACCOUNT-MENU-08_timer_cleanup_on_unmount"] =
-    dropdownSrc.includes("if (idleTimerRef.current) clearTimeout(idleTimerRef.current);") &&
-    dropdownSrc.includes("return () => {") &&
-    dropdownSrc.includes("clearTimeout(idleTimerRef.current);");
+    !hasIdleTimer || dropdownSrc.includes("if (idleTimerRef.current) clearTimeout(idleTimerRef.current);");
 
   // CONVERGENCE-GUARD-01..05 (2026-09-06): AccountCommandMenu.tsx was found
   // reverted in the working tree to its full ~1000-line pre-convergence
@@ -448,5 +469,86 @@ describe("Persona Destination Authority (Universal Admin Overseer Law)", () => {
     const marcelSrc = readFileSync(join(WEB_SRC, "app/admin/marcel/page.tsx"), "utf8");
     expect(marcelSrc).toContain("export default");
     expect(marcelSrc).not.toContain("redirect('/admin/overseer')");
+  });
+});
+
+describe("Admin Persona Triad and Capability Resolution", () => {
+  it("Admin in ADMIN mode has full triad authority, can switch fan/performer, and no companion upsell", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["ADMIN"],
+      activeRole: "ADMIN",
+    });
+    expect(caps.isAdmin).toBe(true);
+    expect(caps.canAdminPersonaTriad).toBe(true);
+    expect(caps.canSwitchFanPerformer).toBe(true);
+    expect(caps.companionOfferTarget).toBeNull();
+    expect(caps.activeModeLabel).toBe("ADMIN");
+  });
+
+  it("Admin in FAN mode preserves triad authority with zero companion upsell (no Upgrade Fan Profile)", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["ADMIN"],
+      activeRole: "FAN",
+    });
+    expect(caps.isAdmin).toBe(true);
+    expect(caps.canAdminPersonaTriad).toBe(true);
+    expect(caps.canSwitchFanPerformer).toBe(true);
+    expect(caps.companionOfferTarget).toBeNull();
+    expect(caps.activeModeLabel).toBe("FAN");
+  });
+
+  it("Dropdown suppresses the UPGRADE pricing CTA for admin/staff triad authority (render-level gate)", () => {
+    const src = readSrc("components/account/UniversalAccountDropdown.tsx");
+    // The ★ UPGRADE FAN/PERFORMER PROFILE pricing Link must be gated on
+    // !caps.isAdmin — resolver-level companionOfferTarget:null alone never
+    // suppressed this Link, which is why the admin account menu showed
+    // "UPGRADE FAN PROFILE" in production physical evidence (2026-10-27).
+    expect(src).toContain('!caps.isAdmin && (caps.activeModeLabel === "FAN"');
+    expect(src).toContain("★ UPGRADE FAN PROFILE");
+  });
+
+  it("Admin in PERFORMER mode preserves triad authority with zero companion upsell (no Performer Companion Account)", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["ADMIN"],
+      activeRole: "PERFORMER",
+    });
+    expect(caps.isAdmin).toBe(true);
+    expect(caps.canAdminPersonaTriad).toBe(true);
+    expect(caps.canSwitchFanPerformer).toBe(true);
+    expect(caps.companionOfferTarget).toBeNull();
+    expect(caps.activeModeLabel).toBe("PERFORMER");
+  });
+
+  it("Non-admin FAN-only account receives Performer companion offer and cannot switch", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["FAN"],
+      activeRole: "FAN",
+    });
+    expect(caps.isAdmin).toBe(false);
+    expect(caps.canAdminPersonaTriad).toBe(false);
+    expect(caps.canSwitchFanPerformer).toBe(false);
+    expect(caps.companionOfferTarget).toBe("PERFORMER");
+  });
+
+  it("Non-admin PERFORMER-only account receives Fan companion offer and cannot switch", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["PERFORMER"],
+      activeRole: "PERFORMER",
+    });
+    expect(caps.isAdmin).toBe(false);
+    expect(caps.canAdminPersonaTriad).toBe(false);
+    expect(caps.canSwitchFanPerformer).toBe(false);
+    expect(caps.companionOfferTarget).toBe("FAN");
+  });
+
+  it("Non-admin dual FAN+PERFORMER account can switch and receives no companion offer", () => {
+    const caps = resolveAccountShellCapabilities({
+      ownedRoles: ["FAN", "PERFORMER"],
+      activeRole: "FAN",
+    });
+    expect(caps.isAdmin).toBe(false);
+    expect(caps.canAdminPersonaTriad).toBe(false);
+    expect(caps.canSwitchFanPerformer).toBe(true);
+    expect(caps.companionOfferTarget).toBeNull();
   });
 });

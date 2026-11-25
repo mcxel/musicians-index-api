@@ -19,9 +19,9 @@
  * When the 3D renderer arrives, plug it into AvatarRendererRegistry — done.
  */
 
-import type { AvatarEmotion, AvatarGesture, AvatarState as RendererState } from '@/lib/avatars/AvatarRendererContract';
-import type { AvatarClass, AvatarSocketId } from '@/lib/avatars/AvatarSocketSystem';
-import type { ActiveProp } from '@/lib/avatars/AvatarPropManifest';
+import type { AvatarEmotion, AvatarGesture, AvatarState as RendererState } from './AvatarRendererContract';
+import type { AvatarClass, AvatarSocketId } from './AvatarSocketSystem';
+import type { ActiveProp } from './AvatarPropManifest';
 
 export type { AvatarClass, AvatarSocketId };
 export type { ActiveProp };
@@ -79,9 +79,12 @@ export interface AvatarAppearance {
   skinTone:     SkinTone;
   bodyBuild:    BodyBuild;
   bodyHeight:   BodyHeight;
+  baseId?:      string;
   hairStyleId?: string;
   outfitId?:    string;
   accessoryIds?: string[];
+  outfitTint?:  string;
+  hairTint?:    string;
   glowColor?:   string;
   portraitUrl?: string;
   sourceImageRef?: string;
@@ -429,9 +432,19 @@ export function fromAudienceAvatar(
     joinedAt: number;
     lastReactionAt?: number;
     supporterBadge?: string;
+    skinTone?: string;
+    hairStyle?: string;
+    baseId?: string;
+    equippedCosmeticIds?: string[];
+    outfitTint?: string;
+    hairTint?: string;
   },
   roomId: string,
 ): AvatarEntity {
+  const skinToneVal = avatar.skinTone
+    ? (avatar.skinTone.startsWith("#") ? _skinToneFromHex(avatar.skinTone) : (avatar.skinTone as SkinTone))
+    : 'medium';
+
   return {
     id:          avatar.userId,
     kind:        avatar.isBot ? 'bot' : 'fan',
@@ -448,9 +461,14 @@ export function fromAudienceAvatar(
     avatarClass: 'biped',
     equippedProps: [],
     appearance: {
-      skinTone:   'medium',
+      skinTone:   skinToneVal,
       bodyBuild:  'average',
       bodyHeight: 'medium',
+      baseId:      avatar.baseId,
+      hairStyleId: avatar.hairStyle,
+      accessoryIds: avatar.equippedCosmeticIds,
+      outfitTint:  avatar.outfitTint,
+      hairTint:    avatar.hairTint,
       portraitUrl: avatar.avatarImageUrl ?? undefined,
     },
     joinedAt:     avatar.joinedAt,
@@ -577,9 +595,15 @@ export function createBotEntity(
   const SKIN_TONES: SkinTone[] = ['porcelain', 'fair', 'light', 'medium', 'tan', 'brown', 'deep', 'ebony'];
   const BUILDS: BodyBuild[]    = ['slim', 'athletic', 'average', 'curvy', 'heavy'];
   const HEIGHTS: BodyHeight[]  = ['short', 'medium', 'tall'];
+  // Lazy require avoided — variety hexes inline so crowd bots don't share one default shirt (§11634/§11647).
+  const OUTFIT_TINTS = [
+    '#E11D48', '#2563EB', '#166534', '#AA2DFF', '#FF2DAA', '#F97316',
+    '#0A0A0A', '#00FFFF', '#FACC15', '#0D9488', '#7F1D1D', '#E5E7EB',
+  ];
   const tone   = skinTone ?? SKIN_TONES[index % SKIN_TONES.length];
   const build  = BUILDS[index % BUILDS.length];
   const height = HEIGHTS[index % HEIGHTS.length];
+  const outfitTint = OUTFIT_TINTS[index % OUTFIT_TINTS.length];
   return {
     id:          `bot-${index}-${roomId}`,
     kind:        'bot',
@@ -595,7 +619,13 @@ export function createBotEntity(
     currentLine: null,
     avatarClass: 'biped',
     equippedProps: [],
-    appearance: { skinTone: tone, bodyBuild: build, bodyHeight: height },
+    appearance: {
+      skinTone: tone,
+      bodyBuild: build,
+      bodyHeight: height,
+      outfitTint,
+      hairTint: OUTFIT_TINTS[(index + 3) % OUTFIT_TINTS.length],
+    },
     joinedAt:     Date.now(),
     lastActiveAt: Date.now(),
     isOnline:     true,

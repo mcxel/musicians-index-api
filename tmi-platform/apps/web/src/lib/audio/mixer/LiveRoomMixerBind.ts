@@ -176,6 +176,13 @@ export function unregisterLiveAudioTrack(participantId: string): void {
  * Sync remote Daily/WebRTC roster to mixer — add/update playable tracks, drop left.
  * Replaces HTMLAudioElement playback paths (single AudioOwner graph).
  */
+/**
+ * Mixer participant ids owned by the private backstage (Green Room / Whisper)
+ * call. The program-room sync below must not unregister them — backstage
+ * registers and unregisters its own tracks (useBackstageGreenRoomMedia).
+ */
+export const BACKSTAGE_AUDIO_PARTICIPANT_PREFIX = "backstage:";
+
 export async function syncLiveRemoteAudioTracks(
   participants: LiveRemoteAudioParticipant[],
 ): Promise<void> {
@@ -194,7 +201,7 @@ export async function syncLiveRemoteAudioTracks(
   }
 
   for (const id of Array.from(attachedTrackIds.keys())) {
-    if (!keep.has(id)) {
+    if (!keep.has(id) && !id.startsWith(BACKSTAGE_AUDIO_PARTICIPANT_PREFIX)) {
       unregisterLiveAudioTrack(id);
     }
   }
@@ -287,6 +294,31 @@ export function markCrowdAmbienceSource(
   ChannelMixerDirector.markSourceAvailable(id, available);
 }
 
+/**
+ * Attach the real competition beat / backing-track <audio> element to the
+ * canonical "music" channel (Step 2B.1 closure repair, 2026-09-24). Closes
+ * the gap documented in EventAudioDuckingCoordinator/TMIAudioSafetyMixer:
+ * winner-ducking math had a real GainNode but no source attached to it
+ * because no component called this. Reuses the existing singleton
+ * TMIAudioSafetyMixer/AudioContext — does not create a second audio graph.
+ */
+export function attachMusicElement(el: HTMLMediaElement): void {
+  const mixer = getOrCreateSafetyMixer();
+  if (!mixer) {
+    // Test-inject / no-DOM-audio path: still mark availability so
+    // getSystemHealth() reflects a real source is expected, honestly.
+    ChannelMixerDirector.markSourceAvailable(MIXER_VIRTUAL_CHANNEL_IDS.music, true);
+    return;
+  }
+  mixer.attachMusicSource(el);
+  ChannelMixerDirector.markSourceAvailable(MIXER_VIRTUAL_CHANNEL_IDS.music, true);
+}
+
+/** Beat element unmounted / detached (round ended, no beat attached, etc). */
+export function detachMusicElement(): void {
+  ChannelMixerDirector.markSourceAvailable(MIXER_VIRTUAL_CHANNEL_IDS.music, false);
+}
+
 /** Leave room — detach all live tracks; keep AudioOwner singleton for next join. */
 export function leaveLiveRoomMixer(): void {
   for (const id of Array.from(attachedTrackIds.keys())) {
@@ -297,6 +329,7 @@ export function leaveLiveRoomMixer(): void {
   // Crowd/ambience back to DEFAULT_ONLY
   markCrowdAmbienceSource("crowd", false);
   markCrowdAmbienceSource("ambience", false);
+  detachMusicElement();
   boundRoomId = null;
   // Keep bound owner (singleton) — health stays honest if mixer still exists
   if (injectedOwner !== undefined) {

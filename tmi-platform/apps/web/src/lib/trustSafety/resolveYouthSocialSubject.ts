@@ -147,7 +147,11 @@ export async function assertDirectThreadOneToOne(opts: {
 }): Promise<void> {
   if (opts.conversationId === COMMUNITY_CONVERSATION_ID) return;
   const kind = (opts.kind ?? "").toLowerCase();
-  if (kind === "community") return;
+  // "room" (live-room public chat, see lib/messaging/roomConversation.ts) is the
+  // same threat model as "community" — an open group channel any participant can
+  // read/post to, never a private 1:1 — so it gets the same youth-safety exemption.
+  // A real private DM thread always has real participantIds and is unaffected.
+  if (kind === "community" || kind === "room") return;
 
   const context =
     opts.context ?? privateInteractContextFromMessageType(opts.messageType);
@@ -164,7 +168,8 @@ export async function assertDirectThreadOneToOne(opts: {
           "blocked: age unknown — private contact denied until age is on the account",
         );
       }
-      if ((convo.kind ?? "").toLowerCase() === "community") return;
+      const convoKind = (convo.kind ?? "").toLowerCase();
+      if (convoKind === "community" || convoKind === "room") return;
       participantIds = convo.participantIds;
     } catch (err) {
       if (err instanceof YouthSocialBlockedError) throw err;

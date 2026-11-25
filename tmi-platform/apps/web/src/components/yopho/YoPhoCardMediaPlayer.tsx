@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useAudio } from "@/components/AudioProvider";
+import type { PlaybackContext } from "@/lib/music/PlaybackReceiptClient";
 import {
   MEDIA_PLAYER_CHASSIS_REGISTRY,
   type MediaPlayerChassisId,
@@ -16,6 +17,7 @@ import { resolveDurablePlayableSrc } from "@/lib/media/durablePlayableUrl";
 import {
   isYoPhoMediaPlayable,
   yophoMediaPlaybackKey,
+  resolveYoPhoCanonicalMediaId,
   type YoPhoMediaModule,
 } from "@/lib/yopho/YoPhoMediaModule";
 
@@ -117,9 +119,26 @@ export default function YoPhoCardMediaPlayer({
     async (opts?: { forceMuted?: boolean }) => {
       if (!interactive || !audible || !resolvedUrl) return;
       const track = playlistTracks[trackIndex % Math.max(playlistTracks.length, 1)];
+      const resolvedTrackId = track?.id ?? audible.sourceId ?? audible.id;
+      // Media-identity trace (owner correction, 2026-10-29) — see
+      // resolveYoPhoCanonicalMediaId's doc comment for the full per-type
+      // provenance proof. resolvedTrackId (above) stays unchanged for
+      // PLAYBACK; canonicalMediaId is the separately-proven value a receipt
+      // may actually use.
+      const canonicalMediaId = resolveYoPhoCanonicalMediaId(audible, track);
+      const playbackContext: PlaybackContext | undefined =
+        canonicalMediaId && canonicalMediaId === resolvedTrackId
+          ? {
+              mediaId: canonicalMediaId,
+              mediaType: "SONG",
+              discoverySource: "YO_PHO",
+              // YO_PHO_CARD_ID preserved separately, never conflated with mediaId.
+              queueEntryId: audible.id,
+            }
+          : undefined;
       const ok = await play(
         {
-          id: track?.id ?? audible.sourceId ?? audible.id,
+          id: resolvedTrackId,
           title: track?.title ?? audible.title ?? "YoPho",
           artist: audible.artist ?? displayName,
           duration: 0,
@@ -131,12 +150,13 @@ export default function YoPhoCardMediaPlayer({
           muted: opts?.forceMuted ?? false,
           startSec: audible.startSec,
         },
+        playbackContext,
       );
       lastKeyRef.current = playbackKey;
       if (!ok && !opts?.forceMuted && audible.autoplayPolicy !== "off") {
         const mutedOk = await play(
           {
-            id: track?.id ?? audible.sourceId ?? audible.id,
+            id: resolvedTrackId,
             title: track?.title ?? audible.title ?? "YoPho",
             artist: audible.artist ?? displayName,
             duration: 0,
@@ -144,6 +164,7 @@ export default function YoPhoCardMediaPlayer({
             artwork: audible.coverUrl ?? track?.coverUrl ?? undefined,
           },
           { loop: audible.loop && playlistTracks.length <= 1, muted: true, startSec: audible.startSec },
+          playbackContext,
         );
         setTapToHear(Boolean(mutedOk) || audible.autoplayPolicy === "muted_until_tap");
       } else if (ok) {

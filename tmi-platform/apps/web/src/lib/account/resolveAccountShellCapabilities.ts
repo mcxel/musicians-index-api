@@ -50,11 +50,13 @@ export function resolveAccountShellCapabilities(input: {
   }
 
   let companionOfferTarget: "FAN" | "PERFORMER" | null = null;
-  if (hasFan && !hasPerformer) companionOfferTarget = "PERFORMER";
-  else if (hasPerformer && !hasFan) companionOfferTarget = "FAN";
+  if (!isAdmin) {
+    if (hasFan && !hasPerformer) companionOfferTarget = "PERFORMER";
+    else if (hasPerformer && !hasFan) companionOfferTarget = "FAN";
+  }
 
   return {
-    canSwitchFanPerformer: hasFan && hasPerformer,
+    canSwitchFanPerformer: isAdmin || (hasFan && hasPerformer),
     canAdminPersonaTriad: isAdmin,
     companionOfferTarget,
     activeModeLabel,
@@ -72,10 +74,11 @@ export const UNIVERSAL_ACCOUNT_MENU_ITEMS = [
   { id: "active-profile", label: "Active Profile" },
   { id: "switch-role", label: "Fan↔Performer switch" },
   { id: "add-companion", label: "Add companion" },
-  { id: "view-profile", label: "View Profile", href: "self-public" },
+  { id: "profile", label: "Profile", href: "role-profile" },
+  { id: "cart", label: "Cart", href: "/cart" },
+  { id: "billing", label: "Billing", href: "/billing" },
+  { id: "settings", label: "Settings", href: "/settings" },
   { id: "notifications", label: "Notifications", href: "/notifications" },
-  { id: "settings-privacy", label: "Settings & Privacy", href: "/settings?section=privacy" },
-  { id: "subscription-billing", label: "Subscription & Billing", href: "/settings/billing" },
   { id: "help-support", label: "Help & Support", href: "/help" },
   { id: "logout", label: "Logout" },
 ] as const;

@@ -29,6 +29,13 @@ import {
   type LoungeMode,
   type ProximityTarget,
 } from "@/lib/venue-hud/TMILoungeHudRuntime";
+import { useCanonicalMediaPlayerRuntime } from "@/lib/media/canonicalMediaPlayerRuntime";
+import {
+  planJukeboxBroadcast,
+  useScopedJukeboxNetworkStore,
+} from "@/lib/jukebox/JukeboxRoomBroadcastPolicy";
+import LoungeCommChannelSelector from "@/components/lounge/LoungeCommChannelSelector";
+import type { LoungeCommChannel } from "@/lib/lounge/LoungeCommChannelAuthority";
 
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
@@ -72,6 +79,9 @@ export default function TMIInteractiveLoungeHud({
   const [myViewOpen, setMyViewOpen] = useState(false);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const [commChannel, setCommChannel] = useState<LoungeCommChannel>("nearby");
+  const [micMuted, setMicMuted] = useState(false);
+  const [speakerMuted, setSpeakerMuted] = useState(false);
   const contextIdRef = useRef(contextParticipantId);
   contextIdRef.current = contextParticipantId;
   const proximityRef = useRef(proximityTarget);
@@ -106,6 +116,50 @@ export default function TMIInteractiveLoungeHud({
           setStatusLine(next ? "Dancing: Spin Dance" : "Stopped dancing");
           return next;
         });
+        return true;
+      }),
+
+      // §12208 — Jukebox is a room MediaSource on existing runtime (not a new engine)
+      HudCommandBus.register("LOUNGE_JUKEBOX", () => {
+        const role =
+          userRole === "admin" || isLoungeHost
+            ? "HOST"
+            : userRole === "performer"
+              ? "AUTHORIZED_DJ"
+              : "GUEST";
+        const mediaId =
+          typeof proximityRef.current?.id === "string" && proximityRef.current.id.length > 0
+            ? proximityRef.current.id
+            : `lounge-jukebox:${loungeId}`;
+        const plan = planJukeboxBroadcast({
+          roomKind: "LOUNGE",
+          role,
+          frameId: "b",
+          media: {
+            mediaId,
+            title: "Lounge Jukebox",
+            creator: null,
+            artworkUrl: null,
+            positionMs: 0,
+            playing: true,
+          },
+        });
+        if (!plan.allowed) {
+          setStatusLine(plan.reason === "UNAUTHORIZED_JUKEBOX_CONTROL"
+            ? "Jukebox: host/DJ control required"
+            : `Jukebox blocked: ${plan.reason ?? "not allowed"}`);
+          return false;
+        }
+        useCanonicalMediaPlayerRuntime.getState().assignSource(plan.frameId, "JUKEBOX");
+        useScopedJukeboxNetworkStore.getState().triggerScopedPlaybackAction({
+          targetScope: "LOUNGE_JUKEBOX_AUDIO",
+          entryPoint: "LOUNGE_DESIGNATED_JUKEBOX_CONTROL",
+          roomKind: "LOUNGE",
+          role,
+          isCallParticipant: false,
+          action: "TOGGLE",
+        });
+        setStatusLine("SOURCE: JUKEBOX · Pick Song (shared room source)");
         return true;
       }),
 
@@ -147,7 +201,7 @@ export default function TMIInteractiveLoungeHud({
       unbindMedia();
       unsubs.forEach((unsub) => unsub());
     };
-  }, []);
+  }, [loungeId, userRole, isLoungeHost]);
 
   const proximityActions = proximityTarget ? resolveLoungeProximityActions(proximityTarget) : [];
 
@@ -163,6 +217,37 @@ export default function TMIInteractiveLoungeHud({
         fontFamily: "var(--font-sans, system-ui, sans-serif)",
       }}
     >
+      {hudVisible ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            pointerEvents: "auto",
+            zIndex: 120,
+            maxWidth: "min(360px, calc(100% - 24px))",
+          }}
+        >
+          <LoungeCommChannelSelector
+            loungeId={loungeId}
+            initialChannel={commChannel}
+            micMuted={micMuted}
+            speakerMuted={speakerMuted}
+            onMicMuteChange={setMicMuted}
+            onSpeakerMuteChange={setSpeakerMuted}
+            onChannelChange={(channel, publishToProximity) => {
+              setCommChannel(channel);
+              setIsPrivateTalking(channel === "group" || channel === "direct");
+              setStatusLine(
+                publishToProximity
+                  ? `Channel: ${channel} · public proximity mic on`
+                  : `Channel: ${channel} · public proximity mic stopped`,
+              );
+            }}
+          />
+        </div>
+      ) : null}
+
       <div style={{ position: "absolute", top: 12, right: 12, pointerEvents: "auto", zIndex: 120, display: "flex", gap: 8 }}>
         <button
           type="button"
@@ -350,6 +435,16 @@ export default function TMIInteractiveLoungeHud({
               style={sideIconBtn(isPrivateTalking ? GOLD : CYAN)}
             >
               💬
+            </button>
+
+            <button
+              type="button"
+              data-testid="lounge-hud-jukebox-btn"
+              title="Lounge Designated Jukebox Network (video-panel lounge control — no avatar walk-up needed)"
+              onClick={() => HudCommandBus.execute("LOUNGE_JUKEBOX")}
+              style={sideIconBtn(GREEN)}
+            >
+              📻
             </button>
           </div>
 

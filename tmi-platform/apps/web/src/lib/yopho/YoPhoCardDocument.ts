@@ -9,10 +9,19 @@
 import type { YoPhoStudioStyleId } from "./YoPhoStudioStylePresets";
 import type { YoPhoSceneId } from "./YoPhoScenePack";
 import type { YoPhoMagicEffectId } from "./YoPhoMagicEffects";
+import type { YoPhoVisualState } from "./YoPhoVisualRuntime";
+import {
+  enabledMagicEffectIds,
+  hydrateVisualFromMagicIds,
+  parseVisual,
+} from "./YoPhoVisualRuntime";
 import {
   createDefaultComposition,
   defaultMotionClip,
   defaultTextOverlay,
+  hydrateCanvasLayers,
+  listCanvasLayers,
+  type YoPhoCanvasLayer,
   type YoPhoCardComposition,
   type YoPhoMotionClip,
   type YoPhoMotionDurationSec,
@@ -229,6 +238,8 @@ export interface YoPhoCardDocument {
   lockPolicy?: import("./YoCardLockEngine").YoCardLockPolicy;
   /** Triptych depth config — 2 or 3 flanking portrait images for parallax bg */
   triptych?: import("./YoPhoTriptychPresets").YoPhoTriptychConfig;
+  /** Canonical lighting / FX / grade — survives save/reload/export (§6262) */
+  visual?: YoPhoVisualState;
   createdAt: string;
   updatedAt: string;
 }
@@ -268,7 +279,7 @@ export const DEFAULT_BRANDING_FOOTER: YoPhoBrandingFooterConfig = {
 };
 
 const UNDERLAY_EFFECTS: YoPhoMagicEffectId[] = ["fog", "smoke", "neon_glow", "light_leak"];
-const FOREGROUND_EFFECTS: YoPhoMagicEffectId[] = ["rain", "snow", "confetti"];
+const FOREGROUND_EFFECTS: YoPhoMagicEffectId[] = ["rain", "snow", "confetti", "particles"];
 
 function roleToTemplate(role: YoPhoCardRole): YoPhoRoleTemplate {
   return role === "performer" ? "PERFORMER_IDENTITY" : "FAN_IDENTITY";
@@ -307,6 +318,135 @@ export function sortLayers(layers: YoPhoLayer[]): YoPhoLayer[] {
   return [...layers].sort((a, b) => a.zIndex - b.zIndex || a.id.localeCompare(b.id));
 }
 
+function boundsFromTransform(layer: YoPhoCanvasLayer): YoPhoLayerBounds {
+  const scale = layer.transform.scale;
+  const w = Math.min(1.4, Math.max(0.12, scale));
+  const h = w;
+  return {
+    x: Math.min(1, Math.max(-0.2, 0.5 + layer.transform.x / 200 - w / 2)),
+    y: Math.min(1, Math.max(-0.2, 0.5 + layer.transform.y / 200 - h / 2)),
+    w,
+    h,
+  };
+}
+
+function canvasStyleFromLayer(layer: YoPhoCanvasLayer): Record<string, string | number | boolean | null> {
+  return {
+    canvasKind: layer.kind,
+    mediaType: layer.mediaType,
+    mediaAssetId: layer.mediaAssetId,
+    posterUrl: layer.posterUrl,
+    rotation: layer.transform.rotation,
+    scale: layer.transform.scale,
+    x: layer.transform.x,
+    y: layer.transform.y,
+    objectFit: layer.transform.objectFit,
+    focalX: layer.transform.focalX,
+    focalY: layer.transform.focalY,
+    loop: layer.playback?.loop ?? true,
+    muted: layer.playback?.muted ?? true,
+    hookStartSec: layer.playback?.hookStartSec ?? 0,
+    durationSec: layer.playback?.durationSec ?? 4,
+    formatOverrides: layer.formatOverrides ? JSON.stringify(layer.formatOverrides) : null,
+    label: layer.label,
+  };
+}
+
+function parseFormatOverrides(
+  raw: string | number | boolean | null | undefined,
+): YoPhoCanvasLayer["formatOverrides"] {
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as YoPhoCanvasLayer["formatOverrides"];
+    return parsed && typeof parsed === "object" ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function canvasLayerToDocumentLayer(
+  layer: YoPhoCanvasLayer,
+  id: string,
+  type: "BACKGROUND_IMAGE" | "PROP",
+): YoPhoLayer {
+  const style = canvasStyleFromLayer(layer);
+  if (type === "BACKGROUND_IMAGE") {
+    return {
+      id,
+      type,
+      zIndex: YOPHO_LAYER_Z.BACKGROUND_IMAGE + 1,
+      visible: layer.visible,
+      opacity: layer.transform.opacity,
+      locked: layer.locked,
+      customBgUrl: layer.srcUrl,
+      asset: layer.srcUrl ? { url: layer.srcUrl } : undefined,
+      bounds: boundsFromTransform(layer),
+      style,
+    };
+  }
+  return {
+    id,
+    type,
+    zIndex: YOPHO_LAYER_Z.PROP + layer.zIndex,
+    visible: layer.visible,
+    opacity: layer.transform.opacity,
+    locked: layer.locked,
+    propId: layer.mediaAssetId ?? layer.id,
+    label: layer.label,
+    asset: layer.srcUrl ? { url: layer.srcUrl } : undefined,
+    bounds: boundsFromTransform(layer),
+    style,
+  };
+}
+
+function canvasLayersFromDocument(doc: YoPhoCardDocument): YoPhoCanvasLayer[] {
+  const fromStyle = doc.layers
+    .filter((layer) => layer.style && typeof layer.style.canvasKind === "string")
+    .map((layer) => {
+      const style = layer.style ?? {};
+      const kind = String(style.canvasKind) as YoPhoCanvasLayer["kind"];
+      const src =
+        layer.asset?.url ??
+        (layer.type === "BACKGROUND_IMAGE" ? layer.customBgUrl : null) ??
+        (layer.type === "BACKGROUND_VIDEO" ? layer.videoUrl : null) ??
+        (layer.type === "PERSON_CUTOUT" ? layer.subjectUrl : null);
+      return {
+        id: layer.id,
+        kind,
+        label: typeof style.label === "string" ? style.label : layer.type === "PROP" ? layer.label : kind,
+        mediaType: (style.mediaType === "video" ? "video" : "image") as YoPhoCanvasLayer["mediaType"],
+        mediaAssetId: typeof style.mediaAssetId === "string" ? style.mediaAssetId : null,
+        srcUrl: src ?? null,
+        posterUrl: typeof style.posterUrl === "string" ? style.posterUrl : null,
+        zIndex: layer.zIndex,
+        visible: layer.visible,
+        locked: Boolean(layer.locked),
+        transform: {
+          x: typeof style.x === "number" ? style.x : 0,
+          y: typeof style.y === "number" ? style.y : 0,
+          scale: typeof style.scale === "number" ? style.scale : 1,
+          rotation: typeof style.rotation === "number" ? style.rotation : 0,
+          opacity: layer.opacity ?? 1,
+          objectFit: style.objectFit === "contain" || style.objectFit === "fill" ? style.objectFit : "cover",
+          focalX: typeof style.focalX === "number" ? style.focalX : 0.5,
+          focalY: typeof style.focalY === "number" ? style.focalY : 0.5,
+        },
+        playback:
+          style.mediaType === "video"
+            ? {
+                loop: style.loop !== false,
+                muted: style.muted !== false,
+                hookStartSec: typeof style.hookStartSec === "number" ? style.hookStartSec : 0,
+                durationSec: (typeof style.durationSec === "number" ? style.durationSec : 4) as YoPhoMotionDurationSec,
+                autoplay: true,
+              }
+            : undefined,
+        formatOverrides: parseFormatOverrides(style.formatOverrides),
+      } satisfies YoPhoCanvasLayer;
+    });
+  return fromStyle.length > 0 ? fromStyle : [];
+}
+
 export function getActiveMagicEffects(doc: YoPhoCardDocument): YoPhoMagicEffectId[] {
   const out: YoPhoMagicEffectId[] = [];
   for (const layer of doc.layers) {
@@ -338,7 +478,9 @@ export function layersFromComposition(opts: {
       opts.branding?.editionBadge ??
       (comp.isCanonical ? "CANONICAL" : comp.editionTitle ?? opts.momentTag ?? null),
   };
-  const effects = comp.magicEffects ?? [];
+  const visual = hydrateVisualFromMagicIds(comp.magicEffects, comp.visual);
+  const effects = enabledMagicEffectIds(visual);
+  const canvasLayers = listCanvasLayers(comp);
   const layers: YoPhoLayer[] = [
     {
       id: "environment",
@@ -349,24 +491,91 @@ export function layersFromComposition(opts: {
       styleId: comp.styleId,
     },
     {
-      id: "bg_image",
+      id: canvasLayers.find((layer) => layer.kind === "base_background")?.id ?? "bg_image",
       type: "BACKGROUND_IMAGE",
       zIndex: YOPHO_LAYER_Z.BACKGROUND_IMAGE,
-      visible: Boolean(comp.customBgUrl),
-      customBgUrl: comp.customBgUrl,
-      asset: comp.customBgUrl ? { url: comp.customBgUrl } : undefined,
+      visible: Boolean(comp.customBgUrl || canvasLayers.some((layer) => layer.kind === "base_background")),
+      customBgUrl: comp.customBgUrl ?? canvasLayers.find((layer) => layer.kind === "base_background")?.srcUrl ?? null,
+      asset: (comp.customBgUrl ?? canvasLayers.find((layer) => layer.kind === "base_background")?.srcUrl)
+        ? { url: (comp.customBgUrl ?? canvasLayers.find((layer) => layer.kind === "base_background")?.srcUrl) as string }
+        : undefined,
+      style: canvasLayers.find((layer) => layer.kind === "base_background")
+        ? canvasStyleFromLayer(canvasLayers.find((layer) => layer.kind === "base_background")!)
+        : undefined,
     },
   ];
 
   for (const effectId of effects.filter((e) => UNDERLAY_EFFECTS.includes(e))) {
+    const inst = visual.effects.find((e) => e.id === effectId);
     layers.push({
       id: `underlay_${effectId}`,
       type: "UNDERLAY_EFFECT",
       zIndex: YOPHO_LAYER_Z.UNDERLAY_EFFECT,
       visible: true,
       effectId,
+      style: inst
+        ? {
+            intensity: inst.params.intensity,
+            speed: inst.params.speed,
+            direction: inst.params.direction,
+            color: inst.params.color,
+            opacity: inst.params.opacity,
+            density: inst.params.density,
+          }
+        : undefined,
     });
   }
+
+  const extraImages = canvasLayers.filter(
+    (layer) =>
+      layer.mediaType === "image" &&
+      layer.kind !== "base_background" &&
+      layer.kind !== "background" &&
+      layer.srcUrl,
+  );
+  const motionLayers = canvasLayers.filter((layer) => layer.mediaType === "video");
+  const extraBackgrounds = canvasLayers.filter(
+    (layer) => layer.kind === "background" && layer.srcUrl && layer.id !== "bg_image",
+  );
+
+  extraBackgrounds.forEach((layer, index) => {
+    layers.push(canvasLayerToDocumentLayer(layer, `canvas_bg_${index}`, "BACKGROUND_IMAGE"));
+  });
+
+  extraImages.forEach((layer, index) => {
+    if (layer.kind === "cutout") {
+      layers.push({
+        id: layer.id || `cutout_${index}`,
+        type: "PERSON_CUTOUT",
+        zIndex: YOPHO_LAYER_Z.PERSON_CUTOUT + index + 1,
+        visible: layer.visible,
+        opacity: layer.transform.opacity,
+        locked: layer.locked,
+        subjectUrl: layer.srcUrl ?? "",
+        asset: layer.srcUrl ? { url: layer.srcUrl } : undefined,
+        motion: defaultMotionClip(),
+        bounds: boundsFromTransform(layer),
+        style: canvasStyleFromLayer(layer),
+      });
+      return;
+    }
+    layers.push(canvasLayerToDocumentLayer(layer, layer.id || `canvas_img_${index}`, "PROP"));
+  });
+
+  motionLayers.forEach((layer, index) => {
+    layers.push({
+      id: layer.id || `canvas_motion_${index}`,
+      type: "BACKGROUND_VIDEO",
+      zIndex: YOPHO_LAYER_Z.BACKGROUND_VIDEO + index + 4,
+      visible: layer.visible,
+      opacity: layer.transform.opacity,
+      locked: layer.locked,
+      videoUrl: layer.srcUrl,
+      asset: layer.srcUrl ? { url: layer.srcUrl, mime: "video/mp4" } : undefined,
+      bounds: boundsFromTransform(layer),
+      style: canvasStyleFromLayer(layer),
+    });
+  });
 
   layers.push({
     id: "person",
@@ -379,12 +588,23 @@ export function layersFromComposition(opts: {
   });
 
   for (const effectId of effects.filter((e) => FOREGROUND_EFFECTS.includes(e))) {
+    const inst = visual.effects.find((e) => e.id === effectId);
     layers.push({
       id: `fg_${effectId}`,
       type: "FOREGROUND_EFFECT",
       zIndex: YOPHO_LAYER_Z.FOREGROUND_EFFECT,
       visible: true,
       effectId,
+      style: inst
+        ? {
+            intensity: inst.params.intensity,
+            speed: inst.params.speed,
+            direction: inst.params.direction,
+            color: inst.params.color,
+            opacity: inst.params.opacity,
+            density: inst.params.density,
+          }
+        : undefined,
     });
   }
 
@@ -511,6 +731,7 @@ export function compositionToDocument(
     },
     brandingFooter: branding,
     interactions: defaultInteractionsForRole(meta.role),
+    visual: hydrateVisualFromMagicIds(comp.magicEffects, comp.visual),
     createdAt: meta.createdAt ?? now,
     updatedAt: now,
   };
@@ -523,6 +744,7 @@ export function documentToComposition(doc: YoPhoCardDocument): YoPhoCardComposit
   const person = doc.layers.find((l): l is YoPhoPersonCutoutLayer => l.type === "PERSON_CUTOUT");
   const text = doc.layers.find((l): l is YoPhoTextLayer => l.type === "TEXT");
   const effects = getActiveMagicEffects(doc);
+  const visual = parseVisual(doc.visual) ?? hydrateVisualFromMagicIds(effects, null);
 
   return {
     ...base,
@@ -530,11 +752,23 @@ export function documentToComposition(doc: YoPhoCardDocument): YoPhoCardComposit
     sceneId: env?.sceneId ?? base.sceneId,
     customBgUrl: bg?.customBgUrl ?? null,
     textOverlay: text?.textOverlay ?? base.textOverlay,
+    canvasLayers: (() => {
+      const fromDoc = canvasLayersFromDocument(doc);
+      return fromDoc.length
+        ? fromDoc
+        : hydrateCanvasLayers({
+            customBgUrl: bg?.customBgUrl ?? null,
+            collageUrls: base.collageUrls,
+            motion: person?.motion ?? defaultMotionClip(),
+          });
+    })(),
     cardId: doc.id,
     playlistId: doc.audio?.playlistId ?? null,
     mediaModules: doc.mediaModules ?? [],
     motion: person?.motion ?? defaultMotionClip(),
-    magicEffects: effects,
+    visual,
+    magicEffects: enabledMagicEffectIds(visual),
+    primaryFormat: visual.primaryFormat,
     isCanonical: doc.isCanonical,
     editionTitle: doc.title,
     kind: doc.kind,

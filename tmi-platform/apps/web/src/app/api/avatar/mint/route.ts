@@ -12,7 +12,7 @@ type MintBody = {
 };
 
 export async function POST(req: NextRequest) {
-  const auth = requireFanAvatarSession(req);
+  const auth = await requireFanAvatarSession(req);
   if ("error" in auth) return auth.error;
   const body = (await req.json().catch(() => ({}))) as MintBody;
   const userId = auth.user.id;

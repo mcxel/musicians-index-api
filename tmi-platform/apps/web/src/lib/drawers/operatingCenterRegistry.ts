@@ -5,20 +5,30 @@
  * The left rail renders Operating Center buttons; the drawer's swap chips
  * surface the modules within the active center.
  *
+ * CANONICAL HUB RAIL ICONS = ProductShellIcon(center.id) — white line icons.
+ * Cartoon/emoji rail glyphs are RETIRED. Never render OperatingCenter.icon
+ * in HubNavigationRail / HubMobileGpsNavDrawer / CommandCenter shells.
+ *
  * Rule: Assembly only — modules listed here must already exist in UniversalDrawerRegistry.
  */
 
 import type { UniversalDrawerModuleId } from "@/lib/drawers/UniversalDrawerRegistry";
 import type { ActionId } from "@/lib/os/universalActionRegistry";
 
+/** Hub rails must resolve icons through ProductShellIcon only. */
+export const CANONICAL_HUB_RAIL_ICON_AUTHORITY = "ProductShellIcon" as const;
+
 export type OperatingCenterRole = "fan" | "performer" | "beat_creator";
 
 export interface OperatingCenter {
-  /** Stable ID — never change (used in state stores). */
+  /** Stable ID — never change (used in state stores). Also ProductShellIcon name. */
   id: string;
   label: string;
   info: string;
-  /** Emoji icon shown in left-rail button. */
+  /**
+   * @deprecated RETIRED — was emoji cartoon for left-rail. Always empty.
+   * Hub rails must use ProductShellIcon(center.id). Do not reintroduce emoji glyphs.
+   */
   icon: string;
   /** Accent colour for the button active/hover state. */
   accent: string;
@@ -38,7 +48,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "communication",
     label: "COMMUNICATION",
     info: "Messages · Calls · Groups",
-    icon: "💬",
+    icon: "",
     accent: "#00D4FF",
     primaryModule: "messaging",
     modules: ["messaging", "notifications", "submissions", "queue"],
@@ -49,7 +59,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "booking",
     label: "BOOKING CENTER",
     info: "Calendar · Requests · Contracts",
-    icon: "📅",
+    icon: "",
     accent: "#00FF88",
     primaryModule: "booking",
     modules: ["booking"],
@@ -60,7 +70,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "media",
     label: "MEDIA CENTER",
     info: "Locker · Beats · Playlists",
-    icon: "🎵",
+    icon: "",
     accent: "#9B59FF",
     primaryModule: "media_locker",
     modules: ["media_locker", "beat_lab", "playlist", "memory", "stage_tools", "live_destinations"],
@@ -71,7 +81,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "bio_magazine",
     label: "BIO & MAGAZINE",
     info: "Article · Gallery · Interviews",
-    icon: "📰",
+    icon: "",
     accent: "#00FFFF",
     primaryModule: "bio_magazine",
     modules: ["bio_magazine", "yopho", "media_locker"],
@@ -82,7 +92,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "commerce_center",
     label: "COMMERCE CENTER",
     info: "Products · Store · Own · Payouts",
-    icon: "🛒",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "commerce_center",
     modules: ["commerce_center", "store", "beat_marketplace"],
@@ -93,7 +103,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "commercial",
     label: "COMMERCIAL CENTER",
     info: "Store · Commerce",
-    icon: "💰",
+    icon: "",
     accent: "#FFD700",
     // Rule 26: no sponsor-management chrome for performers — store/commerce only
     primaryModule: "store",
@@ -104,11 +114,12 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
   {
     id: "analytics",
     label: "ANALYTICS CENTER",
-    info: "Revenue · Periods · Scores",
-    icon: "📊",
+    info: "Revenue · Periods · Scores · Submissions",
+    icon: "",
     accent: "#FF6B35",
+    // Owner correction: Stats & Analytics → Submissions → Submit Beat (no 2nd submission system)
     primaryModule: "analytics",
-    modules: ["analytics", "scores"],
+    modules: ["analytics", "scores", "submissions"],
     roles: ["performer"],
     actionId: "ACTION_OPEN_ANALYTICS_CENTER",
   },
@@ -116,7 +127,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "achievement_center",
     label: "ACHIEVEMENT CENTER",
     info: "Crowns · Belts · XP · Timeline",
-    icon: "🏆",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "achievement_center",
     modules: ["achievement_center", "scores", "championship_center"],
@@ -127,7 +138,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "championship_center",
     label: "CHAMPIONSHIP CENTER",
     info: "Crowns · Belts · Defenses · HoF",
-    icon: "👑",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "championship_center",
     modules: ["championship_center", "achievement_center", "scores"],
@@ -138,7 +149,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "yopho",
     label: "YOPHO STUDIO",
     info: "Identity Card · Motion",
-    icon: "🃏",
+    icon: "",
     accent: "#FF2DAA",
     primaryModule: "yopho",
     modules: ["yopho"],
@@ -149,7 +160,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "shop_center",
     label: "SHOP CENTER",
     info: "Connections · Products · Orders · Payouts",
-    icon: "🏬",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "shop_center",
     modules: ["shop_center", "asset_vault", "commerce_center"],
@@ -160,7 +171,7 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     id: "marketplace_center",
     label: "MARKETPLACE",
     info: "Albums · Merch · Beats · TMI Store",
-    icon: "🛍️",
+    icon: "",
     accent: "#00FFFF",
     primaryModule: "marketplace",
     modules: ["marketplace", "tmi_store", "beat_marketplace"],
@@ -175,11 +186,12 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
   {
     id: "avatar",
     label: "AVATAR CENTER",
-    info: "Lobby · Wearables · Emotes",
-    icon: "🧑‍🎤",
+    info: "Creation · Wearables · Emotes",
+    icon: "",
     accent: "#9B59FF",
-    primaryModule: "lobby",
-    modules: ["lobby", "inventory", "room_controls"],
+    /* Full Avatar Creation Center drawer (FanAvatarCanister) — not Lobby Wall. */
+    primaryModule: "avatar",
+    modules: ["avatar", "inventory", "lobby", "room_controls"],
     roles: ["fan"],
     actionId: "ACTION_OPEN_AVATAR_CENTER",
   },
@@ -187,7 +199,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "memory",
     label: "MEMORY CENTER",
     info: "Wall · Photos · Playlists",
-    icon: "📸",
+    icon: "",
     accent: "#00D4FF",
     primaryModule: "memory",
     modules: ["memory", "playlist"],
@@ -198,7 +210,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "rewards",
     label: "REWARDS CENTER",
     info: "Prizes · Inventory · Orders",
-    icon: "🏆",
+    icon: "",
     accent: "#FF6B35",
     primaryModule: "prize_vault",
     modules: ["prize_vault", "achievement_center", "inventory", "tickets"],
@@ -209,7 +221,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "achievement_center",
     label: "ACHIEVEMENT CENTER",
     info: "Trophies · Crowns · XP · Points",
-    icon: "👑",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "achievement_center",
     modules: ["achievement_center", "scores", "prize_vault", "championship_center"],
@@ -220,7 +232,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "championship_center",
     label: "CHAMPIONSHIP CENTER",
     info: "Crowns · Belts · Defenses · HoF",
-    icon: "🏆",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "championship_center",
     modules: ["championship_center", "achievement_center", "scores"],
@@ -231,7 +243,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "yopho",
     label: "YOPHO STUDIO",
     info: "Identity · Motion · Share",
-    icon: "🃏",
+    icon: "",
     accent: "#FF2DAA",
     primaryModule: "yopho",
     modules: ["yopho"],
@@ -242,7 +254,7 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     id: "statistics",
     label: "STATISTICS CENTER",
     info: "XP · Levels · Favorites",
-    icon: "📊",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "analytics",
     modules: ["analytics", "scores", "favorites", "submissions"],
@@ -250,10 +262,21 @@ export const FAN_OPERATING_CENTERS: OperatingCenter[] = [
     actionId: "ACTION_OPEN_STATISTICS_CENTER",
   },
   {
+    id: "shop_center",
+    label: "SHOP",
+    info: "Avatar · Lobby skins · YoPho · Fan inventory",
+    icon: "",
+    accent: "#FFD700",
+    primaryModule: "store",
+    modules: ["store", "marketplace", "tmi_store", "inventory"],
+    roles: ["fan"],
+    actionId: "ACTION_OPEN_SHOP",
+  },
+  {
     id: "marketplace_center",
     label: "MARKETPLACE",
     info: "Albums · Merch · Beats · TMI Store",
-    icon: "🛍️",
+    icon: "",
     accent: "#00FFFF",
     primaryModule: "marketplace",
     modules: ["marketplace", "tmi_store", "beat_marketplace"],
@@ -272,7 +295,7 @@ export const BEAT_CREATOR_OPERATING_CENTERS: OperatingCenter[] = [
     id: "beat_locker",
     label: "BEAT LOCKER",
     info: "Upload · Edit · Manage",
-    icon: "🎧",
+    icon: "",
     accent: "#FF6B1A",
     primaryModule: "submission_center",
     modules: ["submission_center", "beat_lab", "submissions", "analytics"],
@@ -283,7 +306,7 @@ export const BEAT_CREATOR_OPERATING_CENTERS: OperatingCenter[] = [
     id: "beat_queue",
     label: "COMPETITION QUEUE",
     info: "Battles · Cyphers · Challenges",
-    icon: "🥁",
+    icon: "",
     accent: "#9B59FF",
     primaryModule: "submissions",
     modules: ["submissions", "scores"],
@@ -294,7 +317,7 @@ export const BEAT_CREATOR_OPERATING_CENTERS: OperatingCenter[] = [
     id: "beat_analytics",
     label: "BEAT ANALYTICS",
     info: "Revenue · Plays · Reports",
-    icon: "📊",
+    icon: "",
     accent: "#FFD700",
     primaryModule: "analytics",
     modules: ["analytics"],
@@ -305,7 +328,7 @@ export const BEAT_CREATOR_OPERATING_CENTERS: OperatingCenter[] = [
     id: "beat_marketplace_center",
     label: "BEAT MARKETPLACE",
     info: "Browse · License · Purchase",
-    icon: "🏪",
+    icon: "",
     accent: "#00D4FF",
     primaryModule: "beat_marketplace",
     modules: ["beat_marketplace"],
@@ -317,8 +340,14 @@ export const BEAT_CREATOR_OPERATING_CENTERS: OperatingCenter[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function centersForRole(role: OperatingCenterRole): OperatingCenter[] {
-  if (role === "beat_creator") return BEAT_CREATOR_OPERATING_CENTERS;
-  return role === "performer" ? PERFORMER_OPERATING_CENTERS : FAN_OPERATING_CENTERS;
+  const list =
+    role === "beat_creator"
+      ? BEAT_CREATOR_OPERATING_CENTERS
+      : role === "performer"
+        ? PERFORMER_OPERATING_CENTERS
+        : FAN_OPERATING_CENTERS;
+  // Permanent cartoon retirement: never hand emoji/icon glyphs to any rail consumer.
+  return list.map((center) => (center.icon ? { ...center, icon: "" } : center));
 }
 
 /**

@@ -196,3 +196,19 @@ export function inContentAdCount(tier: UserTier): number {
 
 export const AD_CONSENT_STORAGE_KEY = "tmi_ad_consent";
 export type AdConsentValue = "accepted" | "declined";
+
+/**
+ * True only when a real IAB-registered CMP is wired and ops has flipped the flag.
+ * The AdConsentBanner __tcfapi helper is a fabricated stub — never treat it as certified.
+ */
+export function isCertifiedCmpEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_TMI_CERTIFIED_CMP === "1";
+}
+
+/**
+ * When true, decideAdSenseLoad must deny billable loads until isCertifiedCmpEnabled().
+ * Default off so US AdSense review / non-TCF paths are not falsely killed by the stub.
+ */
+export function requireCertifiedCmpForBillableAds(): boolean {
+  return process.env.NEXT_PUBLIC_TMI_REQUIRE_CERTIFIED_CMP === "1";
+}

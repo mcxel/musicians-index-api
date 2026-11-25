@@ -7,15 +7,24 @@ import { listArticleAdPlacements } from "../articles/ArticleAdPlacementEngine";
 import { getAdSlotForZone } from "../commerce/SponsorRegistry";
 import { editorialSubmissionEngine } from "../editorial-economy/EditorialSubmissionEngine";
 import { getActiveLiveRooms } from "../live/LiveRoomEngine";
-import { computeRanks, isRankedEligible, type PerformerIdentity } from "../performers/PerformerRegistry";
-import { listMagazineRankings } from "../progression/MagazineRankingEngine";
+import { computeRanks, isRankedEligible, isVerifiedRankedPerformer, type PerformerIdentity } from "../performers/PerformerRegistry";
+import { queryRankedUsers } from "../rankings/CanonicalRankedUsers.server";
 import { getAllVenues } from "../venues/VenueRegistry";
+import {
+  computeQuarterlyEditorialPlacements,
+  getCurrentQuarterlyIssueSnapshot,
+  listAllQuarterlyIssueSnapshots,
+  type QuarterlyEditorialPlacementEntry,
+  type QuarterlyIssueTransitionContext,
+  type SystemDRankedPerformerInput,
+} from "./QuarterlyEditorialPlacementAuthority";
 import type { MagazineArticle } from "./MagazineArticleResolver";
 import {
   DEFAULT_ISSUE_RHYTHM,
   editorialSubmissionToStory,
   isMagazinePerformerEligible,
   NON_LIVING_COMMUNITY_RANDOM,
+  GOSSIP_HAPPY_ADJACENCY_PAIR,
   type EditorialStory,
   type MagazineIssueSlot,
   type MagazineNewsSlotSource,
@@ -30,7 +39,10 @@ import {
   getPerformerPoolArticles,
   type MagazineArticle as IssueMagazineArticle,
 } from "./magazineIssueData";
-import { magazineReaderArticleUrl } from "./MagazineReaderRoutes";
+import { magazineReaderArticleUrl } from "./MagazineReaderUrls";
+import { listFanArticlesForMagazine } from "./FanArticleMagazineAuthority";
+import { listWeeklyTopYoPhoCards } from "./WeeklyTopYoPhoAuthority";
+import { resolveAuthorizedMagazineImageUrl } from "./MagazineImageProvenance";
 
 export type RotationCandidate = {
   id: string;
@@ -100,11 +112,186 @@ export function rotateContestFeatures(contests: RotationCandidate[], limit = 5):
   return rotate(sortByWeight(contests), Date.now(), 30 * 60 * 1000).slice(0, limit);
 }
 
-export function rotateTopRanks(limit = 10): RotationCandidate[] {
-  const ranks = listMagazineRankings().map((entry) => ({
-    id: entry.artistId,
-    label: `#${entry.currentRank} Artist ${entry.artistId}`,
-    weight: Math.max(0, 1000 - entry.currentRank * 10 + entry.score),
+/**
+ * Real-ranking-authority convergence (owner-locked, 2026-10-29): orders the
+ * Magazine's eligible registry performers by System D's real signal
+ * (queryRankedUsers — qualified plays + unique listeners + followers), not
+ * raw lifetime XP. Matches by slug so the full registry record (merch,
+ * liveRoomRoute, motion assets) is preserved; only ORDER/rank changes.
+ * A performer with no real activity yet (no matching row) is never excluded
+ * and never given a fabricated score — they keep a place after every
+ * really-ranked performer, ordered among themselves by raw XP (computeRanks()'s
+ * own order), exactly as today, until they accrue real activity. This is the
+ * single real-ranking source for Magazine Reader composition; computeRanks()'s
+ * raw-XP order must not drive who appears or in what order on its own again.
+ */
+export type RankedPerformerDetail = {
+  performer: PerformerIdentity;
+  /** Real System D score (queryRankedUsers), or null when no real row exists
+   * yet — a null here must never be treated as score 0 / fabricated. */
+  realScore: number | null;
+};
+
+/**
+ * Detailed sibling of getRealRankedPerformersForMagazine() that also exposes
+ * WHICH performers have a genuine System D row vs. the raw-XP fallback —
+ * needed by callers (e.g. the quarterly apex authority) that must select
+ * from the real-ranked population only, never an unranked fallback (owner
+ * rule: "no System D row != fabricated System D score / must never defeat a
+ * legitimately ranked performer for the competitive apex").
+ */
+export async function getRealRankedPerformersForMagazineDetailed(): Promise<RankedPerformerDetail[]> {
+  const eligible = computeRanks();
+  const realRows = await queryRankedUsers({ limit: 500 });
+  const realBySlug = new Map(realRows.filter((r) => r.slug).map((r) => [r.slug as string, r]));
+
+  const withReal: RankedPerformerDetail[] = [];
+  const withoutReal: RankedPerformerDetail[] = [];
+  for (const performer of eligible) {
+    const row = realBySlug.get(performer.slug);
+    if (row) withReal.push({ performer, realScore: row.score });
+    else withoutReal.push({ performer, realScore: null });
+  }
+  withReal.sort((a, b) => (b.realScore as number) - (a.realScore as number));
+
+  return [...withReal, ...withoutReal].map((entry, index) => ({
+    ...entry,
+    performer: { ...entry.performer, rank: index + 1 },
+  }));
+}
+
+export async function getRealRankedPerformersForMagazine(): Promise<PerformerIdentity[]> {
+  const detailed = await getRealRankedPerformersForMagazineDetailed();
+  return detailed.map((entry) => entry.performer);
+}
+
+/**
+ * The ONE canonical "current Magazine apex" resolver (owner-locked, 2026-10-30):
+ * the single source both the Home 1 Crown and the Magazine Reader's #1
+ * PERFORMER slot must consume, so they can never independently calculate a
+ * different Magazine #1. Never a second apex-selection authority — this is a
+ * thin server adapter (rule 3653) that gathers the real System D population
+ * and hands it to QuarterlyEditorialPlacementAuthority's pure, parameterized
+ * computeQuarterlyEditorialPlacements(); it never re-implements apex logic.
+ *
+ * Zero-score-fallback law (owner-locked, 2026-10-30, supersedes the earlier
+ * raw-XP tail reported in getRealRankedPerformersForMagazine()): a performer
+ * with no real queryRankedUsers() row at all (no backing account) is
+ * excluded from Magazine apex/placement entirely here — SystemDRankedPerformerInput
+ * requires a real rawScore, so there is no raw-XP fallback path left to
+ * remove. A performer WITH a real row but score 0 is included and ordered by
+ * queryRankedUsers()'s own canonical chronology tie-break (PerformerScoreEngine's
+ * rankPerformerSignals()), never by raw XP.
+ *
+ * If a quarterly issue has already been explicitly published for the current
+ * calendar window (publishQuarterlyIssueSnapshot()), that frozen snapshot's
+ * placements are returned as-is — never recomputed from live data, so a
+ * published issue stays historically stable. Before any explicit publish,
+ * this returns a live preview computed from the same pure function with the
+ * same transition context (the most recent ever-published issue's apex, if
+ * any) that a future publish would use — so Home 1 and the Magazine Reader
+ * agree with each other even before an issue is ever formally published.
+ */
+export type MagazineApexPlacementEntry = {
+  performerId: string;
+  slug: string;
+  displayName: string;
+  rawSystemDRank: number;
+  rawScore: number;
+  editorialPlacement: number;
+  apexEligibility: boolean;
+  placementReason: QuarterlyEditorialPlacementEntry["placementReason"];
+  genre?: string;
+  profileRoute?: string;
+  avatarUrl?: string;
+  isLive?: boolean;
+  verified?: boolean;
+  /** Real, computed by AdaptiveMagazineCompositionAuthority via
+   * QuarterlyEditorialPlacementAuthority — must travel through to the
+   * renderer, never discarded (owner-locked, 2026-10-30). */
+  articleComposition?: QuarterlyEditorialPlacementEntry["articleComposition"];
+};
+
+function liveEntryToApexEntry(entry: QuarterlyEditorialPlacementEntry): MagazineApexPlacementEntry {
+  return {
+    performerId: entry.performerId,
+    slug: entry.slug,
+    displayName: entry.displayName,
+    rawSystemDRank: entry.rawSystemDRank,
+    rawScore: entry.rawScore,
+    editorialPlacement: entry.editorialPlacement,
+    apexEligibility: entry.apexEligibility,
+    placementReason: entry.placementReason,
+    genre: entry.genre,
+    profileRoute: entry.profileRoute,
+    avatarUrl: entry.avatarUrl,
+    isLive: entry.isLive,
+    articleComposition: entry.articleComposition,
+    verified: entry.verified,
+  };
+}
+
+export async function getCurrentMagazineApexPlacements(
+  issueKey = "current-issue",
+): Promise<MagazineApexPlacementEntry[]> {
+  const alreadyPublished = getCurrentQuarterlyIssueSnapshot();
+  if (alreadyPublished) {
+    // The frozen published-snapshot shape (QuarterlyIssuePerformerSnapshot)
+    // carries "AtPublication"-suffixed field names and omits presentation
+    // fields (profileRoute/avatarUrl/isLive/verified) that were never part
+    // of the immutable historical record — mapped here, not re-derived from
+    // live data (that would violate historical-issue stability).
+    return alreadyPublished.placements.map((p) => ({
+      performerId: p.performerId,
+      slug: p.slug,
+      displayName: p.displayName,
+      rawSystemDRank: p.rawSystemDRankAtPublication,
+      rawScore: p.rawScoreAtPublication,
+      editorialPlacement: p.editorialPlacement,
+      apexEligibility: p.apexEligibility,
+      placementReason: p.placementReason,
+      articleComposition: p.articleCompositionSnapshot,
+    }));
+  }
+
+  const detailed = await getRealRankedPerformersForMagazineDetailed();
+  const realOnly = detailed.filter((entry) => entry.realScore !== null);
+
+  const input: SystemDRankedPerformerInput[] = realOnly.map((entry) => ({
+    performerId: entry.performer.id,
+    slug: entry.performer.slug,
+    displayName: entry.performer.name,
+    rawSystemDRank: entry.performer.rank,
+    rawScore: entry.realScore as number,
+    genre: entry.performer.category,
+    profileRoute: entry.performer.profileRoute,
+    avatarUrl: entry.performer.profileImageUrl,
+    isLive: entry.performer.isLive,
+    verified: isVerifiedRankedPerformer(entry.performer),
+  }));
+
+  const latestEverPublished = listAllQuarterlyIssueSnapshots()[0] ?? null;
+  const transitionContext: QuarterlyIssueTransitionContext | null = latestEverPublished
+    ? {
+        previousIssueId: latestEverPublished.issueId,
+        previousQuarterKey: latestEverPublished.quarterKey,
+        previousIssueApexPerformerId: latestEverPublished.apexPerformerId,
+        priorFormerApexPerformerIds: listAllQuarterlyIssueSnapshots()
+          .slice(1)
+          .map((s) => s.apexPerformerId)
+          .filter((id): id is string => Boolean(id)),
+      }
+    : null;
+
+  return computeQuarterlyEditorialPlacements(input, transitionContext, issueKey).map(liveEntryToApexEntry);
+}
+
+export async function rotateTopRanks(limit = 10): Promise<RotationCandidate[]> {
+  const ranked = await getRealRankedPerformersForMagazine();
+  const ranks = ranked.map((performer) => ({
+    id: performer.slug,
+    label: `#${performer.rank} ${performer.name}`,
+    weight: Math.max(0, 1000 - performer.rank * 10),
   }));
 
   return rotate(sortByWeight(ranks), Date.now(), 60 * 60 * 1000).slice(0, limit);
@@ -114,20 +301,20 @@ export function rotateFeaturedEvents(events: RotationCandidate[], limit = 6): Ro
   return rotate(sortByWeight(events), Date.now(), 30 * 60 * 1000).slice(0, limit);
 }
 
-export function buildMagazineRotationSnapshot(input: {
+export async function buildMagazineRotationSnapshot(input: {
   articles: RotationCandidate[];
   homepageArticles: RotationCandidate[];
   sponsors: RotationCandidate[];
   contests: RotationCandidate[];
   events: RotationCandidate[];
   articleIdForAds?: string;
-}): MagazineRotationSnapshot {
+}): Promise<MagazineRotationSnapshot> {
   return {
     articleRotation: rotateArticles(input.articles),
     homepageArticleRotation: rotateHomepageArticles(input.homepageArticles),
     adRotation: rotateAdsForIssue(input.articleIdForAds),
     sponsorRotation: rotateSponsorsForIssue(input.sponsors),
-    rankRotation: rotateTopRanks(),
+    rankRotation: await rotateTopRanks(),
     contestFeatureRotation: rotateContestFeatures(input.contests),
     featuredEventRotation: rotateFeaturedEvents(input.events),
     generatedAtMs: Date.now(),
@@ -181,11 +368,19 @@ export function orderPerformersRankFirstShuffleSecond(
   const eligible = performers.filter(isMagazinePerformerEligible);
   if (eligible.length === 0) return [];
 
-  const byXp = [...eligible].sort((a, b) => b.xp - a.xp || a.slug.localeCompare(b.slug));
-  const global1 = byXp[0]!;
+  // Trusts the caller's order as the real rank (Magazine apex/placement
+  // authority order from orderByMagazineApexPlacement()) — never re-derives
+  // "global #1" from raw XP here. Re-sorting by .xp would silently discard
+  // the one canonical Magazine apex decision and let this function decide a
+  // second, different #1 (owner-locked, 2026-10-30: "MagazineRotationEngine
+  // must NOT independently decide current Magazine #1 from raw System D
+  // order after QuarterlyEditorialPlacementAuthority has already determined
+  // the issue placement").
+  const byRank = eligible;
+  const global1 = byRank[0]!;
 
   const byGenre = new Map<string, MagazinePerformerSlotSource[]>();
-  for (const p of byXp) {
+  for (const p of byRank) {
     const list = byGenre.get(p.category) ?? [];
     list.push(p);
     byGenre.set(p.category, list);
@@ -214,9 +409,20 @@ function pickNextRandom(
   const organic = remaining.filter((item) => !item.paidObligation);
   const prefer = paid.length > 0 ? paid : organic;
 
+  // §20984 — Community Gossip and Happy Days never land back-to-back, even
+  // though they're different subtypes (the generic same-subtype guard below
+  // wouldn't otherwise catch this specific pair).
+  const blockedSubtypes = new Set<RandomPageSubtype>();
+  if (lastSubtype) {
+    blockedSubtypes.add(lastSubtype);
+    if (GOSSIP_HAPPY_ADJACENCY_PAIR.includes(lastSubtype)) {
+      for (const s of GOSSIP_HAPPY_ADJACENCY_PAIR) blockedSubtypes.add(s);
+    }
+  }
+
   const alternatives =
-    lastSubtype && prefer.some((item) => item.subtype !== lastSubtype)
-      ? prefer.filter((item) => item.subtype !== lastSubtype)
+    blockedSubtypes.size > 0 && prefer.some((item) => !blockedSubtypes.has(item.subtype))
+      ? prefer.filter((item) => !blockedSubtypes.has(item.subtype))
       : prefer;
 
   const picked = alternatives[0] ?? prefer[0] ?? remaining[0]!;
@@ -241,19 +447,28 @@ export function buildMagazineIssueSequence(input: {
   const newsPool = input.news.filter((n) => n.slug && n.title && n.href);
   const randomRemaining = [...input.randomPool].sort((a, b) => Number(b.paidObligation) - Number(a.paidObligation));
 
-  if (performerQueue.length === 0 || newsPool.length === 0) return [];
+  // Empty-pool law: never invent articles. Skip missing PERFORMER/NEWS steps;
+  // still emit remaining eligible classes (including RANDOM-only issues).
+  // Only abort when every pool is empty.
+  if (performerQueue.length === 0 && newsPool.length === 0 && randomRemaining.length === 0) {
+    return [];
+  }
 
   const slots: MagazineIssueSlot[] = [];
   let newsIndex = 0;
   let lastRandomSubtype: RandomPageSubtype | undefined;
   let randomBag = randomRemaining;
 
-  const cycleCount = performerQueue.length;
+  const cycleCount =
+    performerQueue.length > 0
+      ? performerQueue.length
+      : Math.min(Math.max(newsPool.length, randomRemaining.length > 0 ? 1 : 0), maxP);
+
   for (let cycle = 0; cycle < cycleCount; cycle += 1) {
     for (const pageClass of rhythm) {
       if (pageClass === "PERFORMER") {
         const performer = performerQueue[cycle];
-        if (!performer) continue;
+        if (!performer) continue; // skip — do not invent a performer feature
         const href = performer.articleSlug
           ? magazineReaderArticleUrl(performer.articleSlug)
           : performer.profileRoute;
@@ -272,8 +487,10 @@ export function buildMagazineIssueSequence(input: {
           liveHref: performer.liveRoomRoute,
           merchHref: performer.merchHref,
           isLive: performer.isLive,
+          articleComposition: performer.articleComposition,
         });
       } else if (pageClass === "NEWS") {
+        if (newsPool.length === 0) continue; // skip — do not invent news
         const news = newsPool[newsIndex % newsPool.length]!;
         newsIndex += 1;
         slots.push({
@@ -283,9 +500,12 @@ export function buildMagazineIssueSequence(input: {
           href: news.href,
           deck: news.preview ?? news.subtitle,
           heroColor: news.heroColor,
+          imageUrl: news.imageUrl,
           xpEligible: true,
           monetizationLayer: "NONE",
           articleSlug: news.slug,
+          sourceUrl: news.sourceUrl,
+          sourceName: news.sourceName,
         });
       } else {
         let next = pickNextRandom(randomBag, lastRandomSubtype);
@@ -321,6 +541,7 @@ function articlePreview(article: IssueMagazineArticle): string | undefined {
 export function performersToSlotSources(
   ranked: PerformerIdentity[],
   articles: IssueMagazineArticle[],
+  compositionBySlug?: ReadonlyMap<string, MagazineApexPlacementEntry["articleComposition"]>,
 ): MagazinePerformerSlotSource[] {
   return ranked.filter(isRankedEligible).map((p) => {
     const article = articles.find((a) => a.performerSlug === p.slug);
@@ -340,20 +561,30 @@ export function performersToSlotSources(
       articleSubtitle: article?.subtitle,
       heroColor: article?.heroColor,
       merchHref: merch?.purchaseUrl,
+      articleComposition: compositionBySlug?.get(p.slug),
     };
   });
 }
 
 export function newsArticlesToSlotSources(articles: IssueMagazineArticle[]): MagazineNewsSlotSource[] {
-  return articles.map((article) => ({
-    slug: article.slug,
-    title: article.title,
-    subtitle: article.subtitle,
-    href: magazineReaderArticleUrl(article.slug),
-    heroColor: article.heroColor,
-    preview: articlePreview(article),
-    author: article.author,
-  }));
+  return articles.map((article) => {
+    const candidate =
+      article.blocks.find((b) => b.type === "image" && b.url)?.url ??
+      article.galleryImages?.[0]?.url;
+    const resolved = resolveAuthorizedMagazineImageUrl(candidate);
+    return {
+      slug: article.slug,
+      title: article.title,
+      subtitle: article.subtitle,
+      href: magazineReaderArticleUrl(article.slug),
+      heroColor: article.heroColor,
+      preview: articlePreview(article),
+      author: article.author,
+      imageUrl: resolved.classification === "AUTHORIZED" ? resolved.url : undefined,
+      sourceUrl: article.sourceUrls?.[0],
+      sourceName: article.isSystemSource ? "TMI Newsroom" : undefined,
+    };
+  });
 }
 
 function adSlotToRandom(zone: string, index: number): MagazineRandomSlotSource {
@@ -403,13 +634,15 @@ function adSlotToRandom(zone: string, index: number): MagazineRandomSlotSource {
   };
 }
 
-export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
+export async function assembleDefaultRandomPool(
+  rankedPerformers?: PerformerIdentity[],
+): Promise<MagazineRandomSlotSource[]> {
   const pool: MagazineRandomSlotSource[] = [];
 
   pool.push(adSlotToRandom("magazine-issue-random-1", 1));
   pool.push(adSlotToRandom("magazine-issue-random-2", 2));
 
-  const ranked = computeRanks();
+  const ranked = rankedPerformers ?? (await getRealRankedPerformersForMagazine());
   if (ranked.length > 0) {
     pool.push({
       id: "rankings-live",
@@ -417,7 +650,7 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
       paidObligation: false,
       title: "Live Rankings",
       href: "/rankings",
-      deck: `#1 ${ranked[0]!.name} · XP from computeRanks`,
+      deck: `#1 ${ranked[0]!.name} · real plays, listeners & followers`,
       monetizationLayer: "NONE",
     });
     pool.push({
@@ -524,10 +757,54 @@ export function assembleDefaultRandomPool(): MagazineRandomSlotSource[] {
     subtype: "HAPPY_DAYS",
     paidObligation: false,
     title: "Happy Days · Community Reflections",
-    href: "/magazine",
+    href: "/happy-days",
     deck: "What brings us joy across TMI.",
     monetizationLayer: "NONE",
   });
+  pool.push({
+    id: "community-gossip",
+    subtype: "COMMUNITY_GOSSIP",
+    paidObligation: false,
+    title: "Community Gossip · What Everyone's Whispering",
+    href: "/community-gossip",
+    deck: "Buzz, callouts, and culture notes from across TMI.",
+    monetizationLayer: "NONE",
+  });
+
+  // Fan-authored articles → RANDOM-pool content (Fan is a RANDOM subtype,
+  // never a fourth top-level family). Real published Articles only; an honest
+  // empty contribution when none exist.
+  const fanArticles = await listFanArticlesForMagazine({ limit: 8 }).catch(() => []);
+  for (const fan of fanArticles) {
+    pool.push({
+      id: fan.id,
+      subtype: "FAN_POLL",
+      paidObligation: false,
+      title: fan.title,
+      href: fan.href,
+      deck: fan.deck,
+      imageUrl: fan.imageUrl,
+      monetizationLayer: "NONE",
+    });
+  }
+
+  // Weekly Top YoPho Cards → one RANDOM-page slot when real qualifying cards
+  // exist this week. Honest omission when no card meets the adaptive threshold
+  // (never fabricate engagement to fill the slot).
+  const topYoPho = await listWeeklyTopYoPhoCards(1).catch(() => []);
+  const leadYoPho = topYoPho[0];
+  if (leadYoPho) {
+    pool.push({
+      id: `weekly-top-yopho-${leadYoPho.cardId}`,
+      subtype: "PERFORMER_YOPHO_MOSAIC",
+      paidObligation: false,
+      title: "Weekly Top YoPho",
+      href: leadYoPho.href,
+      deck: `#1 ${leadYoPho.title} · ${leadYoPho.creatorDisplayName} · ${leadYoPho.weeklyLikes} likes this week`,
+      imageUrl: leadYoPho.artworkUrl ?? undefined,
+      monetizationLayer: "NONE",
+    });
+  }
 
   return pool.filter((item) => !NON_LIVING_COMMUNITY_RANDOM.includes(item.subtype));
 }
@@ -548,6 +825,7 @@ export async function listQueuedWriterStories(): Promise<EditorialStory[]> {
         status: submission.status,
         contributorId: submission.contributorId,
         artistSlug: submission.artistSlug,
+        sourceUrls: submission.sourceUrls,
       }),
     );
 }
@@ -557,15 +835,41 @@ export async function listQueuedWriterStories(): Promise<EditorialStory[]> {
  * actually placed into a built issue (writer owns content, magazine owns
  * placement — CLAUDE.md editorial pipeline law). */
 function writerStoriesToNewsSlotSources(stories: EditorialStory[]): MagazineNewsSlotSource[] {
-  return stories
-    .map((story) => ({
-      slug: story.storyId,
-      title: story.title,
-      subtitle: story.subtitle ?? "",
-      href: story.href,
-      preview: story.blocks.find((block) => block.type === "paragraph")?.text,
-      author: story.author,
-    }));
+  return stories.map((story) => ({
+    slug: story.storyId,
+    title: story.title,
+    subtitle: story.subtitle ?? "",
+    href: story.href,
+    preview: story.blocks.find((block) => block.type === "paragraph")?.text,
+    author: story.author,
+    sourceUrl: story.sourceUrls?.[0],
+  }));
+}
+
+/**
+ * Reorders the full real-ranked performer pool (which still includes the
+ * honest unranked-fallback tail for Rule 14 discoverability) so its order
+ * matches the single canonical Magazine apex/placement authority
+ * (getCurrentMagazineApexPlacements()) — this is the fix for
+ * "MagazineRotationEngine must NOT independently decide current Magazine
+ * #1 from raw System D order after QuarterlyEditorialPlacementAuthority has
+ * already determined the issue placement" (owner-locked, 2026-10-30).
+ * A performer outside the quarterly placement (the unranked tail) keeps
+ * its existing relative order, appended after every quarterly-placed one.
+ */
+function orderByMagazineApexPlacement(
+  ranked: PerformerIdentity[],
+  placements: MagazineApexPlacementEntry[],
+): PerformerIdentity[] {
+  const placementRankBySlug = new Map(placements.map((p) => [p.slug, p.editorialPlacement]));
+  const placed: PerformerIdentity[] = [];
+  const unplaced: PerformerIdentity[] = [];
+  for (const performer of ranked) {
+    if (placementRankBySlug.has(performer.slug)) placed.push(performer);
+    else unplaced.push(performer);
+  }
+  placed.sort((a, b) => placementRankBySlug.get(a.slug)! - placementRankBySlug.get(b.slug)!);
+  return [...placed, ...unplaced];
 }
 
 export async function assembleDefaultIssuePools(): Promise<{
@@ -573,15 +877,20 @@ export async function assembleDefaultIssuePools(): Promise<{
   news: MagazineNewsSlotSource[];
   randomPool: MagazineRandomSlotSource[];
 }> {
-  const ranked = computeRanks();
+  const [ranked, apexPlacements] = await Promise.all([
+    getRealRankedPerformersForMagazine(),
+    getCurrentMagazineApexPlacements(),
+  ]);
+  const magazineOrdered = orderByMagazineApexPlacement(ranked, apexPlacements);
+  const compositionBySlug = new Map(apexPlacements.map((p) => [p.slug, p.articleComposition]));
   const performerArticles = getPerformerPoolArticles();
   const staffNews = newsArticlesToSlotSources(getNewsPoolArticles());
   const writerStories = await listQueuedWriterStories();
   const writerNews = writerStoriesToNewsSlotSources(writerStories);
   return {
-    performers: performersToSlotSources(ranked, performerArticles),
+    performers: performersToSlotSources(magazineOrdered, performerArticles, compositionBySlug),
     news: [...staffNews, ...writerNews],
-    randomPool: assembleDefaultRandomPool(),
+    randomPool: await assembleDefaultRandomPool(magazineOrdered),
   };
 }
 

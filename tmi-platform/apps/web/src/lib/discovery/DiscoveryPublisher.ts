@@ -7,7 +7,8 @@
  * or projectLiveSessionToSurfaceCard (lib/discovery/LiveSurfaceCard.ts).
  */
 
-import type { LiveSession } from "@/lib/broadcast/globalLiveSessionStore";
+import { onSessionsChanged, type LiveSession } from "@/lib/broadcast/globalLiveSessionStore";
+import type { TripletEventItem } from "@/lib/competition/TripleEventBroadcastEngine";
 import { DiscoveryBus } from "./DiscoveryBus";
 import {
   mapStreamCategoryToDiscovery,
@@ -15,12 +16,22 @@ import {
   type LiveDiscoveryJoinGate,
   type LiveDiscoveryRecord,
   type LiveDiscoveryVisibility,
+  type LobbyWallPanelLayoutKind,
 } from "./LiveDiscoveryRecord";
 import {
   projectDiscoveryRecordsToSurfaceCards,
   projectSessionsToSurfaceCards,
   type LiveSurfaceCard,
 } from "./LiveSurfaceCard";
+import {
+  mapStreamHealthToTransportHealth,
+  stampDiscoveryTrust,
+} from "./discoveryTrustBoundary";
+
+export {
+  mapStreamHealthToTransportHealth,
+  isTransportEligibleForMosaic,
+} from "./discoveryTrustBoundary";
 
 export interface PublishLiveRoomInput {
   roomId: string;
@@ -49,6 +60,21 @@ export interface PublishLiveRoomInput {
   categoryLocked?: boolean;
   recruiting?: boolean;
   castOverlay?: string;
+  participantIds?: string[];
+  participantNames?: string[];
+  isCameraOn?: boolean;
+  panelLayout?: LobbyWallPanelLayoutKind;
+  winnerStays?: boolean;
+  nonWinnerOriented?: boolean;
+  avatarCapable?: boolean;
+  isBotOnly?: boolean;
+  isTest?: boolean;
+  isRehearsal?: boolean;
+  isLocalPreview?: boolean;
+  isAdminOnly?: boolean;
+  transportHealth?: LiveDiscoveryRecord["transportHealth"];
+  requiresPaidEntry?: boolean;
+  sourceType?: "AUTOMATED" | "HUMAN_CREATED";
 }
 
 function normalizeVisibility(
@@ -57,7 +83,8 @@ function normalizeVisibility(
   const s = String(v ?? "public").toLowerCase();
   if (s === "friends") return "friends";
   if (s === "invite" || s === "invite_only" || s === "invite-only") return "invite";
-  if (s === "private" || s === "paid_entry" || s === "paid-entry") return "private";
+  if (s === "paid_entry" || s === "paid-entry") return "public";
+  if (s === "private") return "private";
   return "public";
 }
 
@@ -87,6 +114,25 @@ function resolveJoinGate(
   return "none";
 }
 
+function resolveDefaultPanelLayout(primary: LiveDiscoveryCategory): LobbyWallPanelLayoutKind {
+  if (primary === "battles") return "MULTI_PARTICIPANT_VS";
+  if (primary === "gauntlets") return "GAUNTLET_MATCHUP";
+  if (primary === "challenges") return "CHALLENGE_VS";
+  if (primary === "cyphers") return "CYPHER_CIRCLE";
+  if (primary === "fan_lobbies") return "FAN_AVATAR_LOBBY";
+  return "SINGLE_BROADCASTER";
+}
+
+function resolveDefaultCategoryJoinRoute(roomId: string, primary: LiveDiscoveryCategory): string {
+  const encoded = encodeURIComponent(roomId);
+  if (primary === "battles") return `/rooms/battle/${encoded}`;
+  if (primary === "gauntlets") return `/rooms/battle/gauntlet/${encoded}`;
+  if (primary === "challenges") return `/challenges?roomId=${encoded}`;
+  if (primary === "cyphers") return `/cypher?roomId=${encoded}`;
+  if (primary === "fan_lobbies") return `/hub/fan?watch=${encoded}&from=live-lobby-wall`;
+  return `/live/rooms/${encoded}?from=live-lobby-wall`;
+}
+
 export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscoveryRecord | null {
   const roomId = (input.roomId ?? "").trim();
   if (!roomId) return null;
@@ -100,30 +146,54 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
   const startedAt = input.startedAt ?? Date.now();
   const joinRoute =
     input.joinRoute?.trim() ||
-    `/live/rooms/${encodeURIComponent(roomId)}?from=live-lobby-wall`;
+    resolveDefaultCategoryJoinRoute(roomId, primary);
 
   const categories = buildCategories(primary, humanViewerCount, visibility, startedAt);
   const experienceKey = (input.experienceId ?? "live").trim() || "live";
   /** Idempotent bus key — roomId + experience identity prevents duplicate cards on reconnect. */
   const busId = `${roomId}::${experienceKey}`;
 
+  const trust = stampDiscoveryTrust({
+    isBotOnly: input.isBotOnly,
+    isTest: input.isTest,
+    isRehearsal: input.isRehearsal,
+    isLocalPreview: input.isLocalPreview,
+    isAdminOnly: input.isAdminOnly,
+    transportHealth: input.transportHealth,
+    requiresPaidEntry: input.requiresPaidEntry,
+    category: input.category,
+    visibilityRaw: String(input.visibility ?? ""),
+    entryPriceUsd: input.entryPriceUsd,
+    joinGate: input.joinGate,
+    hostUserId: input.hostUserId,
+    roomId,
+    title: input.title,
+  });
+
+  const isCameraOn = input.isCameraOn ?? Boolean(input.previewUrl);
+  const effectivePreviewUrl = isCameraOn ? (input.previewUrl ?? null) : null;
+  const hostUserId = (input.hostUserId || "").trim();
+  const hostName = (input.hostName || "Host").trim();
+
   return {
     id: busId,
     roomId,
-    title: (input.title || `${input.hostName || "Live"} — Live`).trim(),
-    hostName: (input.hostName || "Host").trim(),
-    hostUserId: (input.hostUserId || "").trim(),
+    title: (input.title || `${hostName || "Live"} — Live`).trim(),
+    hostName,
+    hostUserId,
     countryCode: (input.countryCode ?? "ZZ").trim().toUpperCase().slice(0, 2) || "ZZ",
     category: primary,
     categories,
     visibility,
     humanViewerCount,
     posterUrl: input.posterUrl ?? null,
-    previewUrl: input.previewUrl ?? null,
-    previewMode: input.previewUrl ? "low_res" : input.posterUrl ? "poster" : "none",
+    previewUrl: effectivePreviewUrl,
+    previewMode: effectivePreviewUrl ? "low_res" : input.posterUrl ? "poster" : "none",
     accentColor: input.accentColor ?? "#00FFFF",
     joinRoute,
-    joinGate: resolveJoinGate(visibility, input.entryPriceUsd, input.joinGate),
+    joinGate: trust.requiresPaidEntry
+      ? "paid"
+      : resolveJoinGate(visibility, input.entryPriceUsd, input.joinGate),
     isLive: true,
     isNewEmpty:
       !input.isAnchor &&
@@ -141,6 +211,25 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     categoryLocked: input.categoryLocked === true,
     recruiting: input.recruiting === true,
     castOverlay: input.castOverlay?.trim() || undefined,
+    participantIds: input.participantIds?.length
+      ? [...input.participantIds]
+      : hostUserId
+        ? [hostUserId]
+        : [],
+    participantNames: input.participantNames?.length
+      ? [...input.participantNames]
+      : hostName
+        ? [hostName]
+        : [],
+    isCameraOn,
+    panelLayout: input.panelLayout ?? resolveDefaultPanelLayout(primary),
+    winnerStays: input.winnerStays ?? (primary === "gauntlets" ? true : undefined),
+    nonWinnerOriented: input.nonWinnerOriented ?? (primary === "cyphers" ? true : undefined),
+    avatarCapable: input.avatarCapable ?? (primary === "fan_lobbies" ? true : undefined),
+    sourceType:
+      input.sourceType ??
+      (input.isAnchor || input.isBotOnly ? "AUTOMATED" : "HUMAN_CREATED"),
+    ...trust,
   };
 }
 
@@ -154,8 +243,14 @@ export function publishLiveRoom(input: PublishLiveRoomInput): LiveDiscoveryRecor
 
 export function unpublishLiveRoom(roomId: string, experienceId?: string): void {
   DiscoveryBus.remove(`${roomId}::${(experienceId ?? "live").trim() || "live"}`);
+  DiscoveryBus.remove(`${roomId}::REGULAR_GO_LIVE`);
   // Legacy id cleanup for sessions published before composite keys
   DiscoveryBus.remove(roomId);
+  for (const rec of DiscoveryBus.getAll()) {
+    if (rec.roomId === roomId) {
+      DiscoveryBus.remove(rec.id);
+    }
+  }
 }
 
 /**
@@ -163,15 +258,35 @@ export function unpublishLiveRoom(roomId: string, experienceId?: string): void {
  * Uses viewerCount as humanViewerCount only when publishers ping honest humans
  * (Instant Go Live / VenueSupportPresence contract). Never fabricates occupancy.
  */
+function isRegularGoLive(session: LiveSession): boolean {
+  return session.category === "live" || session.category === "session";
+}
+
+function resolveSessionJoinRoute(session: LiveSession): string {
+  const encoded = encodeURIComponent(session.roomId);
+  if (session.category === "battle") return `/rooms/battle/${encoded}`;
+  if (session.category === "gauntlet") return `/rooms/battle/gauntlet/${encoded}`;
+  if (session.category === "challenge") return `/challenges?roomId=${encoded}`;
+  if (session.category === "cypher") return `/cypher?roomId=${encoded}`;
+  if (session.category === "fan-lobby") return `/hub/fan?watch=${encoded}&from=live-lobby-wall`;
+  if (session.hostRole === "FAN") return `/hub/fan?watch=${encoded}&from=live-lobby-wall`;
+  return `/hub/performer?watch=${encoded}&from=live-lobby-wall`;
+}
+
 export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscoveryRecord | null {
   // INVITE_ONLY stays off the public wall unless a separate authorized publish path lists it
   if (session.privacy === "INVITE_ONLY") return null;
+  if (session.audiencePrivacyMode === "private" || session.audiencePrivacyMode === "invite") return null;
 
-  const visibility: LiveDiscoveryVisibility = "public";
+  const visibility: LiveDiscoveryVisibility =
+    session.audiencePrivacyMode === "friends" ? "friends" : "public";
   const topCountry = session.audienceCountries?.[0]?.countryCode;
   const paid =
     session.privacy === "PAID_ENTRY" ||
     (typeof session.entryPriceUsd === "number" && session.entryPriceUsd > 0);
+  const regular = isRegularGoLive(session);
+  const hostRole = session.hostRole === "FAN" || session.category === "fan-lobby" ? "FAN" : "PERFORMER";
+  const isCameraOn = session.isCameraOn ?? Boolean(session.previewUrl);
 
   return toLiveDiscoveryRecord({
     roomId: session.roomId,
@@ -179,33 +294,111 @@ export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscover
     hostName: session.displayName,
     hostUserId: session.userId,
     countryCode: topCountry ?? "ZZ",
-    category: session.category,
-    visibility,
+    category: regular ? (hostRole === "FAN" ? "fans-live" : "performers-live") : session.category,
+    experienceId: session.experienceId ?? (regular ? "REGULAR_GO_LIVE" : undefined),
+    sourceType: "HUMAN_CREATED",
     humanViewerCount: Math.max(0, Math.round(session.viewerCount ?? 0)),
     posterUrl: session.thumbnailUrl ?? session.avatarUrl,
-    previewUrl: session.previewUrl,
+    previewUrl: isCameraOn ? session.previewUrl : null,
+    isCameraOn,
+    participantIds: session.participantIds,
+    participantNames: session.participantNames,
+    winnerStays: session.winnerStays,
+    nonWinnerOriented: session.nonWinnerOriented,
+    avatarCapable: session.avatarCapable,
     accentColor: session.accentColor,
-    joinRoute:
-      session.category === "fan-lobby"
-        ? `/hub/fan?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`
-        : `/hub/performer?watch=${encodeURIComponent(session.roomId)}&from=live-lobby-wall`,
+    joinRoute: resolveSessionJoinRoute(session),
     joinGate: paid ? "paid" : "none",
     entryPriceUsd: session.entryPriceUsd,
     startedAt: session.startedAt,
     listed: true,
+    requiresPaidEntry: paid,
+    visibility: paid ? "PAID_ENTRY" : visibility,
+    transportHealth: mapStreamHealthToTransportHealth(session.streamHealth),
+    isBotOnly:
+      session.userId.startsWith("bot-") ||
+      session.userId.startsWith("tmi-bot") ||
+      session.userId.startsWith("system-host"),
+    isTest: session.roomId.includes("test") || session.title.toLowerCase().includes("[test]"),
   });
 }
 
-/** Sync bus from an array of LiveSession (poll / SSE payload). Empty → honest empty wall. */
-export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): void {
+// ── Automatic Real-Time Bridge: GlobalLiveSessionRegistry → DiscoveryBus ─────
+// Ensures that whenever registerLiveSession, updateLiveSessionCameraState,
+// updateLiveSessionPrivacy, or endLiveSession runs in GlobalLiveSessionRegistry,
+// the Live Lobby Wall (DiscoveryBus) updates immediately without waiting for polling.
+const trackedLiveRegistrySessions = new Map<string, { roomId: string; experienceId?: string }>();
+
+onSessionsChanged((activeSessions) => {
+  const activeUserIds = new Set<string>();
+  for (const session of activeSessions) {
+    activeUserIds.add(session.userId);
+    const rec = liveSessionToDiscoveryRecord(session);
+    if (rec) {
+      trackedLiveRegistrySessions.set(session.userId, {
+        roomId: session.roomId,
+        experienceId: rec.experienceId,
+      });
+      DiscoveryBus.upsert(rec);
+    } else {
+      const prev = trackedLiveRegistrySessions.get(session.userId);
+      if (prev) {
+        unpublishLiveRoom(prev.roomId, prev.experienceId);
+        trackedLiveRegistrySessions.delete(session.userId);
+      }
+    }
+  }
+  for (const [userId, info] of trackedLiveRegistrySessions.entries()) {
+    if (!activeUserIds.has(userId)) {
+      unpublishLiveRoom(info.roomId, info.experienceId);
+      trackedLiveRegistrySessions.delete(userId);
+    }
+  }
+});
+
+export function tripletEventsToDiscoveryRecords(events: readonly TripletEventItem[], now = Date.now()): LiveDiscoveryRecord[] {
+  const records: LiveDiscoveryRecord[] = [];
+  for (const event of events) {
+    if (!event.roomId || now >= event.expiresAt) continue;
+    const record = toLiveDiscoveryRecord({
+      roomId: event.roomId,
+      title: event.title,
+      hostName: "TMI EVENT",
+      hostUserId: "tmi-automated",
+      category: "events",
+      experienceId: event.id,
+      joinRoute: event.joinRoute,
+      humanViewerCount: 0,
+      startedAt: event.startsAt,
+      recruiting: true,
+      castOverlay: "RECRUITING · WAITING",
+      isBotOnly: true,
+      sourceType: "AUTOMATED",
+      visibility: "public",
+    });
+    if (record) records.push(record);
+  }
+  return records;
+}
+
+/** Sync bus from live sessions plus optional automated-event records. Null extras keeps the previous automated set. */
+export function syncDiscoveryFromSessions(
+  sessions: readonly LiveSession[],
+  automatedExtras: readonly LiveDiscoveryRecord[] | null = null,
+): void {
   const byId = new Map<string, LiveDiscoveryRecord>();
   for (const s of sessions) {
     if (!s?.roomId) continue;
     const rec = liveSessionToDiscoveryRecord(s);
     if (rec) byId.set(rec.id, rec);
   }
-  // Permanent anchors always merge in — poll must never wipe the 24/7 wall
+  // Permanent anchors always merge in — poll must never wipe the 24/7 wall.
+  // These deferred imports break the publisher ↔ automated-network module cycle.
+  // A failed anchor import must not block the human sessions already in byId.
+  try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getAnchorDiscoveryRecords } = require("@/lib/live/AnchorRoomNetwork") as typeof import("@/lib/live/AnchorRoomNetwork");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getAllGenreDiscoveryRecords } = require("@/lib/live/performerGenreRoomNetwork") as typeof import("@/lib/live/performerGenreRoomNetwork");
   for (const anchor of [...getAnchorDiscoveryRecords(), ...getAllGenreDiscoveryRecords()]) {
     const existing = byId.get(anchor.id);
@@ -222,12 +415,26 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
       byId.set(anchor.id, anchor);
     }
   }
+  } catch {
+    /* Anchor/genre merge is additive. Human sessions already in byId still publish. */
+  }
 
-  // Preserve very recent client upserts during registry hydrate lag (POST→GET race).
-  // Prevents Lobby Wall flicker / connection-reset loops wiping LIVE_SESSION tiles.
-  const GRACE_MS = 12_000;
-  const now = Date.now();
+  if (automatedExtras) {
+    for (const extra of automatedExtras) {
+      if (extra?.id) byId.set(extra.id, extra);
+    }
+  }
+
+  // A successful session snapshot is authoritative: do not retain absent records.
+  // In particular, a privacy revocation must remove a tile without waiting for rotation.
   for (const existing of DiscoveryBus.getAll()) {
+    if (
+      automatedExtras &&
+      (existing.experienceId ?? "").startsWith("ev-") &&
+      !byId.has(existing.id)
+    ) {
+      continue;
+    }
     if (byId.has(existing.id)) {
       const polled = byId.get(existing.id)!;
       // Prefer higher honest human count when poll lags join sync
@@ -239,9 +446,6 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
         });
       }
       continue;
-    }
-    if (now - existing.updatedAt < GRACE_MS) {
-      byId.set(existing.id, existing);
     }
   }
 
@@ -312,7 +516,31 @@ async function discoveryPollTick(): Promise<void> {
     if (!res.ok) return;
     const data = (await res.json()) as { sessions?: LiveSession[] };
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-    syncDiscoveryFromSessions(sessions);
+    // Human rooms publish before the automated-event request. A slow or hung
+    // triplet fetch must not leave the wall empty while lite already has the room.
+    syncDiscoveryFromSessions(sessions, null);
+    let automated: LiveDiscoveryRecord[] | null = null;
+    const tripletAc = new AbortController();
+    const abortTriplet = () => tripletAc.abort();
+    ac.signal.addEventListener("abort", abortTriplet);
+    const tripletTimer = setTimeout(abortTriplet, 2500);
+    try {
+      const tres = await pollFetchImpl("/api/competition/triplet-broadcast", {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: tripletAc.signal,
+      });
+      if (tres.ok) {
+        const body = (await tres.json()) as { ok?: boolean; events?: TripletEventItem[] };
+        automated = body.ok && Array.isArray(body.events) ? tripletEventsToDiscoveryRecords(body.events) : [];
+      }
+    } catch {
+      automated = null;
+    } finally {
+      clearTimeout(tripletTimer);
+      ac.signal.removeEventListener("abort", abortTriplet);
+    }
+    if (automated) syncDiscoveryFromSessions(sessions, automated);
   } catch {
     /* keep last honest snapshot — includes abort during GO LIVE pause */
   } finally {

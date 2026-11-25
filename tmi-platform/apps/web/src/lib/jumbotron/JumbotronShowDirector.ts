@@ -87,7 +87,7 @@ export class JumbotronShowDirector {
         direction: d,
         currentComposition: "FULL",
         overlayText: null,
-        // Real campaign IDs only via VenueAdDirector / LivingJumbotronProgramScheduler.
+        // Real campaign IDs only via JumbotronAdFabricResolver / VenueAdDirector / LivingJumbotronProgramScheduler.
         sponsorCampaignId: null,
         sourceId: null,
       });
@@ -106,6 +106,68 @@ export class JumbotronShowDirector {
     return JumbotronFaceTargetRegistry.cardinalFaces().map((d) => this.faceStates.get(d)!);
   }
 
+  /**
+   * Hydrate scheduled face ads BEFORE live PiP / takeover.
+   * Preserves underlying session; prize PiP must not wipe other faces' scheduled sponsors.
+   */
+  public applyScheduledProgram(
+    schedule: Partial<Record<JumbotronCardinalFace, string>>,
+  ): void {
+    for (const d of JumbotronFaceTargetRegistry.cardinalFaces()) {
+      const campaignId = schedule[d];
+      if (!campaignId) continue;
+      const cur = this.faceStates.get(d)!;
+      this.faceStates.set(d, {
+        ...cur,
+        currentComposition: "FULL",
+        sponsorCampaignId: campaignId,
+        sourceId: campaignId,
+        overlayText: null,
+      });
+      this.facesRegistry?.assignFaceContent(d, campaignId, campaignId);
+    }
+  }
+
+  /**
+   * Apply JumbotronAdFabricResolver decisions (DIRECT_TMI_PAID only for in-world texture).
+   * ADSENSE_FALLBACK / EMPTY / performance-blocked → clear commercial sponsor on that face.
+   */
+  public applyFabricFaceDecisions(
+    decisions: Partial<
+      Record<
+        JumbotronCardinalFace,
+        { inventoryClass: string; campaignId?: string; performanceBlocked?: boolean }
+      >
+    >,
+  ): void {
+    for (const d of JumbotronFaceTargetRegistry.cardinalFaces()) {
+      const decision = decisions[d];
+      if (!decision) continue;
+      const cur = this.faceStates.get(d)!;
+      if (
+        decision.performanceBlocked ||
+        decision.inventoryClass !== "DIRECT_TMI_PAID" ||
+        !decision.campaignId
+      ) {
+        this.faceStates.set(d, {
+          ...cur,
+          sponsorCampaignId: null,
+          sourceId: decision.performanceBlocked ? "PERFORMANCE_GUARD" : null,
+          overlayText: null,
+        });
+        continue;
+      }
+      this.faceStates.set(d, {
+        ...cur,
+        currentComposition: "FULL",
+        sponsorCampaignId: decision.campaignId,
+        sourceId: decision.campaignId,
+        overlayText: null,
+      });
+      this.facesRegistry?.assignFaceContent(d, decision.campaignId, decision.campaignId);
+    }
+  }
+
   public handleLiveEvent(
     eventType: string,
     payload: Record<string, string>
@@ -119,7 +181,7 @@ export class JumbotronShowDirector {
         sourceId: payload.participantId ?? null,
       };
       this.faceStates.set("WEST", next);
-      // East keeps sponsor — ads can PiP while live moment shows
+      // EAST (and other faces) retain scheduled sponsorCampaignId — PiP is additive, not a wipe.
       return next;
     }
     return null;

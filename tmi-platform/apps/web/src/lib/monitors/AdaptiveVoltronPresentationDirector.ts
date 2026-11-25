@@ -50,6 +50,7 @@
  */
 
 import { create } from "zustand";
+import { resolveAutomaticVoltronComposition } from "@/lib/monitors/VoltronAutomaticCompositionPolicy";
 
 export type MonitorPresentationMode = "SINGLE" | "DUAL";
 
@@ -60,10 +61,70 @@ export type VoltronCompositionFamily =
   | "PRIMARY_PLUS_STRIP"      // e.g. Performer primary + friends strip (A, B, C)
   | "FOCUS_PLUS_FRIENDS"      // e.g. Focused participant + side strip
   | "GRID_4"                  // e.g. 4 performers Voltron grid (Backstage rehearsal or 4-way call)
+  | "GRID_8"                  // e.g. 8 participant viewpoints on a single monitor (8+8 across dual monitors)
   | "CORNER_PIP"              // e.g. Show full + friend call or reference media PiP
   | "DIAMOND_VOLTRON"         // e.g. Cypher / Battle center diamond composition
   | "CANDIDATE_PLUS_PANEL"    // e.g. Backstage Audition: candidate large + judges/band panel
-  | "STAGE_AND_AUDIENCE";     // Stage top + Audience bottom
+  | "STAGE_AND_AUDIENCE"      // Stage top + Audience bottom
+  | "CINEMA_THEATER"          // Watch Together transformation: performance hero + friend filmstrip
+  | "AUDIENCE_SEATED";        // Concert Audience Mode: friends seated in venue + subtle voice/camera presence
+
+export type SocialCinemaMode =
+  | "HANGOUT"
+  | "CONCERT"
+  | "AVATAR_LOBBY"
+  | "STUDIO";
+
+export type DualPresenceChoice =
+  | "AVATAR_PLUS_CAMERA"
+  | "AVATAR_ONLY"
+  | "CAMERA_ONLY"
+  | "AUDIO_ONLY";
+
+export type AudienceCameraViewpoint = "FIRST_PERSON" | "THIRD_PERSON";
+
+export type VoltronMotionPreference = "AUTO" | "MANUAL" | "REDUCED";
+
+export type SocialTransitionEffect =
+  | "NONE"
+  | "MAGNETIC_ARRIVAL"
+  | "CINEMA_MORPH"
+  | "SPOTLIGHT_PULSE"
+  | "PORTAL_TRANSITION"
+  | "DIRECTOR_SHUFFLE";
+
+export interface GroupExperienceInvite {
+  inviteId: string;
+  callSessionId: string;
+  fromUserId: string;
+  fromDisplayName: string;
+  targetExperience: "SHOW" | "CONCERT" | "LOUNGE" | "FAN_AVATAR_LOBBY";
+  targetRoomId: string;
+  targetLabel: string;
+  sitTogetherRequested?: boolean;
+  createdAtMs: number;
+  status: "PENDING" | "ACCEPTED" | "STAYED_BEHIND" | "EXPIRED";
+}
+
+export interface SitTogetherAssignment {
+  groupId: string;
+  roomId: string;
+  sectionLabel: string;
+  seatIdsByParticipant: Record<string, string>;
+  viewpointByParticipant: Record<string, AudienceCameraViewpoint>;
+}
+
+export interface SocialReactionBurst {
+  id: string;
+  senderId: string;
+  senderName: string;
+  emoji: string;
+  label: string;
+  createdAtMs: number;
+}
+
+export const MAX_VIEWPOINTS_PER_MONITOR = 8 as const;
+export const MAX_TOTAL_SOCIAL_CALL_PARTICIPANTS = 16 as const;
 
 export type PanelOccupancy =
   | "AVAILABLE"
@@ -81,9 +142,11 @@ export type PanelSourceType =
   | "EMPTY";
 
 export interface AddressablePanel {
-  id: string; // e.g. "panel-1-a", "panel-1-b", "panel-2-a"
+  id: string; // e.g. "panel-1-a" .. "panel-1-h", "panel-2-a" .. "panel-2-h"
   monitorId: "MONITOR_1" | "MONITOR_2";
-  slotIndex: number;
+  slotIndex: number; // 0..7 within the monitor
+  /** Canonical 1..16 global participant viewpoint position (1..8 on Monitor 1, 9..16 on Monitor 2). */
+  globalPosition?: number;
   occupancy: PanelOccupancy;
   sourceType: PanelSourceType;
   sourceId: string | null;
@@ -99,6 +162,16 @@ export interface FriendCallParticipant {
   isMuted?: boolean;
   isVideoOff?: boolean;
   avatarUrl?: string | null;
+  /** Real audio activity from Daily/WebRTC (Claude contract) — drives Spotlight Pulse & lip-sync. */
+  isSpeaking?: boolean;
+  /** 0..1 normalized RMS audio level from Daily/WebRTC (Claude contract). */
+  audioLevel?: number;
+  /** Dual-Presence personal choice (AVATAR_PLUS_CAMERA | AVATAR_ONLY | CAMERA_ONLY | AUDIO_ONLY). */
+  presenceChoice?: DualPresenceChoice;
+  /** Assigned seat anchor id when in Audience Mode / Sit Together. */
+  seatId?: string | null;
+  /** Assigned 1..16 global position across Monitor 1 (1..8) and Monitor 2 (9..16). */
+  globalPosition?: number;
 }
 
 export interface AdaptiveVoltronState {
@@ -114,6 +187,23 @@ export interface AdaptiveVoltronState {
   detachedParticipantIds: string[];
   isDedicatedView: boolean;
   dedicatedTarget: "SHOW" | "CALL" | "VENUE" | "MEDIA" | null;
+
+  // Social Cinema — Living Video Chat & Dual Presence state
+  socialCinemaMode: SocialCinemaMode;
+  motionPreference: VoltronMotionPreference;
+  allowAmbientPanelMovement: boolean;
+  activeTransitionEffect: SocialTransitionEffect;
+  activeSpeakerId: string | null;
+  selfPresenceChoice: DualPresenceChoice;
+  audienceModeActive: boolean;
+  audienceCameraViewpoint: AudienceCameraViewpoint;
+  floatingHeadPanelsVisibleInShow: boolean;
+  showCallAudioDucking: boolean;
+  sfuGroupTransportReady: boolean;
+  pendingExperienceInvite: GroupExperienceInvite | null;
+  sitTogetherAssignment: SitTogetherAssignment | null;
+  recentReactions: SocialReactionBurst[];
+  reactionsVisible: boolean;
 
   // Actions
   setMonitorMode: (mode: MonitorPresentationMode) => void;
@@ -134,64 +224,54 @@ export interface AdaptiveVoltronState {
   endCall: () => void;
   setDedicatedView: (target: "SHOW" | "CALL" | "VENUE" | "MEDIA" | null) => void;
   bindExperienceSource: (sourceId: string, label: string) => void;
+
+  // Social Cinema & Dual Presence Actions
+  setSocialCinemaMode: (mode: SocialCinemaMode) => void;
+  setMotionPreference: (pref: VoltronMotionPreference) => void;
+  setAllowAmbientPanelMovement: (allow: boolean) => void;
+  triggerTransitionEffect: (effect: SocialTransitionEffect) => void;
+  updateParticipantSpeaking: (participantId: string, isSpeaking: boolean, audioLevel?: number) => void;
+  setSelfPresenceChoice: (choice: DualPresenceChoice) => void;
+  setAudienceModeActive: (active: boolean) => void;
+  setAudienceCameraViewpoint: (viewpoint: AudienceCameraViewpoint) => void;
+  setFloatingHeadPanelsVisibleInShow: (visible: boolean) => void;
+  setShowCallAudioDucking: (enabled: boolean) => void;
+  setSfuGroupTransportReady: (ready: boolean) => void;
+  proposeGroupExperienceInvite: (invite: Omit<GroupExperienceInvite, "inviteId" | "createdAtMs" | "status">) => GroupExperienceInvite;
+  respondGroupExperienceInvite: (decision: "ACCEPTED" | "STAYED_BEHIND") => void;
+  requestSitTogether: (roomId: string, sectionLabel?: string) => SitTogetherAssignment;
+  sendSocialReaction: (emoji: string, label: string, senderId?: string, senderName?: string) => SocialReactionBurst;
+  setReactionsVisible: (visible: boolean) => void;
+  shuffleDirectorViewpoints: () => void;
 }
 
-const INITIAL_PANELS: AddressablePanel[] = [
-  {
-    id: "panel-1-a",
+const LETTERS_8 = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
+
+export function buildCanonical16Panels(): AddressablePanel[] {
+  const m1: AddressablePanel[] = LETTERS_8.map((letter, idx) => ({
+    id: `panel-1-${letter}`,
     monitorId: "MONITOR_1",
-    slotIndex: 0,
-    occupancy: "LIVE_EVENT_LOCKED",
-    sourceType: "EXPERIENCE",
-    sourceId: "canonical-experience-stream",
-    label: "PERFORMER LIVE",
-  },
-  {
-    id: "panel-1-b",
-    monitorId: "MONITOR_1",
-    slotIndex: 1,
-    occupancy: "AVAILABLE",
-    sourceType: "EMPTY",
-    sourceId: null,
-    label: "PANEL 1-B",
-  },
-  {
-    id: "panel-1-c",
-    monitorId: "MONITOR_1",
-    slotIndex: 2,
-    occupancy: "AVAILABLE",
-    sourceType: "EMPTY",
-    sourceId: null,
-    label: "PANEL 1-C",
-  },
-  {
-    id: "panel-1-d",
-    monitorId: "MONITOR_1",
-    slotIndex: 3,
-    occupancy: "AVAILABLE",
-    sourceType: "EMPTY",
-    sourceId: null,
-    label: "PANEL 1-D",
-  },
-  {
-    id: "panel-2-a",
+    slotIndex: idx,
+    globalPosition: idx + 1,
+    occupancy: idx === 0 ? "LIVE_EVENT_LOCKED" : "AVAILABLE",
+    sourceType: idx === 0 ? "EXPERIENCE" : "EMPTY",
+    sourceId: idx === 0 ? "canonical-experience-stream" : null,
+    label: idx === 0 ? "PERFORMER LIVE" : `PANEL 1-${letter.toUpperCase()}`,
+  }));
+  const m2: AddressablePanel[] = LETTERS_8.map((letter, idx) => ({
+    id: `panel-2-${letter}`,
     monitorId: "MONITOR_2",
-    slotIndex: 0,
+    slotIndex: idx,
+    globalPosition: idx + 9,
     occupancy: "AVAILABLE",
     sourceType: "EMPTY",
     sourceId: null,
-    label: "PANEL 2-A",
-  },
-  {
-    id: "panel-2-b",
-    monitorId: "MONITOR_2",
-    slotIndex: 1,
-    occupancy: "AVAILABLE",
-    sourceType: "EMPTY",
-    sourceId: null,
-    label: "PANEL 2-B",
-  },
-];
+    label: `PANEL 2-${letter.toUpperCase()}`,
+  }));
+  return [...m1, ...m2];
+}
+
+const INITIAL_PANELS: AddressablePanel[] = buildCanonical16Panels();
 
 export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) => ({
   monitorMode: "DUAL",
@@ -206,6 +286,23 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
   detachedParticipantIds: [],
   isDedicatedView: false,
   dedicatedTarget: null,
+
+  // Social Cinema — Living Video Chat & Dual Presence defaults
+  socialCinemaMode: "HANGOUT",
+  motionPreference: "AUTO",
+  allowAmbientPanelMovement: true,
+  activeTransitionEffect: "NONE",
+  activeSpeakerId: null,
+  selfPresenceChoice: "AVATAR_PLUS_CAMERA",
+  audienceModeActive: false,
+  audienceCameraViewpoint: "THIRD_PERSON",
+  floatingHeadPanelsVisibleInShow: true,
+  showCallAudioDucking: true,
+  sfuGroupTransportReady: false,
+  pendingExperienceInvite: null,
+  sitTogetherAssignment: null,
+  recentReactions: [],
+  reactionsVisible: true,
 
   setMonitorMode: (mode) => {
     const prevMode = get().monitorMode;
@@ -255,7 +352,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
           if (p.monitorId === "MONITOR_1" && p.sourceType === "CALL_PARTICIPANT") {
             return { ...p, occupancy: "AVAILABLE" as PanelOccupancy, sourceId: null, sourceType: "EMPTY" as PanelSourceType };
           }
-          // Assign to MONITOR_2
+          // Assign to MONITOR_2 (up to 8 slots; overflow stays on MONITOR_1)
           if (p.monitorId === "MONITOR_2" && p.slotIndex < friendIds.length) {
             const friend = s.friends[p.slotIndex];
             return {
@@ -285,7 +382,16 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
   },
 
   setComposition: (comp) => {
-    set({ composition: comp, isAutoLayout: false });
+    const isCinemaMorph = comp === "CINEMA_THEATER" || comp === "AUDIENCE_SEATED" || comp === "PRIMARY_PLUS_STRIP";
+    set((s) => ({
+      composition: comp,
+      isAutoLayout: false,
+      activeTransitionEffect: s.motionPreference === "REDUCED"
+        ? "NONE"
+        : isCinemaMorph
+          ? "CINEMA_MORPH"
+          : "DIRECTOR_SHUFFLE",
+    }));
   },
 
   setAutoLayout: (auto) => {
@@ -304,52 +410,57 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
 
   allocateCall: (callSessionId, caller) => {
     const state = get();
-    const targetMonitor = state.monitorMode === "DUAL" ? "MONITOR_2" : "MONITOR_1";
+    // Owner law: Monitor 1 first, then Monitor 2. Never auto-overwrite occupied panels.
+    // SINGLE mode still searches MONITOR_1 slots only (mobile one-monitor default).
+    const searchOrder: Array<"MONITOR_1" | "MONITOR_2"> =
+      state.monitorMode === "SINGLE" ? ["MONITOR_1"] : ["MONITOR_1", "MONITOR_2"];
 
-    // Find first available panel on target monitor that is not protected (PINNED, LIVE_EVENT_LOCKED, SYSTEM_RESERVED)
-    const eligibleIndex = state.panels.findIndex(
-      (p) =>
-        p.monitorId === targetMonitor &&
-        p.occupancy === "AVAILABLE",
-    );
-
-    const fallbackIndex =
-      eligibleIndex !== -1
-        ? eligibleIndex
-        : state.panels.findIndex(
-            (p) =>
-              p.monitorId === targetMonitor &&
-              p.occupancy === "OCCUPIED_REPLACEABLE",
-          );
+    let fallbackIndex = -1;
+    for (const monitorId of searchOrder) {
+      fallbackIndex = state.panels.findIndex(
+        (p) => p.monitorId === monitorId && p.occupancy === "AVAILABLE",
+      );
+      if (fallbackIndex !== -1) break;
+    }
 
     if (fallbackIndex === -1) {
-      console.warn("[AdaptiveVoltron] No eligible panel found for call placement.");
+      console.warn(
+        "[AdaptiveVoltron] No AVAILABLE panel for call (M1→M2). Will not replace occupied content.",
+      );
       return null;
     }
 
-    const allocatedPanelId = state.panels[fallbackIndex].id;
-
     set((s) => {
+      const targetPanel = s.panels[fallbackIndex];
+      const enrichedCaller: FriendCallParticipant = {
+        ...caller,
+        presenceChoice: caller.presenceChoice ?? "AVATAR_PLUS_CAMERA",
+        globalPosition: targetPanel?.globalPosition ?? (fallbackIndex + 1),
+      };
       const updatedPanels = s.panels.map((p, idx) =>
         idx === fallbackIndex
           ? {
               ...p,
               occupancy: "OCCUPIED_REPLACEABLE" as PanelOccupancy,
               sourceType: "CALL_PARTICIPANT" as PanelSourceType,
-              sourceId: caller.id,
-              label: caller.displayName,
+              sourceId: enrichedCaller.id,
+              label: enrichedCaller.displayName,
             }
           : p,
       );
 
-      const nextComp: VoltronCompositionFamily =
-        s.monitorMode === "SINGLE" ? "LEFT_RIGHT" : s.composition;
+      const autoPlan = resolveAutomaticVoltronComposition({
+        event: "FRIEND_CALL_ACCEPTED",
+        acceptedFriendCount: 1,
+      });
+      const nextComp: VoltronCompositionFamily = autoPlan.voltronFamily;
 
       return {
         panels: updatedPanels,
         activeCallSessionId: callSessionId,
-        friends: [caller],
+        friends: [enrichedCaller],
         composition: s.isAutoLayout ? nextComp : s.composition,
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "MAGNETIC_ARRIVAL",
       };
     });
 
@@ -359,17 +470,31 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
   addFriendParticipant: (friend) => {
     const state = get();
     if (state.friends.some((f) => f.id === friend.id)) return;
+    if (state.friends.length >= MAX_TOTAL_SOCIAL_CALL_PARTICIPANTS) {
+      console.warn("[AdaptiveVoltron] 16-participant social call capacity reached (8+8).");
+      return;
+    }
 
-    const targetMonitor = state.monitorMode === "DUAL" ? "MONITOR_2" : "MONITOR_1";
+    // Next friend → next free slot: Monitor 1 then Monitor 2 (SFU group media still gated separately).
+    const searchOrder: Array<"MONITOR_1" | "MONITOR_2"> =
+      state.monitorMode === "SINGLE" ? ["MONITOR_1"] : ["MONITOR_1", "MONITOR_2"];
 
-    // Rule 35 Refinement: The call is ALREADY placed! Do NOT prompt for screen or player!
-    // Sibling participant automatically binds into next eligible panel or overflow strip.
-    const eligibleIndex = state.panels.findIndex(
-      (p) => p.monitorId === targetMonitor && p.occupancy === "AVAILABLE",
-    );
+    let eligibleIndex = -1;
+    for (const monitorId of searchOrder) {
+      eligibleIndex = state.panels.findIndex(
+        (p) => p.monitorId === monitorId && p.occupancy === "AVAILABLE",
+      );
+      if (eligibleIndex !== -1) break;
+    }
 
     set((s) => {
-      const nextFriends = [...s.friends, friend];
+      const targetPanel = eligibleIndex !== -1 ? s.panels[eligibleIndex] : undefined;
+      const enrichedFriend: FriendCallParticipant = {
+        ...friend,
+        presenceChoice: friend.presenceChoice ?? "AVATAR_PLUS_CAMERA",
+        globalPosition: targetPanel?.globalPosition ?? (s.friends.length + 2),
+      };
+      const nextFriends = [...s.friends, enrichedFriend];
       let updatedPanels = s.panels;
 
       if (eligibleIndex !== -1) {
@@ -379,20 +504,28 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
                 ...p,
                 occupancy: "OCCUPIED_REPLACEABLE" as PanelOccupancy,
                 sourceType: "CALL_PARTICIPANT" as PanelSourceType,
-                sourceId: friend.id,
-                label: friend.displayName,
+                sourceId: enrichedFriend.id,
+                label: enrichedFriend.displayName,
               }
             : p,
         );
       }
 
-      // Recompose layout based on total participants
+      // Recompose layout based on total participants (1 -> 2 -> 4 -> 8 -> 16)
       let nextComp = s.composition;
       if (s.isAutoLayout) {
-        if (s.monitorMode === "SINGLE") {
+        if (s.audienceModeActive) {
+          nextComp = "AUDIENCE_SEATED";
+        } else if (s.socialCinemaMode === "CONCERT") {
+          nextComp = "CINEMA_THEATER";
+        } else if (s.monitorMode === "SINGLE") {
           nextComp = nextFriends.length === 1 ? "LEFT_RIGHT" : "PRIMARY_PLUS_STRIP";
+        } else if (nextFriends.length <= 2) {
+          nextComp = "LEFT_RIGHT";
+        } else if (nextFriends.length <= 4) {
+          nextComp = "GRID_4";
         } else {
-          nextComp = nextFriends.length <= 2 ? "LEFT_RIGHT" : "GRID_4";
+          nextComp = "GRID_8";
         }
       }
 
@@ -400,6 +533,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
         friends: nextFriends,
         panels: updatedPanels,
         composition: nextComp,
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "MAGNETIC_ARRIVAL",
       };
     });
   },
@@ -414,7 +548,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
               occupancy: "AVAILABLE" as PanelOccupancy,
               sourceType: "EMPTY" as PanelSourceType,
               sourceId: null,
-              label: `PANEL ${p.slotIndex + 1}`,
+              label: `PANEL ${p.monitorId === "MONITOR_1" ? "1" : "2"}-${LETTERS_8[p.slotIndex]?.toUpperCase() ?? (p.slotIndex + 1)}`,
               isFocused: false,
             }
           : p,
@@ -436,6 +570,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
         panels: updatedPanels,
         focusedParticipantId: s.focusedParticipantId === id ? null : s.focusedParticipantId,
         focusedPanelId: s.focusedPanelId === id ? null : s.focusedPanelId,
+        activeSpeakerId: s.activeSpeakerId === id ? null : s.activeSpeakerId,
         composition: nextComp,
         activeCallSessionId: remaining.length === 0 ? null : s.activeCallSessionId,
       };
@@ -449,6 +584,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
         focusedParticipantId: id,
         focusedPanelId: targetPanel ? targetPanel.id : null,
         composition: id ? "FOCUS_PLUS_FRIENDS" : (s.friends.length > 1 ? "PRIMARY_PLUS_STRIP" : "LEFT_RIGHT"),
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "SPOTLIGHT_PULSE",
         panels: s.panels.map((p) => ({
           ...p,
           isFocused: p.sourceId === id,
@@ -464,6 +600,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
         focusedPanelId: panelId,
         focusedParticipantId: targetPanel?.sourceId ?? null,
         composition: panelId ? "FOCUS_PLUS_FRIENDS" : (s.friends.length > 1 ? "PRIMARY_PLUS_STRIP" : "LEFT_RIGHT"),
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "SPOTLIGHT_PULSE",
         panels: s.panels.map((p) => ({
           ...p,
           isFocused: p.id === panelId,
@@ -519,23 +656,36 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
       const updatedPanels = s.panels.map((p) => {
         // Clear from other monitor
         if (p.monitorId === otherMonitor && p.sourceType === "CALL_PARTICIPANT") {
-          return { ...p, occupancy: "AVAILABLE" as PanelOccupancy, sourceId: null, sourceType: "EMPTY" as PanelSourceType };
-        }
-        // Assign to target monitor
-        if (p.monitorId === targetMonitor && p.slotIndex < friendIds.length) {
-          const friend = s.friends[p.slotIndex];
           return {
             ...p,
-            occupancy: "OCCUPIED_REPLACEABLE" as PanelOccupancy,
-            sourceType: "CALL_PARTICIPANT" as PanelSourceType,
-            sourceId: friend.id,
-            label: friend.displayName,
+            occupancy: "AVAILABLE" as PanelOccupancy,
+            sourceId: null,
+            sourceType: "EMPTY" as PanelSourceType,
+            label: `PANEL ${p.monitorId === "MONITOR_1" ? "1" : "2"}-${LETTERS_8[p.slotIndex]?.toUpperCase() ?? (p.slotIndex + 1)}`,
           };
+        }
+        // Assign to target monitor (respecting locked slot 0 on MONITOR_1 if occupied by LIVE_EVENT_LOCKED)
+        if (p.monitorId === targetMonitor) {
+          const offset = targetMonitor === "MONITOR_1" && s.panels[0]?.occupancy === "LIVE_EVENT_LOCKED" ? 1 : 0;
+          const friendIdx = p.slotIndex - offset;
+          if (friendIdx >= 0 && friendIdx < friendIds.length) {
+            const friend = s.friends[friendIdx];
+            return {
+              ...p,
+              occupancy: "OCCUPIED_REPLACEABLE" as PanelOccupancy,
+              sourceType: "CALL_PARTICIPANT" as PanelSourceType,
+              sourceId: friend.id,
+              label: friend.displayName,
+            };
+          }
         }
         return p;
       });
 
-      return { panels: updatedPanels };
+      return {
+        panels: updatedPanels,
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "DIRECTOR_SHUFFLE",
+      };
     });
   },
 
@@ -545,8 +695,12 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
       friends: [],
       focusedParticipantId: null,
       focusedPanelId: null,
+      activeSpeakerId: null,
       pinnedParticipantIds: [],
       detachedParticipantIds: [],
+      pendingExperienceInvite: null,
+      sitTogetherAssignment: null,
+      audienceModeActive: false,
       composition: "FULL_FRAME",
       panels: s.panels.map((p) =>
         p.sourceType === "CALL_PARTICIPANT"
@@ -555,7 +709,7 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
               occupancy: "AVAILABLE" as PanelOccupancy,
               sourceType: "EMPTY" as PanelSourceType,
               sourceId: null,
-              label: `PANEL ${p.slotIndex + 1}`,
+              label: `PANEL ${p.monitorId === "MONITOR_1" ? "1" : "2"}-${LETTERS_8[p.slotIndex]?.toUpperCase() ?? (p.slotIndex + 1)}`,
               isFocused: false,
               isPinned: false,
             }
@@ -568,6 +722,272 @@ export const useAdaptiveVoltronStore = create<AdaptiveVoltronState>((set, get) =
     set({
       isDedicatedView: target !== null,
       dedicatedTarget: target,
+    });
+  },
+
+  setSocialCinemaMode: (mode) => {
+    set((s) => {
+      let nextComp = s.composition;
+      let nextAudienceMode = s.audienceModeActive;
+      let effect: SocialTransitionEffect = "DIRECTOR_SHUFFLE";
+
+      if (mode === "CONCERT") {
+        nextComp = "CINEMA_THEATER";
+        effect = "CINEMA_MORPH";
+      } else if (mode === "AVATAR_LOBBY") {
+        nextComp = "PRIMARY_PLUS_STRIP";
+        effect = "PORTAL_TRANSITION";
+      } else if (mode === "STUDIO") {
+        nextComp = "LEFT_RIGHT";
+        effect = "DIRECTOR_SHUFFLE";
+      } else {
+        nextComp = s.friends.length > 2 ? "GRID_4" : "LEFT_RIGHT";
+        nextAudienceMode = false;
+        effect = "MAGNETIC_ARRIVAL";
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("tmi:social-cinema:mode-change", {
+            detail: { mode, composition: nextComp, effect },
+          }),
+        );
+      }
+
+      return {
+        socialCinemaMode: mode,
+        composition: nextComp,
+        audienceModeActive: nextAudienceMode,
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : effect,
+      };
+    });
+  },
+
+  setMotionPreference: (pref) => {
+    set({
+      motionPreference: pref,
+      allowAmbientPanelMovement: pref === "AUTO",
+      activeTransitionEffect: pref === "REDUCED" ? "NONE" : get().activeTransitionEffect,
+    });
+  },
+
+  setAllowAmbientPanelMovement: (allow) => {
+    set({
+      allowAmbientPanelMovement: allow,
+      motionPreference: allow ? "AUTO" : "MANUAL",
+    });
+  },
+
+  triggerTransitionEffect: (effect) => {
+    set((s) => ({
+      activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : effect,
+    }));
+  },
+
+  updateParticipantSpeaking: (participantId, isSpeaking, audioLevel = 0) => {
+    set((s) => {
+      const clampedLevel = Math.max(0, Math.min(1, audioLevel));
+      const updatedFriends = s.friends.map((f) =>
+        f.id === participantId
+          ? { ...f, isSpeaking, audioLevel: clampedLevel }
+          : f,
+      );
+      const nextSpeaker = isSpeaking
+        ? participantId
+        : s.activeSpeakerId === participantId
+          ? (updatedFriends.find((f) => f.isSpeaking)?.id ?? null)
+          : s.activeSpeakerId;
+      return {
+        friends: updatedFriends,
+        activeSpeakerId: nextSpeaker,
+        activeTransitionEffect:
+          isSpeaking && s.motionPreference !== "REDUCED"
+            ? "SPOTLIGHT_PULSE"
+            : s.activeTransitionEffect,
+      };
+    });
+  },
+
+  setSelfPresenceChoice: (choice) => {
+    set({ selfPresenceChoice: choice });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:presence-choice", {
+          detail: { choice },
+        }),
+      );
+    }
+  },
+
+  setAudienceModeActive: (active) => {
+    set((s) => ({
+      audienceModeActive: active,
+      composition: active ? "AUDIENCE_SEATED" : s.socialCinemaMode === "CONCERT" ? "CINEMA_THEATER" : "LEFT_RIGHT",
+      floatingHeadPanelsVisibleInShow: active ? false : s.floatingHeadPanelsVisibleInShow,
+      activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "CINEMA_MORPH",
+    }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:audience-mode", {
+          detail: { active },
+        }),
+      );
+    }
+  },
+
+  setAudienceCameraViewpoint: (viewpoint) => {
+    set({ audienceCameraViewpoint: viewpoint });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:camera-viewpoint", {
+          detail: { viewpoint },
+        }),
+      );
+    }
+  },
+
+  setFloatingHeadPanelsVisibleInShow: (visible) => {
+    set({ floatingHeadPanelsVisibleInShow: visible });
+  },
+
+  setShowCallAudioDucking: (enabled) => {
+    set({ showCallAudioDucking: enabled });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:audio-ducking", {
+          detail: { enabled },
+        }),
+      );
+    }
+  },
+
+  setSfuGroupTransportReady: (ready) => {
+    set({ sfuGroupTransportReady: ready });
+  },
+
+  proposeGroupExperienceInvite: (inviteInput) => {
+    const invite: GroupExperienceInvite = {
+      ...inviteInput,
+      inviteId: `invite-${Date.now()}`,
+      createdAtMs: Date.now(),
+      status: "PENDING",
+    };
+    set((s) => ({
+      pendingExperienceInvite: invite,
+      activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "PORTAL_TRANSITION",
+    }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:group-invite", { detail: invite }),
+      );
+    }
+    return invite;
+  },
+
+  respondGroupExperienceInvite: (decision) => {
+    const current = get().pendingExperienceInvite;
+    if (!current) return;
+    const updated: GroupExperienceInvite = { ...current, status: decision };
+    set((s) => ({
+      pendingExperienceInvite: updated,
+      socialCinemaMode:
+        decision === "ACCEPTED"
+          ? current.targetExperience === "FAN_AVATAR_LOBBY"
+            ? "AVATAR_LOBBY"
+            : current.targetExperience === "CONCERT" || current.targetExperience === "SHOW"
+              ? "CONCERT"
+              : "HANGOUT"
+          : s.socialCinemaMode,
+      audienceModeActive:
+        decision === "ACCEPTED" && (current.targetExperience === "CONCERT" || current.targetExperience === "SHOW")
+          ? Boolean(current.sitTogetherRequested)
+          : s.audienceModeActive,
+      activeTransitionEffect:
+        decision === "ACCEPTED" && s.motionPreference !== "REDUCED"
+          ? "PORTAL_TRANSITION"
+          : s.activeTransitionEffect,
+    }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:group-invite-response", {
+          detail: updated,
+        }),
+      );
+    }
+  },
+
+  requestSitTogether: (roomId, sectionLabel = "Row B · Center House") => {
+    const state = get();
+    const participantIds = ["self", ...state.friends.map((f) => f.id)];
+    const seatIdsByParticipant: Record<string, string> = {};
+    const viewpointByParticipant: Record<string, AudienceCameraViewpoint> = {};
+    participantIds.forEach((pid, idx) => {
+      seatIdsByParticipant[pid] = `seat-rowB-${idx + 1}`;
+      viewpointByParticipant[pid] = idx === 0 ? state.audienceCameraViewpoint : "THIRD_PERSON";
+    });
+    const assignment: SitTogetherAssignment = {
+      groupId: state.activeCallSessionId ?? `group-${roomId}`,
+      roomId,
+      sectionLabel,
+      seatIdsByParticipant,
+      viewpointByParticipant,
+    };
+    set((s) => ({
+      sitTogetherAssignment: assignment,
+      audienceModeActive: true,
+      composition: "AUDIENCE_SEATED",
+      friends: s.friends.map((f) => ({
+        ...f,
+        seatId: seatIdsByParticipant[f.id] ?? f.seatId ?? null,
+      })),
+      activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "CINEMA_MORPH",
+    }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:sit-together", {
+          detail: assignment,
+        }),
+      );
+    }
+    return assignment;
+  },
+
+  sendSocialReaction: (emoji, label, senderId = "self", senderName = "You") => {
+    const burst: SocialReactionBurst = {
+      id: `rx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      senderId,
+      senderName,
+      emoji,
+      label,
+      createdAtMs: Date.now(),
+    };
+    set((s) => ({
+      recentReactions: [...s.recentReactions.slice(-11), burst],
+    }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:social-cinema:reaction", { detail: burst }),
+      );
+    }
+    return burst;
+  },
+
+  setReactionsVisible: (visible) => {
+    set({ reactionsVisible: visible });
+  },
+
+  shuffleDirectorViewpoints: () => {
+    set((s) => {
+      if (s.friends.length <= 1) {
+        return {
+          activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "DIRECTOR_SHUFFLE",
+        };
+      }
+      const rotated = [...s.friends.slice(1), s.friends[0]!];
+      return {
+        friends: rotated,
+        activeTransitionEffect: s.motionPreference === "REDUCED" ? "NONE" : "DIRECTOR_SHUFFLE",
+      };
     });
   },
 }));

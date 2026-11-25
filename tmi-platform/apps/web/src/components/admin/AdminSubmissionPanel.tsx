@@ -20,6 +20,7 @@ import {
   type BeatLockerRecord,
 } from "@/lib/beats/BeatLockerClient";
 import { DEFAULT_LICENSE_PRICES } from "@/lib/beats/BeatStoreCommerceEngine";
+import { checkBeatTitleLocally } from "@/lib/beats/BeatLockerTitleAuthority";
 
 const DESTINATIONS: { id: BeatCompetitionTarget | "radio" | "wdp"; label: string; href?: string }[] = [
   { id: "battle", label: "Battle vault" },
@@ -42,6 +43,7 @@ export default function AdminSubmissionPanel({
   accentColor = "#FFD700",
 }: AdminSubmissionPanelProps) {
   const [title, setTitle] = useState("");
+  const [titleHint, setTitleHint] = useState<string | null>(null);
   const [genre, setGenre] = useState("Hip-Hop");
   const [bpm, setBpm] = useState(120);
   const [key, setKey] = useState("");
@@ -112,6 +114,11 @@ export default function AdminSubmissionPanel({
     setError(null);
     setMessage(null);
 
+    const titleCheck = checkBeatTitleLocally(title, beats.map((b) => ({ id: b.id, title: b.title, status: b.status })));
+    if (titleCheck.status === "IN_USE" || titleCheck.status === "RESERVED_PROCESSING") {
+      setError(titleCheck.message ?? "That title is already in the Beat Locker. Choose another title.");
+      return;
+    }
     if (!title.trim()) {
       setError("Title is required.");
       setBusy(false);
@@ -195,7 +202,12 @@ export default function AdminSubmissionPanel({
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+                      const v = e.target.value;
+                      setTitle(v);
+                      const chk = checkBeatTitleLocally(v, beats.map((b) => ({ id: b.id, title: b.title, status: b.status })));
+                      setTitleHint(chk.status === "AVAILABLE" || !v.trim() ? (v.trim() ? "Title available" : null) : (chk.message ?? null));
+                    }}
             placeholder="Beat title"
             style={fieldStyle}
             required
@@ -303,6 +315,7 @@ export default function AdminSubmissionPanel({
           </div>
         </form>
 
+        {titleHint ? <p style={{ margin: 0, fontSize: 11, color: titleHint.toLowerCase().includes("available") ? "#86efac" : "#fde68a" }}>{titleHint}</p> : null}
         {error ? <p style={{ margin: 0, fontSize: 11, color: "#FF6B9A" }}>{error}</p> : null}
         {message ? <p style={{ margin: 0, fontSize: 11, color: "#00FF88" }}>{message}</p> : null}
 

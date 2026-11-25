@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AdSenseSlot, { AD_SLOTS } from './AdSenseSlot';
 import { getActiveSponsorForZone, type ActiveSponsorDisplay } from '@/lib/commerce/SponsorRegistry';
+import { resolveAdSlotWithDiversity } from '@/lib/ads/AdDiversityAuthority';
 
 // ── Network definitions ──────────────────────────────────────────────────────
 type AdNetwork = 'adsense' | 'medianet' | 'amazon' | 'carbon' | 'propeller' | 'house';
@@ -246,7 +247,16 @@ export default function UnifiedAdSlot({ venue, slotKey, format = 'horizontal', l
     const placement = placements.find((p) => p.slot === slotKey);
     const networks = placement?.networks ?? ['adsense'];
     const seed = claimSeed(venueKey, networks.length);
-    setNetwork(pickNetwork(seed, networks));
+    let chosen = pickNetwork(seed, networks);
+    // §6406/§6437 cross-slot duplicate suppression: if this network already served
+    // this zone on the page, advance to the next configured alternative. Sponsor
+    // takeover (above) is never suppressed. No impression side-effects (§6407).
+    const diversity = resolveAdSlotWithDiversity(venueKey, zone);
+    if (diversity.suppressedDuplicate) {
+      const next = pickNetwork(seed + 1, networks);
+      if (next !== chosen) chosen = next;
+    }
+    setNetwork(chosen);
   }, [venue, slotKey, venueKey, zone]);
 
   const containerStyle: React.CSSProperties = {

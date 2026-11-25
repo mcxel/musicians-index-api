@@ -99,6 +99,8 @@ export function useLobbyPresenceSync({
   };
 
   const propClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Server-verified id for this viewer (session user or signed guest), from the sync response. */
+  const selfIdRef = useRef<string | null>(null);
   const walkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildSelfPresence = useCallback((): LobbyParticipant => {
@@ -165,10 +167,11 @@ export function useLobbyPresenceSync({
       });
       if (!res.ok) return;
       const data = await res.json();
+      if (typeof data.selfId === "string") selfIdRef.current = data.selfId;
       if (Array.isArray(data.participants)) {
         // API returns Phase A.5 certified fields; normalize fills legacy aliases.
         const peers = (data.participants as FanLobbyPresenceWireRow[])
-          .filter((p) => p.userId !== userId)
+          .filter((p) => p.userId !== (selfIdRef.current ?? userId))
           .map((p) =>
             normalizeFanLobbyPresence(
               {

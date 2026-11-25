@@ -17,6 +17,8 @@ export interface WebRTCCaptureProps {
   accentColor?: string;
   showResolutionSelector?: boolean;
   showRecordingControls?: boolean;
+  /** When set, the recorded clip is handed back instead of only downloading. */
+  onRecordingComplete?: (file: File) => void;
 }
 
 type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsupported';
@@ -34,6 +36,7 @@ export default function WebRTCCapture({
   accentColor = '#00FFFF',
   showResolutionSelector = true,
   showRecordingControls = true,
+  onRecordingComplete,
 }: WebRTCCaptureProps) {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const recorderRef   = useRef<MediaRecorder | null>(null);
@@ -163,10 +166,15 @@ export default function WebRTCCapture({
 
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType });
+        const file = new File([blob], `tmi-recording-${Date.now()}.webm`, { type: mimeType });
+        if (onRecordingComplete) {
+          onRecordingComplete(file);
+          return;
+        }
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
         a.href     = url;
-        a.download = `tmi-recording-${Date.now()}.webm`;
+        a.download = file.name;
         a.click();
         URL.revokeObjectURL(url);
       };
@@ -182,7 +190,7 @@ export default function WebRTCCapture({
     } catch (err) {
       console.error('[WebRTCCapture] MediaRecorder error:', err);
     }
-  }, [stream, recording]);
+  }, [stream, recording, onRecordingComplete]);
 
   const stopRecording = useCallback(() => {
     if (!recording || !recorderRef.current) return;

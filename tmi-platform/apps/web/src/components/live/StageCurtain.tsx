@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   getStageSnapshot,
+  shouldRenderBreakCurtain,
   subscribeStage,
   type StageSnapshot,
   type StageState,
@@ -88,6 +89,7 @@ export default function StageCurtain({ durationMs = 4000, onFullyOpen, onFullyCl
     snap.state === "STAGE_PREP" ||
     snap.state === "INTERMISSION" ||
     snap.state === "ENDED";
+  const visibleForBreak = shouldRenderBreakCurtain(snap);
 
   // Fire callbacks
   useEffect(() => {
@@ -113,6 +115,8 @@ export default function StageCurtain({ durationMs = 4000, onFullyOpen, onFullyCl
       closedFiredRef.current = false;
     }
   }, [snap.state]);
+
+  if (!visibleForBreak) return null;
 
   const animDur = `${durationMs}ms`;
   const curtainFill = "linear-gradient(180deg,#1a0005 0%,#2d0009 30%,#1a0005 60%,#0d0003 100%)";

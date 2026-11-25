@@ -327,26 +327,14 @@ export function canUseStylePack(
   ownedPackIds: string[],
   accountTier: string,
 ): boolean {
-  const pack = getStylePack(packId);
-  if (!pack) return false;
-
-  if (pack.path === "FREE") return true;
-  if (pack.path === "PAID" || pack.path === "COIN") return ownedPackIds.includes(packId);
-
-  // TIER path — check canonical tier ordering
-  if (pack.path === "TIER" && pack.requiredTier) {
-    const TIER_ORDER = ["free", "pro", "ruby", "silver", "gold", "platinum", "diamond"];
-    const userIdx = TIER_ORDER.indexOf(accountTier.toLowerCase());
-    const reqIdx = TIER_ORDER.indexOf(pack.requiredTier);
-    return userIdx >= reqIdx;
-  }
-
-  return false;
+  // FREE PUBLIC PROFILE SYSTEM LAW: All style packs, themes, backgrounds,
+  // and overlays are 100% free forever for all fans, performers, and groups.
+  return true;
 }
 
 /**
  * Resolve the active StylePackTokens for a profile page rendering.
- * Falls back to tmi_classic if the requested pack is unavailable/unentitled.
+ * Falls back to tmi_classic if the requested pack is unavailable.
  */
 export function resolveActiveStyle(
   requestedPackId: string | null | undefined,
@@ -360,16 +348,150 @@ export function resolveActiveStyle(
   const pack = getStylePack(requestedPackId);
   if (!pack) return { pack: fallback, tokens: fallback.tokens };
 
-  const entitled = canUseStylePack(requestedPackId, ownedPackIds, accountTier);
-  if (!entitled) return { pack: fallback, tokens: fallback.tokens };
-
   return { pack, tokens: pack.tokens };
 }
 
 // ─── Profile customization model ─────────────────────────────────────────────
 
 export type ProfileLayout = "SINGLE_COL" | "SIDEBAR_RIGHT" | "MAGAZINE" | "FEATURE_HERO";
-export type FontPairing = "INTER" | "GROTESK" | "EDITORIAL" | "DISPLAY" | "MONO";
+export type FontPairing = "INTER" | "GROTESK" | "EDITORIAL" | "DISPLAY" | "MONO" | "SCRIPT" | "CONDENSED" | "ROUNDED";
+
+export type ProfileSoundtrackType = "OFF" | "SONG" | "ALBUM" | "PLAYLIST" | "YOPHO" | "RELEASE";
+
+/** Configuration for public profile music / MySpace soundtrack law */
+export interface ProfileSoundtrackConfig {
+  enabled: boolean;
+  type: ProfileSoundtrackType;
+  title?: string;
+  artist?: string;
+  audioUrl?: string;
+  coverUrl?: string;
+  sourceId?: string;
+  autoplay: boolean;
+  loop: boolean;
+  shuffle: boolean;
+  showPlayerOnProfile: boolean;
+  defaultVolume: number; // 0.0 - 1.0
+}
+
+/** Personal writing entry for Thought of the Day, Happy Day Quote, etc. */
+export interface PersonalWritingEntry {
+  id: string;
+  type: "THOUGHT_OF_DAY" | "HAPPY_DAY_QUOTE" | "THINGS_THAT_MAKE_ME_HAPPY" | "CURRENT_VIBE" | "CUSTOM_TEXT";
+  title: string;
+  body: string;
+  visibility: "PUBLIC" | "FRIENDS" | "PRIVATE";
+  styleVariant?: "POLAROID" | "PULL_QUOTE" | "NEON_SIGN" | "NOTE_CARD" | "MINIMAL";
+  updatedAt?: string;
+}
+
+export type ProfileHeroVariant =
+  | "WIDE_CINEMATIC"
+  | "FULL_WIDTH"
+  | "TALL_EDITORIAL"
+  | "SPLIT_HERO"
+  | "VIDEO_HERO"
+  | "AVATAR_HERO";
+
+/** Large Hero Media Area (Hero Media Law) */
+export interface ProfileHeroConfig {
+  enabled: boolean;
+  variant: ProfileHeroVariant;
+  imageUrl?: string;
+  videoUrl?: string;
+  motionUrl?: string;
+  avatarSceneUrl?: string;
+  headline?: string;
+  subheadline?: string;
+  overlayText?: string;
+  showNowPlaying: boolean;
+  showLiveIndicator: boolean;
+  showBio: boolean;
+  heightPx?: number;
+}
+
+/** Band & Group Profile Metadata (Group/Band Profile Law) */
+export interface GroupMember {
+  id: string;
+  name: string;
+  role: string; // e.g. "Vocals", "Guitar & Keys", "Bass", "Drums", "Producer"
+  avatarUrl?: string;
+  publicProfileSlug?: string;
+}
+
+export interface GroupProfileMetadata {
+  groupName: string;
+  formationYear?: string;
+  genre: string;
+  originCity: string;
+  originCountry: string;
+  members: GroupMember[];
+  tourDates?: Array<{ id: string; date: string; city: string; venue: string; ticketUrl?: string }>;
+}
+
+/**
+ * Canonical public-profile module IDs (Gate C.1B / ADR C.1A).
+ *
+ * Coarse section visibility only — NOT Magnet Canvas AST, NOT Hero, NOT
+ * personal writings (those use Content / PersonalWritingWall), NOT soundtrack
+ * payload (MUSIC tab / soundtrack field — not durable via visibleModules).
+ *
+ * UI catalog, server validation, and defaults MUST derive from this list.
+ */
+export const PUBLIC_PROFILE_MODULE_IDS = [
+  "ABOUT",
+  "MEDIA",
+  "FEATURED_TRACK",
+  "PLAYLIST",
+  "YOPHO",
+  "SNIPS",
+  "MEMORY",
+  "LIVE_NOW",
+  "UPCOMING",
+  "MAGAZINE",
+  "BOOKING",
+  "MERCH",
+  "ACHIEVEMENTS",
+  "FOLLOWING",
+  "SOCIAL_LINKS",
+] as const;
+
+export type PublicProfileModuleId = (typeof PUBLIC_PROFILE_MODULE_IDS)[number];
+
+export const PUBLIC_PROFILE_MODULE_SET: ReadonlySet<string> = new Set(PUBLIC_PROFILE_MODULE_IDS);
+
+/** Modules formerly shown in the customizer that are not persistable via visibleModules. */
+export const PUBLIC_PROFILE_NON_PERSISTABLE_MODULE_IDS = [
+  "THOUGHT_OF_DAY",
+  "HAPPY_DAY_QUOTE",
+  "THINGS_THAT_MAKE_ME_HAPPY",
+  "CURRENT_VIBE",
+  "SOUNDTRACK",
+  "MUSIC",
+] as const;
+
+export function isValidPublicProfileModule(id: unknown): id is PublicProfileModuleId {
+  return typeof id === "string" && PUBLIC_PROFILE_MODULE_SET.has(id);
+}
+
+/** Filter to canonical module IDs only (unknown IDs removed; order preserved). */
+export function filterValidPublicProfileModules(ids: unknown): PublicProfileModuleId[] {
+  if (!Array.isArray(ids)) return [...DEFAULT_VISIBLE_MODULES];
+  const out: PublicProfileModuleId[] = [];
+  for (const raw of ids) {
+    if (isValidPublicProfileModule(raw) && !out.includes(raw)) out.push(raw);
+  }
+  return out;
+}
+
+const DEFAULT_VISIBLE_MODULES: PublicProfileModuleId[] = [
+  "ABOUT",
+  "MEDIA",
+  "YOPHO",
+  "PLAYLIST",
+  "MEMORY",
+  "MAGAZINE",
+];
 
 /** Owner-controlled public profile configuration (persisted server-side). */
 export interface PublicProfileConfig {
@@ -383,7 +505,7 @@ export interface PublicProfileConfig {
   layout: ProfileLayout;
   /** Font treatment. */
   font: FontPairing;
-  /** Module IDs shown publicly (ordered). */
+  /** Module IDs shown publicly (ordered). Canonical set only. */
   visibleModules: string[];
   /** Short public status message (≤ 120 chars). */
   statusMessage: string | null;
@@ -391,6 +513,14 @@ export interface PublicProfileConfig {
   pinnedItems: string[];
   /** Whether the public page is live/published or draft. */
   published: boolean;
+  /** Large Hero media area */
+  hero?: ProfileHeroConfig;
+  /** Optional profile soundtrack (song, album, playlist, or off) */
+  soundtrack?: ProfileSoundtrackConfig;
+  /** Owner personal writings (thoughts, happy quotes, etc.) */
+  personalWritings?: PersonalWritingEntry[];
+  /** Group/Band metadata if this profile represents a group */
+  groupMetadata?: GroupProfileMetadata;
 }
 
 export const DEFAULT_PUBLIC_PROFILE_CONFIG: PublicProfileConfig = {
@@ -399,8 +529,55 @@ export const DEFAULT_PUBLIC_PROFILE_CONFIG: PublicProfileConfig = {
   animationIntensity: "NORMAL",
   layout: "SINGLE_COL",
   font: "INTER",
-  visibleModules: ["ABOUT", "MEDIA", "YOPHO", "PLAYLIST", "MEMORY", "MAGAZINE"],
+  visibleModules: [...DEFAULT_VISIBLE_MODULES],
   statusMessage: null,
   pinnedItems: [],
   published: true,
+  soundtrack: {
+    enabled: true,
+    type: "SONG",
+    title: "Obsidian Water (Radio Edit)",
+    artist: "Ricardo Parker",
+    audioUrl: "/sounds/magazine/page-turn.mp3",
+    coverUrl: "/tmi-curated/mag-20.jpg",
+    autoplay: true,
+    loop: true,
+    shuffle: false,
+    showPlayerOnProfile: true,
+    defaultVolume: 0.8,
+  },
+  personalWritings: [
+    {
+      id: "thought-1",
+      type: "THOUGHT_OF_DAY",
+      title: "THOUGHT OF THE DAY",
+      body: "When the bass drops, all borders vanish. Keep building, keep listening.",
+      visibility: "PUBLIC",
+      styleVariant: "NEON_SIGN",
+    },
+    {
+      id: "happy-quote-1",
+      type: "HAPPY_DAY_QUOTE",
+      title: "HAPPY DAY QUOTE",
+      body: "Surround yourself with the sounds and people that make your soul vibrate at higher frequencies.",
+      visibility: "PUBLIC",
+      styleVariant: "PULL_QUOTE",
+    },
+    {
+      id: "happy-things-1",
+      type: "THINGS_THAT_MAKE_ME_HAPPY",
+      title: "THINGS THAT MAKE ME HAPPY",
+      body: "1. Fresh live cyphers at midnight\n2. Cracking open a new vinyl record\n3. Seeing fans level up their avatars in the Arena\n4. Sunday morning studio sessions",
+      visibility: "PUBLIC",
+      styleVariant: "NOTE_CARD",
+    },
+    {
+      id: "vibe-1",
+      type: "CURRENT_VIBE",
+      title: "CURRENT VIBE",
+      body: "Electric · Grateful · In The Lab",
+      visibility: "PUBLIC",
+      styleVariant: "MINIMAL",
+    },
+  ],
 };

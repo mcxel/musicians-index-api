@@ -1,21 +1,30 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { updateUserTier } from '@/lib/auth/UserStore';
 import { prisma } from '@/lib/prisma';
 import { getStripe } from '@/lib/stripe/client';
 import { tierForPriceId } from '@/lib/stripe/tierMapping';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 
 // Revenue protection guardrail: this endpoint exists so the payment-success
 // page can confirm a tier upgrade has landed (the Stripe webhook is the
 // actual grant path). It must NEVER grant a tier from a client-supplied
 // priceId — that field is attacker-controlled and the price IDs themselves
-// are NEXT_PUBLIC_ env vars, visible in the browser bundle. Every grant here
-// is re-derived server-side from a real, paid Stripe Checkout Session.
+// are NEXT_PUBLIC_ env vars, visible in the browser bundle. This route verifies
+// a paid Checkout Session against the entitlement committed by the webhook.
+//
+// P0 security fix (2026-11-17): identity previously came from the
+// client-settable tmi_user_email cookie. See
+// CLAUDE_P0_SESSION_FORGERY_FINDING_2026-11-17.md. The Stripe-session
+// ownership check below already narrowed the practical exploit (the
+// session's billing email had to match), but a browser-supplied email must
+// never be the identity source for a tier grant regardless — identity now
+// comes from a validated session.
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { sessionId?: string };
     const sessionId = (body.sessionId ?? '').trim();
-    const email = req.cookies.get('tmi_user_email')?.value ?? '';
+    const auth = await getTmiAuth();
+    const email = auth?.user.email ?? '';
 
     if (!email) {
       return NextResponse.json({ ok: false, error: 'not authenticated' }, { status: 401 });
@@ -33,7 +42,7 @@ export async function POST(req: NextRequest) {
       expand: ['subscription'],
     });
 
-    if (session.payment_status !== 'paid' && session.status !== 'complete') {
+    if (session.payment_status !== 'paid' || session.status !== 'complete') {
       return NextResponse.json({ ok: false, error: 'payment not confirmed' }, { status: 402 });
     }
 
@@ -43,6 +52,10 @@ export async function POST(req: NextRequest) {
     }
 
     const subscription = session.subscription;
+    if (session.mode !== 'subscription' || typeof subscription !== 'object' || !subscription ||
+        (subscription.status !== 'active' && subscription.status !== 'trialing')) {
+      return NextResponse.json({ ok: false, error: 'subscription not active' }, { status: 402 });
+    }
     const priceId = typeof subscription === 'object' && subscription !== null
       ? subscription.items.data[0]?.price?.id ?? ''
       : '';
@@ -52,12 +65,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'unrecognized price' }, { status: 422 });
     }
 
-    updateUserTier(email, tier);
-
-    await prisma.user.updateMany({
-      where: { email: email.toLowerCase() },
-      data: { tier },
-    }).catch(() => undefined);
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase().trim() },
+      select: { tier: true, stripeSubscriptionId: true, stripePriceId: true },
+    });
+    if (!user || user.tier !== tier || user.stripeSubscriptionId !== subscription.id || user.stripePriceId !== priceId) {
+      return NextResponse.json({ ok: false, error: 'subscription activation pending' }, { status: 409 });
+    }
 
     const res = NextResponse.json({ ok: true, tier });
     res.cookies.set('tmi_tier', tier, {

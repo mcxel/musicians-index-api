@@ -171,6 +171,19 @@ export function getStageSnapshot(): StageSnapshot {
   };
 }
 
+/** The curtain overlay is reserved for an active live show's break transition. */
+export function shouldRenderBreakCurtain(snapshot: StageSnapshot): boolean {
+  if (snapshot.state === "CURTAIN_CLOSE") {
+    return snapshot.closeTarget === "intermission";
+  }
+  if (snapshot.state === "INTERMISSION") return true;
+  return (
+    (snapshot.state === "CURTAIN_PART" || snapshot.state === "LIGHTING_SNAP") &&
+    snapshot.analytics.intermissionStartedAt !== null &&
+    snapshot.analytics.intermissionEndedAt === null
+  );
+}
+
 export function subscribeStage(fn: StageListener): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);

@@ -19,6 +19,11 @@ export type SocketAttachmentDef = {
   layerScale?: number;
   /** When true, run hold/flame animations (active prop use). */
   active?: boolean;
+  /**
+   * Foundry manufactured mesh path (hair / wardrobe). When set, AvatarViewer mounts
+   * the GLB onto AvatarRig/1.0 via FoundrySkinnedPartMount instead of emoji plates.
+   */
+  glbUrl?: string | null;
 };
 
 /**

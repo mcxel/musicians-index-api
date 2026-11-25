@@ -17,6 +17,14 @@
  *   const theme = useTheme();
  */
 
+import {
+  DEFAULT_PERSONAL_UI_THEME,
+  loadPersonalUiThemePrefs,
+  projectPersonalUiThemeToCss,
+  savePersonalUiThemePrefs,
+  type PersonalUiThemePrefs,
+} from '@/lib/design/PersonalUiThemeAuthority';
+
 // ── Theme definitions ──────────────────────────────────────────────────────────
 
 /** Complete environment package — not just a color, an entire room identity */
@@ -168,6 +176,59 @@ export const THEME_CATALOG: Record<string, ThemeTokens> = {
     drawerGlow: '#B0E0FF', transitionStyle: 'dramatic', motionSpeed: 0.75,
     monitorBorderColor: '#B0E0FF', monitorIdleStyle: 'branded',
   },
+  /** Personal Theme Studio free presets — full workspace (not header-only). */
+  'pure-black': {
+    id: 'pure-black', name: 'Pure Black', description: 'All-black workspace. Pair with white or gray buttons.',
+    tier: 'free',
+    primary: '#FFFFFF', secondary: '#C0C0C0', tertiary: '#888888',
+    bgBase: '#000000', bgSurface: '#0a0a0a', bgGlass: 'rgba(0,0,0,0.92)',
+    glowColor: '#FFFFFF', glowIntensity: 0.25, stageLight: '#333333', crowdLight: '#FFFFFF',
+    particleShapes: ['orb','orb','orb'],
+    particleColors: ['#FFFFFF','#888888','#444444'],
+    particleSpeed: 0.4, particleDensity: 0.35, beatReactivity: 0.3,
+    spawnPattern: 'pulse', fadeStyle: 'fade',
+    drawerGlow: '#FFFFFF', transitionStyle: 'minimal', motionSpeed: 0.7,
+    monitorBorderColor: '#FFFFFF', monitorIdleStyle: 'dark',
+  },
+  'pure-white': {
+    id: 'pure-white', name: 'Pure White', description: 'All-white workspace. Pair with black or gray buttons.',
+    tier: 'free',
+    primary: '#111111', secondary: '#333333', tertiary: '#666666',
+    bgBase: '#FFFFFF', bgSurface: '#F4F4F6', bgGlass: 'rgba(255,255,255,0.92)',
+    glowColor: '#111111', glowIntensity: 0.15, stageLight: '#DDDDDD', crowdLight: '#111111',
+    particleShapes: ['orb','orb'],
+    particleColors: ['#CCCCCC','#999999'],
+    particleSpeed: 0.4, particleDensity: 0.25, beatReactivity: 0.2,
+    spawnPattern: 'pulse', fadeStyle: 'fade',
+    drawerGlow: '#111111', transitionStyle: 'minimal', motionSpeed: 0.7,
+    monitorBorderColor: '#111111', monitorIdleStyle: 'branded',
+  },
+  'monochrome': {
+    id: 'monochrome', name: 'Monochrome', description: 'Black, white, and gray only — no neon forced.',
+    tier: 'free',
+    primary: '#E8E8E8', secondary: '#9A9A9A', tertiary: '#5A5A5A',
+    bgBase: '#121212', bgSurface: '#1c1c1c', bgGlass: 'rgba(18,18,18,0.92)',
+    glowColor: '#E8E8E8', glowIntensity: 0.3, stageLight: '#444444', crowdLight: '#E8E8E8',
+    particleShapes: ['orb','diamond','orb'],
+    particleColors: ['#E8E8E8','#9A9A9A','#5A5A5A'],
+    particleSpeed: 0.5, particleDensity: 0.45, beatReactivity: 0.35,
+    spawnPattern: 'pulse', fadeStyle: 'fade',
+    drawerGlow: '#E8E8E8', transitionStyle: 'minimal', motionSpeed: 0.75,
+    monitorBorderColor: '#9A9A9A', monitorIdleStyle: 'dark',
+  },
+  'custom-color': {
+    id: 'custom-color', name: 'Custom Color', description: 'Your HEX palette for workspace + accents (buttons independent).',
+    tier: 'free',
+    primary: '#AA2DFF', secondary: '#00FFFF', tertiary: '#FFD700',
+    bgBase: '#030310', bgSurface: '#05050f', bgGlass: 'rgba(5,5,22,0.88)',
+    glowColor: '#AA2DFF', glowIntensity: 0.55, stageLight: '#AA2DFF', crowdLight: '#00FFFF',
+    particleShapes: ['orb','disc','star'],
+    particleColors: ['#AA2DFF','#00FFFF','#FFD700'],
+    particleSpeed: 0.9, particleDensity: 0.8, beatReactivity: 0.8,
+    spawnPattern: 'rise', fadeStyle: 'fade',
+    drawerGlow: '#AA2DFF', transitionStyle: 'smooth', motionSpeed: 1,
+    monitorBorderColor: '#AA2DFF', monitorIdleStyle: 'ambient',
+  },
 } satisfies Record<string, ThemeTokens>;
 
 // ── Scene → shape profile mapping ────────────────────────────────────────────
@@ -237,15 +298,26 @@ const listeners = new Set<(t: ThemeTokens) => void>();
 
 let _activeId: string = 'neon-royal';
 let _activeScene: VisualScene = 'default';
+let _personalPrefs: PersonalUiThemePrefs = { ...DEFAULT_PERSONAL_UI_THEME };
 
 function _load(): void {
   if (typeof window === 'undefined') return;
   try { _activeId = localStorage.getItem(THEME_KEY) ?? 'neon-royal'; } catch { /* ignore */ }
+  _personalPrefs = loadPersonalUiThemePrefs();
+  if (_personalPrefs.catalogThemeId && THEME_CATALOG[_personalPrefs.catalogThemeId]) {
+    _activeId = _personalPrefs.catalogThemeId;
+  }
 }
 _load();
 
+function _projectCss(): void {
+  if (typeof document === 'undefined') return;
+  projectPersonalUiThemeToCss(ThemeEngine.getTokens(), _personalPrefs);
+}
+
 function _emit(): void {
   const tokens = ThemeEngine.getTokens();
+  _projectCss();
   for (const l of listeners) try { l(tokens); } catch { /* silent */ }
 }
 
@@ -266,8 +338,19 @@ export const ThemeEngine = {
     try {
       const raw = localStorage.getItem('tmi.theme.owned.v1') ?? '[]';
       const ids = JSON.parse(raw) as string[];
-      return ['neon-royal', ...ids]; // neon-royal is always free
-    } catch { return ['neon-royal']; }
+      // Free personalization presets always available
+      return [
+        'neon-royal',
+        'pure-black',
+        'pure-white',
+        'monochrome',
+        'custom-color',
+        'midnight-noir',
+        ...ids,
+      ];
+    } catch {
+      return ['neon-royal', 'pure-black', 'pure-white', 'monochrome', 'custom-color', 'midnight-noir'];
+    }
   },
 
   /** Mark a theme as owned (called from store purchase flow) */
@@ -278,11 +361,46 @@ export const ThemeEngine = {
     _emit();
   },
 
-  /** Apply a new theme (persisted to localStorage) */
+  /** Apply a catalog theme + project CSS chrome tokens (no media remount). */
   apply(themeId: string): void {
     if (!THEME_CATALOG[themeId]) return;
     _activeId = themeId;
+    _personalPrefs = { ..._personalPrefs, catalogThemeId: themeId };
     try { localStorage.setItem(THEME_KEY, themeId); } catch { /* ignore */ }
+    savePersonalUiThemePrefs(_personalPrefs);
+    _emit();
+  },
+
+  getPersonalPrefs(): PersonalUiThemePrefs {
+    return { ..._personalPrefs, sectionOverrides: { ..._personalPrefs.sectionOverrides } };
+  },
+
+  setPersonalPrefs(patch: Partial<PersonalUiThemePrefs>): void {
+    _personalPrefs = {
+      ..._personalPrefs,
+      ...patch,
+      sectionOverrides: {
+        ..._personalPrefs.sectionOverrides,
+        ...(patch.sectionOverrides ?? {}),
+      },
+    };
+    if (patch.catalogThemeId && THEME_CATALOG[patch.catalogThemeId]) {
+      _activeId = patch.catalogThemeId;
+      try { localStorage.setItem(THEME_KEY, _activeId); } catch { /* ignore */ }
+    }
+    savePersonalUiThemePrefs(_personalPrefs);
+    _emit();
+  },
+
+  hydrateCss(): void {
+    _projectCss();
+  },
+
+  resetToTmiOriginal(): void {
+    _personalPrefs = { ...DEFAULT_PERSONAL_UI_THEME };
+    _activeId = 'neon-royal';
+    try { localStorage.setItem(THEME_KEY, 'neon-royal'); } catch { /* ignore */ }
+    savePersonalUiThemePrefs(_personalPrefs);
     _emit();
   },
 

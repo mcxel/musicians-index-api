@@ -332,7 +332,13 @@ export async function updateArtistProduct(
   return getArtistProductById(productId);
 }
 
-/** Decrement inventory after paid checkout (null inventory = unlimited). */
+/**
+ * Decrement inventory after paid checkout (null inventory = unlimited).
+ * Returns false if the atomic decrement affected zero rows — this is the
+ * authoritative sold-out signal; a losing concurrent buyer must NOT be
+ * treated as fulfilled (the pre-check above is a fast-path only, not the
+ * source of truth, since two requests can both pass it before either writes).
+ */
 export async function decrementArtistProductInventory(
   productId: string,
   qty = 1,
@@ -342,12 +348,12 @@ export async function decrementArtistProductInventory(
   if (!product) return false;
   if (product.inventory == null) return true;
   if (product.inventory < qty) return false;
-  await prisma.$executeRawUnsafe(
+  const affectedRows = await prisma.$executeRawUnsafe(
     `UPDATE "ArtistCommerceProduct"
      SET inventory = inventory - $1, "updatedAt" = CURRENT_TIMESTAMP
      WHERE id = $2 AND inventory IS NOT NULL AND inventory >= $1`,
     qty,
     productId,
   );
-  return true;
+  return affectedRows > 0;
 }

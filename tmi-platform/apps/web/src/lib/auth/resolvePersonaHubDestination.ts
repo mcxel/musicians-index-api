@@ -17,7 +17,8 @@ export type PersonaHubTarget =
   | "PERFORMER"
   | "ARTIST"
   | "BAND"
-  | "PRODUCER";
+  | "PRODUCER"
+  | "WRITER";
 
 function adminHubForEmail(email: string | null | undefined): string {
   const member = email ? getMemberByEmail(email) : undefined;
@@ -38,6 +39,9 @@ export function resolvePersonaHubDestination(
   }
   if (p === "PERFORMER" || p === "ARTIST" || p === "BAND" || p === "PRODUCER") {
     return "/hub/performer";
+  }
+  if (p === "WRITER") {
+    return "/hub/writer";
   }
   return "/hub/fan";
 }

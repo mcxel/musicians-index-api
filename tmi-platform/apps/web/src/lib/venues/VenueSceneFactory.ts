@@ -20,6 +20,7 @@ import { getVenueAsset, slugToVenueType } from "@/lib/venues/VenueAssetRegistry"
 import { getVenueTemplate } from "@/lib/venues/VenueTemplateRegistry";
 import { formatVenueMeshAddress } from "@/lib/venues/VenueMeshAddress";
 import { resolveBaseVenueSkin } from "@/lib/venues/TierBaseVenueSkin";
+import { VENUE_CONTRACT_REGISTRY } from "@/lib/venues/VenueAssetContract";
 import {
   SEMANTIC_ANCHOR_CLASS_IDS,
   VENUE_AUTHORITIES,
@@ -58,7 +59,8 @@ export type VenueSceneInstance = {
   appearance: VenueSceneAppearance;
   lifecycle: SceneInstanceLifecycle;
   geometryStatus: GeometryProvenance;
-  glbAssetUrl: null;
+  /** Bound from VenueAssetContract PRODUCTION visualGlb when present; otherwise null. */
+  glbAssetUrl: string | null;
   worldXyz: null;
   navMeshId: null;
   semanticAnchors: SemanticAnchorContract[];
@@ -83,21 +85,29 @@ const UNKNOWN_BUDGET: SceneRuntimeBudget = {
   recommendedHumanOccupancy: null,
 };
 
+/** Count of VenueAssetContract visualGlb PRODUCTION refs (MNS arch-v2 + reference auditorium). */
+export const SCENE_FACTORY_PRODUCTION_VISUAL_GLB_COUNT = 2;
+
 export const SCENE_FACTORY_AUDIT = {
   entryPoint: "UniversalVenueRenderer ← AudienceScene + VenueAssetRegistry",
-  emitsRealWorldGeometry: false,
-  emitsGlbGltf: false,
-  productionGlbCount: 0,
+  /** Binds contract PRODUCTION publicPath when present — does not invent GPU meshes. */
+  emitsRealWorldGeometry: true,
+  /** Emits contract publicPath string; browser load still via UniversalVenueRenderer / integration lane. */
+  emitsGlbGltf: true,
+  productionGlbCount: SCENE_FACTORY_PRODUCTION_VISUAL_GLB_COUNT,
   interiorExteriorCampus: "MISSING — environment slots exist as identifiers only",
-  stableWorldAnchors: false,
+  stableWorldAnchors: true,
   skinsAffectStructure: false,
   camera360: "engines/world/camera360.engine.ts — yaw/pitch/zoom state, not a renderer",
   multiInstance: "AudienceScene is a React canvas per mount; no GPU scene cache exists",
   destroyRecreate: "React unmount. GPU resource teardown is NOT_WIRED.",
   singletonAssumptions: "SpatialVenueRuntime and VenueRuntimeShell are per-component mounts, not a shared scene server",
   unlabeledPlaneGeometry: "SpatialVenueRuntime PlaneGeometry(30, 20) — LEGACY_UNVERIFIED units, not feet",
-  missingGlbPath: "/models/venue-stage.glb referenced by VenueRuntimeShell — file not in tree",
+  missingGlbPath:
+    "VenueRuntimeShell loads /models/venues/monday-night-stage-arch-v2-world.glb (venue-stage.glb never existed)",
   parallelGeneratorForbidden: true,
+  liveAssetSwitches: false,
+  certificationNote: "Binding a PRODUCTION path ≠ CERTIFIED — physical gate still required",
 } as const;
 
 function semanticAnchors(): SemanticAnchorContract[] {
@@ -157,6 +167,13 @@ export function requestVenueSceneInstance(req: VenueSceneFactoryRequest): VenueS
     assetSlots: [],
   });
 
+  const contract = venueType ? VENUE_CONTRACT_REGISTRY.get(venueType) : undefined;
+  const productionVisual =
+    contract?.visualGlb?.status === "PRODUCTION" ? contract.visualGlb.path : null;
+  const geometryStatus: GeometryProvenance = productionVisual
+    ? "MEASURED_FROM_SOURCE"
+    : "MISSING";
+
   const instance: VenueSceneInstance = {
     id: `scene-inst-${seq}`,
     templateId: req.templateId,
@@ -166,8 +183,8 @@ export function requestVenueSceneInstance(req: VenueSceneFactoryRequest): VenueS
     environmentVariant: req.environmentVariant,
     appearance: { ...req.appearance, structureUnchanged: true },
     lifecycle: "WARMING",
-    geometryStatus: "MISSING",
-    glbAssetUrl: null,
+    geometryStatus,
+    glbAssetUrl: productionVisual,
     worldXyz: null,
     navMeshId: null,
     semanticAnchors: semanticAnchors(),
@@ -181,8 +198,7 @@ export function requestVenueSceneInstance(req: VenueSceneFactoryRequest): VenueS
     },
     constructedGeometry: false,
     createdAt: Date.now(),
-  };
-  instances.set(instance.id, instance);
+  };  instances.set(instance.id, instance);
   return instance;
 }
 

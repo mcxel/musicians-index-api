@@ -219,14 +219,33 @@ export default function IdleMonitorFallbackRuntime({
   className = "",
   style = {},
 }: IdleMonitorFallbackProps) {
-  if (isMatchRecruitmentCell(cellIndex)) {
+  if (typeof cellIndex === "number") {
     return (
-      <OpenMatchCell
-        monitorId={monitorId}
-        cellIndex={cellIndex}
+      <div
+        data-idle-monitor-fallback={monitorId}
+        data-cell-index={cellIndex}
+        data-no-source-assigned
         className={className}
-        style={style}
-      />
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#010208",
+          color: "rgba(255,255,255,0.3)",
+          fontSize: 9,
+          fontWeight: 800,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          textAlign: "center",
+          padding: 8,
+          ...style,
+        }}
+      >
+        <span>NO SOURCE ASSIGNED</span>
+      </div>
     );
   }
 

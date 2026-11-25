@@ -10,8 +10,6 @@ import type { MonitorShareSlot, ScreenShareErrorCode } from "@/lib/monitors/moni
  */
 export function MonitorScreenShareVideo({
   stream,
-  onStop,
-  label,
   audioOwned = false,
   transitionKey,
 }: {
@@ -54,57 +52,6 @@ export function MonitorScreenShareVideo({
         muted={!audioOwned}
         style={{ flex: 1, minHeight: 0, width: "100%", objectFit: "contain", background: "#000" }}
       />
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "4px 8px",
-          background: "linear-gradient(180deg,rgba(0,0,0,0.75),transparent)",
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 5, pointerEvents: "none" }}>
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#00FF88",
-              boxShadow: "0 0 8px #00FF88",
-              display: "inline-block",
-              animation: prefersReduced ? undefined : "scrSharePulse 1.2s ease-in-out infinite",
-            }}
-          />
-          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#00FF88" }}>
-            SCREEN SHARE · {label}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onStop}
-          style={{
-            pointerEvents: "all",
-            background: "rgba(255,68,68,0.85)",
-            border: "none",
-            borderRadius: 4,
-            color: "#fff",
-            fontSize: 8,
-            fontWeight: 900,
-            padding: "2px 6px",
-            cursor: "pointer",
-          }}
-        >
-          ✕ STOP SHARE
-        </button>
-      </div>
-      <style>{`
-        @keyframes scrSharePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
-      `}</style>
     </motion.div>
   );
 }

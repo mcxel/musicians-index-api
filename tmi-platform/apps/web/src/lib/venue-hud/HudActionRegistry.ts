@@ -39,6 +39,8 @@ export interface RegisteredHudAction {
   requiredRole?: UserRoleCapability;
   skuId?: string;
   unlockRequirement?: string;
+  /** Optional face portrait for companion summons (Julius) — screen-space only. */
+  portraitUrl?: string;
 }
 
 const registeredActions = new Map<string, RegisteredHudAction>();
@@ -52,13 +54,94 @@ const DEFAULT_ACTIONS: RegisteredHudAction[] = [
   { id: "act-crown", label: "Prestige Crown", icon: "👑", category: "reaction", skuId: "cosmetic-crown" },
   { id: "act-dance-spin", label: "Spin Dance", icon: "💃", category: "dance", skuId: "emote-spin-dance" },
   { id: "act-dance-break", label: "Breakdance", icon: "🕺", category: "dance", skuId: "emote-break-dance" },
-  { id: "act-cheer", label: "Audience Cheer", icon: "🙌", category: "emote" },
-  { id: "act-laugh", label: "Laugh", icon: "😂", category: "emote" },
+  { id: "act-cheer", label: "Audience Cheer", icon: "🙌", category: "reaction" },
+  { id: "act-laugh", label: "Laugh", icon: "😂", category: "reaction" },
+  { id: "act-boo", label: "Boo", icon: "👎", category: "reaction" },
+  { id: "act-yay", label: "Yay", icon: "🙌", category: "reaction" },
+  { id: "act-gasp", label: "Gasp", icon: "😮", category: "reaction" },
+  { id: "act-oooh", label: "Oooh", icon: "😲", category: "reaction" },
+  { id: "act-mns-up", label: "Up", icon: "👍", category: "vote", requiredRole: "fan" },
+  { id: "act-mns-down", label: "Down", icon: "👎", category: "vote", requiredRole: "fan" },
+  { id: "act-raise-hand", label: "Raise Hand", icon: "✋", category: "social", requiredRole: "fan" },
+  { id: "act-intercom", label: "Intercom", icon: "🎙️", category: "host", requiredRole: "performer" },
+  { id: "act-ask-crowd", label: "Ask Crowd", icon: "📊", category: "show", requiredRole: "performer" },
+  {
+    id: "act-julius",
+    label: "Julius",
+    icon: "🦦",
+    category: "show",
+    requiredRole: "performer",
+    portraitUrl: "/assets/hosts/julius.webp",
+  },
+  {
+    id: "act-visual-fx",
+    label: "Visuals",
+    icon: "🎨",
+    category: "show",
+    requiredRole: "performer",
+  },
+  {
+    id: "act-crown-brag",
+    label: "Show Crown",
+    icon: "👑",
+    category: "show",
+    requiredRole: "performer",
+    unlockRequirement: "ACTIVE_CROWN_ENTITLEMENT",
+  },
+  {
+    id: "act-belt-brag",
+    label: "Show Belt",
+    icon: "🏆",
+    category: "show",
+    requiredRole: "performer",
+    unlockRequirement: "ACTIVE_YEARLY_BELT_ENTITLEMENT",
+  },
+  {
+    id: "act-trophy-flex",
+    label: "Show Trophy",
+    icon: "🏅",
+    category: "show",
+    requiredRole: "performer",
+    unlockRequirement: "OWNED_TROPHY_ENTITLEMENT",
+  },
+  {
+    id: "act-challenge-for-crown",
+    label: "Challenge For Crown",
+    icon: "⚔️",
+    category: "queue",
+    requiredRole: "performer",
+  },
+  {
+    id: "act-notepad",
+    label: "Notepad",
+    icon: "📝",
+    category: "show",
+  },
+  {
+    id: "act-translate",
+    label: "Translate",
+    icon: "🌐",
+    category: "social",
+  },
   { id: "act-support-vote", label: "Support Vote", icon: "🗳️", category: "vote", requiredRole: "fan" },
   { id: "act-collect-card", label: "Collect Card", icon: "🎴", category: "social", requiredRole: "fan" },
   { id: "act-cue-next", label: "Next Cue", icon: "⏭️", category: "show", requiredRole: "performer" },
   { id: "act-join-queue", label: "Join Queue", icon: "📋", category: "queue", requiredRole: "performer" },
   { id: "act-challenge-winner", label: "Challenge Winner", icon: "⚔️", category: "queue", requiredRole: "performer" },
+  {
+    id: "act-live-challenge",
+    label: "Challenge",
+    icon: "⚔️",
+    category: "queue",
+    requiredRole: "performer",
+  },
+  {
+    id: "act-accept-challenge",
+    label: "I Accept The Challenge",
+    icon: "✅",
+    category: "queue",
+    requiredRole: "performer",
+  },
   { id: "act-approve-next", label: "Approve Next", icon: "✅", category: "host", requiredRole: "host" },
   { id: "act-bring-on-stage", label: "Bring On Stage", icon: "🎤", category: "host", requiredRole: "host" },
 ];
@@ -105,15 +188,28 @@ export function filterActionsForUser(
   });
 }
 
-function experienceToRoomKind(experienceType: ExperienceType): ParticipationRoomKind {
+/**
+ * Experience → ParticipationRoomKind. Aliases reuse existing kinds —
+ * never a parallel HUD matrix per show title (§12053–§12070).
+ */
+export function experienceToRoomKind(experienceType: ExperienceType): ParticipationRoomKind {
   switch (experienceType) {
     case "BATTLE":
+    case "MINI_BATTLE":
       return "battle";
     case "CYPHER":
+    case "MINI_CYPHER":
       return "cypher";
     case "CHALLENGE":
+    case "SONG_CHALLENGE":
+    case "DANCE_OFF":
+    case "MINI_CHALLENGE":
       return "challenge";
     case "GAME_SHOW":
+    case "DIRTY_DOZENS":
+    case "DEAL_OR_FEUD":
+    case "CIRCLE_SQUARES":
+    case "NAME_THAT_TUNE":
       return "game";
     case "LOUNGE":
     case "LISTENING_PARTY":
@@ -121,7 +217,14 @@ function experienceToRoomKind(experienceType: ExperienceType): ParticipationRoom
       return "lounge";
     case "WORLD_CONCERT":
     case "WORLD_RELEASE":
+    case "MINI_CONCERT":
+    case "MINI_RELEASE":
+    case "MONDAY_NIGHT_STAGE":
       return "show_release";
+    case "WORLD_DANCE_PARTY":
+    case "MINI_DANCE_PARTY":
+    case "REHEARSAL":
+    case "LIVE":
     default:
       return "live";
   }

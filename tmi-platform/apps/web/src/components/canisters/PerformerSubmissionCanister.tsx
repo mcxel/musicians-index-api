@@ -6,8 +6,11 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DrawerBezelChrome from "@/components/drawers/DrawerBezelChrome";
+import DrawerCompositionLayout from "@/components/drawers/DrawerCompositionLayout";
+import SubmissionManagementDrawer from "@/components/canisters/SubmissionManagementDrawer";
+import { DRAWER_LIVE_PREVIEW_BINDING_LAW_ID } from "@/lib/drawers/DrawerLivePreviewBindingLaw";
 import { buildSubmissionPreview } from "@/engines/performance/BeatSubmissionRouter";
 import {
   assignBeatToCompetition,
@@ -18,15 +21,15 @@ import {
   type BeatCompetitionTarget,
   type BeatLockerRecord,
 } from "@/lib/beats/BeatLockerClient";
-import {
-  buildBeatDropInventory,
-} from "@/lib/beats/BeatInventoryEngine";
+import { buildBeatDropInventory } from "@/lib/beats/BeatInventoryCore";
 import { DEFAULT_LICENSE_PRICES } from "@/lib/beats/BeatStoreCommerceEngine";
 
 interface PerformerSubmissionCanisterProps {
   userId: string;
   displayName?: string;
   accentColor?: string;
+  /** Stats & Analytics → Submissions → Submit Beat deep-link */
+  initialTab?: "destinations" | "beat_locker";
 }
 
 const DESTINATIONS: { id: BeatCompetitionTarget; label: string }[] = [
@@ -42,7 +45,9 @@ export default function PerformerSubmissionCanister({
   userId,
   displayName = "Performer",
   accentColor = "#FFD700",
+  initialTab = "destinations",
 }: PerformerSubmissionCanisterProps) {
+  const [canisterTab, setCanisterTab] = useState<"destinations" | "beat_locker">(initialTab);
   const [title, setTitle] = useState("");
   const [broadcastTag, setBroadcastTag] = useState(displayName);
   const [genre, setGenre] = useState<string>("Hip-Hop");
@@ -67,6 +72,15 @@ export default function PerformerSubmissionCanister({
     true,
     true,
   );
+
+  /** §11354 LIVE PREVIEW — object URL from selected file; revoke on change. */
+  const fileObjectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => {
+    return () => {
+      if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
+    };
+  }, [fileObjectUrl]);
+  const liveAudioSrc = previewUrl.trim() || fileObjectUrl || undefined;
 
   const refresh = useCallback(async () => {
     const result = await listBeats({ mine: true });
@@ -170,159 +184,265 @@ export default function PerformerSubmissionCanister({
   };
 
   return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+      {/* Primary Submissions Mode Switcher */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 2px" }}>
+        <button
+          type="button"
+          data-testid="sub-tab-destinations"
+          onClick={() => setCanisterTab("destinations")}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 6,
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            border: canisterTab === "destinations" ? "1px solid #FFD700" : "1px solid rgba(255,255,255,0.12)",
+            background: canisterTab === "destinations" ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.04)",
+            color: canisterTab === "destinations" ? "#FFD700" : "rgba(255,255,255,0.6)",
+          }}
+        >
+          📻 STREAMING WIN RADIO & VIDEO SHUFFLE
+        </button>
+        <button
+          type="button"
+          data-testid="sub-tab-beat-locker"
+          onClick={() => setCanisterTab("beat_locker")}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 6,
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            border: canisterTab === "beat_locker" ? "1px solid #AA2DFF" : "1px solid rgba(255,255,255,0.12)",
+            background: canisterTab === "beat_locker" ? "rgba(170,45,255,0.2)" : "rgba(255,255,255,0.04)",
+            color: canisterTab === "beat_locker" ? "#AA2DFF" : "rgba(255,255,255,0.6)",
+          }}
+        >
+          🎧 BEAT LOCKER & COMPETITIONS
+        </button>
+      </div>
+
+      {canisterTab === "destinations" ? (
+        <SubmissionManagementDrawer userId={userId} displayName={displayName} accentColor={accentColor} />
+      ) : (
     <DrawerBezelChrome variant="chrome" seriesLabel="Performer · Beat Locker" accentColor={accentColor}>
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ fontSize: 9, letterSpacing: "0.18em", fontWeight: 800, color: accentColor }}>
           BEAT LOCKER → COMPETITION VAULT · MARKETPLACE SEPARATE
         </div>
 
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Beat name"
-            style={fieldStyle}
-            required
-          />
-          <input
-            value={broadcastTag}
-            onChange={(e) => setBroadcastTag(e.target.value)}
-            placeholder="Broadcast tag / seller display name (on air)"
-            style={fieldStyle}
-            required
-          />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} style={{ ...fieldStyle, flex: 1 }}>
-              {BEAT_GENRES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={60}
-              max={220}
-              value={bpm}
-              onChange={(e) => setBpm(Number(e.target.value) || 120)}
-              style={{ ...fieldStyle, width: 88 }}
-              title="BPM"
-            />
-            <input
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Key"
-              style={{ ...fieldStyle, width: 72 }}
-            />
-          </div>
-          <input
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="Tags (comma-separated)"
-            style={fieldStyle}
-          />
-          <input
-            value={previewUrl}
-            onChange={(e) => setPreviewUrl(e.target.value)}
-            placeholder="Preview URL (or choose file)"
-            style={fieldStyle}
-          />
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
-          />
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select
-              value={targetType}
-              onChange={(e) => setTargetType(e.target.value as BeatCompetitionTarget)}
-              style={{ ...fieldStyle, flex: 1 }}
-            >
-              {DESTINATIONS.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-            <input
-              value={targetId}
-              onChange={(e) => setTargetId(e.target.value)}
-              placeholder="Target room / queue id"
-              style={{ ...fieldStyle, flex: 1 }}
-            />
-          </div>
-
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>
-            <input
-              type="checkbox"
-              checked={listForSale}
-              onChange={(e) => setListForSale(e.target.checked)}
-            />
-            List for marketplace (your price required — fee via SPLIT_PRESETS.beat)
-          </label>
-          {listForSale ? (
-            <input
-              type="number"
-              min={99}
-              value={basicPrice}
-              onChange={(e) => setBasicPrice(Number(e.target.value) || 2999)}
-              style={fieldStyle}
-              title="Your price in cents"
-              required
-              placeholder="Price (cents)"
-            />
-          ) : null}
-
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{preview.poolSummary}</div>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <button type="submit" disabled={busy} style={btnStyle(accentColor)}>
-              {busy ? "UPLOADING…" : "UPLOAD TO BEAT LOCKER"}
-            </button>
-            <Link href="/beats" style={linkStyle("#00FFFF")}>
-              Marketplace →
-            </Link>
-            <Link href="/admin/beat-locker" style={linkStyle(accentColor)}>
-              Admin Beat Locker →
-            </Link>
-          </div>
-        </form>
-
-        {error ? <p style={{ margin: 0, fontSize: 11, color: "#FF6B9A" }}>{error}</p> : null}
-        {message ? <p style={{ margin: 0, fontSize: 11, color: "#00FF88" }}>{message}</p> : null}
-        {loadError ? <p style={{ margin: 0, fontSize: 11, color: "#FFD700" }}>{loadError}</p> : null}
-
-        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,255,255,0.45)" }}>
-          YOUR LOCKER ({beats.length})
-        </div>
-        {beats.length === 0 ? (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-            No beats in your locker yet. Upload above to start.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
-            {beats.map((b) => (
+        <form onSubmit={onSubmit}>
+          <DrawerCompositionLayout
+            moduleId="submissions"
+            previewCount={1}
+            preview={
               <div
-                key={b.id}
+                data-testid="beat-locker-preview"
+                data-live-preview-id="beat-primary"
+                data-live-preview-binding={DRAWER_LIVE_PREVIEW_BINDING_LAW_ID}
+                data-live-preview-title={title.trim() || ""}
+                data-live-preview-genre={genre}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
+                  padding: 10,
+                  borderRadius: 10,
+                  border: `1px solid ${accentColor}55`,
+                  background: "rgba(0,0,0,0.35)",
+                  minHeight: 88,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{b.title}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-                  {b.genre} · {b.bpm} BPM · {b.status ?? "—"} · {creatorCreditLabel(b)}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>
+                      {title.trim() || "Untitled beat"}
+                    </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                      {broadcastTag.trim() || displayName} · {genre} · {bpm} BPM
+                      {key ? ` · ${key}` : ""}
+                    </div>
+                    {tags.trim() ? (
+                      <div style={{ fontSize: 9, color: accentColor, marginTop: 4 }}>{tags}</div>
+                    ) : null}
+                  </div>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: "#00FF88" }}>
+                    LIVE PREVIEW
+                  </span>
+                </div>
+                {liveAudioSrc ? (
+                  <audio key={liveAudioSrc} controls src={liveAudioSrc} style={{ width: "100%" }} />
+                ) : (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                    Touch a preview URL or audio file below — media appears here immediately (no save required).
+                  </div>
+                )}
+              </div>
+            }
+            textDialogue={
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Beat name"
+                  style={fieldStyle}
+                  required
+                />
+                <input
+                  value={broadcastTag}
+                  onChange={(e) => setBroadcastTag(e.target.value)}
+                  placeholder="Broadcast tag / seller display name (on air)"
+                  style={fieldStyle}
+                  required
+                />
+                <input
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="Tags / description (comma-separated)"
+                  style={fieldStyle}
+                />
+              </div>
+            }
+            instruments={
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <select value={genre} onChange={(e) => setGenre(e.target.value)} style={{ ...fieldStyle, flex: 1 }}>
+                    {BEAT_GENRES.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={60}
+                    max={220}
+                    value={bpm}
+                    onChange={(e) => setBpm(Number(e.target.value) || 120)}
+                    style={{ ...fieldStyle, width: 88 }}
+                    title="BPM"
+                  />
+                  <input
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    placeholder="Key"
+                    style={{ ...fieldStyle, width: 72 }}
+                  />
+                </div>
+                <input
+                  value={previewUrl}
+                  onChange={(e) => setPreviewUrl(e.target.value)}
+                  placeholder="Preview URL (or choose file)"
+                  style={fieldStyle}
+                />
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
+                />
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <select
+                    value={targetType}
+                    onChange={(e) => setTargetType(e.target.value as BeatCompetitionTarget)}
+                    style={{ ...fieldStyle, flex: 1 }}
+                  >
+                    {DESTINATIONS.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={targetId}
+                    onChange={(e) => setTargetId(e.target.value)}
+                    placeholder="Target room / queue id"
+                    style={{ ...fieldStyle, flex: 1 }}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            }
+            settings={
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>
+                  <input
+                    type="checkbox"
+                    checked={listForSale}
+                    onChange={(e) => setListForSale(e.target.checked)}
+                  />
+                  List for marketplace (your price required — fee via SPLIT_PRESETS.beat)
+                </label>
+                {listForSale ? (
+                  <input
+                    type="number"
+                    min={99}
+                    value={basicPrice}
+                    onChange={(e) => setBasicPrice(Number(e.target.value) || 2999)}
+                    style={fieldStyle}
+                    title="Your price in cents"
+                    required
+                    placeholder="Price (cents)"
+                  />
+                ) : null}
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{preview.poolSummary}</div>
+              </div>
+            }
+            actions={
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <button type="submit" disabled={busy} style={btnStyle(accentColor)}>
+                  {busy ? "UPLOADING…" : "UPLOAD TO BEAT LOCKER"}
+                </button>
+                <Link href="/beats" style={linkStyle("#00FFFF")}>
+                  Marketplace →
+                </Link>
+                <Link href="/admin/beat-locker" style={linkStyle(accentColor)}>
+                  Admin Beat Locker →
+                </Link>
+              </div>
+            }
+            content={
+              <div>
+                {error ? <p style={{ margin: "0 0 8px", fontSize: 11, color: "#FF6B9A" }}>{error}</p> : null}
+                {message ? <p style={{ margin: "0 0 8px", fontSize: 11, color: "#00FF88" }}>{message}</p> : null}
+                {loadError ? <p style={{ margin: "0 0 8px", fontSize: 11, color: "#FFD700" }}>{loadError}</p> : null}
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>
+                  YOUR LOCKER ({beats.length})
+                </div>
+                {beats.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                    No beats in your locker yet. Upload above to start.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
+                    {beats.map((b) => (
+                      <div
+                        key={b.id}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: "rgba(255,255,255,0.03)",
+                        }}
+                      >
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{b.title}</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                          {b.genre} · {b.bpm} BPM · {b.status ?? "—"} · {creatorCreditLabel(b)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            }
+          />
+        </form>
       </div>
     </DrawerBezelChrome>
+      )}
+    </div>
   );
 }
 

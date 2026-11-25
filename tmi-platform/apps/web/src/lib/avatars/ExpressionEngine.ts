@@ -17,9 +17,9 @@
  * entities that are already registered in UnifiedAvatarRuntime.
  */
 
-import type { AvatarEmotion } from '@/lib/avatars/AvatarRendererContract';
-import type { AvatarAnimationState } from '@/lib/avatars/UnifiedAvatarRuntime';
-import { updateEntityState, getEntity } from '@/lib/avatars/UnifiedAvatarRuntime';
+import type { AvatarEmotion } from './AvatarRendererContract';
+import type { AvatarAnimationState } from './UnifiedAvatarRuntime';
+import { updateEntityState, getEntity } from './UnifiedAvatarRuntime';
 import { roomEnergyEngine } from '@/lib/live/RoomEnergyEngine';
 
 // ─── Expression type (user-facing label set) ──────────────────────────────────

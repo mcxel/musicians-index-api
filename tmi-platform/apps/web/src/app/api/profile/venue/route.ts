@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { dbReady, getUserByEmail, updateUserTier } from '@/lib/auth/UserStore';
+import { dbReady, getUserByEmail } from '@/lib/auth/UserStore';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 
 type VenueBody = {
   venueName?: string;
@@ -15,13 +16,16 @@ type VenueBody = {
   services?: string[];
 };
 
+// P0 security fix (2026-11-17): identity previously came from the
+// client-settable tmi_user_email cookie (sessionId was only checked for
+// presence, never validated). See
+// CLAUDE_P0_SESSION_FORGERY_FINDING_2026-11-17.md.
 export async function POST(req: NextRequest) {
-  const email = req.cookies.get('tmi_user_email')?.value;
-  const sessionId = req.cookies.get('tmi_session_id')?.value;
-
-  if (!sessionId || !email) {
+  const auth = await getTmiAuth();
+  if (!auth) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
+  const email = auth.user.email;
 
   let body: VenueBody = {};
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
@@ -73,11 +77,6 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error('[api/profile/venue] DB write failed (non-fatal):', err);
-  }
-
-  // Mark user as venue role — ensures dashboard routing is correct
-  if (user.role !== 'venue') {
-    updateUserTier(email, user.tier);
   }
 
   return NextResponse.json({
